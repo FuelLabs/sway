@@ -8,7 +8,7 @@ use sway_types::{Span, Spanned};
 
 use super::Modifier;
 
-impl<'a, T> Modifier<'a, Annotated<T>> {
+impl<T> Modifier<'_, Annotated<T>> {
     /// From `self`, removes [AttributeDecl] that contains an [Attribute]
     /// whose span equals `attribute_span`.
     ///

@@ -8,7 +8,7 @@ use crate::assert_insert_span;
 
 use super::{Modifier, New};
 
-impl<'a> Modifier<'a, ItemFn> {
+impl Modifier<'_, ItemFn> {
     pub(crate) fn set_name<S: AsRef<str> + ?Sized>(&mut self, name: &S) -> &mut Self {
         // We preserve the current span of the name.
         let insert_span = self.element.fn_signature.name.span();

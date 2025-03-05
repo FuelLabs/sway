@@ -32,6 +32,7 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-doc
           cargo install --locked --debug --path ./forc-plugins/forc-crypto
           cargo install --locked --debug --path ./forc-plugins/forc-migrate
+          cargo install --locked --debug --path ./forc-plugins/forc-node
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
@@ -42,7 +43,7 @@ jobs:
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: "0.4.25"
+          mdbook-version: "0.4.45"
 
       - name: Build Sway book
         run: MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book

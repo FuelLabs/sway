@@ -24,6 +24,7 @@ async fn start_local_node_check_health() {
         mode: Mode::Local(local_cmd),
     };
 
+    #[allow(clippy::zombie_processes)]
     let mut handle = op::run(cmd).await.unwrap().unwrap();
     // Wait for node to start grapqhl service
     sleep(Duration::from_secs(2)).await;

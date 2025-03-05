@@ -298,7 +298,7 @@ pub async fn cmd_step(state: &mut State, mut args: Vec<String>) -> Result<()> {
     // Determine whether to enable or disable single stepping
     let enable = args
         .first()
-        .map_or(true, |v| !["off", "no", "disable"].contains(&v.as_str()));
+        .is_none_or(|v| !["off", "no", "disable"].contains(&v.as_str()));
 
     // Call the client
     state

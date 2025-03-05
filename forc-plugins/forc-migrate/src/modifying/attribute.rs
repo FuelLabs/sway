@@ -15,7 +15,7 @@ use crate::assert_insert_span;
 use super::{Modifier, New};
 
 #[allow(dead_code)]
-impl<'a> Modifier<'a, Attribute> {
+impl Modifier<'_, Attribute> {
     pub(crate) fn set_name<S: AsRef<str> + ?Sized>(&mut self, name: &S) -> &mut Self {
         // We preserve the current span of the name.
         let insert_span = self.element.name.span();
