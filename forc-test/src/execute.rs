@@ -122,17 +122,13 @@ impl TestExecutor {
             )
             .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
-        let predicate_logging_ecal = PredicateLoggingEcal {
-            program_abi: built_pkg.program_abi.clone(),
-        };
-
         let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
         let memory_instance = MemoryInstance::new();
         let interpreter = Interpreter::with_storage_and_ecal(
             memory_instance,
             storage,
             interpreter_params,
-            predicate_logging_ecal,
+            PredicateLoggingEcal,
         );
 
         Ok(TestExecutor {
