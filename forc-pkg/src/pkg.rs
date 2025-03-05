@@ -312,7 +312,7 @@ pub struct BuildOpts {
     /// Controls predicate log generation behavior.
     /// When enabled, the `__log` intrinsic will compile to ECAL (Execution Call) instruction instead
     /// of LOGD (Log Data) instruction for predicates, allowing forc-test to capture logs from predicates.
-    pub log_generation: bool,
+    pub enable_predicate_logs: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
     /// Set of enabled experimental flags
@@ -1567,7 +1567,7 @@ pub fn sway_build_config(
     )
     .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
-    .with_log_generation(build_profile.log_generation)
+    .with_enable_predicate_logs(build_profile.enable_predicate_logs)
     .with_time_phases(build_profile.time_phases)
     .with_profile(build_profile.profile)
     .with_metrics(build_profile.metrics_outfile.clone())
@@ -2131,7 +2131,7 @@ fn build_profile_from_opts(
         release,
         metrics_outfile,
         tests,
-        log_generation,
+        enable_predicate_logs,
         error_on_warnings,
         ..
     } = build_options;
@@ -2173,7 +2173,7 @@ fn build_profile_from_opts(
         profile.metrics_outfile.clone_from(metrics_outfile);
     }
     profile.include_tests |= tests;
-    profile.log_generation |= log_generation;
+    profile.enable_predicate_logs |= enable_predicate_logs;
     profile.error_on_warnings |= error_on_warnings;
     // profile.experimental = *experimental;
 

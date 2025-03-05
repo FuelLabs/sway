@@ -1250,7 +1250,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::Log => {
                 // If log generation is disabled, predicates will not be able to use the `log` intrinsic.
-                if context.program_kind == Kind::Predicate && !context.log_generation {
+                if context.program_kind == Kind::Predicate && !context.enable_predicate_logs {
                     return Err(CompileError::DisallowedIntrinsicInPredicate {
                         intrinsic: kind.to_string(),
                         span: span.clone(),

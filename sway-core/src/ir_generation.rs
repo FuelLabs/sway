@@ -120,7 +120,7 @@ impl CompiledFunctionCache {
 pub fn compile_program<'eng>(
     program: &ty::TyProgram,
     include_tests: bool,
-    log_generation: bool,
+    enable_predicate_logs: bool,
     engines: &'eng Engines,
     experimental: ExperimentalFeatures,
 ) -> Result<Context<'eng>, Vec<CompileError>> {
@@ -151,7 +151,7 @@ pub fn compile_program<'eng>(
         .collect();
 
     let mut ctx = Context::new(engines.se(), experimental);
-    ctx.log_generation = log_generation;
+    ctx.enable_predicate_logs = enable_predicate_logs;
     ctx.program_kind = match kind {
         ty::TyProgramKind::Script { .. } => Kind::Script,
         ty::TyProgramKind::Predicate { .. } => Kind::Predicate,

@@ -271,7 +271,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         binary_outfile: cmd.build_output.bin_file.clone(),
         debug_outfile: cmd.build_output.debug_file.clone(),
         tests: false,
-        log_generation: false,
+        enable_predicate_logs: false,
         member_filter: pkg::MemberFilter::only_scripts(),
         experimental: cmd.experimental.experimental.clone(),
         no_experimental: cmd.experimental.no_experimental.clone(),

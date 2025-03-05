@@ -917,7 +917,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     let mut ir = match ir_generation::compile_program(
         program,
         build_config.include_tests,
-        build_config.log_generation,
+        build_config.enable_predicate_logs,
         engines,
         experimental,
     ) {

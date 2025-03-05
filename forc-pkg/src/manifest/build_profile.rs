@@ -30,7 +30,7 @@ pub struct BuildProfile {
     #[serde(default)]
     pub include_tests: bool,
     #[serde(default)]
-    pub log_generation: bool,
+    pub enable_predicate_logs: bool,
     #[serde(default)]
     pub error_on_warnings: bool,
     #[serde(default)]
@@ -59,7 +59,7 @@ impl BuildProfile {
             profile: false,
             metrics_outfile: None,
             include_tests: false,
-            log_generation: true,
+            enable_predicate_logs: true,
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt0,
@@ -81,7 +81,7 @@ impl BuildProfile {
             profile: false,
             metrics_outfile: None,
             include_tests: false,
-            log_generation: false,
+            enable_predicate_logs: false,
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt1,
@@ -115,7 +115,7 @@ mod tests {
         let expected = BuildProfile {
             name: "".into(),
             print_asm: PrintAsm::r#final(),
-            log_generation: false,
+            enable_predicate_logs: false,
             ..BuildProfile::debug()
         };
         let profile = build_profiles.get("custom_asm").expect("custom profile");
@@ -130,7 +130,7 @@ mod tests {
                 modified_only: true,
                 passes: vec!["dce".to_string(), "sroa".to_string()],
             },
-            log_generation: false,
+            enable_predicate_logs: false,
             ..BuildProfile::debug()
         };
         let profile = build_profiles
@@ -153,7 +153,7 @@ mod tests {
             profile: false,
             metrics_outfile: Some("metrics_outfile".into()),
             include_tests: true,
-            log_generation: false,
+            enable_predicate_logs: false,
             error_on_warnings: true,
             reverse_results: true,
             optimization_level: OptLevel::Opt0,

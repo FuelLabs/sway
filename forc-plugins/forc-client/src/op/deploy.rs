@@ -829,7 +829,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
         debug_outfile: cmd.build_output.debug_file.clone(),
         build_target: BuildTarget::default(),
         tests: false,
-        log_generation: false,
+        enable_predicate_logs: false,
         member_filter,
         experimental: cmd.experimental.experimental.clone(),
         no_experimental: cmd.experimental.no_experimental.clone(),
