@@ -152,24 +152,30 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
         // If logs are enabled, print them.
         let logs = &test.logs;
         if test_print_opts.print_logs {
-            for log in logs {
-                if let Receipt::LogData {
-                    rb,
-                    data: Some(data),
-                    ..
-                } = log
-                {
-                    let decoded_log_data =
-                        decode_log_data(&rb.to_string(), data, &pkg.built.program_abi)?;
-                    let var_value = decoded_log_data.value;
-                    info!("Decoded log value: {}, log rb: {}", var_value, rb);
+            let logs = logs
+                .iter()
+                .filter_map(|log| match log {
+                    Receipt::LogData {
+                        rb,
+                        data: Some(data),
+                        ..
+                    } => Some((rb, data)),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            if !logs.is_empty() {
+                info!("\nDecoded logs:");
+                for (rb, data) in logs {
+                    let var_value =
+                        decode_log_data(&rb.to_string(), data, &pkg.built.program_abi)?.value;
+                    info!("  {}, log rb: {}", var_value, rb);
                 }
             }
         }
 
         if test_print_opts.raw_logs {
             let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
-            info!("Raw logs:\n{}", formatted_logs);
+            info!("\nRaw logs:\n{}", formatted_logs);
         }
 
         // If the test is failing, save the test result for printing the details later on.
