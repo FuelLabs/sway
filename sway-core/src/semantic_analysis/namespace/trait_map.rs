@@ -1485,23 +1485,35 @@ impl TraitMap {
         &self,
         engines: &Engines,
         type_id: TypeId,
-        extend_with_placeholder: bool,
+        include_placeholder: bool,
     ) -> Vec<TraitEntry> {
+        let mut entries = vec![]; //Vec<TraitEntry>::new();
+        self.for_each_impls(engines, type_id, include_placeholder, |entry| {
+            entries.push(entry.clone());
+        });
+        entries
+    }
+
+    pub(crate) fn for_each_impls<F>(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+        include_placeholder: bool,
+        mut callback: F,
+    ) where
+        F: FnMut(&TraitEntry),
+    {
         let type_root_filter = Self::get_type_root_filter(engines, type_id);
-        let mut vec = self
-            .trait_impls
+        self.trait_impls
             .get(&type_root_filter)
-            .cloned()
-            .unwrap_or_default();
-        if extend_with_placeholder && type_root_filter != TypeRootFilter::Placeholder {
-            vec.extend(
-                self.trait_impls
-                    .get(&TypeRootFilter::Placeholder)
-                    .cloned()
-                    .unwrap_or_default(),
-            );
+            .iter()
+            .for_each(|vec| vec.iter().for_each(&mut callback));
+        if include_placeholder && type_root_filter != TypeRootFilter::Placeholder {
+            self.trait_impls
+                .get(&TypeRootFilter::Placeholder)
+                .iter()
+                .for_each(|vec| vec.iter().for_each(&mut callback));
         }
-        vec
     }
 
     // Return a string representing only the base type.

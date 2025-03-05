@@ -232,7 +232,7 @@ pub(crate) fn check_impls_for_overlap(
                 })
                 .collect::<Vec<_>>();
 
-            for other_entry in other.get_impls(engines, self_entry.key.type_id, true) {
+            other.for_each_impls(engines, self_entry.key.type_id, true, |other_entry| {
                 if self_entry.key.name.eq(
                     &*other_entry.key.name,
                     &PartialEqWithEnginesContext::new(engines),
@@ -291,7 +291,6 @@ pub(crate) fn check_impls_for_overlap(
                             false
                         }
                     });
-
                     if other_tcs_satisfied && self_tcs_satisfied {
                         let entry_items = self_entry.value.trait_items.keys().sorted();
                         for trait_item_name1 in entry_items {
@@ -321,7 +320,7 @@ pub(crate) fn check_impls_for_overlap(
                         }
                     }
                 }
-            }
+            })
         }
     }
 
