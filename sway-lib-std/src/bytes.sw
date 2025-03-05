@@ -1005,18 +1005,22 @@ impl From<b256> for Bytes {
     }
 }
 
-impl Into<Bytes> for b256 {
-    fn into(self) -> Bytes {
-        // Artificially create bytes with capacity and len
-        let mut bytes = Bytes::with_capacity(32);
-        bytes.len = 32;
-        // Copy bytes from contract_id into the buffer of the target bytes
-        __addr_of(self).copy_bytes_to(bytes.buf.ptr, 32);
+#[cfg(experimental_try_from_bytes_for_b256 = false)]
+impl From<Bytes> for b256 {
+    // NOTE: this cas be lossy! Added here as the From trait currently requires it,
+    // but the conversion from `Bytes` ->`b256` should be implemented as
+    // `impl TryFrom<Bytes> for b256` when the `TryFrom` trait lands:
+    // https://github.com/FuelLabs/sway/pull/3881
+    fn from(bytes: Bytes) -> b256 {
+        let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let ptr = __addr_of(value);
+        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
 
-        bytes
+        value
     }
 }
 
+#[cfg(experimental_try_from_bytes_for_b256 = true)]
 impl TryFrom<Bytes> for b256 {
     fn try_from(bytes: Bytes) -> Option<Self> {
         if bytes.len() != 32 {
@@ -1027,6 +1031,18 @@ impl TryFrom<Bytes> for b256 {
         bytes.buf.ptr().copy_to::<b256>(ptr, 1);
 
         Some(value)
+    }
+}
+
+impl Into<Bytes> for b256 {
+    fn into(self) -> Bytes {
+        // Artificially create bytes with capacity and len
+        let mut bytes = Bytes::with_capacity(32);
+        bytes.len = 32;
+        // Copy bytes from contract_id into the buffer of the target bytes
+        __addr_of(self).copy_bytes_to(bytes.buf.ptr, 32);
+
+        bytes
     }
 }
 
