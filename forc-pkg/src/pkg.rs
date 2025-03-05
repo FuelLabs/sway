@@ -309,9 +309,9 @@ pub struct BuildOpts {
     pub error_on_warnings: bool,
     /// Include all test functions within the build.
     pub tests: bool,
-    /// Whether or not to generate output logs for forc test.
-    /// If this is set, the compilation process will update the behaviour of the __log intrinsic
-    /// to compile to ECAL rather than the LOGD instruction.
+    /// Controls predicate log generation behavior.
+    /// When enabled, the `__log` intrinsic will compile to ECAL (Execution Call) instruction instead
+    /// of LOGD (Log Data) instruction for predicates, allowing forc-test to capture logs from predicates.
     pub log_generation: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
