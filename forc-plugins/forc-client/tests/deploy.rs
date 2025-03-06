@@ -1279,7 +1279,7 @@ async fn offset_shifted_abi_works() {
     // contract using sdk and give a configurable override, and call the
     // main function.
 
-    // We also create the shited abi using forc-deploy and create a script
+    // We also create the shifted abi using forc-deploy and create a script
     // instance using this new shifted abi, and generate a normal script out of
     // the loader binary generated again by forc-deploy.
 
