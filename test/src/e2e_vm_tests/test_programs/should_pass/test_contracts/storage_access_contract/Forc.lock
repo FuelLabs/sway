@@ -5,12 +5,12 @@ source = "path+from-root-EE5FEA38729D9DF2"
 [[package]]
 name = "storage_access_abi"
 source = "path+from-root-EE5FEA38729D9DF2"
-dependencies = ["std path+from-root-EE5FEA38729D9DF2"]
+dependencies = ["std"]
 
 [[package]]
 name = "storage_access_contract"
 source = "member"
 dependencies = [
-    "std path+from-root-EE5FEA38729D9DF2",
+    "std",
     "storage_access_abi",
 ]
