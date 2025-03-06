@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
-source = "path+from-root-BD391496AC0FBC33"
-
-[[package]]
 name = "impl_traits_generic"
 source = "member"
-dependencies = ["core"]
+dependencies = ["ops"]
+
+[[package]]
+name = "ops"
+source = "path+from-root-BD391496AC0FBC33"
