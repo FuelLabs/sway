@@ -176,6 +176,7 @@ The following fields can be provided for a build-profile:
 * `time_phases` - Whether to output the time elapsed over each part of the compilation process, defaults to false.
 * `include_tests` -  Whether or not to include test functions in parsing, type-checking, and code generation. This is set to true by invocations like `forc test`, but defaults to false.
 * `error_on_warnings` - Whether to treat errors as warnings, defaults to false.
+* `enable-predicate-logs` - Whether to enable logs in predicates, defaults to true for `debug` profile and false for `release` profile.
 
 There are two default `[build-profile]` available with every manifest file. These are `debug` and `release` profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:
 
