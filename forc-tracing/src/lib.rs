@@ -1,6 +1,7 @@
 //! Utility items shared between forc crates.
 
 use ansiterm::Colour;
+use fuel_telemetry::WorkerGuard;
 use std::str;
 use std::{env, io};
 use tracing::{Level, Metadata};
@@ -8,6 +9,14 @@ pub use tracing_subscriber::{
     self,
     filter::{EnvFilter, LevelFilter},
     fmt::{format::FmtSpan, MakeWriter},
+    prelude::__tracing_subscriber_SubscriberExt,
+    util::SubscriberInitExt,
+    Layer,
+};
+
+pub use fuel_telemetry::{
+    debug_telemetry, error_telemetry, info_telemetry, span_telemetry, trace_telemetry,
+    warn_telemetry,
 };
 
 const ACTION_COLUMN_WIDTH: usize = 12;
@@ -169,10 +178,6 @@ pub struct TracingSubscriberOptions {
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
 pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
-    let env_filter = match env::var_os(LOG_FILTER) {
-        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
-        None => EnvFilter::new("info"),
-    };
     let level_filter = options
         .log_level
         .or_else(|| {
@@ -190,8 +195,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                 .and_then(|silent| if silent { Some(LevelFilter::OFF) } else { None })
         });
 
-    let builder = tracing_subscriber::fmt::Subscriber::builder()
-        .with_env_filter(env_filter)
+    let layer = tracing_subscriber::fmt::layer()
         .with_ansi(true)
         .with_level(false)
         .with_file(false)
@@ -202,12 +206,33 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
             writer_mode: options.writer_mode.unwrap_or(TracingWriterMode::Stdio),
         });
 
+    let (telemetry_layer, telemetry_guard) = fuel_telemetry::new_with_watchers!().unwrap();
+
     // If log level, verbosity, or silent mode is set, it overrides the RUST_LOG setting
     if let Some(level_filter) = level_filter {
-        builder.with_max_level(level_filter).init();
+        tracing_subscriber::registry()
+            .with(telemetry_layer)
+            .with(layer.with_filter(level_filter))
+            .init()
     } else {
-        builder.init();
+        let env_filter = match env::var_os(LOG_FILTER) {
+            Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
+            None => EnvFilter::new("info"),
+        };
+
+        tracing_subscriber::registry()
+            .with(telemetry_layer)
+            .with(layer.with_filter(env_filter))
+            .init()
     }
+
+    // When the process ends, Thread Local Storage will drop this guard allowing
+    // the tracing appender to flush any remaining telemetry to disk.
+    thread_local! {
+        static GUARD: std::cell::RefCell<Option<WorkerGuard>> = const { std::cell::RefCell::new(None) };
+    }
+
+    GUARD.set(Some(telemetry_guard));
 }
 
 #[cfg(test)]
