@@ -385,7 +385,9 @@ pub async fn deploy_executables(
         let loader_configurables_offset = loader.configurables_offset_in_code();
 
         // Calculate the offset shift to adjust the configurables in the abi.
-        if let ProgramABI::Fuel(mut fuel_abi) = pkg.program_abi.clone() {
+        // TODO: Remove redundant ABI cloning; make use of the existing ABI reference (Arc)
+        // ↳ gh issue: https://github.com/FuelLabs/sway/issues/6997
+        if let ProgramABI::Fuel(mut fuel_abi) = pkg.program_abi.as_ref().clone() {
             println_action_green("Generating", "loader abi for the uploaded executable.");
             let json_abi_path = out_dir.join(format!("{pkg_name}-loader-abi.json"));
             let original_configurables_section =
