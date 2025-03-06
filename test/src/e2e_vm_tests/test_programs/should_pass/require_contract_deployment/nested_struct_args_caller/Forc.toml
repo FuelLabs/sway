@@ -6,4 +6,4 @@ name = "nested_struct_args_caller"
 
 [dependencies]
 nested_struct_args_abi = { path = "../../test_abis/nested_struct_args_abi" }
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }
