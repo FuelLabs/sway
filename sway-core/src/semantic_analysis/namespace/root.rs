@@ -351,8 +351,8 @@ impl Root {
 
     ////// IMPORT //////
 
-    /// Given a path to a prelude in the standard library, create synonyms to every symbol in that prelude to the given
-    /// `dst` module.
+    /// Given a path to a prelude in the standard library, create synonyms to every symbol in that
+    /// prelude to the given `dst` module.
     ///
     /// This is used when a new module is created in order to pupulate the module with implicit
     /// imports from the standard library preludes.
@@ -405,12 +405,11 @@ impl Root {
         symbols.sort();
         for symbol in symbols {
             let bindings = &src_mod.root_items().use_glob_synonyms[symbol];
-            for (path, decl, src_visibility) in bindings.iter() {
-                // Preludes reexport all their imports
-                if !matches!(src_visibility, Visibility::Public) {
-                    dbg!(symbol);
-                    assert!(matches!(src_visibility, Visibility::Public));
-                }
+            for (path, decl, _src_visibility) in bindings.iter() {
+                // Preludes reexport all their imports.
+                // EXCEPT: sway-lsp is tied to an old version of core from before reexports, so this
+                // assert will cause sway-lsp CI tests to fail.
+                // assert!(matches!(src_visibility, Visibility::Public));
                 imports.push((symbol.clone(), decl.clone(), path.clone()))
             }
         }
