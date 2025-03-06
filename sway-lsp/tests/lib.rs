@@ -349,7 +349,7 @@ fn go_to_definition_for_fields() {
             req_uri: &uri,
             req_line: 5,
             req_char: 8,
-            def_line: 82,
+            def_line: 84,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -406,7 +406,7 @@ fn go_to_definition_inside_turbofish() {
             req_uri: &uri,
             req_line: 15,
             req_char: 12,
-            def_line: 82,
+            def_line: 84,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -486,7 +486,7 @@ fn go_to_definition_for_matches() {
             req_uri: &uri,
             req_line: 25,
             req_char: 19,
-            def_line: 82,
+            def_line: 84,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -641,7 +641,7 @@ fn go_to_definition_for_paths() {
             req_uri: &uri,
             req_line: 10,
             req_char: 27,
-            def_line: 82,
+            def_line: 84,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -1080,7 +1080,7 @@ fn go_to_definition_for_variables() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 53, 21).await;
 
         // Complex type ascriptions
-        go_to.def_line = 62;
+        go_to.def_line = 64;
         go_to.def_start_char = 9;
         go_to.def_end_char = 15;
         go_to.def_path = "sway-lib-std/src/result.sw";
@@ -1121,7 +1121,7 @@ fn go_to_definition_for_consts() {
             req_uri: &uri,
             req_line: 9,
             req_char: 24,
-            def_line: 7,
+            def_line: 12,
             def_start_char: 11,
             def_end_char: 21,
             def_path: "sway-lib-std/src/contract_id.sw",
@@ -1268,7 +1268,7 @@ fn go_to_definition_for_structs() {
             req_uri: &uri,
             req_line: 16,
             req_char: 11,
-            def_line: 82,
+            def_line: 84,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",

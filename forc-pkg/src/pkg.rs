@@ -1573,7 +1573,7 @@ pub fn sway_build_config(
 ///
 /// This function is designed to be called for each node in order of compilation.
 ///
-/// This function ensures that if `core` exists in the graph (the vastly common case) it is also
+/// This function ensures that if `std` exists in the graph (the vastly common case) it is also
 /// present within the namespace. This is a necessity for operators to work for example.
 ///
 /// This function also ensures that if `std` exists in the graph,
@@ -2766,7 +2766,7 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(None);
         let expected = r#"digraph {
-    0 [ label = "core" shape = box ]
+    0 [ label = "std" shape = box ]
     1 [ label = "test_contract" shape = box ]
     2 [ label = "test_lib" shape = box ]
     3 [ label = "test_script" shape = box ]
