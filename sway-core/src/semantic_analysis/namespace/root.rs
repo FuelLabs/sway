@@ -407,7 +407,10 @@ impl Root {
             let bindings = &src_mod.root_items().use_glob_synonyms[symbol];
             for (path, decl, src_visibility) in bindings.iter() {
                 // Preludes reexport all their imports
-                assert!(matches!(src_visibility, Visibility::Public));
+                if !matches!(src_visibility, Visibility::Public) {
+                    dbg!(symbol);
+                    assert!(matches!(src_visibility, Visibility::Public));
+                }
                 imports.push((symbol.clone(), decl.clone(), path.clone()))
             }
         }
