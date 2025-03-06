@@ -1,6 +1,9 @@
 use std::fmt;
 
-use sway_error::{handler::Handler, type_error::TypeError};
+use sway_error::{
+    handler::{ErrorEmitted, Handler},
+    type_error::TypeError,
+};
 use sway_types::Span;
 
 use crate::{
@@ -135,7 +138,9 @@ impl<'a> Unifier<'a> {
                 self.unify_tuples(handler, rfs, efs);
             }
             (r @ Array(re, rc), e @ Array(ee, ec)) => {
-                if !self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee)
+                if self
+                    .unify_type_arguments_in_parents(handler, received, expected, span, re, ee)
+                    .is_err()
                 {
                     return;
                 }
@@ -149,7 +154,8 @@ impl<'a> Unifier<'a> {
                 }
             }
             (Slice(re), Slice(ee)) => {
-                self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee);
+                let _ =
+                    self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee);
             }
             (Struct(r_decl_ref), Struct(e_decl_ref)) => {
                 let r_decl = self.engines.de().get_struct(r_decl_ref);
@@ -322,7 +328,8 @@ impl<'a> Unifier<'a> {
                     referenced_type: e_ty,
                 },
             ) if *r_to_mut || !*e_to_mut => {
-                self.unify_type_arguments_in_parents(handler, received, expected, span, r_ty, e_ty);
+                let _ = self
+                    .unify_type_arguments_in_parents(handler, received, expected, span, r_ty, e_ty);
             }
 
             // If no previous attempts to unify were successful, raise an error.
@@ -446,7 +453,7 @@ impl<'a> Unifier<'a> {
         span: &Span,
         received_type_argument: &TypeArgument,
         expected_type_argument: &TypeArgument,
-    ) -> bool {
+    ) -> Result<(), ErrorEmitted> {
         let h = Handler::default();
         self.unify(
             &h,
@@ -465,7 +472,7 @@ impl<'a> Unifier<'a> {
         // the argument types.
         if !new_errors.is_empty() {
             let (received, expected) = self.assign_args(received_parent, expected_parent);
-            handler.emit_err(
+            Err(handler.emit_err(
                 TypeError::MismatchedType {
                     expected,
                     received,
@@ -473,11 +480,9 @@ impl<'a> Unifier<'a> {
                     span: span.clone(),
                 }
                 .into(),
-            );
-
-            false
+            ))
         } else {
-            true
+            Ok(())
         }
     }
 
