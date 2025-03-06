@@ -171,7 +171,7 @@ pub struct Root {
     // represented as a `Root` object. This is because external packages may have their own external
     // dependencies which are needed for lookups, but which are not directly accessible to the
     // current package.
-    external_packages: im::HashMap<ModuleName, Root, BuildHasherDefault<FxHasher>>,
+    pub external_packages: im::HashMap<ModuleName, Root, BuildHasherDefault<FxHasher>>,
 }
 
 impl Root {
@@ -205,20 +205,6 @@ impl Root {
         assert!(!self.external_packages.contains_key(&package_name));
         self.external_packages
             .insert(package_name, external_package);
-    }
-
-    pub(crate) fn get_external_package(&self, package_name: &String) -> Option<&Root> {
-        self.external_packages.get(package_name)
-    }
-
-    pub(super) fn exists_as_external(&self, package_name: &String) -> bool {
-        self.get_external_package(package_name).is_some()
-    }
-
-    pub fn external_packages(
-        &self,
-    ) -> &im::HashMap<ModuleName, Root, BuildHasherDefault<FxHasher>> {
-        &self.external_packages
     }
 
     pub fn current_package_root_module(&self) -> &Module {
