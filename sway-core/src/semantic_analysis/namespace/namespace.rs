@@ -1,6 +1,9 @@
 use crate::{language::Visibility, Engines, Ident};
 
-use super::{module::Module, root::Root, ModulePath, ModulePathBuf};
+use super::{module::Module, root::Root, ModuleName, ModulePath, ModulePathBuf};
+
+use rustc_hash::FxHasher;
+use std::hash::BuildHasherDefault;
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{
@@ -128,6 +131,20 @@ impl Namespace {
         self.root.current_package_root_module()
     }
 
+    pub fn external_packages(
+        &self,
+    ) -> &im::HashMap<ModuleName, Root, BuildHasherDefault<FxHasher>> {
+        &self.root.external_packages
+    }
+
+    pub(crate) fn get_external_package(&self, package_name: &String) -> Option<&Root> {
+        self.root.external_packages.get(package_name)
+    }
+
+    pub(super) fn exists_as_external(&self, package_name: &String) -> bool {
+        self.get_external_package(package_name).is_some()
+    }
+
     pub fn module_from_absolute_path(&self, path: &ModulePathBuf) -> Option<&Module> {
         self.root.module_from_absolute_path(path)
     }
@@ -221,7 +238,7 @@ impl Namespace {
             // Do nothing
         } else if package_name == STD {
             // Import core::prelude::*
-            assert!(self.root.exists_as_external(&core_string));
+            assert!(self.exists_as_external(&core_string));
             self.root.star_import(
                 handler,
                 engines,
@@ -231,7 +248,7 @@ impl Namespace {
             )?
         } else {
             // Import core::prelude::* and std::prelude::*
-            if self.root.exists_as_external(&core_string) {
+            if self.exists_as_external(&core_string) {
                 self.root.star_import(
                     handler,
                     engines,
@@ -243,7 +260,7 @@ impl Namespace {
 
             let std_string = STD.to_string();
             // Only import std::prelude::* if std exists as a dependency
-            if self.root.exists_as_external(&std_string) {
+            if self.exists_as_external(&std_string) {
                 self.root.star_import(
                     handler,
                     engines,
