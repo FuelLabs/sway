@@ -314,7 +314,7 @@ impl BuildConfig {
         }
     }
 
-    /// Whether or not to generate output logs  for forc test.
+    /// Whether or not to generate output logs for forc test.
     /// If this is set, the compilation process will update the behaviour of the __log intrinsic
     /// to compile to ECAL rather than the LOGD instruction.
     ///
