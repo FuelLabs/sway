@@ -1,14 +1,14 @@
 [[package]]
 name = "array_of_structs_abi"
 source = "path+from-root-1DC31120923A1AC6"
-dependencies = ["std path+from-root-1DC31120923A1AC6"]
+dependencies = ["std"]
 
 [[package]]
 name = "array_of_structs_contract"
 source = "member"
 dependencies = [
     "array_of_structs_abi",
-    "std path+from-root-1DC31120923A1AC6",
+    "std",
 ]
 
 [[package]]
