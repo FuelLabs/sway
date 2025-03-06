@@ -7,7 +7,7 @@ use lsp_types::*;
 use rayon::prelude::*;
 use std::{
     fs, panic,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::Mutex,
 };
@@ -2225,6 +2225,148 @@ fn garbage_collection_all_should_fail_tests() -> Result<(), String> {
 #[ignore = "Additional stress test for GC. Run it locally when working on code that affects GC."]
 fn garbage_collection_all_stdlib_tests() -> Result<(), String> {
     run_garbage_collection_tests_from_projects_dir(e2e_stdlib_dir())
+}
+
+#[test]
+fn garbage_collection_sway_applications() -> Result<(), String> {
+    use std::process::Command;
+    use tempfile::tempdir;
+    
+    let now = std::time::Instant::now();
+    // 1. clone https://github.com/FuelLabs/sway-applications into a new temp directory
+    let temp_dir = tempdir().map_err(|e| format!("Failed to create temporary directory: {}", e))?;
+    
+    let clone_result = Command::new("git")
+        .args(&["clone", "https://github.com/FuelLabs/sway-applications"])
+        .current_dir(temp_dir.path())
+        .output()
+        .map_err(|e| format!("Failed to execute git clone: {}", e))?;
+    
+    if !clone_result.status.success() {
+        return Err(format!(
+            "Git clone failed: {}",
+            String::from_utf8_lossy(&clone_result.stderr)
+        ));
+    }
+
+    eprintln!("cloning repo took: {:?}", now.elapsed());
+
+    // 2. get the path where the cloned repo is located
+    let path: PathBuf = temp_dir.path().join("sway-applications");
+
+    // Find all directories that contain a Forc.toml file (recursive search)
+    let mut sway_projects = Vec::new();
+    find_sway_projects(&path, &mut sway_projects)?;
+
+    eprintln!("Found {} Sway projects with Forc.toml", sway_projects.len());
+    for project in &sway_projects {
+        eprintln!("Project: {:?}", project);
+    }
+
+    // 3. Prepare tests for each project - find a suitable Sway file for testing in each project
+    let tests = prepare_tests_for_projects(&sway_projects)?;
+
+    // 4. Run the garbage collection tests
+    for i in 0..1000 {
+        eprintln!("Running garbage collection tests {}", i);
+        let res = run_garbage_collection_tests(&tests, Some(path.to_string_lossy().to_string()));
+    }
+    Ok(())
+}
+
+
+/// Recursively find all directories containing a Forc.toml file
+fn find_sway_projects(dir: &Path, projects: &mut Vec<PathBuf>) -> Result<(), String> {
+    if dir.join("Forc.toml").exists() {
+        projects.push(dir.to_path_buf());
+    }
+    
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir).map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))? {
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let path = entry.path();
+            
+            if path.is_dir() {
+                // Skip .git directories and other hidden directories to improve performance
+                if let Some(file_name) = path.file_name() {
+                    let file_name = file_name.to_string_lossy();
+                    if !file_name.starts_with('.') && !file_name.starts_with("target") {
+                        find_sway_projects(&path, projects)?;
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+/// Prepare tests for each project by identifying a suitable Sway file to test with
+fn prepare_tests_for_projects(project_paths: &[PathBuf]) -> Result<Vec<(String, PathBuf)>, String> {
+    let mut tests = Vec::new();
+    
+    for project_path in project_paths {
+        // Get project name from path
+        let project_name = project_path
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .unwrap_or_else(|| "unknown".to_string());
+        
+        // Find a suitable Sway file using depth-first search
+        let mut found_sw_file = false;
+        if let Ok(sw_files) = find_sway_files(project_path) {
+            if !sw_files.is_empty() {
+                // Prioritize main.sw files if any exist
+                if let Some(main_file) = sw_files.iter().find(|path| {
+                    path.file_name().map_or(false, |name| name == "main.sw")
+                }) {
+                    tests.push((project_name.clone(), main_file.clone()));
+                    found_sw_file = true;
+                } else {
+                    // Otherwise use the first .sw file found
+                    tests.push((project_name.clone(), sw_files[0].clone()));
+                    found_sw_file = true;
+                }
+            }
+        }
+        
+        if !found_sw_file {
+            eprintln!("Warning: No .sw files found for project {}", project_name);
+        }
+    }
+    
+    if tests.is_empty() {
+        return Err("No valid Sway files found for testing".to_string());
+    }
+    
+    Ok(tests)
+}
+
+/// Recursively find all .sw files in a directory
+fn find_sway_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
+    let mut sw_files = Vec::new();
+    
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir).map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))? {
+            let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+            let path = entry.path();
+            
+            if path.is_dir() {
+                // Skip .git directories, target directories and other hidden directories to improve performance
+                if let Some(file_name) = path.file_name() {
+                    let file_name = file_name.to_string_lossy();
+                    if !file_name.starts_with('.') && !file_name.starts_with("target") && file_name != "tests" {
+                        let mut sub_sw_files = find_sway_files(&path)?;
+                        sw_files.append(&mut sub_sw_files);
+                    }
+                }
+            } else if path.is_file() && path.extension().map_or(false, |ext| ext == "sw") {
+                sw_files.push(path);
+            }
+        }
+    }
+    
+    Ok(sw_files)
 }
 
 /// Parallel test runner for garbage collection tests across Sway projects defined by `tests`.
