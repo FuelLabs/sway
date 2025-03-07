@@ -69,7 +69,7 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
         Never => "never".into(),
         UnknownGeneric { name, .. } => name.to_string(),
         Placeholder(_) => "_".to_string(),
-        TypeParam(n) => format!("typeparam({n})"),
+        TypeParam(param) => format!("typeparam({})", param.name),
         StringSlice => "str".into(),
         StringArray(x) => format!("str[{}]", x.val()),
         UnsignedInteger(x) => match x {

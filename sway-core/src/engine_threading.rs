@@ -388,11 +388,19 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for [T] {
 }
 impl<T: OrdWithEngines> OrdWithEngines for [T] {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
-        self.iter()
-            .zip(other.iter())
-            .map(|(x, y)| x.cmp(y, ctx))
-            .find(|o| o.is_ne())
-            .unwrap_or_else(|| self.len().cmp(&other.len()))
+        let len_cmp = self.len().cmp(&other.len());
+        if len_cmp != Ordering::Equal {
+            return len_cmp;
+        }
+
+        for (a, b) in self.iter().zip(other.iter()) {
+            let cmp = a.cmp(b, ctx);
+            if cmp != Ordering::Equal {
+                return cmp;
+            }
+        }
+
+        Ordering::Equal
     }
 }
 

@@ -246,6 +246,7 @@ impl TyDecl {
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
                         impl_trait.implementing_for.type_id,
+                        impl_trait.impl_type_parameters.clone(),
                         &impl_trait.items,
                         &impl_trait.span,
                         impl_trait
@@ -313,6 +314,7 @@ impl TyDecl {
                     impl_trait.trait_name.clone(),
                     impl_trait.trait_type_arguments.clone(),
                     impl_trait.implementing_for.type_id,
+                    impl_trait.impl_type_parameters.clone(),
                     impl_trait_items,
                     &impl_trait.span,
                     impl_trait
