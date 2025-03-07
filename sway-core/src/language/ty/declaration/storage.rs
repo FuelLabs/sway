@@ -19,7 +19,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 pub struct TyStorageDecl {
     pub fields: Vec<TyStorageField>,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub storage_keyword: Ident,
 }
 
@@ -250,7 +250,7 @@ pub struct TyStorageField {
     pub type_argument: TypeArgument,
     pub initializer: TyExpression,
     pub(crate) span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl TyStorageField {

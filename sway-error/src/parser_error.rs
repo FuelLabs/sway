@@ -8,8 +8,21 @@ pub enum ParseErrorKind {
     ExpectedImportNameGroupOrGlob,
     #[error("Expected an item.")]
     ExpectedAnItem,
-    #[error("Expected an item after doc comment.")]
-    ExpectedAnItemAfterDocComment,
+    #[error("Expected {} element.",
+        if *is_only_documented {
+            "a documented"
+        } else {
+            "an annotated"
+        }
+    )]
+    ExpectedAnAnnotatedElement {
+        /// True if the element is only documented with
+        /// doc comments but without any other
+        /// inner or outer attributes in the annotations.
+        is_only_documented: bool,
+    },
+    #[error("Expected an inner doc comment (`//!`) to be at the top of the module file.")]
+    ExpectedInnerDocCommentAtTheTopOfFile,
     #[error("Expected a comma or closing parenthesis in function arguments.")]
     ExpectedCommaOrCloseParenInFnArgs,
     #[error("Unknown assembly instruction.")]
@@ -72,7 +85,7 @@ pub enum ParseErrorKind {
     ExpectedOpenBracket,
     #[error("Expected a literal.")]
     ExpectedLiteral,
-    #[error("Expected a module kind (script, contract, predicate or library).")]
+    #[error("Expected a module kind (script, contract, predicate, or library).")]
     ExpectedModuleKind,
     #[error("Expected `{}`.", kinds.iter().map(PunctKind::as_char).collect::<String>())]
     ExpectedPunct { kinds: Vec<PunctKind> },
@@ -94,8 +107,6 @@ pub enum ParseErrorKind {
     UnnecessaryVisibilityQualifier { visibility: Ident },
     #[error("Expected a doc comment.")]
     ExpectedDocComment,
-    #[error("Top of file doc comments are reserved for module level documentation.\nTry using the `//!` syntax.")]
-    ExpectedModuleDocComment,
     #[error("Use the `struct` keyword to define records, instead of `class`.")]
     UnexpectedClass,
     #[error("Field projections, e.g., `foo.bar` cannot have type arguments.")]

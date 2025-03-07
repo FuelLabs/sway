@@ -20,7 +20,7 @@ pub struct TyAbiDecl {
     pub supertraits: Vec<parsed::Supertrait>,
     pub items: Vec<TyTraitItem>,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl TyDeclParsedType for TyAbiDecl {

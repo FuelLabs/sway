@@ -12,7 +12,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyTraitType {
     pub name: Ident,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub ty: Option<TypeArgument>,
     pub implementing_type: TypeId,
     pub span: Span,

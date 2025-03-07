@@ -34,6 +34,10 @@ pub enum BuildTarget {
     EVM,
 }
 
+impl BuildTarget {
+    pub const CFG: &'static [&'static str] = &["evm", "fuel"];
+}
+
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum OptLevel {
     #[default]

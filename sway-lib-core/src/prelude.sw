@@ -1,8 +1,8 @@
-library;
-
 //! Defines the Sway core library prelude.
 //! The prelude consists of implicitly available items,
 //! for which `use` is not required.
+library;
+
 pub use ::primitives::*;
 pub use ::primitive_conversions::*;
 pub use ::raw_ptr::*;

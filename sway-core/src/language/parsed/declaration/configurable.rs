@@ -8,7 +8,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 #[derive(Debug, Clone)]
 pub struct ConfigurableDeclaration {
     pub name: Ident,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub type_ascription: TypeArgument,
     pub value: Option<Expression>,
     pub visibility: Visibility,

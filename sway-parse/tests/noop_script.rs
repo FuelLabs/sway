@@ -14,7 +14,7 @@ fn noop_script_file() {
       }
     "#,), @r#"
     Some(Annotated(
-      attribute_list: [],
+      attributes: [],
       value: Module(
         kind: Script(
           script_token: ScriptToken(
@@ -36,7 +36,7 @@ fn noop_script_file() {
         ),
         items: [
           Annotated(
-            attribute_list: [],
+            attributes: [],
             value: Fn(ItemFn(
               fn_signature: FnSignature(
                 visibility: None,
