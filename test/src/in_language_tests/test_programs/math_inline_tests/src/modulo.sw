@@ -1,10 +1,10 @@
 library;
 
-use std::flags::disable_panic_on_unsafe_math;
+use std::flags::{disable_panic_on_overflow, disable_panic_on_unsafe_math};
 
 // u8
 #[test]
-pub fn u8_modulo() {
+pub fn math_u8_modulo() {
     let u8_max = u8::max();
 
     assert(0u8 % 1u8 == 0u8);
@@ -19,12 +19,18 @@ pub fn u8_modulo() {
 }
 
 #[test(should_revert)]
-pub fn u8_modulo_panic_on_undefined_math() {
+pub fn revert_math_u8_modulo_panic_on_undefined_math() {
+    log(1u8 % 0u8);
+}
+
+#[test(should_revert)]
+pub fn revert_math_u8_modulo_panic_on_overflow_disabled() {
+    let _ = disable_panic_on_overflow();
     log(1u8 % 0u8);
 }
 
 #[test]
-pub fn u8_modulo_unsafe_math() {
+pub fn math_u8_modulo_unsafe_math() {
     disable_panic_on_unsafe_math();
     assert(0u8 % 0u8 == 0u8);
     assert(1u8 % 0u8 == 0u8);
@@ -33,7 +39,7 @@ pub fn u8_modulo_unsafe_math() {
 
 // u16
 #[test]
-pub fn u16_modulo() {
+pub fn math_u16_modulo() {
     let u16_max = u16::max();
 
     assert(0u16 % 1u16 == 0u16);
@@ -48,12 +54,18 @@ pub fn u16_modulo() {
 }
 
 #[test(should_revert)]
-pub fn u16_modulo_panic_on_undefined_math() {
+pub fn revert_math_u16_modulo_panic_on_undefined_math() {
+    log(1u16 % 0u16);
+}
+
+#[test(should_revert)]
+pub fn revert_math_u16_modulo_panic_on_overflow_disabled() {
+    let _ = disable_panic_on_overflow();
     log(1u16 % 0u16);
 }
 
 #[test]
-pub fn u16_modulo_unsafe_math() {
+pub fn math_u16_modulo_unsafe_math() {
     disable_panic_on_unsafe_math();
     assert(0u16 % 0u16 == 0u16);
     assert(1u16 % 0u16 == 0u16);
@@ -62,7 +74,7 @@ pub fn u16_modulo_unsafe_math() {
 
 // u32
 #[test]
-pub fn u32_modulo() {
+pub fn math_u32_modulo() {
     let u32_max = u32::max();
 
     assert(0u32 % 1u32 == 0u32);
@@ -77,12 +89,18 @@ pub fn u32_modulo() {
 }
 
 #[test(should_revert)]
-pub fn u32_modulo_panic_on_undefined_math() {
+pub fn revert_math_u32_modulo_panic_on_undefined_math() {
+    log(1u32 % 0u32);
+}
+
+#[test(should_revert)]
+pub fn revert_math_u32_modulo_panic_on_overflow_disabled() {
+    let _ = disable_panic_on_overflow();
     log(1u32 % 0u32);
 }
 
 #[test]
-pub fn u32_modulo_unsafe_math() {
+pub fn math_u32_modulo_unsafe_math() {
     disable_panic_on_unsafe_math();
     assert(0u32 % 0u32 == 0u32);
     assert(1u32 % 0u32 == 0u32);
@@ -91,7 +109,7 @@ pub fn u32_modulo_unsafe_math() {
 
 // u64
 #[test]
-pub fn u64_modulo() {
+pub fn math_u64_modulo() {
     let u64_max = u64::max();
 
     assert(0u64 % 1u64 == 0u64);
@@ -106,12 +124,18 @@ pub fn u64_modulo() {
 }
 
 #[test(should_revert)]
-pub fn u64_modulo_panic_on_undefined_math() {
+pub fn revert_math_u64_modulo_panic_on_undefined_math() {
+    log(1u64 % 0u64);
+}
+
+#[test(should_revert)]
+pub fn revert_math_u64_modulo_panic_on_disabled_overflow() {
+    let _ = disable_panic_on_overflow();
     log(1u64 % 0u64);
 }
 
 #[test]
-pub fn u64_modulo_unsafe_math() {
+pub fn math_u64_modulo_unsafe_math() {
     disable_panic_on_unsafe_math();
     assert(0u64 % 0u64 == 0u64);
     assert(1u64 % 0u64 == 0u64);
@@ -120,7 +144,7 @@ pub fn u64_modulo_unsafe_math() {
 
 // u256
 #[test]
-pub fn u256_modulo() {
+pub fn math_u256_modulo() {
     let u256_max = u256::max();
 
     assert(0x0u256 % 0x1u256 == 0x0u256);
@@ -134,12 +158,18 @@ pub fn u256_modulo() {
 }
 
 #[test(should_revert)]
-pub fn u256_modulo_panic_on_undefined_math() {
+pub fn revert_math_u256_modulo_panic_on_undefined_math() {
+    log(0x1u256 % 0x0u256);
+}
+
+#[test(should_revert)]
+pub fn revert_math_u256_modulo_panic_on_disabled_overflow() {
+    let _ = disable_panic_on_overflow();
     log(0x1u256 % 0x0u256);
 }
 
 #[test]
-pub fn u256_modulo_unsafe_math() {
+pub fn math_u256_modulo_unsafe_math() {
     disable_panic_on_unsafe_math();
     assert(0x0u256 % 0x0u256 == 0x0u256);
     assert(0x1u256 % 0x0u256 == 0x0u256);
