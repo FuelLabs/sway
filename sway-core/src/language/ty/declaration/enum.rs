@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::MaterializeConstGenerics,
     engine_threading::*,
     has_changes,
     language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
@@ -100,6 +101,18 @@ impl MonomorphizeHelper for TyEnumDecl {
 
     fn has_self_type_param(&self) -> bool {
         false
+    }
+}
+
+impl MaterializeConstGenerics for TyEnumDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &Engines,
+        _handler: &Handler,
+        _name: &str,
+        _value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }
 

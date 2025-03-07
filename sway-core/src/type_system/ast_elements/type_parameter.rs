@@ -560,7 +560,8 @@ impl TypeParameter {
                                     trait_types_and_names: concrete_trait_type_ids.iter().map(|t| (engines.help_out(t.0).to_string(), t.1.clone())).collect::<Vec<_>>()
                                 }));
                             }
-                            Ordering::Less => {}
+                            Ordering::Less => {
+                            }
                         }
                     }
                     // Check to see if the trait constraints are satisfied.
@@ -572,8 +573,12 @@ impl TypeParameter {
                             access_span,
                             engines,
                         ) {
-                        Ok(res) => res,
-                        Err(_) => continue,
+                        Ok(res) => {
+                            res
+                        },
+                        Err(_) => {
+                            continue
+                        },
                     }
                 }
 
@@ -593,9 +598,14 @@ impl TypeParameter {
                             function_name,
                             access_span.clone(),
                         ) {
-                            Ok(res) => res,
-                            Err(_) => continue,
+                            Ok(res) => {
+                                res
+                            },
+                            Err(_) => {
+                                continue
+                            },
                         };
+
                     interface_item_refs.extend(trait_interface_item_refs);
                     item_refs.extend(trait_item_refs);
                     impld_item_refs.extend(trait_impld_item_refs);

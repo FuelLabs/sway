@@ -240,7 +240,7 @@ impl TraitMap {
         is_extending_existing_impl: IsExtendingExistingImpl,
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
-        let type_id = engines.te().get_unaliased_type_id(type_id);
+        let unaliased_type_id = engines.te().get_unaliased_type_id(type_id);
 
         handler.scope(|handler| {
             let mut trait_items: TraitItems = HashMap::new();
@@ -270,7 +270,7 @@ impl TraitMap {
                 }
             }
 
-            let trait_impls = self.get_impls_mut(engines, type_id);
+            let trait_impls = self.get_impls_mut(engines, unaliased_type_id);
 
             // check to see if adding this trait will produce a conflicting definition
             for TraitEntry {
@@ -299,11 +299,11 @@ impl TraitMap {
 
                 let unify_checker = UnifyCheck::non_generic_constraint_subset(engines);
 
-                // Types are subset if the `type_id` that we want to insert can unify with the
+                // Types are subset if the `unaliased_type_id` that we want to insert can unify with the
                 // existing `map_type_id`. In addition we need to additionally check for the case of
                 // `&mut <type>` and `&<type>`.
-                let types_are_subset = unify_checker.check(type_id, *map_type_id)
-                    && is_unified_type_subset(engines.te(), type_id, *map_type_id);
+                let types_are_subset = unify_checker.check(unaliased_type_id, *map_type_id)
+                    && is_unified_type_subset(engines.te(), unaliased_type_id, *map_type_id);
 
                 /// `left` can unify into `right`. Additionally we need to check subset condition in case of
                 /// [TypeInfo::Ref] types.  Although `&mut <type>` can unify with `&<type>`
@@ -372,6 +372,9 @@ impl TraitMap {
                     handler.emit_err(CompileError::ConflictingImplsForTraitAndType {
                         trait_name: trait_name.to_string_with_args(engines, &trait_type_args),
                         type_implementing_for: engines.help_out(type_id).to_string(),
+                        type_implementing_for_unaliased: engines
+                            .help_out(unaliased_type_id)
+                            .to_string(),
                         existing_impl_span: existing_impl_span.clone(),
                         second_impl_span: impl_span.clone(),
                     });
@@ -386,7 +389,7 @@ impl TraitMap {
                             ResolvedTraitImplItem::Parsed(_item) => todo!(),
                             ResolvedTraitImplItem::Typed(item) => match item {
                                 ty::TyTraitItem::Fn(decl_ref) => {
-                                    if map_trait_items.get(name).is_some() {
+                                    if let Some(existing_item) = map_trait_items.get(name) {
                                         handler.emit_err(
                                             CompileError::DuplicateDeclDefinedForType {
                                                 decl_kind: "method".into(),
@@ -394,13 +397,19 @@ impl TraitMap {
                                                 type_implementing_for: engines
                                                     .help_out(type_id)
                                                     .to_string(),
-                                                span: decl_ref.name().span(),
+                                                type_implementing_for_unaliased: engines
+                                                    .help_out(unaliased_type_id)
+                                                    .to_string(),
+                                                existing_impl_span: existing_item
+                                                    .span(engines)
+                                                    .clone(),
+                                                second_impl_span: decl_ref.name().span(),
                                             },
                                         );
                                     }
                                 }
                                 ty::TyTraitItem::Constant(decl_ref) => {
-                                    if map_trait_items.get(name).is_some() {
+                                    if let Some(existing_item) = map_trait_items.get(name) {
                                         handler.emit_err(
                                             CompileError::DuplicateDeclDefinedForType {
                                                 decl_kind: "constant".into(),
@@ -408,13 +417,19 @@ impl TraitMap {
                                                 type_implementing_for: engines
                                                     .help_out(type_id)
                                                     .to_string(),
-                                                span: decl_ref.name().span(),
+                                                type_implementing_for_unaliased: engines
+                                                    .help_out(unaliased_type_id)
+                                                    .to_string(),
+                                                existing_impl_span: existing_item
+                                                    .span(engines)
+                                                    .clone(),
+                                                second_impl_span: decl_ref.name().span(),
                                             },
                                         );
                                     }
                                 }
                                 ty::TyTraitItem::Type(decl_ref) => {
-                                    if map_trait_items.get(name).is_some() {
+                                    if let Some(existing_item) = map_trait_items.get(name) {
                                         handler.emit_err(
                                             CompileError::DuplicateDeclDefinedForType {
                                                 decl_kind: "type".into(),
@@ -422,7 +437,13 @@ impl TraitMap {
                                                 type_implementing_for: engines
                                                     .help_out(type_id)
                                                     .to_string(),
-                                                span: decl_ref.name().span(),
+                                                type_implementing_for_unaliased: engines
+                                                    .help_out(unaliased_type_id)
+                                                    .to_string(),
+                                                existing_impl_span: existing_item
+                                                    .span(engines)
+                                                    .clone(),
+                                                second_impl_span: decl_ref.name().span(),
                                             },
                                         );
                                     }
@@ -446,7 +467,7 @@ impl TraitMap {
                 trait_name,
                 impl_span.clone(),
                 trait_decl_span,
-                type_id,
+                unaliased_type_id,
                 impl_type_parameters,
                 trait_items,
                 engines,
@@ -756,6 +777,7 @@ impl TraitMap {
                         &type_mapping,
                         matches!(code_block_first_pass, CodeBlockFirstPass::No),
                     ));
+
                     let new_ref = decl_engine
                         .insert(decl, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref())
                         .with_parent(decl_engine, decl_ref.id().into());
@@ -985,12 +1007,8 @@ impl TraitMap {
                         .zip(e.key.name.suffix.args.iter())
                         .all(|(t1, t2)| unify_check.check(t1.type_id, t2.type_id))
                 {
-                    let type_mapping = TypeSubstMap::from_superset_and_subset(
-                        engines.te(),
-                        engines.de(),
-                        e.key.type_id,
-                        type_id,
-                    );
+                    let type_mapping =
+                        TypeSubstMap::from_superset_and_subset(engines, e.key.type_id, type_id);
 
                     let mut trait_items = Self::filter_dummy_methods(
                         e.value.trait_items,
