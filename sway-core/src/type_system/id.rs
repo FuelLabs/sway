@@ -8,7 +8,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Span};
 
 use crate::{
-    decl_engine::DeclEngineGet,
+    decl_engine::{DeclEngineGet, MaterializeConstGenerics},
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::CallPath,
     namespace::TraitMap,
@@ -109,6 +109,45 @@ impl SubstTypes for TypeId {
         } else {
             HasChanges::No
         }
+    }
+}
+
+impl MaterializeConstGenerics for TypeId {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        _handler: &Handler,
+        name: &str,
+        value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        match &*engines.te().get(*self) {
+            TypeInfo::Array(type_argument, Length::AmbiguousVariableExpression { ident })
+                if ident.as_str() == name =>
+            {
+                let val = match &value.expression {
+                    crate::language::ty::TyExpressionVariant::Literal(literal) => {
+                        literal.cast_value_to_u64().unwrap()
+                    }
+                    _ => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
+                };
+
+                let new_array = engines.te().insert_array(
+                    engines,
+                    type_argument.clone(),
+                    Length::Literal {
+                        val: val as usize,
+                        span: Span::dummy(),
+                    },
+                );
+
+                *self = new_array;
+            }
+            _ => {}
+        }
+
+        Ok(())
     }
 }
 
