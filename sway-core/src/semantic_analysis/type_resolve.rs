@@ -299,11 +299,7 @@ pub fn resolve_call_path(
     }
 
     // Check that the modules in full_path are visible from the current module.
-    let _ = namespace.root_ref().check_module_privacy(
-        handler,
-        &full_path.prefixes,
-        namespace.current_mod_path(),
-    );
+    let _ = namespace.check_module_visibility(handler, &full_path.prefixes);
 
     // If the full path is different from the declaration path, then we are accessing a reexport,
     // which is by definition public.

@@ -19,7 +19,6 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{span::Span, ProgramId, Spanned};
-use sway_utils::iter_prefixes;
 
 #[derive(Clone, Debug)]
 pub enum ResolvedDeclaration {
@@ -343,7 +342,7 @@ impl Root {
     /// This is used when an import path contains an asterisk.
     ///
     /// Paths are assumed to be absolute.
-    pub fn star_import(
+    pub(crate) fn star_import(
         &mut self,
         handler: &Handler,
         engines: &Engines,
@@ -351,8 +350,6 @@ impl Root {
         dst: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src, dst)?;
-
         let src_mod = self.require_module(handler, &src.to_vec())?;
 
         let mut decls_and_item_imports = vec![];
@@ -541,7 +538,6 @@ impl Root {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src, dst)?;
         let src_mod = self.require_module(handler, &src.to_vec())?;
 
         let (decl, path) = self.item_lookup(handler, engines, item, src, dst, false)?;
@@ -624,8 +620,6 @@ impl Root {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src, dst)?;
-
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
 
@@ -791,8 +785,6 @@ impl Root {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src, dst)?;
-
         let parsed_decl_engine = engines.pe();
         let decl_engine = engines.de();
 
@@ -859,56 +851,6 @@ impl Root {
                 )));
             }
         };
-
-        Ok(())
-    }
-
-    /// Check that all accessed modules in the src path are visible from the dst path.
-    ///
-    /// Only the module part of the src path will be checked. If the src path contains identifiers
-    /// that refer to non-modules, e.g., enum names or associated types, then the visibility of
-    /// those items will not be checked.
-    ///
-    /// If src and dst have a common ancestor module that is private, this privacy modifier is
-    /// ignored for visibility purposes, since src and dst are both behind that private visibility
-    /// modifier.  Additionally, items in a private module are visible to its immediate parent.
-    ///
-    /// The returned path is the part of the src path that refers to modules.
-    pub(crate) fn check_module_privacy(
-        &self,
-        handler: &Handler,
-        src: &ModulePath,
-        dst: &ModulePath,
-    ) -> Result<(), ErrorEmitted> {
-        // Calculate the number of src prefixes whose visibility is ignored.
-        let mut ignored_prefixes = 0;
-
-        // Ignore visibility of common ancestors
-        ignored_prefixes += src
-            .iter()
-            .zip(dst)
-            .position(|(src_id, dst_id)| src_id != dst_id)
-            .unwrap_or(dst.len());
-
-        // Ignore visibility of direct submodules of the destination module
-        if dst.len() == ignored_prefixes {
-            ignored_prefixes += 1;
-        }
-
-        // Check visibility of remaining submodules in the source path
-        for prefix in iter_prefixes(src).skip(ignored_prefixes) {
-            if let Some(module) = self.module_from_absolute_path(&prefix.to_vec()) {
-                if module.visibility().is_private() {
-                    let prefix_last = prefix[prefix.len() - 1].clone();
-                    handler.emit_err(CompileError::ImportPrivateModule {
-                        span: prefix_last.span(),
-                        name: prefix_last,
-                    });
-                }
-            } else {
-                return Ok(());
-            }
-        }
 
         Ok(())
     }
