@@ -6,7 +6,7 @@ name = "test_script"
 implicit-std = false
 
 [dependencies]
-std = { path = "../../../../../../../../sway-lib-std" }
+std = { path = "../../../../../reduced_std_libs/sway-lib-std-assert" }
 test_lib = { path = "../test_lib/" }
 
 [contract-dependencies]

@@ -3,10 +3,14 @@ name = "std"
 source = "path+from-root-4D4735C41181917E"
 
 [[package]]
+name = "std"
+source = "path+from-root-C9E1B0494AB5FDF1"
+
+[[package]]
 name = "test_contract"
 source = "member"
 dependencies = [
-    "std",
+    "std path+from-root-4D4735C41181917E",
     "test_lib",
 ]
 
@@ -18,7 +22,7 @@ source = "member"
 name = "test_script"
 source = "member"
 dependencies = [
-    "std",
+    "std path+from-root-C9E1B0494AB5FDF1",
     "test_lib",
 ]
 contract-dependencies = ["test_contract"]
