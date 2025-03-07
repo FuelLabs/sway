@@ -139,6 +139,25 @@ impl GetDeclIdent for TyAstNode {
     }
 }
 
+impl MaterializeConstGenerics for TyAstNode {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        match self.content {
+            TyAstNodeContent::Declaration(_) => Ok(()),
+            TyAstNodeContent::Expression(ref mut expr) => {
+                expr.materialize_const_generics(engines, handler, name, value)
+            }
+            TyAstNodeContent::SideEffect(_) => Ok(()),
+            TyAstNodeContent::Error(_, _) => Ok(()),
+        }
+    }
+}
+
 impl TyAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
     pub(crate) fn is_public(&self, decl_engine: &DeclEngine) -> bool {
@@ -226,6 +245,9 @@ impl TyAstNode {
                         value.check_deprecated(engines, handler, allow_deprecated);
                     }
                 }
+                TyDecl::ConstGenericDecl(_) => {
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
@@ -285,6 +307,9 @@ impl TyAstNode {
                     TyDecl::VariableDecl(_decl) => {}
                     TyDecl::ConstantDecl(_decl) => {}
                     TyDecl::ConfigurableDecl(_decl) => {}
+                    TyDecl::ConstGenericDecl(_decl) => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
                     TyDecl::TraitTypeDecl(_) => {}
                     TyDecl::FunctionDecl(decl) => {
                         let fn_decl_id = decl.decl_id;

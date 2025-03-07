@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::MaterializeConstGenerics,
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
@@ -15,6 +16,7 @@ use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
 };
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -92,6 +94,18 @@ impl MonomorphizeHelper for TyStructDecl {
 
     fn has_self_type_param(&self) -> bool {
         false
+    }
+}
+
+impl MaterializeConstGenerics for TyStructDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &Engines,
+        _handler: &Handler,
+        _name: &str,
+        _value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }
 
