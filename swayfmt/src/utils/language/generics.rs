@@ -2,7 +2,11 @@ use crate::{
     formatter::*,
     utils::{close_angle_bracket, colon, open_angle_bracket},
 };
-use sway_ast::{generics::GenericParam, GenericArgs, GenericParams};
+use sway_ast::{
+    generics::GenericParam,
+    keywords::{ConstToken, Keyword},
+    GenericArgs, GenericParams,
+};
 
 impl Format for GenericParam {
     fn format(
@@ -13,6 +17,8 @@ impl Format for GenericParam {
         match self {
             GenericParam::Trait { ident } => ident.format(formatted_code, formatter),
             GenericParam::Const { ident, ty } => {
+                use std::fmt::Write;
+                write!(formatted_code, "{} ", ConstToken::AS_STR)?;
                 let _ = ident.format(formatted_code, formatter);
                 let _ = colon(formatted_code);
                 ty.format(formatted_code, formatter)
