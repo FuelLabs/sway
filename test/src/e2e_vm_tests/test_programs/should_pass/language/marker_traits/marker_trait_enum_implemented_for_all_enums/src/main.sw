@@ -23,7 +23,7 @@ enum MainEnum {
 
 enum MainEmptyEnum { }
 
-// Using `Enum` from core library prelude.
+// Using `Enum` from std library prelude.
 fn implements_enum<T>(_t: T) where T: Enum { }
 fn implements_enum_no_args<T>() where T: Enum { }
 

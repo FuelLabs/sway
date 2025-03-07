@@ -1,11 +1,7 @@
 [[package]]
-name = "core"
-source = "path+from-root-B01F6E0C439A4B28"
-
-[[package]]
 name = "nested_struct_args_abi"
 source = "path+from-root-B01F6E0C439A4B28"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
 name = "nested_struct_args_caller"
@@ -18,4 +14,3 @@ dependencies = [
 [[package]]
 name = "std"
 source = "path+from-root-B01F6E0C439A4B28"
-dependencies = ["core"]

@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
-source = "path+from-root-92615C9ECA428E15"
-
-[[package]]
 name = "script_calls_impure"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-92615C9ECA428E15"

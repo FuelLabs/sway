@@ -1,8 +1,4 @@
 [[package]]
-name = "core"
-source = "path+from-root-BA34DF212BA52818"
-
-[[package]]
 name = "match_expressions_with_self"
 source = "member"
 dependencies = ["std"]
@@ -10,4 +6,3 @@ dependencies = ["std"]
 [[package]]
 name = "std"
 source = "path+from-root-BA34DF212BA52818"
-dependencies = ["core"]

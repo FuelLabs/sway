@@ -71,10 +71,6 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "core"
-source = "path+from-root-0F28276288D2432C"
-
-[[package]]
 name = "counter"
 source = "member"
 dependencies = ["std"]
@@ -127,10 +123,7 @@ dependencies = ["std"]
 [[package]]
 name = "intermediate_variables"
 source = "member"
-dependencies = [
-    "core",
-    "std",
-]
+dependencies = ["std"]
 
 [[package]]
 name = "letter_casing"
@@ -163,10 +156,7 @@ dependencies = ["std"]
 [[package]]
 name = "namespace"
 source = "member"
-dependencies = [
-    "core",
-    "std",
-]
+dependencies = ["std"]
 
 [[package]]
 name = "numerics"
@@ -201,7 +191,6 @@ dependencies = ["std"]
 [[package]]
 name = "std"
 source = "path+from-root-0F28276288D2432C"
-dependencies = ["core"]
 
 [[package]]
 name = "storage_init"

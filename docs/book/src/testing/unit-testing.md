@@ -33,7 +33,6 @@ forc test
 The output should look similar to this:
 
 ```console
-  Compiled library "core".
   Compiled library "std".
   Compiled library "lib_single_test".
   Bytecode size is 92 bytes.

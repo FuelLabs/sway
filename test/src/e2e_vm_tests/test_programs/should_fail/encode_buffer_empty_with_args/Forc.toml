@@ -5,4 +5,5 @@ name = "encode_buffer_empty_with_args"
 entry = "main.sw"
 
 [dependencies]
-core = { path = "../../../../../../sway-lib-core" }
+std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
+

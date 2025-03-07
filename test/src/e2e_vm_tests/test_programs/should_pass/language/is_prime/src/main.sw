@@ -1,6 +1,6 @@
 script;
 
-use core::*;
+use std::*;
 
 fn check_prime(n: u64) -> bool {
     if n == 0 || n == 1 {

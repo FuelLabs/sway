@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-4D9C8D5AC311F8BE"
 
 [[package]]
 name = "unused_enum"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

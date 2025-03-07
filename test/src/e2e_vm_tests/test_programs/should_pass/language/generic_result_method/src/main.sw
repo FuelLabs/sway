@@ -1,6 +1,6 @@
 script;
 
-use core::ops::*;
+use std::ops::*;
 use std::assert::*;
 
 enum Result2<T, E> {

@@ -1,7 +1,5 @@
 library;
 
-use core::ops::Eq;
-
 pub struct Asset {
     pub value: u64,
 }

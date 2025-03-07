@@ -16,7 +16,7 @@ fn match_me(me: Foo) -> u32 {
     }
 }
 
-use core::ops::{Eq, Add};
+use std::ops::{Eq, Add};
 
 enum FooG<T>
     where T: Eq

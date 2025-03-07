@@ -1,8 +1,8 @@
 [[package]]
-name = 'all_paths_return'
-source = 'member'
-dependencies = ['core']
+name = "all_paths_return"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-F8249D11C4071B26'
+name = "std"
+source = "path+from-root-F8249D11C4071B26"

@@ -292,7 +292,7 @@ script {
 !47 = span !6 376 377
 !48 = "sway/sway-lib-std/src/revert.sw"
 !49 = span !48 172 219
-!50 = "sway/sway-lib-core/src/ops.sw"
+!50 = "sway/sway-lib-std/src/ops.sw"
 !51 = span !50 2706 2710
 !52 = span !50 2699 2753
 !53 = span !50 2741 2746

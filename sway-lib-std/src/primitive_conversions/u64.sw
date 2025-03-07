@@ -2,9 +2,32 @@ library;
 
 use ::convert::{TryFrom, TryInto, *};
 use ::option::Option::{self, *};
-use ::u128::U128;
+use ::ops::*;
+use ::primitive_conversions::{u16::*, u32::*, u8::*};
 
 impl u64 {
+    /// Extends a `u64` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The converted `u64` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 2;
+    ///     let result = val.as_u256();
+    ///     assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    /// }
+    /// ```
+    pub fn as_u256(self) -> u256 {
+        let input = (0u64, 0u64, 0u64, self);
+        asm(input: input) {
+            input: u256
+        }
+    }
+
     /// Attempts to convert the u64 value into a u8 value.
     ///
     /// # Additional Information
@@ -178,16 +201,6 @@ impl TryFrom<u256> for u64 {
             None
         } else {
             Some(parts.3)
-        }
-    }
-}
-
-impl TryFrom<U128> for u64 {
-    fn try_from(u: U128) -> Option<Self> {
-        if u.upper() == 0 {
-            Some(u.lower())
-        } else {
-            None
         }
     }
 }

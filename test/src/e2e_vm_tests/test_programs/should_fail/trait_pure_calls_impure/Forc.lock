@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-C42A95D87AAB6BDD"
 
 [[package]]
 name = "trait_pure_calls_impure"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

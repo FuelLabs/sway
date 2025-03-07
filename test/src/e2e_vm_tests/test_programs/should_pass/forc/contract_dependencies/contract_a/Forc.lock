@@ -10,19 +10,14 @@ contract-dependencies = [
 [[package]]
 name = "contract_b"
 source = "path+from-root-C28B6153CE3E3FEB"
-dependencies = ["core"]
+dependencies = ["std"]
 contract-dependencies = ["contract_c"]
 
 [[package]]
 name = "contract_c"
 source = "path+from-root-C28B6153CE3E3FEB"
-dependencies = ["core"]
-
-[[package]]
-name = "core"
-source = "path+from-root-C28B6153CE3E3FEB"
+dependencies = ["std"]
 
 [[package]]
 name = "std"
 source = "path+from-root-C28B6153CE3E3FEB"
-dependencies = ["core"]

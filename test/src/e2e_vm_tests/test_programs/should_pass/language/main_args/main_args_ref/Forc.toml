@@ -6,4 +6,4 @@ name = "main_args_ref"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../../../sway-lib-core" }
+std = { path = "../../../../../reduced_std_libs/sway-lib-std-core" }

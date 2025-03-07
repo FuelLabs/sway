@@ -54,7 +54,7 @@ use type_resolve::{resolve_call_path, VisibilityCheck};
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
-    pub(crate) fn core_ops_eq(
+    pub(crate) fn std_ops_eq(
         handler: &Handler,
         ctx: TypeCheckContext,
         arguments: Vec<ty::TyExpression>,
@@ -62,10 +62,10 @@ impl ty::TyExpression {
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let ctx = ctx.with_type_annotation(type_engine.id_of_bool());
-        Self::core_ops(handler, ctx, OpVariant::Equals, arguments, span)
+        Self::std_ops(handler, ctx, OpVariant::Equals, arguments, span)
     }
 
-    pub(crate) fn core_ops_neq(
+    pub(crate) fn std_ops_neq(
         handler: &Handler,
         ctx: TypeCheckContext,
         arguments: Vec<ty::TyExpression>,
@@ -73,10 +73,10 @@ impl ty::TyExpression {
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let ctx = ctx.with_type_annotation(type_engine.id_of_bool());
-        Self::core_ops(handler, ctx, OpVariant::NotEquals, arguments, span)
+        Self::std_ops(handler, ctx, OpVariant::NotEquals, arguments, span)
     }
 
-    fn core_ops(
+    fn std_ops(
         handler: &Handler,
         mut ctx: TypeCheckContext,
         op_variant: OpVariant,
@@ -87,7 +87,7 @@ impl ty::TyExpression {
 
         let call_path = CallPath {
             prefixes: vec![
-                Ident::new_with_override("core".into(), span.clone()),
+                Ident::new_with_override("std".into(), span.clone()),
                 Ident::new_with_override("ops".into(), span.clone()),
             ],
             suffix: Op {
@@ -1255,11 +1255,12 @@ impl ty::TyExpression {
                 )
             })?;
 
-        // The type of a storage access is `core::storage::StorageKey`. This is
+        // The type of a storage access is `std::storage::storage_key::StorageKey`. This is
         // the path to it.
         let storage_key_mod_path = vec![
-            Ident::new_with_override("core".into(), span.clone()),
+            Ident::new_with_override("std".into(), span.clone()),
             Ident::new_with_override("storage".into(), span.clone()),
+            Ident::new_with_override("storage_key".into(), span.clone()),
         ];
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 

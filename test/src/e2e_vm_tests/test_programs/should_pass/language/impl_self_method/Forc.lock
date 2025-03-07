@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
-source = "path+from-root-AD8D9B1F9434A1CB"
-
-[[package]]
 name = "impl_self_method"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-AD8D9B1F9434A1CB"

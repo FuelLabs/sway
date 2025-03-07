@@ -35,7 +35,7 @@ fn test() {
 
     // external modules can't be renamed
     let _ = std::constants::ZERO_B256;
-    let _ = core::primitives::b256::min();
+    let _ = std::primitives::b256::min();
 }
 
 abi MyContract {

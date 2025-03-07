@@ -6,4 +6,5 @@ name = "double_underscore_trait_fn"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../sway-lib-core" }
+std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
+

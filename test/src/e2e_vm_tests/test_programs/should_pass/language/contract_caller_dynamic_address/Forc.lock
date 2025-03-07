@@ -1,8 +1,8 @@
 [[package]]
 name = "contract_caller_dynamic_address"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-552580F5020496F6"

@@ -1,7 +1,7 @@
 [[package]]
 name = "abi_impl_methods_callable"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
 name = "asset_id"
@@ -113,10 +113,6 @@ dependencies = ["std"]
 name = "contract_bytecode"
 source = "member"
 dependencies = ["std"]
-
-[[package]]
-name = "core"
-source = "path+from-root-214E8589AEAE48E5"
 
 [[package]]
 name = "ec_recover"
@@ -278,8 +274,7 @@ dependencies = ["std"]
 
 [[package]]
 name = "std"
-source = "path+from-root-EAEA0954D15D4BBE"
-dependencies = ["core"]
+source = "path+from-root-214E8589AEAE48E5"
 
 [[package]]
 name = "storage"
@@ -314,10 +309,7 @@ dependencies = ["std"]
 [[package]]
 name = "storage_string"
 source = "member"
-dependencies = [
-    "core",
-    "std",
-]
+dependencies = ["std"]
 
 [[package]]
 name = "storage_vec_nested"
@@ -337,7 +329,7 @@ dependencies = ["std"]
 [[package]]
 name = "string_slice_predicate"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
 name = "superabi"

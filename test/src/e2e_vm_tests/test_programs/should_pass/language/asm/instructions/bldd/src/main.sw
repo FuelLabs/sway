@@ -1,6 +1,6 @@
 library;
 
-// Intentionally not using `b256::zero()` to avoid dependency to `core`.
+// Intentionally not using `b256::zero()` to avoid dependency to `std`.
 const B256_ZERO: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 pub fn main() {

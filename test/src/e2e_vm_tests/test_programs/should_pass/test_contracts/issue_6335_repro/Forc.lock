@@ -1,8 +1,4 @@
 [[package]]
-name = "core"
-source = "path+from-root-2A7B279266ACFF97"
-
-[[package]]
 name = "issue_6335_repro"
 source = "member"
 dependencies = ["std"]
@@ -10,4 +6,3 @@ dependencies = ["std"]
 [[package]]
 name = "std"
 source = "path+from-root-2A7B279266ACFF97"
-dependencies = ["core"]

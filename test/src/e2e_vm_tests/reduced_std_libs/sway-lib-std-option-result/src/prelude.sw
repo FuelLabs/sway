@@ -11,3 +11,15 @@ pub use ::revert::{require, revert};
 
 // Logging
 pub use ::logging::log;
+
+// (Previously) core
+pub use ::primitives::*;
+pub use ::slice::*;
+pub use ::ops::*;
+pub use ::never::*;
+pub use ::raw_ptr::*;
+pub use ::raw_slice::*;
+pub use ::codec::*;
+pub use ::str::*;
+#[cfg(experimental_error_type = true)]
+pub use ::marker::*;

@@ -1,21 +1,16 @@
 [[package]]
-name = 'basic_storage'
-source = 'member'
+name = "basic_storage"
+source = "member"
 dependencies = [
-    'basic_storage_abi',
-    'std',
+    "basic_storage_abi",
+    "std",
 ]
 
 [[package]]
-name = 'basic_storage_abi'
-source = 'path+from-root-E723F3A4C3992EF1'
-dependencies = ['std']
+name = "basic_storage_abi"
+source = "path+from-root-E723F3A4C3992EF1"
+dependencies = ["std"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-E723F3A4C3992EF1'
-
-[[package]]
-name = 'std'
-source = 'path+from-root-E723F3A4C3992EF1'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-E723F3A4C3992EF1"

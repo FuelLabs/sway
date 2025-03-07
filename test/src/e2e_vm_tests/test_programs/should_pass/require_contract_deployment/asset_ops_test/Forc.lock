@@ -7,13 +7,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "core"
-source = "path+from-root-3DE343EF6AF0A806"
-
-[[package]]
 name = "std"
 source = "path+from-root-3DE343EF6AF0A806"
-dependencies = ["core"]
 
 [[package]]
 name = "test_fuel_coin_abi"

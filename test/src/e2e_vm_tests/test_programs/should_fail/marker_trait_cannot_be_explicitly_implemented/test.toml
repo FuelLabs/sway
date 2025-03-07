@@ -4,25 +4,25 @@ experimental = { error_type = true }
 #check: $()error
 #sameln: $()Marker traits cannot be explicitly implemented
 #check: $()impl Enum for MyEnum { }
-#nextln: $()Trait "core::marker::Enum" is a marker trait and cannot be explicitly implemented.
+#nextln: $()Trait "std::marker::Enum" is a marker trait and cannot be explicitly implemented.
 #check: $()"Enum" marker trait is automatically implemented by the compiler for all enum types.
 
 #check: $()error
 #sameln: $()Marker traits cannot be explicitly implemented
 #check: $()impl Enum for EmptyEnum { }
-#nextln: $()Trait "core::marker::Enum" is a marker trait and cannot be explicitly implemented.
+#nextln: $()Trait "std::marker::Enum" is a marker trait and cannot be explicitly implemented.
 #check: $()"Enum" marker trait is automatically implemented by the compiler for all enum types.
 
 #check: $()error
 #sameln: $()Marker traits cannot be explicitly implemented
 #check: $()impl Enum for Struct { }
-#nextln: $()Trait "core::marker::Enum" is a marker trait and cannot be explicitly implemented.
+#nextln: $()Trait "std::marker::Enum" is a marker trait and cannot be explicitly implemented.
 #check: $()"Enum" marker trait is automatically implemented by the compiler for all enum types.
 
 #check: $()error
 #sameln: $()Marker traits cannot be explicitly implemented
 #check: $()impl Enum for EmptyStruct {
-#nextln: $()Trait "core::marker::Enum" is a marker trait and cannot be explicitly implemented.
+#nextln: $()Trait "std::marker::Enum" is a marker trait and cannot be explicitly implemented.
 #check: $()"Enum" marker trait is automatically implemented by the compiler for all enum types.
 
 #check: $()error
@@ -32,8 +32,8 @@ experimental = { error_type = true }
 
 #check: $()error
 #sameln: $()Marker traits cannot be explicitly implemented
-#check: $()impl core::marker::Enum for (u8, u16, u32, u64, u256) { }
-#nextln: $()Trait "core::marker::Enum" is a marker trait and cannot be explicitly implemented.
+#check: $()impl std::marker::Enum for (u8, u16, u32, u64, u256) { }
+#nextln: $()Trait "std::marker::Enum" is a marker trait and cannot be explicitly implemented.
 #check: $()"Enum" marker trait is automatically implemented by the compiler for all enum types.
 
 #---------------
@@ -41,25 +41,25 @@ experimental = { error_type = true }
 #check: $()error
 #sameln: $()Marker traits cannot be explicitly implemented
 #check: $()impl Error for MyEnum { }
-#nextln: $()Trait "core::marker::Error" is a marker trait and cannot be explicitly implemented.
+#nextln: $()Trait "std::marker::Error" is a marker trait and cannot be explicitly implemented.
 #check: $()"Error" marker trait is automatically implemented by the compiler for string slices
 
 #check: $()error
 #sameln: $()Marker traits cannot be explicitly implemented
 #check: $()impl Error for EmptyEnum { }
-#nextln: $()Trait "core::marker::Error" is a marker trait and cannot be explicitly implemented.
+#nextln: $()Trait "std::marker::Error" is a marker trait and cannot be explicitly implemented.
 #check: $()"Error" marker trait is automatically implemented by the compiler for string slices
 
 #check: $()error
 #sameln: $()Marker traits cannot be explicitly implemented
 #check: $()impl Error for Struct { }
-#nextln: $()Trait "core::marker::Error" is a marker trait and cannot be explicitly implemented.
+#nextln: $()Trait "std::marker::Error" is a marker trait and cannot be explicitly implemented.
 #check: $()"Error" marker trait is automatically implemented by the compiler for string slices
 
 #check: $()error
 #sameln: $()Marker traits cannot be explicitly implemented
 #check: $()impl Error for EmptyStruct {
-#nextln: $()Trait "core::marker::Error" is a marker trait and cannot be explicitly implemented.
+#nextln: $()Trait "std::marker::Error" is a marker trait and cannot be explicitly implemented.
 #check: $()"Error" marker trait is automatically implemented by the compiler for string slices
 
 #check: $()error
@@ -69,6 +69,6 @@ experimental = { error_type = true }
 
 #check: $()error
 #sameln: $()Marker traits cannot be explicitly implemented
-#check: $()impl core::marker::Error for (u8, u16, u32, u64, u256) { }
-#nextln: $()Trait "core::marker::Error" is a marker trait and cannot be explicitly implemented.
+#check: $()impl std::marker::Error for (u8, u16, u32, u64, u256) { }
+#nextln: $()Trait "std::marker::Error" is a marker trait and cannot be explicitly implemented.
 #check: $()"Error" marker trait is automatically implemented by the compiler for string slices

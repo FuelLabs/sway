@@ -17,8 +17,11 @@ use ::tx::{
     Transaction,
     tx_type,
 };
-use core::ops::Eq;
+use ::ops::*;
 use ::revert::revert;
+use ::primitive_conversions::u16::*;
+use ::codec::*;
+use ::raw_slice::*;
 
 // GTF Opcode const selectors
 pub const GTF_INPUT_TYPE = 0x200;
@@ -295,8 +298,8 @@ where
     T: AbiDecode,
 {
     match input_type(index) {
-        Some(Input::Coin) => Some(core::codec::decode_predicate_data_by_index::<T>(index)),
-        Some(Input::Message) => Some(core::codec::decode_predicate_data_by_index::<T>(index)),
+        Some(Input::Coin) => Some(decode_predicate_data_by_index::<T>(index)),
+        Some(Input::Message) => Some(decode_predicate_data_by_index::<T>(index)),
         _ => None,
     }
 }

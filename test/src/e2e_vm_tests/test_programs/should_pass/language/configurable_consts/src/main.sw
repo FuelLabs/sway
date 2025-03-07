@@ -14,7 +14,7 @@ enum ConfigurableEnum {
 }
 
 #[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for ConfigurableEnum {
+impl Eq for ConfigurableEnum {
     fn eq(self, other: ConfigurableEnum) -> bool {
         match (self, other) {
             (ConfigurableEnum::A(inner1), ConfigurableEnum::A(inner2)) => inner1 == inner2,
@@ -24,7 +24,7 @@ impl core::ops::Eq for ConfigurableEnum {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for ConfigurableEnum {
+impl PartialEq for ConfigurableEnum {
     fn eq(self, other: ConfigurableEnum) -> bool {
         match (self, other) {
             (ConfigurableEnum::A(inner1), ConfigurableEnum::A(inner2)) => inner1 == inner2,
@@ -34,7 +34,7 @@ impl core::ops::PartialEq for ConfigurableEnum {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for ConfigurableEnum {}
+impl Eq for ConfigurableEnum {}
 
 type AnotherU8 = u8;
 

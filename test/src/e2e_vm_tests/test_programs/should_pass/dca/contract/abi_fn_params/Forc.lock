@@ -1,8 +1,8 @@
 [[package]]
 name = "abi_fn_params"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-BB1E24FA4721BC8F"

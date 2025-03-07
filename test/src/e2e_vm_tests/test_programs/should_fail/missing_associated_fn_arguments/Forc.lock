@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-517D1536FEF54B89'
+name = "missing_associated_fn_arguments"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'missing_associated_fn_arguments'
-source = 'member'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-517D1536FEF54B89"

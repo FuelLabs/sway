@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-F443649679DC6856'
+name = "std"
+source = "path+from-root-F443649679DC6856"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-F443649679DC6856'
-dependencies = ['core']
-
-[[package]]
-name = 'vec_swap_param1_out_of_bounds'
-source = 'member'
-dependencies = ['std']
+name = "vec_swap_param1_out_of_bounds"
+source = "member"
+dependencies = ["std"]

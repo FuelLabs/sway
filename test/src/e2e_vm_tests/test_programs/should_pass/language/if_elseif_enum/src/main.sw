@@ -1,6 +1,6 @@
 script;
-use core::*;
-use core::ops::Ord;
+use std::*;
+use std::ops::Ord;
 
 struct Rgb {
     red: u64,
@@ -19,7 +19,7 @@ enum PrimaryColor {
 }
 
 #[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for PrimaryColor {
+impl Eq for PrimaryColor {
     fn eq(self, other: Self) -> bool {
         asm(r1: self, r2: other, r3) {
             eq r3 r1 r2;
@@ -28,7 +28,7 @@ impl core::ops::Eq for PrimaryColor {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for PrimaryColor {
+impl PartialEq for PrimaryColor {
     fn eq(self, other: Self) -> bool {
         asm(r1: self, r2: other, r3) {
             eq r3 r1 r2;
@@ -37,9 +37,9 @@ impl core::ops::PartialEq for PrimaryColor {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for PrimaryColor {}
+impl Eq for PrimaryColor {}
 
-impl core::ops::Ord for PrimaryColor {
+impl std::ops::Ord for PrimaryColor {
     fn lt(self, other: Self) -> bool {
         asm(r1: self, r2: other, r3) {
             lt r3 r1 r2;

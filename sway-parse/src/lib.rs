@@ -91,10 +91,10 @@ mod tests {
             Arc::from(
                 "script;
 
-            corefn main() {
+            stdfn main() {
                 let a: b256 =  0x000>0000000scri s = \"flibrary I24;
 
-            use core::primitives::*;
+            use std::primitives::*;
             use std::assert::assert;
 
             ///\u{7eb}",

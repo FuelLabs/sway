@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
-source = "path+from-root-8AFA071721F70D50"
-
-[[package]]
 name = "marker_trait_cannot_be_explicitly_implemented"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-8AFA071721F70D50"

@@ -1,8 +1,8 @@
 [[package]]
 name = "associated_const_impl_self"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-EF593C6297C7CB27"

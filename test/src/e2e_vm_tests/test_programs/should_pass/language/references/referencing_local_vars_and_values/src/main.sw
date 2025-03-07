@@ -4,8 +4,6 @@ mod impls;
 
 use impls::*;
 
-use core::ops::Eq;
-
 #[inline(always)]
 fn reference_local_var_and_value<T>()
     where T: Eq + New

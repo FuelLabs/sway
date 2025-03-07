@@ -1,13 +1,8 @@
 [[package]]
-name = 'break_and_continue'
-source = 'member'
-dependencies = ['std']
+name = "break_and_continue"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-8D1D783DB6BEC173'
-
-[[package]]
-name = 'std'
-source = 'path+from-root-8D1D783DB6BEC173'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-8D1D783DB6BEC173"

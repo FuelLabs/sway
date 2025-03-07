@@ -1,22 +1,16 @@
 [[package]]
-name = "core"
-source = "path+from-root-323E392CC41F43FA"
-
-[[package]]
 name = "std"
 source = "path+from-root-323E392CC41F43FA"
-dependencies = ["core"]
 
 [[package]]
 name = "storage_access_abi"
 source = "path+from-root-323E392CC41F43FA"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
 name = "storage_access_caller"
 source = "member"
 dependencies = [
-    "core",
     "std",
     "storage_access_abi",
 ]

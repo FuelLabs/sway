@@ -1,6 +1,6 @@
 script;
 
-use core::ops::*;
+use std::ops::*;
 
 enum Error {
     BoolError: bool,

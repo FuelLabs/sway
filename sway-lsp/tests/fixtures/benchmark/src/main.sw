@@ -1,5 +1,5 @@
 script;
-use core::ops::*;
+use std::ops::*;
 
 /// I am a random doc comment.
 struct Struct1 {

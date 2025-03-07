@@ -98,10 +98,8 @@ ABI, storage and bytecode artifacts are available. We can do so with `forc build
 ```console
 $ forc build
   Creating a new `Forc.lock` file. (Cause: lock file did not exist)
-    Adding core
     Adding std git+https://github.com/fuellabs/sway?tag=v0.24.5#e695606d8884a18664f6231681333a784e623bc9
    Created new lock file at /home/user/path/to/my-fuel-project/Forc.lock
-  Compiled library "core".
   Compiled library "std".
   Compiled contract "my-fuel-project".
   Bytecode size is 60 bytes.

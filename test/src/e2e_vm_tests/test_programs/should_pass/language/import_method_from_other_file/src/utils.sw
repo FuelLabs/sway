@@ -1,6 +1,5 @@
 library;
 
-use core::ops::Eq;
 use ::asset::Asset;
 
 pub struct Wrapper {

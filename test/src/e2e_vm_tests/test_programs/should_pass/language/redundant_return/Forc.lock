@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
-source = "path+from-root-25AC119376ADCC33"
-
-[[package]]
 name = "redundant_return"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-25AC119376ADCC33"

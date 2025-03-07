@@ -6,4 +6,4 @@ name = "method_on_empty_struct"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }

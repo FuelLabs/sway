@@ -1,8 +1,4 @@
 [[package]]
-name = "core"
-source = "path+from-root-FF35018BB7DF2595"
-
-[[package]]
 name = "for_loop_error"
 source = "member"
 dependencies = ["std"]
@@ -10,4 +6,3 @@ dependencies = ["std"]
 [[package]]
 name = "std"
 source = "path+from-root-FF35018BB7DF2595"
-dependencies = ["core"]

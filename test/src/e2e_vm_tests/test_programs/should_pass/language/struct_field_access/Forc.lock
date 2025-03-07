@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-E679204875B87008"
 
 [[package]]
 name = "struct_field_access"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

@@ -2,7 +2,6 @@ script;
 
 mod impls;
 use impls::*;
-use core::ops::Eq;
 
 #[inline(always)]
 fn dereference<T>()

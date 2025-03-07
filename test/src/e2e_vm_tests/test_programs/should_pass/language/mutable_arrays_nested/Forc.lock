@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
-source = "path+from-root-02F18C78CF5FE44B"
-
-[[package]]
 name = "mutable_arrays_nested"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-02F18C78CF5FE44B"

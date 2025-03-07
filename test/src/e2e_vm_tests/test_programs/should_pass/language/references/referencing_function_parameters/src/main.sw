@@ -1,7 +1,5 @@
 script;
 
-use core::ops::Eq;
-
 struct S {
     x: u8,
 }

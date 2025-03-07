@@ -6,7 +6,6 @@
 
 # Sway files and standard library
 /examples/ @FuelLabs/sway-compiler @FuelLabs/swayex 
-/sway-lib-core/ @FuelLabs/sway-compiler @FuelLabs/swayex
 /sway-lib-std/ @FuelLabs/sway-compiler @FuelLabs/swayex
 
 # Tooling

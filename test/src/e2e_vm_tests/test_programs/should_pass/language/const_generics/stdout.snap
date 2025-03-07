@@ -5,11 +5,6 @@ source: test/tests/tests.rs
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
-   Compiling library core (sway-lib-core)
-// IR: Final
-library {
-}
-
    Compiling library std (sway-lib-std)
 // IR: Final
 library {

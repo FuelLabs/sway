@@ -1,11 +1,6 @@
 [[package]]
-name = "core"
-source = "path+from-root-1324B1F4FFF958FF"
-
-[[package]]
 name = "std"
 source = "path+from-root-1324B1F4FFF958FF"
-dependencies = ["core"]
 
 [[package]]
 name = "trait_constraints_not_satisfied"

@@ -4,6 +4,7 @@ use ::alloc::{alloc, alloc_bytes, realloc_bytes};
 use ::hash::*;
 use ::option::Option::{self, *};
 use ::storage::storage_api::*;
+use ::codec::*;
 
 /// Store a raw_slice from the heap into storage.
 ///

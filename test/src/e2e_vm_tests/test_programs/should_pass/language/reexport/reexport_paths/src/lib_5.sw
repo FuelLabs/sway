@@ -1,3 +1,3 @@
 library;
 
-pub use core::codec::*;
+pub use std::codec::*;

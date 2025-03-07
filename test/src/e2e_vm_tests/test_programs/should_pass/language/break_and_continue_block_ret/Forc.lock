@@ -1,8 +1,8 @@
 [[package]]
 name = "break_and_continue_block_ret"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-3052B79D5F74B184"

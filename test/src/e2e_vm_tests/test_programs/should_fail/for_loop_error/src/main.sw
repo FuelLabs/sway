@@ -7,6 +7,6 @@ fn main() {
     v.push(3);
     for elem in v.iter() {
         log(elem);
-        3
+        1234567890
     };
 }

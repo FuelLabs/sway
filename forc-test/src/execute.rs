@@ -112,7 +112,7 @@ impl TestExecutor {
         tx_builder.script_gas_limit(consensus_params.tx_params().max_gas_per_tx() - max_gas);
 
         // We need to increase the tx size limit as the default is 110 * 1024 and for big tests
-        // such as std and core this is not enough.
+        // such as std this is not enough.
 
         let tx = tx_builder
             .finalize_checked(block_height)

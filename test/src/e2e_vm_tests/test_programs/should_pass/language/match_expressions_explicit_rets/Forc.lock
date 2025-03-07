@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-3F456608F1F32854'
+name = "match_expressions_explicit_rets"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'match_expressions_explicit_rets'
-source = 'member'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-3F456608F1F32854"

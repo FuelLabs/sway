@@ -1,11 +1,6 @@
 [[package]]
-name = "core"
-source = "path+from-root-DFCFC85C94C0C9BD"
-
-[[package]]
 name = "std"
 source = "path+from-root-DFCFC85C94C0C9BD"
-dependencies = ["core"]
 
 [[package]]
 name = "unify_never"

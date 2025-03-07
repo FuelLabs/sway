@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-3CA8975A62B42346'
+name = "redefine_method_from_core"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'redefine_method_from_core'
-source = 'member'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-3CA8975A62B42346"

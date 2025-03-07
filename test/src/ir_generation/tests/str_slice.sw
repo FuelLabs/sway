@@ -1,6 +1,6 @@
 script;
 
-use core::str::*;
+use std::str::*;
 
 fn main() -> u64 {
     let a: str = "abc";

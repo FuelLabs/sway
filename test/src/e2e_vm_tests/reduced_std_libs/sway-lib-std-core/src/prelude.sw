@@ -1,16 +1,16 @@
-library;
-
-//! Defines the Sway core library prelude.
+//! Defines the Sway standard library prelude.
 //! The prelude consists of implicitly available items,
 //! for which `use` is not required.
+library;
+
+// (Previously) core
 pub use ::primitives::*;
-pub use ::primitive_conversions::*;
+pub use ::slice::*;
+pub use ::ops::*;
+pub use ::never::*;
 pub use ::raw_ptr::*;
 pub use ::raw_slice::*;
-pub use ::never::*;
-pub use ::ops::*;
-pub use ::storage::*;
-pub use ::str::*;
 pub use ::codec::*;
+pub use ::str::*;
 #[cfg(experimental_error_type = true)]
 pub use ::marker::*;

@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-1D28A47FA12C061E'
+name = "numeric_constants"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'numeric_constants'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-1D28A47FA12C061E'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-1D28A47FA12C061E"

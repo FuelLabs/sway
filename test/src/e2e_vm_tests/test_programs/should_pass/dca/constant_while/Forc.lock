@@ -1,8 +1,8 @@
 [[package]]
 name = "constant_while"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-7EFA005C6AA105BC"

@@ -4,8 +4,11 @@ library;
 use ::intrinsics::size_of_val;
 use ::convert::{From, Into, TryFrom};
 use ::hash::*;
+use ::ops::*;
+use ::primitives::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
+use ::codec::*;
 
 /// The `EvmAddress` type, a struct wrapper around the inner `b256` value.
 pub struct EvmAddress {
@@ -78,19 +81,19 @@ impl EvmAddress {
 }
 
 #[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for EvmAddress {
+impl Eq for EvmAddress {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for EvmAddress {
+impl PartialEq for EvmAddress {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for EvmAddress {}
+impl Eq for EvmAddress {}
 
 /// Functions for casting between the `b256` and `EvmAddress` types.
 impl From<b256> for EvmAddress {

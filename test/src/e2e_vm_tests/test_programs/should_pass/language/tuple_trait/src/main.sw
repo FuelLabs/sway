@@ -1,6 +1,6 @@
 script;
 
-use core::ops::*;
+use std::ops::*;
 
 #[cfg(experimental_partial_eq = false)]
 impl Eq for (u64, u64, u64) {

@@ -1,12 +1,12 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-4D4735C41181917E"
 
 [[package]]
 name = "test_contract"
 source = "member"
 dependencies = [
-    "core",
+    "std",
     "test_lib",
 ]
 
@@ -18,7 +18,7 @@ source = "member"
 name = "test_script"
 source = "member"
 dependencies = [
-    "core",
+    "std",
     "test_lib",
 ]
 contract-dependencies = ["test_contract"]

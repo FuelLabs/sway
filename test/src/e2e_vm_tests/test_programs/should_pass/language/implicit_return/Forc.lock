@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
-source = "path+from-root-073A64DE7507063D"
-
-[[package]]
 name = "implicit_return"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-073A64DE7507063D"

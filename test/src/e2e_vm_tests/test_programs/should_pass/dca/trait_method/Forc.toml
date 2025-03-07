@@ -6,5 +6,5 @@ name = "trait_method"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }
 trait_method_lib = { path = "../trait_method_lib" }

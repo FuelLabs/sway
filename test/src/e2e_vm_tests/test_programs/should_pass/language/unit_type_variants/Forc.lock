@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-6F7CC6A6F5B5F35C"
 
 [[package]]
 name = "unit_type_variants"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

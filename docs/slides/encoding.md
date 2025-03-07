@@ -31,7 +31,7 @@ contract.some_method(0);
 Compiler will desugar this into
 
 ```rust
-core::codec::contract_call(
+std::codec::contract_call(
     CONTRACT_ID,
     "some_method",
     (0,),
@@ -108,9 +108,9 @@ Compiler will desugar this into:
 
 ```rust
 pub fn __entry() {
-    let method_name = core::codec::decode_first_param::<str>();
+    let method_name = std::codec::decode_first_param::<str>();
     if method_name == "some_method" {
-        let mut buffer = core::codec::BufferReader::from_second_parameter();
+        let mut buffer = std::codec::BufferReader::from_second_parameter();
         let args: (u64,) = buffer.decode::<(u64,)>();
         let result: () = __contract_entry_some_method(args.0);
         let result: raw_slice = encode::<()>(result);
@@ -398,7 +398,7 @@ will be desugared into something like
 const SOMETHING: u64;
 
 fn __entry() -> raw_slice {
-    core::codec::abi_decode_in_place(&mut SOMETHING, 7104, 8);
+    std::codec::abi_decode_in_place(&mut SOMETHING, 7104, 8);
     encode(main())
 }
 

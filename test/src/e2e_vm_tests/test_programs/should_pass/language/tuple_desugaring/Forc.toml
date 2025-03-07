@@ -5,4 +5,4 @@ name = "tuple_desugaring"
 entry = "main.sw"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }

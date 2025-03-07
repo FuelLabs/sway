@@ -1,13 +1,8 @@
 [[package]]
-name = 'assert_test'
-source = 'member'
-dependencies = ['std']
+name = "assert_test"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-000DE2BD47DE0A72'
-
-[[package]]
-name = 'std'
-source = 'path+from-root-000DE2BD47DE0A72'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-000DE2BD47DE0A72"

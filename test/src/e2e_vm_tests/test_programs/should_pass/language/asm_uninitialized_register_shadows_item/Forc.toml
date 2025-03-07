@@ -6,4 +6,4 @@ name = "asm_uninitialized_register_shadows_item"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }

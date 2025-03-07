@@ -35,7 +35,7 @@ The above snippet declares all of the methods in the trait `Compare` for the typ
 ## Supertraits
 
 When using multiple traits, scenarios often come up where one trait may require functionality from another trait. This is where supertraits come in as they allow you to require a trait when implementing another trait, i.e., a trait with a trait.
-A good example of this is the `Ord` trait of the `core` library of Sway. The `Ord` trait requires the `Eq` trait, so `Eq` is kept as a separate trait as one may decide to implement `Eq`
+A good example of this is the `Ord` trait of the `std` library of Sway. The `Ord` trait requires the `Eq` trait, so `Eq` is kept as a separate trait as one may decide to implement `Eq`
 without implementing other parts of the `Ord` trait.
 
 ```sway
@@ -169,7 +169,7 @@ fn panic_with_error<E>(err: E) where E: Error {
 
 > **Note** `panic` expression and error types [have not yet been implemented](https://github.com/FuelLabs/sway/issues/6765)
 
-All marker traits are defined in the `core::marker` module.
+All marker traits are defined in the `std::marker` module.
 
 ## Use Cases
 

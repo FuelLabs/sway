@@ -1,6 +1,6 @@
 script;
 
-use core::*;
+use std::*;
 
 fn sum_test(a:u64, b:u64, c:u64) -> u64 {
     let sum = a + b + c;

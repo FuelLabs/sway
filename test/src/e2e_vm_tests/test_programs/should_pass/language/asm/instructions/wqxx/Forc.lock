@@ -1,11 +1,6 @@
 [[package]]
-name = "core"
-source = "path+from-root-6CA79EAC12B0D10A"
-
-[[package]]
 name = "std"
 source = "path+from-root-6CA79EAC12B0D10A"
-dependencies = ["core"]
 
 [[package]]
 name = "wqxx"

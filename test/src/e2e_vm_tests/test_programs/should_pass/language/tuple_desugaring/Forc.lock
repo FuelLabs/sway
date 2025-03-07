@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-7056B8159EB7375D'
+name = "std"
+source = "path+from-root-7056B8159EB7375D"
 
 [[package]]
-name = 'tuple_desugaring'
-source = 'member'
-dependencies = ['core']
+name = "tuple_desugaring"
+source = "member"
+dependencies = ["std"]

@@ -1,7 +1,7 @@
 script;
 
-use core::codec::*;
-use core::codec::AbiEncode;
+use std::codec::*;
+use std::codec::AbiEncode;
 use std::vec::*;
 
 struct SS<T> {

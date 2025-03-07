@@ -5,7 +5,6 @@ source: test/tests/tests.rs
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors
-   Compiling library core (sway-lib-core)
    Compiling library std (sway-lib-std)
    Compiling script type_check_analyze_errors (test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors)
 error

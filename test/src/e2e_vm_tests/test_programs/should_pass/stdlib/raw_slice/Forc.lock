@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-8175BA0DBE650EFE'
+name = "raw_slice"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'raw_slice'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-8175BA0DBE650EFE'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-8175BA0DBE650EFE"

@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-1DE42FCCF913B127'
+name = "predicate_while"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'predicate_while'
-source = 'member'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-1DE42FCCF913B127"

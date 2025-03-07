@@ -6,7 +6,7 @@ name = "contract_b"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }
 
 [contract-dependencies]
 contract_c = { path = "../contract_c", salt = "0x1111111111111111111111111111111111111111111111111111111111111111" }

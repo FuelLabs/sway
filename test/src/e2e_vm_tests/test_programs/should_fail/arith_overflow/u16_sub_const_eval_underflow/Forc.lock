@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-FF708CA3420F9A17"
 
 [[package]]
 name = "u16_sub_const_eval_underflow"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-2F4123B4F8C8D13B'
+name = "std"
+source = "path+from-root-2F4123B4F8C8D13B"
 
 [[package]]
-name = 'tuple_field_reassignment'
-source = 'member'
-dependencies = ['core']
+name = "tuple_field_reassignment"
+source = "member"
+dependencies = ["std"]

@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-E733504800A298D4'
+name = "stack_indexing_overflow"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'stack_indexing_overflow'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-E733504800A298D4'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-E733504800A298D4"

@@ -9,7 +9,7 @@ use ::lib_3_1::*;
 use ::lib_3_2::*;
 // Reexport of std::registers::*, which is not part of the std prelude.
 use ::lib_4::global_gas;
-// Reexport of core::codec::*, which is part of the std prelude.
+// Reexport of std::codec::*, which is part of the std prelude.
 use ::lib_5::Buffer;
 // Reexports of std::address::Address, one via std::prelude and one directly from std::address
 // Importing from std::prelude causes an error, so that part of the test is disabled for now.

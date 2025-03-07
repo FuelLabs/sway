@@ -1,5 +1,15 @@
 library;
 
+pub mod marker;
+pub mod registers;
+pub mod flags;
+pub mod r#str;
+pub mod primitives;
+pub mod ops;
+pub mod raw_ptr;
+pub mod raw_slice;
+pub mod codec;
+pub mod slice;
 pub mod constants;
 pub mod error_signals;
 pub mod logging;
@@ -9,20 +19,17 @@ pub mod option;
 pub mod assert;
 pub mod convert;
 pub mod intrinsics;
-pub mod alloc;
 pub mod iterator;
 pub mod vec;
 pub mod bytes;
-pub mod registers;
-pub mod flags;
-pub mod math;
-pub mod u128;
+pub mod alloc;
+pub mod never;
 pub mod b512;
+pub mod u128;
 pub mod primitive_conversions;
+pub mod math;
 pub mod array_conversions;
 pub mod bytes_conversions;
 pub mod clone;
 
 pub mod prelude;
-
-use core::*;

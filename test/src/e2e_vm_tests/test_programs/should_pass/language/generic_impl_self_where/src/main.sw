@@ -2,7 +2,7 @@ script;
 
 mod traits;
 
-use core::ops::*;
+use std::ops::*;
 use std::assert::assert;
 use traits::*;
 use traits::nested_traits::*;
