@@ -48,6 +48,20 @@ impl Format for ElementAccess {
                 target.format(formatted_code, formatter)?;
                 write!(formatted_code, "{}{}", DotToken::AS_STR, field)?;
             }
+            ElementAccess::Deref {
+                target,
+                star_token: _,
+                is_root_element: root_element,
+            } => {
+                if *root_element {
+                    write!(formatted_code, "(")?;
+                }
+                write!(formatted_code, "{}", StarToken::AS_STR)?;
+                target.format(formatted_code, formatter)?;
+                if *root_element {
+                    write!(formatted_code, ")")?;
+                }
+            }
         }
         Ok(())
     }
@@ -113,6 +127,14 @@ impl LeafSpans for ElementAccess {
                 collected_spans.append(&mut target.leaf_spans());
                 collected_spans.push(ByteSpan::from(dot_token.span()));
                 collected_spans.push(ByteSpan::from(field_span.clone()));
+            }
+            ElementAccess::Deref {
+                target,
+                star_token,
+                is_root_element: _,
+            } => {
+                collected_spans.push(ByteSpan::from(star_token.span()));
+                collected_spans.append(&mut target.leaf_spans());
             }
         };
         collected_spans
