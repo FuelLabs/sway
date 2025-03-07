@@ -383,13 +383,7 @@ impl Root {
         for symbol in symbols {
             let (_, path, decl, src_visibility) = &src_mod.root_items().use_item_synonyms[symbol];
             // Preludes reexport all their imports
-            // EXCEPT: In our IR generation tests we compile core in a way that causes forc-pkg to
-            // insert a CONTRACT_ID declaration into core. This gets imported into core::prelude,
-            // but does not get reexported. Hence, in those particular tests we do in fact have a
-            // symbol in core::prelude that does not get reexported.
-            assert!(
-                matches!(src_visibility, Visibility::Public) || symbol.as_str() == "CONTRACT_ID"
-            );
+            assert!(matches!(src_visibility, Visibility::Public));
             imports.push((symbol.clone(), decl.clone(), path.clone()))
         }
 
