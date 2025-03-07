@@ -1,12 +1,11 @@
 predicate;
 
-use std::{
-    inputs::input_coin_owner,
-    logging::log,
-};
-
 fn main() -> bool {
-    log::<Address>(input_coin_owner(0).unwrap());
-        
+    log(42);
     true
+}
+
+#[test]
+fn test_predicate_logs() {
+	assert_eq(main(), true)
 }
