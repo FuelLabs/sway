@@ -13,15 +13,15 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::{
-            AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, Declaration,
-            EnumDeclaration, FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration,
+            AbiDeclaration, ConfigurableDeclaration, ConstGenericDeclaration, ConstantDeclaration,
+            Declaration, EnumDeclaration, FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration,
             StructDeclaration, TraitDeclaration, TraitFn, TraitTypeDeclaration,
             TypeAliasDeclaration,
         },
         ty::{
-            self, TyAbiDecl, TyConfigurableDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl,
-            TyFunctionDecl, TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn,
-            TyTraitType, TyTypeAliasDecl,
+            self, TyAbiDecl, TyConfigurableDecl, TyConstGenericDecl, TyConstantDecl,
+            TyDeclParsedType, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait, TyStorageDecl,
+            TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, TyTypeAliasDecl,
         },
     },
 };
@@ -39,6 +39,7 @@ pub struct DeclEngine {
     abi_slab: ConcurrentSlab<TyAbiDecl>,
     constant_slab: ConcurrentSlab<TyConstantDecl>,
     configurable_slab: ConcurrentSlab<TyConfigurableDecl>,
+    const_generics_slab: ConcurrentSlab<TyConstGenericDecl>,
     enum_slab: ConcurrentSlab<TyEnumDecl>,
     type_alias_slab: ConcurrentSlab<TyTypeAliasDecl>,
 
@@ -59,6 +60,8 @@ pub struct DeclEngine {
         RwLock<HashMap<DeclId<TyConstantDecl>, ParsedDeclId<ConstantDeclaration>>>,
     configurable_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyConfigurableDecl>, ParsedDeclId<ConfigurableDeclaration>>>,
+    const_generics_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyConstGenericDecl>, ParsedDeclId<ConstGenericDeclaration>>>,
     enum_parsed_decl_id_map: RwLock<HashMap<DeclId<TyEnumDecl>, ParsedDeclId<EnumDeclaration>>>,
     type_alias_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyTypeAliasDecl>, ParsedDeclId<TypeAliasDeclaration>>>,
@@ -79,6 +82,7 @@ impl Clone for DeclEngine {
             abi_slab: self.abi_slab.clone(),
             constant_slab: self.constant_slab.clone(),
             configurable_slab: self.configurable_slab.clone(),
+            const_generics_slab: self.const_generics_slab.clone(),
             enum_slab: self.enum_slab.clone(),
             type_alias_slab: self.type_alias_slab.clone(),
             function_parsed_decl_id_map: RwLock::new(
@@ -102,6 +106,9 @@ impl Clone for DeclEngine {
             ),
             configurable_parsed_decl_id_map: RwLock::new(
                 self.configurable_parsed_decl_id_map.read().clone(),
+            ),
+            const_generics_parsed_decl_id_map: RwLock::new(
+                self.const_generics_parsed_decl_id_map.read().clone(),
             ),
             enum_parsed_decl_id_map: RwLock::new(self.enum_parsed_decl_id_map.read().clone()),
             type_alias_parsed_decl_id_map: RwLock::new(
@@ -187,6 +194,7 @@ decl_engine_get!(storage_slab, ty::TyStorageDecl);
 decl_engine_get!(abi_slab, ty::TyAbiDecl);
 decl_engine_get!(constant_slab, ty::TyConstantDecl);
 decl_engine_get!(configurable_slab, ty::TyConfigurableDecl);
+decl_engine_get!(const_generics_slab, ty::TyConstGenericDecl);
 decl_engine_get!(enum_slab, ty::TyEnumDecl);
 decl_engine_get!(type_alias_slab, ty::TyTypeAliasDecl);
 
@@ -257,6 +265,11 @@ decl_engine_insert!(
     configurable_slab,
     configurable_parsed_decl_id_map,
     ty::TyConfigurableDecl
+);
+decl_engine_insert!(
+    const_generics_slab,
+    const_generics_parsed_decl_id_map,
+    ty::TyConstGenericDecl
 );
 decl_engine_insert!(enum_slab, enum_parsed_decl_id_map, ty::TyEnumDecl);
 decl_engine_insert!(
@@ -691,6 +704,18 @@ impl DeclEngine {
     pub fn get_configurable<I>(&self, index: &I) -> Arc<ty::TyConfigurableDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyConfigurableDecl>,
+    {
+        self.get(index)
+    }
+
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_const_generic<I>(&self, index: &I) -> Arc<ty::TyConstGenericDecl>
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyConstGenericDecl>,
     {
         self.get(index)
     }

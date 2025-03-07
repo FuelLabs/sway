@@ -67,6 +67,7 @@ pub enum TypedAstToken {
     TyStructScrutineeField(ty::TyStructScrutineeField),
     TypedConstantDeclaration(ty::TyConstantDecl),
     TypedConfigurableDeclaration(ty::TyConfigurableDecl),
+    TypedConstGenericDeclaration(ty::TyConstGenericDecl),
     TypedTraitTypeDeclaration(ty::TyTraitType),
     TypedFunctionDeclaration(ty::TyFunctionDecl),
     TypedFunctionParameter(ty::TyFunctionParameter),

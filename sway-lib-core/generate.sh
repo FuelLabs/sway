@@ -13,7 +13,7 @@ remove_generated_code "ARRAY_ENCODE"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="impl<T> AbiEncode for [T; $i] where T: AbiEncode { fn abi_encode(self, buffer: Buffer) -> Buffer { let mut buffer = buffer; let mut i = 0; while i < $i { buffer = self[i].abi_encode(buffer); i += 1; }; buffer } }"
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> AbiEncode for [T; $i] where T: AbiEncode { fn abi_encode(self, buffer: Buffer) -> Buffer { let mut buffer = buffer; let mut i = 0; while i < $i { buffer = self[i].abi_encode(buffer); i += 1; }; buffer } }"
     sed -i "s/\/\/ BEGIN ARRAY_ENCODE/\/\/ BEGIN ARRAY_ENCODE\n$CODE/g" ./src/codec.sw
 done
 
