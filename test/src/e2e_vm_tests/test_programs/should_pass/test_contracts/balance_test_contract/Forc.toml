@@ -7,4 +7,4 @@ implicit-std = false
 
 [dependencies]
 balance_test_abi = { path = "../../test_abis/balance_test_abi" }
-std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }
+std = { path = "../../../../../../../sway-lib-std" }
