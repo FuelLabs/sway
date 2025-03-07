@@ -5,11 +5,16 @@ use super::{module::Module, root::Root, ModuleName, ModulePath, ModulePathBuf};
 use rustc_hash::FxHasher;
 use std::hash::BuildHasherDefault;
 
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{
     constants::{CONTRACT_ID, CORE, PRELUDE, STD},
     span::Span,
+    Spanned,
 };
+use sway_utils::iter_prefixes;
 
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug)]
@@ -348,8 +353,11 @@ impl Namespace {
         src: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
+        let dst = &self.current_mod_path;
+        self.check_module_visibility(handler, src)?;
+
         self.root
-            .star_import(handler, engines, src, &self.current_mod_path, visibility)
+            .star_import(handler, engines, src, dst, visibility)
     }
 
     pub(crate) fn variant_star_import_to_current_module(
@@ -360,14 +368,11 @@ impl Namespace {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.root.variant_star_import(
-            handler,
-            engines,
-            src,
-            &self.current_mod_path,
-            enum_name,
-            visibility,
-        )
+        let dst = &self.current_mod_path;
+        self.check_module_visibility(handler, src)?;
+
+        self.root
+            .variant_star_import(handler, engines, src, dst, enum_name, visibility)
     }
 
     pub(crate) fn self_import_to_current_module(
@@ -378,11 +383,14 @@ impl Namespace {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
+        let dst = &self.current_mod_path;
+        self.check_module_visibility(handler, src)?;
+
         self.root.self_import(
             handler,
             engines,
             src,
-            &self.current_mod_path,
+            dst,
             alias,
             visibility,
         )
@@ -397,15 +405,11 @@ impl Namespace {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.root.item_import(
-            handler,
-            engines,
-            src,
-            item,
-            &self.current_mod_path,
-            alias,
-            visibility,
-        )
+        let dst = &self.current_mod_path;
+        self.check_module_visibility(handler, src)?;
+
+        self.root
+            .item_import(handler, engines, src, item, dst, alias, visibility)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -419,15 +423,68 @@ impl Namespace {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
+        let dst = &self.current_mod_path;
+        self.check_module_visibility(handler, src)?;
+
         self.root.variant_import(
             handler,
             engines,
             src,
             enum_name,
             variant_name,
-            &self.current_mod_path,
+            dst,
             alias,
             visibility,
         )
+    }
+
+    /// Check that all accessed modules in the src path are visible from the current module.
+    ///
+    /// Only the module part of the src path will be checked. If the src path contains identifiers
+    /// that refer to non-modules, e.g., enum names or associated types, then the visibility of
+    /// those items will not be checked.
+    ///
+    /// If src and the current module have a common ancestor module that is private, this privacy
+    /// modifier is ignored for visibility purposes, since src and the current module are both
+    /// behind that private visibility modifier.  Additionally, items in a private module are
+    /// visible to its immediate parent.
+    pub(crate) fn check_module_visibility(
+        &self,
+        handler: &Handler,
+        src: &ModulePath,
+    ) -> Result<(), ErrorEmitted> {
+        let dst = &self.current_mod_path;
+
+        // Calculate the number of src prefixes whose visibility is ignored.
+        let mut ignored_prefixes = 0;
+
+        // Ignore visibility of common ancestors
+        ignored_prefixes += src
+            .iter()
+            .zip(dst)
+            .position(|(src_id, dst_id)| src_id != dst_id)
+            .unwrap_or(dst.len());
+
+        // Ignore visibility of direct submodules of the destination module
+        if dst.len() == ignored_prefixes {
+            ignored_prefixes += 1;
+        }
+
+        // Check visibility of remaining submodules in the source path
+        for prefix in iter_prefixes(src).skip(ignored_prefixes) {
+            if let Some(module) = self.module_from_absolute_path(&prefix.to_vec()) {
+                if module.visibility().is_private() {
+                    let prefix_last = prefix[prefix.len() - 1].clone();
+                    handler.emit_err(CompileError::ImportPrivateModule {
+                        span: prefix_last.span(),
+                        name: prefix_last,
+                    });
+                }
+            } else {
+                return Ok(());
+            }
+        }
+
+        Ok(())
     }
 }
