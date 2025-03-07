@@ -288,7 +288,7 @@ pub fn resolve_call_path(
     let (decl, decl_mod_path) = resolve_symbol_and_mod_path(
         handler,
         engines,
-        namespace.root_ref(),
+        namespace,
         &full_path.prefixes,
         &full_path.suffix,
         self_type,
@@ -299,11 +299,7 @@ pub fn resolve_call_path(
     }
 
     // Check that the modules in full_path are visible from the current module.
-    let _ = namespace.root_ref().check_module_privacy(
-        handler,
-        &full_path.prefixes,
-        namespace.current_mod_path(),
-    );
+    let _ = namespace.check_module_visibility(handler, &full_path.prefixes);
 
     // If the full path is different from the declaration path, then we are accessing a reexport,
     // which is by definition public.
@@ -332,16 +328,17 @@ pub fn resolve_call_path(
 pub(super) fn resolve_symbol_and_mod_path(
     handler: &Handler,
     engines: &Engines,
-    root: &Root,
+    namespace: &Namespace,
     mod_path: &ModulePath,
     symbol: &Ident,
     self_type: Option<TypeId>,
 ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
     assert!(!mod_path.is_empty());
+    let root = namespace.root_ref();
     if mod_path[0] == *root.current_package_name() {
         resolve_symbol_and_mod_path_inner(handler, engines, root, mod_path, symbol, self_type)
     } else {
-        match root.get_external_package(&mod_path[0].to_string()) {
+        match namespace.get_external_package(&mod_path[0].to_string()) {
             Some(ext_root) => {
                 // The path must be resolved in an external package.
                 // The root module in that package may have a different name than the name we

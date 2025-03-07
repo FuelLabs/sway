@@ -702,7 +702,7 @@ pub fn parsed_to_ast(
         engines,
         &mut ctx,
         module,
-        typed_program.namespace.root_ref(),
+        &typed_program.namespace,
     ) {
         errs.into_iter().for_each(|err| {
             handler.emit_err(err.clone());
