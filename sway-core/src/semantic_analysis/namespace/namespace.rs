@@ -383,7 +383,7 @@ impl Namespace {
         symbols.sort();
         for symbol in symbols {
             let decl = &src_mod.root_items().symbols[symbol];
-            if is_ancestor(src, &self.current_mod_path) || decl.visibility(engines).is_public() {
+            if self.is_ancestor_of_current_module(src) || decl.visibility(engines).is_public() {
                 decls_and_item_imports.push((symbol.clone(), decl.clone(), src.to_vec()));
             }
         }
@@ -814,7 +814,7 @@ impl Namespace {
         let src_items = src_mod.root_items();
 
         let (decl, path, src_visibility) = if let Some(decl) = src_items.symbols.get(item) {
-            let visibility = if is_ancestor(src, &self.current_mod_path) {
+            let visibility = if self.is_ancestor_of_current_module(src) {
                 Visibility::Public
             } else {
                 decl.visibility(engines)
@@ -923,8 +923,9 @@ impl Namespace {
 
         Ok(())
     }
-}
 
-fn is_ancestor(src: &ModulePath, dst: &ModulePath) -> bool {
-    dst.len() >= src.len() && src.iter().zip(dst).all(|(src, dst)| src == dst)
+    fn is_ancestor_of_current_module(&self, src: &ModulePath) -> bool {
+        let dst = &self.current_mod_path;
+        dst.len() >= src.len() && src.iter().zip(dst).all(|(src, dst)| src == dst)
+    }
 }
