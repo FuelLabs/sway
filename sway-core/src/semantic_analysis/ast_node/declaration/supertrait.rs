@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
@@ -83,6 +85,7 @@ pub(crate) fn insert_supertraits_into_namespace(
                             handler,
                             &mut trait_decl,
                             &mut type_arguments,
+                            BTreeMap::new(),
                             EnforceTypeArguments::Yes,
                             &supertrait.name.span(),
                         )

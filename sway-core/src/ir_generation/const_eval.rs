@@ -296,6 +296,9 @@ fn const_eval_typed_expr(
     }
 
     Ok(match &expr.expression {
+        ty::TyExpressionVariant::ConstGenericExpression { .. } => {
+            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+        }
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
             let implied_lit = match &*lookup.engines.te().get(expr.return_type) {
                 TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
