@@ -79,6 +79,7 @@ impl Parse for ty::TyDecl {
             ty::TyDecl::VariableDecl(decl) => decl.parse(ctx),
             ty::TyDecl::ConstantDecl(decl) => decl.parse(ctx),
             ty::TyDecl::ConfigurableDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::ConstGenericDecl(decl) => decl.parse(ctx),
             ty::TyDecl::FunctionDecl(decl) => decl.parse(ctx),
             ty::TyDecl::TraitDecl(decl) => decl.parse(ctx),
             ty::TyDecl::StructDecl(decl) => decl.parse(ctx),
@@ -306,6 +307,17 @@ impl Parse for ty::TyExpression {
                 ..
             } => {
                 collect_configurable_decl(ctx, decl, Some(&Ident::new(span.clone())));
+                if let Some(call_path) = call_path {
+                    collect_call_path_prefixes(ctx, &call_path.prefixes, call_path.callpath_type);
+                }
+            }
+            ty::TyExpressionVariant::ConstGenericExpression {
+                ref decl,
+                span,
+                call_path,
+                ..
+            } => {
+                collect_const_generic_decl(ctx, decl, Some(&Ident::new(span.clone())));
                 if let Some(call_path) = call_path {
                     collect_call_path_prefixes(ctx, &call_path.prefixes, call_path.callpath_type);
                 }
@@ -662,6 +674,13 @@ impl Parse for ty::ConfigurableDecl {
     fn parse(&self, ctx: &ParseContext) {
         let decl = ctx.engines.de().get_configurable(&self.decl_id);
         collect_configurable_decl(ctx, &decl, None);
+    }
+}
+
+impl Parse for ty::ConstGenericDecl {
+    fn parse(&self, ctx: &ParseContext) {
+        let decl = ctx.engines.de().get_const_generic(&self.decl_id);
+        collect_const_generic_decl(ctx, &decl, None);
     }
 }
 
@@ -1331,6 +1350,20 @@ fn collect_configurable_decl(
     }
     if let Some(value) = &decl.value {
         value.parse(ctx);
+    }
+}
+
+fn collect_const_generic_decl(
+    ctx: &ParseContext,
+    decl: &ty::TyConstGenericDecl,
+    ident: Option<&Ident>,
+) {
+    let key = ctx.ident(ident.unwrap_or(decl.name()));
+
+    if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&key) {
+        token.ast_node =
+            TokenAstNode::Typed(TypedAstToken::TypedConstGenericDeclaration(decl.clone()));
+        token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
     }
 }
 
