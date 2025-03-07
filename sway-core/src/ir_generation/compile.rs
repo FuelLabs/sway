@@ -186,22 +186,24 @@ pub(super) fn compile_contract(
         )?;
     }
 
-    // Fallback function needs to be compiled
-    for decl in declarations {
-        if let ty::TyDecl::FunctionDecl(decl) = decl {
-            let decl_id = decl.decl_id;
-            let decl = engines.de().get(&decl_id);
-            if decl.is_fallback() {
-                compile_abi_method(
-                    context,
-                    &mut md_mgr,
-                    module,
-                    &decl_id,
-                    logged_types_map,
-                    messages_types_map,
-                    engines,
-                    cache,
-                )?;
+    if !context.experimental.new_encoding {
+        // Fallback function needs to be compiled
+        for decl in declarations {
+            if let ty::TyDecl::FunctionDecl(decl) = decl {
+                let decl_id = decl.decl_id;
+                let decl = engines.de().get(&decl_id);
+                if decl.is_fallback() {
+                    compile_abi_method(
+                        context,
+                        &mut md_mgr,
+                        module,
+                        &decl_id,
+                        logged_types_map,
+                        messages_types_map,
+                        engines,
+                        cache,
+                    )?;
+                }
             }
         }
     }
