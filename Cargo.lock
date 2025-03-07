@@ -3511,6 +3511,7 @@ checksum = "ada067d4aaff1acf1175a00edb1c3efbeccf7e2fb414270a2d29eedb2f207c97"
 [[package]]
 name = "fuel-telemetry"
 version = "0.1.0"
+source = "git+https://github.com/FuelLabs/fuel-telemetry.git?branch=fuel-telemetry#5941f3331dcbb1a956fe45871cb543a7d93f1a7e"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -3521,7 +3522,7 @@ dependencies = [
  "regex",
  "reqwest",
  "sysinfo 0.33.1",
- "thiserror 2.0.11",
+ "thiserror 2.0.12",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
@@ -5256,10 +5257,11 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.0.0"
+source = "git+https://github.com/FuelLabs/fuel-telemetry.git?branch=fuel-telemetry#5941f3331dcbb1a956fe45871cb543a7d93f1a7e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.98",
+ "syn 2.0.99",
 ]
 
 [[package]]
@@ -6732,7 +6734,7 @@ checksum = "dd6f9d3d47bdd2ad6945c5015a226ec6155d0bcdfd8f7cd29f86b71f8de99d2b"
 dependencies = [
  "getrandom 0.2.15",
  "libredox 0.1.3",
- "thiserror 2.0.11",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -9582,7 +9584,7 @@ checksum = "9107ddc059d5b6fbfbffdfa7a7fe3e22a226def0b2608f72e9d552763d3e1ad7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.98",
+ "syn 2.0.99",
 ]
 
 [[package]]
@@ -9593,7 +9595,7 @@ checksum = "29bee4b38ea3cde66011baa44dba677c432a78593e202392d1e9070cf2a7fca7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.98",
+ "syn 2.0.99",
 ]
 
 [[package]]
