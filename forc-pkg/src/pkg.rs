@@ -2627,17 +2627,22 @@ pub fn check(
         )
         .map_err(|err| anyhow!("{err}"))?;
 
-        // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
-        // compiler's namespace. Although we only know the contract id during building, we are
-        // inserting a dummy value here to avoid false error signals being reported in LSP.
-        // We only do this for the last node in the compilation order because previous nodes
-        // are dependencies.
-        //
-        // See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
-        const DUMMY_CONTRACT_ID: &str =
-            "0x0000000000000000000000000000000000000000000000000000000000000000";
-        let contract_id_value =
-            (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
+        // Only inject a dummy CONTRACT_ID in LSP mode, not when check() is called from tests or other non-LSP contexts,
+        // to avoid polluting namespaces unnecessarily.
+        let contract_id_value = if lsp_mode.is_some() && (idx == plan.compilation_order.len() - 1) {
+            // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
+            // compiler's namespace. Although we only know the contract id during building, we are
+            // inserting a dummy value here to avoid false error signals being reported in LSP.
+            // We only do this for the last node in the compilation order because previous nodes
+            // are dependencies.
+            //
+            // See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
+            const DUMMY_CONTRACT_ID: &str =
+                "0x0000000000000000000000000000000000000000000000000000000000000000";
+            Some(DUMMY_CONTRACT_ID.to_string())
+        } else {
+            None
+        };
 
         let program_id = engines
             .se()
