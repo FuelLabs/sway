@@ -453,7 +453,7 @@ pub(crate) async fn code_action_struct_existing_impl_request(server: &ServerStat
                 character: 0,
             },
         },
-        "\nimpl A {\n  fn new(a: u64, b: u64) -> Self { Self { a, b } }\n}\n",
+        "\nimpl A {\n    fn new(a: u64, b: u64) -> Self { Self { a, b } }\n}\n",
     );
     expected.push(create_code_action(
         uri.clone(),
