@@ -1,0 +1,14 @@
+contract {
+    global X : u64 = const u64 11
+
+    pub entry fn main() -> u64 {
+        local u64 x
+
+        entry():
+            v0 = get_local u64, x
+            v1 = load v0
+            ret u64 v1
+    }
+}
+
+// not: global X
