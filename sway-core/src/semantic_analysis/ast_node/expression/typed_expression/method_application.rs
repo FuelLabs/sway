@@ -14,7 +14,7 @@ use crate::{
 use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
 use itertools::izip;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -107,11 +107,41 @@ pub(crate) fn type_check_method_application(
         method_result.unwrap()
     };
 
+    // Prepare const generics materialization
+    let mut const_generics = BTreeMap::new();
+
+    let original_decl = engines.de().get(original_decl_ref.id());
+    if !original_decl.const_generic_parameters.is_empty() {
+        let a = engines.te().get(
+            engines.de().get(original_decl_ref.id()).parameters[0]
+                .type_argument
+                .type_id,
+        );
+        let b = engines
+            .te()
+            .get(args_opt_buf[0].0.as_ref().unwrap().return_type);
+        if let (
+            TypeInfo::Array(_, Length::AmbiguousVariableExpression { ident }),
+            TypeInfo::Array(_, Length::Literal { val, .. }),
+        ) = (&*a, &*b)
+        {
+            const_generics.insert(
+                ident.as_str().to_string(),
+                TyExpression {
+                    expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                    return_type: engines.te().id_of_u64(),
+                    span: Span::dummy(),
+                },
+            );
+        }
+    }
+
     let mut fn_ref = monomorphize_method(
         handler,
         ctx.by_ref(),
         original_decl_ref.clone(),
         method_name_binding.type_arguments.to_vec_mut(),
+        const_generics,
     )?;
 
     let mut method = (*decl_engine.get_function(&fn_ref)).clone();
@@ -750,7 +780,7 @@ pub(crate) fn type_check_method_application(
     let fn_app = ty::TyExpressionVariant::FunctionApplication {
         call_path: call_path.clone(),
         arguments,
-        fn_ref,
+        fn_ref: fn_ref.clone(),
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
         call_path_typeid: Some(call_path_typeid),
@@ -951,6 +981,7 @@ pub(crate) fn monomorphize_method(
     mut ctx: TypeCheckContext,
     decl_ref: DeclRefFunction,
     type_arguments: &mut [TypeArgument],
+    const_generics: BTreeMap<String, TyExpression>,
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();
@@ -961,6 +992,7 @@ pub(crate) fn monomorphize_method(
         handler,
         &mut func_decl,
         type_arguments,
+        const_generics,
         EnforceTypeArguments::No,
         &decl_ref.span(),
     )?;

@@ -357,6 +357,7 @@ impl CollectTypesMetadata for TyExpression {
             VariableExpression { .. }
             | ConstantExpression { .. }
             | ConfigurableExpression { .. }
+            | ConstGenericExpression { .. }
             | StorageAccess { .. }
             | Literal(_)
             | AbiName(_)
@@ -368,6 +369,59 @@ impl CollectTypesMetadata for TyExpression {
             }
         }
         Ok(res)
+    }
+}
+
+impl MaterializeConstGenerics for TyExpression {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        self.return_type
+            .materialize_const_generics(engines, handler, name, value)?;
+        match &mut self.expression {
+            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                decl.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::ImplicitReturn(expr) => {
+                expr.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::FunctionApplication { arguments, .. } => {
+                for (_, expr) in arguments {
+                    expr.materialize_const_generics(engines, handler, name, value)?;
+                }
+
+                Ok(())
+            }
+            TyExpressionVariant::WhileLoop { condition, body } => {
+                condition.materialize_const_generics(engines, handler, name, value)?;
+                body.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::Reassignment(expr) => expr
+                .rhs
+                .materialize_const_generics(engines, handler, name, value),
+            TyExpressionVariant::ArrayIndex { prefix, index } => {
+                prefix.materialize_const_generics(engines, handler, name, value)?;
+                index.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::IntrinsicFunction(kind) => {
+                for expr in kind.arguments.iter_mut() {
+                    expr.materialize_const_generics(engines, handler, name, value)?;
+                }
+                Ok(())
+            }
+            TyExpressionVariant::Literal(_) | TyExpressionVariant::VariableExpression { .. } => {
+                Ok(())
+            }
+            _ => Err(handler.emit_err(
+                sway_error::error::CompileError::ConstGenericNotSupportedHere {
+                    span: self.span.clone(),
+                },
+            )),
+        }
     }
 }
 
@@ -498,6 +552,17 @@ impl TyExpression {
                     handler,
                     DeprecatedElement::Configurable,
                     decl.call_path.suffix.as_str(),
+                    allow_deprecated,
+                );
+            }
+            TyExpressionVariant::ConstGenericExpression { span, .. } => {
+                // Const generics don´t have attributes,
+                // so deprecation warnings cannot be turned off
+                emit_warning_if_deprecated(
+                    &AttributesMap::default(),
+                    span,
+                    handler,
+                    "deprecated configurable",
                     allow_deprecated,
                 );
             }
