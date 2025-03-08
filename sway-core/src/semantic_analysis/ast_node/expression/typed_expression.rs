@@ -48,7 +48,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, u256::U256, BaseIdent, Ident, Named, Span, Spanned};
 use symbol_collection_context::SymbolCollectionContext;
 use type_resolve::{resolve_call_path, VisibilityCheck};
 
@@ -2046,6 +2046,12 @@ impl ty::TyExpression {
             _ => TypeInfo::Unknown,
         };
         let elem_type = type_engine.insert(engines, elem_type, None);
+        let elem_type_arg = TypeArgument {
+            type_id: elem_type,
+            initial_type_id: elem_type,
+            span: span.clone(),
+            call_path_tree: None,
+        };
 
         let value_ctx = ctx
             .by_ref()
@@ -2058,17 +2064,25 @@ impl ty::TyExpression {
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.id_of_u64());
-        let length = Self::type_check(handler, length_ctx, length)
+        let length_expr = Self::type_check(handler, length_ctx, length)
             .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
-        let length_u64 = length.as_literal_u64().unwrap() as usize;
+        let length = match &length_expr.expression {
+            TyExpressionVariant::Literal(Literal::U64(val)) => Length::Literal { 
+                val: *val as usize,
+                span: span.clone()
+            },
+            TyExpressionVariant::ConstGenericExpression { span, .. } => Length::AmbiguousVariableExpression {
+                ident: BaseIdent::new_no_span(span.as_str().into()) // TODO improve this
+            },
+            _ => return Err(handler.emit_err(CompileError::ConstGenericNotSupportedHere { span })),
+        };
 
-        let return_type =
-            type_engine.insert_array_without_annotations(engines, elem_type, length_u64);
+        let return_type = type_engine.insert_array(engines, elem_type_arg, length);
         Ok(ty::TyExpression {
             expression: ty::TyExpressionVariant::ArrayRepeat {
                 elem_type,
                 value: Box::new(value),
-                length: Box::new(length),
+                length: Box::new(length_expr),
             },
             return_type,
             span,
