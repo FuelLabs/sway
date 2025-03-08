@@ -12,6 +12,7 @@ repository.workspace = true
 ansiterm.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["ansi", "env-filter", "json"] }
+fuel-telemetry.workspace = true
 
 [dev-dependencies]
 tracing-test.workspace = true
