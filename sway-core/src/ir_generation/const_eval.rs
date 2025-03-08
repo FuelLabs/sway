@@ -308,8 +308,12 @@ fn const_eval_typed_expr(
     }
 
     Ok(match &expr.expression {
-        ty::TyExpressionVariant::ConstGenericExpression { .. } => {
-            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+        ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+            const_eval_typed_expr(
+                lookup,
+                known_consts,
+                decl.value.as_ref().unwrap() // TODO unwrap
+            )?
         }
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
             let implied_lit = match &*lookup.engines.te().get(expr.return_type) {
