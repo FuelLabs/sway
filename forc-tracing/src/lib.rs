@@ -4,11 +4,12 @@ use ansiterm::Colour;
 use fuel_telemetry::WorkerGuard;
 use std::str;
 use std::{env, io};
-use tracing::{Level, Metadata};
+use tracing::{Level, Metadata, Subscriber};
 pub use tracing_subscriber::{
     self,
     filter::{EnvFilter, LevelFilter},
     fmt::{format::FmtSpan, MakeWriter},
+    layer::{Context, Filter},
     prelude::__tracing_subscriber_SubscriberExt,
     util::SubscriberInitExt,
     Layer,
@@ -174,6 +175,37 @@ pub struct TracingSubscriberOptions {
     pub writer_mode: Option<TracingWriterMode>,
 }
 
+struct HideTelemetryFilter<S: Subscriber> {
+    _marker: std::marker::PhantomData<S>,
+}
+
+impl<S: Subscriber> HideTelemetryFilter<S> {
+    fn new<F: Filter<S>>(_inner: F) -> Self {
+        Self {
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<S> Filter<S> for HideTelemetryFilter<S>
+where
+    S: Subscriber + for<'lookup> tracing_subscriber::registry::LookupSpan<'lookup>
+{
+    fn enabled(&self, _meta: &Metadata<'_>, ctx: &Context<'_, S>) -> bool {
+        if let Some(span) = ctx.lookup_current() {
+            if span
+                .fields()
+                .iter()
+                .any(|field| field.name() == "telemetry")
+            {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
@@ -210,9 +242,11 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
 
     // If log level, verbosity, or silent mode is set, it overrides the RUST_LOG setting
     if let Some(level_filter) = level_filter {
+        let hide_telemetry_filter = HideTelemetryFilter::new(level_filter);
+
         tracing_subscriber::registry()
             .with(telemetry_layer)
-            .with(layer.with_filter(level_filter))
+            .with(layer.with_filter(hide_telemetry_filter))
             .init()
     } else {
         let env_filter = match env::var_os(LOG_FILTER) {
@@ -220,9 +254,11 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
             None => EnvFilter::new("info"),
         };
 
+        let hide_telemetry_filter = HideTelemetryFilter::new(env_filter);
+
         tracing_subscriber::registry()
             .with(telemetry_layer)
-            .with(layer.with_filter(env_filter))
+            .with(layer.with_filter(hide_telemetry_filter))
             .init()
     }
 
