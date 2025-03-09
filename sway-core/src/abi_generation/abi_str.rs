@@ -93,7 +93,7 @@ impl TypeInfo {
             Never => "never".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
-            TypeParam(n) => format!("typeparam({n})"),
+            TypeParam(param) => format!("typeparam({})", param.name),
             StringSlice => "str".into(),
             StringArray(length) => format!("str[{}]", length.val()),
             UnsignedInteger(x) => match x {
