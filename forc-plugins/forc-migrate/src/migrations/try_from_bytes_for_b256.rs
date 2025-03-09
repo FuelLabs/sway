@@ -91,7 +91,9 @@ fn replace_b256_from_bytes_to_try_from_bytes_step(
             let lexed_from_call_path = match lexed_fn_call {
                 Expr::FuncApp { func, args: _ } => match func.as_mut() {
                     Expr::Path(path_expr) => path_expr,
-                    _ => bail!("`func` of the `lexed_fn_call` must be of the variant `Expr::Path`."),
+                    _ => {
+                        bail!("`func` of the `lexed_fn_call` must be of the variant `Expr::Path`.")
+                    }
                 },
                 _ => bail!("`lexed_fn_call` must be of the variant `Expr::FuncApp`."),
             };
