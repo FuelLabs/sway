@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     fmt,
     hash::{DefaultHasher, Hash, Hasher},
     sync::Arc,
@@ -148,7 +148,7 @@ impl ResolvedTraitImplItem {
 }
 
 /// Map of name to [ResolvedTraitImplItem](ResolvedTraitImplItem)
-type TraitItems = HashMap<String, ResolvedTraitImplItem>;
+type TraitItems = BTreeMap<String, ResolvedTraitImplItem>;
 
 #[derive(Clone, Debug)]
 pub(crate) struct TraitValue {
@@ -166,7 +166,7 @@ pub(crate) struct TraitEntry {
 /// Map of string of type entry id and vec of [TraitEntry].
 /// We are using the HashMap as a wrapper to the vec so the TraitMap algorithms
 /// don't need to traverse every TraitEntry.
-pub(crate) type TraitImpls = HashMap<TypeRootFilter, Vec<TraitEntry>>;
+pub(crate) type TraitImpls = BTreeMap<TypeRootFilter, Vec<TraitEntry>>;
 
 #[derive(Clone, Hash, Eq, PartialOrd, Ord, PartialEq, Debug)]
 pub(crate) enum TypeRootFilter {
@@ -243,7 +243,7 @@ impl TraitMap {
         let unaliased_type_id = engines.te().get_unaliased_type_id(type_id);
 
         handler.scope(|handler| {
-            let mut trait_items: TraitItems = HashMap::new();
+            let mut trait_items: TraitItems = BTreeMap::new();
             for item in items.iter() {
                 match item {
                     ResolvedTraitImplItem::Parsed(_) => todo!(),
@@ -381,9 +381,7 @@ impl TraitMap {
                 } else if types_are_subset
                     && (traits_are_subset || matches!(is_impl_self, IsImplSelf::Yes))
                 {
-                    let mut names = trait_items.keys().clone().collect::<Vec<_>>();
-                    names.sort();
-                    for name in names {
+                    for name in trait_items.keys() {
                         let item = &trait_items[name];
                         match item {
                             ResolvedTraitImplItem::Parsed(_item) => todo!(),
@@ -499,7 +497,7 @@ impl TraitMap {
             impl_span,
         };
         let entry = TraitEntry { key, value };
-        let mut trait_impls: TraitImpls = HashMap::<TypeRootFilter, Vec<TraitEntry>>::new();
+        let mut trait_impls: TraitImpls = BTreeMap::<TypeRootFilter, Vec<TraitEntry>>::new();
         let type_root_filter = Self::get_type_root_filter(engines, type_id);
         let impls_vector = vec![entry];
         trait_impls.insert(type_root_filter, impls_vector);
@@ -515,9 +513,7 @@ impl TraitMap {
     /// Given [TraitMap]s `self` and `other`, extend `self` with `other`,
     /// extending existing entries when possible.
     pub(crate) fn extend(&mut self, other: TraitMap, engines: &Engines) {
-        let mut impls_keys = other.trait_impls.keys().clone().collect::<Vec<_>>();
-        impls_keys.sort();
-        for impls_key in impls_keys {
+        for impls_key in other.trait_impls.keys() {
             let oe_vec = &other.trait_impls[impls_key];
             let self_vec = if let Some(self_vec) = self.trait_impls.get_mut(impls_key) {
                 self_vec
@@ -547,9 +543,7 @@ impl TraitMap {
     /// the entries from `self` that implement a trait from the declaration with that span.
     pub(crate) fn filter_by_trait_decl_span(&self, trait_decl_span: Span) -> TraitMap {
         let mut trait_map = TraitMap::default();
-        let mut keys = self.trait_impls.keys().clone().collect::<Vec<_>>();
-        keys.sort();
-        for key in keys {
+        for key in self.trait_impls.keys() {
             let vec = &self.trait_impls[key];
             for entry in vec {
                 if entry.key.trait_decl_span.as_ref() == Some(&trait_decl_span) {
