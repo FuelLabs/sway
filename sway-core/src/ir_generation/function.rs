@@ -3690,7 +3690,7 @@ impl<'eng> FnCompiler<'eng> {
             elem_type,
         )?;
 
-        let length_as_u64 =  compile_constant_expression_to_constant(
+        let length_as_u64 = compile_constant_expression_to_constant(
             self.engines,
             context,
             md_mgr,

@@ -150,7 +150,9 @@ impl MaterializeConstGenerics for TyFunctionDecl {
                 .type_id
                 .materialize_const_generics(engines, handler, name, value)?;
         }
-        self.return_type.type_id.materialize_const_generics(engines, handler, name, value)?;
+        self.return_type
+            .type_id
+            .materialize_const_generics(engines, handler, name, value)?;
         self.body
             .materialize_const_generics(engines, handler, name, value)
     }
