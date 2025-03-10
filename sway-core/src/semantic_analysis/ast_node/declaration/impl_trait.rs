@@ -17,8 +17,9 @@ use crate::{
     language::{
         parsed::*,
         ty::{
-            self, ConstantDecl, TyConstantDecl, TyDecl, TyFunctionDecl, TyImplItem,
-            TyImplSelfOrTrait, TyTraitInterfaceItem, TyTraitItem, TyTraitType,
+            self, ConstGenericDecl, ConstantDecl, TyConstGenericDecl, TyConstantDecl, TyDecl,
+            TyFunctionDecl, TyImplItem, TyImplSelfOrTrait, TyTraitInterfaceItem, TyTraitItem,
+            TyTraitType,
         },
         *,
     },
@@ -53,6 +54,16 @@ impl TyImplSelfOrTrait {
             impl_trait.block_span.clone(),
             Some(decl),
             |scoped_ctx| {
+                for const_generic_parameter in &impl_trait.impl_const_generics_parameters {
+                    let const_generic_decl = engines.pe().get(const_generic_parameter);
+                    scoped_ctx.insert_parsed_symbol(
+                        handler,
+                        engines,
+                        const_generic_decl.name.clone(),
+                        Declaration::ConstGenericDeclaration(*const_generic_parameter),
+                    )?;
+                }
+
                 impl_trait.items.iter().for_each(|item| match item {
                     ImplItem::Fn(decl_id) => {
                         let _ = TyFunctionDecl::collect(handler, engines, scoped_ctx, decl_id);
@@ -139,15 +150,30 @@ impl TyImplSelfOrTrait {
             .with_self_type(Some(self_type_id))
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |ctx| {
-                // Notify the user that const generic is still not supported here, but let the compilation
-                // continue
                 for const_generic_decl_id in impl_const_generics_parameters {
-                    let decl = engines.pe().get(&const_generic_decl_id);
-                    if ctx.experimental.const_generics {
-                        handler.emit_err(CompileError::ConstGenericNotSupportedHere {
-                            span: decl.span.clone(),
-                        });
-                    }
+                    let const_generic_decl = engines.pe().get(&const_generic_decl_id);
+
+                    let decl_ref = engines.de().insert(
+                        TyConstGenericDecl {
+                            call_path: CallPath {
+                                prefixes: vec![],
+                                suffix: const_generic_decl.name.clone(),
+                                callpath_type: CallPathType::Ambiguous,
+                            },
+                            span: const_generic_decl.span.clone(),
+                            return_type: const_generic_decl.ty,
+                            value: None,
+                        },
+                        Some(&const_generic_decl_id),
+                    );
+
+                    ctx.insert_symbol(
+                        handler,
+                        const_generic_decl.name.clone(),
+                        TyDecl::ConstGenericDecl(ConstGenericDecl {
+                            decl_id: *decl_ref.id(),
+                        }),
+                    )?;
                 }
 
                 // Type check the type parameters
@@ -234,6 +260,7 @@ impl TyImplSelfOrTrait {
                             handler,
                             &mut trait_decl,
                             &mut trait_type_arguments,
+                            BTreeMap::new(),
                             EnforceTypeArguments::Yes,
                             &trait_name.span(),
                         )?;
@@ -563,6 +590,7 @@ impl TyImplSelfOrTrait {
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
                         impl_trait.implementing_for.type_id,
+                        impl_trait.impl_type_parameters.clone(),
                         &impl_trait.items,
                         &impl_trait.span,
                         impl_trait
@@ -820,6 +848,7 @@ fn type_check_trait_implementation(
             trait_name.clone(),
             trait_type_arguments.to_vec(),
             implementing_for,
+            impl_type_parameters.to_vec(),
             &this_supertrait_impld_method_refs
                 .values()
                 .cloned()

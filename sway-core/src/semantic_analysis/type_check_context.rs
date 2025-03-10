@@ -1,12 +1,12 @@
 #![allow(clippy::mutable_key_type)]
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclRefFunction},
+    decl_engine::{DeclEngineGet, DeclRefFunction, MaterializeConstGenerics},
     engine_threading::*,
     language::{
         parsed::TreeType,
-        ty::{self, TyDecl},
+        ty::{self, TyDecl, TyExpression},
         CallPath, QualifiedCallPath, Visibility,
     },
     monomorphization::{monomorphize_with_modpath, MonomorphizeHelper},
@@ -19,7 +19,8 @@ use crate::{
         Namespace,
     },
     type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
-    EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeSubstMap, UnifyCheck,
+    EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap,
+    UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
@@ -531,11 +532,12 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
+        const_generics: BTreeMap<String, TyExpression>,
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
     ) -> Result<(), ErrorEmitted>
     where
-        T: MonomorphizeHelper + SubstTypes,
+        T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
     {
         let mod_path = self.namespace().current_mod_path().clone();
         monomorphize_with_modpath(
@@ -544,6 +546,7 @@ impl<'a> TypeCheckContext<'a> {
             self.namespace(),
             value,
             type_arguments,
+            const_generics,
             enforce_type_arguments,
             call_site_span,
             &mod_path,
@@ -1289,6 +1292,7 @@ impl<'a> TypeCheckContext<'a> {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
+        mut impl_type_parameters: Vec<TypeParameter>,
         items: &[ty::TyImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
@@ -1296,6 +1300,20 @@ impl<'a> TypeCheckContext<'a> {
         is_extending_existing_impl: IsExtendingExistingImpl,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
+
+        // Use trait name with full path, improves consistency between
+        // this inserting and getting in `get_methods_for_type_and_trait_name`.
+        impl_type_parameters.iter_mut().for_each(|tp| {
+            tp.trait_constraints.iter_mut().for_each(|tc| {
+                tc.trait_name = tc.trait_name.to_fullpath(self.engines(), self.namespace())
+            })
+        });
+
+        let impl_type_parameters_ids = impl_type_parameters
+            .iter()
+            .map(|type_parameter| engines.te().new_type_param(type_parameter.clone()))
+            .collect::<Vec<_>>();
+
         // CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
         // to the actual trait declaration. Since the path of the trait declaration is used as a key
         // in the trait map, we need to find the actual declaration path.
@@ -1314,6 +1332,7 @@ impl<'a> TypeCheckContext<'a> {
                 canonical_trait_path,
                 trait_type_args,
                 type_id,
+                impl_type_parameters_ids,
                 &items,
                 impl_span,
                 trait_decl_span,

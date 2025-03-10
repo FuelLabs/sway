@@ -197,6 +197,7 @@ impl<'a> UnifyCheck<'a> {
             ignore_generic_names: false,
         }
     }
+
     pub(crate) fn non_generic_constraint_subset(engines: &'a Engines) -> Self {
         Self {
             engines,
@@ -291,6 +292,9 @@ impl<'a> UnifyCheck<'a> {
                             Length::AmbiguousVariableExpression { ident: l },
                             Length::AmbiguousVariableExpression { ident: r },
                         ) => l == r,
+                        (Length::Literal { .. }, Length::AmbiguousVariableExpression { .. }) => {
+                            true
+                        }
                         _ => false,
                     }
                 };
@@ -862,4 +866,43 @@ impl<'a> UnifyCheck<'a> {
 
         self.check_multiple(&l_types, &r_types)
     }
+}
+
+#[test]
+pub fn array_constraint_subset() {
+    let engines = Engines::default();
+    let array_u64_1 = engines.te().insert_array(
+        &engines,
+        TypeArgument {
+            type_id: engines.te().id_of_u64(),
+            initial_type_id: engines.te().id_of_u64(),
+            span: sway_types::Span::dummy(),
+            call_path_tree: None,
+        },
+        Length::Literal {
+            val: 1,
+            span: sway_types::Span::dummy(),
+        },
+    );
+    let array_u64_n = engines.te().insert_array(
+        &engines,
+        TypeArgument {
+            type_id: engines.te().id_of_u64(),
+            initial_type_id: engines.te().id_of_u64(),
+            span: sway_types::Span::dummy(),
+            call_path_tree: None,
+        },
+        Length::AmbiguousVariableExpression {
+            ident: sway_types::BaseIdent::new_no_span("N".into()),
+        },
+    );
+
+    // [u64; 1] is a subset of [u64; N]
+    let check = UnifyCheck::constraint_subset(&engines);
+    assert!(check.check(array_u64_1, array_u64_n));
+    assert!(!check.check(array_u64_n, array_u64_1));
+
+    let check = UnifyCheck::non_generic_constraint_subset(&engines);
+    assert!(check.check(array_u64_1, array_u64_n));
+    assert!(!check.check(array_u64_n, array_u64_1));
 }

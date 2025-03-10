@@ -260,6 +260,9 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { .. }) => {
                     unreachable!()
                 }
+                ty::TyDecl::ConstGenericDecl(_) => {
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.engines.de().get_enum(decl_id);
                     create_tagged_union_type(
@@ -546,6 +549,10 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::ConfigurableExpression {
                 decl: const_decl, ..
             } => self.compile_config_expr(context, const_decl, span_md_idx),
+            ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                let value = decl.value.as_ref().unwrap();
+                self.compile_expression(context, md_mgr, value)
+            }
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..
             } => self.compile_var_expr(context, call_path, name, span_md_idx),
@@ -3322,11 +3329,16 @@ impl<'eng> FnCompiler<'eng> {
             Ok(TerminatorValue::new(val, context))
         } else if let Some(val) = self.function.get_arg(context, name.as_str()) {
             Ok(TerminatorValue::new(val, context))
-        } else if let Some(const_val) = self
+        } else if let Some(global_val) = self
             .module
-            .get_global_constant(context, &call_path.as_vec_string())
+            .get_global_variable(context, &call_path.as_vec_string())
         {
-            Ok(TerminatorValue::new(const_val, context))
+            let val = self
+                .current_block
+                .append(context)
+                .get_global(global_val)
+                .add_metadatum(context, span_md_idx);
+            Ok(TerminatorValue::new(val, context))
         } else if self
             .module
             .get_config(context, &call_path.suffix.to_string())
