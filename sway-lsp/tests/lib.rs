@@ -268,8 +268,8 @@ fn lsp_syncs_with_workspace_edits() {
             req_line: 44,
             req_char: 24,
             def_line: 19,
-            def_start_char: 5,
-            def_end_char: 19,
+            def_start_char: 7,
+            def_end_char: 11,
             def_path: uri.as_str(),
         };
         lsp::definition_check(service.inner(), &go_to).await;
