@@ -424,12 +424,12 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::Ref(r) => {
                 r.materialize_const_generics(engines, handler, name, value)
             }
-            x => {
+            _ => 
                 Err(handler.emit_err(
                     sway_error::error::CompileError::ConstGenericNotSupportedHere {
                         span: self.span.clone(),
                     }))
-                },
+                ,
         }
     }
 }

@@ -309,10 +309,11 @@ fn const_eval_typed_expr(
 
     Ok(match &expr.expression {
         ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+            assert!(decl.value.is_some());
             const_eval_typed_expr(
                 lookup,
                 known_consts,
-                decl.value.as_ref().unwrap() // TODO unwrap
+                decl.value.as_ref().unwrap(),
             )?
         }
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
