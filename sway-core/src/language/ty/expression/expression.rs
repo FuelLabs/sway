@@ -555,17 +555,8 @@ impl TyExpression {
                     allow_deprecated,
                 );
             }
-            TyExpressionVariant::ConstGenericExpression { span, .. } => {
-                // Const generics don´t have attributes,
-                // so deprecation warnings cannot be turned off
-                emit_warning_if_deprecated(
-                    &AttributesMap::default(),
-                    span,
-                    handler,
-                    "deprecated configurable",
-                    allow_deprecated,
-                );
-            }
+            // Const generics don´t have attributes, so deprecation warnings cannot be turned off.
+            TyExpressionVariant::ConstGenericExpression { .. } => {}
             TyExpressionVariant::VariableExpression { .. } => {}
             TyExpressionVariant::Tuple { fields } => {
                 for e in fields {
