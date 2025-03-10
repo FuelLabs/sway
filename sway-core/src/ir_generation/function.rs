@@ -189,12 +189,32 @@ impl<'eng> FnCompiler<'eng> {
         result
     }
 
-    pub(super) fn compile_code_block_to_value(
+    pub(super) fn compile_fn_to_value(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_block: &ty::TyCodeBlock,
     ) -> Result<Value, Vec<CompileError>> {
+        // Function arguments, like all locals need to be in memory, so that their addresses
+        // can be taken. So we create locals for each argument and store the value there.
+        let entry = self.function.get_entry_block(context);
+        for (arg_name, arg_value) in self
+            .function
+            .args_iter(context)
+            .cloned()
+            .collect::<Vec<_>>()
+        {
+            let local_name = self.lexical_map.insert(arg_name.as_str().to_owned());
+            let local_var = self.function.new_unique_local_var(
+                context,
+                local_name,
+                arg_value.get_type(context).unwrap(),
+                None,
+                false,
+            );
+            let local_val = entry.append(context).get_local(local_var);
+            entry.append(context).store(local_val, arg_value);
+        }
         Ok(self.compile_code_block(context, md_mgr, ast_block)?.value)
     }
 
