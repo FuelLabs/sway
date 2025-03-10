@@ -48,7 +48,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, u256::U256, BaseIdent, Ident, Named, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
 use symbol_collection_context::SymbolCollectionContext;
 use type_resolve::{resolve_call_path, VisibilityCheck};
 
@@ -2073,7 +2073,7 @@ impl ty::TyExpression {
             },
             TyExpressionVariant::ConstGenericExpression { call_path, .. } => {
                 Length::AmbiguousVariableExpression {
-                    ident: call_path.suffix.clone()
+                    ident: call_path.suffix.clone(),
                 }
             }
             _ => return Err(handler.emit_err(CompileError::ConstGenericNotSupportedHere { span })),
