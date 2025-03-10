@@ -342,6 +342,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                     indices,
                 } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
                 InstOp::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
+                InstOp::GetGlobal(global_var) => self.compile_get_global(instr_val, global_var),
                 InstOp::GetConfig(_, name) => self.compile_get_config(instr_val, name),
                 InstOp::IntToPtr(val, _) => self.compile_int_to_ptr(instr_val, val),
                 InstOp::Load(src_val) => self.compile_load(handler, instr_val, src_val)?,
@@ -468,6 +469,10 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         elem_ptr_ty: &Type,
         indices: &[Value],
     ) {
+        todo!();
+    }
+
+    fn compile_get_global(&mut self, instr_val: &Value, global_var: &GlobalVar) {
         todo!();
     }
 
