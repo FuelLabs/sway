@@ -2067,13 +2067,15 @@ impl ty::TyExpression {
         let length_expr = Self::type_check(handler, length_ctx, length)
             .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
         let length = match &length_expr.expression {
-            TyExpressionVariant::Literal(Literal::U64(val)) => Length::Literal { 
+            TyExpressionVariant::Literal(Literal::U64(val)) => Length::Literal {
                 val: *val as usize,
-                span: span.clone()
+                span: span.clone(),
             },
-            TyExpressionVariant::ConstGenericExpression { span, .. } => Length::AmbiguousVariableExpression {
-                ident: BaseIdent::new_no_span(span.as_str().into()) // TODO improve this
-            },
+            TyExpressionVariant::ConstGenericExpression { span, .. } => {
+                Length::AmbiguousVariableExpression {
+                    ident: BaseIdent::new_no_span(span.as_str().into()), // TODO improve this
+                }
+            }
             _ => return Err(handler.emit_err(CompileError::ConstGenericNotSupportedHere { span })),
         };
 
