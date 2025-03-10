@@ -703,11 +703,11 @@ impl ty::TyExpression {
                     expression: ty::TyExpressionVariant::ConstGenericExpression {
                         decl: Box::new(decl),
                         span: name.span(),
-                        call_path: Some(CallPath {
+                        call_path: CallPath {
                             prefixes: vec![],
                             suffix: name.clone(),
                             callpath_type: CallPathType::Ambiguous,
-                        }),
+                        },
                     },
                     span,
                 }
@@ -2071,9 +2071,9 @@ impl ty::TyExpression {
                 val: *val as usize,
                 span: span.clone(),
             },
-            TyExpressionVariant::ConstGenericExpression { span, .. } => {
+            TyExpressionVariant::ConstGenericExpression { call_path, .. } => {
                 Length::AmbiguousVariableExpression {
-                    ident: BaseIdent::new_no_span(span.as_str().into()), // TODO improve this
+                    ident: call_path.suffix.clone()
                 }
             }
             _ => return Err(handler.emit_err(CompileError::ConstGenericNotSupportedHere { span })),
