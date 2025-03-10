@@ -52,7 +52,7 @@ pub enum TyExpressionVariant {
     ConstGenericExpression {
         span: Span,
         decl: Box<TyConstGenericDecl>,
-        call_path: Option<CallPath>,
+        call_path: CallPath,
     },
     VariableExpression {
         name: Ident,

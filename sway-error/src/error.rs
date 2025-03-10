@@ -1076,7 +1076,6 @@ impl Spanned for CompileError {
     fn span(&self) -> Span {
         use CompileError::*;
         match self {
-            ArrayLengthMustBeU64 { span, .. } => span.clone(),
             ConstGenericNotSupportedHere { span } => span.clone(),
             LengthExpressionNotSupported { span } => span.clone(),
             FeatureIsDisabled { span, .. } => span.clone(),
