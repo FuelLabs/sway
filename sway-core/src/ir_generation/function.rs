@@ -3699,7 +3699,8 @@ impl<'eng> FnCompiler<'eng> {
             Some(self),
             length_expr,
         )?;
-        let length_as_u64 = length_as_u64.get_content(context).as_uint().unwrap(); //TODO unwrap
+        // SAFETY: Safe by the type-checking, that only allows u64 as the array length
+        let length_as_u64 = length_as_u64.get_content(context).as_uint().unwrap();
         let array_type = Type::new_array(context, elem_type, length_as_u64);
 
         let temp_name = self.lexical_map.insert_anon();
