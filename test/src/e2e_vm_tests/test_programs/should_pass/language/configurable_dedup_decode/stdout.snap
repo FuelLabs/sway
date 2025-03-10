@@ -1,5 +1,6 @@
 ---
 source: test/tests/tests.rs
+assertion_line: 115
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
 exit status: 0
