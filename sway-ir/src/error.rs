@@ -37,6 +37,7 @@ pub enum IrError {
     VerifyGepInconsistentTypes(String, Option<crate::Value>),
     VerifyGepOnNonAggregate,
     VerifyGetNonExistentPointer,
+    VerifyGlobalMissingInitializer(String),
     VerifyInsertElementOfIncorrectType,
     VerifyInsertValueOfIncorrectType,
     VerifyIntToPtrFromNonIntegerType(String),
@@ -44,6 +45,7 @@ pub enum IrError {
     VerifyIntToPtrUnknownSourceType,
     VerifyInvalidGtfIndexType,
     VerifyLoadFromNonPointer(String),
+    VerifyLocalMissingInitializer(String, String),
     VerifyLogId,
     VerifyLogMismatchedTypes,
     VerifyMemcopyNonPointer(String),
@@ -121,10 +123,10 @@ impl fmt::Display for IrError {
             }
             IrError::InconsistentParent(entity, expected_parent, found_parent) => {
                 write!(
-                    f,
-                    "For IR Entity (module/function/block) {entity}, expected parent to be {expected_parent}, \
+                                    f,
+                                    "For IR Entity (module/function/block) {entity}, expected parent to be {expected_parent}, \
                     but found {found_parent}."
-                )
+                                )
             }
             IrError::VerifyArgumentValueIsNotArgument(callee) => write!(
                 f,
@@ -160,9 +162,9 @@ impl fmt::Display for IrError {
             }
             IrError::VerifyCallArgTypeMismatch(callee, caller_ty, callee_ty) => {
                 write!(
-                    f,
-                    "Verification failed: Type mismatch found for call to '{callee}': {caller_ty} is not a {callee_ty}."
-                )
+                                    f,
+                                    "Verification failed: Type mismatch found for call to '{callee}': {caller_ty} is not a {callee_ty}."
+                                )
             }
             IrError::VerifyCallToMissingFunction(callee) => {
                 write!(
@@ -282,23 +284,23 @@ impl fmt::Display for IrError {
             IrError::VerifyEntryBlockHasPredecessors(function_name, predecessors) => {
                 let plural_s = if predecessors.len() == 1 { "" } else { "s" };
                 write!(
-                    f,
-                    "Verification failed: Entry block of the function \"{function_name}\" has {}predecessor{}. \
+                                    f,
+                                    "Verification failed: Entry block of the function \"{function_name}\" has {}predecessor{}. \
                      The predecessor{} {} {}.",
-                    if predecessors.len() == 1 {
-                        "a "
-                    } else {
-                        ""
-                    },
-                    plural_s,
-                    plural_s,
-                    if predecessors.len() == 1 {
-                        "is"
-                    } else {
-                        "are"
-                    },
-                    predecessors.iter().map(|block_label| format!("\"{block_label}\"")).collect_vec().join(", ")
-                )
+                                    if predecessors.len() == 1 {
+                                        "a "
+                                    } else {
+                                        ""
+                                    },
+                                    plural_s,
+                                    plural_s,
+                                    if predecessors.len() == 1 {
+                                        "is"
+                                    } else {
+                                        "are"
+                                    },
+                                    predecessors.iter().map(|block_label| format!("\"{block_label}\"")).collect_vec().join(", ")
+                                )
             }
             IrError::VerifyBlockArgMalformed => {
                 write!(f, "Verification failed: Block argument is malformed")
@@ -418,6 +420,20 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: smo coins value must be an integer."
+                )
+            }
+            IrError::VerifyGlobalMissingInitializer(global_name) => {
+                write!(
+                    f,
+                    "Verification failed: Immutable global variable {global_name}\
+                    is missing an initializer."
+                )
+            }
+            IrError::VerifyLocalMissingInitializer(local_name, func_name) => {
+                write!(
+                    f,
+                    "Verification failed: Immutable local variable {local_name} in function \
+                    {func_name} is missing an initializer."
                 )
             }
         }
