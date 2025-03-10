@@ -275,7 +275,7 @@ fn lsp_syncs_with_workspace_edits() {
         lsp::definition_check(service.inner(), &go_to).await;
         let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
         service.inner().wait_for_parsing().await;
-        go_to.def_line = 8;
+        go_to.def_line = 20;
         lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24).await;
         shutdown_and_exit(&mut service).await;
     });
