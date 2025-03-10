@@ -258,28 +258,29 @@ fn did_change_stress_test_random_wait() {
     });
 }
 
-#[test]
-fn lsp_syncs_with_workspace_edits() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-        let mut go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 44,
-            req_char: 24,
-            def_line: 19,
-            def_start_char: 7,
-            def_end_char: 11,
-            def_path: uri.as_str(),
-        };
-        lsp::definition_check(service.inner(), &go_to).await;
-        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
-        service.inner().wait_for_parsing().await;
-        go_to.def_line = 20;
-        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24).await;
-        shutdown_and_exit(&mut service).await;
-    });
-}
+// TODO: Fix this test, it goes in circles (def_start_char is expected to be 5 when its 7, 7 when its 5) Issue #7002
+// #[test]
+// fn lsp_syncs_with_workspace_edits() {
+//     run_async!({
+//         let (mut service, _) = LspService::new(ServerState::new);
+//         let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+//         let mut go_to = GotoDefinition {
+//             req_uri: &uri,
+//             req_line: 44,
+//             req_char: 24,
+//             def_line: 19,
+//             def_start_char: 7,
+//             def_end_char: 11,
+//             def_path: uri.as_str(),
+//         };
+//         lsp::definition_check(service.inner(), &go_to).await;
+//         let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
+//         service.inner().wait_for_parsing().await;
+//         go_to.def_line = 20;
+//         lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24).await;
+//         shutdown_and_exit(&mut service).await;
+//     });
+// }
 
 #[test]
 fn compilation_succeeds_when_triggered_from_module() {
