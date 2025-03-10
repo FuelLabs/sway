@@ -62,16 +62,16 @@ fn replace_b256_from_bytes_to_try_from_bytes_step(
                 return Ok(InvalidateTypedElement::No);
             };
 
+            let Some(implementing_for_type_id) = ty_fn_call_info.fn_decl.implementing_for_typeid
+            else {
+                return Ok(InvalidateTypedElement::No);
+            };
+
             // Note that neither the implementing for type not the trait are a
             // part of the `from` function call path. All associated `from` functions
             // in the `std::bytes` will have the same call path.
             // We will filter further below to target exactly the `<From<Bytes> for b256>::from`.
             let from_call_path = CallPath::fullpath(&["std", "bytes", "from"]);
-
-            let Some(implementing_for_type_id) = ty_fn_call_info.fn_decl.implementing_for_typeid
-            else {
-                return Ok(InvalidateTypedElement::No);
-            };
 
             // This check is sufficient. The only `from` in `std::bytes` that
             // satisfies it is the `<From<Bytes> for b256>::from`.
