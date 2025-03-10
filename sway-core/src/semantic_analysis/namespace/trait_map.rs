@@ -54,9 +54,9 @@ impl From<bool> for CodeBlockFirstPass {
 }
 
 #[derive(Clone, Debug)]
-struct TraitSuffix {
-    name: Ident,
-    args: Vec<TypeArgument>,
+pub(crate) struct TraitSuffix {
+    pub(crate) name: Ident,
+    pub(crate) args: Vec<TypeArgument>,
 }
 impl PartialEqWithEngines for TraitSuffix {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
@@ -99,17 +99,20 @@ impl DebugWithEngines for TraitSuffix {
 type TraitName = Arc<CallPath<TraitSuffix>>;
 
 #[derive(Clone, Debug)]
-struct TraitKey {
-    name: TraitName,
-    type_id: TypeId,
-    trait_decl_span: Option<Span>,
+pub(crate) struct TraitKey {
+    pub(crate) name: TraitName,
+    pub(crate) type_id: TypeId,
+    pub(crate) impl_type_parameters: Vec<TypeId>,
+    pub(crate) trait_decl_span: Option<Span>,
 }
 
 impl OrdWithEngines for TraitKey {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> std::cmp::Ordering {
-        self.name
-            .cmp(&other.name, ctx)
-            .then_with(|| self.type_id.cmp(&other.type_id))
+        self.name.cmp(&other.name, ctx).then_with(|| {
+            self.type_id
+                .cmp(&other.type_id)
+                .then_with(|| self.impl_type_parameters.cmp(&other.impl_type_parameters))
+        })
     }
 }
 
@@ -148,29 +151,28 @@ impl ResolvedTraitImplItem {
 type TraitItems = HashMap<String, ResolvedTraitImplItem>;
 
 #[derive(Clone, Debug)]
-struct TraitValue {
-    trait_items: TraitItems,
+pub(crate) struct TraitValue {
+    pub(crate) trait_items: TraitItems,
     /// The span of the entire impl block.
-    impl_span: Span,
+    pub(crate) impl_span: Span,
 }
 
 #[derive(Clone, Debug)]
-struct TraitEntry {
-    key: TraitKey,
-    value: TraitValue,
+pub(crate) struct TraitEntry {
+    pub(crate) key: TraitKey,
+    pub(crate) value: TraitValue,
 }
 
 /// Map of string of type entry id and vec of [TraitEntry].
 /// We are using the HashMap as a wrapper to the vec so the TraitMap algorithms
 /// don't need to traverse every TraitEntry.
-type TraitImpls = HashMap<TypeRootFilter, Vec<TraitEntry>>;
+pub(crate) type TraitImpls = HashMap<TypeRootFilter, Vec<TraitEntry>>;
 
 #[derive(Clone, Hash, Eq, PartialOrd, Ord, PartialEq, Debug)]
-enum TypeRootFilter {
+pub(crate) enum TypeRootFilter {
     Unknown,
     Never,
     Placeholder,
-    TypeParam(usize),
     StringSlice,
     StringArray(usize),
     U8,
@@ -201,7 +203,7 @@ enum TypeRootFilter {
 /// [TraitMap].
 #[derive(Clone, Debug, Default)]
 pub struct TraitMap {
-    trait_impls: TraitImpls,
+    pub(crate) trait_impls: TraitImpls,
     satisfied_cache: HashSet<u64>,
 }
 
@@ -230,6 +232,7 @@ impl TraitMap {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
+        impl_type_parameters: Vec<TypeId>,
         items: &[ResolvedTraitImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
@@ -276,6 +279,7 @@ impl TraitMap {
                         name: map_trait_name,
                         type_id: map_type_id,
                         trait_decl_span: _,
+                        impl_type_parameters: _,
                     },
                 value:
                     TraitValue {
@@ -464,6 +468,7 @@ impl TraitMap {
                 impl_span.clone(),
                 trait_decl_span,
                 unaliased_type_id,
+                impl_type_parameters,
                 trait_items,
                 engines,
             );
@@ -472,12 +477,14 @@ impl TraitMap {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn insert_inner(
         &mut self,
         trait_name: TraitName,
         impl_span: Span,
         trait_decl_span: Option<Span>,
         type_id: TypeId,
+        impl_type_parameters: Vec<TypeId>,
         trait_methods: TraitItems,
         engines: &Engines,
     ) {
@@ -485,6 +492,7 @@ impl TraitMap {
             name: trait_name,
             type_id,
             trait_decl_span,
+            impl_type_parameters,
         };
         let value = TraitValue {
             trait_items: trait_methods,
@@ -664,6 +672,7 @@ impl TraitMap {
                         name: map_trait_name,
                         type_id: map_type_id,
                         trait_decl_span: map_trait_decl_span,
+                        impl_type_parameters: map_impl_type_parameters,
                     },
                 value:
                     TraitValue {
@@ -679,6 +688,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *type_id,
+                        map_impl_type_parameters.clone(),
                         map_trait_items.clone(),
                         engines,
                     );
@@ -688,6 +698,7 @@ impl TraitMap {
                         impl_span.clone(),
                         map_trait_decl_span.clone(),
                         *map_type_id,
+                        map_impl_type_parameters.clone(),
                         Self::filter_dummy_methods(
                             map_trait_items.clone(),
                             *type_id,
@@ -1496,7 +1507,7 @@ impl TraitMap {
             Unknown => TypeRootFilter::Unknown,
             Never => TypeRootFilter::Never,
             UnknownGeneric { .. } | Placeholder(_) => TypeRootFilter::Placeholder,
-            TypeParam(n) => TypeRootFilter::TypeParam(*n),
+            TypeParam(_param) => unreachable!(),
             StringSlice => TypeRootFilter::StringSlice,
             StringArray(x) => TypeRootFilter::StringArray(x.val()),
             UnsignedInteger(x) => match x {
