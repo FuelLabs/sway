@@ -2698,7 +2698,7 @@ pub fn check(
         if let Ok(typed_program) = programs.typed.as_ref() {
             if let TreeType::Library = typed_program.kind.tree_type() {
                 let mut lib_root = typed_program.namespace.root_ref().clone();
-                lib_root.current_package_root_module_mut().set_span(
+                lib_root.root_module_mut().set_span(
                     Span::new(
                         manifest.entry_string()?,
                         0,

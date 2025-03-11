@@ -339,7 +339,7 @@ pub(super) fn resolve_symbol_and_mod_path(
         resolve_symbol_and_mod_path_inner(
             handler,
             engines,
-            root.current_package_root_module(),
+            root.root_module(),
             mod_path,
             symbol,
             self_type,
@@ -357,7 +357,7 @@ pub(super) fn resolve_symbol_and_mod_path(
                 resolve_symbol_and_mod_path_inner(
                     handler,
                     engines,
-                    ext_root.current_package_root_module(),
+                    ext_root.root_module(),
                     &new_mod_path,
                     symbol,
                     self_type,

@@ -203,11 +203,11 @@ impl Root {
             .insert(package_name, external_package);
     }
 
-    pub fn current_package_root_module(&self) -> &Module {
+    pub fn root_module(&self) -> &Module {
         &self.current_package
     }
 
-    pub fn current_package_root_module_mut(&mut self) -> &mut Module {
+    pub fn root_module_mut(&mut self) -> &mut Module {
         &mut self.current_package
     }
 
@@ -240,7 +240,7 @@ impl Root {
         } else if let Some(external_package) = self.external_packages.get(&mod_path[0].to_string())
         {
             external_package
-                .current_package_root_module()
+                .root_module()
                 .submodule(&package_relative_path)
         } else {
             None

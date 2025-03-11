@@ -204,7 +204,7 @@ impl Parse for ty::TySideEffect {
                     ));
                     if let Some(span) = ctx
                         .namespace
-                        .current_package_root_module()
+                        .root_module()
                         .submodule(&[mod_name.clone()])
                         .and_then(|tgt_submod| tgt_submod.span().clone())
                     {
@@ -536,7 +536,7 @@ impl Parse for ty::TyExpression {
                     ));
                     if let Some(storage) = ctx
                         .namespace
-                        .current_package_root_module()
+                        .root_module()
                         .root_items()
                         .get_declared_storage(ctx.engines.de())
                     {
@@ -555,7 +555,7 @@ impl Parse for ty::TyExpression {
                         );
                         if let Some(storage_field) = ctx
                             .namespace
-                            .current_package_root_module()
+                            .root_module()
                             .root_items()
                             .get_declared_storage(ctx.engines.de())
                             .and_then(|storage| {
@@ -1590,9 +1590,7 @@ fn mod_path_to_full_path(
     // <external>::Y => <external>::Y - do nothing
     if is_relative_to_package_root
         || mod_path.is_empty()
-        || namespace
-            .current_package_root_module()
-            .has_submodule(&mod_path[0])
+        || namespace.root_module().has_submodule(&mod_path[0])
     {
         path.insert(0, namespace.current_package_name().clone());
     }

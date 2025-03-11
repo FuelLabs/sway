@@ -143,7 +143,7 @@ impl Namespace {
     }
 
     pub fn current_package_root_module(&self) -> &Module {
-        self.root.current_package_root_module()
+        self.root.root_module()
     }
 
     pub fn external_packages(

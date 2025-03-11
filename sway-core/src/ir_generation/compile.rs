@@ -273,14 +273,8 @@ pub(crate) fn compile_constants_for_package(
             traverse(engines, context, module, ext_package)?;
         }
 
-        compile_constants(
-            engines,
-            context,
-            &mut md_mgr,
-            module,
-            current.current_package_root_module(),
-        )
-        .map_err(|err| vec![err])?;
+        compile_constants(engines, context, &mut md_mgr, module, current.root_module())
+            .map_err(|err| vec![err])?;
 
         Ok(module)
     }
