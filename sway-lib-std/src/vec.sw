@@ -887,6 +887,7 @@ impl<T> Clone for Vec<T> {
     }
 }
 
+
 impl<T> PartialEq for Vec<T>
 where
     T: Eq,
@@ -904,4 +905,15 @@ where
         }
         true
     }
+}
+
+#[test]
+fn ok_vec_fmt() {
+    use core::debug::*;
+    let mut v = Vec::new();
+    v.push(1u8);
+    v.push(3u8);
+
+    let mut f = Formatter {};
+    v.fmt(f);
 }

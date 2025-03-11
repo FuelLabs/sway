@@ -190,7 +190,7 @@ where
     }
 
     // Auto implements AbiEncode and AbiDecode for structs and returns their `AstNode`s.
-    fn auto_impl_struct(
+    fn abi_encode_and_decode_auto_impl_struct(
         &mut self,
         engines: &Engines,
         decl: &TyDecl,
@@ -231,7 +231,7 @@ where
         Some((abi_encode_node.ok(), abi_decode_node.ok()))
     }
 
-    fn auto_impl_enum(
+    fn abi_encode_and_decode_auto_impl_enum(
         &mut self,
         engines: &Engines,
         decl: &TyDecl,
@@ -278,8 +278,12 @@ where
         decl: &ty::TyDecl,
     ) -> (Option<TyAstNode>, Option<TyAstNode>) {
         match decl {
-            TyDecl::StructDecl(_) => self.auto_impl_struct(engines, decl).unwrap_or((None, None)),
-            TyDecl::EnumDecl(_) => self.auto_impl_enum(engines, decl).unwrap_or((None, None)),
+            TyDecl::StructDecl(_) => self
+                .abi_encode_and_decode_auto_impl_struct(engines, decl)
+                .unwrap_or((None, None)),
+            TyDecl::EnumDecl(_) => self
+                .abi_encode_and_decode_auto_impl_enum(engines, decl)
+                .unwrap_or((None, None)),
             _ => (None, None),
         }
     }
