@@ -3,6 +3,7 @@ pub mod cli;
 mod migrations;
 mod matching;
 mod modifying;
+mod visiting;
 
 use std::fmt::Display;
 use std::io::{self, Write};

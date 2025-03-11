@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::vec;
 
 use crate::{

@@ -1,5 +1,7 @@
 //! This module contains demo migrations used for learning and testing the migration tool.
 
+#![allow(deprecated)]
+
 use std::vec;
 
 use crate::{
