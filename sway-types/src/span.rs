@@ -233,6 +233,14 @@ impl Span {
     pub fn is_empty(&self) -> bool {
         self.start == self.end
     }
+
+    /// Returns true if `self` contains `other`.
+    pub fn contains(&self, other: &Span) -> bool {
+        Arc::ptr_eq(&self.src, &other.src)
+            && self.source_id == other.source_id
+            && self.start <= other.start
+            && self.end >= other.end
+    }
 }
 
 impl fmt::Debug for Span {
