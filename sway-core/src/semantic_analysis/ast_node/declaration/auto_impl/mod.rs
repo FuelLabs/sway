@@ -1,5 +1,6 @@
 //! This module contains common infrastructure for generating and parsing auto-generated code.
 pub mod abi_encoding;
+pub mod debug;
 pub mod marker_traits;
 
 use crate::{
