@@ -380,6 +380,7 @@ fn resolve_symbol_and_mod_path_inner(
     self_type: Option<TypeId>,
 ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
     assert!(!mod_path.is_empty());
+    assert!(root_module.mod_path().len() == 1);
     assert!(mod_path[0] == root_module.mod_path()[0]);
 
     // This block tries to resolve associated types
