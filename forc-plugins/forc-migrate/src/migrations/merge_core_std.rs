@@ -54,15 +54,12 @@ fn replace_core_with_std_in_paths_instruction(program_info: &ProgramInfo) -> Res
                 _ => None,
             };
 
-            if lexed_use.root_import.is_none()
-                && path_prefix.is_some()
-                && path_prefix.map_or("", |path_prefix| path_prefix.as_str()) == "core"
-            {
-                output.push(
-                    path_prefix
-                        .expect("`path_prefix` is checked to be `Some`")
-                        .span(),
-                );
+            let Some(path_prefix) = path_prefix else {
+                return Ok(InvalidateTypedElement::No);
+            };
+
+            if lexed_use.root_import.is_none() && path_prefix.as_str() == "core" {
+                output.push(path_prefix.span());
             }
 
             Ok(InvalidateTypedElement::No)
@@ -149,15 +146,11 @@ fn replace_core_with_std_in_paths_interaction(
                 _ => None,
             };
 
-            if lexed_use.root_import.is_none()
-                && path_prefix.is_some()
-                && path_prefix
-                    .as_ref()
-                    .map_or("", |path_prefix| path_prefix.as_str())
-                    == "core"
-            {
-                let path_prefix = path_prefix.expect("`path_prefix` is checked to be `Some`");
+            let Some(path_prefix) = path_prefix else {
+                return Ok(InvalidateTypedElement::No);
+            };
 
+            if lexed_use.root_import.is_none() && path_prefix.as_str() == "core" {
                 output.push(path_prefix.span());
 
                 *path_prefix = Ident::new_with_override("std".to_string(), path_prefix.span());
