@@ -27,6 +27,7 @@ error: Attribute argument is invalid
   |       - help:   - target
   |       - help:   - experimental_const_generics
   |       - help:   - experimental_error_type
+  |       - help:   - experimental_merge_core_std
   |       - help:   - experimental_new_encoding
   |       - help:   - experimental_partial_eq
   |       - help:   - experimental_references
