@@ -11,5 +11,5 @@ pub mod raw_slice;
 pub mod codec;
 pub mod r#str;
 pub mod marker;
-
 pub mod prelude;
+pub mod debug;
