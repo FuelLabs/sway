@@ -14,10 +14,7 @@ use crate::{
 };
 use rustc_hash::FxHasher;
 use std::hash::BuildHasherDefault;
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{span::Span, ProgramId};
 
 #[derive(Clone, Debug)]
@@ -222,7 +219,7 @@ impl Root {
         self.program_id
     }
 
-    fn check_path_is_in_current_package(&self, mod_path: &ModulePathBuf) -> bool {
+    pub(crate) fn check_path_is_in_current_package(&self, mod_path: &ModulePathBuf) -> bool {
         !mod_path.is_empty() && mod_path[0] == *self.current_package.name()
     }
 
@@ -247,29 +244,6 @@ impl Root {
                 .submodule(&package_relative_path)
         } else {
             None
-        }
-    }
-
-    // Find module in the current environment. `mod_path` must be a fully qualified path.
-    // Throw an error if the module doesn't exist
-    pub(crate) fn require_module(
-        &self,
-        handler: &Handler,
-        mod_path: &ModulePathBuf,
-    ) -> Result<&Module, ErrorEmitted> {
-        if mod_path.is_empty() {
-            return Err(handler.emit_err(CompileError::Internal(
-                "Found empty absolute mod path",
-                Span::dummy(),
-            )));
-        }
-        let is_in_current_package = self.check_path_is_in_current_package(mod_path);
-        match self.module_from_absolute_path(mod_path) {
-            Some(module) => Ok(module),
-            None => Err(handler.emit_err(crate::namespace::module::module_not_found(
-                mod_path,
-                is_in_current_package,
-            ))),
         }
     }
 

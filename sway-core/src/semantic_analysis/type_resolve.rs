@@ -10,7 +10,7 @@ use crate::{
         CallPath, QualifiedCallPath,
     },
     monomorphization::type_decl_opt_to_type_id,
-    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem, Root},
+    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
     type_system::SubstTypes,
     EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
@@ -336,7 +336,14 @@ pub(super) fn resolve_symbol_and_mod_path(
     assert!(!mod_path.is_empty());
     let root = namespace.root_ref();
     if mod_path[0] == *root.current_package_name() {
-        resolve_symbol_and_mod_path_inner(handler, engines, root, mod_path, symbol, self_type)
+        resolve_symbol_and_mod_path_inner(
+            handler,
+            engines,
+            root.current_package_root_module(),
+            mod_path,
+            symbol,
+            self_type,
+        )
     } else {
         match namespace.get_external_package(&mod_path[0].to_string()) {
             Some(ext_root) => {
@@ -350,7 +357,7 @@ pub(super) fn resolve_symbol_and_mod_path(
                 resolve_symbol_and_mod_path_inner(
                     handler,
                     engines,
-                    ext_root,
+                    ext_root.current_package_root_module(),
                     &new_mod_path,
                     symbol,
                     self_type,
@@ -367,16 +374,16 @@ pub(super) fn resolve_symbol_and_mod_path(
 fn resolve_symbol_and_mod_path_inner(
     handler: &Handler,
     engines: &Engines,
-    root: &Root,
+    root_module: &Module,
     mod_path: &ModulePath,
     symbol: &Ident,
     self_type: Option<TypeId>,
 ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
     assert!(!mod_path.is_empty());
-    assert!(mod_path[0] == *root.current_package_name());
+    assert!(mod_path[0] == root_module.mod_path()[0]);
 
     // This block tries to resolve associated types
-    let mut current_module = root.current_package_root_module();
+    let mut current_module = root_module;
     let mut current_mod_path = vec![mod_path[0].clone()];
     let mut decl_opt = None;
     for ident in mod_path.iter().skip(1) {
@@ -416,7 +423,8 @@ fn resolve_symbol_and_mod_path_inner(
         return Ok((decl, current_mod_path));
     }
 
-    root.require_module(handler, &mod_path.to_vec())
+    root_module
+        .lookup_submodule(handler, &mod_path[1..])
         .and_then(|module| {
             let (decl, decl_path) = module.resolve_symbol(handler, engines, symbol)?;
             Ok((decl, decl_path))

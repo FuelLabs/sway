@@ -170,7 +170,20 @@ impl Namespace {
         handler: &Handler,
         path: &ModulePathBuf,
     ) -> Result<&Module, ErrorEmitted> {
-        self.root.require_module(handler, path)
+        if path.is_empty() {
+            return Err(handler.emit_err(CompileError::Internal(
+                "Found empty absolute mod path",
+                Span::dummy(),
+            )));
+        }
+        let is_in_current_package = self.root.check_path_is_in_current_package(path);
+        match self.module_from_absolute_path(path) {
+            Some(module) => Ok(module),
+            None => Err(handler.emit_err(crate::namespace::module::module_not_found(
+                path,
+                is_in_current_package,
+            ))),
+        }
     }
 
     /// Returns true if the current module being checked is a direct or indirect submodule of
@@ -369,7 +382,7 @@ impl Namespace {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_visibility(handler, src)?;
 
-        let src_mod = self.root.require_module(handler, &src.to_vec())?;
+        let src_mod = self.require_module_from_absolute_path(handler, &src.to_vec())?;
 
         let mut decls_and_item_imports = vec![];
 
@@ -565,7 +578,7 @@ impl Namespace {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_visibility(handler, src)?;
 
-        let src_mod = self.root.require_module(handler, &src.to_vec())?;
+        let src_mod = self.require_module_from_absolute_path(handler, &src.to_vec())?;
 
         let (decl, path) = self.item_lookup(handler, engines, item, src, false)?;
 
@@ -810,7 +823,7 @@ impl Namespace {
         src: &ModulePath,
         ignore_visibility: bool,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
-        let src_mod = self.root.require_module(handler, &src.to_vec())?;
+        let src_mod = self.require_module_from_absolute_path(handler, &src.to_vec())?;
         let src_items = src_mod.root_items();
 
         let (decl, path, src_visibility) = if let Some(decl) = src_items.symbols.get(item) {
