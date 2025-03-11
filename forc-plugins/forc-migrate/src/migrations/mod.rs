@@ -9,6 +9,7 @@
 //! the migration tool.
 
 mod demo;
+mod merge_core_std;
 mod partial_eq;
 mod references;
 mod storage_domains;
@@ -501,6 +502,13 @@ const MIGRATION_STEPS: MigrationSteps = &[
     ),
     (
         Feature::TryFromBytesForB256,
-        &[self::try_from_bytes_for_b256::REPLACE_B256_FROM_BYTES_TO_TRY_FROM_BYTES_STEP],
+        &[
+            self::try_from_bytes_for_b256::REPLACE_B256_FROM_BYTES_WITH_TRY_FROM_BYTES_STEP,
+            self::try_from_bytes_for_b256::REPLACE_BYTES_INTO_B256_WITH_TRY_INTO_B256_STEP,
+        ],
+    ),
+    (
+        Feature::MergeCoreStd,
+        &[self::merge_core_std::REPLACE_CORE_WITH_STD_IN_PATHS],
     ),
 ];
