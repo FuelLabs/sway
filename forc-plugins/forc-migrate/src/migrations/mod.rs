@@ -501,6 +501,9 @@ const MIGRATION_STEPS: MigrationSteps = &[
     ),
     (
         Feature::TryFromBytesForB256,
-        &[self::try_from_bytes_for_b256::REPLACE_B256_FROM_BYTES_TO_TRY_FROM_BYTES_STEP],
+        &[
+            self::try_from_bytes_for_b256::REPLACE_B256_FROM_BYTES_WITH_TRY_FROM_BYTES_STEP,
+            self::try_from_bytes_for_b256::REPLACE_BYTES_INTO_B256_WITH_TRY_INTO_B256_STEP,
+        ],
     ),
 ];
