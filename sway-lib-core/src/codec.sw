@@ -3208,7 +3208,26 @@ impl AbiDecode for str[64] {
 }
 // END STRARRAY_DECODE
 
+#[cfg(experimental_const_generics = true)]
+impl<T, const N:u64> AbiDecode for [T; N]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; N] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; N];
+        let mut i = 1;
+        while i < N {
+            let item: &mut T = __elem_at(&mut array, i);
+            *item = buffer.decode::<T>();
+            i += 1;
+        }
+        array
+    }
+}
+
 // BEGIN ARRAY_DECODE
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 1]
 where
     T: AbiDecode,
@@ -3224,6 +3243,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 2]
 where
     T: AbiDecode,
@@ -3239,6 +3259,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 3]
 where
     T: AbiDecode,
@@ -3254,6 +3275,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 4]
 where
     T: AbiDecode,
@@ -3269,6 +3291,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 5]
 where
     T: AbiDecode,
@@ -3284,6 +3307,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 6]
 where
     T: AbiDecode,
@@ -3299,6 +3323,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 7]
 where
     T: AbiDecode,
@@ -3314,6 +3339,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 8]
 where
     T: AbiDecode,
@@ -3329,6 +3355,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 9]
 where
     T: AbiDecode,
@@ -3344,6 +3371,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 10]
 where
     T: AbiDecode,
@@ -3359,6 +3387,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 11]
 where
     T: AbiDecode,
@@ -3374,6 +3403,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 12]
 where
     T: AbiDecode,
@@ -3389,6 +3419,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 13]
 where
     T: AbiDecode,
@@ -3404,6 +3435,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 14]
 where
     T: AbiDecode,
@@ -3419,6 +3451,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 15]
 where
     T: AbiDecode,
@@ -3434,6 +3467,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 16]
 where
     T: AbiDecode,
@@ -3449,6 +3483,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 17]
 where
     T: AbiDecode,
@@ -3464,6 +3499,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 18]
 where
     T: AbiDecode,
@@ -3479,6 +3515,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 19]
 where
     T: AbiDecode,
@@ -3494,6 +3531,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 20]
 where
     T: AbiDecode,
@@ -3509,6 +3547,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 21]
 where
     T: AbiDecode,
@@ -3524,6 +3563,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 22]
 where
     T: AbiDecode,
@@ -3539,6 +3579,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 23]
 where
     T: AbiDecode,
@@ -3554,6 +3595,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 24]
 where
     T: AbiDecode,
@@ -3569,6 +3611,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 25]
 where
     T: AbiDecode,
@@ -3584,6 +3627,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 26]
 where
     T: AbiDecode,
@@ -3599,6 +3643,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 27]
 where
     T: AbiDecode,
@@ -3614,6 +3659,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 28]
 where
     T: AbiDecode,
@@ -3629,6 +3675,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 29]
 where
     T: AbiDecode,
@@ -3644,6 +3691,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 30]
 where
     T: AbiDecode,
@@ -3659,6 +3707,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 31]
 where
     T: AbiDecode,
@@ -3674,6 +3723,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 32]
 where
     T: AbiDecode,
@@ -3689,6 +3739,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 33]
 where
     T: AbiDecode,
@@ -3704,6 +3755,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 34]
 where
     T: AbiDecode,
@@ -3719,6 +3771,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 35]
 where
     T: AbiDecode,
@@ -3734,6 +3787,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 36]
 where
     T: AbiDecode,
@@ -3749,6 +3803,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 37]
 where
     T: AbiDecode,
@@ -3764,6 +3819,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 38]
 where
     T: AbiDecode,
@@ -3779,6 +3835,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 39]
 where
     T: AbiDecode,
@@ -3794,6 +3851,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 40]
 where
     T: AbiDecode,
@@ -3809,6 +3867,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 41]
 where
     T: AbiDecode,
@@ -3824,6 +3883,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 42]
 where
     T: AbiDecode,
@@ -3839,6 +3899,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 43]
 where
     T: AbiDecode,
@@ -3854,6 +3915,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 44]
 where
     T: AbiDecode,
@@ -3869,6 +3931,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 45]
 where
     T: AbiDecode,
@@ -3884,6 +3947,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 46]
 where
     T: AbiDecode,
@@ -3899,6 +3963,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 47]
 where
     T: AbiDecode,
@@ -3914,6 +3979,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 48]
 where
     T: AbiDecode,
@@ -3929,6 +3995,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 49]
 where
     T: AbiDecode,
@@ -3944,6 +4011,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 50]
 where
     T: AbiDecode,
@@ -3959,6 +4027,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 51]
 where
     T: AbiDecode,
@@ -3974,6 +4043,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 52]
 where
     T: AbiDecode,
@@ -3989,6 +4059,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 53]
 where
     T: AbiDecode,
@@ -4004,6 +4075,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 54]
 where
     T: AbiDecode,
@@ -4019,6 +4091,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 55]
 where
     T: AbiDecode,
@@ -4034,6 +4107,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 56]
 where
     T: AbiDecode,
@@ -4049,6 +4123,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 57]
 where
     T: AbiDecode,
@@ -4064,6 +4139,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 58]
 where
     T: AbiDecode,
@@ -4079,6 +4155,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 59]
 where
     T: AbiDecode,
@@ -4094,6 +4171,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 60]
 where
     T: AbiDecode,
@@ -4109,6 +4187,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 61]
 where
     T: AbiDecode,
@@ -4124,6 +4203,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 62]
 where
     T: AbiDecode,
@@ -4139,6 +4219,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 63]
 where
     T: AbiDecode,
@@ -4154,6 +4235,7 @@ where
         array
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl<T> AbiDecode for [T; 64]
 where
     T: AbiDecode,
