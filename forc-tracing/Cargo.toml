@@ -8,6 +8,10 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+telemetry = []
+
 [dependencies]
 ansiterm.workspace = true
 tracing.workspace = true
