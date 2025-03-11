@@ -21,8 +21,24 @@ use vm::interpreter::{InterpreterParams, MemoryInstance};
 use vm::state::DebugEval;
 use vm::state::ProgramState;
 
+#[derive(Debug, Clone)]
+pub enum CapturedEcal {
+    Write {
+        fd: u64,
+        bytes: Vec<u8>,
+    }
+}
+
 #[derive(Debug, Clone, Default)]
-pub struct EcalState {}
+pub struct EcalState {
+    pub captured: Vec<CapturedEcal>,
+}
+
+impl EcalState {
+    pub fn clear(&mut self) {
+        self.captured.clear();
+    }
+}
 
 impl EcalHandler for EcalState {
     fn ecal<M, S, Tx>(
@@ -41,18 +57,20 @@ impl EcalHandler for EcalState {
                 let addr = regs[c.to_u8() as usize];
                 let count = regs[d.to_u8() as usize];
 
-                let s = vm.memory().read(addr, count).unwrap();
-                let s = std::str::from_utf8(s).unwrap();
+                let bytes = vm.memory().read(addr, count).unwrap().to_vec();
+                // let s = std::str::from_utf8(s).unwrap();
 
-                use std::io::Write;
-                use std::os::fd::FromRawFd;
+                // use std::io::Write;
+                // use std::os::fd::FromRawFd;
                 let fd = regs[b.to_u8() as usize];
 
-                let mut f = unsafe { std::fs::File::from_raw_fd(fd as i32) };
-                write!(&mut f, "{}", s).unwrap();
+                // let mut f = unsafe { std::fs::File::from_raw_fd(fd as i32) };
+                // write!(&mut f, "{}", s).unwrap();
 
-                // Dont close the fd
-                std::mem::forget(f);
+                // // Dont close the fd
+                // std::mem::forget(f);
+
+                vm.ecal_state_mut().captured.push(CapturedEcal::Write { fd, bytes })
             }
             _ => todo!(),
         }
@@ -249,6 +267,7 @@ impl TestExecutor {
             condition,
             logs,
             gas_used,
+            ecal: self.interpreter.ecal_state().clone(),
         }))
     }
 
@@ -280,10 +299,13 @@ impl TestExecutor {
             condition,
             logs,
             gas_used,
+            ecal: self.interpreter.ecal_state().clone(),
         }))
     }
 
     pub fn execute(&mut self) -> anyhow::Result<TestResult> {
+        self.interpreter.ecal_state_mut().clear();
+
         let start = std::time::Instant::now();
 
         let mut state = Ok(self.single_step_until_test());
@@ -319,6 +341,7 @@ impl TestExecutor {
             condition,
             logs,
             gas_used,
+            ecal: self.interpreter.ecal_state().clone(),
         })
     }
 
