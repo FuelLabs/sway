@@ -6,14 +6,12 @@ use forc_pkg::PkgTestEntry;
 use fuel_tx::{self as tx, output::contract::Contract, Chargeable, Finalizable};
 use fuel_vm::error::InterpreterError;
 use fuel_vm::fuel_asm;
+use fuel_vm::interpreter::EcalHandler;
 use fuel_vm::prelude::Instruction;
 use fuel_vm::prelude::RegId;
 use fuel_vm::{
-    self as vm,
-    checked_transaction::builder::TransactionBuilderExt,
-    interpreter::{Interpreter, NotSupportedEcal},
-    prelude::SecretKey,
-    storage::MemoryStorage,
+    self as vm, checked_transaction::builder::TransactionBuilderExt, interpreter::Interpreter,
+    prelude::SecretKey, storage::MemoryStorage,
 };
 use rand::{Rng, SeedableRng};
 
@@ -23,10 +21,49 @@ use vm::interpreter::{InterpreterParams, MemoryInstance};
 use vm::state::DebugEval;
 use vm::state::ProgramState;
 
+#[derive(Debug, Clone, Default)]
+pub struct EcalState {}
+
+impl EcalHandler for EcalState {
+    fn ecal<M, S, Tx>(
+        vm: &mut Interpreter<M, S, Tx, Self>,
+        a: RegId,
+        b: RegId,
+        c: RegId,
+        d: RegId,
+    ) -> fuel_vm::error::SimpleResult<()>
+    where
+        M: fuel_vm::prelude::Memory,
+    {
+        let regs = vm.registers();
+        match regs[a.to_u8() as usize] {
+            1000 => {
+                let addr = regs[c.to_u8() as usize];
+                let count = regs[d.to_u8() as usize];
+
+                let s = vm.memory().read(addr, count).unwrap();
+                let s = std::str::from_utf8(s).unwrap();
+
+                use std::io::Write;
+                use std::os::fd::FromRawFd;
+                let fd = regs[b.to_u8() as usize];
+
+                let mut f = unsafe { std::fs::File::from_raw_fd(fd as i32) };
+                write!(&mut f, "{}", s).unwrap();
+
+                // Dont close the fd
+                std::mem::forget(f);
+            }
+            _ => todo!(),
+        }
+        Ok(())
+    }
+}
+
 /// An interface for executing a test within a VM [Interpreter] instance.
 #[derive(Debug, Clone)]
 pub struct TestExecutor {
-    pub interpreter: Interpreter<MemoryInstance, MemoryStorage, tx::Script, NotSupportedEcal>,
+    pub interpreter: Interpreter<MemoryInstance, MemoryStorage, tx::Script, EcalState>,
     pub tx: vm::checked_transaction::Ready<tx::Script>,
     pub test_entry: PkgTestEntry,
     pub name: String,
