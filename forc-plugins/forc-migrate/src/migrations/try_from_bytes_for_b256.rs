@@ -2,12 +2,16 @@ use crate::{
     migrations::MutProgramInfo,
     modifying::*,
     visiting::{
-        InvalidateTypedElement, LexedFnCallInfoMut, LexedMethodCallInfoMut, ProgramVisitorMut, TreesVisitorMut, TyFnCallInfo, TyMethodCallInfo, VisitingContext
+        InvalidateTypedElement, LexedFnCallInfoMut, LexedMethodCallInfoMut, ProgramVisitorMut,
+        TreesVisitorMut, TyFnCallInfo, TyMethodCallInfo, VisitingContext,
     },
 };
 use anyhow::{bail, Ok, Result};
 use sway_ast::Expr;
-use sway_core::{language::{ty::TyExpression, CallPath}, TypeInfo};
+use sway_core::{
+    language::{ty::TyExpression, CallPath},
+    TypeInfo,
+};
 use sway_types::{Span, Spanned};
 
 use super::{ContinueMigrationProcess, DryRun, MigrationStep, MigrationStepKind};
@@ -156,8 +160,16 @@ fn replace_bytes_into_b256_with_try_into_b256_step(
                 return Ok(InvalidateTypedElement::No);
             };
 
-            let method_return_type = ctx.engines.te().get(ty_method_call_info.fn_decl.return_type.type_id);
-            let method_target_is_bytes_struct = match ctx.engines.te().get(ty_method_call_info.parent_type_id).as_ref() {
+            let method_return_type = ctx
+                .engines
+                .te()
+                .get(ty_method_call_info.fn_decl.return_type.type_id);
+            let method_target_is_bytes_struct = match ctx
+                .engines
+                .te()
+                .get(ty_method_call_info.parent_type_id)
+                .as_ref()
+            {
                 TypeInfo::Struct(decl_id) => {
                     let struct_decl = ctx.engines.de().get_struct(decl_id);
                     struct_decl.call_path == CallPath::fullpath(&["std", "bytes", "Bytes"])
