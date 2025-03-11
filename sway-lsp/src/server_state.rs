@@ -27,7 +27,7 @@ use std::{
         Arc,
     },
 };
-use sway_core::LspConfig;
+use sway_core::{Engines, LspConfig};
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -132,7 +132,10 @@ impl ServerState {
                     TaskMessage::CompilationContext(ctx) => {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
+
+                        let now = std::time::Instant::now();
                         let mut engines_clone = session.engines.read().clone();
+                        eprintln!("engines clone took: {:?}", now.elapsed());
 
                         // Perform garbage collection if enabled to manage memory usage.
                         if ctx.gc_options.gc_enabled {

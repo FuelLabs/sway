@@ -36,6 +36,7 @@ sway-types.workspace = true
 sway-utils.workspace = true
 swayfmt.workspace = true
 syn = { workspace = true, features = ["full"] }
+sysinfo = "0.29"
 tempfile.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = [

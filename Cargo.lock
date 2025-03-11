@@ -8004,6 +8004,7 @@ dependencies = [
  "sway-utils",
  "swayfmt",
  "syn 2.0.98",
+ "sysinfo",
  "tempfile",
  "thiserror 1.0.69",
  "tikv-jemallocator",

@@ -214,7 +214,9 @@ fn did_change_stress_test() {
 #[test]
 fn did_change_stress_test_random_wait() {
     run_async!({
-        let test_duration = tokio::time::Duration::from_secs(5 * 60); // 5 minutes timeout
+        use sysinfo::{System, SystemExt, ProcessExt, Pid};
+
+        let test_duration = tokio::time::Duration::from_secs(25 * 60); // 5 minutes timeout
         let test_future = async {
             setup_panic_hook();
             let (mut service, _) = LspService::new(ServerState::new);
@@ -222,7 +224,11 @@ fn did_change_stress_test_random_wait() {
                 .join(e2e_language_dir())
                 .join("generics_in_contract");
             let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
-            let times = 60;
+            let times = 1_000_000;
+
+            // Initialize sysinfo
+            let mut system = System::new();
+            let pid = Pid::from(std::process::id() as usize);
 
             // Initialize cursor position
             let mut cursor_line = 29;
@@ -232,6 +238,18 @@ fn did_change_stress_test_random_wait() {
                 if version == 0 {
                     service.inner().wait_for_parsing().await;
                 }
+
+                // Monitor memory every 20 events
+                if version % 20 == 0 {
+                    // Refresh system information
+                    system.refresh_process(pid);
+
+                    if let Some(process) = system.process(pid) {
+                        let memory_kb = process.memory() / 1024;
+                        eprintln!("Memory usage after {} did_change events: {} KB", version, memory_kb);
+                    }
+                }
+
                 // wait for a random amount of time between 1-30ms
                 tokio::time::sleep(tokio::time::Duration::from_millis(
                     rand::random::<u64>() % 30 + 1,

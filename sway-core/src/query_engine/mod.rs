@@ -230,6 +230,12 @@ impl QueryEngine {
         self.module_cache.commit();
         self.function_cache.commit();
     }
+
+    pub fn drop_local(&self) {
+        self.programs_cache.drop_local();
+        self.module_cache.drop_local();
+        self.function_cache.drop_local();
+    }
 }
 
 /// Thread-safe, copy-on-write cache optimized for LSP operations.
@@ -293,6 +299,12 @@ impl<T: Clone> CowCache<T> {
         if let Some(local) = self.local.write().take() {
             *self.inner.write() = local;
         }
+    }
+
+    /// Drops the local modifications without committing them.
+    /// This clears the local cache so that incremental changes do not accumulate.
+    pub fn drop_local(&self) {
+        *self.local.write() = None;
     }
 }
 
