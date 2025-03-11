@@ -8,7 +8,7 @@ use std::sync::Arc;
 use duplicate::duplicate_item;
 use sway_ast::{
     expr::LoopControlFlow, CodeBlockContents, Expr, IfExpr, ItemFn, ItemImpl, ItemImplItem,
-    ItemKind, PathExprSegment, Statement, StatementLet,
+    ItemKind, ItemUse, PathExprSegment, Statement, StatementLet,
 };
 use sway_core::{
     decl_engine::DeclEngine,
@@ -16,7 +16,8 @@ use sway_core::{
         lexed::LexedModule,
         ty::{
             self, TyAstNodeContent, TyCodeBlock, TyDecl, TyExpression, TyExpressionVariant,
-            TyFunctionDecl, TyImplSelfOrTrait, TyModule, TyTraitItem, TyVariableDecl,
+            TyFunctionDecl, TyImplSelfOrTrait, TyModule, TySideEffect, TySideEffectVariant,
+            TyTraitItem, TyUseStatement, TyVariableDecl,
         },
         CallPath,
     },
@@ -82,6 +83,15 @@ pub(crate) trait __TreesVisitor<O> {
         ctx: &VisitingContext,
         lexed_module: __ref_type([LexedModule]),
         ty_module: Option<&TyModule>,
+        output: &mut Vec<O>,
+    ) -> Result<InvalidateTypedElement> {
+        Ok(InvalidateTypedElement::No)
+    }
+    fn visit_use(
+        &mut self,
+        ctx: &VisitingContext,
+        lexed_use: __ref_type([ItemUse]),
+        ty_use: Option<&TyUseStatement>,
         output: &mut Vec<O>,
     ) -> Result<InvalidateTypedElement> {
         Ok(InvalidateTypedElement::No)
@@ -238,8 +248,20 @@ impl __ProgramVisitor {
                     // visit `mod` items, in case migrations need to inspect
                     // or modify them.
                 }
-                ItemKind::Use(_item_use) => {
-                    // TODO: Implement visiting `use`.
+                ItemKind::Use(item_use) => {
+                    let ty_use = ty_module.and_then(|ty_module| {
+                        ty_module
+                            .all_nodes
+                            .iter()
+                            .find_map(|node| match &node.content {
+                                TyAstNodeContent::SideEffect(TySideEffect {
+                                    side_effect: TySideEffectVariant::UseStatement(ty_use),
+                                }) => Some(ty_use),
+                                _ => None,
+                            })
+                    });
+
+                    visitor.visit_use(ctx, item_use, ty_use, output)?;
                 }
                 ItemKind::Struct(_item_struct) => {
                     // TODO: Implement visiting `struct`.
@@ -264,6 +286,7 @@ impl __ProgramVisitor {
                                 _ => None,
                             })
                     });
+
                     Self::visit_fn(ctx, item_fn, ty_fn, visitor, output)?;
                 }
                 ItemKind::Trait(_item_trait) => {
@@ -418,8 +441,26 @@ impl __ProgramVisitor {
                     ).transpose()?;
                     Self::visit_statement_let(ctx, statement_let, ty_var_decl, visitor, output)?;
                 }
-                Statement::Item(_annotated) => {
-                    // TODO: Implement visiting nested items.
+                Statement::Item(annotated) => {
+                    // TODO: Implement visiting `annotations`.
+                    match __ref([annotated.value]) {
+                        ItemKind::Use(item_use) => {
+                            let ty_use = ty_node.map(|ty_node|
+                                match &ty_node.content {
+                                    TyAstNodeContent::SideEffect(ty_side_effect) => match &ty_side_effect.side_effect {
+                                        TySideEffectVariant::UseStatement(ty_use) => Ok(ty_use),
+                                        _ => bail!(internal_error("`ItemKind::Use` must correspond to a `TySideEffectVariant::UseStatement`.")),
+                                    },
+                                    _ => bail!(internal_error("`ItemKind::Use` must correspond to a `TyAstNodeContent::SideEffect`.")),
+                                }
+                            ).transpose()?;
+
+                            visitor.visit_use(ctx, item_use, ty_use, output)?;
+                        }
+                        _ => {
+                            // TODO: Implement visiting `nested items`.
+                        }
+                    }
                 }
                 Statement::Expr { expr, .. } => {
                     let ty_expr = ty_node.map(|ty_node|
