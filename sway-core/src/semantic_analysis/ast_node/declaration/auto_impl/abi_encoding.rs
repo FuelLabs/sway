@@ -195,6 +195,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
+        // Dependencies of the codec library in std cannot have abi encoding implemented for them.
         if self.ctx.namespace.current_package_name().as_str() == "std"
             && matches!(
                 self.ctx.namespace.current_module().name().as_str(),
@@ -235,6 +236,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
+        // Dependencies of the codec library in std cannot have abi encoding implemented for them.
         if self.ctx.namespace.current_package_name().as_str() == "std"
             && matches!(
                 self.ctx.namespace.current_module().name().as_str(),
