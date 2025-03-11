@@ -15,10 +15,16 @@ pub use tracing_subscriber::{
     Layer,
 };
 
-pub use fuel_telemetry::{
-    debug_telemetry, error_telemetry, info_telemetry, span_telemetry, trace_telemetry,
-    warn_telemetry,
-};
+pub mod telemetry {
+    pub use fuel_telemetry::{
+        error_telemetry,
+        info_telemetry,
+        warn_telemetry,
+        debug_telemetry,
+        trace_telemetry,
+        span_telemetry,
+    };
+}
 
 const ACTION_COLUMN_WIDTH: usize = 12;
 
