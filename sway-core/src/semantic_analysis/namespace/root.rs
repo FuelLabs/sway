@@ -223,7 +223,7 @@ impl Root {
         !mod_path.is_empty() && mod_path[0] == *self.current_package.name()
     }
 
-    fn package_relative_path(mod_path: &ModulePathBuf) -> ModulePathBuf {
+    pub(crate) fn package_relative_path(mod_path: &ModulePathBuf) -> ModulePathBuf {
         mod_path[1..].to_vec()
     }
 
@@ -245,38 +245,5 @@ impl Root {
         } else {
             None
         }
-    }
-
-    // Find a module in the current package. `mod_path` must be a fully qualified path
-    pub(super) fn module_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
-        assert!(self.check_path_is_in_current_package(mod_path));
-        self.module_from_absolute_path(mod_path)
-    }
-
-    // Find mutable module in the current environment. `mod_path` must be a fully qualified path
-    pub(super) fn module_mut_from_absolute_path(
-        &mut self,
-        mod_path: &ModulePathBuf,
-    ) -> Option<&mut Module> {
-        assert!(!mod_path.is_empty());
-        let package_relative_path = Self::package_relative_path(mod_path);
-        if *self.current_package.name() == mod_path[0] {
-            self.current_package.submodule_mut(&package_relative_path)
-        } else if let Some(external_package) =
-            self.external_packages.get_mut(&mod_path[0].to_string())
-        {
-            external_package.module_mut_in_current_package(&package_relative_path)
-        } else {
-            None
-        }
-    }
-
-    // Find a mutable module in the current package. `mod_path` must be a fully qualified path
-    pub(super) fn module_mut_in_current_package(
-        &mut self,
-        mod_path: &ModulePathBuf,
-    ) -> Option<&mut Module> {
-        assert!(self.check_path_is_in_current_package(mod_path));
-        self.module_mut_from_absolute_path(mod_path)
     }
 }

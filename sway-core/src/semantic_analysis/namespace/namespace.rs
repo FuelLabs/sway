@@ -75,15 +75,20 @@ impl Namespace {
         &self.root
     }
 
+    fn module_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
+        assert!(self.root.check_path_is_in_current_package(mod_path));
+        self.root.module_from_absolute_path(mod_path)
+    }
+
     pub fn current_module(&self) -> &Module {
-        self.root
-            .module_in_current_package(&self.current_mod_path)
+        self.module_in_current_package(&self.current_mod_path)
             .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
     }
 
     pub fn current_module_mut(&mut self) -> &mut Module {
-        self.root
-            .module_mut_in_current_package(&self.current_mod_path)
+        let package_relative_path = Root::package_relative_path(&self.current_mod_path);
+        self.current_package_root_module_mut()
+            .submodule_mut(&package_relative_path)
             .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
     }
 
@@ -144,6 +149,10 @@ impl Namespace {
 
     pub fn current_package_root_module(&self) -> &Module {
         self.root.root_module()
+    }
+
+    fn current_package_root_module_mut(&mut self) -> &mut Module {
+        self.root.root_module_mut()
     }
 
     pub fn external_packages(
