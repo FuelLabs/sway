@@ -146,7 +146,7 @@ impl<T> MyOption<T> {
     }
 }
 
-fn test_ok_or<T, E>(val: T, default: E) where T: Eq, E: Eq {
+fn test_ok_or<T, E>(val: T, default: E) where T: PartialEq, E: PartialEq {
     match MyOption::Some(val).ok_or(default) {
         Ok(inner) => assert(val == inner),
         Err(_) => revert(0),

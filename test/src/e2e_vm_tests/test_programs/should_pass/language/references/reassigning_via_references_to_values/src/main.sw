@@ -35,19 +35,11 @@ struct S {
     y: u64,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for S {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x && self.y == other.y
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for S {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for S {}
 
 #[inline(always)]
@@ -104,19 +96,11 @@ fn assign_struct_value_not_inlined() {
     assign_struct_value()
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for (bool, u64) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for (bool, u64) {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for (bool, u64) {}
 
 #[inline(always)]
@@ -153,19 +137,6 @@ enum E {
     D: u32,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for E {
-    fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (E::A(l), E::A(r)) => l == r,
-            (E::B(l), E::B(r)) => l == r,
-            (E::C(l), E::C(r)) => l == r,
-            (E::D(l), E::D(r)) => l == r,
-            _ => false,
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for E {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -177,7 +148,6 @@ impl PartialEq for E {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for E {}
 
 #[inline(always)]

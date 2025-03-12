@@ -8,19 +8,11 @@ pub struct TestStruct {
     val3: u64,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for TestStruct {
-    fn eq(self, other: Self) -> bool {
-        self.val1 == other.val1 && self.val2 == other.val2 && self.val3 == other.val3
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for TestStruct {
     fn eq(self, other: Self) -> bool {
         self.val1 == other.val1 && self.val2 == other.val2 && self.val3 == other.val3
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for TestStruct {}
 
 storage {

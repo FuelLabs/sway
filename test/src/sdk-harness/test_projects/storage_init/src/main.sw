@@ -54,68 +54,27 @@ impl F {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for T {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x && self.y == other.y && self.z == other.z && self.boolean == other.boolean && self.int8 == other.int8 && self.int16 == other.int16 && self.int32 == other.int32
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for T {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y && self.z == other.z && self.boolean == other.boolean && self.int8 == other.int8 && self.int16 == other.int16 && self.int32 == other.int32
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for T {}
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for S {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x && self.y == other.y && self.z == other.z && self.u == other.u && self.t == other.t && self.f_int8.equals(other.f_int8) && self.f_int64.equals(other.f_int64) && self.f_tuple.equals(other.f_tuple)
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for S {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y && self.z == other.z && self.u == other.u && self.t == other.t && self.f_int8.equals(other.f_int8) && self.f_int64.equals(other.f_int64) && self.f_tuple.equals(other.f_tuple)
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for S {}
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for F {
-    fn eq(self, other: Self) -> bool {
-        self.equals(other)
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for F {
     fn eq(self, other: Self) -> bool {
         self.equals(other)
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for F {}
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for E {
-    fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (E::A(l), E::A(r)) => l == r,
-            (E::B(l), E::B(r)) => l == r,
-            (E::Int8(l), E::Int8(r)) => l == r,
-            (E::Int16(l), E::Int16(r)) => l == r,
-            (E::Int32(l), E::Int32(r)) => l == r,
-            (E::Bool(l), E::Bool(r)) => l == r,
-            (E::Unit, E::Unit) => true,
-            (E::Enum(l), E::Enum(r)) => l.equals(r),
-            _ => false,
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for E {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -131,7 +90,6 @@ impl PartialEq for E {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for E {}
 
 storage {

@@ -11,7 +11,7 @@ warning
   |
 1 | predicate;
 2 | #[cfg(c)] a
-  |   --- Unexpected attribute value: "c" for attribute: "cfg" expected value "target" or "program_type" or "experimental_new_encoding" or "experimental_storage_domains" or "experimental_references" or "experimental_error_type" or "experimental_partial_eq" or "experimental_const_generics" or "experimental_try_from_bytes_for_b256" or "experimental_merge_core_std"
+  |   --- Unexpected attribute value: "c" for attribute: "cfg" expected value "target" or "program_type" or "experimental_new_encoding" or "experimental_references" or "experimental_error_type" or "experimental_const_generics"
   |
 ____
 

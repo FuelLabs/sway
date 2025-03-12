@@ -29,16 +29,6 @@ where
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl<T> Eq for S<T>
-where
-    T: TestInstance + Eq,
-{
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x && self.y == other.y
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl<T> PartialEq for S<T>
 where
     T: TestInstance + PartialEq,
@@ -47,7 +37,6 @@ where
         self.x == other.x && self.y == other.y
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl<T> Eq for S<T>
 where
     T: TestInstance + Eq,
@@ -61,16 +50,6 @@ where
     y: & &T,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl<T> Eq for & &T
-where
-    T: TestInstance + Eq,
-{
-    fn eq(self, other: Self) -> bool {
-        **self == **other
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl<T> PartialEq for & &T
 where
     T: TestInstance + PartialEq,
@@ -79,22 +58,11 @@ where
         **self == **other
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl<T> Eq for & &T
 where
     T: TestInstance + Eq,
 {}
 
-#[cfg(experimental_partial_eq = false)]
-impl<T> Eq for & & &T
-where
-    T: TestInstance + Eq,
-{
-    fn eq(self, other: Self) -> bool {
-        ***self == ***other
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl<T> PartialEq for & & &T
 where
     T: TestInstance + PartialEq,
@@ -103,7 +71,6 @@ where
         ***self == ***other
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl<T> Eq for & & &T
 where
     T: TestInstance + Eq,

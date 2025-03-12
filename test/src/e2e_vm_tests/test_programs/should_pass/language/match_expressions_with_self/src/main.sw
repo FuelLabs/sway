@@ -7,17 +7,6 @@ enum Initialized {
     False: (),
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Initialized {
-    fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (Initialized::True, Initialized::True) => true,
-            (Initialized::False, Initialized::False) => true,
-            _ => false,
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Initialized {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -27,7 +16,6 @@ impl PartialEq for Initialized {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Initialized {}
 
 impl Initialized {

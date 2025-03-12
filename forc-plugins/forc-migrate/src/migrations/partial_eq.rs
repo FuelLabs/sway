@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 #![allow(deprecated)]
 
 use std::vec;
@@ -23,7 +24,6 @@ use sway_core::{
     Engines,
 };
 use sway_error::formatting::{plural_s, Indent};
-use sway_features::Feature;
 use sway_types::{Ident, Span, Spanned};
 
 use super::{ContinueMigrationProcess, DryRun, MigrationStep, MigrationStepKind, ProgramInfo};
@@ -504,11 +504,8 @@ fn implement_experimental_partial_eq_and_eq_traits(
                 Span::empty_at_end(&attributes.last().expect("attributes are not empty").span())
             };
 
-            let cfg_attribute_decl = New::cfg_experimental_attribute_decl(
-                insert_span.clone(),
-                Feature::PartialEq,
-                false,
-            );
+            let cfg_attribute_decl =
+                New::cfg_experimental_attribute_decl(insert_span.clone(), "partial_eq", false);
 
             attributes.push(cfg_attribute_decl);
 

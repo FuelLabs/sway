@@ -1,9 +1,5 @@
 library;
 
-#[cfg(experimental_partial_eq = false)]
-use ::ops::{Eq, Not, Ord};
-
-#[cfg(experimental_partial_eq = true)]
 use ::ops::{Eq, Not, Ord, PartialEq};
 
 /// `!` represents the type of computations which never resolve to any value at all.
@@ -63,21 +59,12 @@ impl Not for ! {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for ! {
-    fn eq(self, _other: Self) -> bool {
-        self
-    }
-}
-
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for ! {
     fn eq(self, _other: Self) -> bool {
         self
     }
 }
 
-#[cfg(experimental_partial_eq = true)]
 impl Eq for ! {}
 
 impl Ord for ! {

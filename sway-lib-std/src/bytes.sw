@@ -957,20 +957,6 @@ impl Bytes {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Bytes {
-    fn eq(self, other: Self) -> bool {
-        if self.len != other.len {
-            return false;
-        }
-
-        asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
-            meq result r2 r3 r4;
-            result: bool
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Bytes {
     fn eq(self, other: Self) -> bool {
         if self.len != other.len {
@@ -983,7 +969,6 @@ impl PartialEq for Bytes {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Bytes {}
 
 impl AsRawSlice for Bytes {
@@ -1008,22 +993,6 @@ impl From<b256> for Bytes {
     }
 }
 
-#[cfg(experimental_try_from_bytes_for_b256 = false)]
-impl From<Bytes> for b256 {
-    // NOTE: this cas be lossy! Added here as the From trait currently requires it,
-    // but the conversion from `Bytes` ->`b256` should be implemented as
-    // `impl TryFrom<Bytes> for b256` when the `TryFrom` trait lands:
-    // https://github.com/FuelLabs/sway/pull/3881
-    fn from(bytes: Bytes) -> b256 {
-        let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        let ptr = __addr_of(value);
-        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
-
-        value
-    }
-}
-
-#[cfg(experimental_try_from_bytes_for_b256 = true)]
 impl TryFrom<Bytes> for b256 {
     fn try_from(bytes: Bytes) -> Option<Self> {
         if bytes.len() != 32 {

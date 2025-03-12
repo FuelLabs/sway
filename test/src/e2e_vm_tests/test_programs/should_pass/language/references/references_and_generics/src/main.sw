@@ -4,19 +4,11 @@ struct A {
     x: u64,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for A {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for A {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for A {}
 
 struct S<T>
@@ -29,69 +21,6 @@ where
     r_mut_r_mut_t: &mut &mut T,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl<T> Eq for S<T>
-where
-    T: Eq,
-{
-    fn eq(self, other: Self) -> bool {
-        // Original implementation, before we had dereferencing.
-        // Let's keep it for more paranoid coverage :-)
-        let self_r_t_ptr = asm(r: self.r_t) {
-            r: raw_ptr
-        };
-        let self_r_r_t_ptr = asm(r: self.r_r_t) {
-            r: raw_ptr
-        };
-        let self_r_mut_t_ptr = asm(r: self.r_mut_t) {
-            r: raw_ptr
-        };
-        let self_r_mut_r_mut_t_ptr = asm(r: self.r_mut_r_mut_t) {
-            r: raw_ptr
-        };
-
-        let other_r_t_ptr = asm(r: other.r_t) {
-            r: raw_ptr
-        };
-        let other_r_r_t_ptr = asm(r: other.r_r_t) {
-            r: raw_ptr
-        };
-        let other_r_mut_t_ptr = asm(r: other.r_mut_t) {
-            r: raw_ptr
-        };
-        let other_r_mut_r_mut_t_ptr = asm(r: other.r_mut_r_mut_t) {
-            r: raw_ptr
-        };
-
-        // And use the opportunity to assert dereferencing ;-)
-        assert(self_r_t_ptr.read::<T>() == *self.r_t);
-        assert(other_r_t_ptr.read::<T>() == *other.r_t);
-        assert(self_r_r_t_ptr.read::<raw_ptr>().read::<T>() == **self.r_r_t);
-        assert(other_r_r_t_ptr.read::<raw_ptr>().read::<T>() == **other.r_r_t);
-        assert(self_r_mut_t_ptr.read::<T>() == *self.r_mut_t);
-        assert(other_r_mut_t_ptr.read::<T>() == *other.r_mut_t);
-        assert(self_r_mut_r_mut_t_ptr.read::<raw_ptr>().read::<T>() == **self.r_mut_r_mut_t);
-        assert(other_r_mut_r_mut_t_ptr.read::<raw_ptr>().read::<T>() == **other.r_mut_r_mut_t);
-
-        self_r_t_ptr
-            .read::<T>() == other_r_t_ptr
-            .read::<T>()
-        && self_r_r_t_ptr
-            .read::<raw_ptr>()
-            .read::<T>() == other_r_r_t_ptr
-            .read::<raw_ptr>()
-            .read::<T>()
-        && self_r_mut_t_ptr
-            .read::<T>() == other_r_mut_t_ptr
-            .read::<T>()
-            && self_r_mut_r_mut_t_ptr
-                .read::<raw_ptr>()
-                .read::<T>() == other_r_mut_r_mut_t_ptr
-                .read::<raw_ptr>()
-                .read::<T>()
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl<T> PartialEq for S<T>
 where
     T: PartialEq,
@@ -150,7 +79,6 @@ where
                 .read::<T>()
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl<T> Eq for S<T>
 where
     T: Eq,

@@ -173,26 +173,6 @@ impl TryInto<b256> for PublicKey {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for PublicKey {
-    fn eq(self, other: Self) -> bool {
-        if self.bytes.len() != other.bytes.len() {
-            return false;
-        }
-
-        let mut iter = 0;
-        while iter < self.bytes.len() {
-            if self.bytes.get(iter).unwrap() != other.bytes.get(iter).unwrap()
-            {
-                return false;
-            }
-            iter += 1;
-        }
-
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for PublicKey {
     fn eq(self, other: Self) -> bool {
         if self.bytes.len() != other.bytes.len() {
@@ -211,7 +191,6 @@ impl PartialEq for PublicKey {
         true
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for PublicKey {}
 
 impl Hash for PublicKey {

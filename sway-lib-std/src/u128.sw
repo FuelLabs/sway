@@ -146,19 +146,11 @@ impl From<U128> for (u64, u64) {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for U128 {
-    fn eq(self, other: Self) -> bool {
-        self.lower == other.lower && self.upper == other.upper
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for U128 {
     fn eq(self, other: Self) -> bool {
         self.lower == other.lower && self.upper == other.upper
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for U128 {}
 
 impl Ord for U128 {

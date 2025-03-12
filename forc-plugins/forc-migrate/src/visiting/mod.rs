@@ -7,8 +7,9 @@ use std::sync::Arc;
 
 use duplicate::duplicate_item;
 use sway_ast::{
-    expr::LoopControlFlow, CodeBlockContents, Expr, IfExpr, ItemFn, ItemImpl, ItemImplItem,
-    ItemKind, ItemUse, PathExprSegment, Statement, StatementLet,
+    expr::{LoopControlFlow, ReassignmentOpVariant},
+    CodeBlockContents, Expr, IfCondition, IfExpr, ItemFn, ItemImpl, ItemImplItem, ItemKind,
+    ItemUse, PathExprSegment, Statement, StatementLet,
 };
 use sway_core::{
     decl_engine::DeclEngine,
@@ -16,8 +17,8 @@ use sway_core::{
         lexed::LexedModule,
         ty::{
             self, TyAstNodeContent, TyCodeBlock, TyDecl, TyExpression, TyExpressionVariant,
-            TyFunctionDecl, TyImplSelfOrTrait, TyModule, TySideEffect, TySideEffectVariant,
-            TyTraitItem, TyUseStatement, TyVariableDecl,
+            TyFunctionDecl, TyImplSelfOrTrait, TyIntrinsicFunctionKind, TyModule, TySideEffect,
+            TySideEffectVariant, TyTraitItem, TyUseStatement, TyVariableDecl,
         },
         CallPath,
     },
@@ -875,22 +876,38 @@ impl __ProgramVisitor {
             }
             Expr::Reassignment {
                 assignable: _,
-                reassignment_op: _,
+                reassignment_op,
                 expr,
             } => {
-                let ty_reassignment_rhs = ty_expr
-                    .map(|ty_expr| match &ty_expr.expression {
-                        ty::TyExpressionVariant::Reassignment(ty_reassignment) => {
-                            Ok(&ty_reassignment.rhs)
-                        }
-                        _ => bail!(invalid_ty_expression_variant(
-                            "Reassignment",
-                            "Reassignment"
-                        )),
-                    })
-                    .transpose()?;
+                match reassignment_op.variant {
+                    ReassignmentOpVariant::Equals => {
+                        let ty_reassignment_rhs = ty_expr
+                            .map(|ty_expr| match &ty_expr.expression {
+                                ty::TyExpressionVariant::Reassignment(ty_reassignment) => {
+                                    Ok(&ty_reassignment.rhs)
+                                }
+                                _ => bail!(invalid_ty_expression_variant(
+                                    "Reassignment",
+                                    "Reassignment"
+                                )),
+                            })
+                            .transpose()?;
 
-                Self::visit_expr(ctx, expr, ty_reassignment_rhs, visitor, output)?;
+                        Self::visit_expr(ctx, expr, ty_reassignment_rhs, visitor, output)?;
+                    }
+                    _ => {
+                        // TODO: Implement getting `ty_expr` when visiting `compound reassignments`.
+                        //       We need to properly handle the desugaring.
+                        //       E.g., `x += func(1, 2);`
+                        //       will be desugared into `x = x.add(func(1, 2));`
+                        //       When visiting the RHS in the lexed tree, we need to skip the
+                        //       operator method call in the typed tree.
+                        //       To provide visiting without loosing the information about compound
+                        //       reassignment, we will need to have a dedicated `visit_reassignment`
+                        //       method.
+                        Self::visit_expr(ctx, expr, None, visitor, output)?;
+                    }
+                }
             }
             Expr::Break { .. } => {}
             Expr::Continue { .. } => {}
@@ -909,64 +926,88 @@ impl __ProgramVisitor {
     where
         V: __TreesVisitor<O>,
     {
-        let ty_if = ty_if_expr
-            .map(|ty_expr| match &ty_expr.expression {
-                ty::TyExpressionVariant::IfExp {
-                    condition,
-                    then,
-                    r#else,
-                } => Ok((
-                    condition.as_ref(),
-                    then.as_ref(),
-                    r#else.as_ref().map(|r#else| r#else.as_ref()),
-                )),
-                _ => bail!(invalid_ty_expression_variant("IfExpr", "If")),
-            })
-            .transpose()?;
-        let _ty_if_condition = ty_if.map(|ty_if| ty_if.0);
-        let ty_if_then = ty_if
-            .map(|ty_if| match &ty_if.1.expression {
-                ty::TyExpressionVariant::CodeBlock(ty_code_block) => Ok(ty_code_block),
-                _ => bail!(invalid_ty_expression_variant(
-                    "CodeBlock",
-                    "CodeBlockContents"
-                )),
-            })
-            .transpose()?;
-        let ty_if_else = ty_if.and_then(|ty_if| ty_if.2);
+        match &lexed_if.condition {
+            IfCondition::Expr(_) => {
+                let ty_if = ty_if_expr
+                    .map(|ty_expr| match &ty_expr.expression {
+                        ty::TyExpressionVariant::IfExp {
+                            condition,
+                            then,
+                            r#else,
+                        } => Ok((
+                            condition.as_ref(),
+                            then.as_ref(),
+                            r#else.as_ref().map(|r#else| r#else.as_ref()),
+                        )),
+                        _ => bail!(invalid_ty_expression_variant("IfExpr", "If")),
+                    })
+                    .transpose()?;
+                let _ty_if_condition = ty_if.map(|ty_if| ty_if.0);
+                let ty_if_then = ty_if
+                    .map(|ty_if| match &ty_if.1.expression {
+                        ty::TyExpressionVariant::CodeBlock(ty_code_block) => Ok(ty_code_block),
+                        _ => bail!(invalid_ty_expression_variant(
+                            "CodeBlock",
+                            "CodeBlockContents"
+                        )),
+                    })
+                    .transpose()?;
+                let ty_if_else = ty_if.and_then(|ty_if| ty_if.2);
 
-        // TODO: Implement visiting `if_condition`.
+                // TODO: Implement visiting `if_condition`.
 
-        Self::visit_block(
-            ctx,
-            __ref([lexed_if.then_block.inner]),
-            ty_if_then,
-            visitor,
-            output,
-        )?;
-        if let Some((_else_token, lexed_if_else)) = __ref([lexed_if.else_opt]) {
-            match lexed_if_else {
-                LoopControlFlow::Continue(lexed_else_if) => {
-                    Self::visit_if(ctx, lexed_else_if.__as_ref(), ty_if_else, visitor, output)?;
+                Self::visit_block(
+                    ctx,
+                    __ref([lexed_if.then_block.inner]),
+                    ty_if_then,
+                    visitor,
+                    output,
+                )?;
+
+                if let Some((_else_token, lexed_if_else)) = __ref([lexed_if.else_opt]) {
+                    match lexed_if_else {
+                        LoopControlFlow::Continue(lexed_else_if) => {
+                            Self::visit_if(
+                                ctx,
+                                lexed_else_if.__as_ref(),
+                                ty_if_else,
+                                visitor,
+                                output,
+                            )?;
+                        }
+                        LoopControlFlow::Break(lexed_else_block) => {
+                            let ty_if_else = ty_if_else
+                                .map(|ty_if_else| match &ty_if_else.expression {
+                                    ty::TyExpressionVariant::CodeBlock(ty_code_block) => {
+                                        Ok(ty_code_block)
+                                    }
+                                    _ => bail!(invalid_ty_expression_variant(
+                                        "CodeBlock",
+                                        "CodeBlockContents"
+                                    )),
+                                })
+                                .transpose()?;
+                            Self::visit_block(
+                                ctx,
+                                __ref([lexed_else_block.inner]),
+                                ty_if_else,
+                                visitor,
+                                output,
+                            )?;
+                        }
+                    }
                 }
-                LoopControlFlow::Break(lexed_else_block) => {
-                    let ty_if_else = ty_if_else
-                        .map(|ty_if_else| match &ty_if_else.expression {
-                            ty::TyExpressionVariant::CodeBlock(ty_code_block) => Ok(ty_code_block),
-                            _ => bail!(invalid_ty_expression_variant(
-                                "CodeBlock",
-                                "CodeBlockContents"
-                            )),
-                        })
-                        .transpose()?;
-                    Self::visit_block(
-                        ctx,
-                        __ref([lexed_else_block.inner]),
-                        ty_if_else,
-                        visitor,
-                        output,
-                    )?;
-                }
+            }
+            IfCondition::Let {
+                let_token: _,
+                lhs: _,
+                eq_token: _,
+                rhs: _,
+            } => {
+                // TODO: Implement visiting `if let`.
+                //       Similar to `match` expression, we have a complex
+                //       desugaring here and we need to properly locate the
+                //       corresponding typed elements.
             }
         }
 
@@ -986,18 +1027,20 @@ impl __ProgramVisitor {
     {
         let ty_args = ty_expr.map(|ty_expr|
             match &ty_expr.expression {
-                ty::TyExpressionVariant::FunctionApplication { arguments, .. } => Ok(arguments),
-                _ => bail!(internal_error("Arguments can be visited only on a `ty_expr` of a variant `TyExpressionVariant::FunctionApplication`.")),
+                ty::TyExpressionVariant::FunctionApplication { arguments, .. } => Ok(arguments.iter().map(|(_ident, ty_arg)| ty_arg).collect::<Vec<_>>()),
+                ty::TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind { arguments, .. }) => Ok(arguments.iter().collect::<Vec<_>>()),
+                ty::TyExpressionVariant::EnumInstantiation { contents, .. } => Ok(contents.as_ref().map_or(vec![], |arg| vec![arg.as_ref()])),
+                _ => bail!(internal_error("Arguments can be visited only on a `ty_expr` of the following `TyExpressionVariant`s: `FunctionApplication`, `IntrinsicFunction`, `EnumInstantiation`.")),
             }
         ).transpose()?;
 
         let lexed_args = match lexed_expr {
             Expr::FuncApp { args, .. }
             | Expr::MethodCall { args, .. } => args,
-            _ => bail!("Arguments can be visited only on a `lexed_expr` of a variant `Expr::FuncApp` or `Expr::MethodCall`."),
+            _ => bail!("Arguments can be visited only on a `lexed_expr` of the following `Expr`s: `FuncApp`, `MethodCall`."),
         };
 
-        if let Some(ty_args) = ty_args {
+        if let Some(ty_args) = &ty_args {
             let lexed_args_count = lexed_args.inner.iter().count();
             // Ignore the first argument in the typed arguments, which is the `self` argument.
             let ty_args_count = if is_method_call {
@@ -1006,7 +1049,7 @@ impl __ProgramVisitor {
                 ty_args.len()
             };
             if lexed_args_count != ty_args_count {
-                bail!(internal_error(format!("Number of arguments in `Expr::FuncApp` ({lexed_args_count}) must be the same as in `TyExpressionVariant::FunctionApplication` ({ty_args_count}).")));
+                bail!(internal_error(format!("Number of arguments in the `lexed_expr` ({lexed_args_count}) must be the same as in the `ty_expr` ({ty_args_count}).")));
             }
         }
 
@@ -1017,7 +1060,7 @@ impl __ProgramVisitor {
         };
 
         for (i, lexed_arg) in lexed_args.inner.__iter().enumerate() {
-            let ty_arg = ty_args.map(|ty_args| &ty_args[i + index_shift].1);
+            let ty_arg = ty_args.as_ref().map(|ty_args| ty_args[i + index_shift]);
             Self::visit_expr(ctx, lexed_arg, ty_arg, visitor, output)?;
         }
 

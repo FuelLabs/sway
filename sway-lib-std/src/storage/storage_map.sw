@@ -20,7 +20,6 @@ use ::codec::*;
 /// The domain prefix for the [StorageMap] is 1u8.
 ///
 /// For detailed elaboration see: https://github.com/FuelLabs/sway/issues/6317
-#[cfg(experimental_storage_domains = true)]
 const STORAGE_MAP_DOMAIN: u8 = 1;
 
 /// Errors pertaining to the `StorageMap` struct.
@@ -207,12 +206,6 @@ where
         }
     }
 
-    #[cfg(experimental_storage_domains = false)]
-    fn get_slot_key(self, key: K) -> b256 {
-        sha256((key, self.field_id()))
-    }
-
-    #[cfg(experimental_storage_domains = true)]
     fn get_slot_key(self, key: K) -> b256 {
         sha256((STORAGE_MAP_DOMAIN, key, self.field_id()))
     }
