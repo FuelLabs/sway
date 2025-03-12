@@ -156,7 +156,7 @@ enum Binary {
     False: (),
 }
 
-impl Eq for Binary {
+impl PartialEq for Binary {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Binary::True, Binary::True) => true,
