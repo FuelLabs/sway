@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::vec;
 
 use crate::migrations::{visit_all_modules_mut, MutProgramInfo};

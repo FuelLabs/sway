@@ -9,9 +9,11 @@
 //! the migration tool.
 
 mod demo;
+mod merge_core_std;
 mod partial_eq;
 mod references;
 mod storage_domains;
+mod try_from_bytes_for_b256;
 
 use std::collections::HashSet;
 
@@ -273,6 +275,8 @@ pub(crate) enum MigrationStepKind {
 /// A convenient method for visiting all the modules within a program.
 /// The `visitor` will be called for every module, and the method will return the
 /// [Vec] containing the results of all the individual visitor calls.
+#[deprecated(note = "use `crate::visiting::ProgramVisitor/Mut::visit_program()` instead")]
+#[allow(deprecated)]
 pub(crate) fn visit_all_modules<T>(
     program_info: &ProgramInfo,
     dry_run: DryRun,
@@ -292,6 +296,8 @@ pub(crate) fn visit_all_modules<T>(
 /// [Vec] containing the results of all the individual visitor calls.
 ///
 /// Visitors can mutate the [LexedProgram].
+#[deprecated(note = "use `crate::visiting::ProgramVisitor/Mut::visit_program()` instead")]
+#[allow(deprecated)]
 pub(crate) fn visit_all_modules_mut<T>(
     program_info: &mut MutProgramInfo,
     dry_run: DryRun,
@@ -315,6 +321,8 @@ pub(crate) fn visit_all_modules_mut<T>(
     [visit_modules]      [ModuleVisitorFn]     [&type]           [&value]      [iter];
     [visit_modules_mut]  [ModuleVisitorMutFn]  [&mut type]       [&mut value]  [iter_mut];
 )]
+#[deprecated(note = "use `crate::visiting::ProgramVisitor/Mut::visit_program()` instead")]
+#[allow(deprecated)]
 pub(crate) fn __visit_modules<T>(
     engines: &Engines,
     lexed_module: __ref_type([LexedModule]),
@@ -491,5 +499,16 @@ const MIGRATION_STEPS: MigrationSteps = &[
             self::partial_eq::IMPLEMENT_EXPERIMENTAL_PARTIAL_EQ_AND_EQ_TRAITS,
             self::partial_eq::REMOVE_DEPRECATED_EQ_TRAIT_IMPLEMENTATIONS,
         ],
+    ),
+    (
+        Feature::TryFromBytesForB256,
+        &[
+            self::try_from_bytes_for_b256::REPLACE_B256_FROM_BYTES_WITH_TRY_FROM_BYTES_STEP,
+            self::try_from_bytes_for_b256::REPLACE_BYTES_INTO_B256_WITH_TRY_INTO_B256_STEP,
+        ],
+    ),
+    (
+        Feature::MergeCoreStd,
+        &[self::merge_core_std::REPLACE_CORE_WITH_STD_IN_PATHS],
     ),
 ];
