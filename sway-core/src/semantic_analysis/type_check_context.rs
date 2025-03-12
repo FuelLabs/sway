@@ -1230,7 +1230,7 @@ impl<'a> TypeCheckContext<'a> {
             return;
         };
 
-        let _ = src_mod.walk_scope_chain(|lexical_scope| {
+        let _ = src_mod.walk_scope_chain_early_return(|lexical_scope| {
             impls_to_insert.extend(
                 lexical_scope
                     .items
