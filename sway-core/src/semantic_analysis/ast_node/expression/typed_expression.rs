@@ -2574,7 +2574,7 @@ impl ty::TyExpression {
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> Result<(TypeId, TypeId), ErrorEmitted> {
-        let ret = module.walk_scope_chain(|lexical_scope| {
+        let ret = module.walk_scope_chain_early_return(|lexical_scope| {
             Self::find_subfield_type_helper(
                 lexical_scope,
                 handler,
