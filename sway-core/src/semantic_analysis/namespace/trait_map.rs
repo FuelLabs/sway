@@ -1,6 +1,6 @@
 use std::{
     cmp::Ordering,
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     fmt,
     hash::{DefaultHasher, Hash, Hasher},
     sync::Arc,
@@ -148,7 +148,7 @@ impl ResolvedTraitImplItem {
 }
 
 /// Map of name to [ResolvedTraitImplItem](ResolvedTraitImplItem)
-type TraitItems = HashMap<String, ResolvedTraitImplItem>;
+type TraitItems = BTreeMap<String, ResolvedTraitImplItem>;
 
 #[derive(Clone, Debug)]
 pub(crate) struct TraitValue {
@@ -166,7 +166,7 @@ pub(crate) struct TraitEntry {
 /// Map of string of type entry id and vec of [TraitEntry].
 /// We are using the HashMap as a wrapper to the vec so the TraitMap algorithms
 /// don't need to traverse every TraitEntry.
-pub(crate) type TraitImpls = HashMap<TypeRootFilter, Vec<TraitEntry>>;
+pub(crate) type TraitImpls = BTreeMap<TypeRootFilter, Vec<TraitEntry>>;
 
 #[derive(Clone, Hash, Eq, PartialOrd, Ord, PartialEq, Debug)]
 pub(crate) enum TypeRootFilter {
@@ -243,7 +243,7 @@ impl TraitMap {
         let unaliased_type_id = engines.te().get_unaliased_type_id(type_id);
 
         handler.scope(|handler| {
-            let mut trait_items: TraitItems = HashMap::new();
+            let mut trait_items: TraitItems = BTreeMap::new();
             for item in items.iter() {
                 match item {
                     ResolvedTraitImplItem::Parsed(_) => todo!(),
@@ -381,9 +381,7 @@ impl TraitMap {
                 } else if types_are_subset
                     && (traits_are_subset || matches!(is_impl_self, IsImplSelf::Yes))
                 {
-                    let mut names = trait_items.keys().clone().collect::<Vec<_>>();
-                    names.sort();
-                    for name in names {
+                    for name in trait_items.keys() {
                         let item = &trait_items[name];
                         match item {
                             ResolvedTraitImplItem::Parsed(_item) => todo!(),
@@ -499,7 +497,7 @@ impl TraitMap {
             impl_span,
         };
         let entry = TraitEntry { key, value };
-        let mut trait_impls: TraitImpls = HashMap::<TypeRootFilter, Vec<TraitEntry>>::new();
+        let mut trait_impls: TraitImpls = BTreeMap::<TypeRootFilter, Vec<TraitEntry>>::new();
         let type_root_filter = Self::get_type_root_filter(engines, type_id);
         let impls_vector = vec![entry];
         trait_impls.insert(type_root_filter, impls_vector);
@@ -515,9 +513,7 @@ impl TraitMap {
     /// Given [TraitMap]s `self` and `other`, extend `self` with `other`,
     /// extending existing entries when possible.
     pub(crate) fn extend(&mut self, other: TraitMap, engines: &Engines) {
-        let mut impls_keys = other.trait_impls.keys().clone().collect::<Vec<_>>();
-        impls_keys.sort();
-        for impls_key in impls_keys {
+        for impls_key in other.trait_impls.keys() {
             let oe_vec = &other.trait_impls[impls_key];
             let self_vec = if let Some(self_vec) = self.trait_impls.get_mut(impls_key) {
                 self_vec
@@ -547,9 +543,7 @@ impl TraitMap {
     /// the entries from `self` that implement a trait from the declaration with that span.
     pub(crate) fn filter_by_trait_decl_span(&self, trait_decl_span: Span) -> TraitMap {
         let mut trait_map = TraitMap::default();
-        let mut keys = self.trait_impls.keys().clone().collect::<Vec<_>>();
-        keys.sort();
-        for key in keys {
+        for key in self.trait_impls.keys() {
             let vec = &self.trait_impls[key];
             for entry in vec {
                 if entry.key.trait_decl_span.as_ref() == Some(&trait_decl_span) {
@@ -665,56 +659,60 @@ impl TraitMap {
         let mut trait_map = TraitMap::default();
         for type_id in all_types.iter_mut() {
             let type_info = type_engine.get(*type_id);
-            let impls = self.get_impls(engines, *type_id, true);
-            for TraitEntry {
-                key:
-                    TraitKey {
-                        name: map_trait_name,
-                        type_id: map_type_id,
-                        trait_decl_span: map_trait_decl_span,
-                        impl_type_parameters: map_impl_type_parameters,
-                    },
-                value:
-                    TraitValue {
-                        trait_items: map_trait_items,
-                        impl_span,
-                    },
-            } in impls.iter()
-            {
-                if !type_engine.is_type_changeable(engines, &type_info) && *type_id == *map_type_id
-                {
-                    trait_map.insert_inner(
-                        map_trait_name.clone(),
-                        impl_span.clone(),
-                        map_trait_decl_span.clone(),
-                        *type_id,
-                        map_impl_type_parameters.clone(),
-                        map_trait_items.clone(),
-                        engines,
-                    );
-                } else if decider(*type_id, *map_type_id) {
-                    trait_map.insert_inner(
-                        map_trait_name.clone(),
-                        impl_span.clone(),
-                        map_trait_decl_span.clone(),
-                        *map_type_id,
-                        map_impl_type_parameters.clone(),
-                        Self::filter_dummy_methods(
-                            map_trait_items.clone(),
+            self.for_each_impls(
+                engines,
+                *type_id,
+                true,
+                |TraitEntry {
+                     key:
+                         TraitKey {
+                             name: map_trait_name,
+                             type_id: map_type_id,
+                             trait_decl_span: map_trait_decl_span,
+                             impl_type_parameters: map_impl_type_parameters,
+                         },
+                     value:
+                         TraitValue {
+                             trait_items: map_trait_items,
+                             impl_span,
+                         },
+                 }| {
+                    if !type_engine.is_type_changeable(engines, &type_info)
+                        && *type_id == *map_type_id
+                    {
+                        trait_map.insert_inner(
+                            map_trait_name.clone(),
+                            impl_span.clone(),
+                            map_trait_decl_span.clone(),
                             *type_id,
-                            *map_type_id,
+                            map_impl_type_parameters.clone(),
+                            map_trait_items.clone(),
                             engines,
-                        ),
-                        engines,
-                    );
-                }
-            }
+                        );
+                    } else if decider(*type_id, *map_type_id) {
+                        trait_map.insert_inner(
+                            map_trait_name.clone(),
+                            impl_span.clone(),
+                            map_trait_decl_span.clone(),
+                            *map_type_id,
+                            map_impl_type_parameters.clone(),
+                            Self::filter_dummy_methods(
+                                map_trait_items,
+                                *type_id,
+                                *map_type_id,
+                                engines,
+                            ),
+                            engines,
+                        );
+                    }
+                },
+            );
         }
         trait_map
     }
 
     fn filter_dummy_methods(
-        map_trait_items: TraitItems,
+        map_trait_items: &TraitItems,
         type_id: TypeId,
         map_type_id: TypeId,
         engines: &Engines,
@@ -730,8 +728,7 @@ impl TraitMap {
         }
 
         map_trait_items
-            .clone()
-            .into_iter()
+            .iter()
             .filter_map(|(name, item)| match item {
                 ResolvedTraitImplItem::Parsed(_item) => todo!(),
                 ResolvedTraitImplItem::Typed(item) => match item {
@@ -740,16 +737,19 @@ impl TraitMap {
                         if decl.is_trait_method_dummy && !insertable {
                             None
                         } else {
-                            Some((name, ResolvedTraitImplItem::Typed(TyImplItem::Fn(decl_ref))))
+                            Some((
+                                name.clone(),
+                                ResolvedTraitImplItem::Typed(TyImplItem::Fn(decl_ref.clone())),
+                            ))
                         }
                     }
                     ty::TyTraitItem::Constant(decl_ref) => Some((
-                        name,
-                        ResolvedTraitImplItem::Typed(TyImplItem::Constant(decl_ref)),
+                        name.clone(),
+                        ResolvedTraitImplItem::Typed(TyImplItem::Constant(decl_ref.clone())),
                     )),
                     ty::TyTraitItem::Type(decl_ref) => Some((
-                        name,
-                        ResolvedTraitImplItem::Typed(TyImplItem::Type(decl_ref)),
+                        name.clone(),
+                        ResolvedTraitImplItem::Typed(TyImplItem::Type(decl_ref.clone())),
                     )),
                 },
             })
@@ -846,27 +846,29 @@ impl TraitMap {
             return items;
         }
 
-        let _ = module.walk_scope_chain(|lexical_scope| {
-            let impls = lexical_scope
-                .items
-                .implemented_traits
-                .get_impls(engines, type_id, true);
-            for entry in impls {
-                if unify_check.check(type_id, entry.key.type_id) {
-                    let trait_items = Self::filter_dummy_methods(
-                        entry.value.trait_items,
-                        type_id,
-                        entry.key.type_id,
-                        engines,
-                    )
-                    .values()
-                    .cloned()
-                    .map(|i| (i, entry.key.clone()))
-                    .collect::<Vec<_>>();
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
+            lexical_scope.items.implemented_traits.for_each_impls(
+                engines,
+                type_id,
+                true,
+                |entry| {
+                    if unify_check.check(type_id, entry.key.type_id) {
+                        let trait_items = Self::filter_dummy_methods(
+                            &entry.value.trait_items,
+                            type_id,
+                            entry.key.type_id,
+                            engines,
+                        )
+                        .values()
+                        .cloned()
+                        .map(|i| (i, entry.key.clone()))
+                        .collect::<Vec<_>>();
 
-                    items.extend(trait_items);
-                }
-            }
+                        items.extend(trait_items);
+                    }
+                },
+            );
+
             Ok(None::<()>)
         });
         items
@@ -896,16 +898,18 @@ impl TraitMap {
         if matches!(&*type_engine.get(*type_id), TypeInfo::ErrorRecovery(_)) {
             return spans;
         }
-        let _ = module.walk_scope_chain(|lexical_scope| {
-            let impls = lexical_scope
-                .items
-                .implemented_traits
-                .get_impls(engines, *type_id, false);
-            for entry in impls {
-                if unify_check.check(*type_id, entry.key.type_id) {
-                    spans.push(entry.value.impl_span.clone());
-                }
-            }
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
+            lexical_scope.items.implemented_traits.for_each_impls(
+                engines,
+                *type_id,
+                false,
+                |entry| {
+                    if unify_check.check(*type_id, entry.key.type_id) {
+                        spans.push(entry.value.impl_span.clone());
+                    }
+                },
+            );
+
             Ok(None::<()>)
         });
 
@@ -929,7 +933,7 @@ impl TraitMap {
     /// spans of the impls.
     pub fn get_impl_spans_for_trait_name(module: &Module, trait_name: &CallPath) -> Vec<Span> {
         let mut spans = vec![];
-        let _ = module.walk_scope_chain(|lexical_scope| {
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
             spans.push(
                 lexical_scope
                     .items
@@ -988,50 +992,49 @@ impl TraitMap {
         if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return items;
         }
-        let _ = module.walk_scope_chain(|lexical_scope| {
-            let impls = lexical_scope
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
+            lexical_scope
                 .items
                 .implemented_traits
-                .get_impls(engines, type_id, false);
-            for e in impls {
-                let map_trait_name = CallPath {
-                    prefixes: e.key.name.prefixes.clone(),
-                    suffix: e.key.name.suffix.name.clone(),
-                    callpath_type: e.key.name.callpath_type,
-                };
-                if &map_trait_name == trait_name
-                    && unify_check.check(type_id, e.key.type_id)
-                    && trait_type_args.len() == e.key.name.suffix.args.len()
-                    && trait_type_args
-                        .iter()
-                        .zip(e.key.name.suffix.args.iter())
-                        .all(|(t1, t2)| unify_check.check(t1.type_id, t2.type_id))
-                {
-                    let type_mapping =
-                        TypeSubstMap::from_superset_and_subset(engines, e.key.type_id, type_id);
+                .for_each_impls(engines, type_id, false, |e| {
+                    let map_trait_name = CallPath {
+                        prefixes: e.key.name.prefixes.clone(),
+                        suffix: e.key.name.suffix.name.clone(),
+                        callpath_type: e.key.name.callpath_type,
+                    };
+                    if &map_trait_name == trait_name
+                        && unify_check.check(type_id, e.key.type_id)
+                        && trait_type_args.len() == e.key.name.suffix.args.len()
+                        && trait_type_args
+                            .iter()
+                            .zip(e.key.name.suffix.args.iter())
+                            .all(|(t1, t2)| unify_check.check(t1.type_id, t2.type_id))
+                    {
+                        let type_mapping =
+                            TypeSubstMap::from_superset_and_subset(engines, e.key.type_id, type_id);
 
-                    let mut trait_items = Self::filter_dummy_methods(
-                        e.value.trait_items,
-                        type_id,
-                        e.key.type_id,
-                        engines,
-                    )
-                    .values()
-                    .cloned()
-                    .map(|i| {
-                        Self::make_item_for_type_mapping(
-                            engines,
-                            i,
-                            type_mapping.clone(),
+                        let mut trait_items = Self::filter_dummy_methods(
+                            &e.value.trait_items,
                             type_id,
-                            CodeBlockFirstPass::No,
+                            e.key.type_id,
+                            engines,
                         )
-                    })
-                    .collect::<Vec<_>>();
+                        .values()
+                        .cloned()
+                        .map(|i| {
+                            Self::make_item_for_type_mapping(
+                                engines,
+                                i,
+                                type_mapping.clone(),
+                                type_id,
+                                CodeBlockFirstPass::No,
+                            )
+                        })
+                        .collect::<Vec<_>>();
 
-                    items.append(&mut trait_items);
-                }
-            }
+                        items.append(&mut trait_items);
+                    }
+                });
             Ok(None::<()>)
         });
         items
@@ -1080,21 +1083,22 @@ impl TraitMap {
         if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return trait_names;
         }
-        let _ = module.walk_scope_chain(|lexical_scope| {
-            let impls = lexical_scope
-                .items
-                .implemented_traits
-                .get_impls(engines, type_id, false);
-            for entry in impls {
-                if unify_check.check(type_id, entry.key.type_id) {
-                    let trait_call_path = CallPath {
-                        prefixes: entry.key.name.prefixes.clone(),
-                        suffix: entry.key.name.suffix.name.clone(),
-                        callpath_type: entry.key.name.callpath_type,
-                    };
-                    trait_names.push((trait_call_path, entry.key.name.suffix.args.clone()));
-                }
-            }
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
+            lexical_scope.items.implemented_traits.for_each_impls(
+                engines,
+                type_id,
+                false,
+                |entry| {
+                    if unify_check.check(type_id, entry.key.type_id) {
+                        let trait_call_path = CallPath {
+                            prefixes: entry.key.name.prefixes.clone(),
+                            suffix: entry.key.name.suffix.name.clone(),
+                            callpath_type: entry.key.name.callpath_type,
+                        };
+                        trait_names.push((trait_call_path, entry.key.name.suffix.args.clone()));
+                    }
+                },
+            );
             Ok(None::<()>)
         });
         trait_names
@@ -1293,7 +1297,7 @@ impl TraitMap {
         engines: &Engines,
     ) -> BTreeSet<(Ident, TypeId)> {
         let mut all_impld_traits: BTreeSet<(Ident, TypeId)> = Default::default();
-        let _ = module.walk_scope_chain(|lexical_scope| {
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
             all_impld_traits.extend(
                 lexical_scope
                     .items
@@ -1312,30 +1316,23 @@ impl TraitMap {
     ) -> BTreeSet<(Ident, TypeId)> {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::constraint_subset(engines);
-
-        let impls = self.get_impls(engines, type_id, true);
-        let all_impld_traits: BTreeSet<(Ident, TypeId)> = impls
-            .iter()
-            .filter_map(|e| {
-                let key = &e.key;
-                let suffix = &key.name.suffix;
-                if unify_check.check(type_id, key.type_id) {
-                    let map_trait_type_id = type_engine.new_custom(
-                        engines,
-                        suffix.name.clone().into(),
-                        if suffix.args.is_empty() {
-                            None
-                        } else {
-                            Some(suffix.args.to_vec())
-                        },
-                    );
-                    Some((suffix.name.clone(), map_trait_type_id))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
+        let mut all_impld_traits = BTreeSet::<(Ident, TypeId)>::new();
+        self.for_each_impls(engines, type_id, true, |e| {
+            let key = &e.key;
+            let suffix = &key.name.suffix;
+            if unify_check.check(type_id, key.type_id) {
+                let map_trait_type_id = type_engine.new_custom(
+                    engines,
+                    suffix.name.clone().into(),
+                    if suffix.args.is_empty() {
+                        None
+                    } else {
+                        Some(suffix.args.to_vec())
+                    },
+                );
+                all_impld_traits.insert((suffix.name.clone(), map_trait_type_id));
+            }
+        });
         all_impld_traits
     }
 
@@ -1421,45 +1418,38 @@ impl TraitMap {
         let unify_check_equality = UnifyCheck::constraint_subset(engines);
 
         let mut impld_traits_type_ids: Vec<Vec<(TypeId, String)>> = vec![];
-        let _ = module.walk_scope_chain(|lexical_scope| {
-            let impls = lexical_scope
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
+            lexical_scope
                 .items
                 .implemented_traits
-                .get_impls(engines, type_id, true);
-            impld_traits_type_ids.push(
-                impls
-                    .iter()
-                    .filter_map(|e| {
-                        let key = &e.key;
-                        let mut res = None;
-                        for constraint in constraints {
-                            if key.name.suffix.name == constraint.trait_name.suffix
-                                && key
-                                    .name
-                                    .suffix
-                                    .args
-                                    .iter()
-                                    .zip(constraint.type_arguments.iter())
-                                    .all(|(a1, a2)| {
-                                        unify_check_equality.check(a1.type_id, a2.type_id)
-                                    })
-                                && unify_check.check(type_id, key.type_id)
-                            {
-                                let name_type_args = if !key.name.suffix.args.is_empty() {
-                                    format!("<{}>", engines.help_out(key.name.suffix.args.clone()))
-                                } else {
-                                    "".to_string()
-                                };
-                                let name =
-                                    format!("{}{}", key.name.suffix.name.as_str(), name_type_args);
-                                res = Some((key.type_id, name));
-                                break;
-                            }
+                .for_each_impls(engines, type_id, true, |e| {
+                    let mut traits: Vec<(TypeId, String)> = vec![];
+
+                    let key = &e.key;
+                    for constraint in constraints {
+                        if key.name.suffix.name == constraint.trait_name.suffix
+                            && key
+                                .name
+                                .suffix
+                                .args
+                                .iter()
+                                .zip(constraint.type_arguments.iter())
+                                .all(|(a1, a2)| unify_check_equality.check(a1.type_id, a2.type_id))
+                            && unify_check.check(type_id, key.type_id)
+                        {
+                            let name_type_args = if !key.name.suffix.args.is_empty() {
+                                format!("<{}>", engines.help_out(key.name.suffix.args.clone()))
+                            } else {
+                                "".to_string()
+                            };
+                            let name =
+                                format!("{}{}", key.name.suffix.name.as_str(), name_type_args);
+                            traits.push((key.type_id, name));
+                            break;
                         }
-                        res
-                    })
-                    .collect(),
-            );
+                    }
+                    impld_traits_type_ids.push(traits);
+                });
 
             Ok(None::<()>)
         });
@@ -1476,27 +1466,26 @@ impl TraitMap {
         self.trait_impls.get_mut(&type_root_filter).unwrap()
     }
 
-    fn get_impls(
+    pub(crate) fn for_each_impls<F>(
         &self,
         engines: &Engines,
         type_id: TypeId,
-        extend_with_placeholder: bool,
-    ) -> Vec<TraitEntry> {
+        include_placeholder: bool,
+        mut callback: F,
+    ) where
+        F: FnMut(&TraitEntry),
+    {
         let type_root_filter = Self::get_type_root_filter(engines, type_id);
-        let mut vec = self
-            .trait_impls
+        self.trait_impls
             .get(&type_root_filter)
-            .cloned()
-            .unwrap_or_default();
-        if extend_with_placeholder && type_root_filter != TypeRootFilter::Placeholder {
-            vec.extend(
-                self.trait_impls
-                    .get(&TypeRootFilter::Placeholder)
-                    .cloned()
-                    .unwrap_or_default(),
-            );
+            .iter()
+            .for_each(|vec| vec.iter().for_each(&mut callback));
+        if include_placeholder && type_root_filter != TypeRootFilter::Placeholder {
+            self.trait_impls
+                .get(&TypeRootFilter::Placeholder)
+                .iter()
+                .for_each(|vec| vec.iter().for_each(&mut callback));
         }
-        vec
     }
 
     // Return a string representing only the base type.
