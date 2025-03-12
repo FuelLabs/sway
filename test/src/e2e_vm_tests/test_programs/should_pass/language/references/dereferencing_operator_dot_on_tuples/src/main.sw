@@ -2,7 +2,6 @@ script;
 
 mod impls;
 use impls::*;
-use core::ops::Eq;
 
 #[cfg(experimental_partial_eq = false)]
 impl<T> Eq for & &T

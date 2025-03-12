@@ -11,7 +11,7 @@ use ::registers::error;
 use ::result::Result::{self, *};
 use ::option::Option::{self, *};
 use ::vm::evm::evm_address::EvmAddress;
-
+use ::ops::*;
 /// A secp256k1 signature.
 pub struct Secp256k1 {
     /// The underlying raw `[u8; 64]` data of the signature.
@@ -425,7 +425,7 @@ impl Into<Bytes> for Secp256k1 {
 }
 
 #[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for Secp256k1 {
+impl Eq for Secp256k1 {
     fn eq(self, other: Self) -> bool {
         let mut iter = 0;
         while iter < 64 {
@@ -439,7 +439,7 @@ impl core::ops::Eq for Secp256k1 {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Secp256k1 {
+impl PartialEq for Secp256k1 {
     fn eq(self, other: Self) -> bool {
         let mut iter = 0;
         while iter < 64 {
@@ -453,7 +453,7 @@ impl core::ops::PartialEq for Secp256k1 {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Secp256k1 {}
+impl Eq for Secp256k1 {}
 
 impl Hash for Secp256k1 {
     fn hash(self, ref mut state: Hasher) {

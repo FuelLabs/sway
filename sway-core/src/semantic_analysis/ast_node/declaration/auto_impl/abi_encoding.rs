@@ -195,7 +195,13 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.current_package_name().as_str() == "core" {
+        // Dependencies of the codec library in std cannot have abi encoding implemented for them.
+        if self.ctx.namespace.current_package_name().as_str() == "std"
+            && matches!(
+                self.ctx.namespace.current_module().name().as_str(),
+                "codec" | "raw_slice" | "raw_ptr" | "ops" | "primitives" | "registers" | "flags"
+            )
+        {
             return Some((None, None));
         }
 
@@ -230,7 +236,13 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if self.ctx.namespace.current_package_name().as_str() == "core" {
+        // Dependencies of the codec library in std cannot have abi encoding implemented for them.
+        if self.ctx.namespace.current_package_name().as_str() == "std"
+            && matches!(
+                self.ctx.namespace.current_module().name().as_str(),
+                "codec" | "raw_slice" | "raw_ptr" | "ops" | "primitives" | "registers" | "flags"
+            )
+        {
             return Some((None, None));
         }
 
@@ -439,7 +451,7 @@ where
             Ok(entry_fn) => Ok(entry_fn),
             Err(gen_handler) => {
                 Self::check_impl_is_missing(handler, &gen_handler);
-                Self::check_core_is_missing(handler, &gen_handler);
+                Self::check_std_is_missing(handler, &gen_handler);
                 Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
                     span: Span::dummy(),
                 }))
@@ -500,7 +512,7 @@ where
             Ok(entry_fn) => Ok(entry_fn),
             Err(gen_handler) => {
                 Self::check_impl_is_missing(handler, &gen_handler);
-                Self::check_core_is_missing(handler, &gen_handler);
+                Self::check_std_is_missing(handler, &gen_handler);
                 Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
                     span: Span::dummy(),
                 }))
@@ -508,13 +520,13 @@ where
         }
     }
 
-    // Check core is missing and give a more user-friendly error message.
-    fn check_core_is_missing(handler: &Handler, gen_handler: &Handler) {
+    // Check std is missing and give a more user-friendly error message.
+    fn check_std_is_missing(handler: &Handler, gen_handler: &Handler) {
         let encode_not_found = gen_handler
             .find_error(|x| matches!(x, CompileError::SymbolNotFound { .. }))
             .is_some();
         if encode_not_found {
-            handler.emit_err(CompileError::CouldNotGenerateEntryMissingCore {
+            handler.emit_err(CompileError::CouldNotGenerateEntryMissingStd {
                 span: Span::dummy(),
             });
         }
@@ -609,7 +621,7 @@ where
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
             Err(gen_handler) => {
-                Self::check_core_is_missing(handler, &gen_handler);
+                Self::check_std_is_missing(handler, &gen_handler);
                 Self::check_impl_is_missing(handler, &gen_handler);
                 Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
                     span: Span::dummy(),

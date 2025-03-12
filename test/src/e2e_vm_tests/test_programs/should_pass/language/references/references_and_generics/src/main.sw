@@ -1,7 +1,5 @@
 script;
 
-use core::ops::Eq;
-
 struct A {
     x: u64,
 }

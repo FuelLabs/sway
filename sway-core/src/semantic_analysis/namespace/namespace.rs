@@ -4,7 +4,7 @@ use super::{module::Module, root::Root, ModulePath, ModulePathBuf};
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{
-    constants::{CONTRACT_ID, CORE, PRELUDE, STD},
+    constants::{CONTRACT_ID, PRELUDE, STD},
     span::Span,
 };
 
@@ -29,13 +29,13 @@ impl Namespace {
     /// Initialize the namespace
     /// See also the factory functions in contract_helpers.rs
     ///
-    /// If `import_preludes_into_root` is true then core::prelude::* and std::prelude::* will be
-    /// imported into the root module, provided core and std are available in the external modules.
+    /// If `import_prelude_into_root` is true then and std::prelude::* will be
+    /// imported into the root module, provided std is available in the external modules.
     pub fn new(
         handler: &Handler,
         engines: &Engines,
         package_root: Root,
-        import_preludes_into_root: bool,
+        import_prelude_into_root: bool,
     ) -> Result<Self, ErrorEmitted> {
         let package_name = package_root.current_package_name().clone();
         let mut res = Self {
@@ -43,7 +43,7 @@ impl Namespace {
             current_mod_path: vec![package_name],
         };
 
-        if import_preludes_into_root {
+        if import_prelude_into_root {
             res.import_implicits(handler, engines)?;
         }
         Ok(res)
@@ -206,7 +206,7 @@ impl Namespace {
         }
     }
 
-    // Import core::prelude::*, std::prelude::* and ::CONTRACT_ID as appropriate into the current module
+    // Import std::prelude::* and ::CONTRACT_ID as appropriate into the current module
     fn import_implicits(
         &mut self,
         handler: &Handler,
@@ -214,33 +214,12 @@ impl Namespace {
     ) -> Result<(), ErrorEmitted> {
         // Import preludes
         let package_name = self.current_package_name().to_string();
-        let core_string = CORE.to_string();
-        let core_ident = Ident::new_no_span(core_string.clone());
         let prelude_ident = Ident::new_no_span(PRELUDE.to_string());
-        if package_name == CORE {
-            // Do nothing
-        } else if package_name == STD {
-            // Import core::prelude::*
-            assert!(self.root.exists_as_external(&core_string));
-            self.root.star_import(
-                handler,
-                engines,
-                &[core_ident, prelude_ident],
-                &self.current_mod_path,
-                Visibility::Private,
-            )?
-        } else {
-            // Import core::prelude::* and std::prelude::*
-            if self.root.exists_as_external(&core_string) {
-                self.root.star_import(
-                    handler,
-                    engines,
-                    &[core_ident, prelude_ident.clone()],
-                    &self.current_mod_path,
-                    Visibility::Private,
-                )?;
-            }
 
+        if package_name == STD {
+            // Do nothing
+        } else {
+            // Import std::prelude::*
             let std_string = STD.to_string();
             // Only import std::prelude::* if std exists as a dependency
             if self.root.exists_as_external(&std_string) {

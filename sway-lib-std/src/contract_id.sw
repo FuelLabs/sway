@@ -3,6 +3,9 @@ library;
 
 use ::convert::{From, Into, TryFrom};
 use ::hash::{Hash, Hasher};
+use ::ops::*;
+use ::primitives::*;
+use ::codec::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
 
@@ -33,19 +36,19 @@ impl ContractId {
 }
 
 #[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for ContractId {
+impl Eq for ContractId {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for ContractId {
+impl PartialEq for ContractId {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for ContractId {}
+impl Eq for ContractId {}
 
 impl From<b256> for ContractId {
     /// Casts raw `b256` data to a `ContractId`.

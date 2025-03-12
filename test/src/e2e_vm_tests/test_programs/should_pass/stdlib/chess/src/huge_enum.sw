@@ -209,7 +209,7 @@ impl Huge {
 }
 
 #[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for Huge {
+impl Eq for Huge {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Huge::a1, Huge::a1) => true,
@@ -288,7 +288,7 @@ impl core::ops::Eq for Huge {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Huge {
+impl PartialEq for Huge {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Huge::a1, Huge::a1) => true,
@@ -360,4 +360,4 @@ impl core::ops::PartialEq for Huge {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Huge {}
+impl Eq for Huge {}

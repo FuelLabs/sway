@@ -6,4 +6,5 @@ license = "Apache-2.0"
 name = "implicit_trait_constraint"
 
 [dependencies]
-core = { path = "../../../../../../sway-lib-core" }
+std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
+

@@ -1,6 +1,6 @@
 script;
 
-use core::ops::*;
+use std::ops::*;
 
 trait MyAdd {
     fn my_add(self, other: Self) -> Self;

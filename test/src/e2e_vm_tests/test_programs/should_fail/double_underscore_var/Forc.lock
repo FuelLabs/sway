@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
-source = "path+from-root-053B1C8DE611E923"
-
-[[package]]
 name = "double_underscore_var"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-053B1C8DE611E923"

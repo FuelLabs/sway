@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-15FB35F23D5E4698'
+name = "generic_transpose"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'generic_transpose'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-15FB35F23D5E4698'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-15FB35F23D5E4698"

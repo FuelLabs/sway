@@ -5,9 +5,11 @@ use ::alias::SubId;
 use ::contract_id::ContractId;
 use ::convert::{From, Into, TryFrom};
 use ::hash::{Hash, Hasher};
+use ::ops::*;
+use ::primitives::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
-
+use ::codec::*;
 /// An AssetId is used for interacting with an asset on the network.
 ///
 /// # Additional Information
@@ -30,19 +32,19 @@ impl Hash for AssetId {
 }
 
 #[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for AssetId {
+impl Eq for AssetId {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for AssetId {
+impl PartialEq for AssetId {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for AssetId {}
+impl Eq for AssetId {}
 
 impl From<b256> for AssetId {
     /// Casts raw `b256` data to an `AssetId`.
@@ -92,7 +94,7 @@ impl AssetId {
     /// }
     /// ```
     pub fn new(contract_id: ContractId, sub_id: SubId) -> Self {
-        let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let result_buffer = b256::zero();
         asm(
             asset_id: result_buffer,
             ptr: (contract_id, sub_id),
@@ -131,13 +133,10 @@ impl AssetId {
         let contract_id = asm() {
             fp: b256
         };
-        let result_buffer = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let result_buffer = b256::zero();
         asm(
             asset_id: result_buffer,
-            ptr: (
-                contract_id,
-                0x0000000000000000000000000000000000000000000000000000000000000000,
-            ),
+            ptr: (contract_id, b256::zero()),
             bytes: 64,
         ) {
             s256 asset_id ptr bytes;

@@ -34,7 +34,7 @@ where
         engines: &Engines,
         enum_decl: &TyDecl,
     ) -> Option<TyAstNode> {
-        if self.ctx.namespace.current_module().is_core_marker_module() {
+        if self.ctx.namespace.current_module().is_std_marker_module() {
             return None;
         }
 

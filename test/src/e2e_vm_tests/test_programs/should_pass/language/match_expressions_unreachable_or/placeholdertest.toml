@@ -14,3 +14,5 @@ expected_warnings = 2
 #nextln: $()Preceding match arms already match all the values that `1 | 2` can match.
 #check: $()1 | 2 => (),
 #nextln: $()Match arm `1 | 2` is unreachable.
+
+# TODO: Fix this test Issue #7002

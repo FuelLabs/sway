@@ -2,7 +2,7 @@
 //! The use of this type allows for handling interactions with contracts and addresses in a unified manner.
 library;
 
-use core::codec::*;
+use ::codec::*;
 use ::assert::assert;
 use ::address::Address;
 use ::alias::SubId;
@@ -10,6 +10,7 @@ use ::asset_id::AssetId;
 use ::contract_id::ContractId;
 use ::hash::{Hash, Hasher};
 use ::option::Option::{self, *};
+use ::ops::*;
 
 /// The `Identity` type: either an `Address` or a `ContractId`.
 // ANCHOR: docs_identity
@@ -20,7 +21,7 @@ pub enum Identity {
 // ANCHOR_END: docs_identity
 
 #[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for Identity {
+impl Eq for Identity {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Identity::Address(addr1), Identity::Address(addr2)) => addr1 == addr2,
@@ -30,7 +31,7 @@ impl core::ops::Eq for Identity {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Identity {
+impl PartialEq for Identity {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Identity::Address(addr1), Identity::Address(addr2)) => addr1 == addr2,
@@ -40,7 +41,7 @@ impl core::ops::PartialEq for Identity {
     }
 }
 #[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Identity {}
+impl Eq for Identity {}
 
 impl Identity {
     /// Returns the `Address` of the `Identity`.

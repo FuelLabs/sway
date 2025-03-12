@@ -21,11 +21,9 @@ env:
 jobs:
   verifications-complete:
     needs:
-      - build-sway-lib-core
       - build-sway-lib-std
       - build-sway-examples
       - build-reference-examples
-      - forc-fmt-check-sway-lib-core
       - forc-fmt-check-sway-lib-std
       - forc-fmt-check-sway-examples
       - forc-fmt-check-panic
@@ -76,22 +74,6 @@ jobs:
           version=$(toml get Cargo.toml workspace.dependencies.fuel-core-client.version | tr -d '"')
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-  build-sway-lib-core:
-    runs-on: buildjet-4vcpu-ubuntu-2204
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-provider: "buildjet"
-      - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
-      - name: Build sway-lib-core
-        run: forc build --path sway-lib-core
-
   build-sway-lib-std:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
@@ -135,20 +117,6 @@ jobs:
           cache-provider: "buildjet"
       - name: Build Sway examples workspace
         run: cargo run --locked -p forc -- build --locked --path ./docs/reference/src/code/Forc.toml
-
-  forc-fmt-check-sway-lib-core:
-    runs-on: buildjet-4vcpu-ubuntu-2204
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-provider: "buildjet"
-      - name: Check Sway sway-lib-core formatting
-        run: cargo run --locked -p forc-fmt -- --check --path ./sway-lib-core
 
   forc-fmt-check-sway-lib-std:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -553,16 +521,6 @@ jobs:
           cache-provider: "buildjet"
       - name: Install Forc
         run: cargo install --locked --debug --path ./forc
-      - name: Run Core Unit Tests
-        run: forc build --path sway-lib-core && forc test --path sway-lib-core
-      - name: Run Core Unit Tests - Experimental feature 'storage_domains'
-        run: forc build --experimental storage_domains --path sway-lib-core && forc test --experimental storage_domains --path sway-lib-core
-      - name: Run Core Unit Tests - Experimental feature 'error_type'
-        run: forc build --experimental error_type --path sway-lib-core && forc test --experimental error_type --path sway-lib-core
-      - name: Run Core Unit Tests - Experimental feature 'partial_eq'
-        run: forc build --experimental partial_eq --path sway-lib-core && forc test --experimental partial_eq --path sway-lib-core
-      - name: Run Core Unit Tests - Experimental feature 'try_from_bytes_for_b256'
-        run: forc build --experimental try_from_bytes_for_b256 --path sway-lib-core && forc test --experimental try_from_bytes_for_b256 --path sway-lib-core
       - name: Run Std Unit Tests
         run: forc build --path sway-lib-std && forc test --path sway-lib-std
       - name: Run Std Unit Tests - Experimental feature 'storage_domains'
@@ -744,7 +702,6 @@ jobs:
       [
         build-forc-test-project,
         build-sway-examples,
-        build-sway-lib-core,
         build-sway-lib-std,
         cargo-build-workspace,
         cargo-clippy,
@@ -809,7 +766,6 @@ jobs:
       [
         build-forc-test-project,
         build-sway-examples,
-        build-sway-lib-core,
         build-sway-lib-std,
         cargo-build-workspace,
         cargo-clippy,
@@ -858,7 +814,6 @@ jobs:
       [
         build-forc-test-project,
         build-sway-examples,
-        build-sway-lib-core,
         build-sway-lib-std,
         cargo-build-workspace,
         cargo-clippy,

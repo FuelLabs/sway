@@ -93,7 +93,7 @@ impl raw_slice {
     /// }
     /// ```
     pub fn from_parts<T>(ptr: raw_ptr, count: u64) -> Self {
-        from_parts((ptr, __mul(count, __size_of::<T>())))
+        from_parts((ptr, count * __size_of::<T>()))
     }
 
     /// Returns the pointer to the slice.
@@ -136,7 +136,7 @@ impl raw_slice {
     /// }
     /// ```
     pub fn len<T>(self) -> u64 {
-        __div(into_parts(self).1, __size_of::<T>())
+        into_parts(self).1 / __size_of::<T>()
     }
 
     /// Returns the number of elements in the slice when the elements are bytes.

@@ -49,7 +49,7 @@ use super::{ContinueMigrationProcess, DryRun, MigrationStep, MigrationStepKind, 
 //       visitors to collect all trait constraints, which is a considerable effort. On the other
 //       hand the current types that are constrained all have `Eq` semantics, which is not
 //       changed by the introduction of `PartialEq`. Changing `Eq` constraint to `PartialEq`
-//       to lower the constraint is done in the `core` and `std`, where appropriate.
+//       to lower the constraint is done in the `std`, where appropriate.
 //       Suggesting to developers doing this replacement in their projects is mentioned
 //       in the tracking issue: https://github.com/FuelLabs/sway/issues/6883.
 
@@ -440,7 +440,7 @@ fn implement_experimental_partial_eq_and_eq_traits(
     ) -> Result<Vec<Span>> {
         let mut result = vec![];
 
-        let core_ops_eq_call_path = CallPath::fullpath(&["core", "ops", "Eq"]);
+        let std_ops_eq_call_path = CallPath::fullpath(&["std", "ops", "Eq"]);
 
         let ty_impl_traits = ty_match::impl_self_or_trait_decls(ty_module)
             .map(|decl| engines.de().get_impl_self_or_trait(decl))
@@ -453,8 +453,8 @@ fn implement_experimental_partial_eq_and_eq_traits(
                     .implemented_trait_decl_id()
                     .expect("impl is a trait impl"),
             );
-            // Further inspect only `core::ops::Eq` impls.
-            if implemented_trait.call_path != core_ops_eq_call_path {
+            // Further inspect only `Eq` impls.
+            if implemented_trait.call_path != std_ops_eq_call_path {
                 continue;
             }
 
@@ -580,7 +580,7 @@ fn implement_experimental_partial_eq_and_eq_traits(
                 .insert_annotated_item_after(annotated_impl_partial_eq_trait);
 
             // Note that we do not need to adjust the `use` statements to include `PartialEq`.
-            // All `core::ops` are a part of the core's prelude. If there was a `use core::ops::Eq`
+            // All `std::ops` are a part of the std's prelude. If there was a `use Eq`
             // in a modified file, it was actually not needed.
         }
 

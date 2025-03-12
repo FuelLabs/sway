@@ -1,11 +1,6 @@
 [[package]]
-name = "core"
-source = "path+from-root-FDC0B8F9A0EEE19B"
-
-[[package]]
 name = "std"
 source = "path+from-root-FDC0B8F9A0EEE19B"
-dependencies = ["core"]
 
 [[package]]
 name = "tuple_trait"

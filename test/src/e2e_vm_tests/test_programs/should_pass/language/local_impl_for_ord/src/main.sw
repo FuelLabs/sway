@@ -1,6 +1,6 @@
 script;
 
-use core::ops::{Eq, Ord};
+use std::ops::{Eq, Ord};
 
 enum X {
     Y: (),
