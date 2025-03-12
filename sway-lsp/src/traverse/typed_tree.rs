@@ -1592,7 +1592,7 @@ fn mod_path_to_full_path(
         || mod_path.is_empty()
         || namespace.root_module().has_submodule(&mod_path[0])
     {
-        path.insert(0, namespace.current_package_name().clone());
+        path.insert(0, namespace.package_name().clone());
     }
 
     path

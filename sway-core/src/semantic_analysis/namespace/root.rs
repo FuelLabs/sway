@@ -158,7 +158,7 @@ impl ResolvedDeclaration {
 #[derive(Clone, Debug)]
 pub struct Root {
     // The contents of the package being compiled.
-    current_package: Module,
+    root_module: Module,
     // Program id for the package.
     program_id: ProgramId,
     // True if the current package is a contract, false otherwise.
@@ -186,7 +186,7 @@ impl Root {
         // The root module must be public
         let module = Module::new(package_name, Visibility::Public, span, &vec![]);
         Self {
-            current_package: module,
+            root_module: module,
             program_id,
             is_contract_package,
             external_packages: Default::default(),
@@ -204,23 +204,23 @@ impl Root {
     }
 
     pub fn root_module(&self) -> &Module {
-        &self.current_package
+        &self.root_module
     }
 
     pub fn root_module_mut(&mut self) -> &mut Module {
-        &mut self.current_package
+        &mut self.root_module
     }
 
-    pub fn current_package_name(&self) -> &Ident {
-        self.current_package.name()
+    pub fn package_name(&self) -> &Ident {
+        self.root_module.name()
     }
 
     pub fn program_id(&self) -> ProgramId {
         self.program_id
     }
 
-    pub(crate) fn check_path_is_in_current_package(&self, mod_path: &ModulePathBuf) -> bool {
-        !mod_path.is_empty() && mod_path[0] == *self.current_package.name()
+    pub(crate) fn check_path_is_in_package(&self, mod_path: &ModulePathBuf) -> bool {
+        !mod_path.is_empty() && mod_path[0] == *self.root_module.name()
     }
 
     pub(crate) fn package_relative_path(mod_path: &ModulePathBuf) -> ModulePathBuf {
@@ -235,8 +235,8 @@ impl Root {
     pub fn module_from_absolute_path(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
         assert!(!mod_path.is_empty());
         let package_relative_path = Self::package_relative_path(mod_path);
-        if mod_path[0] == *self.current_package.name() {
-            self.current_package.submodule(&package_relative_path)
+        if mod_path[0] == *self.root_module.name() {
+            self.root_module.submodule(&package_relative_path)
         } else if let Some(external_package) = self.external_packages.get(&mod_path[0].to_string())
         {
             external_package

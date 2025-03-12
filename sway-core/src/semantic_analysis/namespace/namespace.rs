@@ -55,7 +55,7 @@ impl Namespace {
         package_root: Root,
         import_preludes_into_root: bool,
     ) -> Result<Self, ErrorEmitted> {
-        let package_name = package_root.current_package_name().clone();
+        let package_name = package_root.package_name().clone();
         let mut res = Self {
             root: package_root,
             current_mod_path: vec![package_name],
@@ -76,7 +76,7 @@ impl Namespace {
     }
 
     fn module_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
-        assert!(self.root.check_path_is_in_current_package(mod_path));
+        assert!(self.root.check_path_is_in_package(mod_path));
         self.root.module_from_absolute_path(mod_path)
     }
 
@@ -99,7 +99,7 @@ impl Namespace {
     }
 
     pub fn current_package_name(&self) -> &Ident {
-        self.root.current_package_name()
+        self.root.package_name()
     }
 
     /// A reference to the path of the module currently being processed.
@@ -185,7 +185,7 @@ impl Namespace {
                 Span::dummy(),
             )));
         }
-        let is_in_current_package = self.root.check_path_is_in_current_package(path);
+        let is_in_current_package = self.root.check_path_is_in_package(path);
         match self.module_from_absolute_path(path) {
             Some(module) => Ok(module),
             None => Err(handler.emit_err(crate::namespace::module::module_not_found(
@@ -236,7 +236,7 @@ impl Namespace {
     pub(crate) fn module_is_external(&self, absolute_module_path: &ModulePath) -> bool {
         assert!(!absolute_module_path.is_empty(), "Absolute module path must have at least one element, because it always contains the package name.");
 
-        self.root.current_package_name() != &absolute_module_path[0]
+        self.current_package_name() != &absolute_module_path[0]
     }
 
     pub fn package_exists(&self, name: &Ident) -> bool {

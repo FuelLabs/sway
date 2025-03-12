@@ -334,12 +334,11 @@ pub(super) fn resolve_symbol_and_mod_path(
     self_type: Option<TypeId>,
 ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
     assert!(!mod_path.is_empty());
-    let root = namespace.root_ref();
-    if mod_path[0] == *root.current_package_name() {
+    if mod_path[0] == *namespace.current_package_name() {
         resolve_symbol_and_mod_path_inner(
             handler,
             engines,
-            root.root_module(),
+            namespace.current_package_root_module(),
             mod_path,
             symbol,
             self_type,
@@ -350,7 +349,7 @@ pub(super) fn resolve_symbol_and_mod_path(
                 // The path must be resolved in an external package.
                 // The root module in that package may have a different name than the name we
                 // use to refer to the package, so replace it.
-                let mut new_mod_path = vec![ext_root.current_package_name().clone()];
+                let mut new_mod_path = vec![ext_root.package_name().clone()];
                 for id in mod_path.iter().skip(1) {
                     new_mod_path.push(id.clone());
                 }
@@ -365,7 +364,7 @@ pub(super) fn resolve_symbol_and_mod_path(
             }
             None => Err(handler.emit_err(crate::namespace::module_not_found(
                 mod_path,
-                mod_path[0] == *root.current_package_name(),
+                mod_path[0] == *namespace.current_package_name(),
             ))),
         }
     }
