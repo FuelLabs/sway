@@ -2481,7 +2481,7 @@ impl ty::TyExpression {
                                 decl => {
                                     return Err(handler.emit_err(
                                         CompileError::DeclAssignmentTargetCannotBeAssignedTo {
-                                            decl_name: decl.get_decl_ident(ctx.engines),
+                                            decl_name: decl.get_decl_ident(engines),
                                             decl_friendly_type_name: decl
                                                 .friendly_type_name_with_acronym(),
                                             lhs_span,
@@ -2492,11 +2492,50 @@ impl ty::TyExpression {
                         }
                         ExpressionKind::Subfield(SubfieldExpression {
                             prefix,
-                            field_to_access,
+                            field_to_access: idx_name,
                             ..
                         }) => {
+                            let prefix_expr = ty::TyExpression::type_check(
+                                handler,
+                                ctx.by_ref(),
+                                prefix.as_ref(),
+                            )
+                            .unwrap_or_else(|err| {
+                                ty::TyExpression::error(err, span.clone(), engines)
+                            });
+
+                            let field_to_access = match &*engines.te().get(prefix_expr.return_type)
+                            {
+                                TypeInfo::Struct(decl_ref) => {
+                                    let struct_decl = engines.de().get_struct(decl_ref);
+
+                                    match struct_decl.find_field(&idx_name) {
+                                        None => {
+                                            handler.emit_err(CompileError::InternalOwned(
+                                                    format!(
+                                                        "Unknown field name \"{idx_name}\" for struct \"{}\" \
+                                                            in reassignment.",
+                                                        struct_decl.call_path.suffix.as_str(),
+                                                    ),
+                                                    idx_name.span(),
+                                                ));
+                                            None
+                                        }
+                                        Some(field_to_access) => Some(field_to_access.clone()),
+                                    }
+                                }
+                                _ => {
+                                    handler.emit_err(CompileError::Internal(
+                                        "Expected struct type in struct field projection.",
+                                        idx_name.span(),
+                                    ));
+                                    None
+                                }
+                            };
+
                             indices.push(ty::ProjectionKind::StructField {
-                                name: field_to_access,
+                                name: idx_name,
+                                field_to_access: field_to_access.map(Box::new),
                             });
                             expr = prefix;
                         }
@@ -2671,7 +2710,10 @@ impl ty::TyExpression {
             match (resolved_type, projection) {
                 (
                     TypeInfo::Struct(decl_ref),
-                    ty::ProjectionKind::StructField { name: field_name },
+                    ty::ProjectionKind::StructField {
+                        name: field_name,
+                        field_to_access: _,
+                    },
                 ) => {
                     let struct_decl = decl_engine.get_struct(&decl_ref);
                     let (struct_can_be_changed, is_public_struct_access) =
@@ -2783,7 +2825,13 @@ impl ty::TyExpression {
                         }
                     }
                 }
-                (actually, ty::ProjectionKind::StructField { name }) => {
+                (
+                    actually,
+                    ty::ProjectionKind::StructField {
+                        name,
+                        field_to_access: _,
+                    },
+                ) => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
                         actually: engines.help_out(actually).to_string(),
                         storage_variable: None,

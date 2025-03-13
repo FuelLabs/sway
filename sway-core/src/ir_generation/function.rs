@@ -3669,7 +3669,13 @@ impl<'eng> FnCompiler<'eng> {
             let cur_type_info_arc = self.engines.te().get_unaliased(cur_type_id);
             let cur_type_info = &*cur_type_info_arc;
             match (idx_kind, cur_type_info) {
-                (ProjectionKind::StructField { name: idx_name }, TypeInfo::Struct(decl_ref)) => {
+                (
+                    ProjectionKind::StructField {
+                        name: idx_name,
+                        field_to_access: _,
+                    },
+                    TypeInfo::Struct(decl_ref),
+                ) => {
                     let struct_decl = self.engines.de().get_struct(decl_ref);
 
                     match struct_decl.get_field_index_and_type(idx_name) {

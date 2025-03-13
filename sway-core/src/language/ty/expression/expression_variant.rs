@@ -1590,7 +1590,10 @@ impl DebugWithEngines for TyExpressionVariant {
                         let mut target = format!("{:?}", engines.help_out(exp));
                         for index in indices {
                             match index {
-                                ProjectionKind::StructField { name } => {
+                                ProjectionKind::StructField {
+                                    name,
+                                    field_to_access: _,
+                                } => {
                                     target.push('.');
                                     target.push_str(name.as_str());
                                 }
@@ -1613,7 +1616,10 @@ impl DebugWithEngines for TyExpressionVariant {
                         let mut target = base_name.to_string();
                         for index in indices {
                             match index {
-                                ProjectionKind::StructField { name } => {
+                                ProjectionKind::StructField {
+                                    name,
+                                    field_to_access: _,
+                                } => {
                                     target.push('.');
                                     target.push_str(name.as_str());
                                 }

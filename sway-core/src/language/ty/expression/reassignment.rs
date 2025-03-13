@@ -313,6 +313,7 @@ impl UpdateConstantExpression for TyReassignment {
 pub enum ProjectionKind {
     StructField {
         name: Ident,
+        field_to_access: Option<Box<TyStructField>>,
     },
     TupleField {
         index: usize,
@@ -329,8 +330,14 @@ impl PartialEqWithEngines for ProjectionKind {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
             (
-                ProjectionKind::StructField { name: l_name },
-                ProjectionKind::StructField { name: r_name },
+                ProjectionKind::StructField {
+                    name: l_name,
+                    field_to_access: _,
+                },
+                ProjectionKind::StructField {
+                    name: r_name,
+                    field_to_access: _,
+                },
             ) => l_name == r_name,
             (
                 ProjectionKind::TupleField {
@@ -362,7 +369,10 @@ impl HashWithEngines for ProjectionKind {
         use ProjectionKind::*;
         std::mem::discriminant(self).hash(state);
         match self {
-            StructField { name } => name.hash(state),
+            StructField {
+                name,
+                field_to_access: _,
+            } => name.hash(state),
             TupleField {
                 index,
                 // these fields are not hashed because they aren't relevant/a
@@ -451,7 +461,10 @@ impl UpdateConstantExpression for ProjectionKind {
 impl Spanned for ProjectionKind {
     fn span(&self) -> Span {
         match self {
-            ProjectionKind::StructField { name } => name.span(),
+            ProjectionKind::StructField {
+                name,
+                field_to_access: _,
+            } => name.span(),
             ProjectionKind::TupleField { index_span, .. } => index_span.clone(),
             ProjectionKind::ArrayIndex { index_span, .. } => index_span.clone(),
         }
@@ -461,7 +474,10 @@ impl Spanned for ProjectionKind {
 impl ProjectionKind {
     pub(crate) fn pretty_print(&self) -> Cow<str> {
         match self {
-            ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
+            ProjectionKind::StructField {
+                name,
+                field_to_access: _,
+            } => Cow::Borrowed(name.as_str()),
             ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
             ProjectionKind::ArrayIndex { index, .. } => Cow::Owned(format!("{index:#?}")),
         }

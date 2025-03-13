@@ -702,7 +702,20 @@ impl TyExpression {
                     exp.check_deprecated(engines, handler, allow_deprecated);
                     for indice in indices {
                         match indice {
-                            ProjectionKind::StructField { name: _ } => {}
+                            ProjectionKind::StructField {
+                                name: idx_name,
+                                field_to_access,
+                            } => {
+                                if let Some(field_to_access) = field_to_access {
+                                    emit_warning_if_deprecated(
+                                        &field_to_access.attributes,
+                                        &idx_name.span(),
+                                        handler,
+                                        "deprecated struct field",
+                                        allow_deprecated,
+                                    );
+                                }
+                            }
                             ProjectionKind::TupleField {
                                 index: _,
                                 index_span: _,

@@ -101,7 +101,13 @@ pub(super) fn get_struct_name_field_index_and_type(
         .to_typeinfo(struct_type_id, &field_kind.span())
         .ok()?;
     match (struct_ty_info, &field_kind) {
-        (TypeInfo::Struct(decl_ref), ty::ProjectionKind::StructField { name: field_name }) => {
+        (
+            TypeInfo::Struct(decl_ref),
+            ty::ProjectionKind::StructField {
+                name: field_name,
+                field_to_access: _,
+            },
+        ) => {
             let decl = decl_engine.get_struct(&decl_ref);
             Some((
                 decl.call_path.suffix.as_str().to_owned(),
@@ -138,6 +144,7 @@ macro_rules! impl_typed_named_field_for {
             fn get_field_kind(&self) -> ty::ProjectionKind {
                 ty::ProjectionKind::StructField {
                     name: self.name.clone(),
+                    field_to_access: None,
                 }
             }
         }
@@ -179,7 +186,10 @@ pub(super) fn get_indices_for_struct_access(
                 match (ty_info, &field_kind) {
                     (
                         TypeInfo::Struct(decl_ref),
-                        ty::ProjectionKind::StructField { name: field_name },
+                        ty::ProjectionKind::StructField {
+                            name: field_name,
+                            field_to_access: _,
+                        },
                     ) => {
                         let decl = decl_engine.get_struct(&decl_ref);
                         let field_idx_and_type_opt = decl

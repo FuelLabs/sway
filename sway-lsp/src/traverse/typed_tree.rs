@@ -1155,7 +1155,7 @@ impl Parse for ty::TyReassignment {
             TyReassignmentTarget::DerefAccess { exp, indices } => {
                 exp.parse(ctx);
                 adaptive_iter(indices, |proj_kind| {
-                    if let ty::ProjectionKind::StructField { name } = proj_kind {
+                    if let ty::ProjectionKind::StructField { name, field_to_access: _ } = proj_kind {
                         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name))
                         {
                             token.ast_node =
@@ -1185,7 +1185,7 @@ impl Parse for ty::TyReassignment {
                         TokenAstNode::Typed(TypedAstToken::TypedReassignment(self.clone()));
                 }
                 adaptive_iter(indices, |proj_kind| {
-                    if let ty::ProjectionKind::StructField { name } = proj_kind {
+                    if let ty::ProjectionKind::StructField { name, field_to_access: _ } = proj_kind {
                         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name))
                         {
                             token.ast_node =
