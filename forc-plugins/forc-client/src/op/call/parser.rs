@@ -434,6 +434,49 @@ fn parse_delimited_string(param_type: &ParamType, input: &str) -> Result<Vec<Str
     Ok(parts)
 }
 
+pub fn param_to_function_arg(param_type: &ParamType) -> String {
+    match param_type {
+        ParamType::Unit => "()".to_string(),
+        ParamType::Bool => "bool".to_string(),
+        ParamType::U8 => "u8".to_string(),
+        ParamType::U16 => "u16".to_string(),
+        ParamType::U32 => "u32".to_string(),
+        ParamType::U64 => "u64".to_string(),
+        ParamType::U128 => "U128".to_string(),
+        ParamType::U256 => "U256".to_string(),
+        ParamType::B256 => "b256".to_string(),
+        ParamType::Bytes => "Bytes".to_string(),
+        ParamType::String => "str".to_string(),
+        ParamType::RawSlice => "RawSlice".to_string(),
+        ParamType::StringArray(size) => format!("str[{}]", size),
+        ParamType::StringSlice => "str".to_string(),
+        ParamType::Tuple(types) => {
+            let inner = types
+                .iter()
+                .map(param_to_function_arg)
+                .collect::<Vec<String>>()
+                .join(", ");
+            format!("({inner})")
+        }
+        ParamType::Array(ty, size) => {
+            let inner = param_to_function_arg(ty);
+            format!("[{inner}; {size}]")
+        }
+        ParamType::Vector(ty) => {
+            let inner = param_to_function_arg(ty);
+            format!("Vec<{inner}>")
+        }
+        ParamType::Struct { name, .. } => {
+            // only get last part of name
+            name.split("::").last().unwrap_or(name).to_string()
+        }
+        ParamType::Enum { name, .. } => {
+            // only get last part of name
+            name.split("::").last().unwrap_or(name).to_string()
+        }
+    }
+}
+
 pub fn get_default_value(param_type: &ParamType) -> String {
     match param_type {
         ParamType::Unit => "()".to_string(),
@@ -1612,6 +1655,84 @@ mod tests {
         );
         let output = token_to_string(&token).unwrap();
         assert_eq!(output, "(container:{{42, fuel}, fuel})");
+    }
+
+    #[test]
+    fn param_to_function_arg_conversion() {
+        let param_type = ParamType::Unit;
+        assert_eq!(param_to_function_arg(&param_type), "()");
+
+        let param_type = ParamType::Bool;
+        assert_eq!(param_to_function_arg(&param_type), "bool");
+
+        let param_type = ParamType::U8;
+        assert_eq!(param_to_function_arg(&param_type), "u8");
+
+        let param_type = ParamType::U16;
+        assert_eq!(param_to_function_arg(&param_type), "u16");
+
+        let param_type = ParamType::U32;
+        assert_eq!(param_to_function_arg(&param_type), "u32");
+
+        let param_type = ParamType::U64;
+        assert_eq!(param_to_function_arg(&param_type), "u64");
+
+        let param_type = ParamType::U128;
+        assert_eq!(param_to_function_arg(&param_type), "U128");
+
+        let param_type = ParamType::U256;
+        assert_eq!(param_to_function_arg(&param_type), "U256");
+
+        let param_type = ParamType::B256;
+        assert_eq!(param_to_function_arg(&param_type), "b256");
+
+        let param_type = ParamType::Bytes;
+        assert_eq!(param_to_function_arg(&param_type), "Bytes");
+
+        let param_type = ParamType::String;
+        assert_eq!(param_to_function_arg(&param_type), "str");
+
+        let param_type = ParamType::RawSlice;
+        assert_eq!(param_to_function_arg(&param_type), "RawSlice");
+
+        let param_type = ParamType::StringArray(4);
+        assert_eq!(param_to_function_arg(&param_type), "str[4]");
+
+        let param_type = ParamType::StringSlice;
+        assert_eq!(param_to_function_arg(&param_type), "str");
+
+        let param_type = ParamType::StringArray(4);
+        assert_eq!(param_to_function_arg(&param_type), "str[4]");
+
+        let param_type = ParamType::Tuple(vec![ParamType::U32, ParamType::StringArray(4)]);
+        assert_eq!(param_to_function_arg(&param_type), "(u32, str[4])");
+
+        let param_type = ParamType::Array(Box::new(ParamType::U32), 4);
+        assert_eq!(param_to_function_arg(&param_type), "[u32; 4]");
+
+        let param_type = ParamType::Vector(Box::new(ParamType::U32));
+        assert_eq!(param_to_function_arg(&param_type), "Vec<u32>");
+
+        let param_type = ParamType::Struct {
+            generics: vec![],
+            name: "GenericStruct".to_string(),
+            fields: vec![
+                ("value".to_string(), ParamType::U32),
+                ("description".to_string(), ParamType::StringArray(4)),
+            ],
+        };
+        assert_eq!(param_to_function_arg(&param_type), "GenericStruct");
+
+        let param_type = ParamType::Enum {
+            generics: vec![],
+            name: "GenericEnum".to_string(),
+            enum_variants: EnumVariants::new(vec![
+                ("Active".to_string(), ParamType::Bool),
+                ("Pending".to_string(), ParamType::U64),
+            ])
+            .unwrap(),
+        };
+        assert_eq!(param_to_function_arg(&param_type), "GenericEnum");
     }
 
     #[test]
