@@ -239,23 +239,3 @@ impl Debug for str {
         });
     }
 }
-
-#[test]
-fn ok_print_u8() {
-    let mut f = Formatter {};
-
-    f.debug_struct("Vec")
-        .field("len", 1u8)
-        .field("capacity", 2u8)
-        .finish();
-
-    f.debug_list()
-        .entry(1u8)
-        .entry(2u8)
-        .finish();
-
-    f.debug_tuple()
-        .field(1u8)
-        .field("2u8")
-        .finish();
-}
