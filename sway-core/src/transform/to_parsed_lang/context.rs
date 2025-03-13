@@ -1,7 +1,9 @@
 use sway_features::ExperimentalFeatures;
 
 use crate::{
-    build_config::DbgGeneration, language::parsed::{Declaration, TreeType}, BuildTarget
+    build_config::DbgGeneration,
+    language::parsed::{Declaration, TreeType},
+    BuildTarget,
 };
 
 pub struct Context {
@@ -38,7 +40,11 @@ pub struct Context {
 
 impl Context {
     /// Create a new context.
-    pub fn new(build_target: BuildTarget, dbg_generation: DbgGeneration, experimental: ExperimentalFeatures) -> Self {
+    pub fn new(
+        build_target: BuildTarget,
+        dbg_generation: DbgGeneration,
+        experimental: ExperimentalFeatures,
+    ) -> Self {
         Self {
             build_target,
             dbg_generation,

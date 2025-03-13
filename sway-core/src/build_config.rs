@@ -218,7 +218,7 @@ impl BuildConfig {
         root_module: PathBuf,
         canonical_manifest_dir: PathBuf,
         build_target: BuildTarget,
-        dbg_generation: DbgGeneration
+        dbg_generation: DbgGeneration,
     ) -> Self {
         assert!(
             canonical_manifest_dir.has_root(),
@@ -358,7 +358,7 @@ mod test {
             root_module,
             canonical_manifest_dir,
             BuildTarget::default(),
-            DbgGeneration::None,
+            DbgGeneration::Full,
         );
     }
 
@@ -370,7 +370,11 @@ mod test {
             root_module,
             canonical_manifest_dir,
             BuildTarget::default(),
+<<<<<<< HEAD
             DbgGeneration::None,
+=======
+            DbgGeneration::Full,
+>>>>>>> c9a309002 (clippy and fmt issues)
         );
     }
 }

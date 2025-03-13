@@ -7,7 +7,8 @@ use sway_parse::{lex, Parser};
 use sway_types::{constants::CONTRACT_ID, ProgramId, Spanned};
 
 use crate::{
-    build_config::DbgGeneration, language::{
+    build_config::DbgGeneration,
+    language::{
         parsed::{AstNode, AstNodeContent, Declaration, ExpressionKind},
         ty::{TyAstNode, TyAstNodeContent},
     },
@@ -34,9 +35,9 @@ pub fn package_with_contract_id(
             let (errors, warnings) = handler.consume();
             assert!(warnings.is_empty());
 
-            // Invariant: `.value == None` => `!errors.is_empty()`.
-            vec1::Vec1::try_from_vec(errors).unwrap()
-        })
+        // Invariant: `.value == None` => `!errors.is_empty()`.
+        vec1::Vec1::try_from_vec(errors).unwrap()
+    })
 }
 
 fn bind_contract_id_in_root_module(
