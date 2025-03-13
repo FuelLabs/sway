@@ -167,20 +167,7 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
             }
         
             for captured in test.ecal.captured.iter() {
-                match captured {
-                    forc_test::execute::CapturedEcal::Write { fd, bytes } => {
-                        let s = std::str::from_utf8(bytes.as_slice()).unwrap();
-        
-                        use std::io::Write;
-                        use std::os::fd::FromRawFd;
-        
-                        let mut f = unsafe { std::fs::File::from_raw_fd(*fd as i32) };
-                        write!(&mut f, "{}", s).unwrap();
-        
-                        // Dont close the fd
-                        std::mem::forget(f);
-                    },
-                }
+                captured.apply();
             }
         }
 

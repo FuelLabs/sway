@@ -29,6 +29,25 @@ pub enum CapturedEcal {
     }
 }
 
+impl CapturedEcal {
+    pub fn apply(&self) {
+        match self {
+            CapturedEcal::Write { fd, bytes } => {
+                let s = std::str::from_utf8(bytes.as_slice()).unwrap();
+
+                use std::io::Write;
+                use std::os::fd::FromRawFd;
+
+                let mut f = unsafe { std::fs::File::from_raw_fd(*fd as i32) };
+                write!(&mut f, "{}", s).unwrap();
+
+                // Dont close the fd
+                std::mem::forget(f);
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct EcalState {
     pub captured: Vec<CapturedEcal>,
@@ -56,20 +75,8 @@ impl EcalHandler for EcalState {
             1000 => {
                 let addr = regs[c.to_u8() as usize];
                 let count = regs[d.to_u8() as usize];
-
                 let bytes = vm.memory().read(addr, count).unwrap().to_vec();
-                // let s = std::str::from_utf8(s).unwrap();
-
-                // use std::io::Write;
-                // use std::os::fd::FromRawFd;
                 let fd = regs[b.to_u8() as usize];
-
-                // let mut f = unsafe { std::fs::File::from_raw_fd(fd as i32) };
-                // write!(&mut f, "{}", s).unwrap();
-
-                // // Dont close the fd
-                // std::mem::forget(f);
-
                 vm.ecal_state_mut().captured.push(CapturedEcal::Write { fd, bytes })
             }
             _ => todo!(),
