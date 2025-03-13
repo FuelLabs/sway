@@ -336,7 +336,7 @@ async fn get_wallet(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use fuels::accounts::wallet::Wallet;
     use fuels::prelude::*;
@@ -346,7 +346,8 @@ mod tests {
         abi = "forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json"
     ));
 
-    async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, WalletUnlocked) {
+    pub async fn get_contract_instance(
+    ) -> (TestContract<WalletUnlocked>, ContractId, WalletUnlocked) {
         // Launch a local network and deploy the contract
         let mut wallets = launch_custom_provider_and_get_wallets(
             WalletsConfig::new(
@@ -390,7 +391,7 @@ mod tests {
             abi: Either::Left(std::path::PathBuf::from(
                 "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json",
             )),
-            function: cmd::call::FuncType::Selector(selector.into()),
+            function: Some(cmd::call::FuncType::Selector(selector.into())),
             function_args: args.into_iter().map(String::from).collect(),
             node: crate::NodeTarget {
                 node_url: Some(wallet.provider().unwrap().url().to_owned()),
@@ -406,6 +407,7 @@ mod tests {
             external_contracts: None,
             output: cmd::call::OutputFormat::Raw,
             show_receipts: false,
+            list_functions: false,
         }
     }
 

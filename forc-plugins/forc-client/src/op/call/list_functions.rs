@@ -109,3 +109,56 @@ pub fn list_contract_functions<W: Write>(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::op::call::tests::get_contract_instance;
+    use fuel_abi_types::abi::program::ProgramABI;
+    use std::io::Cursor;
+    use std::path::Path;
+
+    #[tokio::test]
+    async fn test_list_contract_functions() {
+        let (_, id, _) = get_contract_instance().await;
+
+        // Load a test ABI
+        let abi_path_str = "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json";
+        let abi_path = Path::new(abi_path_str);
+        let abi = Either::Left(abi_path.to_path_buf());
+
+        let abi_str = std::fs::read_to_string(abi_path).unwrap();
+        let parsed_abi: ProgramABI = serde_json::from_str(&abi_str).unwrap();
+        let unified_program_abi = UnifiedProgramABI::from_counterpart(&parsed_abi).unwrap();
+
+        // Use a buffer to capture the output
+        let mut output = Cursor::new(Vec::<u8>::new());
+
+        // Call function with our buffer as the writer
+        list_contract_functions(&id, &abi, &unified_program_abi, &mut output)
+            .expect("Failed to list contract functions");
+
+        // Get the output as a string
+        let output_bytes = output.into_inner();
+        let output_string = String::from_utf8(output_bytes).expect("Output was not valid UTF-8");
+
+        // Verify the output contains expected function names and formatting
+        assert!(output_string.contains("Available functions in contract:"));
+
+        assert!(
+            output_string.contains("test_struct_with_generic(a: GenericStruct) -> GenericStruct")
+        );
+        assert!(output_string.contains("forc call \\"));
+        assert!(output_string.contains(format!("--abi {abi_path_str} \\").as_str()));
+        assert!(output_string.contains(format!("{id} \\").as_str()));
+        assert!(output_string.contains("test_struct_with_generic \"{0, aaaa}\""));
+
+        assert!(output_string.contains("test_complex_struct(a: ComplexStruct) -> ComplexStruct"));
+        assert!(output_string.contains("forc call \\"));
+        assert!(output_string.contains(format!("--abi {abi_path_str} \\").as_str()));
+        assert!(output_string.contains(format!("{id} \\").as_str()));
+        assert!(output_string.contains(
+            "test_complex_struct \"{({aa, 0}, 0), (Active:false), 0, {{0, aaaa}, aaaa}}\""
+        ));
+    }
+}
