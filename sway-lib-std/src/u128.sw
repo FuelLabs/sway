@@ -13,6 +13,7 @@ use ::registers::{flags, overflow};
 use ::math::*;
 use ::result::Result::{self, *};
 use ::option::Option::{self, None, Some};
+use ::revert::revert;
 use ::ops::*;
 use ::codec::*;
 
@@ -723,7 +724,7 @@ fn u128_checked_mul(a: U128, b: U128) -> Option<U128> {
     // in case both of the `U128` upper parts are bigger than zero,
     // it automatically means overflow, as any `U128` value
     // is upper part multiplied by 2 ^ 64 + lower part
-    if a.upper != 0 || b.upper != 0 {
+    if a.upper != 0 && b.upper != 0 {
         return None
     }
 
@@ -765,7 +766,14 @@ impl Power for U128 {
 
         while exp & 1 == 0 {
             match u128_checked_mul(value, value) {
-                None => return U128::zero(),
+                None => {
+                    if panic_on_overflow_enabled() {
+                        revert(0);
+                    } else {
+                        // Return zero on overflow as per the Fuel VM Specifications
+                        return U128::zero()
+                    }
+                },
                 Some(v) => value = v,
             };
             exp >>= 1;
@@ -779,12 +787,22 @@ impl Power for U128 {
         while exp > 1 {
             exp >>= 1;
             match u128_checked_mul(value, value) {
-                None => return U128::zero(),
+                None => if panic_on_overflow_enabled() {
+                    revert(0);
+                } else {
+                    // Return zero on overflow as per the Fuel VM Specifications
+                    return U128::zero()
+                },
                 Some(v) => value = v,
             };
             if exp & 1 == 1 {
                 match u128_checked_mul(acc, value) {
-                    None => return U128::zero(),
+                    None => if panic_on_overflow_enabled() {
+                        revert(0);
+                    } else {
+                        // Return zero on overflow as per the Fuel VM Specifications
+                        return U128::zero()
+                    },
                     Some(v) => acc = v,
                 };
             }
