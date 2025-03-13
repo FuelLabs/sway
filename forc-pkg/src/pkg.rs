@@ -47,7 +47,7 @@ use sway_core::{
     transform::AttributeKind,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
-use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
+use sway_core::{set_bytecode_configurables_offset, DbgGeneration, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
 use sway_types::{Ident, ProgramId, Span, Spanned};
@@ -1545,6 +1545,7 @@ pub fn sway_build_config(
     entry_path: &Path,
     build_target: BuildTarget,
     build_profile: &BuildProfile,
+    dbg_generation: sway_core::DbgGeneration,
 ) -> Result<sway_core::BuildConfig> {
     // Prepare the build config to pass through to the compiler.
     let file_name = find_file_name(manifest_dir, entry_path)?;
@@ -1552,6 +1553,7 @@ pub fn sway_build_config(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
         build_target,
+        dbg_generation,
     )
     .with_print_dca_graph(build_profile.print_dca_graph.clone())
     .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
@@ -1591,6 +1593,7 @@ pub fn dependency_namespace(
     contract_id_value: Option<ContractIdConst>,
     program_id: ProgramId,
     experimental: ExperimentalFeatures,
+    dbg_generation: sway_core::DbgGeneration
 ) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
@@ -1602,6 +1605,7 @@ pub fn dependency_namespace(
             program_id,
             contract_id_value,
             experimental,
+            dbg_generation
         )?
     } else {
         Root::new(name.clone(), None, program_id, false)
@@ -1634,6 +1638,7 @@ pub fn dependency_namespace(
                     program_id,
                     contract_id_value,
                     experimental,
+                    dbg_generation
                 )?
             }
         };
@@ -1668,12 +1673,13 @@ pub fn compile(
     namespace: namespace::Root,
     source_map: &mut SourceMap,
     experimental: ExperimentalFeatures,
+    dbg_generation: DbgGeneration,
 ) -> Result<CompiledPackage> {
     let mut metrics = PerformanceData::default();
 
     let entry_path = pkg.manifest_file.entry_path();
     let sway_build_config =
-        sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?;
+        sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile, dbg_generation)?;
     let terse_mode = profile.terse;
     let reverse_results = profile.reverse_results;
     let fail = |handler: Handler| {
@@ -2158,6 +2164,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         member_filter,
         experimental,
         no_experimental,
+        release,
         ..
     } = &build_options;
 
@@ -2205,6 +2212,11 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         &outputs,
         experimental,
         no_experimental,
+        if *release {
+            DbgGeneration::None
+        } else {
+            DbgGeneration::Full
+        },
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     let total_size = built_packages
@@ -2322,6 +2334,7 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     experimental: &[sway_features::Feature],
     no_experimental: &[sway_features::Feature],
+    dbg_generation: sway_core::DbgGeneration,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2414,6 +2427,7 @@ pub fn build(
                 None,
                 program_id,
                 experimental,
+                dbg_generation,
             ) {
                 Ok(o) => o,
                 Err(errs) => return fail(&[], &errs),
@@ -2426,6 +2440,7 @@ pub fn build(
                 dep_namespace,
                 &mut source_map,
                 experimental,
+                dbg_generation,
             )?;
 
             if let Some(outfile) = profile.metrics_outfile {
@@ -2484,6 +2499,7 @@ pub fn build(
             contract_id_value.clone(),
             program_id,
             experimental,
+            dbg_generation,
         ) {
             Ok(o) => o,
             Err(errs) => {
@@ -2505,6 +2521,7 @@ pub fn build(
             dep_namespace,
             &mut source_map,
             experimental,
+            dbg_generation,
         )?;
 
         if let Some(outfile) = profile.metrics_outfile {
@@ -2552,6 +2569,7 @@ pub fn check(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     experimental: &[sway_features::Feature],
     no_experimental: &[sway_features::Feature],
+    dbg_generation: sway_core::DbgGeneration,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = HashMap::default();
     let mut source_map = SourceMap::new();
@@ -2600,6 +2618,7 @@ pub fn check(
             contract_id_value,
             program_id,
             experimental,
+            dbg_generation,
         )
         .expect("failed to create dependency namespace");
 
@@ -2613,6 +2632,7 @@ pub fn check(
             &manifest.entry_path(),
             build_target,
             &profile,
+            dbg_generation,
         )?
         .with_include_tests(include_tests)
         .with_lsp_mode(lsp_mode.clone());

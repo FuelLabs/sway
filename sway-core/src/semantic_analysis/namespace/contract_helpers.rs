@@ -7,15 +7,12 @@ use sway_parse::{lex, Parser};
 use sway_types::{constants::CONTRACT_ID, ProgramId, Spanned};
 
 use crate::{
-    language::{
+    build_config::DbgGeneration, language::{
         parsed::{AstNode, AstNodeContent, Declaration, ExpressionKind},
         ty::{TyAstNode, TyAstNodeContent},
-    },
-    semantic_analysis::{
+    }, semantic_analysis::{
         namespace::Root, symbol_collection_context::SymbolCollectionContext, TypeCheckContext,
-    },
-    transform::to_parsed_lang,
-    Engines, Ident, Namespace,
+    }, transform::to_parsed_lang, Engines, Ident, Namespace
 };
 
 /// Factory function for contracts
@@ -25,10 +22,11 @@ pub fn namespace_with_contract_id(
     program_id: ProgramId,
     contract_id_value: String,
     experimental: crate::ExperimentalFeatures,
+    dbg_generation: DbgGeneration,
 ) -> Result<Root, vec1::Vec1<CompileError>> {
     let root = Root::new(package_name, None, program_id, true);
     let handler = <_>::default();
-    bind_contract_id_in_root_module(&handler, engines, contract_id_value, root, experimental)
+    bind_contract_id_in_root_module(&handler, engines, contract_id_value, root, experimental, dbg_generation)
         .map_err(|_| {
             let (errors, warnings) = handler.consume();
             assert!(warnings.is_empty());
@@ -44,6 +42,7 @@ fn bind_contract_id_in_root_module(
     contract_id_value: String,
     root: Root,
     experimental: crate::ExperimentalFeatures,
+    dbg_generation: DbgGeneration,
 ) -> Result<Root, ErrorEmitted> {
     // this for loop performs a miniature compilation of each const item in the config
     // FIXME(Centril): Stop parsing. Construct AST directly instead!
@@ -61,7 +60,7 @@ fn bind_contract_id_in_root_module(
     let attributes = Default::default();
     // convert to const decl
     let const_decl_id = to_parsed_lang::item_const_to_constant_declaration(
-        &mut to_parsed_lang::Context::new(crate::BuildTarget::EVM, experimental),
+        &mut to_parsed_lang::Context::new(crate::BuildTarget::EVM, dbg_generation, experimental),
         handler,
         engines,
         const_item,

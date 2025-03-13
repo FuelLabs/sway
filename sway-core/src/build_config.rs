@@ -34,6 +34,13 @@ pub enum BuildTarget {
     EVM,
 }
 
+#[derive(Default, Clone, Copy)]
+pub enum DbgGeneration {
+    Full,
+    #[default]
+    None,
+}
+
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum OptLevel {
     #[default]
@@ -176,6 +183,7 @@ impl From<&PrintIr> for PrintPassesOpts {
 pub struct BuildConfig {
     // Build target for code generation.
     pub(crate) build_target: BuildTarget,
+    pub(crate) dbg_generation: DbgGeneration,
     // The canonical file path to the root module.
     // E.g. `/home/user/project/src/main.sw`.
     pub(crate) canonical_root_module: Arc<PathBuf>,
@@ -206,6 +214,7 @@ impl BuildConfig {
         root_module: PathBuf,
         canonical_manifest_dir: PathBuf,
         build_target: BuildTarget,
+        dbg_generation: DbgGeneration
     ) -> Self {
         assert!(
             canonical_manifest_dir.has_root(),
@@ -226,6 +235,7 @@ impl BuildConfig {
         };
         Self {
             build_target,
+            dbg_generation,
             canonical_root_module: Arc::new(canonical_root_module),
             print_dca_graph: None,
             print_dca_graph_url_format: None,

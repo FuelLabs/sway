@@ -4,13 +4,10 @@ pub mod debug;
 pub mod marker_traits;
 
 use crate::{
-    engine_threading::SpannedWithEngines,
-    language::{
+    build_config::DbgGeneration, debug_generation, engine_threading::SpannedWithEngines, language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
         ty::{self, TyAstNode, TyDecl},
-    },
-    semantic_analysis::TypeCheckContext,
-    Engines, TypeArgument, TypeInfo, TypeParameter,
+    }, semantic_analysis::TypeCheckContext, Engines, TypeArgument, TypeInfo, TypeParameter
 };
 use sway_error::handler::Handler;
 use sway_parse::Parse;
@@ -132,9 +129,11 @@ where
         program_id: Option<ProgramId>,
         kind: FunctionDeclarationKind,
         code: &str,
+        dbg_generation: DbgGeneration
     ) -> Result<TyAstNode, Handler> {
         let mut ctx = crate::transform::to_parsed_lang::Context::new(
             crate::BuildTarget::Fuel,
+            dbg_generation,
             self.ctx.experimental,
         );
 
@@ -212,9 +211,11 @@ where
         engines: &Engines,
         program_id: Option<ProgramId>,
         code: &str,
+        debug_generation: DbgGeneration,
     ) -> Result<TyAstNode, Handler> {
         let mut ctx = crate::transform::to_parsed_lang::Context::new(
             crate::BuildTarget::Fuel,
+            debug_generation,
             self.ctx.experimental,
         );
 
