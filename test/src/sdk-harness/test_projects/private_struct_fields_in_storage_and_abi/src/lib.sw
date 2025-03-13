@@ -11,19 +11,11 @@ impl CanInitStruct {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for CanInitStruct {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x && self.y == other.y
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for CanInitStruct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for CanInitStruct {}
 
 pub struct CannotInitStruct {
@@ -38,17 +30,9 @@ impl CannotInitStruct {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for CannotInitStruct {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x && self.y == other.y
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for CannotInitStruct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for CannotInitStruct {}

@@ -73,19 +73,11 @@ impl Address {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Address {
-    fn eq(self, other: Self) -> bool {
-        self.bits == other.bits
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Address {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Address {}
 
 /// Functions for casting between the `b256` and `Address` types.

@@ -16,19 +16,11 @@ pub struct B512 {
     bits: [b256; 2],
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for B512 {
-    fn eq(self, other: Self) -> bool {
-        (self.bits)[0] == (other.bits)[0] && (self.bits)[1] == (other.bits)[1]
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for B512 {
     fn eq(self, other: Self) -> bool {
         (self.bits)[0] == (other.bits)[0] && (self.bits)[1] == (other.bits)[1]
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for B512 {}
 
 impl From<(b256, b256)> for B512 {

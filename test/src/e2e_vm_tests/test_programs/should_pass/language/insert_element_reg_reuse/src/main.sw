@@ -1,19 +1,5 @@
 script;
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for [u64; 2] {
-    fn eq(self, other: Self) -> bool {
-        let mut i = 0;
-        while i < 2 {
-            if self[i] != other[i] {
-                return false;
-            }
-            i += 1;
-        }
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for [u64; 2] {
     fn eq(self, other: Self) -> bool {
         let mut i = 0;
@@ -26,26 +12,8 @@ impl PartialEq for [u64; 2] {
         true
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for [u64; 2] {}
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Vec<[u64; 2]> {
-    fn eq(self, other: Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        let mut i = 0;
-        while i < self.len() {
-            if self.get(i).unwrap() != other.get(i).unwrap() {
-                return false;
-            }
-            i += 1;
-        }
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Vec<[u64; 2]> {
     fn eq(self, other: Self) -> bool {
         if self.len() != other.len() {
@@ -61,7 +29,6 @@ impl PartialEq for Vec<[u64; 2]> {
         true
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Vec<[u64; 2]> {}
 
 fn tester1(arg: Vec<[u64; 2]>) {

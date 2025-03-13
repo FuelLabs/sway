@@ -3,7 +3,6 @@ use crate::fuel_prelude::{
     fuel_tx::StorageSlot,
     fuel_types::{Bytes32, Bytes8},
 };
-use sway_features::ExperimentalFeatures;
 use sway_ir::{
     constant::{ConstantContent, ConstantValue},
     context::Context,
@@ -24,14 +23,10 @@ enum InByte8Padding {
 /// Hands out storage keys using storage field names or an existing key.
 /// Basically returns sha256((0u8, "storage::<storage_namespace_name1>::<storage_namespace_name2>.<storage_field_name>"))
 /// or key if defined.
-pub(super) fn get_storage_key(
-    storage_field_names: Vec<String>,
-    key: Option<U256>,
-    experimental: ExperimentalFeatures,
-) -> Bytes32 {
+pub(super) fn get_storage_key(storage_field_names: Vec<String>, key: Option<U256>) -> Bytes32 {
     match key {
         Some(key) => key.to_be_bytes().into(),
-        None => hash_storage_key_string(get_storage_key_string(&storage_field_names), experimental),
+        None => hash_storage_key_string(get_storage_key_string(&storage_field_names)),
     }
 }
 
@@ -65,7 +60,6 @@ pub fn get_storage_key_string(storage_field_names: &[String]) -> String {
 pub(super) fn get_storage_field_id(
     storage_field_names: &[String],
     struct_field_names: &[String],
-    experimental: ExperimentalFeatures,
 ) -> Bytes32 {
     let data = format!(
         "{}{}",
@@ -81,13 +75,10 @@ pub(super) fn get_storage_field_id(
         }
     );
 
-    hash_storage_key_string(data, experimental)
+    hash_storage_key_string(data)
 }
 
-fn hash_storage_key_string(
-    storage_key_string: String,
-    experimental: ExperimentalFeatures,
-) -> Bytes32 {
+fn hash_storage_key_string(storage_key_string: String) -> Bytes32 {
     let mut hasher = Hasher::default();
     // Certain storage types, like, e.g., `StorageMap` allow
     // storage slots of their contained elements to be defined
@@ -101,9 +92,7 @@ fn hash_storage_key_string(
     // domain prefix than the `STORAGE_DOMAIN` which is 0u8.
     //
     // For detailed elaboration see: https://github.com/FuelLabs/sway/issues/6317
-    if experimental.storage_domains {
-        hasher.input(sway_utils::constants::STORAGE_DOMAIN);
-    }
+    hasher.input(sway_utils::constants::STORAGE_DOMAIN);
     hasher.input(storage_key_string);
     hasher.finalize()
 }
@@ -140,18 +129,17 @@ pub fn serialize_to_storage_slots(
     key: Option<U256>,
     ty: &Type,
 ) -> Vec<StorageSlot> {
-    let experimental = context.experimental;
     match &constant.get_content(context).value {
         ConstantValue::Undef => vec![],
         // If not being a part of an aggregate, single byte values like `bool`, `u8`, and unit
         // are stored as a byte at the beginning of the storage slot.
         ConstantValue::Unit if ty.is_unit(context) => vec![StorageSlot::new(
-            get_storage_key(storage_field_names, key, experimental),
+            get_storage_key(storage_field_names, key),
             Bytes32::new([0; 32]),
         )],
         ConstantValue::Bool(b) if ty.is_bool(context) => {
             vec![StorageSlot::new(
-                get_storage_key(storage_field_names, key, experimental),
+                get_storage_key(storage_field_names, key),
                 Bytes32::new([
                     if *b { 1 } else { 0 },
                     0,
@@ -190,7 +178,7 @@ pub fn serialize_to_storage_slots(
         }
         ConstantValue::Uint(b) if ty.is_uint8(context) => {
             vec![StorageSlot::new(
-                get_storage_key(storage_field_names, key, experimental),
+                get_storage_key(storage_field_names, key),
                 Bytes32::new([
                     *b as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0,
@@ -200,7 +188,7 @@ pub fn serialize_to_storage_slots(
         // Similarly, other uint values are stored at the beginning of the storage slot.
         ConstantValue::Uint(n) if ty.is_uint(context) => {
             vec![StorageSlot::new(
-                get_storage_key(storage_field_names, key, experimental),
+                get_storage_key(storage_field_names, key),
                 Bytes32::new(
                     n.to_be_bytes()
                         .iter()
@@ -214,13 +202,13 @@ pub fn serialize_to_storage_slots(
         }
         ConstantValue::U256(b) if ty.is_uint_of(context, 256) => {
             vec![StorageSlot::new(
-                get_storage_key(storage_field_names, key, experimental),
+                get_storage_key(storage_field_names, key),
                 Bytes32::new(b.to_be_bytes()),
             )]
         }
         ConstantValue::B256(b) if ty.is_b256(context) => {
             vec![StorageSlot::new(
-                get_storage_key(storage_field_names, key, experimental),
+                get_storage_key(storage_field_names, key),
                 Bytes32::new(b.to_be_bytes()),
             )]
         }
@@ -262,7 +250,7 @@ pub fn serialize_to_storage_slots(
                 ty.as_string(context)
             );
 
-            let storage_key = get_storage_key(storage_field_names, key, experimental);
+            let storage_key = get_storage_key(storage_field_names, key);
             (0..(type_size_in_bytes + 31) / 32)
                 .map(|i| add_to_b256(storage_key, i))
                 .zip((0..packed.len() / 4).map(|i| {

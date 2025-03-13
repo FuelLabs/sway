@@ -28,49 +28,25 @@ struct Simple {
     w: u64,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for M {
-    fn eq(self, other: Self) -> bool {
-        self.u == other.u && self.v == other.v
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for M {
     fn eq(self, other: Self) -> bool {
         self.u == other.u && self.v == other.v
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for M {}
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for T {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x && self.y == other.y && self.z == other.z
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for T {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y && self.z == other.z
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for T {}
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for S {
-    fn eq(self, other: Self) -> bool {
-        self.a == other.a && self.b == other.b && self.c == other.c && self.d == other.d
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for S {
     fn eq(self, other: Self) -> bool {
         self.a == other.a && self.b == other.b && self.c == other.c && self.d == other.d
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for S {}
 
 struct S2 {

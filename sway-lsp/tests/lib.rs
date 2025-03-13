@@ -1118,7 +1118,7 @@ fn go_to_definition_for_consts() {
         )
         .await;
 
-        // value: TyExpression
+        // value: TyExpression: `ContractId`
         let mut contract_go_to = GotoDefinition {
             req_uri: &uri,
             req_line: 9,
@@ -1130,8 +1130,9 @@ fn go_to_definition_for_consts() {
         };
         lsp::definition_check(&server, &contract_go_to).await;
 
+        // value: `from`
         contract_go_to.req_char = 34;
-        contract_go_to.def_line = 70;
+        contract_go_to.def_line = 62;
         contract_go_to.def_start_char = 7;
         contract_go_to.def_end_char = 11;
         lsp::definition_check(&server, &contract_go_to).await;

@@ -80,19 +80,11 @@ impl EvmAddress {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for EvmAddress {
-    fn eq(self, other: Self) -> bool {
-        self.bits == other.bits
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for EvmAddress {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for EvmAddress {}
 
 /// Functions for casting between the `b256` and `EvmAddress` types.

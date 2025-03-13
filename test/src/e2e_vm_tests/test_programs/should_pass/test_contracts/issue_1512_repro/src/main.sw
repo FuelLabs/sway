@@ -23,19 +23,11 @@ pub trait AltFrom {
 
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for U128Duplicate {
-    fn eq(self, other: Self) -> bool {
-        self.lower == other.lower && self.upper == other.upper
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for U128Duplicate {
     fn eq(self, other: Self) -> bool {
         self.lower == other.lower && self.upper == other.upper
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for U128Duplicate {}
 
 /// Function for creating U128 from its u64 components

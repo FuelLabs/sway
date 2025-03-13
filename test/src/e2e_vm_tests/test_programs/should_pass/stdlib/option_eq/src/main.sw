@@ -10,79 +10,36 @@ enum MyEnum {
 }
 
 pub type StringArray = str[4];
-#[cfg(experimental_partial_eq = false)]
-impl Eq for StringArray {
-    fn eq(self, other: Self) -> bool {
-        from_str_array(self) == from_str_array(other)
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for StringArray {
     fn eq(self, other: Self) -> bool {
         from_str_array(self) == from_str_array(other)
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for StringArray {}
 
 pub type Array = [u32; 2];
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Array {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1]
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Array {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1]
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Array {}
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for MyStruct {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for MyStruct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for MyStruct {}
 
 pub type Tuple = (u32, u32);
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Tuple {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Tuple {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Tuple {}
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for MyEnum {
-    fn eq(self, other: MyEnum) -> bool {
-        match (self, other) {
-            (MyEnum::A(inner1), MyEnum::A(inner2)) => inner1 == inner2,
-            (MyEnum::B(inner1), MyEnum::B(inner2)) => inner1 == inner2,
-            _ => false,
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for MyEnum {
     fn eq(self, other: MyEnum) -> bool {
         match (self, other) {
@@ -92,7 +49,6 @@ impl PartialEq for MyEnum {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for MyEnum {}
 
 fn main() -> bool {

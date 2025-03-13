@@ -80,19 +80,11 @@ struct Data3 {
     x: u64,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Data3 {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Data3 {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Data3 {}
 
 impl MyEq for Data3 {

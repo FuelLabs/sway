@@ -86,7 +86,7 @@ configurable {
     STR_4: str[4] = __to_str_array("abcd"),
 }
 
-impl Eq for Color {
+impl PartialEq for Color {
     fn eq(self, other: Color) -> bool {
         match (self, other) {
             (Color::Red, Color::Red) => true,
@@ -96,13 +96,13 @@ impl Eq for Color {
     }
 }
 
-impl Eq for SimpleStruct {
+impl PartialEq for SimpleStruct {
     fn eq(self, other: SimpleStruct) -> bool {
         self.a == other.a && self.b == other.b
     }
 }
 
-impl Eq for Location {
+impl PartialEq for Location {
     fn eq(self, other: Location) -> bool {
         match (self, other) {
             (Location::Earth(inner1), Location::Earth(inner2)) => inner1 == inner2,

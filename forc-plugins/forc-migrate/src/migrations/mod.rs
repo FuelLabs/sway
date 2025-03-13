@@ -485,30 +485,4 @@ fn assert_migration_steps_consistency(migration_steps: MigrationSteps) {
 
 /// The list of the migration steps, grouped by the Sway feature that causes
 /// the breaking changes behind the migration steps.
-const MIGRATION_STEPS: MigrationSteps = &[
-    (
-        Feature::StorageDomains,
-        &[
-            self::storage_domains::REVIEW_STORAGE_SLOT_KEYS_STEP,
-            self::storage_domains::DEFINE_BACKWARD_COMPATIBLE_STORAGE_SLOT_KEYS_STEP,
-        ],
-    ),
-    (
-        Feature::PartialEq,
-        &[
-            self::partial_eq::IMPLEMENT_EXPERIMENTAL_PARTIAL_EQ_AND_EQ_TRAITS,
-            self::partial_eq::REMOVE_DEPRECATED_EQ_TRAIT_IMPLEMENTATIONS,
-        ],
-    ),
-    (
-        Feature::TryFromBytesForB256,
-        &[
-            self::try_from_bytes_for_b256::REPLACE_B256_FROM_BYTES_WITH_TRY_FROM_BYTES_STEP,
-            self::try_from_bytes_for_b256::REPLACE_BYTES_INTO_B256_WITH_TRY_INTO_B256_STEP,
-        ],
-    ),
-    (
-        Feature::MergeCoreStd,
-        &[self::merge_core_std::REPLACE_CORE_WITH_STD_IN_PATHS],
-    ),
-];
+const MIGRATION_STEPS: MigrationSteps = &[];

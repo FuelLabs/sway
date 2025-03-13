@@ -7,19 +7,11 @@ struct M {
     v: u64,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for M {
-    fn eq(self, other: Self) -> bool {
-        self.u == other.u && self.v == other.v
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for M {
     fn eq(self, other: Self) -> bool {
         self.u == other.u && self.v == other.v
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for M {}
 
 impl Hash for M {
@@ -34,17 +26,6 @@ pub enum E {
     B: b256,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for E {
-    fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (E::A(l), E::A(r)) => l == r,
-            (E::B(l), E::B(r)) => l == r,
-            _ => false,
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for E {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -54,7 +35,6 @@ impl PartialEq for E {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for E {}
 
 impl Hash for str[4] {

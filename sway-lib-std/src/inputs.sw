@@ -60,18 +60,6 @@ pub enum Input {
     Message: (),
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Input {
-    fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (Input::Coin, Input::Coin) => true,
-            (Input::Contract, Input::Contract) => true,
-            (Input::Message, Input::Message) => true,
-            _ => false,
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Input {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -82,7 +70,6 @@ impl PartialEq for Input {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Input {}
 
 // General Inputs

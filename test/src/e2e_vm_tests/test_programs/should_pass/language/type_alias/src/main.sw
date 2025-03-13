@@ -35,19 +35,11 @@ impl MyTypeAlias3 {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for MyTypeAlias2 {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for MyTypeAlias2 {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for MyTypeAlias2 {}
 
 struct GenericStruct<T> {
@@ -131,15 +123,6 @@ impl MyEnumTypeAlias3 {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for MyEnumTypeAlias2 {
-    fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (MyEnumType::X(value1), MyEnumType::X(value2)) => value1 == value2,
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for MyEnumTypeAlias2 {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -147,7 +130,6 @@ impl PartialEq for MyEnumTypeAlias2 {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for MyEnumTypeAlias2 {}
 
 fn enum_tests() {

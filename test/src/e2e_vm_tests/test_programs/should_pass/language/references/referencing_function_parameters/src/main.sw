@@ -14,19 +14,11 @@ impl S {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for S {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for S {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for S {}
 
 // TODO-IG: Extend with `mut` parameters once declaring `mut` parameters is implemented.
@@ -54,19 +46,11 @@ impl Eq for S {}
 //    u8_parameter(p)
 // }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for [u64; 2] {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1]
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for [u64; 2] {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1]
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for [u64; 2] {}
 
 #[inline(always)]
@@ -102,19 +86,11 @@ fn array_parameter_not_inlined(p: [u64; 2]) {
 
 struct EmptyStruct {}
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for EmptyStruct {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for EmptyStruct {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for EmptyStruct {}
 
 #[inline(always)]
@@ -181,19 +157,11 @@ fn struct_parameter_not_inlined(p: S) {
     struct_parameter(p)
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for (u64, u64) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for (u64, u64) {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for (u64, u64) {}
 
 #[inline(always)]
@@ -231,15 +199,6 @@ enum E {
     A: u8,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for E {
-    fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (E::A(r), E::A(l)) => r == l,
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for E {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -247,7 +206,6 @@ impl PartialEq for E {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for E {}
 
 #[inline(always)]

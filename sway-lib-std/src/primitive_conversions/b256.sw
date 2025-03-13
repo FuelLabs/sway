@@ -28,23 +28,6 @@ impl b256 {
     }
 }
 
-// TODO: Delete this implementation in favor of the one in `std::bytes`.
-//       Due the fact that we still don't have trait coherence, these
-//       two impls coexist for now.
-#[cfg(experimental_try_from_bytes_for_b256 = false)]
-impl TryFrom<Bytes> for b256 {
-    fn try_from(b: Bytes) -> Option<Self> {
-        if b.len() != 32 {
-            None
-        } else {
-            let mut val = 0x0000000000000000000000000000000000000000000000000000000000000000;
-            let ptr = __addr_of(val);
-            b.ptr().copy_to::<b256>(ptr, 1);
-            Some(val)
-        }
-    }
-}
-
 impl TryFrom<B512> for b256 {
     /// Attempts conversion from a `B512` to a `b256`.
     ///
