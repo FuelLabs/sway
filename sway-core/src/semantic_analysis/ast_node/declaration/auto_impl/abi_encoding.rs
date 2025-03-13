@@ -216,8 +216,12 @@ where
             &struct_decl.type_parameters,
             abi_encode_body,
         );
-        let abi_encode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code, crate::build_config::DbgGeneration::None);
+        let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            program_id,
+            &abi_encode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         let abi_decode_body = self.generate_abi_decode_struct_body(engines, &struct_decl);
         let abi_decode_code = self.generate_abi_decode_code(
@@ -225,8 +229,12 @@ where
             &struct_decl.type_parameters,
             abi_decode_body?,
         );
-        let abi_decode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_decode_code, crate::build_config::DbgGeneration::None);
+        let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            program_id,
+            &abi_decode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         Some((abi_encode_node.ok(), abi_decode_node.ok()))
     }
@@ -257,8 +265,12 @@ where
             &enum_decl.type_parameters,
             abi_encode_body,
         );
-        let abi_encode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code, crate::build_config::DbgGeneration::None);
+        let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            program_id,
+            &abi_encode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         let abi_decode_body = self.generate_abi_decode_enum_body(engines, &enum_decl);
         let abi_decode_code = self.generate_abi_decode_code(
@@ -266,8 +278,12 @@ where
             &enum_decl.type_parameters,
             abi_decode_body?,
         );
-        let abi_decode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_decode_code, crate::build_config::DbgGeneration::None);
+        let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            program_id,
+            &abi_decode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         Some((abi_encode_node.ok(), abi_decode_node.ok()))
     }

@@ -1605,7 +1605,7 @@ pub fn dependency_namespace(
             program_id,
             contract_id_value,
             experimental,
-            dbg_generation
+            dbg_generation,
         )?
     } else {
         Package::new(name.clone(), None, program_id, false)
@@ -1638,7 +1638,7 @@ pub fn dependency_namespace(
                     program_id,
                     contract_id_value,
                     experimental,
-                    dbg_generation
+                    dbg_generation,
                 )?
             }
         };
@@ -1678,8 +1678,13 @@ pub fn compile(
     let mut metrics = PerformanceData::default();
 
     let entry_path = pkg.manifest_file.entry_path();
-    let sway_build_config =
-        sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile, dbg_generation)?;
+    let sway_build_config = sway_build_config(
+        pkg.manifest_file.dir(),
+        &entry_path,
+        pkg.target,
+        profile,
+        dbg_generation,
+    )?;
     let terse_mode = profile.terse;
     let reverse_results = profile.reverse_results;
     let fail = |handler: Handler| {
