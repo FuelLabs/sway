@@ -49,7 +49,7 @@ where
             abi_encode_body,
         );
         let abi_encode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code);
+            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code, crate::build_config::DbgGeneration::None);
 
         Some(abi_encode_node.ok())
     }

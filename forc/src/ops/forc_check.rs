@@ -47,6 +47,7 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         None,
         &experimental.experimental,
         &experimental.no_experimental,
+        sway_core::DbgGeneration::None,
     )?;
     let (res, handler) = v
         .pop()
