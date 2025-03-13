@@ -474,7 +474,7 @@ impl TestOpts {
             minify: self.minify,
             binary_outfile: self.binary_outfile,
             debug_outfile: self.debug_outfile,
-            build_target: self.build_target,            
+            build_target: self.build_target,
             build_profile: self.build_profile,
             release: self.release,
             error_on_warnings: self.error_on_warnings,

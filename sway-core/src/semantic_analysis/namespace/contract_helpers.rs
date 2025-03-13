@@ -7,12 +7,16 @@ use sway_parse::{lex, Parser};
 use sway_types::{constants::CONTRACT_ID, ProgramId, Spanned};
 
 use crate::{
-    build_config::DbgGeneration, language::{
+    build_config::DbgGeneration,
+    language::{
         parsed::{AstNode, AstNodeContent, Declaration, ExpressionKind},
         ty::{TyAstNode, TyAstNodeContent},
-    }, semantic_analysis::{
+    },
+    semantic_analysis::{
         namespace::Root, symbol_collection_context::SymbolCollectionContext, TypeCheckContext,
-    }, transform::to_parsed_lang, Engines, Ident, Namespace
+    },
+    transform::to_parsed_lang,
+    Engines, Ident, Namespace,
 };
 
 /// Factory function for contracts
@@ -26,14 +30,21 @@ pub fn namespace_with_contract_id(
 ) -> Result<Root, vec1::Vec1<CompileError>> {
     let root = Root::new(package_name, None, program_id, true);
     let handler = <_>::default();
-    bind_contract_id_in_root_module(&handler, engines, contract_id_value, root, experimental, dbg_generation)
-        .map_err(|_| {
-            let (errors, warnings) = handler.consume();
-            assert!(warnings.is_empty());
+    bind_contract_id_in_root_module(
+        &handler,
+        engines,
+        contract_id_value,
+        root,
+        experimental,
+        dbg_generation,
+    )
+    .map_err(|_| {
+        let (errors, warnings) = handler.consume();
+        assert!(warnings.is_empty());
 
-            // Invariant: `.value == None` => `!errors.is_empty()`.
-            vec1::Vec1::try_from_vec(errors).unwrap()
-        })
+        // Invariant: `.value == None` => `!errors.is_empty()`.
+        vec1::Vec1::try_from_vec(errors).unwrap()
+    })
 }
 
 fn bind_contract_id_in_root_module(

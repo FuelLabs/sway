@@ -1593,7 +1593,7 @@ pub fn dependency_namespace(
     contract_id_value: Option<ContractIdConst>,
     program_id: ProgramId,
     experimental: ExperimentalFeatures,
-    dbg_generation: sway_core::DbgGeneration
+    dbg_generation: sway_core::DbgGeneration,
 ) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
@@ -1605,7 +1605,7 @@ pub fn dependency_namespace(
             program_id,
             contract_id_value,
             experimental,
-            dbg_generation
+            dbg_generation,
         )?
     } else {
         Root::new(name.clone(), None, program_id, false)
@@ -1638,7 +1638,7 @@ pub fn dependency_namespace(
                     program_id,
                     contract_id_value,
                     experimental,
-                    dbg_generation
+                    dbg_generation,
                 )?
             }
         };
@@ -1678,8 +1678,13 @@ pub fn compile(
     let mut metrics = PerformanceData::default();
 
     let entry_path = pkg.manifest_file.entry_path();
-    let sway_build_config =
-        sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile, dbg_generation)?;
+    let sway_build_config = sway_build_config(
+        pkg.manifest_file.dir(),
+        &entry_path,
+        pkg.target,
+        profile,
+        dbg_generation,
+    )?;
     let terse_mode = profile.terse;
     let reverse_results = profile.reverse_results;
     let fail = |handler: Handler| {

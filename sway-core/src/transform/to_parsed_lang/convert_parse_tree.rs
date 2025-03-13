@@ -2012,7 +2012,9 @@ fn expr_func_app_to_expression_kind(
         // }"
         //
         // , and in release becomes "arg"
-        Some(Intrinsic::Dbg) if context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root => {
+        Some(Intrinsic::Dbg)
+            if context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root =>
+        {
             let f_id: String = format!("f_{}", context.next_for_unique_suffix());
             let f_ident = BaseIdent::new_no_span(f_id.to_string());
 
@@ -2181,7 +2183,9 @@ fn expr_func_app_to_expression_kind(
             };
             return Ok(ExpressionKind::CodeBlock(block));
         }
-        Some(Intrinsic::Dbg) if !context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root => {
+        Some(Intrinsic::Dbg)
+            if !context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root =>
+        {
             return Ok(arguments[0].kind.clone());
         }
         Some(intrinsic) if last.is_none() && !is_relative_to_root => {
