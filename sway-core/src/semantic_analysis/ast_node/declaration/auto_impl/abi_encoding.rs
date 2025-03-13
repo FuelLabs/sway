@@ -217,7 +217,7 @@ where
             abi_encode_body,
         );
         let abi_encode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code);
+            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code, crate::build_config::DbgGeneration::None);
 
         let abi_decode_body = self.generate_abi_decode_struct_body(engines, &struct_decl);
         let abi_decode_code = self.generate_abi_decode_code(
@@ -226,7 +226,7 @@ where
             abi_decode_body?,
         );
         let abi_decode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_decode_code);
+            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_decode_code, crate::build_config::DbgGeneration::None);
 
         Some((abi_encode_node.ok(), abi_decode_node.ok()))
     }
@@ -258,7 +258,7 @@ where
             abi_encode_body,
         );
         let abi_encode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code);
+            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code, crate::build_config::DbgGeneration::None);
 
         let abi_decode_body = self.generate_abi_decode_enum_body(engines, &enum_decl);
         let abi_decode_code = self.generate_abi_decode_code(
@@ -267,7 +267,7 @@ where
             abi_decode_body?,
         );
         let abi_decode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_decode_code);
+            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_decode_code, crate::build_config::DbgGeneration::None);
 
         Some((abi_encode_node.ok(), abi_decode_node.ok()))
     }
@@ -449,6 +449,7 @@ where
             program_id,
             FunctionDeclarationKind::Entry,
             &code,
+            crate::build_config::DbgGeneration::None,
         );
 
         match entry_fn {
@@ -510,6 +511,7 @@ where
             program_id,
             FunctionDeclarationKind::Entry,
             &code,
+            crate::build_config::DbgGeneration::None,
         );
 
         match entry_fn {
@@ -620,6 +622,7 @@ where
             program_id,
             FunctionDeclarationKind::Entry,
             &code,
+            crate::build_config::DbgGeneration::None,
         );
 
         match entry_fn {

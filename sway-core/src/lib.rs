@@ -31,6 +31,7 @@ use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_context_to_finalized_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
+pub use build_config::DbgGeneration;
 pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
@@ -98,7 +99,7 @@ pub fn parse(
     experimental: ExperimentalFeatures,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     match config {
-        None => parse_in_memory(handler, engines, src, experimental),
+        None => parse_in_memory(handler, engines, src, experimental, DbgGeneration::None),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
         Some(config) => parse_module_tree(
@@ -108,6 +109,7 @@ pub fn parse(
             config.canonical_root_module(),
             None,
             config.build_target,
+            config.dbg_generation,
             config.include_tests,
             experimental,
             config.lsp_mode.as_ref(),
@@ -362,6 +364,7 @@ fn parse_in_memory(
     engines: &Engines,
     src: Source,
     experimental: ExperimentalFeatures,
+    dbg_generation: DbgGeneration,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     let mut hasher = DefaultHasher::new();
     src.text.hash(&mut hasher);
@@ -376,7 +379,7 @@ fn parse_in_memory(
     let attributes_error_emitted = handler.append(attributes_handler);
 
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::new(BuildTarget::EVM, experimental),
+        &mut to_parsed_lang::Context::new(BuildTarget::EVM, dbg_generation, experimental),
         handler,
         engines,
         module.value.clone(),
@@ -425,6 +428,7 @@ fn parse_submodules(
     module: &sway_ast::Module,
     module_dir: &Path,
     build_target: BuildTarget,
+    dbg_generation: DbgGeneration,
     include_tests: bool,
     experimental: ExperimentalFeatures,
     lsp_mode: Option<&LspConfig>,
@@ -457,6 +461,7 @@ fn parse_submodules(
             submod_path.clone(),
             Some(submod.name.as_str()),
             build_target,
+            dbg_generation,
             include_tests,
             experimental,
             lsp_mode,
@@ -510,6 +515,7 @@ fn parse_module_tree(
     path: Arc<PathBuf>,
     module_name: Option<&str>,
     build_target: BuildTarget,
+    dbg_generation: DbgGeneration,
     include_tests: bool,
     experimental: ExperimentalFeatures,
     lsp_mode: Option<&LspConfig>,
@@ -530,6 +536,7 @@ fn parse_module_tree(
         &module.value,
         module_dir,
         build_target,
+        dbg_generation,
         include_tests,
         experimental,
         lsp_mode,
@@ -544,7 +551,7 @@ fn parse_module_tree(
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::new(build_target, experimental),
+        &mut to_parsed_lang::Context::new(build_target, dbg_generation, experimental),
         handler,
         engines,
         module.value.clone(),

@@ -6,6 +6,7 @@ pub mod marker_traits;
 use std::ops::Deref;
 
 use crate::{
+    build_config::DbgGeneration,
     engine_threading::SpannedWithEngines,
     language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
@@ -130,9 +131,11 @@ where
         program_id: Option<ProgramId>,
         kind: FunctionDeclarationKind,
         code: &str,
+        dbg_generation: DbgGeneration,
     ) -> Result<TyAstNode, Handler> {
         let mut ctx = crate::transform::to_parsed_lang::Context::new(
             crate::BuildTarget::Fuel,
+            dbg_generation,
             self.ctx.experimental,
         );
 
@@ -209,9 +212,11 @@ where
         engines: &Engines,
         program_id: Option<ProgramId>,
         code: &str,
+        debug_generation: DbgGeneration,
     ) -> Result<TyAstNode, Handler> {
         let mut ctx = crate::transform::to_parsed_lang::Context::new(
             crate::BuildTarget::Fuel,
+            debug_generation,
             self.ctx.experimental,
         );
 
