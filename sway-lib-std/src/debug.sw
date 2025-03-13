@@ -26,8 +26,7 @@ pub struct DebugTuple {
     has_fields: bool,
 }
 
-pub struct Formatter {
-}
+pub struct Formatter {}
 
 impl Formatter {
     pub fn print_newline(self) {
@@ -42,13 +41,12 @@ impl Formatter {
     pub fn print_u8(self, value: u8) {
         let mut value = value;
         let mut digits = [0u8; 64];
-        let mut i = 63; 
-    
-        while value > 0 { 
-            let digit = value % 10; 
+        let mut i = 63;
+        while value > 0 {
+            let digit = value % 10;
             digits[i] = digit + 48; // ascii zero = 48 
-            i -= 1; 
-            value = value / 10; 
+            i -= 1;
+            value = value / 10;
         }
 
         syscall_write(0, __addr_of(digits).add::<u8>(i), 64 - i);
@@ -57,15 +55,14 @@ impl Formatter {
     pub fn print_u16(self, value: u16) {
         let mut value = value;
         let mut digits = [0u8; 64];
-        let mut i = 63; 
-    
-        while value > 0 { 
+        let mut i = 63;
+        while value > 0 {
             let digit = asm(v: value % 10) {
                 v: u8
             };
             digits[i] = digit + 48; // ascii zero = 48 
-            i -= 1; 
-            value = value / 10; 
+            i -= 1;
+            value = value / 10;
         }
 
         syscall_write(0, __addr_of(digits).add::<u8>(i), 64 - i);
@@ -74,15 +71,14 @@ impl Formatter {
     pub fn print_u32(self, value: u32) {
         let mut value = value;
         let mut digits = [0u8; 64];
-        let mut i = 63; 
-    
-        while value > 0 { 
+        let mut i = 63;
+        while value > 0 {
             let digit = asm(v: value % 10) {
                 v: u8
             };
             digits[i] = digit + 48; // ascii zero = 48 
-            i -= 1; 
-            value = value / 10; 
+            i -= 1;
+            value = value / 10;
         }
 
         syscall_write(0, __addr_of(digits).add::<u8>(i), 64 - i);
@@ -91,15 +87,14 @@ impl Formatter {
     pub fn print_u64(self, value: u64) {
         let mut value = value;
         let mut digits = [0u8; 64];
-        let mut i = 63; 
-    
-        while value > 0 { 
+        let mut i = 63;
+        while value > 0 {
             let digit = asm(v: value % 10) {
                 v: u8
             };
             digits[i] = digit + 48; // ascii zero = 48 
-            i -= 1; 
-            value = value / 10; 
+            i -= 1;
+            value = value / 10;
         }
 
         syscall_write(0, __addr_of(digits).add::<u8>(i), 64 - i);
@@ -108,34 +103,43 @@ impl Formatter {
     pub fn debug_struct(self, name: str) -> DebugStruct {
         self.print_str(name);
         self.print_str(" { ");
-        DebugStruct { f: self, has_fields: false }
+        DebugStruct {
+            f: self,
+            has_fields: false,
+        }
     }
 
     pub fn debug_list(self) -> DebugList {
         self.print_str("[");
-        DebugList { f: self, has_entries: false }
+        DebugList {
+            f: self,
+            has_entries: false,
+        }
     }
 
     pub fn debug_tuple(self) -> DebugTuple {
         self.print_str("(");
-        DebugTuple { f: self, has_fields: false }
+        DebugTuple {
+            f: self,
+            has_fields: false,
+        }
     }
 }
 
 impl DebugStruct {
     pub fn finish(ref mut self) {
         if self.has_fields {
-            self.f.print_str(" ");    
+            self.f.print_str(" ");
         }
         self.f.print_str("}");
     }
 
     pub fn field<T>(ref mut self, name: str, value: T) -> Self
     where
-        T: Debug 
+        T: Debug,
     {
         if self.has_fields {
-            self.f.print_str(", ");    
+            self.f.print_str(", ");
         }
 
         self.f.print_str(name);
@@ -155,10 +159,10 @@ impl DebugList {
 
     pub fn entry<T>(ref mut self, value: T) -> Self
     where
-        T: Debug 
+        T: Debug,
     {
         if self.has_entries {
-            self.f.print_str(", ");    
+            self.f.print_str(", ");
         }
 
         value.fmt(self.f);
@@ -176,10 +180,10 @@ impl DebugTuple {
 
     pub fn field<T>(ref mut self, value: T) -> Self
     where
-        T: Debug 
+        T: Debug,
     {
         if self.has_fields {
-            self.f.print_str(", ");    
+            self.f.print_str(", ");
         }
 
         value.fmt(self.f);
