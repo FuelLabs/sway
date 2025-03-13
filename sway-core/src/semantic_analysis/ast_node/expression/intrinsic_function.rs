@@ -110,7 +110,7 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_transmute(arguments, handler, kind, type_arguments, span, ctx)
             }
             Intrinsic::Dbg => {
-                let mut ctx= ctx;
+                let mut ctx = ctx;
                 let type_engine = ctx.engines.te();
 
                 // check first argument
@@ -123,8 +123,6 @@ impl ty::TyIntrinsicFunctionKind {
                     ty::TyExpression::type_check(handler, ctx, &arguments[0])?
                 };
 
-                let return_type = first_argument_type.clone();
-
                 Ok((
                     TyIntrinsicFunctionKind {
                         kind,
@@ -132,7 +130,7 @@ impl ty::TyIntrinsicFunctionKind {
                         type_arguments: vec![],
                         span,
                     },
-                    return_type,
+                    first_argument_type,
                 ))
             }
         }

@@ -76,7 +76,7 @@ pub struct TestResult {
     /// Gas used while executing this test.
     pub gas_used: u64,
     /// EcalState of the execution
-    pub ecal: EcalState
+    pub ecal: Box<EcalState>,
 }
 
 const TEST_METADATA_SEED: u64 = 0x7E57u64;
