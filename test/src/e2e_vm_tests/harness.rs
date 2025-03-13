@@ -7,6 +7,7 @@ use forc_client::{
     NodeTarget,
 };
 use forc_pkg::{BuildProfile, Built, BuiltPackage, PrintOpts};
+use forc_test::execute::EcalState;
 use fuel_tx::TransactionBuilder;
 use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
 use fuel_vm::interpreter::Interpreter;
@@ -143,7 +144,7 @@ pub(crate) async fn runs_on_node(
 }
 
 pub(crate) enum VMExecutionResult {
-    Fuel(ProgramState, Vec<Receipt>),
+    Fuel(ProgramState, Vec<Receipt>, Box<EcalState>),
     Evm(revm::primitives::result::ExecutionResult),
 }
 
@@ -207,13 +208,14 @@ pub(crate) fn runs_in_vm(
                 .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
             let mem_instance = MemoryInstance::new();
-            let mut i: Interpreter<_, _, _, NotSupportedEcal> =
+            let mut i: Interpreter<_, _, _, EcalState> =
                 Interpreter::with_storage(mem_instance, storage, Default::default());
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
 
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),
                 transition.receipts().to_vec(),
+                Box::new(i.ecal_state().clone()),
             ))
         }
         BuildTarget::EVM => {
