@@ -45,7 +45,7 @@ pub enum Intrinsic {
     Slice, // let ref_to_slice = __slice::<T: array or ref_to_slice>(item: T, inclusive_start_index, exclusive_end_index)
     ElemAt, // let elem: &T = __elem_at::<T: array or ref_to_slice>(item: T, index)
     Transmute, // let dst: B = __transmute::<A, B>(src)
-    Dbg, // __dbg(1, 2)
+    Dbg,   // __dbg(1, 2)
 }
 
 impl fmt::Display for Intrinsic {

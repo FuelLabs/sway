@@ -23,10 +23,7 @@ use vm::state::ProgramState;
 
 #[derive(Debug, Clone)]
 pub enum CapturedEcal {
-    Write {
-        fd: u64,
-        bytes: Vec<u8>,
-    }
+    Write { fd: u64, bytes: Vec<u8> },
 }
 
 impl CapturedEcal {
@@ -43,7 +40,7 @@ impl CapturedEcal {
 
                 // Dont close the fd
                 std::mem::forget(f);
-            },
+            }
         }
     }
 }
@@ -77,7 +74,9 @@ impl EcalHandler for EcalState {
                 let count = regs[d.to_u8() as usize];
                 let bytes = vm.memory().read(addr, count).unwrap().to_vec();
                 let fd = regs[b.to_u8() as usize];
-                vm.ecal_state_mut().captured.push(CapturedEcal::Write { fd, bytes })
+                vm.ecal_state_mut()
+                    .captured
+                    .push(CapturedEcal::Write { fd, bytes })
             }
             _ => todo!(),
         }
@@ -274,7 +273,7 @@ impl TestExecutor {
             condition,
             logs,
             gas_used,
-            ecal: self.interpreter.ecal_state().clone(),
+            ecal: Box::new(self.interpreter.ecal_state().clone()),
         }))
     }
 
@@ -306,7 +305,7 @@ impl TestExecutor {
             condition,
             logs,
             gas_used,
-            ecal: self.interpreter.ecal_state().clone(),
+            ecal: Box::new(self.interpreter.ecal_state().clone()),
         }))
     }
 
@@ -348,7 +347,7 @@ impl TestExecutor {
             condition,
             logs,
             gas_used,
-            ecal: self.interpreter.ecal_state().clone(),
+            ecal: Box::new(self.interpreter.ecal_state().clone()),
         })
     }
 
