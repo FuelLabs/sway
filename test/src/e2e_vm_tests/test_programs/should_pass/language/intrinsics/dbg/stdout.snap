@@ -108,7 +108,8 @@ move $$locbase $sp            ; save locals base register for function main_0
 cfei i272                     ; allocate 272 bytes for locals and 0 slots for call arguments
 move $r4 $$reta               ; save return address
 load $r0 data_NonConfigurable_0; get local constant
-sw   $$locbase $one i20       ; store word
+movi $r1 i11                  ; initialize constant into register
+sw   $$locbase $r1 i20        ; store word
 addi $r1 $$locbase i64        ; get offset to local
 sw   $$locbase $r0 i8         ; store word
 movi $r0 i20                  ; initialize constant into register
@@ -259,7 +260,7 @@ data_NonConfigurable_1 .bytes[1] 0a  .
 data_NonConfigurable_2 .word 2
 
 
-    Finished debug [unoptimized + fuel] target(s) [1.032 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [1.04 KB] in ???
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --release --asm final
 exit status: 0
@@ -350,16 +351,17 @@ mcpi $r0 $r1 i16              ; copy memory
 lw   $r1 $r0 i1               ; load size of returned slice
 lw   $r0 $r0 i0               ; load pointer to returned slice
 retd  $r0 $r1
-pshl i1                       ; save registers 16..40
+pshl i3                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function main_0
 move $r0 $$reta               ; save return address
-move $$retv $one              ; set return value
+movi $r1 i11                  ; initialize constant into register
+move $$retv $r1               ; set return value
 move $$reta $r0               ; restore return address
 poph i524288                  ; restore registers 40..64
-popl i1                       ; restore registers 16..40
+popl i3                       ; restore registers 16..40
 jmp $$reta                    ; return from call
 .data:
 
 
-    Finished release [optimized + fuel] target(s) [352 B] in ???
+    Finished release [optimized + fuel] target(s) [360 B] in ???
