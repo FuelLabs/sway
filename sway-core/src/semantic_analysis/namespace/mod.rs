@@ -3,6 +3,7 @@ mod lexical_scope;
 mod module;
 #[allow(clippy::module_inception)]
 mod namespace;
+mod resolved_declaration;
 mod root;
 mod trait_map;
 
@@ -11,7 +12,7 @@ pub use lexical_scope::{Items, LexicalScope, LexicalScopeId, LexicalScopePath};
 pub use module::module_not_found;
 pub use module::Module;
 pub use namespace::Namespace;
-pub use root::ResolvedDeclaration;
+pub use resolved_declaration::ResolvedDeclaration;
 pub use root::Root;
 pub(crate) use trait_map::IsExtendingExistingImpl;
 pub(crate) use trait_map::IsImplSelf;

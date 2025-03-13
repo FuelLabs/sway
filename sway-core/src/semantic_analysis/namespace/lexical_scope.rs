@@ -11,7 +11,7 @@ use crate::{
     type_system::*,
 };
 
-use super::{root::ResolvedDeclaration, TraitMap};
+use super::{ResolvedDeclaration, TraitMap};
 
 use parking_lot::RwLock;
 use sway_error::{

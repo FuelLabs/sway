@@ -7,9 +7,9 @@ use crate::{
 
 use super::{
     module::Module,
-    root::{ResolvedDeclaration, Root},
+    root::Root,
     trait_map::TraitMap,
-    ModuleName, ModulePath, ModulePathBuf,
+    ModuleName, ModulePath, ModulePathBuf, ResolvedDeclaration, 
 };
 
 use rustc_hash::FxHasher;
