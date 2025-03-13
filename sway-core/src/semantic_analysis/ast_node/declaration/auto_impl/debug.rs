@@ -70,7 +70,7 @@ where
         if body.is_empty() {
             format!("#[allow(dead_code)] impl{type_parameters_declaration} Debug for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code)]
-                fn fmt(self, ref mut f: Formatter) {{ }}
+                fn fmt(self, ref mut _f: Formatter) {{ }}
             }}")
         } else {
             format!("#[allow(dead_code)] impl{type_parameters_declaration} Debug for {name}{type_parameters_declaration}{type_parameters_constraints} {{
