@@ -165,7 +165,7 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
                     info!("Decoded log value: {}, log rb: {}", var_value, rb);
                 }
             }
-        
+
             for captured in test.ecal.captured.iter() {
                 captured.apply();
             }

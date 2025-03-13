@@ -677,7 +677,7 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         | EncodeBufferAsRawSlice
         | Slice
         | ElemAt
-        | Transmute 
+        | Transmute
         | Dbg => HashSet::new(),
     }
 }

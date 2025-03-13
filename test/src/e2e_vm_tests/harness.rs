@@ -9,10 +9,10 @@ use forc_client::{
 use forc_pkg::{BuildProfile, Built, BuiltPackage, PrintOpts};
 use forc_test::execute::EcalState;
 use fuel_tx::TransactionBuilder;
+use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
-use fuel_vm::{checked_transaction::builder::TransactionBuilderExt, interpreter::NotSupportedEcal};
 use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
