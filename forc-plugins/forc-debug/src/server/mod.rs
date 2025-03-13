@@ -320,6 +320,7 @@ impl DapServer {
             &outputs,
             &[],
             &[],
+            sway_core::DbgGeneration::Full,
         )
         .map_err(|err| AdapterError::BuildFailed {
             reason: format!("build packages: {err:?}"),

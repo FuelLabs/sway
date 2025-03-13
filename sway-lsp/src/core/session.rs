@@ -326,6 +326,7 @@ pub fn compile(
         retrigger_compilation,
         &[],
         &[sway_features::Feature::NewEncoding],
+        sway_core::DbgGeneration::Full,
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
