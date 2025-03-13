@@ -2212,6 +2212,9 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::Transmute => {
                 self.compile_intrinsic_transmute(arguments, return_type, context, md_mgr, &span)
             }
+            Intrinsic::Dbg => {
+                todo!()
+            }
         }
     }
 

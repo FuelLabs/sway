@@ -109,6 +109,32 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Transmute => {
                 type_check_transmute(arguments, handler, kind, type_arguments, span, ctx)
             }
+            Intrinsic::Dbg => {
+                let mut ctx= ctx;
+                let type_engine = ctx.engines.te();
+
+                // check first argument
+                let first_argument_type = type_engine.new_unknown();
+                let first_argument_typed_expr = {
+                    let ctx = ctx
+                        .by_ref()
+                        .with_help_text("")
+                        .with_type_annotation(first_argument_type);
+                    ty::TyExpression::type_check(handler, ctx, &arguments[0])?
+                };
+
+                let return_type = first_argument_type.clone();
+
+                Ok((
+                    TyIntrinsicFunctionKind {
+                        kind,
+                        arguments: vec![first_argument_typed_expr],
+                        type_arguments: vec![],
+                        span,
+                    },
+                    return_type,
+                ))
+            }
         }
     }
 }
