@@ -8,6 +8,7 @@ use crate::{FilterConfig, RunConfig};
 
 use anyhow::{anyhow, bail, Result};
 use colored::*;
+use forc_test::execute::CapturedEcal;
 use core::fmt;
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::BuildProfile;
@@ -404,8 +405,20 @@ impl TestContext {
 
                 let result = harness::runs_in_vm(compiled.clone(), script_data, witness_data)?;
                 let actual_result = match result {
-                    harness::VMExecutionResult::Fuel(state, receipts) => {
+                    harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
                         print_receipts(output, &receipts);
+
+                        use std::fmt::Write;
+                        let _ = writeln!(output, "  {}", "Captured Output".green().bold());
+                        for captured in ecal.captured.iter() {
+                            match captured {
+                                CapturedEcal::Write { bytes, .. } => {
+                                    let s = std::str::from_utf8(bytes.as_slice()).unwrap();
+                                    output.push_str(s);
+                                },
+                            }
+                        }
+
                         match state {
                             ProgramState::Return(v) => TestResult::Return(v),
                             ProgramState::ReturnData(digest) => {
