@@ -417,7 +417,7 @@ impl CallPath {
             CallPathDisplayType::Regular => {}
             CallPathDisplayType::StripPackagePrefix => {
                 if let Some(first) = self.prefixes.first() {
-                    if namespace.root_ref().current_package_root_module().name() == first {
+                    if namespace.current_package_name() == first {
                         display_path = display_path.lshift();
                     }
                 }

@@ -397,7 +397,10 @@ pub fn traverse(
         }
 
         let (root_module, root) = match &typed {
-            Ok(p) => (p.root_module.clone(), p.namespace.root_ref().clone()),
+            Ok(p) => (
+                p.root_module.clone(),
+                p.namespace.current_package_ref().clone(),
+            ),
             Err(e) => {
                 if let Some(root) = &e.root_module {
                     (root.deref().clone(), e.namespace.clone())

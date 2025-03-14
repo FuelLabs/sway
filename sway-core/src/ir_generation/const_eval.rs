@@ -1704,7 +1704,7 @@ mod tests {
         let handler = Handler::default();
         let mut context = Context::new(engines.se(), ExperimentalFeatures::default());
         let mut md_mgr = MetadataManager::default();
-        let core_lib = namespace::Root::new(
+        let core_lib = namespace::Package::new(
             sway_types::Ident::new_no_span("assert_is_constant_test".to_string()),
             None,
             ProgramId::new(0),
