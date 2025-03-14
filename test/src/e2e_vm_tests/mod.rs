@@ -358,7 +358,7 @@ impl TestContext {
                     for p in packages {
                         let bytecode_len = p.bytecode.bytes.len();
 
-                        let configurables = match &p.program_abi {
+                        let configurables = match p.program_abi.as_ref() {
                             sway_core::asm_generation::ProgramABI::Fuel(abi) => {
                                 abi.configurables.as_ref().cloned().unwrap_or_default()
                             }
