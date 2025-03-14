@@ -69,7 +69,7 @@ where
 
         format!("#[allow(dead_code)] impl{type_parameters_declaration} Debug for {name}{type_parameters_declaration}{type_parameters_constraints} {{
             #[allow(dead_code)]
-            fn fmt(self, ref mut f: Formatter) {{
+            fn fmt(self, ref mut _f: Formatter) {{
                 {body}
             }}
         }}")
@@ -86,7 +86,7 @@ where
         }
 
         format!(
-            "f.debug_struct(\"{}\"){fields}.finish();",
+            "_f.debug_struct(\"{}\"){fields}.finish();",
             decl.name().as_str()
         )
     }
@@ -129,7 +129,7 @@ where
                 if engines.te().get(variant.type_argument.type_id).is_unit() {
                     format!(
                         "{enum_name}::{variant_name} => {{
-                        f.print_str(\"{variant_name}\");
+                        _f.print_str(\"{variant_name}\");
                     }}, \n",
                         enum_name = enum_name,
                         variant_name = variant_name
@@ -137,7 +137,7 @@ where
                 } else {
                     format!(
                         "{enum_name}::{variant_name}(value) => {{
-                        f.debug_tuple(\"{enum_name}\").field(value).finish();
+                        _f.debug_tuple(\"{enum_name}\").field(value).finish();
                     }}, \n",
                         enum_name = enum_name,
                         variant_name = variant_name,
