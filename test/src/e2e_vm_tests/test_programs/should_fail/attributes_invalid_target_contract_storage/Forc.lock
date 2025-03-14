@@ -1,8 +1,8 @@
 [[package]]
 name = "attributes_invalid_target_contract_storage"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-27E4DCD5EB649D4F"

@@ -1,8 +1,8 @@
 [[package]]
 name = "attributes_all_in_one"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-2CB416C4DB41C708"

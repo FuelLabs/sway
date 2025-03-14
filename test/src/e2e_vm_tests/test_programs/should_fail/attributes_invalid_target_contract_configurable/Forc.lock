@@ -1,8 +1,8 @@
 [[package]]
 name = "attributes_invalid_target_contract_configurable"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-A166C2C0A61D6E6B"

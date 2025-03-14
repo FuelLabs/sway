@@ -1,13 +1,11 @@
 ---
 source: test/tests/tests.rs
-assertion_line: 115
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown
-   Compiling library core (sway-lib-core)
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library attributes_unknown (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown)
 warning: Attribute is unknown
  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/src/main.sw:3:3

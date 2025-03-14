@@ -1,8 +1,8 @@
 [[package]]
 name = "attributes_unknown"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-759B0CA5696E1C42"
