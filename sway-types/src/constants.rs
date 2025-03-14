@@ -18,7 +18,6 @@ pub const CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE: [u8; 32] = [0; 32];
 /// The default entry point for scripts and predicates.
 pub const DEFAULT_ENTRY_POINT_FN_NAME: &str = "main";
 
-pub const CORE: &str = "core";
 pub const STD: &str = "std";
 pub const PRELUDE: &str = "prelude";
 pub const CONTRACT_ID: &str = "CONTRACT_ID";

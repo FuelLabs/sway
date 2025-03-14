@@ -39,20 +39,12 @@ impl B {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for [u64; 3] {
+impl PartialEq for [u64; 3] {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
     }
 }
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for [u64; 3] {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for [u64; 3] {}
+impl Eq for [u64; 3] {}
 
 #[inline(always)]
 fn in_structs() {

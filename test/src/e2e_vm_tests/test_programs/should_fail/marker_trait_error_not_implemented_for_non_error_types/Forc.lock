@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
-source = "path+from-root-52BE33D40E20FF91"
-
-[[package]]
 name = "marker_trait_error_not_implemented_for_non_error_types"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-52BE33D40E20FF91"

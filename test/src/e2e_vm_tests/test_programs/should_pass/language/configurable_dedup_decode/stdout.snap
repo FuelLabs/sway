@@ -6,11 +6,6 @@ assertion_line: 115
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode
-   Compiling library core (sway-lib-core)
-// IR: Final
-library {
-}
-
    Compiling library std (sway-lib-std)
 // IR: Final
 library {
@@ -237,7 +232,7 @@ script {
 !0 = "test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode/src/main.sw"
 !1 = span !0 177 182
 !2 = span !0 136 143
-!3 = "sway-lib-core/src/codec.sw"
+!3 = "sway-lib-std/src/codec.sw"
 !4 = span !3 68021 68024
 !5 = span !3 68035 68038
 !6 = span !3 68045 68051
@@ -249,8 +244,8 @@ script {
 !12 = span !3 68174 68180
 !13 = span !3 68160 68181
 !14 = fn_call_path_span !3 68160 68173
-!15 = span !3 105322 105343
-!16 = fn_call_path_span !3 105322 105335
+!15 = span !3 105408 105429
+!16 = fn_call_path_span !3 105408 105421
 !17 = (!13 !14 !15 !16)
 !18 = span !3 68149 68182
 !19 = span !3 68240 68244

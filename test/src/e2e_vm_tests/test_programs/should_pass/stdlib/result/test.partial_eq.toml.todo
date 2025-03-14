@@ -1,7 +1,0 @@
-# TODO: Enable this test once https://github.com/FuelLabs/sway/issues/6898 is fixed.
-category = "run"
-expected_result = { action = "return_data", value = "01" }
-validate_abi = true
-expected_warnings = 7
-
-experimental = { new_encoding = true, partial_eq = true }

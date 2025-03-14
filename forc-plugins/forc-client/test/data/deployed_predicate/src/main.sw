@@ -11,9 +11,9 @@ struct StructWithGeneric<D> {
     field_2: u64,
 }
 
-impl<D> Eq for EnumWithGeneric<D> 
+impl<D> PartialEq for EnumWithGeneric<D> 
 where
-    D: Eq,
+    D: PartialEq,
 {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -24,9 +24,9 @@ where
     }
 }
 
-impl<D> Eq for StructWithGeneric<D>
+impl<D> PartialEq for StructWithGeneric<D>
 where
-    D: Eq,
+    D: PartialEq,
 {
     fn eq(self, other: Self) -> bool {
         self.field_1 == other.field_1 && self.field_2 == other.field_2

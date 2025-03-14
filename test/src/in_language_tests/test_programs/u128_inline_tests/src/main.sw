@@ -643,6 +643,9 @@ fn u128_multiply() {
     let mul_128_max = max_u64 * max_u64;
     assert(mul_128_max.upper() == u64::max() - 1);
     assert(mul_128_max.lower() == 1);
+
+    let upper_u128 = U128::from((1, 0));
+    assert(upper_u128 * U128::from(2u64) == U128::from((2,0)));
 }
 
 #[test(should_revert)]
@@ -650,7 +653,8 @@ fn revert_u128_multiply() {
     let first = U128::from((0, 2));
     let second = U128::from((u64::max(), 1));
 
-    let _result = first * second;
+    let result = first * second;
+    log(result);
 }
 
 #[test(should_revert)]
@@ -766,19 +770,22 @@ fn u128_pow() {
     u_128 = U128::from((0, 13));
     u_128 = u_128.pow(1u32);
     assert(u_128 == U128::from((0, 13)));
+
+    let max_u64_u128 = U128::from(u64::max());
+    let max_pow = max_u64_u128.pow(2);
+    let expected_result = U128::from((18446744073709551614, 1));
+    assert(max_pow == expected_result);
+
+    let u128_upper_and_lower_not_zero = U128::from((1, 1));
+    let upper_and_lower_result = u128_upper_and_lower_not_zero.pow(1);
+    assert(upper_and_lower_result == u128_upper_and_lower_not_zero);
 }
 
-#[test]
-fn u128_overflowing_pow() {
-    // Overflow on pow should return 0 if panic is disabled
-    let prior_flags = disable_panic_on_overflow();
-    let a = U128::max();
-
-    let res = a.pow(2);
-
-    assert(res == U128::from((0, 0)));
-
-    set_flags(prior_flags);
+#[test(should_revert)]
+fn revert_u128_pow_overflow() {
+    let max_u64_u128 = U128::from(u64::max());
+    let max_pow = max_u64_u128.pow(3);
+    log(max_pow);
 }
 
 #[test]
@@ -1325,6 +1332,84 @@ fn parity_u128_log_with_ruint() {
     }
 
     assert(prior_flags == flags());
+}
+
+#[test]
+fn u128_overflowing_add() {
+    let prior_flags = disable_panic_on_overflow();
+    let a = U128::max();
+    let b = U128::from((0, 1));
+    let c = a + b;
+
+    assert(c == U128::from((0, 0)));
+
+    set_flags(prior_flags);
+}
+
+#[test]
+fn u128_underflowing_sub() {
+    let prior_flags = disable_panic_on_overflow();
+    let a = U128::from((0, 1));
+    let b = U128::from((0, 2));
+    let c = a - b;
+
+    assert(c == U128::max());
+
+    set_flags(prior_flags);
+}
+
+#[test]
+fn u128_overflowing_mul() {
+    let prior_flags = disable_panic_on_overflow();
+    let a = U128::max();
+    let b = U128::from((0, 2));
+    let c = a * b;
+
+    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE
+    assert(c == U128::from((0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFE)));
+
+    set_flags(prior_flags);
+}
+
+#[test]
+fn u128_overflowing_pow() {
+    // Overflow on pow should return 0 if panic is disabled
+    let prior_flags = disable_panic_on_overflow();
+    let a = U128::max();
+
+    let res = a.pow(2);
+
+    assert(res == U128::from((0, 0)));
+
+    assert(U128::from(u64::max()).pow(100) == U128::zero());
+
+    assert(U128::from(2u32).pow(150) == U128::zero());
+
+    let lower_max = U128::from((0, u64::max()));
+    let with_upper_1 = lower_max + U128::from(1u32);
+    assert(with_upper_1 == U128::from((1, 0)));
+    assert(with_upper_1 > lower_max);
+    let powered_to_zero = with_upper_1.pow(2);
+    assert(powered_to_zero == U128::zero());
+
+
+    let u128_upper_and_lower_not_zero = U128::from((1, 1));
+    let upper_and_lower_result = u128_upper_and_lower_not_zero.pow(2);
+    assert(upper_and_lower_result == U128::zero());
+
+    set_flags(prior_flags);
+}
+
+#[test]
+fn u128_unsafemath_log2() {
+    let prior_flags = disable_panic_on_unsafe_math();
+    // 0 is not a valid operand for log2
+    let a = U128::zero();
+    let res = a.log2();
+
+    assert(res == U128::zero());
+
+    set_flags(prior_flags);
 }
 
 #[test]

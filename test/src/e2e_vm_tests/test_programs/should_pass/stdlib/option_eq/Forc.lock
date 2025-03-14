@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-9E5F9380FAC5610F'
+name = "option_eq"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'option_eq'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-9E5F9380FAC5610F'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-9E5F9380FAC5610F"

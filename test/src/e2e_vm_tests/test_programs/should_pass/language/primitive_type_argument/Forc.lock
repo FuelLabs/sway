@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-D5DDAB0633863C0B'
+name = "primitive_type_argument"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'primitive_type_argument'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-D5DDAB0633863C0B'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-D5DDAB0633863C0B"

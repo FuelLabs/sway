@@ -1,6 +1,6 @@
 script;
 
-use core::ops::*;
+use std::ops::*;
 
 fn main() -> u64 {
     let a = 1u64;

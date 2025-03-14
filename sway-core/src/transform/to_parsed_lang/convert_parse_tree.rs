@@ -2578,7 +2578,7 @@ fn expr_to_expression(
                     assignable.clone(),
                 )?;
                 let rhs = Box::new(op_call(
-                    op_variant.core_name(),
+                    op_variant.std_name(),
                     op_span,
                     span.clone(),
                     &vec![
@@ -2614,7 +2614,7 @@ fn op_call(
         inner: MethodName::FromTrait {
             call_path: CallPath {
                 prefixes: vec![
-                    Ident::new_with_override("core".into(), op_span.clone()),
+                    Ident::new_with_override("std".into(), op_span.clone()),
                     Ident::new_with_override("ops".into(), op_span.clone()),
                 ],
                 suffix: Ident::new_with_override(name.into(), op_span.clone()),

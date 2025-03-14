@@ -50,7 +50,6 @@ use sway_core::{
 use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
-use sway_types::constants::{CORE, STD};
 use sway_types::{Ident, ProgramId, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{debug, info};
@@ -1574,7 +1573,7 @@ pub fn sway_build_config(
 ///
 /// This function is designed to be called for each node in order of compilation.
 ///
-/// This function ensures that if `core` exists in the graph (the vastly common case) it is also
+/// This function ensures that if `std` exists in the graph (the vastly common case) it is also
 /// present within the namespace. This is a necessity for operators to work for example.
 ///
 /// This function also ensures that if `std` exists in the graph,
@@ -1609,7 +1608,6 @@ pub fn dependency_namespace(
     };
 
     // Add direct dependencies.
-    let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_node = edge.target();
         let dep_name = kebab_to_snake_case(&edge.weight().name);
@@ -1640,57 +1638,9 @@ pub fn dependency_namespace(
             }
         };
         root_namespace.add_external(dep_name, dep_namespace);
-        let dep = &graph[dep_node];
-        if dep.name == CORE {
-            core_added = true;
-        }
-    }
-
-    // Add `core` if not already added.
-    if !core_added {
-        if let Some(core_node) = find_core_dep(graph, node) {
-            let core_namespace = &lib_namespace_map[&core_node];
-            root_namespace.add_external(CORE.to_string(), core_namespace.clone());
-        }
     }
 
     Ok(root_namespace)
-}
-
-/// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
-fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
-    // If we are `core`, do nothing.
-    let pkg = &graph[node];
-    if pkg.name == CORE {
-        return None;
-    }
-
-    // If we have `core` as a direct dep, use it.
-    let mut maybe_std = None;
-    for edge in graph.edges_directed(node, Direction::Outgoing) {
-        let dep_node = edge.target();
-        let dep = &graph[dep_node];
-        match &dep.name[..] {
-            CORE => return Some(dep_node),
-            STD => maybe_std = Some(dep_node),
-            _ => {}
-        }
-    }
-
-    // If we have `std`, select `core` via `std`.
-    if let Some(std) = maybe_std {
-        return find_core_dep(graph, std);
-    }
-
-    // Otherwise, search from this node.
-    for dep_node in Dfs::new(graph, node).iter(graph) {
-        let dep = &graph[dep_node];
-        if dep.name == CORE {
-            return Some(dep_node);
-        }
-    }
-
-    None
 }
 
 /// Compiles the given package.
@@ -2807,7 +2757,7 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(Some("some-prefix::".to_string()));
         let re = Regex::new(r#"digraph \{
-    0 \[ label = "core" shape = box URL = "some-prefix::[[:ascii:]]+/sway-lib-core/Forc.toml"\]
+    0 \[ label = "std" shape = box URL = "some-prefix::[[:ascii:]]+/sway-lib-std/Forc.toml"\]
     1 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
     2 \[ label = "test_lib" shape = box URL = "some-prefix::/[[:ascii:]]+/test_lib/Forc.toml"\]
     3 \[ label = "test_script" shape = box URL = "some-prefix::/[[:ascii:]]+/test_script/Forc.toml"\]
@@ -2827,7 +2777,7 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(None);
         let expected = r#"digraph {
-    0 [ label = "core" shape = box ]
+    0 [ label = "std" shape = box ]
     1 [ label = "test_contract" shape = box ]
     2 [ label = "test_lib" shape = box ]
     3 [ label = "test_script" shape = box ]
