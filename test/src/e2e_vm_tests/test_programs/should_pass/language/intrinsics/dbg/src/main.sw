@@ -10,7 +10,10 @@ fn main() -> u64 {
     let _ = __dbg(32u32);
     let _ = __dbg(64u64);
     let _ = __dbg(0x100u256);
+
+    // strings
     let _ = __dbg("Hello!");
+    let _ = __dbg(__to_str_array("Hello!"));
 
     // Aggregates
     let _ = __dbg((1u64, 2u64));
