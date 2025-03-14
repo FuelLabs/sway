@@ -20,7 +20,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{
-    constants::{CONTRACT_ID, CORE, PRELUDE, STD},
+    constants::{CONTRACT_ID, PRELUDE, STD},
     span::Span,
     Spanned,
 };
@@ -258,7 +258,7 @@ impl Namespace {
         }
     }
 
-    // Import core::prelude::*, std::prelude::* and ::CONTRACT_ID as appropriate into the current module
+    // Import std::prelude::* and ::CONTRACT_ID as appropriate into the current module
     fn import_implicits(
         &mut self,
         handler: &Handler,
@@ -266,31 +266,12 @@ impl Namespace {
     ) -> Result<(), ErrorEmitted> {
         // Import preludes
         let package_name = self.current_package_name().to_string();
-        let core_string = CORE.to_string();
-        let core_ident = Ident::new_no_span(core_string.clone());
         let prelude_ident = Ident::new_no_span(PRELUDE.to_string());
-        if package_name == CORE {
-            // Do nothing
-        } else if package_name == STD {
-            // Import core::prelude::*
-            assert!(self.exists_as_external(&core_string));
-            self.star_import_to_current_module(
-                handler,
-                engines,
-                &[core_ident, prelude_ident],
-                Visibility::Private,
-            )?
-        } else {
-            // Import core::prelude::* and std::prelude::*
-            if self.exists_as_external(&core_string) {
-                self.star_import_to_current_module(
-                    handler,
-                    engines,
-                    &[core_ident, prelude_ident.clone()],
-                    Visibility::Private,
-                )?;
-            }
 
+        if package_name == STD {
+            // Do nothing
+        } else {
+            // Import std::prelude::*
             let std_string = STD.to_string();
             // Only import std::prelude::* if std exists as a dependency
             if self.exists_as_external(&std_string) {

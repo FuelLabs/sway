@@ -1,6 +1,8 @@
 library;
 
 use ::option::Option::{self, *};
+use ::str::*;
+use ::ops::*;
 
 impl str {
     /// Attempts to convert the string slice into a string array.

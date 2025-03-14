@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-68219769D077ACAE'
+name = "doc_comments"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'doc_comments'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-68219769D077ACAE'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-68219769D077ACAE"

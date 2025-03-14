@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-0EAD15BE42537FD3"
 
 [[package]]
 name = "u16_add_const_eval_overflow"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

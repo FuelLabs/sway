@@ -1,8 +1,8 @@
 [[package]]
 name = "configurables_are_not_const"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-96EE05F4B3FB2E76"

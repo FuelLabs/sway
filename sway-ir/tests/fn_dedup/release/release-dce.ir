@@ -63,7 +63,7 @@ script {
 !12 = inline "never"
 !13 = (!11 !12)
 !14 = span !0 123 132
-!15 = "sway/sway-lib-core/src/ops.sw"
+!15 = "sway/sway-lib-std/src/ops.sw"
 !16 = span !15 12645 12649
 !17 = span !15 12651 12656
 !18 = span !15 12639 12705

@@ -3,22 +3,27 @@ library;
 use ::bytes::Bytes;
 use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
-use ::u128::U128;
 use ::b512::B512;
 
-// TODO: Delete this implementation in favor of the one in `std::bytes`.
-//       Due the fact that we still don't have trait coherence, these
-//       two impls coexist for now.
-#[cfg(experimental_try_from_bytes_for_b256 = false)]
-impl TryFrom<Bytes> for b256 {
-    fn try_from(b: Bytes) -> Option<Self> {
-        if b.len() != 32 {
-            None
-        } else {
-            let mut val = 0x0000000000000000000000000000000000000000000000000000000000000000;
-            let ptr = __addr_of(val);
-            b.ptr().copy_to::<b256>(ptr, 1);
-            Some(val)
+impl b256 {
+    /// Converts a `b256` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The converted `b256` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val: b256 = 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20;
+    ///     let result = val.as_u256();
+    ///     assert(result == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20u256);
+    /// }
+    /// ```
+    pub fn as_u256(self) -> u256 {
+        asm(input: self) {
+            input: u256
         }
     }
 }
@@ -74,34 +79,7 @@ impl From<u256> for b256 {
     /// }
     /// ```
     fn from(num: u256) -> Self {
-        num.as_b256()
-    }
-}
-
-impl From<U128> for b256 {
-    /// Converts a `U128` to a `b256`.
-    ///
-    /// # Arguments
-    ///
-    /// * `num`: [U128] - The `U128` to be converted.
-    ///
-    /// # Returns
-    ///
-    /// * [b256] - The `b256` representation of the `U128` value.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::u128::U128;
-    ///
-    /// fn foo() {
-    ///    let u128_value = U128::from((18446744073709551615_u64, 18446744073709551615_u64));
-    ///    let b256_value = b256::from(u128_value);
-    /// }
-    /// ```
-    fn from(num: U128) -> Self {
-        let input = (0u64, 0u64, num.upper(), num.lower());
-        asm(input: input) {
+        asm(input: num) {
             input: b256
         }
     }

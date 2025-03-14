@@ -1,7 +1,7 @@
 //! Functionality for setting and unsetting FuelVM flags to modify behavior related to the `$err` and `$of` registers.
 library;
 
-use ::{assert::assert, logging::log, registers::{error, flags}};
+use ::registers::flags;
 
 // Mask second bit, which is `F_WRAPPING`.
 pub const F_WRAPPING_DISABLE_MASK: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010;
@@ -82,7 +82,7 @@ pub fn disable_panic_on_overflow() -> u64 {
 
     // Get the current value of the flags register and mask it, setting the
     // masked bit. Flags are inverted, so set = off.
-    let flag_val = prior_flags | F_WRAPPING_DISABLE_MASK;
+    let flag_val = __or(prior_flags, F_WRAPPING_DISABLE_MASK);
     asm(flag_val: flag_val) {
         flag flag_val;
     }
@@ -115,7 +115,7 @@ pub fn disable_panic_on_overflow() -> u64 {
 pub fn enable_panic_on_overflow() {
     // Get the current value of the flags register and mask it, unsetting the
     // masked bit. Flags are inverted, so unset = on.
-    let flag_val = flags() & F_WRAPPING_ENABLE_MASK;
+    let flag_val = __and(flags(), F_WRAPPING_ENABLE_MASK);
     asm(flag_val: flag_val) {
         flag flag_val;
     }
@@ -170,7 +170,7 @@ pub fn disable_panic_on_unsafe_math() -> u64 {
 
     // Get the current value of the flags register and mask it, setting the
     // masked bit. Flags are inverted, so set = off.
-    let flag_val = prior_flags | F_UNSAFEMATH_DISABLE_MASK;
+    let flag_val = __or(prior_flags, F_UNSAFEMATH_DISABLE_MASK);
     asm(flag_val: flag_val) {
         flag flag_val;
     }
@@ -205,7 +205,7 @@ pub fn disable_panic_on_unsafe_math() -> u64 {
 pub fn enable_panic_on_unsafe_math() {
     // Get the current value of the flags register and mask it, unsetting the
     // masked bit. Flags are inverted, so unset = on.
-    let flag_val = flags() & F_UNSAFEMATH_ENABLE_MASK;
+    let flag_val = __and(flags(), F_UNSAFEMATH_ENABLE_MASK);
     asm(flag_val: flag_val) {
         flag flag_val;
     }
@@ -229,7 +229,7 @@ pub fn enable_panic_on_unsafe_math() {
 /// }
 /// ```
 pub fn panic_on_overflow_enabled() -> bool {
-    (flags() & F_WRAPPING_DISABLE_MASK) == 0
+    __eq(__and(flags(), F_WRAPPING_DISABLE_MASK), 0)
 }
 
 /// Checks if the `panic-on-unsafe-math` flag is set in the FuelVM.
@@ -250,5 +250,5 @@ pub fn panic_on_overflow_enabled() -> bool {
 /// }
 /// ```
 pub fn panic_on_unsafe_math_enabled() -> bool {
-    (flags() & F_UNSAFEMATH_DISABLE_MASK) == 0
+    __eq(__and(flags(), F_UNSAFEMATH_DISABLE_MASK), 0)
 }

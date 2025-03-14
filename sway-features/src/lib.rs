@@ -167,20 +167,12 @@ impl ExperimentalFeatures {
 features! {
     new_encoding = true,
     "https://github.com/FuelLabs/sway/issues/5727",
-    storage_domains = false,
-    "https://github.com/FuelLabs/sway/issues/6701",
     references = true,
     "https://github.com/FuelLabs/sway/issues/5063",
     error_type = false,
     "https://github.com/FuelLabs/sway/issues/6765",
-    partial_eq = false,
-    "https://github.com/FuelLabs/sway/issues/6883",
     const_generics = false,
     "https://github.com/FuelLabs/sway/issues/6860",
-    try_from_bytes_for_b256 = false,
-    "https://github.com/FuelLabs/sway/issues/6994",
-    merge_core_std = false,
-    "https://github.com/FuelLabs/sway/issues/7006",
 }
 
 #[derive(Clone, Debug, Default, Parser)]

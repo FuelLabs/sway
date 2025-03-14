@@ -1,12 +1,12 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-BB9C49E98039D004"
 
 [[package]]
 name = "trait_method"
 source = "member"
 dependencies = [
-    "core",
+    "std",
     "trait_method_lib",
 ]
 

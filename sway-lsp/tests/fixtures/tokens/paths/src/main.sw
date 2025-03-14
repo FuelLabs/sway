@@ -15,13 +15,13 @@ pub fn fun() {
     test_mod::test_fun();
     deep_mod::deeper_mod::deep_fun();
     std::assert::assert(true);
-    let _ = core::primitives::u64::min();
+    let _ = std::primitives::u64::min();
 
     A::fun();
     test_mod::A::fun();
 
     let _ = std::constants::ZERO_B256;
-    let _ = core::primitives::b256::min();
+    let _ = std::primitives::b256::min();
 
     let _ = ::deep_mod::deeper_mod::DeepEnum::Variant;
     let _ = deep_mod::deeper_mod::DeepEnum::Variant;

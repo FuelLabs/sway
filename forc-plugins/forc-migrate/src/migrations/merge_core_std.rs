@@ -1,4 +1,4 @@
-#![allow(deprecated)]
+#![allow(dead_code)]
 
 use std::{sync::Arc, vec};
 

@@ -2,18 +2,7 @@ script;
 
 mod impls;
 use impls::*;
-use core::ops::Eq;
 
-#[cfg(experimental_partial_eq = false)]
-impl<T> Eq for & &T
-where
-    T: TestInstance + Eq,
-{
-    fn eq(self, other: Self) -> bool {
-        **self == **other
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl<T> PartialEq for & &T
 where
     T: TestInstance + PartialEq,
@@ -22,22 +11,11 @@ where
         **self == **other
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl<T> Eq for & &T
 where
     T: TestInstance + Eq,
 {}
 
-#[cfg(experimental_partial_eq = false)]
-impl<T> Eq for & & &T
-where
-    T: TestInstance + Eq,
-{
-    fn eq(self, other: Self) -> bool {
-        ***self == ***other
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl<T> PartialEq for & & &T
 where
     T: TestInstance + PartialEq,
@@ -46,7 +24,6 @@ where
         ***self == ***other
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl<T> Eq for & & &T
 where
     T: TestInstance + Eq,

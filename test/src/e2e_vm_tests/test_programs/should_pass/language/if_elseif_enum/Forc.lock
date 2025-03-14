@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-D01E1B7A46372E9A'
+name = "if_elseif_enum"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'if_elseif_enum'
-source = 'member'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-D01E1B7A46372E9A"

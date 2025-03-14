@@ -1,8 +1,4 @@
 [[package]]
-name = "core"
-source = "path+from-root-9D780D7852006E10"
-
-[[package]]
 name = "referencing_parts_of_aggregates"
 source = "member"
 dependencies = ["std"]
@@ -10,4 +6,3 @@ dependencies = ["std"]
 [[package]]
 name = "std"
 source = "path+from-root-9D780D7852006E10"
-dependencies = ["core"]

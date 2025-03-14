@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-6F8C00D302E9D79E'
+name = "std"
+source = "path+from-root-6F8C00D302E9D79E"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-6F8C00D302E9D79E'
-dependencies = ['core']
-
-[[package]]
-name = 'supertraits'
-source = 'member'
-dependencies = ['std']
+name = "supertraits"
+source = "member"
+dependencies = ["std"]
