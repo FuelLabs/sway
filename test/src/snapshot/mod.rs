@@ -2,6 +2,7 @@ use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
 use regex::Regex;
 use std::{path::PathBuf, str::FromStr, sync::Once};
+use anyhow::Result;
 
 static FORC_COMPILATION: Once = Once::new();
 static FORC_DOC_COMPILATION: Once = Once::new();
@@ -24,12 +25,13 @@ fn compile_forc_doc() {
     assert!(o.status.success());
 }
 
-pub fn main() {
+pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     let repo_root: PathBuf =
         PathBuf::from_str(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).unwrap();
     let repo_root = repo_root.parent().unwrap().to_path_buf();
 
-    let mut args = Arguments::from_args();
+    let mut args = Arguments::default();
+    args.filter = filter_regex.as_ref().map(|filter| filter.to_string());
     args.nocapture = true;
 
     let tests = discover_test()
@@ -121,6 +123,7 @@ pub fn main() {
             })
         })
         .collect();
+
     libtest_mimic::run(&args, tests).exit();
 }
 
