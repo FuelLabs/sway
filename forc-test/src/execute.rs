@@ -24,7 +24,7 @@ use vm::state::ProgramState;
 #[derive(Debug, Clone)]
 pub enum CapturedEcal {
     Write { fd: u64, bytes: Vec<u8> },
-    Unknown { ra: u64, rb: u64, rc: u64, rd: u64 }
+    Unknown { ra: u64, rb: u64, rc: u64, rd: u64 },
 }
 
 impl CapturedEcal {
@@ -41,10 +41,10 @@ impl CapturedEcal {
 
                 // Dont close the fd
                 std::mem::forget(f);
-            },
+            }
             CapturedEcal::Unknown { ra, rb, rc, rd } => {
                 println!("Unknown ecal: {} {} {} {}", ra, rb, rc, rd);
-            },
+            }
         }
     }
 }
@@ -90,7 +90,7 @@ impl EcalHandler for EcalState {
                 vm.ecal_state_mut()
                     .captured
                     .push(CapturedEcal::Unknown { ra, rb, rc, rd })
-            },
+            }
         }
         Ok(())
     }

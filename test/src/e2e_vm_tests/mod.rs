@@ -417,8 +417,12 @@ impl TestContext {
                                     output.push_str(s);
                                 }
                                 CapturedEcal::Unknown { ra, rb, rc, rd } => {
-                                    let _ = writeln!(output, "Unknown ecal: {} {} {} {}", ra, rb, rc, rd);
-                                },
+                                    let _ = writeln!(
+                                        output,
+                                        "Unknown ecal: {} {} {} {}",
+                                        ra, rb, rc, rd
+                                    );
+                                }
                             }
                         }
 
