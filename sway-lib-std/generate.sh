@@ -246,7 +246,7 @@ remove_generated_code "ARRAY_DEBUG" "debug.sw"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> Debug for [T; $i] where T: Debug { fn fmt(self, ref mut f: Formatter) { let mut f = f.debug_list(); let mut i = 0; while i < $i { f.entry(self[i]); i += 1; }; f.finish(); } }"
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> Debug for [T; $i] where T: Debug { fn fmt(self, ref mut f: Formatter) { let mut f = f.debug_list(); let mut i = 0; while i < $i { f = f.entry(self[i]); i += 1; }; f.finish(); } }"
     sed -i "s/\/\/ BEGIN ARRAY_DEBUG/\/\/ BEGIN ARRAY_DEBUG\n$CODE/g" ./src/debug.sw
 done
 

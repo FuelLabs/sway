@@ -284,10 +284,21 @@ where
 
         let mut i = 0;
         while i < N {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         }
 
+        f.finish();
+    }
+}
+
+#[cfg(experimental_const_generics = false)]
+impl<T> Debug for [T; 0]
+where
+    T: Debug,
+{
+    fn fmt(self, ref mut f: Formatter) {
+        let mut f = f.debug_list();
         f.finish();
     }
 }
@@ -302,7 +313,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 1 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -317,7 +328,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 2 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -332,7 +343,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 3 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -347,7 +358,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 4 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -362,7 +373,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 5 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -377,7 +388,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 6 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -392,7 +403,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 7 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -407,7 +418,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 8 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -422,7 +433,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 9 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -437,7 +448,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 10 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -452,7 +463,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 11 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -467,7 +478,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 12 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -482,7 +493,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 13 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -497,7 +508,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 14 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -512,7 +523,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 15 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -527,7 +538,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 16 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -542,7 +553,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 17 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -557,7 +568,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 18 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -572,7 +583,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 19 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -587,7 +598,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 20 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -602,7 +613,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 21 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -617,7 +628,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 22 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -632,7 +643,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 23 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -647,7 +658,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 24 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -662,7 +673,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 25 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -677,7 +688,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 26 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -692,7 +703,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 27 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -707,7 +718,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 28 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -722,7 +733,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 29 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -737,7 +748,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 30 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -752,7 +763,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 31 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -767,7 +778,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 32 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -782,7 +793,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 33 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -797,7 +808,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 34 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -812,7 +823,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 35 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -827,7 +838,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 36 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -842,7 +853,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 37 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -857,7 +868,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 38 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -872,7 +883,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 39 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -887,7 +898,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 40 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -902,7 +913,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 41 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -917,7 +928,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 42 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -932,7 +943,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 43 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -947,7 +958,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 44 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -962,7 +973,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 45 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -977,7 +988,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 46 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -992,7 +1003,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 47 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1007,7 +1018,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 48 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1022,7 +1033,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 49 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1037,7 +1048,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 50 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1052,7 +1063,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 51 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1067,7 +1078,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 52 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1082,7 +1093,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 53 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1097,7 +1108,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 54 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1112,7 +1123,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 55 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1127,7 +1138,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 56 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1142,7 +1153,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 57 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1157,7 +1168,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 58 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1172,7 +1183,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 59 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1187,7 +1198,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 60 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1202,7 +1213,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 61 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1217,7 +1228,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 62 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1232,7 +1243,7 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 63 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
@@ -1247,13 +1258,20 @@ where
         let mut f = f.debug_list();
         let mut i = 0;
         while i < 64 {
-            f.entry(self[i]);
+            f = f.entry(self[i]);
             i += 1;
         };
         f.finish();
     }
 }
 // END ARRAY_DEBUG
+
+impl Debug for str[0] {
+    fn fmt(self, ref mut f: Formatter) {
+        use ::str::*;
+        from_str_array(self).fmt(f);
+    }
+}
 
 // BEGIN STRARRAY_DEBUG
 impl Debug for str[1] {
