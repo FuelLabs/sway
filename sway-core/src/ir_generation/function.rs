@@ -2213,7 +2213,7 @@ impl<'eng> FnCompiler<'eng> {
                 self.compile_intrinsic_transmute(arguments, return_type, context, md_mgr, &span)
             }
             Intrinsic::Dbg => {
-                todo!()
+                unreachable!("__dbg should not exist in the typed tree")
             }
         }
     }
