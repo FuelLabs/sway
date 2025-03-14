@@ -10,7 +10,7 @@ use sway_types::{ident::Ident, span::Span, Named, Spanned};
 #[derive(Debug, Clone)]
 pub struct TypeAliasDeclaration {
     pub name: Ident,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub ty: TypeArgument,
     pub visibility: Visibility,
     pub span: Span,

@@ -634,7 +634,7 @@ fn create_runnables(
         let span = decl
             .attributes
             .first()
-            .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
+            .map_or_else(|| decl.name.span(), |attr| attr.span.clone());
         if let Some(source_id) = span.source_id() {
             let path = source_engine.get_path(source_id);
             let runnable = Box::new(RunnableTestFn {

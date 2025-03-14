@@ -3,7 +3,6 @@ script;
 use std::assert::*;
 
 trait Trait {
-    #[inline(never)]
     fn method(self) -> u64;
 }
 

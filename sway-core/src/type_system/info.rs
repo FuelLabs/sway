@@ -18,6 +18,7 @@ use std::{
     fmt,
     hash::{Hash, Hasher},
 };
+use sway_ast::ImplItemParent;
 use sway_error::{
     error::{CompileError, InvalidImplementingForType},
     handler::{ErrorEmitted, Handler},
@@ -1774,6 +1775,15 @@ impl TypeInfo {
                     referenced_type.type_id.get_type_str(engines)
                 )
             }
+        }
+    }
+}
+
+impl From<&TypeInfo> for ImplItemParent {
+    fn from(value: &TypeInfo) -> Self {
+        match value {
+            TypeInfo::Contract => Self::Contract,
+            _ => Self::Other,
         }
     }
 }

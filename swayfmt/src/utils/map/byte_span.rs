@@ -158,7 +158,7 @@ where
     T: LeafSpans + Parse,
 {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = self.attribute_list.leaf_spans();
+        let mut collected_spans = self.attributes.leaf_spans();
         collected_spans.append(&mut self.value.leaf_spans());
         collected_spans
     }

@@ -1,0 +1,8 @@
+[[package]]
+name = "attributes_all_in_one"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-2CB416C4DB41C708"

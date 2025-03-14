@@ -277,7 +277,7 @@ fn remove_deprecated_eq_trait_implementations_interaction(
         for annotated_eq_impl in annotated_eq_impls {
             // Check if the `#[cfg(experimental_partial_eq = false)]` attribute exists.
             if lexed_match::cfg_attribute_standalone_single_arg(
-                &annotated_eq_impl.attribute_list,
+                &annotated_eq_impl.attributes,
                 EXPERIMENTAL_PARTIAL_EQ_ATTRIBUTE,
                 |arg| arg.as_ref().is_some_and(literal::is_bool_false),
             )
@@ -330,7 +330,7 @@ fn remove_deprecated_eq_trait_implementations_interaction(
             // Check if the `#[cfg(experimental_partial_eq = true)]` attribute exists.
             let Some(cfg_experimental_partial_eq_attr) =
                 lexed_match::cfg_attribute_standalone_single_arg(
-                    &annotated_trait_impl.attribute_list,
+                    &annotated_trait_impl.attributes,
                     EXPERIMENTAL_PARTIAL_EQ_ATTRIBUTE,
                     |arg| arg.as_ref().is_some_and(literal::is_bool_true),
                 )
@@ -386,7 +386,7 @@ fn find_trait_impl(
     let attributed_eq_trait_impls = lexed_match::impl_self_or_trait_decls_annotated(module)
         .filter_map(|annotated| match &annotated.value {
             ItemKind::Impl(item_impl) if item_impl::implements_trait(trait_name)(&item_impl) => {
-                Some((&annotated.attribute_list, item_impl))
+                Some((&annotated.attributes, item_impl))
             }
             _ => None,
         });
@@ -523,7 +523,7 @@ fn implement_experimental_partial_eq_and_eq_traits(
 
             // Set the `experimental_partial_eq` attribute to true.
             let Some(experimental_partial_eq_arg) = lexed_match_mut::cfg_attribute_arg(
-                &mut annotated_impl_partial_eq_trait.attribute_list,
+                &mut annotated_impl_partial_eq_trait.attributes,
                 with_name_mut(EXPERIMENTAL_PARTIAL_EQ_ATTRIBUTE),
             ) else {
                 bail!(internal_error(

@@ -129,6 +129,10 @@ impl Span {
         &self.src
     }
 
+    pub fn source_id(&self) -> Option<&SourceId> {
+        self.source_id.as_ref()
+    }
+
     pub fn start(&self) -> usize {
         self.start
     }
@@ -137,16 +141,22 @@ impl Span {
         self.end
     }
 
-    pub fn source_id(&self) -> Option<&SourceId> {
-        self.source_id.as_ref()
-    }
-
     pub fn start_pos(&self) -> Position {
         Position::new(&self.src, self.start).unwrap()
     }
 
     pub fn end_pos(&self) -> Position {
         Position::new(&self.src, self.end).unwrap()
+    }
+
+    /// Returns an empty [Span] that points to the start of `self`.
+    pub fn start_span(&self) -> Span {
+        Self::empty_at_start(self)
+    }
+
+    /// Returns an empty [Span] that points to the end of `self`.
+    pub fn end_span(&self) -> Span {
+        Self::empty_at_end(self)
     }
 
     pub fn split(&self) -> (Position, Position) {

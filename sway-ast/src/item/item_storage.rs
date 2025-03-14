@@ -20,6 +20,18 @@ pub struct StorageEntry {
     pub field: Option<StorageField>,
 }
 
+impl StorageEntry {
+    /// Friendly name of the [StorageEntry] kind, namespace or field,
+    /// used for various reportings.
+    pub fn friendly_kind_name(&self) -> &'static str {
+        if self.namespace.is_some() {
+            "storage namespace"
+        } else {
+            "storage field"
+        }
+    }
+}
+
 impl Spanned for StorageEntry {
     fn span(&self) -> Span {
         if let Some(namespace) = &self.namespace {

@@ -171,7 +171,7 @@ When a contract is compiled, a special section called "contract selection" is al
 1 - if no fallback function was specified, the contract will revert;
 2 - otherwise, the fallback function will be called.
 
-For all intents and purposes the fallback function is considered a contract method, which means that it has all the limitations that other contract methods have. As the fallback function signature, the function cannot have arguments, but they can return anything.
+For all intents and purposes the fallback function is considered a contract method, which means that it has all the limitations that other contract methods have. As for the fallback function signature, the function cannot have arguments, but it can return anything.
 
 If for some reason the fallback function needs to returns different types, the intrinsic `__contract_ret` can be used.
 
@@ -182,7 +182,7 @@ abi MyContract {
     fn some_method();
 }
 
-impl ContractB for Contract {
+impl MyContract for Contract {
     fn some_method() {
     }
 }
@@ -192,8 +192,8 @@ fn fallback() {
 }
 ```
 
-You may still access the method selector and arguments to the call in the fallback.
-For instance, let's assume a function `fn foobar(bool, u64) {}` gets called on a contract that doesn't have it with arguments `true` and `42`.
+You may still access the method selector and call arguments in the fallback function.
+For instance, let's assume a function `fn foobar(bool, u64) {}` gets called on a contract that doesn't have it, with arguments `true` and `42`.
 It can execute the following fallback:
 
 ```sway

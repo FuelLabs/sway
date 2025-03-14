@@ -227,10 +227,7 @@ pub mod __mod_name {
             self.items
                 .__iter()
                 .filter_map(|annotated| match __ref([annotated.value]) {
-                    ItemKind::Impl(item_impl) => {
-                        Some((__ref([annotated.attribute_list]), item_impl))
-                    }
-                    // ItemKind::Impl(__ref_mut([item_impl])) => Some((__ref([annotated.attribute_list]), item_impl)),
+                    ItemKind::Impl(item_impl) => Some((__ref([annotated.attributes]), item_impl)),
                     _ => None,
                 })
                 .find(|(_attributes, item_impl)| item_impl.span() == ty_element.span)
@@ -255,7 +252,6 @@ pub mod __mod_name {
         attribute::{Attribute, AttributeArg},
         AttributeDecl, CommaToken, Parens, Punctuated,
     };
-    use sway_types::constants::CFG_ATTRIBUTE_NAME;
 
     pub(crate) fn storage_decl<'a, P>(parent: __ref_type([P])) -> Option<__ref_type([ItemStorage])>
     where
@@ -306,7 +302,7 @@ pub mod __mod_name {
         attributes
             .__iter()
             .flat_map(|attr| attr.attribute.inner.__iter())
-            .filter(|attr| attr.name.as_str() == CFG_ATTRIBUTE_NAME)
+            .filter(|attr| attr.is_cfg())
     }
 
     /// Returns all `cfg` attributes that act as only attribute within
@@ -323,7 +319,7 @@ pub mod __mod_name {
             .__iter()
             .filter(|attr| attr.attribute.inner.iter().count() == 1)
             .flat_map(|attr| attr.attribute.inner.__iter())
-            .filter(|attr| attr.name.as_str() == CFG_ATTRIBUTE_NAME)
+            .filter(|attr| attr.is_cfg())
             .filter(|attr| {
                 attr.args
                     .as_ref()

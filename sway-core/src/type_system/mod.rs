@@ -15,7 +15,7 @@ pub use substitute::subst_types::SubstTypesContext;
 #[cfg(test)]
 use crate::language::{CallPath, CallPathType};
 #[cfg(test)]
-use crate::{language::ty::TyEnumDecl, transform::AttributesMap};
+use crate::{language::ty::TyEnumDecl, transform::Attributes};
 pub use priv_prelude::*;
 #[cfg(test)]
 use sway_error::handler::Handler;
@@ -107,7 +107,7 @@ fn generic_enum_resolution() {
             call_path_tree: None,
         },
         span: sp.clone(),
-        attributes: transform::AttributesMap::default(),
+        attributes: transform::Attributes::default(),
     }];
 
     let mut call_path: CallPath<BaseIdent> = result_name.clone().into();
@@ -119,7 +119,7 @@ fn generic_enum_resolution() {
             variants: variant_types,
             span: sp.clone(),
             visibility: crate::language::Visibility::Public,
-            attributes: AttributesMap::default(),
+            attributes: Attributes::default(),
         },
         None,
     );
@@ -141,7 +141,7 @@ fn generic_enum_resolution() {
             call_path_tree: None,
         },
         span: sp.clone(),
-        attributes: transform::AttributesMap::default(),
+        attributes: transform::Attributes::default(),
     }];
     let type_param = TypeParameter {
         type_id: boolean_type,
@@ -161,7 +161,7 @@ fn generic_enum_resolution() {
             variants: variant_types.clone(),
             span: sp.clone(),
             visibility: crate::language::Visibility::Public,
-            attributes: AttributesMap::default(),
+            attributes: Attributes::default(),
         },
         None,
     );

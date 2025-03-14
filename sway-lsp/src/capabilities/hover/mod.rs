@@ -97,6 +97,7 @@ fn format_doc_attributes(engines: &Engines, token: &Token) -> String {
     let mut doc_comment = String::new();
     doc_comment_attributes(engines, token, |attributes| {
         doc_comment = attributes.iter().fold(String::new(), |output, attribute| {
+            // TODO: Change this logic once https://github.com/FuelLabs/sway/issues/6938 gets implemented.
             let comment = attribute.args.first().unwrap().name.as_str();
             format!("{output}{comment}\n")
         });
