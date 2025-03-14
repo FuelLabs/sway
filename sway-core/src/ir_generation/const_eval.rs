@@ -1678,7 +1678,7 @@ fn const_eval_intrinsic(
             Ok(Some(Constant::unique(lookup.context, c)))
         }
         Intrinsic::Dbg => {
-            todo!()
+            unreachable!("__dbg should not exist in the typed tree")
         }
     }
 }

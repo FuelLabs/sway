@@ -416,6 +416,9 @@ impl TestContext {
                                     let s = std::str::from_utf8(bytes.as_slice()).unwrap();
                                     output.push_str(s);
                                 }
+                                CapturedEcal::Unknown { ra, rb, rc, rd } => {
+                                    let _ = writeln!(output, "Unknown ecal: {} {} {} {}", ra, rb, rc, rd);
+                                },
                             }
                         }
 
