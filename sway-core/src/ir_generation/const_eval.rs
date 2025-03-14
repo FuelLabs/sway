@@ -1675,6 +1675,9 @@ fn const_eval_intrinsic(
             let c = transmute_bytes(lookup.context, &mut cursor, &dst_ir_type)?;
             Ok(Some(Constant::unique(lookup.context, c)))
         }
+        Intrinsic::Dbg => {
+            unreachable!("__dbg should not exist in the typed tree")
+        }
     }
 }
 

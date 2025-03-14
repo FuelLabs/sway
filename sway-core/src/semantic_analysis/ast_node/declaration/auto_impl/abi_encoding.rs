@@ -190,7 +190,7 @@ where
     }
 
     // Auto implements AbiEncode and AbiDecode for structs and returns their `AstNode`s.
-    fn auto_impl_struct(
+    fn abi_encode_and_decode_auto_impl_struct(
         &mut self,
         engines: &Engines,
         decl: &TyDecl,
@@ -216,8 +216,12 @@ where
             &struct_decl.type_parameters,
             abi_encode_body,
         );
-        let abi_encode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code);
+        let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            program_id,
+            &abi_encode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         let abi_decode_body = self.generate_abi_decode_struct_body(engines, &struct_decl);
         let abi_decode_code = self.generate_abi_decode_code(
@@ -225,13 +229,17 @@ where
             &struct_decl.type_parameters,
             abi_decode_body?,
         );
-        let abi_decode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_decode_code);
+        let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            program_id,
+            &abi_decode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         Some((abi_encode_node.ok(), abi_decode_node.ok()))
     }
 
-    fn auto_impl_enum(
+    fn abi_encode_and_decode_auto_impl_enum(
         &mut self,
         engines: &Engines,
         decl: &TyDecl,
@@ -257,8 +265,12 @@ where
             &enum_decl.type_parameters,
             abi_encode_body,
         );
-        let abi_encode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code);
+        let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            program_id,
+            &abi_encode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         let abi_decode_body = self.generate_abi_decode_enum_body(engines, &enum_decl);
         let abi_decode_code = self.generate_abi_decode_code(
@@ -266,8 +278,12 @@ where
             &enum_decl.type_parameters,
             abi_decode_body?,
         );
-        let abi_decode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_decode_code);
+        let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            program_id,
+            &abi_decode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         Some((abi_encode_node.ok(), abi_decode_node.ok()))
     }
@@ -278,8 +294,12 @@ where
         decl: &ty::TyDecl,
     ) -> (Option<TyAstNode>, Option<TyAstNode>) {
         match decl {
-            TyDecl::StructDecl(_) => self.auto_impl_struct(engines, decl).unwrap_or((None, None)),
-            TyDecl::EnumDecl(_) => self.auto_impl_enum(engines, decl).unwrap_or((None, None)),
+            TyDecl::StructDecl(_) => self
+                .abi_encode_and_decode_auto_impl_struct(engines, decl)
+                .unwrap_or((None, None)),
+            TyDecl::EnumDecl(_) => self
+                .abi_encode_and_decode_auto_impl_enum(engines, decl)
+                .unwrap_or((None, None)),
             _ => (None, None),
         }
     }
@@ -445,6 +465,7 @@ where
             program_id,
             FunctionDeclarationKind::Entry,
             &code,
+            crate::build_config::DbgGeneration::None,
         );
 
         match entry_fn {
@@ -506,6 +527,7 @@ where
             program_id,
             FunctionDeclarationKind::Entry,
             &code,
+            crate::build_config::DbgGeneration::None,
         );
 
         match entry_fn {
@@ -616,6 +638,7 @@ where
             program_id,
             FunctionDeclarationKind::Entry,
             &code,
+            crate::build_config::DbgGeneration::None,
         );
 
         match entry_fn {

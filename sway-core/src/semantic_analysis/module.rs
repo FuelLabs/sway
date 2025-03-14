@@ -28,7 +28,8 @@ use crate::{
 
 use super::{
     declaration::auto_impl::{
-        abi_encoding::AbiEncodingAutoImplContext, marker_traits::MarkerTraitsAutoImplContext,
+        abi_encoding::AbiEncodingAutoImplContext, debug::DebugAutoImplContext,
+        marker_traits::MarkerTraitsAutoImplContext,
     },
     symbol_collection_context::SymbolCollectionContext,
 };
@@ -542,20 +543,29 @@ impl ty::TyModule {
         let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
             decl.trait_name.suffix.as_str() == "AbiEncode"
         });
+        let all_debug_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
+            decl.trait_name.suffix.as_str() == "Debug"
+        });
 
         let mut typed_nodes = vec![];
         for node in nodes {
-            // Check if the encoding traits are explicitly implemented.
-            let auto_impl_encoding_traits = match &node.content {
+            // Check if the encoding and debug traits are explicitly implemented.
+            let (auto_impl_encoding_traits, auto_impl_debug_traits) = match &node.content {
                 AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_struct(decl_id);
-                    !all_abiencode_impls.contains_key(&decl.name)
+                    (
+                        !all_abiencode_impls.contains_key(&decl.name),
+                        !all_debug_impls.contains_key(&decl.name),
+                    )
                 }
                 AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_enum(decl_id);
-                    !all_abiencode_impls.contains_key(&decl.name)
+                    (
+                        !all_abiencode_impls.contains_key(&decl.name),
+                        !all_debug_impls.contains_key(&decl.name),
+                    )
                 }
-                _ => false,
+                _ => (false, false),
             };
 
             let Ok(node) = ty::TyAstNode::type_check(handler, ctx.by_ref(), node) else {
@@ -579,6 +589,19 @@ impl ty::TyModule {
                         _ => {}
                     }
                 };
+            }
+
+            // Auto impl debug traits only if they are not explicitly implemented
+            if auto_impl_debug_traits {
+                match &node.content {
+                    TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
+                    | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {
+                        let mut ctx = DebugAutoImplContext::new(&mut ctx);
+                        let a = ctx.generate_debug_impl(engines, decl);
+                        generated.extend(a);
+                    }
+                    _ => {}
+                }
             }
 
             // Always auto impl marker traits. If an explicit implementation exists, that will be
