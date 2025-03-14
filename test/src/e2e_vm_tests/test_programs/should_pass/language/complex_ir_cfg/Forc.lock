@@ -1,8 +1,8 @@
 [[package]]
-name = "deprecated"
+name = "complex_ir_cfg"
 source = "member"
 dependencies = ["std"]
 
 [[package]]
 name = "std"
-source = "path+from-root-2E375B78114C5D9B"
+source = "path+from-root-0B76675D58C57D7C"
