@@ -351,6 +351,79 @@ impl Root {
 
     ////// IMPORT //////
 
+    /// Given a path to a prelude in the standard library, create synonyms to every symbol in that
+    /// prelude to the given `dst` module.
+    ///
+    /// This is used when a new module is created in order to pupulate the module with implicit
+    /// imports from the standard library preludes.
+    ///
+    /// Paths are assumed to be absolute.
+    pub(super) fn prelude_import(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+        dst: &ModulePath,
+    ) -> Result<(), ErrorEmitted> {
+        let src_mod = self.require_module(handler, &src.to_vec())?;
+
+        let mut imports = vec![];
+
+        // A prelude should not declare its own items
+        assert!(src_mod.root_items().symbols.is_empty());
+
+        // Collect those item-imported items that the source module reexports
+        let mut symbols = src_mod
+            .root_items()
+            .use_item_synonyms
+            .keys()
+            .clone()
+            .collect::<Vec<_>>();
+        symbols.sort();
+        for symbol in symbols {
+            let (_, path, decl, src_visibility) = &src_mod.root_items().use_item_synonyms[symbol];
+            // Preludes reexport all their imports
+            assert!(matches!(src_visibility, Visibility::Public));
+            imports.push((symbol.clone(), decl.clone(), path.clone()))
+        }
+
+        // Collect those glob-imported items that the source module reexports.  There should be no
+        // name clashes in a prelude, so item reexports and glob reexports can be treated the same
+        // way.
+        let mut symbols = src_mod
+            .root_items()
+            .use_glob_synonyms
+            .keys()
+            .clone()
+            .collect::<Vec<_>>();
+        symbols.sort();
+        for symbol in symbols {
+            let bindings = &src_mod.root_items().use_glob_synonyms[symbol];
+            for (path, decl, src_visibility) in bindings.iter() {
+                // Preludes reexport all their imports.
+                assert!(matches!(src_visibility, Visibility::Public));
+                imports.push((symbol.clone(), decl.clone(), path.clone()))
+            }
+        }
+
+        let implemented_traits = src_mod.root_items().implemented_traits.clone();
+        let dst_mod = self.require_module_mut_in_current_package(handler, &dst.to_vec())?;
+
+        dst_mod
+            .current_items_mut()
+            .implemented_traits
+            .extend(implemented_traits, engines);
+
+        let dst_prelude_synonyms = &mut dst_mod.current_items_mut().prelude_synonyms;
+        imports.iter().for_each(|(symbol, decl, path)| {
+            // Preludes should not contain name clashes
+            assert!(!dst_prelude_synonyms.contains_key(symbol));
+            dst_prelude_synonyms.insert(symbol.clone(), (path.clone(), decl.clone()));
+        });
+
+        Ok(())
+    }
+
     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
     /// `dst` module.
     ///
@@ -523,6 +596,8 @@ impl Root {
                     span: item.span(),
                 }));
             }
+        } else if let Some((path, decl)) = src_items.prelude_synonyms.get(item) {
+            (decl.clone(), path.clone(), Visibility::Private)
         } else {
             // Symbol not found
             return Err(handler.emit_err(CompileError::SymbolNotFound {

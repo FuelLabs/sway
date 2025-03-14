@@ -1,0 +1,8 @@
+[[package]]
+name = "shadowed_prelude_imports"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-7DEA20360A1FC734"
