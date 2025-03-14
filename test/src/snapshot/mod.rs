@@ -2,7 +2,11 @@ use anyhow::Result;
 use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
 use regex::Regex;
-use std::{path::PathBuf, str::FromStr, sync::Once};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::Once,
+};
 
 static FORC_COMPILATION: Once = Once::new();
 static FORC_DOC_COMPILATION: Once = Once::new();
@@ -26,9 +30,12 @@ fn compile_forc_doc() {
 }
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
-    let repo_root: PathBuf =
-        PathBuf::from_str(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).unwrap();
-    let repo_root = repo_root.parent().unwrap().to_path_buf();
+    let repo_root = PathBuf::from_str(&std::env::var("CARGO_MANIFEST_DIR")?)?
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    let test_root = repo_root.join("test");
+    let test_programs_dir = test_root.join("src/e2e_vm_tests/test_programs/");
 
     let args = Arguments {
         filter: filter_regex.as_ref().map(|filter| filter.to_string()),
@@ -36,15 +43,14 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
         ..Default::default()
     };
 
-    let tests = discover_test()
+    let tests = discover_tests(&test_root)
         .into_iter()
         .map(|dir| {
-            let test_programs_dir = "src/e2e_vm_tests/test_programs/";
             let name = dir
-                .to_str()
+                .strip_prefix(&test_programs_dir)
                 .unwrap()
-                .to_string()
-                .replace(test_programs_dir, "");
+                .display()
+                .to_string();
 
             let repo_root = repo_root.clone();
             Trial::test(name, move || {
@@ -61,7 +67,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     vec!["forc build --path {root}"]
                 };
 
-                let root = format!("test/{}", dir.display());
+                let root = dir.strip_prefix(&repo_root).unwrap().display().to_string();
 
                 use std::fmt::Write;
                 let mut snapshot = String::new();
@@ -129,12 +135,13 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     libtest_mimic::run(&args, tests).exit();
 }
 
-pub fn discover_test() -> Vec<PathBuf> {
+pub fn discover_tests(test_root: &Path) -> Vec<PathBuf> {
     use glob::glob;
 
     let mut entries = vec![];
 
-    for entry in glob("**/snapshot.toml")
+    let pattern = format!("{}/**/snapshot.toml", test_root.display());
+    for entry in glob(&pattern)
         .expect("Failed to read glob pattern")
         .flatten()
     {
