@@ -110,28 +110,7 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_transmute(arguments, handler, kind, type_arguments, span, ctx)
             }
             Intrinsic::Dbg => {
-                let mut ctx = ctx;
-                let type_engine = ctx.engines.te();
-
-                // check first argument
-                let first_argument_type = type_engine.new_unknown();
-                let first_argument_typed_expr = {
-                    let ctx = ctx
-                        .by_ref()
-                        .with_help_text("")
-                        .with_type_annotation(first_argument_type);
-                    ty::TyExpression::type_check(handler, ctx, &arguments[0])?
-                };
-
-                Ok((
-                    TyIntrinsicFunctionKind {
-                        kind,
-                        arguments: vec![first_argument_typed_expr],
-                        type_arguments: vec![],
-                        span,
-                    },
-                    first_argument_type,
-                ))
+                unreachable!("__dbg should not exist in the typed tree")
             }
         }
     }
