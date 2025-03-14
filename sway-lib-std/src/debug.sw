@@ -99,6 +99,29 @@ impl Formatter {
         syscall_write(0, __addr_of(digits).add::<u8>(i), 64 - i);
     }
 
+    pub fn print_u256(self, value: u256) {
+        let mut value = value;
+        // 115792089237316195423570985008687907853269984665640564039457584007913129639935
+        let mut digits = [0u8; 80];
+        let mut i = 79;
+        while value > 0 {
+            let rem = value % 10;
+            __log(rem);
+            let (_, _, _, digit) = asm(rem: rem) {
+                rem: (u64, u64, u64, u64)
+            };
+            let digit = asm(v: digit % 10) {
+                v: u8
+            };
+            __log(digit);
+            digits[i] = digit + 48; // ascii zero = 48 
+            i -= 1;
+            value = value / 10;
+        }
+
+        syscall_write(0, __addr_of(digits).add::<u8>(i), 80 - i);
+    }
+
     pub fn debug_struct(self, name: str) -> DebugStruct {
         self.print_str(name);
         self.print_str(" { ");
@@ -116,7 +139,11 @@ impl Formatter {
         }
     }
 
-    pub fn debug_tuple(self) -> DebugTuple {
+    pub fn debug_tuple(self, name: str) -> DebugTuple {
+        if name.len() > 0 {
+            self.print_str(name);
+        }
+
         self.print_str("(");
         DebugTuple {
             f: self,
@@ -221,6 +248,12 @@ impl Debug for u64 {
     }
 }
 
+impl Debug for u256 {
+    fn fmt(self, ref mut f: Formatter) {
+        f.print_u256(self);
+    }
+}
+
 impl Debug for raw_ptr {
     fn fmt(self, ref mut f: Formatter) {
         let v = asm(v: self) {
@@ -240,5 +273,87 @@ impl Debug for str {
         f.print_str(asm(s: (__addr_of(quote), 1)) {
             s: str
         });
+    }
+}
+
+impl<T> Debug for [T; 0]
+where
+    T: Debug
+{
+    fn fmt(self, ref mut f: Formatter) {
+        f.debug_list().finish();
+    }
+}
+
+impl<T> Debug for [T; 1]
+where
+    T: Debug
+{
+    fn fmt(self, ref mut f: Formatter) {
+        f.debug_list().entry(self[0]).finish();
+    }
+}
+
+impl<T> Debug for [T; 2]
+where
+    T: Debug
+{
+    fn fmt(self, ref mut f: Formatter) {
+        f.debug_list().entry(self[0]).entry(self[1]).finish();
+    }
+}
+
+impl<A> Debug for (A,)
+where
+    A: Debug
+{
+    fn fmt(self, ref mut f: Formatter) {
+        f.debug_tuple("").field(self.0).finish();
+    }
+}
+
+impl<A, B> Debug for (A, B)
+where
+    A: Debug,
+    B: Debug,
+{
+    fn fmt(self, ref mut f: Formatter) {
+        f.debug_tuple("").field(self.0).field(self.1).finish();
+    }
+}
+
+impl<A, B, C> Debug for (A, B, C)
+where
+    A: Debug,
+    B: Debug,
+    C: Debug,
+{
+    fn fmt(self, ref mut f: Formatter) {
+        f.debug_tuple("").field(self.0).field(self.1).field(self.2).finish();
+    }
+}
+
+impl<A, B, C, D> Debug for (A, B, C, D)
+where
+    A: Debug,
+    B: Debug,
+    C: Debug,
+    D: Debug,
+{
+    fn fmt(self, ref mut f: Formatter) {
+        f.debug_tuple("").field(self.0).field(self.1).field(self.2).field(self.3).finish();
+    }
+}
+
+impl<A, B, C, D, E> Debug for (A, B, C, D, E)
+where
+    A: Debug,
+    B: Debug,
+    C: Debug,
+    D: Debug,
+    E: Debug,
+{
+    fn fmt(self, ref mut f: Formatter) {
+        f.debug_tuple("").field(self.0).field(self.1).field(self.2).field(self.3).field(self.4).finish();
     }
 }
