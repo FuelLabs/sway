@@ -193,23 +193,6 @@ pub(crate) fn attr_decls_to_attributes(
         .filter(|attr| attr.is_doc_comment() || attr.is_outer())
         .chunk_by(|attr| (attr.kind, attr.direction))
     {
-        // TODO: We currently have a misplaced inner comments (`//!`) in the `core` library.
-        //
-        //       If we emit errors for those, we force every project in the wild
-        //       to move to the latest `core` version, if it wants to
-        //       use the newest **non-breaking change** version of the compiler.
-        //       We also need to temporary pin LSP tests to the repository version
-        //       of `core` which might bring additional efforts in adjusting the tests.
-        //
-        //       All in all, a price too high to pay for this simple issue.
-        //       Those misplaced inner comments were until now treated as code comments
-        //       and they were not visible anywhere in the docs.
-        //       So we will simply ignore them until the next breaking change version
-        //       of Sway, when this workaround will be removed.
-        fn is_core_lib_documentation_bug(doc_comment: &Attribute) -> bool {
-            doc_comment.span.as_str() == "//! Defines the Sway core library prelude."
-        }
-
         // For doc comments, we want to show the error on a complete doc comment,
         // and not on every documentation line.
         if attribute_kind == AttributeKind::DocComment {
@@ -217,11 +200,6 @@ pub(crate) fn attr_decls_to_attributes(
                 .next()
                 .expect("`chunk_by` guarantees existence of at least one element in the chunk");
             if !can_annotate(first_doc_line) {
-                // TODO: Remove this when moving to the next breaking change version of Sway.
-                if is_core_lib_documentation_bug(first_doc_line) {
-                    continue;
-                }
-
                 let last_doc_line = match attributes.last() {
                     Some(last_attr) => last_attr,
                     // There is only one doc line in the complete doc comment.
