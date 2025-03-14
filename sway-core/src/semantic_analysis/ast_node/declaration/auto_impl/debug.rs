@@ -3,7 +3,7 @@ use sway_types::{BaseIdent, Named, Spanned};
 
 use crate::{
     decl_engine::DeclEngineGet,
-    language::ty::{self, TyAstNode, TyDecl, TyStructDecl},
+    language::ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyStructDecl},
     Engines, TypeParameter,
 };
 
@@ -22,12 +22,12 @@ where
     ) -> Option<TyAstNode> {
         match decl {
             TyDecl::StructDecl(_) => self.debug_auto_impl_struct(engines, decl).unwrap_or(None),
-            TyDecl::EnumDecl(_) => None,
+            TyDecl::EnumDecl(_) => self.debug_auto_impl_enum(engines, decl).unwrap_or(None),
             _ => None,
         }
     }
 
-    // Auto implements AbiEncode and AbiDecode for structs and returns their `AstNode`s.
+    // Auto implements Debug for structs and returns their `AstNode`s.
     fn debug_auto_impl_struct(
         &mut self,
         engines: &Engines,
@@ -42,20 +42,16 @@ where
 
         let program_id = struct_decl.span().source_id().map(|sid| sid.program_id());
 
-        let abi_encode_body = self.generate_fmt_struct_body(engines, &struct_decl);
-        let abi_encode_code = self.generate_fmt_code(
-            struct_decl.name(),
-            &struct_decl.type_parameters,
-            abi_encode_body,
-        );
-        let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
+        let body = self.generate_fmt_struct_body(engines, &struct_decl);
+        let code = self.generate_fmt_code(struct_decl.name(), &struct_decl.type_parameters, body);
+        let node = self.parse_impl_trait_to_ty_ast_node(
             engines,
             program_id,
-            &abi_encode_code,
+            &code,
             crate::build_config::DbgGeneration::None,
         );
 
-        Some(abi_encode_node.ok())
+        Some(node.ok())
     }
 
     fn generate_fmt_code(
@@ -71,33 +67,85 @@ where
 
         let name = name.as_str();
 
-        if body.is_empty() {
-            format!("#[allow(dead_code)] impl{type_parameters_declaration} Debug for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-                #[allow(dead_code)]
-                fn fmt(self, ref mut _f: Formatter) {{ }}
-            }}")
-        } else {
-            format!("#[allow(dead_code)] impl{type_parameters_declaration} Debug for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-                #[allow(dead_code)]
-                fn fmt(self, ref mut f: Formatter) {{
-                    f.debug_struct(\"{name}\")
-                        {body}
-                        .finish();
-                }}
-            }}")
-        }
+        format!("#[allow(dead_code)] impl{type_parameters_declaration} Debug for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            #[allow(dead_code)]
+            fn fmt(self, ref mut f: Formatter) {{
+                {body}
+            }}
+        }}")
     }
 
     fn generate_fmt_struct_body(&self, _engines: &Engines, decl: &TyStructDecl) -> String {
-        let mut code = String::new();
+        let mut fields = String::new();
 
-        for f in decl.fields.iter() {
-            code.push_str(&format!(
+        for field in decl.fields.iter() {
+            fields.push_str(&format!(
                 ".field(\"{field_name}\", self.{field_name})\n",
-                field_name = f.name.as_str(),
+                field_name = field.name.as_str(),
             ));
         }
 
-        code
+        format!(
+            "f.debug_struct(\"{}\"){fields}.finish();",
+            decl.name().as_str()
+        )
+    }
+
+    // Auto implements Debug for enums and returns their `AstNode`s.
+    fn debug_auto_impl_enum(
+        &mut self,
+        engines: &Engines,
+        decl: &TyDecl,
+    ) -> Option<Option<TyAstNode>> {
+        if self.ctx.namespace.current_package_name().as_str() == "core" {
+            return Some(None);
+        }
+
+        let enum_decl_id = decl.to_enum_id(&Handler::default(), engines).unwrap();
+        let enum_decl = self.ctx.engines().de().get(&enum_decl_id);
+
+        let program_id = enum_decl.span().source_id().map(|sid| sid.program_id());
+
+        let body = self.generate_fmt_enum_body(engines, &enum_decl);
+        let code = self.generate_fmt_code(enum_decl.name(), &enum_decl.type_parameters, body);
+        let node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            program_id,
+            &code,
+            crate::build_config::DbgGeneration::None,
+        );
+
+        Some(node.ok())
+    }
+
+    fn generate_fmt_enum_body(&self, engines: &Engines, decl: &TyEnumDecl) -> String {
+        let enum_name = decl.call_path.suffix.as_str();
+
+        let arms = decl
+            .variants
+            .iter()
+            .map(|variant| {
+                let variant_name = variant.name.as_str();
+                if engines.te().get(variant.type_argument.type_id).is_unit() {
+                    format!(
+                        "{enum_name}::{variant_name} => {{
+                        f.print_str(\"{variant_name}\");
+                    }}, \n",
+                        enum_name = enum_name,
+                        variant_name = variant_name
+                    )
+                } else {
+                    format!(
+                        "{enum_name}::{variant_name}(value) => {{
+                        f.debug_tuple(\"{enum_name}\").field(value).finish();
+                    }}, \n",
+                        enum_name = enum_name,
+                        variant_name = variant_name,
+                    )
+                }
+            })
+            .collect::<String>();
+
+        format!("match self {{ {arms} }};")
     }
 }
