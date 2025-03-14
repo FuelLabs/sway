@@ -30,9 +30,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
         PathBuf::from_str(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).unwrap();
     let repo_root = repo_root.parent().unwrap().to_path_buf();
 
-    let mut args = Arguments::default();
-    args.filter = filter_regex.as_ref().map(|filter| filter.to_string());
-    args.nocapture = true;
+    let args = Arguments {
+        filter: filter_regex.as_ref().map(|filter| filter.to_string()),
+        nocapture: true,
+        ..Default::default()
+    };
 
     let tests = discover_test()
         .into_iter()
