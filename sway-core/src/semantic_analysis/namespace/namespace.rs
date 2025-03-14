@@ -6,10 +6,8 @@ use crate::{
 };
 
 use super::{
-    module::Module,
-    package::Package,
-    trait_map::TraitMap,
-    ModuleName, ModulePath, ModulePathBuf, ResolvedDeclaration, 
+    module::Module, package::Package, trait_map::TraitMap, ModuleName, ModulePath, ModulePathBuf,
+    ResolvedDeclaration,
 };
 
 use rustc_hash::FxHasher;

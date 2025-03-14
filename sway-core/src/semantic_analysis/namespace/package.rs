@@ -1,8 +1,5 @@
 use super::{module::Module, Ident, ModuleName};
-use crate::{
-    language::Visibility,
-    namespace::ModulePathBuf,
-};
+use crate::{language::Visibility, namespace::ModulePathBuf};
 use rustc_hash::FxHasher;
 use std::hash::BuildHasherDefault;
 use sway_types::{span::Span, ProgramId};
