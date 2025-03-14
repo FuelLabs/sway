@@ -4,7 +4,7 @@ mod module;
 #[allow(clippy::module_inception)]
 mod namespace;
 mod resolved_declaration;
-mod root;
+mod package;
 mod trait_map;
 
 pub use contract_helpers::*;
@@ -13,7 +13,7 @@ pub use module::module_not_found;
 pub use module::Module;
 pub use namespace::Namespace;
 pub use resolved_declaration::ResolvedDeclaration;
-pub use root::Root;
+pub use package::Package;
 pub(crate) use trait_map::IsExtendingExistingImpl;
 pub(crate) use trait_map::IsImplSelf;
 pub(super) use trait_map::ResolvedTraitImplItem;

@@ -264,7 +264,7 @@ pub(crate) fn compile_constants_for_package(
         engines: &Engines,
         context: &mut Context,
         module: Module,
-        current: &namespace::Root,
+        current: &namespace::Package,
     ) -> Result<Module, Vec<CompileError>> {
         let mut md_mgr = MetadataManager::default();
 
@@ -279,7 +279,7 @@ pub(crate) fn compile_constants_for_package(
         Ok(module)
     }
 
-    traverse(engines, context, module, namespace.root_ref())
+    traverse(engines, context, module, namespace.current_package_ref())
 }
 
 fn compile_constants(

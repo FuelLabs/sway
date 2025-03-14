@@ -7,16 +7,12 @@ use rustc_hash::FxHasher;
 use std::hash::BuildHasherDefault;
 use sway_types::{span::Span, ProgramId};
 
-/// The root module, from which all other module dependencies can be accessed.
+/// A representation of the bindings in a package. The package's module structure can be accessed
+/// via the root module.
 ///
-/// This is equivalent to the "crate root" of a Rust crate.
-///
-/// We use a custom type for the `Root` in order to ensure that methods that only work with
-/// canonical paths, or that use canonical paths internally, are *only* called from the root. This
-/// normally includes methods that first lookup some canonical path via `use_synonyms` before using
-/// that canonical path to look up the symbol declaration.
+/// This is equivalent to a Rust crate. The root module is equivalent to Rust's "crate root".
 #[derive(Clone, Debug)]
-pub struct Root {
+pub struct Package {
     // The contents of the package being compiled.
     root_module: Module,
     // Program id for the package.
@@ -24,19 +20,19 @@ pub struct Root {
     // True if the current package is a contract, false otherwise.
     is_contract_package: bool,
     // The external dependencies of the current package. Note that an external package is
-    // represented as a `Root` object. This is because external packages may have their own external
+    // represented as a `Package` object. This is because external packages may have their own external
     // dependencies which are needed for lookups, but which are not directly accessible to the
     // current package.
-    pub external_packages: im::HashMap<ModuleName, Root, BuildHasherDefault<FxHasher>>,
+    pub external_packages: im::HashMap<ModuleName, Package, BuildHasherDefault<FxHasher>>,
 }
 
-impl Root {
-    // Create a new root object with a root module in the current package.
+impl Package {
+    // Create a new `Package` object with a root module.
     //
-    // To ensure the correct initialization the factory functions `package_root_without_contract_id`
-    // and `package_root_with_contract_id` are supplied in `contract_helpers`.
+    // To ensure the correct initialization the factory function `package_with_contract_id` is
+    // supplied in `contract_helpers`.
     //
-    // External packages must be added afterwards by calling `add_external`
+    // External packages must be added afterwards by calling `add_external`.
     pub fn new(
         package_name: Ident,
         span: Option<Span>,
@@ -54,9 +50,9 @@ impl Root {
     }
 
     // Add an external package to this package. The package name must be supplied, since the package
-    // may be referred to by a different name in the forc.toml file than the actual name of the
+    // may be referred to by a different name in the Forc.toml file than the actual name of the
     // package.
-    pub fn add_external(&mut self, package_name: String, external_package: Root) {
+    pub fn add_external(&mut self, package_name: String, external_package: Package) {
         // This should be ensured by the package manager
         assert!(!self.external_packages.contains_key(&package_name));
         self.external_packages
@@ -71,7 +67,7 @@ impl Root {
         &mut self.root_module
     }
 
-    pub fn package_name(&self) -> &Ident {
+    pub fn name(&self) -> &Ident {
         self.root_module.name()
     }
 

@@ -550,7 +550,7 @@ pub fn parsed_to_ast(
     handler: &Handler,
     engines: &Engines,
     parse_program: &mut parsed::ParseProgram,
-    initial_namespace: namespace::Root,
+    initial_namespace: namespace::Package,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -586,7 +586,7 @@ pub fn parsed_to_ast(
         Namespace::new(handler, engines, initial_namespace, true).map_err(|error| {
             TypeCheckFailed {
                 root_module: None,
-                namespace: collection_ctx.namespace().root_ref().clone(),
+                namespace: collection_ctx.namespace().current_package_ref().clone(),
                 error,
             }
         })?;
@@ -607,7 +607,7 @@ pub fn parsed_to_ast(
     check_should_abort(handler, retrigger_compilation.clone()).map_err(|error| {
         TypeCheckFailed {
             root_module: Some(Arc::new(typed_program.root_module.clone())),
-            namespace: typed_program.namespace.root_ref().clone(),
+            namespace: typed_program.namespace.current_package_ref().clone(),
             error,
         }
     })?;
@@ -626,7 +626,7 @@ pub fn parsed_to_ast(
             handler.dedup();
             return Err(TypeCheckFailed {
                 root_module: Some(Arc::new(typed_program.root_module.clone())),
-                namespace: typed_program.namespace.root().clone(),
+                namespace: typed_program.namespace.current_package().clone(),
                 error,
             });
         }
@@ -645,7 +645,7 @@ pub fn parsed_to_ast(
                 handler.dedup();
                 return Err(TypeCheckFailed {
                     root_module: Some(Arc::new(typed_program.root_module.clone())),
-                    namespace: typed_program.namespace.root().clone(),
+                    namespace: typed_program.namespace.current_package().clone(),
                     error,
                 });
             }
@@ -676,7 +676,7 @@ pub fn parsed_to_ast(
         check_should_abort(handler, retrigger_compilation.clone()).map_err(|error| {
             TypeCheckFailed {
                 root_module: Some(Arc::new(typed_program.root_module.clone())),
-                namespace: typed_program.namespace.root_ref().clone(),
+                namespace: typed_program.namespace.current_package_ref().clone(),
                 error,
             }
         })?;
@@ -730,7 +730,7 @@ pub fn parsed_to_ast(
             handler.dedup();
             TypeCheckFailed {
                 root_module: Some(Arc::new(typed_program.root_module.clone())),
-                namespace: typed_program.namespace.root_ref().clone(),
+                namespace: typed_program.namespace.current_package_ref().clone(),
                 error,
             }
         })?;
@@ -756,7 +756,7 @@ pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: namespace::Root,
+    initial_namespace: namespace::Package,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -852,7 +852,7 @@ pub fn compile_to_asm(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: namespace::Root,
+    initial_namespace: namespace::Package,
     build_config: &BuildConfig,
     package_name: &str,
     experimental: ExperimentalFeatures,
@@ -1019,7 +1019,7 @@ pub fn compile_to_bytecode(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: namespace::Root,
+    initial_namespace: namespace::Package,
     build_config: &BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,

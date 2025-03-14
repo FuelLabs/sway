@@ -345,18 +345,18 @@ pub(super) fn resolve_symbol_and_mod_path(
         )
     } else {
         match namespace.get_external_package(&mod_path[0].to_string()) {
-            Some(ext_root) => {
+            Some(ext_package) => {
                 // The path must be resolved in an external package.
                 // The root module in that package may have a different name than the name we
                 // use to refer to the package, so replace it.
-                let mut new_mod_path = vec![ext_root.package_name().clone()];
+                let mut new_mod_path = vec![ext_package.name().clone()];
                 for id in mod_path.iter().skip(1) {
                     new_mod_path.push(id.clone());
                 }
                 resolve_symbol_and_mod_path_inner(
                     handler,
                     engines,
-                    ext_root.root_module(),
+                    ext_package.root_module(),
                     &new_mod_path,
                     symbol,
                     self_type,

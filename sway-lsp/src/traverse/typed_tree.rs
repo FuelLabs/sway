@@ -1572,7 +1572,7 @@ fn collect_qualified_path_root(
 fn mod_path_to_full_path(
     mod_path: &[Ident],
     is_relative_to_package_root: bool,
-    namespace: &sway_core::namespace::Root,
+    namespace: &sway_core::namespace::Package,
 ) -> Vec<Ident> {
     let mut path = mod_path.to_owned();
 
@@ -1592,7 +1592,7 @@ fn mod_path_to_full_path(
         || mod_path.is_empty()
         || namespace.root_module().has_submodule(&mod_path[0])
     {
-        path.insert(0, namespace.package_name().clone());
+        path.insert(0, namespace.name().clone());
     }
 
     path

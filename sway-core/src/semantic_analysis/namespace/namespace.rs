@@ -7,7 +7,7 @@ use crate::{
 
 use super::{
     module::Module,
-    root::Root,
+    package::Package,
     trait_map::TraitMap,
     ModuleName, ModulePath, ModulePathBuf, ResolvedDeclaration, 
 };
@@ -29,13 +29,12 @@ use sway_utils::iter_prefixes;
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug)]
 pub struct Namespace {
-    /// The `root` of the project namespace.
+    /// The current package, containing all the bindings found so far during compilation.
     ///
-    /// From the root, the entirety of the project's namespace can always be accessed.
-    ///
-    /// The root is initialised from the `init` namespace before type-checking begins.
-    pub(crate) root: Root,
-    /// An absolute path from the `root` that represents the module location.
+    /// The `Package` object should be supplied to `new` in order to be properly initialized. Note
+    /// also the existence of `contract_helpers::package_with_contract_id`.
+    pub(crate) current_package: Package,
+    /// An absolute path to the current module within the current package.
     ///
     /// The path of the root module in a package is `[package_name]`. If a module `X` is a submodule
     /// of module `Y` which is a submodule of the root module in the package `P`, then the path is
@@ -45,39 +44,39 @@ pub struct Namespace {
 
 impl Namespace {
     /// Initialize the namespace
-    /// See also the factory functions in contract_helpers.rs
+    /// See also `contract_helpers::package_with_contract_id`.
     ///
-    /// If `import_preludes_into_root` is true then core::prelude::* and std::prelude::* will be
-    /// imported into the root module, provided core and std are available in the external modules.
+    /// If `import_std_prelude_into_root` is true then std::prelude::* will be imported into the
+    /// root module, provided std is available in the external modules.
     pub fn new(
         handler: &Handler,
         engines: &Engines,
-        package_root: Root,
-        import_preludes_into_root: bool,
+        package: Package,
+        import_std_prelude_into_root: bool,
     ) -> Result<Self, ErrorEmitted> {
-        let package_name = package_root.package_name().clone();
+        let name = package.name().clone();
         let mut res = Self {
-            root: package_root,
-            current_mod_path: vec![package_name],
+            current_package: package,
+            current_mod_path: vec![name],
         };
 
-        if import_preludes_into_root {
+        if import_std_prelude_into_root {
             res.import_implicits(handler, engines)?;
         }
         Ok(res)
     }
 
-    pub fn root(self) -> Root {
-        self.root
+    pub fn current_package(self) -> Package {
+        self.current_package
     }
 
-    pub fn root_ref(&self) -> &Root {
-        &self.root
+    pub fn current_package_ref(&self) -> &Package {
+        &self.current_package
     }
 
     fn module_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
-        assert!(self.root.check_path_is_in_package(mod_path));
-        self.root.module_from_absolute_path(mod_path)
+        assert!(self.current_package.check_path_is_in_package(mod_path));
+        self.current_package.module_from_absolute_path(mod_path)
     }
 
     pub fn current_module(&self) -> &Module {
@@ -86,7 +85,7 @@ impl Namespace {
     }
 
     pub fn current_module_mut(&mut self) -> &mut Module {
-        let package_relative_path = Root::package_relative_path(&self.current_mod_path);
+        let package_relative_path = Package::package_relative_path(&self.current_mod_path);
         self.current_package_root_module_mut()
             .submodule_mut(&package_relative_path)
             .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
@@ -99,7 +98,7 @@ impl Namespace {
     }
 
     pub fn current_package_name(&self) -> &Ident {
-        self.root.package_name()
+        self.current_package.name()
     }
 
     /// A reference to the path of the module currently being processed.
@@ -148,21 +147,21 @@ impl Namespace {
     }
 
     pub fn current_package_root_module(&self) -> &Module {
-        self.root.root_module()
+        self.current_package.root_module()
     }
 
     fn current_package_root_module_mut(&mut self) -> &mut Module {
-        self.root.root_module_mut()
+        self.current_package.root_module_mut()
     }
 
     pub fn external_packages(
         &self,
-    ) -> &im::HashMap<ModuleName, Root, BuildHasherDefault<FxHasher>> {
-        &self.root.external_packages
+    ) -> &im::HashMap<ModuleName, Package, BuildHasherDefault<FxHasher>> {
+        &self.current_package.external_packages
     }
 
-    pub(crate) fn get_external_package(&self, package_name: &String) -> Option<&Root> {
-        self.root.external_packages.get(package_name)
+    pub(crate) fn get_external_package(&self, package_name: &String) -> Option<&Package> {
+        self.current_package.external_packages.get(package_name)
     }
 
     pub(super) fn exists_as_external(&self, package_name: &String) -> bool {
@@ -170,7 +169,7 @@ impl Namespace {
     }
 
     pub fn module_from_absolute_path(&self, path: &ModulePathBuf) -> Option<&Module> {
-        self.root.module_from_absolute_path(path)
+        self.current_package.module_from_absolute_path(path)
     }
 
     // Like module_from_absolute_path, but throws an error if the module is not found
@@ -185,7 +184,7 @@ impl Namespace {
                 Span::dummy(),
             )));
         }
-        let is_in_current_package = self.root.check_path_is_in_package(path);
+        let is_in_current_package = self.current_package.check_path_is_in_package(path);
         match self.module_from_absolute_path(path) {
             Some(module) => Ok(module),
             None => Err(handler.emit_err(crate::namespace::module::module_not_found(
@@ -198,14 +197,13 @@ impl Namespace {
     /// Returns true if the current module being checked is a direct or indirect submodule of
     /// the module given by the `absolute_module_path`.
     ///
-    /// The current module being checked is determined by `mod_path`.
+    /// The current module being checked is determined by `current_mod_path`.
     ///
-    /// E.g., the `mod_path` `[fist, second, third]` of the root `foo` is a submodule of the module
-    /// `[foo, first]`. Note that the `mod_path` does not contain the root name, while the
-    /// `absolute_module_path` always contains it.
+    /// E.g., the mod_path `[fist, second, third]` of the root `foo` is a submodule of the module
+    /// `[foo, first]`.
     ///
-    /// If the current module being checked is the same as the module given by the `absolute_module_path`,
-    /// the `true_if_same` is returned.
+    /// If the current module being checked is the same as the module given by the
+    /// `absolute_module_path`, the `true_if_same` is returned.
     pub(crate) fn module_is_submodule_of(
         &self,
         absolute_module_path: &ModulePath,
@@ -305,8 +303,9 @@ impl Namespace {
             }
         }
 
-        // Import contract id. CONTRACT_ID is declared in the root module, so only import it into non-root modules
-        if self.root.is_contract_package() && self.current_mod_path.len() > 1 {
+        // Import contract id. CONTRACT_ID is declared in the root module, so only import it into
+        // non-root modules
+        if self.current_package.is_contract_package() && self.current_mod_path.len() > 1 {
             // import ::CONTRACT_ID
             self.item_import_to_current_module(
                 handler,
