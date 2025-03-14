@@ -106,12 +106,7 @@ impl TestKindOpt {
     const IR: &'static str = "ir";
     const SNAPSHOT: &'static str = "snapshot";
     const ALL: &'static str = "all";
-    pub const CLI_OPTIONS: [&'static str; 4] = [
-        Self::E2E,
-        Self::IR,
-        Self::SNAPSHOT,
-        Self::ALL,
-    ];
+    pub const CLI_OPTIONS: [&'static str; 4] = [Self::E2E, Self::IR, Self::SNAPSHOT, Self::ALL];
 }
 
 impl From<&Vec<String>> for TestKindOpt {

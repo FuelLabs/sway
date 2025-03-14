@@ -1,8 +1,8 @@
+use anyhow::Result;
 use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
 use regex::Regex;
 use std::{path::PathBuf, str::FromStr, sync::Once};
-use anyhow::Result;
 
 static FORC_COMPILATION: Once = Once::new();
 static FORC_DOC_COMPILATION: Once = Once::new();
