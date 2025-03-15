@@ -1,3 +1,4 @@
+mod list_functions;
 mod missing_contracts;
 mod parser;
 
@@ -5,6 +6,7 @@ use crate::{
     cmd,
     constants::DEFAULT_PRIVATE_KEY,
     op::call::{
+        list_functions::list_contract_functions,
         missing_contracts::get_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
     },
@@ -38,7 +40,7 @@ use fuels_core::{
 };
 use std::{collections::HashMap, str::FromStr};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CallResponse {
     pub tx_hash: String,
     pub result: String,
@@ -56,29 +58,40 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
         caller,
         call_parameters,
         mode,
+        list_functions,
         gas,
         external_contracts,
         output,
         show_receipts,
     } = cmd;
-    let node_url = node.get_node_url(&None)?;
-    let provider: Provider = Provider::connect(node_url).await?;
-
-    let wallet = get_wallet(caller.signing_key, caller.wallet, provider).await?;
-
-    let cmd::call::FuncType::Selector(selector) = function;
-    let abi_str = match abi {
+    let abi_str = match &abi {
         // TODO: add support for fetching verified ABI from registry (forc.pub)
         // - This should be the default behaviour if no ABI is provided
         // ↳ gh issue: https://github.com/FuelLabs/sway/issues/6893
-        Either::Left(path) => std::fs::read_to_string(&path)?,
+        Either::Left(path) => std::fs::read_to_string(path)?,
         Either::Right(url) => {
-            let response = reqwest::get(url).await?.bytes().await?;
+            let response = reqwest::get(url.clone()).await?.bytes().await?;
             String::from_utf8(response.to_vec())?
         }
     };
     let parsed_abi: ProgramABI = serde_json::from_str(&abi_str)?;
     let unified_program_abi = UnifiedProgramABI::from_counterpart(&parsed_abi)?;
+
+    // If list_functions flag is set, print all available functions and return early
+    if list_functions {
+        list_contract_functions(
+            &contract_id,
+            &abi,
+            &unified_program_abi,
+            &mut std::io::stdout(),
+        )?;
+        return Ok(CallResponse::default());
+    }
+
+    let selector = match function {
+        Some(cmd::call::FuncType::Selector(selector)) => selector,
+        None => bail!("Function selector is required when --list-functions is not specified"),
+    };
 
     let type_lookup = unified_program_abi
         .types
@@ -126,14 +139,17 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
         custom_assets: Default::default(),
     };
 
+    let node_url = node.get_node_url(&None)?;
+    let provider = Provider::connect(node_url).await?;
+    let wallet = get_wallet(caller.signing_key, caller.wallet, provider).await?;
     let provider = wallet.provider().unwrap();
-    let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id));
 
     let tx_policies = gas
         .as_ref()
         .map(Into::into)
         .unwrap_or(TxPolicies::default());
     let variable_output_policy = VariableOutputPolicy::Exactly(call_parameters.amount as usize);
+    let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id));
     let external_contracts = match external_contracts {
         Some(external_contracts) => external_contracts
             .iter()
@@ -336,7 +352,7 @@ async fn get_wallet(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use fuels::accounts::wallet::Wallet;
     use fuels::prelude::*;
@@ -346,7 +362,8 @@ mod tests {
         abi = "forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json"
     ));
 
-    async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, WalletUnlocked) {
+    pub async fn get_contract_instance(
+    ) -> (TestContract<WalletUnlocked>, ContractId, WalletUnlocked) {
         // Launch a local network and deploy the contract
         let mut wallets = launch_custom_provider_and_get_wallets(
             WalletsConfig::new(
@@ -390,7 +407,7 @@ mod tests {
             abi: Either::Left(std::path::PathBuf::from(
                 "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json",
             )),
-            function: cmd::call::FuncType::Selector(selector.into()),
+            function: Some(cmd::call::FuncType::Selector(selector.into())),
             function_args: args.into_iter().map(String::from).collect(),
             node: crate::NodeTarget {
                 node_url: Some(wallet.provider().unwrap().url().to_owned()),
@@ -406,6 +423,7 @@ mod tests {
             external_contracts: None,
             output: cmd::call::OutputFormat::Raw,
             show_receipts: false,
+            list_functions: false,
         }
     }
 

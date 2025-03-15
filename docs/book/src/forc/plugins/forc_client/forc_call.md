@@ -8,8 +8,6 @@ The `forc call` command is part of the Forc toolchain and is installed alongside
 
 Here are a few examples of what you can do with `forc call`:
 
-Call a simple addition function on a deployed contract (in dry-run mode):
-
 ```sway
 contract;
 
@@ -24,13 +22,35 @@ impl ContractABI for Contract {
 }
 ```
 
+### List callable functions of a contract given it's ABI file
+
+```bash
+forc call 0xe18de7c7c8c61a1c706dccb3533caa00ba5c11b5230da4428582abf1b6831b4d \
+  --abi ./out/debug/counter-contract-abi.json \
+  --list-functions
+```
+
+Output:
+
+```log
+Available functions in contract: 0xe18de7c7c8c61a1c706dccb3533caa00ba5c11b5230da4428582abf1b6831b4d
+
+add(a: u64, b: u64) -> u64
+  forc call \
+    --abi ./out/debug/counter-contract-abi.json \
+    0xe18de7c7c8c61a1c706dccb3533caa00ba5c11b5230da4428582abf1b6831b4d \
+    add "0" "0"
+```
+
+### Call a simple addition function on a deployed contract (in dry-run mode)
+
 ```bash
 forc call 0xe18de7c7c8c61a1c706dccb3533caa00ba5c11b5230da4428582abf1b6831b4d \
   --abi ./out/debug/counter-contract-abi.json \
   add 1 2
 ```
 
-Query the owner of a deployed [DEX contract](https://github.com/mira-amm/mira-v1-core) on testnet:
+### Query the owner of a deployed [DEX contract](https://github.com/mira-amm/mira-v1-core) on testnet
 
 ```bash
 forc call \
