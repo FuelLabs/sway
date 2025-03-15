@@ -39,7 +39,7 @@ add(a: u64, b: u64) -> u64
   forc call \
     --abi ./out/debug/counter-contract-abi.json \
     0xe18de7c7c8c61a1c706dccb3533caa00ba5c11b5230da4428582abf1b6831b4d \
-    add "0, 0"
+    add "0" "0"
 ```
 
 ### Call a simple addition function on a deployed contract (in dry-run mode)
