@@ -1,7 +1,7 @@
 use crate::op::call::parser::{
     get_default_value, param_to_function_arg, param_type_val_to_token, token_to_string,
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use either::Either;
 use fuel_abi_types::abi::unified_program::UnifiedProgramABI;
 use fuels_core::types::{param_types::ParamType, ContractId};
@@ -62,26 +62,28 @@ pub fn list_contract_functions<W: Write>(
                     Ok((func_args, func_args_input))
                 })
                 .collect::<Result<Vec<_>>>()?;
+
             let func_args_types = func_args
                 .iter()
                 .map(|(func_args, _)| func_args.to_owned())
                 .collect::<Vec<String>>()
                 .join(", ");
+
             let func_args_inputs = func_args
                 .iter()
-                .map(|(_, func_args_input)| func_args_input.to_owned())
+                .map(|(_, func_args_input)| format!("\"{}\"", func_args_input))
                 .collect::<Vec<String>>()
-                .join(", ");
+                .join(" ");
 
-            let return_type = match ParamType::try_from_type_application(&func.output, &type_lookup)
-            {
-                Ok(param_type) => param_to_function_arg(&param_type),
-                Err(err) => bail!(
-                    "Failed to convert output type application for {}: {}",
-                    func.name,
-                    err
-                ),
-            };
+            let return_type = ParamType::try_from_type_application(&func.output, &type_lookup)
+                .map(|param_type| param_to_function_arg(&param_type))
+                .map_err(|err| {
+                    anyhow!(
+                        "Failed to convert output type application for {}: {}",
+                        func.name,
+                        err
+                    )
+                })?;
 
             // Get the ABI path or URL as a string
             let raw_abi_input = match abi {
@@ -94,15 +96,10 @@ pub fn list_contract_functions<W: Write>(
                 "{}({}) -> {}",
                 func.name, func_args_types, return_type
             )?;
-            let args_part = if func_args_inputs.is_empty() {
-                String::new()
-            } else {
-                format!("\"{}\"", func_args_inputs)
-            };
             writeln!(
                 writer,
                 "  forc call \\\n      --abi {} \\\n      {} \\\n      {} {}\n",
-                raw_abi_input, contract_id, func.name, args_part,
+                raw_abi_input, contract_id, func.name, func_args_inputs,
             )?;
         }
     }
