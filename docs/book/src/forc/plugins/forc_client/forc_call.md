@@ -22,7 +22,7 @@ impl ContractABI for Contract {
 }
 ```
 
-### List callable functions of a contract given it's ABI file:
+### List callable functions of a contract given it's ABI file
 
 ```bash
 forc call 0xe18de7c7c8c61a1c706dccb3533caa00ba5c11b5230da4428582abf1b6831b4d \
@@ -42,7 +42,7 @@ add(a: u64, b: u64) -> u64
     add "0, 0"
 ```
 
-### Call a simple addition function on a deployed contract (in dry-run mode):
+### Call a simple addition function on a deployed contract (in dry-run mode)
 
 ```bash
 forc call 0xe18de7c7c8c61a1c706dccb3533caa00ba5c11b5230da4428582abf1b6831b4d \
@@ -50,7 +50,7 @@ forc call 0xe18de7c7c8c61a1c706dccb3533caa00ba5c11b5230da4428582abf1b6831b4d \
   add 1 2
 ```
 
-### Query the owner of a deployed [DEX contract](https://github.com/mira-amm/mira-v1-core) on testnet:
+### Query the owner of a deployed [DEX contract](https://github.com/mira-amm/mira-v1-core) on testnet
 
 ```bash
 forc call \
