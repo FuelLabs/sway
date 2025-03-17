@@ -1701,9 +1701,6 @@ mod tests {
         let param_type = ParamType::StringSlice;
         assert_eq!(param_to_function_arg(&param_type), "str");
 
-        let param_type = ParamType::StringArray(4);
-        assert_eq!(param_to_function_arg(&param_type), "str[4]");
-
         let param_type = ParamType::Tuple(vec![ParamType::U32, ParamType::StringArray(4)]);
         assert_eq!(param_to_function_arg(&param_type), "(u32, str[4])");
 
