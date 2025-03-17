@@ -100,10 +100,11 @@ pub fn list_contract_functions<W: Write>(
                 Either::Right(url) => url.to_string(),
             };
 
+            let painted_name = forc_util::ansiterm::Colour::Blue.paint(func.name.clone());
             writeln!(
                 writer,
                 "{}({}) -> {}",
-                func.name, func_args_types, return_type
+                painted_name, func_args_types, return_type
             )?;
             writeln!(
                 writer,
@@ -151,15 +152,16 @@ mod tests {
         // Verify the output contains expected function names and formatting
         assert!(output_string.contains("Callable functions for contract:"));
 
-        assert!(
-            output_string.contains("test_struct_with_generic(a: GenericStruct) -> GenericStruct")
-        );
+        assert!(output_string.contains(
+            "\u{1b}[34mtest_struct_with_generic\u{1b}[0m(a: GenericStruct) -> GenericStruct"
+        ));
         assert!(output_string.contains("forc call \\"));
         assert!(output_string.contains(format!("--abi {abi_path_str} \\").as_str()));
         assert!(output_string.contains(format!("{id} \\").as_str()));
         assert!(output_string.contains("test_struct_with_generic \"{0, aaaa}\""));
 
-        assert!(output_string.contains("test_complex_struct(a: ComplexStruct) -> ComplexStruct"));
+        assert!(output_string
+            .contains("\u{1b}[34mtest_complex_struct\u{1b}[0m(a: ComplexStruct) -> ComplexStruct"));
         assert!(output_string.contains("forc call \\"));
         assert!(output_string.contains(format!("--abi {abi_path_str} \\").as_str()));
         assert!(output_string.contains(format!("{id} \\").as_str()));
