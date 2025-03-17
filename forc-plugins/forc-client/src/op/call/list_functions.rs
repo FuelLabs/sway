@@ -17,7 +17,7 @@ pub fn list_contract_functions<W: Write>(
 ) -> Result<()> {
     writeln!(
         writer,
-        "\nAvailable functions in contract: {}\n",
+        "\nCallable functions for contract: {}\n",
         contract_id
     )?;
 
@@ -140,7 +140,7 @@ mod tests {
         let output_string = String::from_utf8(output_bytes).expect("Output was not valid UTF-8");
 
         // Verify the output contains expected function names and formatting
-        assert!(output_string.contains("Available functions in contract:"));
+        assert!(output_string.contains("Callable functions for contract:"));
 
         assert!(
             output_string.contains("test_struct_with_generic(a: GenericStruct) -> GenericStruct")
