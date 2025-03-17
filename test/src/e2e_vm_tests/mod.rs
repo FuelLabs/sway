@@ -752,9 +752,6 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         .map(|exclude| tests.retained(|t| !exclude.is_match(&t.name)))
         .unwrap_or_default();
 
-    if filter_config.exclude_core {
-        tests.retain(|t| exclude_tests_dependency(t, "core"));
-    }
     if filter_config.exclude_std {
         tests.retain(|t| exclude_tests_dependency(t, "std"));
     }
