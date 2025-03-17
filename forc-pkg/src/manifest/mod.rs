@@ -4,7 +4,8 @@ use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_warning;
 use forc_util::{validate_name, validate_project_name};
-use serde::{Deserialize, Serialize};
+use semver::Version;
+use serde::{de, Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use std::{
     collections::{BTreeMap, HashMap},
@@ -19,6 +20,7 @@ use sway_utils::{
     constants, find_nested_manifest_dir, find_parent_manifest_dir,
     find_parent_manifest_dir_with_check,
 };
+use url::Url;
 
 use self::build_profile::BuildProfile;
 
@@ -193,9 +195,17 @@ pub struct PackageManifest {
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
     pub authors: Option<Vec<String>>,
+    #[serde(deserialize_with = "validate_package_name")]
     pub name: String,
+    pub version: Option<Version>,
+    pub description: Option<String>,
     pub organization: Option<String>,
     pub license: String,
+    pub homepage: Option<Url>,
+    pub repository: Option<Url>,
+    pub documentation: Option<Url>,
+    pub categories: Option<Vec<String>>,
+    pub keywords: Option<Vec<String>>,
     #[serde(default = "default_entry")]
     pub entry: String,
     pub implicit_std: Option<bool>,
@@ -203,6 +213,18 @@ pub struct Project {
     #[serde(default)]
     pub experimental: HashMap<String, bool>,
     pub metadata: Option<toml::Value>,
+}
+
+// Validation function for the `name` field
+fn validate_package_name<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let name: String = Deserialize::deserialize(deserializer)?;
+    match validate_project_name(&name) {
+        Ok(_) => Ok(name),
+        Err(e) => Err(de::Error::custom(e.to_string())),
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -306,6 +328,7 @@ impl DependencyDetails {
         if git.is_none() && (branch.is_some() || tag.is_some() || rev.is_some()) {
             bail!("Details reserved for git sources used without a git field");
         }
+
         Ok(())
     }
 }
@@ -316,6 +339,14 @@ impl Dependency {
         match *self {
             Self::Simple(_) => None,
             Self::Detailed(ref det) => det.package.as_deref(),
+        }
+    }
+
+    /// The string of the `version` field if specified.
+    pub fn version(&self) -> Option<&str> {
+        match *self {
+            Self::Simple(ref version) => Some(version),
+            Self::Detailed(ref det) => det.version.as_deref(),
         }
     }
 }
@@ -495,7 +526,7 @@ impl GenericManifestFile for PackageManifestFile {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -563,7 +594,7 @@ impl PackageManifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -571,10 +602,25 @@ impl PackageManifest {
         // package or a workspace. While doing so, we should be printing the warnings if the given
         // file parses so that we only see warnings for the correct type of manifest.
         let path = path.as_ref();
-        let mut warnings = vec![];
-        let manifest_str = std::fs::read_to_string(path)
+        let contents = std::fs::read_to_string(path)
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
-        let toml_de = toml::de::Deserializer::new(&manifest_str);
+        Self::from_string(contents)
+    }
+
+    /// Given a path to a `Forc.toml`, read it and construct a `PackageManifest`.
+    ///
+    /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
+    /// fields were used.
+    ///
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
+    /// implicitly. In this case, the git tag associated with the version of this crate is used to
+    /// specify the pinned commit at which we fetch `std`.
+    pub fn from_string(contents: String) -> Result<Self> {
+        // While creating a `ManifestFile` we need to check if the given path corresponds to a
+        // package or a workspace. While doing so, we should be printing the warnings if the given
+        // file parses so that we only see warnings for the correct type of manifest.
+        let mut warnings = vec![];
+        let toml_de = toml::de::Deserializer::new(&contents);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
             let warning = format!("unused manifest key: {path}");
             warnings.push(warning);
@@ -595,13 +641,26 @@ impl PackageManifest {
     /// 1. The project and organization names against a set of reserved/restricted keywords and patterns.
     /// 2. The validity of the details provided. Makes sure that there are no mismatching detail
     ///    declarations (to prevent mixing details specific to certain types).
+    /// 3. The dependencies listed does not have an alias ("package" field) that is the same as package name.
     pub fn validate(&self) -> Result<()> {
         validate_project_name(&self.project.name)?;
         if let Some(ref org) = self.project.organization {
             validate_name(org, "organization name")?;
         }
-        for (_, dependency_details) in self.deps_detailed() {
+        for (dep_name, dependency_details) in self.deps_detailed() {
             dependency_details.validate()?;
+            if dependency_details
+                .package
+                .as_ref()
+                .is_some_and(|package_alias| package_alias == &self.project.name)
+            {
+                bail!(format!("Dependency \"{dep_name}\" declares an alias (\"package\" field) that is the same as project name"))
+            }
+            if dep_name == &self.project.name {
+                bail!(format!(
+                    "Dependency \"{dep_name}\" collides with project name."
+                ))
+            }
         }
         Ok(())
     }
@@ -670,23 +729,18 @@ impl PackageManifest {
         self.proxy.as_ref()
     }
 
-    /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
+    /// Check for the `std` package under `[dependencies]`. If it is missing, add
     /// `std` implicitly.
     ///
     /// This makes the common case of depending on `std` a lot smoother for most users, while still
-    /// allowing for the uncommon case of custom `core`/`std` deps.
-    ///
-    /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
-    /// guarantee that the user's `core` is compatible with the implicit `std`.
+    /// allowing for the uncommon case of custom `std` deps.
     fn implicitly_include_std_if_missing(&mut self) {
-        use sway_types::constants::{CORE, STD};
+        use sway_types::constants::STD;
         // Don't include `std` if:
-        // - this *is* `core` or `std`.
-        // - either `core` or `std` packages are already specified.
+        // - this *is* `std`.
+        // - `std` package is already specified.
         // - a dependency already exists with the name "std".
-        if self.project.name == CORE
-            || self.project.name == STD
-            || self.pkg_dep(CORE).is_some()
+        if self.project.name == STD
             || self.pkg_dep(STD).is_some()
             || self.dep(STD).is_some()
             || !self.project.implicit_std.unwrap_or(true)
@@ -1338,6 +1392,13 @@ mod tests {
         let project = Project {
             authors: Some(vec!["Test Author".to_string()]),
             name: "test-project".to_string(),
+            version: Some(Version::parse("0.1.0").unwrap()),
+            description: Some("test description".to_string()),
+            homepage: None,
+            documentation: None,
+            categories: None,
+            keywords: None,
+            repository: None,
             organization: None,
             license: "Apache-2.0".to_string(),
             entry: "main.sw".to_string(),
@@ -1359,6 +1420,13 @@ mod tests {
         let project = Project {
             authors: Some(vec!["Test Author".to_string()]),
             name: "test-project".to_string(),
+            version: Some(Version::parse("0.1.0").unwrap()),
+            description: Some("test description".to_string()),
+            homepage: Some(Url::parse("https://example.com").unwrap()),
+            documentation: Some(Url::parse("https://docs.example.com").unwrap()),
+            categories: Some(vec!["test-category".to_string()]),
+            keywords: Some(vec!["test-keyword".to_string()]),
+            repository: Some(Url::parse("https://example.com").unwrap()),
             organization: None,
             license: "Apache-2.0".to_string(),
             entry: "main.sw".to_string(),
@@ -1372,8 +1440,15 @@ mod tests {
         let deserialized: Project = toml::from_str(&serialized).unwrap();
 
         assert_eq!(project.name, deserialized.name);
+        assert_eq!(project.version, deserialized.version);
+        assert_eq!(project.description, deserialized.description);
+        assert_eq!(project.homepage, deserialized.homepage);
+        assert_eq!(project.documentation, deserialized.documentation);
+        assert_eq!(project.repository, deserialized.repository);
         assert_eq!(project.metadata, deserialized.metadata);
         assert_eq!(project.metadata, None);
+        assert_eq!(project.categories, deserialized.categories);
+        assert_eq!(project.keywords, deserialized.keywords);
     }
 
     #[test]
@@ -1383,15 +1458,13 @@ mod tests {
             license = "Apache-2.0"
             entry = "main.sw"
             authors = ["Test Author"]
-
-            [metadata]
             description = "A test project"
             version = "1.0.0"
-            homepage = "https://example.com"
-            documentation = "https://docs.example.com"
-            repository = "https://github.com/example/test-project"
             keywords = ["test", "project"]
             categories = ["test"]
+
+            [metadata]
+            mykey = "https://example.com"
         "#;
 
         let project: Project = toml::from_str(toml_str).unwrap();
@@ -1401,18 +1474,9 @@ mod tests {
         let table = metadata.as_table().unwrap();
 
         assert_eq!(
-            table.get("description").unwrap().as_str().unwrap(),
-            "A test project"
-        );
-        assert_eq!(table.get("version").unwrap().as_str().unwrap(), "1.0.0");
-        assert_eq!(
-            table.get("homepage").unwrap().as_str().unwrap(),
+            table.get("mykey").unwrap().as_str().unwrap(),
             "https://example.com"
         );
-
-        let keywords = table.get("keywords").unwrap().as_array().unwrap();
-        assert_eq!(keywords[0].as_str().unwrap(), "test");
-        assert_eq!(keywords[1].as_str().unwrap(), "project");
     }
 
     #[test]
@@ -1614,5 +1678,44 @@ mod tests {
 
         assert_eq!(original.workspace.members, deserialized.workspace.members);
         assert_eq!(original.workspace.metadata, deserialized.workspace.metadata);
+    }
+
+    #[test]
+    fn test_dependency_alias_project_name_collision() {
+        let original_toml = r#"
+        [project]
+        authors = ["Fuel Labs <contact@fuel.sh>"]
+        entry = "main.sw"
+        license = "Apache-2.0"
+        name = "lib_contract_abi"
+
+        [dependencies]
+        lib_contract = { path = "../lib_contract_abi/", package = "lib_contract_abi" }
+        "#;
+
+        let project = PackageManifest::from_string(original_toml.to_string());
+        let err = project.unwrap_err();
+        assert_eq!(err.to_string(), format!("Dependency \"lib_contract\" declares an alias (\"package\" field) that is the same as project name"))
+    }
+
+    #[test]
+    fn test_dependency_name_project_name_collision() {
+        let original_toml = r#"
+        [project]
+        authors = ["Fuel Labs <contact@fuel.sh>"]
+        entry = "main.sw"
+        license = "Apache-2.0"
+        name = "lib_contract"
+
+        [dependencies]
+        lib_contract = { path = "../lib_contract_abi/", package = "lib_contract_abi" }
+        "#;
+
+        let project = PackageManifest::from_string(original_toml.to_string());
+        let err = project.unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            format!("Dependency \"lib_contract\" collides with project name.")
+        )
     }
 }

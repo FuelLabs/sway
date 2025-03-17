@@ -1,0 +1,10 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "marker_trait_error_not_implemented_for_non_error_types"
+entry = "main.sw"
+implicit-std = false
+
+[dependencies]
+std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
+

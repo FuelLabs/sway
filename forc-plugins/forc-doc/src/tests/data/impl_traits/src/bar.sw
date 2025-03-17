@@ -1,7 +1,7 @@
 library;
 
 use ::foo::{Foo, Baz};
-use core::ops::Add;
+use ops::Add;
 
 pub struct Bar {}
 
@@ -22,7 +22,7 @@ impl Add for Bar {
         Bar {}
     }
 }
-impl core::ops::Subtract for Bar {
+impl ops::Subtract for Bar {
     fn subtract(self, other: Self) -> Self {
         Bar {}
     }

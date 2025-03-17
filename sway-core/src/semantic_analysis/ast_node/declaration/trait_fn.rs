@@ -49,7 +49,7 @@ impl ty::TyTraitFn {
         let type_engine = ctx.engines.te();
 
         // Create a namespace for the trait function.
-        ctx.by_ref().scoped(handler, Some(span.clone()), |mut ctx| {
+        ctx.by_ref().scoped(handler, Some(span.clone()), |ctx| {
             // TODO: when we add type parameters to trait fns, type check them here
 
             // Type check the parameters.
@@ -124,6 +124,7 @@ impl ty::TyTraitFn {
             return_type: self.return_type.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
+            const_generic_parameters: vec![],
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
             is_trait_method_dummy: true,

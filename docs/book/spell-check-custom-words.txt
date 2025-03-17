@@ -13,6 +13,7 @@ BrowserStack
 CLI
 Deserialization
 deserializing
+deserialization
 DApp
 intrinsics
 Intrinsics
@@ -232,3 +233,13 @@ deallocated
 deallocate
 destructors
 destructor
+semiautomatically
+FuelLabs
+github
+toml
+hardcoded
+subdirectories
+RawSlice
+StringArray
+StringSlice
+calldata

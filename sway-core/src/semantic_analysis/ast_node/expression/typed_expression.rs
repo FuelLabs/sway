@@ -40,7 +40,7 @@ use either::Either;
 use indexmap::IndexMap;
 use namespace::{LexicalScope, Module, ResolvedDeclaration};
 use rustc_hash::FxHashSet;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
@@ -54,37 +54,29 @@ use type_resolve::{resolve_call_path, VisibilityCheck};
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
-    pub(crate) fn core_ops_eq(
+    pub(crate) fn std_ops_eq(
         handler: &Handler,
         ctx: TypeCheckContext,
         arguments: Vec<ty::TyExpression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        let engines = ctx.engines;
-        let ctx = ctx.with_type_annotation(engines.te().insert(
-            engines,
-            TypeInfo::Boolean,
-            span.source_id(),
-        ));
-        Self::core_ops(handler, ctx, OpVariant::Equals, arguments, span)
+        let type_engine = ctx.engines.te();
+        let ctx = ctx.with_type_annotation(type_engine.id_of_bool());
+        Self::std_ops(handler, ctx, OpVariant::Equals, arguments, span)
     }
 
-    pub(crate) fn core_ops_neq(
+    pub(crate) fn std_ops_neq(
         handler: &Handler,
         ctx: TypeCheckContext,
         arguments: Vec<ty::TyExpression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        let engines = ctx.engines;
-        let ctx = ctx.with_type_annotation(engines.te().insert(
-            engines,
-            TypeInfo::Boolean,
-            span.source_id(),
-        ));
-        Self::core_ops(handler, ctx, OpVariant::NotEquals, arguments, span)
+        let type_engine = ctx.engines.te();
+        let ctx = ctx.with_type_annotation(type_engine.id_of_bool());
+        Self::std_ops(handler, ctx, OpVariant::NotEquals, arguments, span)
     }
 
-    fn core_ops(
+    fn std_ops(
         handler: &Handler,
         mut ctx: TypeCheckContext,
         op_variant: OpVariant,
@@ -95,15 +87,15 @@ impl ty::TyExpression {
 
         let call_path = CallPath {
             prefixes: vec![
-                Ident::new_with_override("core".into(), span.clone()),
+                Ident::new_with_override("std".into(), span.clone()),
                 Ident::new_with_override("ops".into(), span.clone()),
             ],
             suffix: Op {
                 op_variant,
                 span: span.clone(),
             }
-            .to_var_name(),
-            is_absolute: true,
+            .to_method_name(),
+            callpath_type: CallPathType::Full,
         };
         let mut method_name_binding = TypeBinding {
             inner: MethodName::FromTrait {
@@ -124,6 +116,7 @@ impl ty::TyExpression {
             ctx,
             decl_ref.clone(),
             method_name_binding.type_arguments.to_vec_mut(),
+            BTreeMap::new(),
         )?;
         let method = decl_engine.get_function(&decl_ref);
         // check that the number of parameters and the number of the arguments is the same
@@ -188,11 +181,15 @@ impl ty::TyExpression {
             ExpressionKind::TupleIndex(expr) => {
                 Self::collect(handler, engines, ctx, &expr.prefix)?;
             }
-            ExpressionKind::Array(expr) => {
-                expr.contents
+            ExpressionKind::Array(ArrayExpression::Explicit { contents, .. }) => {
+                contents
                     .iter()
                     .map(|expr| Self::collect(handler, engines, ctx, expr))
                     .collect::<Result<Vec<_>, ErrorEmitted>>()?;
+            }
+            ExpressionKind::Array(ArrayExpression::Repeat { value, length }) => {
+                Self::collect(handler, engines, ctx, value)?;
+                Self::collect(handler, engines, ctx, length)?;
             }
             ExpressionKind::Struct(expr) => {
                 expr.fields
@@ -305,15 +302,16 @@ impl ty::TyExpression {
                 Ok(Self::type_check_literal(engines, lit.clone(), span))
             }
             ExpressionKind::AmbiguousVariableExpression(name) => {
-                let call_path = CallPath {
-                    prefixes: vec![],
-                    suffix: name.clone(),
-                    is_absolute: false,
-                };
                 if matches!(
-                    ctx.resolve_call_path(&Handler::default(), &call_path,).ok(),
+                    ctx.resolve_symbol(&Handler::default(), name).ok(),
                     Some(ty::TyDecl::EnumVariantDecl { .. })
                 ) {
+                    let call_path = CallPath {
+                        prefixes: vec![],
+                        suffix: name.clone(),
+                        callpath_type: CallPathType::Ambiguous,
+                    };
+
                     Self::type_check_delineated_path(
                         handler,
                         ctx.by_ref(),
@@ -462,8 +460,11 @@ impl ty::TyExpression {
                 let AbiCastExpression { abi_name, address } = &**abi_cast_expression;
                 Self::type_check_abi_cast(handler, ctx.by_ref(), abi_name.clone(), address, span)
             }
-            ExpressionKind::Array(array_expression) => {
-                Self::type_check_array(handler, ctx.by_ref(), &array_expression.contents, span)
+            ExpressionKind::Array(ArrayExpression::Explicit { contents, .. }) => {
+                Self::type_check_array_explicit(handler, ctx.by_ref(), contents, span)
+            }
+            ExpressionKind::Array(ArrayExpression::Repeat { value, length }) => {
+                Self::type_check_array_repeat(handler, ctx.by_ref(), value, length, span)
             }
             ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
                 let ctx = ctx
@@ -576,10 +577,7 @@ impl ty::TyExpression {
                 Self::type_check_deref(handler, ctx.by_ref(), expr, span)
             }
         };
-        let mut typed_expression = match res {
-            Ok(r) => r,
-            Err(e) => return Err(e),
-        };
+        let mut typed_expression = res?;
 
         // if the return type cannot be cast into the annotation type then it is a type error
         ctx.unify_with_type_annotation(handler, typed_expression.return_type, &expr_span);
@@ -686,7 +684,6 @@ impl ty::TyExpression {
             Some(ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. })) => {
                 let decl = (*decl_engine.get_configurable(&decl_id)).clone();
                 let decl_name = decl.name().clone();
-
                 ty::TyExpression {
                     return_type: decl.return_type,
                     expression: ty::TyExpressionVariant::ConfigurableExpression {
@@ -695,6 +692,22 @@ impl ty::TyExpression {
                         call_path: Some(
                             CallPath::from(decl_name).to_fullpath(ctx.engines(), ctx.namespace()),
                         ),
+                    },
+                    span,
+                }
+            }
+            Some(ty::TyDecl::ConstGenericDecl(ty::ConstGenericDecl { decl_id })) => {
+                let decl = (*decl_engine.get(&decl_id)).clone();
+                ty::TyExpression {
+                    return_type: decl.return_type,
+                    expression: ty::TyExpressionVariant::ConstGenericExpression {
+                        decl: Box::new(decl),
+                        span: name.span(),
+                        call_path: Some(CallPath {
+                            prefixes: vec![],
+                            suffix: name.clone(),
+                            callpath_type: CallPathType::Ambiguous,
+                        }),
                     },
                     span,
                 }
@@ -1217,21 +1230,21 @@ impl ty::TyExpression {
 
         if !ctx
             .namespace()
-            .program_id(engines)
-            .read(engines, |m| m.current_items().has_storage_declared())
+            .current_module()
+            .read(engines, |m| m.root_items().has_storage_declared())
         {
             return Err(handler.emit_err(CompileError::NoDeclaredStorage { span: span.clone() }));
         }
 
-        let storage_fields = ctx.namespace().program_id(engines).read(engines, |m| {
-            m.current_items()
+        let storage_fields = ctx.namespace().current_module().read(engines, |m| {
+            m.root_items()
                 .get_storage_field_descriptors(handler, decl_engine)
         })?;
 
         // Do all namespace checking here!
         let (storage_access, mut access_type) =
-            ctx.namespace().program_id(engines).read(engines, |m| {
-                m.current_items().apply_storage_load(
+            ctx.namespace().current_module().read(engines, |m| {
+                m.root_items().apply_storage_load(
                     handler,
                     ctx.engines,
                     ctx.namespace(),
@@ -1242,11 +1255,12 @@ impl ty::TyExpression {
                 )
             })?;
 
-        // The type of a storage access is `core::storage::StorageKey`. This is
+        // The type of a storage access is `std::storage::storage_key::StorageKey`. This is
         // the path to it.
         let storage_key_mod_path = vec![
-            Ident::new_with_override("core".into(), span.clone()),
+            Ident::new_with_override("std".into(), span.clone()),
             Ident::new_with_override("storage".into(), span.clone()),
+            Ident::new_with_override("storage_key".into(), span.clone()),
         ];
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
@@ -1254,7 +1268,7 @@ impl ty::TyExpression {
         let storage_key_decl = resolve_call_path(
             handler,
             engines,
-            ctx.namespace().root(),
+            ctx.namespace(),
             &storage_key_mod_path,
             &storage_key_ident.into(),
             None,
@@ -1282,6 +1296,7 @@ impl ty::TyExpression {
             handler,
             &mut storage_key_struct_decl,
             &mut type_arguments,
+            BTreeMap::new(),
             EnforceTypeArguments::Yes,
             span,
         )?;
@@ -1331,7 +1346,7 @@ impl ty::TyExpression {
                 CallPath {
                     prefixes,
                     suffix: AmbiguousSuffix { before, suffix },
-                    is_absolute,
+                    callpath_type,
                 },
             type_arguments,
             span: path_span,
@@ -1356,7 +1371,7 @@ impl ty::TyExpression {
                     call_path: CallPath {
                         prefixes: prefixes_and_before.clone(),
                         suffix: prefixes_and_before_last.clone(),
-                        is_absolute,
+                        callpath_type,
                     },
                     qualified_path_root: qualified_path_root.map(Box::new),
                 };
@@ -1373,7 +1388,7 @@ impl ty::TyExpression {
                             inner: CallPath {
                                 prefixes,
                                 suffix: (type_info, prefixes_and_before_last),
-                                is_absolute,
+                                callpath_type,
                             },
                         },
                         method_name: suffix,
@@ -1410,8 +1425,10 @@ impl ty::TyExpression {
             let call_path = CallPath {
                 prefixes,
                 suffix,
-                is_absolute,
-            };
+                callpath_type,
+            }
+            .to_fullpath(engines, ctx.namespace());
+
             if matches!(
                 ctx.resolve_call_path(&Handler::default(), &call_path,),
                 Ok(ty::TyDecl::EnumVariantDecl { .. })
@@ -1453,20 +1470,25 @@ impl ty::TyExpression {
         let mut path = Vec::with_capacity(prefixes.len() + 1);
         path.extend(prefixes.iter().cloned());
         path.push(before.inner.clone());
-        let not_module = {
+
+        let is_module = {
             let h = Handler::default();
+            // The path may be relative to the current module,
+            // or may be a full path to an external module
             ctx.namespace()
-                .program_id(engines)
-                .read(engines, |m| m.lookup_submodule(&h, engines, &path).is_err())
+                .current_module()
+                .read(engines, |m| m.lookup_submodule(&h, &path).is_ok())
+                || (ctx.namespace().module_from_absolute_path(&path).is_some()
+                    && ctx.namespace().module_is_external(&path))
         };
 
         // Not a module? Not a `Enum::Variant` either?
         // Type check as an associated function call instead.
-        let is_associated_call = not_module && {
+        let is_associated_call = !is_module && {
             let probe_call_path = CallPath {
                 prefixes: prefixes.clone(),
                 suffix: before.inner.clone(),
-                is_absolute,
+                callpath_type,
             };
             ctx.resolve_call_path(&Handler::default(), &probe_call_path)
                 .and_then(|decl| decl.to_enum_id(&Handler::default(), ctx.engines()))
@@ -1494,8 +1516,9 @@ impl ty::TyExpression {
                         inner: CallPath {
                             prefixes,
                             suffix: (type_info, type_name),
-                            is_absolute,
-                        },
+                            callpath_type,
+                        }
+                        .to_fullpath(engines, ctx.namespace()),
                     },
                     method_name: suffix,
                 },
@@ -1528,7 +1551,7 @@ impl ty::TyExpression {
                     call_path: CallPath {
                         prefixes: path,
                         suffix,
-                        is_absolute,
+                        callpath_type,
                     },
                     qualified_path_root: None,
                 },
@@ -1553,11 +1576,13 @@ impl ty::TyExpression {
 
         let mut is_module = false;
         let mut maybe_function: Option<(DeclRefFunction, _)> = None;
-        let mut maybe_enum: Option<(DeclRefEnum, _, _, _)> = None;
+        let mut maybe_enum_variant_with_enum_name: Option<(DeclRefEnum, _, _, _)> = None;
+        let mut maybe_enum_variant_without_enum_name: Option<(DeclRefEnum, _, _, _)> = None;
 
         let module_probe_handler = Handler::default();
         let function_probe_handler = Handler::default();
-        let enum_probe_handler = Handler::default();
+        let variant_with_enum_probe_handler = Handler::default();
+        let variant_without_enum_probe_handler = Handler::default();
         let const_probe_handler = Handler::default();
 
         if unknown_call_path_binding
@@ -1565,24 +1590,22 @@ impl ty::TyExpression {
             .qualified_path_root
             .is_none()
         {
-            // Check if this could be a module
+            // Check if this could be a submodule of the current module or an external module
             is_module = {
                 let call_path_binding = unknown_call_path_binding.clone();
-                ctx.namespace()
-                    .program_id(ctx.engines())
-                    .read(ctx.engines(), |m| {
-                        m.lookup_submodule(
-                            &module_probe_handler,
-                            ctx.engines(),
-                            &[
-                                call_path_binding.inner.call_path.prefixes.clone(),
-                                vec![call_path_binding.inner.call_path.suffix.clone()],
-                            ]
-                            .concat(),
-                        )
+                let lookup_path = [
+                    call_path_binding.inner.call_path.prefixes.clone(),
+                    vec![call_path_binding.inner.call_path.suffix.clone()],
+                ]
+                .concat();
+                ctx.namespace().current_module().read(ctx.engines(), |m| {
+                    m.lookup_submodule(&module_probe_handler, &lookup_path)
                         .ok()
                         .is_some()
-                    })
+                }) || ctx
+                    .namespace()
+                    .module_from_absolute_path(&lookup_path)
+                    .is_some()
             };
 
             // Check if this could be a function
@@ -1602,18 +1625,33 @@ impl ty::TyExpression {
                 .map(|(fn_ref, _, _)| (fn_ref, call_path_binding))
             };
 
-            // Check if this could be an enum
-            maybe_enum = {
+            // Check if this could be an enum variant preceded by its enum name.
+            // For instance, the enum `Option` contains two variants, `None` and `Some`.
+            // The full path for `None` would be current_mod_path::Option::None.
+            maybe_enum_variant_with_enum_name = {
                 let call_path_binding = unknown_call_path_binding.clone();
                 let variant_name = call_path_binding.inner.call_path.suffix.clone();
-                let enum_call_path = call_path_binding.inner.call_path.rshift();
+                let enum_call_path = call_path_binding
+                    .inner
+                    .call_path
+                    .to_fullpath(ctx.engines(), ctx.namespace())
+                    .rshift();
 
-                let mut call_path_binding = TypeBinding {
-                    inner: enum_call_path,
-                    type_arguments: call_path_binding.type_arguments,
-                    span: call_path_binding.span,
-                };
-                TypeBinding::type_check(&mut call_path_binding, &enum_probe_handler, ctx.by_ref())
+                if enum_call_path.prefixes.is_empty() {
+                    // If the path has no prefixes after the rshift, then the package name is the
+                    // new suffix, and so the path is not an enum variant.
+                    None
+                } else {
+                    let mut call_path_binding = TypeBinding {
+                        inner: enum_call_path,
+                        type_arguments: call_path_binding.type_arguments,
+                        span: call_path_binding.span,
+                    };
+                    TypeBinding::type_check(
+                        &mut call_path_binding,
+                        &variant_with_enum_probe_handler,
+                        ctx.by_ref(),
+                    )
                     .ok()
                     .map(|(enum_ref, _, ty_decl)| {
                         (
@@ -1623,6 +1661,47 @@ impl ty::TyExpression {
                             ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
                         )
                     })
+                }
+            };
+
+            // Check if this could be an enum variant without the enum name. This can happen when
+            // the variants are imported using a star import
+            // For instance, `use Option::*` binds the name `None` in the current module, so the
+            // full path would be current_mod_path::None rather than current_mod_path::Option::None.
+            maybe_enum_variant_without_enum_name = {
+                if maybe_enum_variant_with_enum_name.is_some() {
+                    // Corner case. This can happen if the path is just a single identifier
+                    // referring to an enum variant name. In this case we use
+                    // maybe_enum_variant_with_enum_name
+                    None
+                } else {
+                    let call_path_binding = unknown_call_path_binding.clone();
+                    let variant_name = call_path_binding.inner.call_path.suffix.clone();
+                    let enum_call_path = call_path_binding
+                        .inner
+                        .call_path
+                        .to_fullpath(ctx.engines(), ctx.namespace());
+
+                    let mut call_path_binding = TypeBinding {
+                        inner: enum_call_path,
+                        type_arguments: call_path_binding.type_arguments,
+                        span: call_path_binding.span,
+                    };
+                    TypeBinding::type_check(
+                        &mut call_path_binding,
+                        &variant_without_enum_probe_handler,
+                        ctx.by_ref(),
+                    )
+                    .ok()
+                    .map(|(enum_ref, _, ty_decl)| {
+                        (
+                            enum_ref,
+                            variant_name,
+                            call_path_binding,
+                            ty_decl.expect("type_check for TyEnumDecl should always return TyDecl"),
+                        )
+                    })
+                }
             };
         }
 
@@ -1631,14 +1710,21 @@ impl ty::TyExpression {
             { Self::probe_const_decl(&unknown_call_path_binding, &mut ctx, &const_probe_handler) };
 
         // compare the results of the checks
-        let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
+        let exp = match (
+            is_module,
+            maybe_function,
+            maybe_enum_variant_with_enum_name,
+            maybe_enum_variant_without_enum_name,
+            maybe_const,
+        ) {
             (
                 false,
                 None,
                 Some((enum_ref, variant_name, call_path_binding, call_path_decl)),
                 None,
+                None,
             ) => {
-                handler.append(enum_probe_handler);
+                handler.append(variant_with_enum_probe_handler);
                 instantiate_enum(
                     handler,
                     ctx,
@@ -1649,7 +1735,25 @@ impl ty::TyExpression {
                     call_path_decl,
                 )?
             }
-            (false, Some((fn_ref, call_path_binding)), None, None) => {
+            (
+                false,
+                None,
+                None,
+                Some((enum_ref, variant_name, call_path_binding, call_path_decl)),
+                None,
+            ) => {
+                handler.append(variant_without_enum_probe_handler);
+                instantiate_enum(
+                    handler,
+                    ctx,
+                    enum_ref,
+                    variant_name,
+                    args,
+                    call_path_binding,
+                    call_path_decl,
+                )?
+            }
+            (false, Some((fn_ref, call_path_binding)), None, None, None) => {
                 handler.append(function_probe_handler);
                 // In case `foo::bar::<TyArgs>::baz(...)` throw an error.
                 if let TypeArgs::Prefix(_) = call_path_binding.type_arguments {
@@ -1669,14 +1773,14 @@ impl ty::TyExpression {
                     span,
                 )?
             }
-            (true, None, None, None) => {
+            (true, None, None, None, None) => {
                 handler.append(module_probe_handler);
                 return Err(handler.emit_err(CompileError::ModulePathIsNotAnExpression {
                     module_path: unknown_call_path_binding.inner.call_path.to_string(),
                     span,
                 }));
             }
-            (false, None, None, Some((const_ref, call_path_binding))) => {
+            (false, None, None, None, Some((const_ref, call_path_binding))) => {
                 handler.append(const_probe_handler);
                 if !call_path_binding.type_arguments.to_vec().is_empty() {
                     // In case `foo::bar::CONST::<TyArgs>` throw an error.
@@ -1690,7 +1794,7 @@ impl ty::TyExpression {
                 }
                 instantiate_constant_expression(ctx, const_ref, call_path_binding)
             }
-            (false, None, None, None) => {
+            (false, None, None, None, None) => {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
                     name: unknown_call_path_binding.inner.call_path.suffix.clone(),
                     span: unknown_call_path_binding.inner.call_path.suffix.span(),
@@ -1898,6 +2002,7 @@ impl ty::TyExpression {
             abi_name.clone(),
             vec![],
             return_type,
+            vec![],
             &abi_items,
             span,
             Some(span.clone()),
@@ -1917,7 +2022,60 @@ impl ty::TyExpression {
         Ok(exp)
     }
 
-    fn type_check_array(
+    fn type_check_array_repeat(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        value: &Expression,
+        length: &Expression,
+        span: Span,
+    ) -> Result<Self, ErrorEmitted> {
+        let type_engine = ctx.engines.te();
+        let engines = ctx.engines();
+
+        // capture the expected array element type from context,
+        // otherwise, fallback to Unknown.
+        let elem_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
+            TypeInfo::Array(element_type, _) => {
+                let element_type = (*ctx.engines().te().get(element_type.type_id)).clone();
+                if matches!(element_type, TypeInfo::Never) {
+                    TypeInfo::Unknown //Even if array element type is Never other elements may not be of type Never.
+                } else {
+                    element_type
+                }
+            }
+            _ => TypeInfo::Unknown,
+        };
+        let elem_type = type_engine.insert(engines, elem_type, None);
+
+        let value_ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(elem_type);
+        let value = Self::type_check(handler, value_ctx, value)
+            .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
+
+        let length_ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(type_engine.id_of_u64());
+        let length = Self::type_check(handler, length_ctx, length)
+            .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
+        let length_u64 = length.as_literal_u64().unwrap() as usize;
+
+        let return_type =
+            type_engine.insert_array_without_annotations(engines, elem_type, length_u64);
+        Ok(ty::TyExpression {
+            expression: ty::TyExpressionVariant::ArrayRepeat {
+                elem_type,
+                value: Box::new(value),
+                length: Box::new(length),
+            },
+            return_type,
+            span,
+        })
+    }
+
+    fn type_check_array_explicit(
         handler: &Handler,
         mut ctx: TypeCheckContext,
         contents: &[Expression],
@@ -1929,7 +2087,7 @@ impl ty::TyExpression {
         if contents.is_empty() {
             let elem_type = type_engine.new_unknown();
             return Ok(ty::TyExpression {
-                expression: ty::TyExpressionVariant::Array {
+                expression: ty::TyExpressionVariant::ArrayExplicit {
                     elem_type,
                     contents: Vec::new(),
                 },
@@ -1992,7 +2150,7 @@ impl ty::TyExpression {
         let elem_type = type_engine.insert(engines, initial_type.clone(), None);
         let length = typed_contents.len();
         let expr = ty::TyExpression {
-            expression: ty::TyExpressionVariant::Array {
+            expression: ty::TyExpressionVariant::ArrayExplicit {
                 elem_type,
                 contents: typed_contents,
             },
@@ -2289,7 +2447,7 @@ impl ty::TyExpression {
                                         ));
                                     }
 
-                                    break (name, variable_decl.body.return_type);
+                                    break (name, variable_decl.return_type);
                                 }
                                 TyDecl::ConstantDecl(constant_decl) => {
                                     let constant_decl =
@@ -2369,7 +2527,7 @@ impl ty::TyExpression {
 
                 let indices = indices.into_iter().rev().collect::<Vec<_>>();
                 let (ty_of_field, _ty_of_parent) =
-                    ctx.namespace().program_id(engines).read(engines, |m| {
+                    ctx.namespace().current_module().read(engines, |m| {
                         Self::find_subfield_type(
                             m,
                             handler,
@@ -2416,7 +2574,7 @@ impl ty::TyExpression {
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> Result<(TypeId, TypeId), ErrorEmitted> {
-        let ret = module.walk_scope_chain(|lexical_scope| {
+        let ret = module.walk_scope_chain_early_return(|lexical_scope| {
             Self::find_subfield_type_helper(
                 lexical_scope,
                 handler,
@@ -2536,12 +2694,32 @@ impl ty::TyExpression {
                     full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
                 (
-                    TypeInfo::Array(elem_ty, _),
-                    ty::ProjectionKind::ArrayIndex { index_span, .. },
-                ) => {
+                    TypeInfo::Array(elem_ty, array_length),
+                    ty::ProjectionKind::ArrayIndex { index, index_span },
+                ) if array_length.as_literal_val().is_some() => {
                     parent_rover = symbol;
                     symbol = elem_ty.type_id;
                     symbol_span = index_span.clone();
+
+                    if let Some(index_literal) = index
+                        .expression
+                        .as_literal()
+                        .and_then(|x| x.cast_value_to_u64())
+                    {
+                        // SAFETY: safe by the guard above
+                        let array_length = array_length
+                            .as_literal_val()
+                            .expect("unexpected non literal array length")
+                            as u64;
+                        if index_literal >= array_length {
+                            return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
+                                index: index_literal,
+                                count: array_length,
+                                span: index.span.clone(),
+                            }));
+                        }
+                    }
+
                     // `index_span` does not contain the enclosing square brackets.
                     // Which means, if this array index access is the last one before the
                     // erroneous expression, the `full_span_for_error` will be missing the
@@ -2948,7 +3126,7 @@ fn check_asm_block_validity(
                     &CallPath {
                         prefixes: vec![],
                         suffix: sway_types::BaseIdent::new(span.clone()),
-                        is_absolute: true,
+                        callpath_type: CallPathType::Ambiguous,
                     },
                 );
 
@@ -3009,6 +3187,7 @@ mod tests {
     use super::*;
     use crate::{Engines, ExperimentalFeatures};
     use sway_error::type_error::TypeError;
+    use sway_types::ProgramId;
     use symbol_collection_context::SymbolCollectionContext;
 
     fn do_type_check(
@@ -3018,23 +3197,14 @@ mod tests {
         type_annotation: TypeId,
         experimental: ExperimentalFeatures,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        let collection_ctx_ns = Namespace::new();
-        let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
-
         let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
-        let mut root_module = namespace::Root::from(namespace::Module::new(
-            root_module_name,
-            Visibility::Private,
-            None,
-        ));
-        let mut namespace = Namespace::init_root(&mut root_module);
-        let ctx = TypeCheckContext::from_namespace(
-            &mut namespace,
-            &mut collection_ctx,
-            engines,
-            experimental,
-        )
-        .with_type_annotation(type_annotation);
+        let root_module = namespace::Root::new(root_module_name, None, ProgramId::new(0), false);
+        let collection_ctx_ns = Namespace::new(handler, engines, root_module.clone(), true)?;
+        let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
+        let mut namespace = Namespace::new(handler, engines, root_module, true)?;
+        let ctx =
+            TypeCheckContext::from_root(&mut namespace, &mut collection_ctx, engines, experimental)
+                .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(handler, ctx, expr)
     }
 
@@ -3060,7 +3230,7 @@ mod tests {
     fn test_array_type_check_non_homogeneous_0() {
         // [true, 0] -- first element is correct, assumes type is [bool; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: vec![
                     Expression {
                         kind: ExpressionKind::Literal(Literal::Boolean(true)),
@@ -3094,7 +3264,7 @@ mod tests {
     fn test_array_type_check_non_homogeneous_1() {
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: vec![
                     Expression {
                         kind: ExpressionKind::Literal(Literal::U64(0)),
@@ -3128,7 +3298,7 @@ mod tests {
     fn test_array_type_check_bad_count() {
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: vec![
                     Expression {
                         kind: ExpressionKind::Literal(Literal::Boolean(true)),
@@ -3164,7 +3334,7 @@ mod tests {
     #[test]
     fn test_array_type_check_empty() {
         let expr = Expression {
-            kind: ExpressionKind::Array(ArrayExpression {
+            kind: ExpressionKind::Array(ArrayExpression::Explicit {
                 contents: Vec::new(),
                 length_span: None,
             }),

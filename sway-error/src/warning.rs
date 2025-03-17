@@ -138,8 +138,6 @@ pub enum Warning {
         second_field_full_name: String,
         second_field_key_is_compiler_generated: bool,
         key: String,
-        // True if the experimental feature `storage_domains` is used.
-        experimental_storage_domains: bool,
     },
 }
 
@@ -422,7 +420,7 @@ impl ToDiagnostic for CompileWarning {
                     "Consider adding assembly instructions or a return register to the ASM block, or removing the block altogether.".to_string(),
                 ],
             },
-            DuplicatedStorageKey { first_field, first_field_full_name, first_field_key_is_compiler_generated, second_field, second_field_full_name, second_field_key_is_compiler_generated, key, experimental_storage_domains } => Diagnostic {
+            DuplicatedStorageKey { first_field, first_field_full_name, first_field_key_is_compiler_generated, second_field, second_field_full_name, second_field_key_is_compiler_generated, key } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Two storage fields have the same storage key".to_string())),
                 issue: Issue::warning(
                     source_engine,
@@ -449,25 +447,14 @@ impl ToDiagnostic for CompileWarning {
                         "Both keys are explicitly defined by using the `in` keyword.".to_string()
                     },
                     if *first_field_key_is_compiler_generated || *second_field_key_is_compiler_generated {
-                        if *experimental_storage_domains {
-                            format!("{}sha256((0u8, \"{}\"))",
-                                Indent::Single,
-                                if *first_field_key_is_compiler_generated {
-                                    first_field_full_name
-                                } else {
-                                    second_field_full_name
-                                }
-                            )
-                        } else {
-                            format!("{}sha256(\"{}\")",
-                                Indent::Single,
-                                if *first_field_key_is_compiler_generated {
-                                    first_field_full_name
-                                } else {
-                                    second_field_full_name
-                                }
-                            )
-                        }
+                        format!("{}sha256((0u8, \"{}\"))",
+                            Indent::Single,
+                            if *first_field_key_is_compiler_generated {
+                                first_field_full_name
+                            } else {
+                                second_field_full_name
+                            }
+                        )
                     } else {
                         Diagnostic::help_none()
                     },

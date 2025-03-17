@@ -3,7 +3,6 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{Ident, Span, Spanned};
-use sway_utils::iter_prefixes;
 
 use crate::{
     language::{
@@ -15,6 +14,8 @@ use crate::{
     type_system::SubstTypes,
     EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
+
+use super::namespace::TraitMap;
 
 /// Specifies if visibility checks should be performed as part of name resolution.
 #[derive(Clone, Copy, PartialEq)]
@@ -132,12 +133,14 @@ pub fn resolve_type(
             name,
             trait_type_id,
         } => {
-            let trait_item_ref = namespace
-                .root
-                .module
-                .current_items()
-                .implemented_traits
-                .get_trait_item_for_type(handler, engines, &name, trait_type_id, None)?;
+            let trait_item_ref = TraitMap::get_trait_item_for_type(
+                namespace.current_package_root_module(),
+                handler,
+                engines,
+                &name,
+                trait_type_id,
+                None,
+            )?;
 
             if let ResolvedTraitImplItem::Typed(TyTraitItem::Type(type_ref)) = trait_item_ref {
                 let type_decl = engines.de().get_type(type_ref.id());
@@ -205,7 +208,7 @@ pub fn resolve_qualified_call_path(
                 let type_decl = resolve_call_path(
                     handler,
                     engines,
-                    namespace.root(),
+                    namespace,
                     mod_path,
                     &qualified_call_path.clone().to_call_path(handler)?,
                     self_type,
@@ -236,7 +239,7 @@ pub fn resolve_qualified_call_path(
                 call_path
                     .clone()
                     .to_call_path(handler)?
-                    .to_fullpath(engines, namespace),
+                    .to_canonical_path(engines, namespace),
             ),
             _ => None,
         };
@@ -244,7 +247,7 @@ pub fn resolve_qualified_call_path(
         resolve_call_path_and_root_type_id(
             handler,
             engines,
-            &namespace.root.module,
+            namespace.current_package_root_module(),
             root_type_id,
             as_trait_opt,
             &qualified_call_path.call_path,
@@ -254,7 +257,7 @@ pub fn resolve_qualified_call_path(
         resolve_call_path(
             handler,
             engines,
-            namespace.root(),
+            namespace,
             mod_path,
             &qualified_call_path.call_path,
             self_type,
@@ -274,24 +277,20 @@ pub fn resolve_qualified_call_path(
 pub fn resolve_call_path(
     handler: &Handler,
     engines: &Engines,
-    root: &Root,
+    namespace: &Namespace,
     mod_path: &ModulePath,
     call_path: &CallPath,
     self_type: Option<TypeId>,
     check_visibility: VisibilityCheck,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-    let symbol_path: Vec<_> = mod_path
-        .iter()
-        .chain(&call_path.prefixes)
-        .cloned()
-        .collect();
+    let full_path = call_path.to_fullpath_from_mod_path(engines, namespace, &mod_path.to_vec());
 
-    let (decl, mod_path) = resolve_symbol_and_mod_path(
+    let (decl, decl_mod_path) = resolve_symbol_and_mod_path(
         handler,
         engines,
-        &root.module,
-        &symbol_path,
-        &call_path.suffix,
+        namespace.root_ref(),
+        &full_path.prefixes,
+        &full_path.suffix,
         self_type,
     )?;
 
@@ -299,30 +298,25 @@ pub fn resolve_call_path(
         return Ok(decl);
     }
 
-    // In case there is no mod path we don't need to check visibility
-    if mod_path.is_empty() {
+    // Check that the modules in full_path are visible from the current module.
+    let _ = namespace.root_ref().check_module_privacy(
+        handler,
+        &full_path.prefixes,
+        namespace.current_mod_path(),
+    );
+
+    // If the full path is different from the declaration path, then we are accessing a reexport,
+    // which is by definition public.
+    if decl_mod_path != full_path.prefixes {
         return Ok(decl);
     }
 
-    // In case there are no prefixes we don't need to check visibility
-    if call_path.prefixes.is_empty() {
+    // All declarations in the current module are visible, regardless of their visibility modifier.
+    if decl_mod_path == *namespace.current_mod_path() {
         return Ok(decl);
     }
 
-    // check the visibility of the call path elements
-    // we don't check the first prefix because direct children are always accessible
-    for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
-        let module = root.module.lookup_submodule(handler, engines, prefix)?;
-        if module.visibility().is_private() {
-            let prefix_last = prefix[prefix.len() - 1].clone();
-            handler.emit_err(CompileError::ImportPrivateModule {
-                span: prefix_last.span(),
-                name: prefix_last,
-            });
-        }
-    }
-
-    // check the visibility of the symbol itself
+    // Otherwise, check the visibility modifier
     if !decl.visibility(engines).is_public() {
         handler.emit_err(CompileError::ImportPrivateSymbol {
             name: call_path.suffix.clone(),
@@ -333,19 +327,62 @@ pub fn resolve_call_path(
     Ok(decl)
 }
 
-fn resolve_symbol_and_mod_path(
+// Resolve a path. The first identifier in the path is the package name, which may be the
+// current package or an external one.
+pub(super) fn resolve_symbol_and_mod_path(
     handler: &Handler,
     engines: &Engines,
-    module: &Module,
+    root: &Root,
     mod_path: &ModulePath,
     symbol: &Ident,
     self_type: Option<TypeId>,
 ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
-    let mut current_module = module;
+    assert!(!mod_path.is_empty());
+    if mod_path[0] == *root.current_package_name() {
+        resolve_symbol_and_mod_path_inner(handler, engines, root, mod_path, symbol, self_type)
+    } else {
+        match root.get_external_package(&mod_path[0].to_string()) {
+            Some(ext_root) => {
+                // The path must be resolved in an external package.
+                // The root module in that package may have a different name than the name we
+                // use to refer to the package, so replace it.
+                let mut new_mod_path = vec![ext_root.current_package_name().clone()];
+                for id in mod_path.iter().skip(1) {
+                    new_mod_path.push(id.clone());
+                }
+                resolve_symbol_and_mod_path_inner(
+                    handler,
+                    engines,
+                    ext_root,
+                    &new_mod_path,
+                    symbol,
+                    self_type,
+                )
+            }
+            None => Err(handler.emit_err(crate::namespace::module_not_found(
+                mod_path,
+                mod_path[0] == *root.current_package_name(),
+            ))),
+        }
+    }
+}
+
+fn resolve_symbol_and_mod_path_inner(
+    handler: &Handler,
+    engines: &Engines,
+    root: &Root,
+    mod_path: &ModulePath,
+    symbol: &Ident,
+    self_type: Option<TypeId>,
+) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
+    assert!(!mod_path.is_empty());
+    assert!(mod_path[0] == *root.current_package_name());
+
     // This block tries to resolve associated types
-    let mut current_mod_path = vec![];
+    let mut current_module = root.current_package_root_module();
+    let mut current_mod_path = vec![mod_path[0].clone()];
     let mut decl_opt = None;
-    for ident in mod_path.iter() {
+    for ident in mod_path.iter().skip(1) {
         if let Some(decl) = decl_opt {
             decl_opt = Some(resolve_associated_type_or_item(
                 handler,
@@ -357,13 +394,14 @@ fn resolve_symbol_and_mod_path(
                 self_type,
             )?);
         } else {
-            match current_module.submodules.get(ident.as_str()) {
+            match current_module.submodule(&[ident.clone()]) {
                 Some(ns) => {
                     current_module = ns;
                     current_mod_path.push(ident.clone());
                 }
                 None => {
-                    decl_opt = Some(current_module.resolve_symbol(handler, engines, ident)?);
+                    let (decl, _) = current_module.resolve_symbol(handler, engines, ident)?;
+                    decl_opt = Some(decl);
                 }
             }
         }
@@ -381,11 +419,10 @@ fn resolve_symbol_and_mod_path(
         return Ok((decl, current_mod_path));
     }
 
-    module
-        .lookup_submodule(handler, engines, mod_path)
+    root.require_module(handler, &mod_path.to_vec())
         .and_then(|module| {
-            let decl = module.resolve_symbol(handler, engines, symbol)?;
-            Ok((decl, mod_path.to_vec()))
+            let (decl, decl_path) = module.resolve_symbol(handler, engines, symbol)?;
+            Ok((decl, decl_path))
         })
 }
 
@@ -445,10 +482,8 @@ fn resolve_associated_item_from_type_id(
     } else {
         type_id
     };
-    let item_ref = module
-        .current_items()
-        .implemented_traits
-        .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
+    let item_ref =
+        TraitMap::get_trait_item_for_type(module, handler, engines, symbol, type_id, as_trait)?;
     match item_ref {
         ResolvedTraitImplItem::Parsed(_item) => todo!(),
         ResolvedTraitImplItem::Typed(item) => match item {

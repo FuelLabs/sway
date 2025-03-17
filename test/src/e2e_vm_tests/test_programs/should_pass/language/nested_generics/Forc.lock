@@ -1,0 +1,8 @@
+[[package]]
+name = "nested_generics"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-9C31758901D851EE"

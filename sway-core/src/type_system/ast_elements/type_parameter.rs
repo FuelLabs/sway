@@ -3,7 +3,7 @@ use crate::{
     engine_threading::*,
     has_changes,
     language::{ty, CallPath},
-    namespace::{TraitMap, TryInsertingTraitImplOnFailure},
+    namespace::TraitMap,
     semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::priv_prelude::*,
 };
@@ -91,14 +91,14 @@ impl OrdWithEngines for TypeParameter {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let TypeParameter {
             type_id: lti,
-            name: ln,
+            name: lname,
             trait_constraints: ltc,
             // these fields are not compared because they aren't relevant/a
             // reliable source of obj v. obj distinction
             trait_constraints_span: _,
             initial_type_id: _,
             is_from_parent: _,
-        } = self;
+        } = &self;
         let TypeParameter {
             type_id: rti,
             name: rn,
@@ -108,15 +108,13 @@ impl OrdWithEngines for TypeParameter {
             trait_constraints_span: _,
             initial_type_id: _,
             is_from_parent: _,
-        } = other;
-        ln.cmp(rn)
-            .then_with(|| {
-                ctx.engines()
-                    .te()
-                    .get(*lti)
-                    .cmp(&ctx.engines().te().get(*rti), ctx)
-            })
-            .then_with(|| ltc.cmp(rtc, ctx))
+        } = &other;
+        let type_engine = ctx.engines().te();
+        let ltype = type_engine.get(*lti);
+        let rtype = type_engine.get(*rti);
+        ltype
+            .cmp(&rtype, ctx)
+            .then_with(|| lname.cmp(rn).then_with(|| ltc.cmp(rtc, ctx)))
     }
 }
 
@@ -444,11 +442,10 @@ impl TypeParameter {
         if *is_from_parent {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
-            let sy = ctx.namespace().module(ctx.engines()).resolve_symbol(
-                handler,
-                ctx.engines(),
-                name,
-            )?;
+            let (sy, _) =
+                ctx.namespace()
+                    .current_module()
+                    .resolve_symbol(handler, ctx.engines(), name)?;
 
             match sy.expect_typed_ref() {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
@@ -528,13 +525,11 @@ impl TypeParameter {
                     // If more than one implementation exists we throw an error.
                     // We only try to do the type inference from trait with a single trait constraint.
                     if !type_id.is_concrete(engines, TreatNumericAs::Concrete) && trait_constraints.len() == 1 {
-                        let concrete_trait_type_ids : Vec<(TypeId, String)>= ctx
-                            .namespace_mut()
-                            .module(engines)
-                            .current_items()
-                            .implemented_traits
-                            .get_trait_constraints_are_satisfied_for_types(
-                                handler, *type_id, trait_constraints, engines,
+                        let concrete_trait_type_ids : Vec<(TypeId, String)>=
+                            TraitMap::get_trait_constraints_are_satisfied_for_types(
+                                ctx
+                            .namespace()
+                            .current_module(), handler, *type_id, trait_constraints, engines,
                             )?
                             .into_iter()
                             .filter_map(|t| {
@@ -561,26 +556,29 @@ impl TypeParameter {
                                 return Err(handler.emit_err(CompileError::MultipleImplsSatisfyingTraitForType{
                                     span:access_span.clone(),
                                     type_annotation: engines.help_out(type_id).to_string(),
-                                    trait_names: trait_constraints.iter().map(|t| engines.help_out(t).to_string()).collect(),
+                                    trait_names: trait_constraints.iter().map(|t| t.to_display_name(engines, ctx.namespace())).collect(),
                                     trait_types_and_names: concrete_trait_type_ids.iter().map(|t| (engines.help_out(t.0).to_string(), t.1.clone())).collect::<Vec<_>>()
                                 }));
                             }
-                            Ordering::Less => {}
+                            Ordering::Less => {
+                            }
                         }
                     }
                     // Check to see if the trait constraints are satisfied.
                     match TraitMap::check_if_trait_constraints_are_satisfied_for_type(
                             handler,
-                            ctx.namespace_mut().module_mut(engines),
+                            ctx.namespace_mut().current_module_mut(),
                             *type_id,
                             trait_constraints,
                             access_span,
                             engines,
-                            TryInsertingTraitImplOnFailure::Yes,
-                            code_block_first_pass.into(),
                         ) {
-                        Ok(res) => res,
-                        Err(_) => continue,
+                        Ok(res) => {
+                            res
+                        },
+                        Err(_) => {
+                            continue
+                        },
                     }
                 }
 
@@ -600,9 +598,14 @@ impl TypeParameter {
                             function_name,
                             access_span.clone(),
                         ) {
-                            Ok(res) => res,
-                            Err(_) => continue,
+                            Ok(res) => {
+                                res
+                            },
+                            Err(_) => {
+                                continue
+                            },
                         };
+
                     interface_item_refs.extend(trait_interface_item_refs);
                     item_refs.extend(trait_item_refs);
                     impld_item_refs.extend(trait_impld_item_refs);
@@ -651,6 +654,7 @@ fn handle_trait(
                         trait_name,
                         type_arguments,
                     );
+
                 interface_item_refs.extend(trait_interface_item_refs);
                 item_refs.extend(trait_item_refs);
                 impld_item_refs.extend(trait_impld_item_refs);
@@ -683,13 +687,17 @@ fn handle_trait(
                     .iter()
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
-                        let import_path = trait_decl
+                        // TODO: Replace with a call to a dedicated `CallPath` method
+                        //       once https://github.com/FuelLabs/sway/issues/6873 is fixed.
+                        let full_path = trait_decl
                             .call_path
-                            .to_import_path(ctx.engines(), ctx.namespace());
-                        if import_path == trait_decl.call_path {
-                            // If external library.
-                            import_path.to_string()
+                            .to_fullpath(ctx.engines(), ctx.namespace());
+                        if ctx.namespace().module_is_external(&full_path.prefixes) {
+                            full_path.to_string()
                         } else {
+                            let import_path = trait_decl
+                                .call_path
+                                .to_import_path(ctx.engines(), ctx.namespace());
                             format!("::{import_path}")
                         }
                     })
@@ -707,4 +715,21 @@ fn handle_trait(
 
         Ok((interface_item_refs, item_refs, impld_item_refs))
     })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConstGenericParameter {
+    pub name: Ident,
+    pub ty: TypeId,
+    pub is_from_parent: bool,
+    pub span: Span,
+}
+
+impl HashWithEngines for ConstGenericParameter {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let ConstGenericParameter { name, ty, .. } = self;
+        let type_engine = engines.te();
+        type_engine.get(*ty).hash(state, engines);
+        name.hash(state);
+    }
 }

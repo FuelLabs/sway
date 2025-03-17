@@ -1,0 +1,8 @@
+[[package]]
+name = "marker_trait_enum_implemented_for_all_enums"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-4A42601F35BBA179"

@@ -2,69 +2,97 @@ script;
 
 mod impls;
 use impls::*;
-use core::ops::Eq;
 
 struct S<T>
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     x: T,
-    y: T
+    y: T,
 }
 
 impl<T> TestInstance for S<T>
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     fn new() -> Self {
-        S { x: T::new(), y: T::new() }
+        S {
+            x: T::new(),
+            y: T::new(),
+        }
     }
     fn different() -> Self {
-        S { x: T::different(), y: T::different() }
+        S {
+            x: T::different(),
+            y: T::different(),
+        }
     }
 }
 
-impl<T> Eq for S<T>
-    where T: TestInstance + Eq
+impl<T> PartialEq for S<T>
+where
+    T: TestInstance + PartialEq,
 {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
+impl<T> Eq for S<T>
+where
+    T: TestInstance + Eq,
+{}
 
 struct EmbedsReferences<T>
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     x: & & &T,
-    y: & &T
+    y: & &T,
 }
 
-impl<T> Eq for & &T
-    where T: TestInstance + Eq
+impl<T> PartialEq for & &T
+where
+    T: TestInstance + PartialEq,
 {
     fn eq(self, other: Self) -> bool {
         **self == **other
     }
 }
+impl<T> Eq for & &T
+where
+    T: TestInstance + Eq,
+{}
 
-impl<T> Eq for & & &T
-    where T: TestInstance + Eq
+impl<T> PartialEq for & & &T
+where
+    T: TestInstance + PartialEq,
 {
     fn eq(self, other: Self) -> bool {
         ***self == ***other
     }
 }
+impl<T> Eq for & & &T
+where
+    T: TestInstance + Eq,
+{}
 
 struct EmbedsReferencesMut<T>
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     x: &mut &mut &mut T,
-    y: &mut &mut T
+    y: &mut &mut T,
 }
 
 #[inline(always)]
 fn dereference_struct<T>()
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
-    let mut s = S { x: T::new(), y: T::different() };
+    let mut s = S {
+        x: T::new(),
+        y: T::different(),
+    };
 
     let r_s = &s;
     let r_r_s = &r_s;
@@ -128,20 +156,34 @@ fn dereference_struct<T>()
 
 #[inline(never)]
 fn dereference_struct_not_inlined<T>()
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     dereference_struct::<T>()
 }
 
 #[inline(always)]
 fn dereference_struct_of_refs<T>()
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
-    let mut s1 = S { x: T::new(), y: T::different() };
-    let mut s2 = S { x: T::new(), y: T::different() };
+    let mut s1 = S {
+        x: T::new(),
+        y: T::different(),
+    };
+    let mut s2 = S {
+        x: T::new(),
+        y: T::different(),
+    };
 
-    let embed = EmbedsReferences { x: & & &s1, y: & &s2 };
-    let mut embed_mut = EmbedsReferencesMut { x: &mut &mut &mut s1, y: &mut &mut s2 };
+    let embed = EmbedsReferences {
+        x: & & &s1,
+        y: & &s2,
+    };
+    let mut embed_mut = EmbedsReferencesMut {
+        x: &mut &mut &mut s1,
+        y: &mut &mut s2,
+    };
 
     let r_embed = &embed;
     let r_r_embed = &r_embed;
@@ -217,12 +259,18 @@ fn dereference_struct_of_refs<T>()
     assert(r_r_r_embed.y.x == r_mut_r_mut_r_mut_embed_mut.y.x);
     assert(r_r_r_embed.y.y == r_mut_r_mut_r_mut_embed_mut.y.y);
 
-    let r = & & & & &EmbedsReferences { x: & & &T::new(), y: & &T::different() };
+    let r = & & & & &EmbedsReferences {
+        x: & & &T::new(),
+        y: & &T::different(),
+    };
 
     assert(r.x == & & &T::new());
     assert(r.y == & &T::different());
 
-    let r = & & & & &EmbedsReferencesMut { x: &mut &mut &mut T::new(), y: &mut &mut T::different() };
+    let r = & & & & &EmbedsReferencesMut {
+        x: &mut &mut &mut T::new(),
+        y: &mut &mut T::different(),
+    };
 
     assert(r.x == &mut &mut &mut T::new());
     assert(r.y == &mut &mut T::different());
@@ -230,7 +278,8 @@ fn dereference_struct_of_refs<T>()
 
 #[inline(never)]
 fn dereference_struct_of_refs_not_inlined<T>()
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     dereference_struct_of_refs::<T>()
 }
@@ -244,8 +293,8 @@ fn test_all_inlined() {
     dereference_struct::<u32>();
     dereference_struct::<u64>();
     dereference_struct::<u256>();
-    dereference_struct::<[u64;2]>();
-    dereference_struct::<[u64;0]>();
+    dereference_struct::<[u64; 2]>();
+    dereference_struct::<[u64; 0]>();
     dereference_struct::<Struct>();
     dereference_struct::<EmptyStruct>();
     dereference_struct::<str>();
@@ -263,8 +312,8 @@ fn test_all_inlined() {
     dereference_struct_of_refs::<u32>();
     dereference_struct_of_refs::<u64>();
     dereference_struct_of_refs::<u256>();
-    dereference_struct_of_refs::<[u64;2]>();
-    dereference_struct_of_refs::<[u64;0]>();
+    dereference_struct_of_refs::<[u64; 2]>();
+    dereference_struct_of_refs::<[u64; 0]>();
     dereference_struct_of_refs::<Struct>();
     dereference_struct_of_refs::<EmptyStruct>();
     dereference_struct_of_refs::<str>();
@@ -285,8 +334,8 @@ fn test_not_inlined() {
     dereference_struct_not_inlined::<u32>();
     dereference_struct_not_inlined::<u64>();
     dereference_struct_not_inlined::<u256>();
-    dereference_struct_not_inlined::<[u64;2]>();
-    dereference_struct_not_inlined::<[u64;0]>();
+    dereference_struct_not_inlined::<[u64; 2]>();
+    dereference_struct_not_inlined::<[u64; 0]>();
     dereference_struct_not_inlined::<Struct>();
     dereference_struct_not_inlined::<EmptyStruct>();
     dereference_struct_not_inlined::<str>();
@@ -304,8 +353,8 @@ fn test_not_inlined() {
     dereference_struct_of_refs_not_inlined::<u32>();
     dereference_struct_of_refs_not_inlined::<u64>();
     dereference_struct_of_refs_not_inlined::<u256>();
-    dereference_struct_of_refs_not_inlined::<[u64;2]>();
-    dereference_struct_of_refs_not_inlined::<[u64;0]>();
+    dereference_struct_of_refs_not_inlined::<[u64; 2]>();
+    dereference_struct_of_refs_not_inlined::<[u64; 0]>();
     dereference_struct_of_refs_not_inlined::<Struct>();
     dereference_struct_of_refs_not_inlined::<EmptyStruct>();
     dereference_struct_of_refs_not_inlined::<str>();

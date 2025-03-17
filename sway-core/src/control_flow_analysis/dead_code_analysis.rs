@@ -7,7 +7,7 @@ use crate::{
             self, ConfigurableDecl, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl,
             TraitDecl, TyAstNode, TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl,
         },
-        CallPath, Visibility,
+        CallPath, CallPathType, Visibility,
     },
     transform::{self, AttributesMap},
     type_system::TypeInfo,
@@ -140,7 +140,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(true, |count| count <= 1)
+                        .is_none_or(|count| count <= 1)
                 }
                 ControlFlowGraphNode::FunctionParameter { .. } => {
                     // Consider variables declarations dead when count is not greater than 1
@@ -148,7 +148,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(true, |count| count <= 1)
+                        .is_none_or(|count| count <= 1)
                 }
                 _ => false,
             }
@@ -174,7 +174,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         connections_count
                             .get(n)
                             .cloned()
-                            .map_or(false, |count| count > 1)
+                            .is_some_and(|count| count > 1)
                     }
                 }
                 ControlFlowGraphNode::FunctionParameter {
@@ -192,7 +192,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         connections_count
                             .get(n)
                             .cloned()
-                            .map_or(true, |count| count > 1)
+                            .is_none_or(|count| count > 1)
                     }
                 }
                 ControlFlowGraphNode::ProgramNode {
@@ -216,7 +216,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(false, |count| count > 0)
+                        .is_some_and(|count| count > 0)
                 }
                 _ => false,
             }
@@ -603,6 +603,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 Ok(leaves.to_vec())
             }
         }
+        ty::TyDecl::ConstGenericDecl(_) => {
+            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860");
+        }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
             connect_typed_fn_decl(
@@ -857,7 +860,7 @@ fn connect_trait_declaration(
         CallPath {
             prefixes: vec![],
             suffix: decl.name.clone(),
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,
@@ -881,7 +884,7 @@ fn connect_abi_declaration(
         CallPath {
             prefixes: vec![],
             suffix: decl.name.clone(),
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,
@@ -1514,6 +1517,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             Ok(vec![node])
         }
+        ConstGenericExpression { decl, .. } => {
+            let Some(node) = graph.namespace.get_const_generic(decl).cloned() else {
+                return Ok(leaves.to_vec());
+            };
+
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+
+            Ok(vec![node])
+        }
         EnumInstantiation {
             enum_ref,
             variant_name,
@@ -1791,7 +1805,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             address.span.clone(),
             options,
         ),
-        Array {
+        ArrayExplicit {
             elem_type: _,
             contents,
         } => {
@@ -1817,6 +1831,35 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
 
             Ok(last)
+        }
+        ArrayRepeat {
+            elem_type: _,
+            value,
+            length,
+        } => {
+            let value_idx = connect_expression(
+                engines,
+                &value.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                value.span.clone(),
+                options,
+            )?;
+            let length_idx = connect_expression(
+                engines,
+                &length.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                length.span.clone(),
+                options,
+            )?;
+            Ok([value_idx, length_idx].concat())
         }
         ArrayIndex { prefix, index } => {
             let prefix_idx = connect_expression(
@@ -2522,6 +2565,9 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             }
             ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_configurable(decl_id).attributes.clone())
+            }
+            ty::TyDecl::ConstGenericDecl(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_type(decl_id).attributes.clone())

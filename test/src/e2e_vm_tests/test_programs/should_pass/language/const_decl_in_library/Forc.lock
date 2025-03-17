@@ -1,8 +1,8 @@
 [[package]]
-name = 'const_decl_in_library'
-source = 'member'
-dependencies = ['core']
+name = "const_decl_in_library"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-1F4E24303F7BFF73'
+name = "std"
+source = "path+from-root-1F4E24303F7BFF73"

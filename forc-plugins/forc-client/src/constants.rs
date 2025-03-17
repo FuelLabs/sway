@@ -1,12 +1,15 @@
 /// Default to localhost to favour the common case of testing.
 pub const NODE_URL: &str = sway_utils::constants::DEFAULT_NODE_URL;
-pub const TESTNET_ENDPOINT_URL: &str = "https://testnet.fuel.network";
+
 pub const MAINNET_ENDPOINT_URL: &str = "https://mainnet.fuel.network";
+pub const TESTNET_ENDPOINT_URL: &str = "https://testnet.fuel.network";
+pub const DEVNET_ENDPOINT_URL: &str = "https://devnet.fuel.network";
 
 pub const TESTNET_FAUCET_URL: &str = "https://faucet-testnet.fuel.network";
+pub const DEVNET_FAUCET_URL: &str = "https://faucet-devnet.fuel.network";
 
-pub const TESTNET_EXPLORER_URL: &str = "https://app-testnet.fuel.network";
 pub const MAINNET_EXPLORER_URL: &str = "https://app.fuel.network";
+pub const TESTNET_EXPLORER_URL: &str = "https://app-testnet.fuel.network";
 
 /// Default PrivateKey to sign transactions submitted to local node.
 pub const DEFAULT_PRIVATE_KEY: &str =

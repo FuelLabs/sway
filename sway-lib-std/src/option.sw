@@ -77,6 +77,8 @@ library;
 use ::logging::log;
 use ::result::Result;
 use ::revert::revert;
+use ::codec::*;
+use ::ops::*;
 
 // ANCHOR: docs_option
 /// A type that represents an optional value, either `Some(val)` or `None`.
@@ -88,9 +90,9 @@ pub enum Option<T> {
 }
 // ANCHOR_END: docs_option
 
-impl<T> core::ops::Eq for Option<T>
+impl<T> PartialEq for Option<T>
 where
-    T: Eq,
+    T: PartialEq,
 {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -100,6 +102,10 @@ where
         }
     }
 }
+impl<T> Eq for Option<T>
+where
+    T: Eq,
+{}
 
 // Type implementation
 //

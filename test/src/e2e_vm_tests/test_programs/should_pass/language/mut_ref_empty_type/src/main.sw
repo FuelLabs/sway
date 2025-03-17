@@ -4,42 +4,47 @@ pub trait New {
     fn new() -> Self;
 }
 
-impl New for [u64;0] {
+impl New for [u64; 0] {
     fn new() -> Self {
         []
     }
 }
 
-impl Eq for [u64;0] {
-     fn eq(self, other: Self) -> bool {
+impl PartialEq for [u64; 0] {
+    fn eq(self, other: Self) -> bool {
         true
-     }
+    }
 }
+impl Eq for [u64; 0] {}
 
-struct EmptyStruct { }
+struct EmptyStruct {}
 
 impl New for EmptyStruct {
     fn new() -> Self {
-        EmptyStruct { }
+        EmptyStruct {}
     }
 }
 
-impl Eq for EmptyStruct {
-     fn eq(self, other: Self) -> bool {
+impl PartialEq for EmptyStruct {
+    fn eq(self, other: Self) -> bool {
         true
-     }
+    }
 }
+impl Eq for EmptyStruct {}
 
 #[inline(always)]
 fn reference_zero_sized_local_var_and_value<T>()
-    where T: New + Eq
+where
+    T: New + Eq,
 {
     assert(__size_of::<T>() == 0);
 
     let mut x1 = T::new();
     let x2 = T::new();
 
-    let x_ptr1 = asm(r: &x1) { r: raw_ptr };
+    let x_ptr1 = asm(r: &x1) {
+        r: raw_ptr
+    };
     let res1 = x_ptr1.read::<T>();
 
     let x_ptr2 = __addr_of(x2);
@@ -49,16 +54,17 @@ fn reference_zero_sized_local_var_and_value<T>()
 
 #[inline(never)]
 fn reference_zero_sized_local_var_and_value_not_inlined<T>()
-    where T: New + Eq
+where
+    T: New + Eq,
 {
     reference_zero_sized_local_var_and_value::<T>()
 }
 
 fn main() -> u64 {
     reference_zero_sized_local_var_and_value_not_inlined::<EmptyStruct>();
-    reference_zero_sized_local_var_and_value_not_inlined::<[u64;0]>();
+    reference_zero_sized_local_var_and_value_not_inlined::<[u64; 0]>();
     reference_zero_sized_local_var_and_value::<EmptyStruct>();
-    reference_zero_sized_local_var_and_value::<[u64;0]>();
+    reference_zero_sized_local_var_and_value::<[u64; 0]>();
 
     42
 }

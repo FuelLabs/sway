@@ -16,7 +16,6 @@ use sway_types::{ident::Ident, span::Span};
 // -------------------------------------------------------------------------------------------------
 /// Take a list of nodes and reorder them so that they may be semantically analysed without any
 /// dependencies breaking.
-
 pub(crate) fn order_ast_nodes_by_dependency(
     handler: &Handler,
     engines: &Engines,
@@ -450,6 +449,9 @@ impl Dependencies {
                 let TypeAliasDeclaration { ty, .. } = &*engines.pe().get_type_alias(decl_id);
                 self.gather_from_type_argument(engines, ty)
             }
+            Declaration::ConstGenericDeclaration(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 
@@ -582,10 +584,13 @@ impl Dependencies {
                     deps.gather_from_match_branch(engines, branch)
                 }),
             ExpressionKind::CodeBlock(contents) => self.gather_from_block(engines, contents),
-            ExpressionKind::Array(array_expression) => self
-                .gather_from_iter(array_expression.contents.iter(), |deps, expr| {
+            ExpressionKind::Array(ArrayExpression::Explicit { contents, .. }) => self
+                .gather_from_iter(contents.iter(), |deps, expr| {
                     deps.gather_from_expr(engines, expr)
                 }),
+            ExpressionKind::Array(ArrayExpression::Repeat { value, length }) => self
+                .gather_from_expr(engines, value)
+                .gather_from_expr(engines, length),
             ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => self
                 .gather_from_expr(engines, prefix)
                 .gather_from_expr(engines, index),
@@ -984,6 +989,9 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
             } else {
                 None
             }
+        }
+        Declaration::ConstGenericDeclaration(_) => {
+            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
         }
 
         // These don't have declaration dependencies.

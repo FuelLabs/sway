@@ -71,9 +71,6 @@ impl ty::TyStorageDecl {
                                                 .key_expression
                                                 .is_none(),
                                             key: format!("0x{:x}", s.key()),
-                                            experimental_storage_domains: context
-                                                .experimental
-                                                .storage_domains,
                                         },
                                 })
                             }
@@ -119,7 +116,7 @@ impl ty::TyStorageField {
                     .chain(vec![self.name.as_str().to_string()])
                     .collect(),
                 key,
-                &constant.ty,
+                &constant.get_content(context).ty,
             )
         })
     }
@@ -141,7 +138,7 @@ impl ty::TyStorageField {
                 None,
                 key_expression,
             )?;
-            if let ConstantValue::B256(key) = const_key.value {
+            if let ConstantValue::B256(key) = const_key.get_content(context).value.clone() {
                 Ok(Some(key))
             } else {
                 Err(CompileError::Internal(

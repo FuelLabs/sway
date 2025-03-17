@@ -8,14 +8,13 @@ use crate::{
         ty::{self, TyDecl, TyExpression, TyFunctionSig},
         *,
     },
-    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
 use itertools::izip;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -36,6 +35,7 @@ pub(crate) fn type_check_method_application(
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
+    let coercion_check = UnifyCheck::coercion(engines);
 
     // type check the function arguments (1st pass)
     // Some arguments may fail on this first pass because they may require the type_annotation to the parameter type.
@@ -77,31 +77,71 @@ pub(crate) fn type_check_method_application(
                     true
                 }
             });
-            handler.append(arg_handler);
+            handler.append(arg_handler.clone());
         }
 
-        args_opt_buf.push_back((arg_opt, needs_second_pass));
+        args_opt_buf.push_back((arg_opt, arg_handler, needs_second_pass));
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let (original_decl_ref, call_path_typeid) = resolve_method_name(
+    let method_result = resolve_method_name(
         handler,
         ctx.by_ref(),
         &method_name_binding,
         args_opt_buf
             .iter()
-            .map(|(arg, _has_errors)| match arg {
+            .map(|(arg, _, _has_errors)| match arg {
                 Some(arg) => arg.return_type,
                 None => type_engine.new_unknown(),
             })
             .collect(),
-    )?;
+    );
+
+    // In case resolve_method_name fails throw argument errors.
+    let (original_decl_ref, call_path_typeid) = if let Err(e) = method_result {
+        for (_, arg_handler, _) in args_opt_buf.iter() {
+            handler.append(arg_handler.clone());
+        }
+        return Err(e);
+    } else {
+        method_result.unwrap()
+    };
+
+    // Prepare const generics materialization
+    let mut const_generics = BTreeMap::new();
+
+    let original_decl = engines.de().get(original_decl_ref.id());
+    if !original_decl.const_generic_parameters.is_empty() {
+        let a = engines.te().get(
+            engines.de().get(original_decl_ref.id()).parameters[0]
+                .type_argument
+                .type_id,
+        );
+        let b = engines
+            .te()
+            .get(args_opt_buf[0].0.as_ref().unwrap().return_type);
+        if let (
+            TypeInfo::Array(_, Length::AmbiguousVariableExpression { ident }),
+            TypeInfo::Array(_, Length::Literal { val, .. }),
+        ) = (&*a, &*b)
+        {
+            const_generics.insert(
+                ident.as_str().to_string(),
+                TyExpression {
+                    expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                    return_type: engines.te().id_of_u64(),
+                    span: Span::dummy(),
+                },
+            );
+        }
+    }
 
     let mut fn_ref = monomorphize_method(
         handler,
         ctx.by_ref(),
         original_decl_ref.clone(),
         method_name_binding.type_arguments.to_vec_mut(),
+        const_generics,
     )?;
 
     let mut method = (*decl_engine.get_function(&fn_ref)).clone();
@@ -120,34 +160,49 @@ pub(crate) fn type_check_method_application(
     // type check the function arguments (2nd pass)
     let mut args_buf = VecDeque::new();
     for (arg, index, arg_opt) in izip!(arguments.iter(), 0.., args_opt_buf.iter().cloned()) {
-        if let (Some(arg), false) = arg_opt {
-            args_buf.push_back(arg);
+        let param_index = if method.is_contract_call {
+            if index == 0 {
+                if let (Some(arg), _, _) = arg_opt {
+                    args_buf.push_back(arg);
+                }
+                continue;
+            }
+            index - 1 //contract call methods don't have self parameter.
         } else {
-            // We type check the argument expression again this time throwing out the error.
-            let param_index = if method.is_contract_call {
-                index - 1 //contract call methods don't have self parameter.
-            } else {
-                index
-            };
+            index
+        };
 
-            let ctx = if let Some(param) = method.parameters.get(param_index) {
-                // We now try to type check it again, this time with the type annotation.
-                ctx.by_ref()
-                    .with_help_text(
-                        "Function application argument type must match function parameter type.",
-                    )
-                    .with_type_annotation(param.type_argument.type_id)
+        if let (Some(arg), _, false) = arg_opt {
+            if let Some(param) = method.parameters.get(param_index) {
+                // If argument type is compcoerces to resolved method parameter type skip second type_check.
+                if coercion_check.check(arg.return_type, param.type_argument.type_id) {
+                    args_buf.push_back(arg);
+                    continue;
+                }
             } else {
-                ctx.by_ref()
-                    .with_help_text("")
-                    .with_type_annotation(type_engine.new_unknown())
-            };
-
-            args_buf.push_back(
-                ty::TyExpression::type_check(handler, ctx, arg)
-                    .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
-            );
+                args_buf.push_back(arg);
+                continue;
+            }
         }
+
+        // We type check the argument expression again this time throwing out the error.
+        let ctx = if let Some(param) = method.parameters.get(param_index) {
+            // We now try to type check it again, this time with the type annotation.
+            ctx.by_ref()
+                .with_help_text(
+                    "Function application argument type must match function parameter type.",
+                )
+                .with_type_annotation(param.type_argument.type_id)
+        } else {
+            ctx.by_ref()
+                .with_help_text("")
+                .with_type_annotation(type_engine.new_unknown())
+        };
+
+        args_buf.push_back(
+            ty::TyExpression::type_check(handler, ctx, arg)
+                .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
+        );
     }
 
     // check the method visibility
@@ -347,19 +402,19 @@ pub(crate) fn type_check_method_application(
             CallPath {
                 prefixes,
                 suffix: method_name,
-                is_absolute: call_path_binding.inner.is_absolute,
+                callpath_type: call_path_binding.inner.callpath_type,
             }
         }
         MethodName::FromModule { method_name } => CallPath {
             prefixes: vec![],
             suffix: method_name,
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
         MethodName::FromTrait { call_path } => call_path,
         MethodName::FromQualifiedPathRoot { method_name, .. } => CallPath {
             prefixes: vec![],
             suffix: method_name,
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
     };
 
@@ -452,7 +507,7 @@ pub(crate) fn type_check_method_application(
                             inner: CallPath {
                                 prefixes: vec![],
                                 suffix: Ident::new_no_span("contract_call".into()),
-                                is_absolute: false,
+                                callpath_type: CallPathType::Ambiguous,
                             },
                             type_arguments: TypeArgs::Regular(vec![
                                 TypeArgument {
@@ -528,8 +583,7 @@ pub(crate) fn type_check_method_application(
             .type_id
             .extract_inner_types(engines, IncludeSelf::Yes)
         {
-            let handler = Handler::default();
-            ctx.impls_import(&handler, engines, type_id);
+            ctx.impls_import(engines, type_id);
         }
 
         let args = old_arguments.iter().skip(1).cloned().collect();
@@ -726,7 +780,7 @@ pub(crate) fn type_check_method_application(
     let fn_app = ty::TyExpressionVariant::FunctionApplication {
         call_path: call_path.clone(),
         arguments,
-        fn_ref,
+        fn_ref: fn_ref.clone(),
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
         call_path_typeid: Some(call_path_typeid),
@@ -805,12 +859,13 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
             // find the module that the symbol is in
-            let type_info_prefix = ctx
-                .namespace()
-                .prepend_module_path(&call_path_binding.inner.prefixes);
+            let type_info_prefix = call_path_binding
+                .inner
+                .to_fullpath(engines, ctx.namespace())
+                .prefixes
+                .clone();
             ctx.namespace()
-                .root_module()
-                .lookup_submodule(handler, engines, &type_info_prefix)?;
+                .require_module_from_absolute_path(handler, &type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -821,26 +876,33 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 None,
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
         }
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
-            let module_path = if !call_path.is_absolute {
-                ctx.namespace().prepend_module_path(&call_path.prefixes)
-            } else {
-                let mut module_path = call_path.prefixes.clone();
-                if let (Some(root_mod), root_name) = (
-                    module_path.first().cloned(),
-                    ctx.namespace().root_module().name().clone(),
-                ) {
-                    if root_mod.as_str() == root_name.as_str() {
-                        module_path.remove(0);
+            let module_path = match call_path.callpath_type {
+                CallPathType::RelativeToPackageRoot => {
+                    let mut path = vec![ctx.namespace().current_package_name().clone()];
+                    for ident in call_path.prefixes.iter() {
+                        path.push(ident.clone())
+                    }
+                    path
+                }
+                CallPathType::Full => call_path.prefixes.clone(),
+                CallPathType::Ambiguous => {
+                    if ctx
+                        .namespace()
+                        .current_module()
+                        .submodules()
+                        .contains_key(call_path.prefixes.first().unwrap().as_str())
+                    {
+                        ctx.namespace().prepend_module_path(&call_path.prefixes)
+                    } else {
+                        call_path.prefixes.clone()
                     }
                 }
-                module_path
             };
 
             // find the type of the first argument
@@ -858,14 +920,13 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 None,
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
         }
         MethodName::FromModule { method_name } => {
             // find the module that the symbol is in
-            let module_path = ctx.namespace().prepend_module_path(vec![]);
+            let module_path = ctx.namespace().current_mod_path().clone();
 
             // find the type of the first argument
             let type_id = arguments_types
@@ -882,7 +943,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 None,
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -896,7 +956,7 @@ pub(crate) fn resolve_method_name(
             let type_id = ty.type_id;
 
             // find the module that the symbol is in
-            let module_path = ctx.namespace().prepend_module_path(vec![]);
+            let module_path = ctx.namespace().current_mod_path().clone();
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -907,7 +967,6 @@ pub(crate) fn resolve_method_name(
                 ctx.type_annotation(),
                 &arguments_types,
                 Some(*as_trait),
-                TryInsertingTraitImplOnFailure::Yes,
             )?;
 
             (decl_ref, type_id)
@@ -922,6 +981,7 @@ pub(crate) fn monomorphize_method(
     mut ctx: TypeCheckContext,
     decl_ref: DeclRefFunction,
     type_arguments: &mut [TypeArgument],
+    const_generics: BTreeMap<String, TyExpression>,
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();
@@ -932,6 +992,7 @@ pub(crate) fn monomorphize_method(
         handler,
         &mut func_decl,
         type_arguments,
+        const_generics,
         EnforceTypeArguments::No,
         &decl_ref.span(),
     )?;

@@ -208,7 +208,7 @@ impl Huge {
     }
 }
 
-impl core::ops::Eq for Huge {
+impl PartialEq for Huge {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Huge::a1, Huge::a1) => true,
@@ -219,7 +219,6 @@ impl core::ops::Eq for Huge {
             (Huge::a6, Huge::a6) => true,
             (Huge::a7, Huge::a7) => true,
             (Huge::a8, Huge::a8) => true,
-            //
             (Huge::b1, Huge::b1) => true,
             (Huge::b2, Huge::b2) => true,
             (Huge::b3, Huge::b3) => true,
@@ -228,7 +227,6 @@ impl core::ops::Eq for Huge {
             (Huge::b6, Huge::b6) => true,
             (Huge::b7, Huge::b7) => true,
             (Huge::b8, Huge::b8) => true,
-            //
             (Huge::c1, Huge::c1) => true,
             (Huge::c2, Huge::c2) => true,
             (Huge::c3, Huge::c3) => true,
@@ -237,7 +235,6 @@ impl core::ops::Eq for Huge {
             (Huge::c6, Huge::c6) => true,
             (Huge::c7, Huge::c7) => true,
             (Huge::c8, Huge::c8) => true,
-            //
             (Huge::d1, Huge::d1) => true,
             (Huge::d2, Huge::d2) => true,
             (Huge::d3, Huge::d3) => true,
@@ -246,7 +243,6 @@ impl core::ops::Eq for Huge {
             (Huge::d6, Huge::d6) => true,
             (Huge::d7, Huge::d7) => true,
             (Huge::d8, Huge::d8) => true,
-            //
             (Huge::e1, Huge::e1) => true,
             (Huge::e2, Huge::e2) => true,
             (Huge::e3, Huge::e3) => true,
@@ -255,7 +251,6 @@ impl core::ops::Eq for Huge {
             (Huge::e6, Huge::e6) => true,
             (Huge::e7, Huge::e7) => true,
             (Huge::e8, Huge::e8) => true,
-            //
             (Huge::f1, Huge::f1) => true,
             (Huge::f2, Huge::f2) => true,
             (Huge::f3, Huge::f3) => true,
@@ -264,7 +259,6 @@ impl core::ops::Eq for Huge {
             (Huge::f6, Huge::f6) => true,
             (Huge::f7, Huge::f7) => true,
             (Huge::f8, Huge::f8) => true,
-            //
             (Huge::g1, Huge::g1) => true,
             (Huge::g2, Huge::g2) => true,
             (Huge::g3, Huge::g3) => true,
@@ -273,7 +267,6 @@ impl core::ops::Eq for Huge {
             (Huge::g6, Huge::g6) => true,
             (Huge::g7, Huge::g7) => true,
             (Huge::g8, Huge::g8) => true,
-            //
             (Huge::h1, Huge::h1) => true,
             (Huge::h2, Huge::h2) => true,
             (Huge::h3, Huge::h3) => true,
@@ -286,3 +279,4 @@ impl core::ops::Eq for Huge {
         }
     }
 }
+impl Eq for Huge {}

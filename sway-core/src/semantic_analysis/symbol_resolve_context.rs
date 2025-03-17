@@ -104,13 +104,15 @@ impl<'a> SymbolResolveContext<'a> {
     /// Returns the result of the given `with_submod_ctx` function.
     pub fn enter_submodule<T>(
         self,
+        handler: &Handler,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
         with_submod_ctx: impl FnOnce(SymbolResolveContext) -> T,
-    ) -> T {
+    ) -> Result<T, ErrorEmitted> {
         let engines = self.engines;
         self.symbol_collection_ctx.enter_submodule(
+            handler,
             engines,
             mod_name,
             visibility,
@@ -187,8 +189,8 @@ impl<'a> SymbolResolveContext<'a> {
         resolve_call_path(
             handler,
             self.engines(),
-            self.namespace().root(),
-            &self.namespace().mod_path,
+            self.namespace(),
+            &self.namespace().current_mod_path,
             call_path,
             self.self_type(),
             VisibilityCheck::Yes,

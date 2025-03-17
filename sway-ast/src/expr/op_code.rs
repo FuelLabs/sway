@@ -123,6 +123,14 @@ macro_rules! define_op_codes (
                 }
             }
 
+            pub fn op_code_as_str(&self) -> &'static str {
+                match self {
+                    $(Instruction::$op_name { .. } => {
+                        $s
+                    },)*
+                }
+            }
+
             #[allow(clippy::vec_init_then_push)]
             pub fn register_arg_idents(&self) -> Vec<Ident> {
                 match self {
@@ -332,6 +340,7 @@ define_op_codes!(
     (ECOP, ECOPOpcode, "ecop", (dst_addr: reg, curve: reg, operation: reg, src_addr: reg)),
     (EPAR, EPAROpcode, "epar", (ret: reg, curve: reg, groups_of_points: reg, addr: reg)),
     /* Other Instructions */
+    (Ecal, EcalOpcode, "ecal", (reg_a: reg, reg_b: reg, reg_c: reg, reg_d: reg)),
     (Flag, FlagOpcode, "flag", (value: reg)),
     (Gm, GmOpcode, "gm", (ret: reg, op: imm)),
     (

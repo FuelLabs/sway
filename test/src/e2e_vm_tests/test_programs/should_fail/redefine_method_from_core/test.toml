@@ -3,7 +3,7 @@ category = "fail"
 #check: $()Trait is already implemented for type
 #nextln: main.sw
 #check: $()impl Shift for u64 {
-#check: $()Trait "core::ops::Shift" is already implemented for type "u64".
+#check: $()Trait "std::ops::Shift" is already implemented for type "u64".
 #check: ops.sw
 #check: $()impl Shift for u64 {
 #check: $()This is the already existing implementation of "Shift" for "u64".

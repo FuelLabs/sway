@@ -142,13 +142,15 @@ macro_rules! forc_result_bail {
     };
 }
 
-#[cfg(feature = "fuel-tx")]
+#[cfg(feature = "tx")]
 pub mod tx_utils {
 
     use anyhow::Result;
     use clap::Args;
+    use fuels_core::{codec::ABIDecoder, types::param_types::ParamType};
     use serde::{Deserialize, Serialize};
-    use sway_core::fuel_prelude::fuel_tx;
+    use std::collections::HashMap;
+    use sway_core::{asm_generation::ProgramABI, fuel_prelude::fuel_tx};
 
     /// Added salt used to derive the contract ID.
     #[derive(Debug, Args, Default, Deserialize, Serialize)]
@@ -197,6 +199,51 @@ pub mod tx_utils {
         } else {
             Ok(serde_json::to_string(&receipt_to_json_array)?)
         }
+    }
+
+    /// A `LogData` decoded into a human readable format with its type information.
+    pub struct DecodedLog {
+        pub value: String,
+    }
+
+    pub fn decode_log_data(
+        log_id: &str,
+        log_data: &[u8],
+        program_abi: &ProgramABI,
+    ) -> anyhow::Result<DecodedLog> {
+        let program_abi = match program_abi {
+            ProgramABI::Fuel(fuel_abi) => Some(
+                fuel_abi_types::abi::unified_program::UnifiedProgramABI::from_counterpart(
+                    fuel_abi,
+                )?,
+            ),
+            _ => None,
+        }
+        .ok_or_else(|| anyhow::anyhow!("only fuelvm is supported for log decoding"))?;
+        // Create type lookup (id, TypeDeclaration)
+        let type_lookup = program_abi
+            .types
+            .iter()
+            .map(|decl| (decl.type_id, decl.clone()))
+            .collect::<HashMap<_, _>>();
+
+        let logged_type_lookup: HashMap<_, _> = program_abi
+            .logged_types
+            .iter()
+            .flatten()
+            .map(|logged_type| (logged_type.log_id.as_str(), logged_type.application.clone()))
+            .collect();
+
+        let type_application = logged_type_lookup
+            .get(&log_id)
+            .ok_or_else(|| anyhow::anyhow!("log id is missing"))?;
+
+        let abi_decoder = ABIDecoder::default();
+        let param_type = ParamType::try_from_type_application(type_application, &type_lookup)?;
+        let decoded_str = abi_decoder.decode_as_debug_str(&param_type, log_data)?;
+        let decoded_log = DecodedLog { value: decoded_str };
+
+        Ok(decoded_log)
     }
 }
 
@@ -448,7 +495,7 @@ pub fn create_diagnostics_renderer() -> Renderer {
         )
 }
 
-fn format_diagnostic(diagnostic: &Diagnostic) {
+pub fn format_diagnostic(diagnostic: &Diagnostic) {
     /// Temporary switch for testing the feature.
     /// Keep it false until we decide to fully support the diagnostic codes.
     const SHOW_DIAGNOSTIC_CODE: bool = false;
@@ -500,6 +547,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     let renderer = create_diagnostics_renderer();
     match diagnostic.level() {
+        Level::Info => tracing::info!("{}\n____\n", renderer.render(snippet)),
         Level::Warning => tracing::warn!("{}\n____\n", renderer.render(snippet)),
         Level::Error => tracing::error!("{}\n____\n", renderer.render(snippet)),
     }
@@ -561,6 +609,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     fn diagnostic_level_to_annotation_type(level: Level) -> AnnotationType {
         match level {
+            Level::Info => AnnotationType::Info,
             Level::Warning => AnnotationType::Warning,
             Level::Error => AnnotationType::Error,
         }

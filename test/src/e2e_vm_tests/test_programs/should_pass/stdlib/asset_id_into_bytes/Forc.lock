@@ -1,0 +1,8 @@
+[[package]]
+name = "asset_id_into_bytes"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-F9E4FAEF7F341E13"

@@ -218,6 +218,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             }
             Ok(Some(entry_node))
         }
+        ty::TyDecl::ConstGenericDecl(_) => {
+            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+        }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
@@ -287,7 +290,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
 ///
 /// The trait node itself has already been added (as `entry_node`), so we just need to insert that
 /// node index into the namespace for the trait.
-
+///
 /// When connecting a function declaration, we are inserting a new root node into the graph that
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.

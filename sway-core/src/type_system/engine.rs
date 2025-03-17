@@ -24,7 +24,7 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, span::Span, Ident, ProgramId, SourceId, Spanned};
 
-use super::unify::unifier::UnifyKind;
+use super::{ast_elements::length::NumericLength, unify::unifier::UnifyKind};
 
 /// To be able to garbage-collect [TypeInfo]s from the [TypeEngine]
 /// we need to track which types need to be GCed when a particular
@@ -216,7 +216,7 @@ macro_rules! type_engine_shareable_built_in_types {
     // The actual recursion step that generates the `id_of_<type>` functions.
     (@step $idx:expr, ($ty_name:ident, $ti:expr, $ti_pat:pat), $(($tail_ty_name:ident, $tail_ti:expr, $tail_ti_pat:pat),)*) => {
         paste::paste! {
-            pub(crate) const fn [<id_of_ $ty_name>](&self) -> TypeId {
+            pub const fn [<id_of_ $ty_name>](&self) -> TypeId {
                 TypeId::new($idx)
             }
         }
@@ -393,6 +393,24 @@ impl TypeEngine {
         )
     }
 
+    /// Inserts a new [TypeInfo::TypeParam] into the [TypeEngine] and returns its [TypeId].
+    ///
+    /// [TypeInfo::TypeParam] is an always replaceable type and the method
+    /// guarantees that a new (or unused) [TypeId] will be returned on every
+    /// call.
+    pub(crate) fn new_type_param(&self, type_parameter: TypeParameter) -> TypeId {
+        self.new_type_param_impl(TypeInfo::TypeParam(type_parameter))
+    }
+
+    fn new_type_param_impl(&self, type_param: TypeInfo) -> TypeId {
+        let source_id = self.get_type_parameter_fallback_source_id(&type_param);
+        let tsi = TypeSourceInfo {
+            type_info: type_param.into(),
+            source_id,
+        };
+        TypeId::new(self.slab.insert(tsi))
+    }
+
     /// Inserts a new [TypeInfo::Placeholder] into the [TypeEngine] and returns its [TypeId].
     ///
     /// [TypeInfo::Placeholder] is an always replaceable type and the method
@@ -557,13 +575,13 @@ impl TypeEngine {
         elem_type: TypeId,
         length: usize,
     ) -> TypeId {
-        self.insert_array(engines, elem_type.into(), Length::new(length))
+        self.insert_array(engines, elem_type.into(), Length::literal(length, None))
     }
 
     /// Inserts a new [TypeInfo::StringArray] into the [TypeEngine] and returns
     /// its [TypeId], or returns a [TypeId] of an existing shareable string array type
     /// that corresponds to the string array given by the `length`.
-    pub(crate) fn insert_string_array(&self, engines: &Engines, length: Length) -> TypeId {
+    pub(crate) fn insert_string_array(&self, engines: &Engines, length: NumericLength) -> TypeId {
         let source_id = Self::get_string_array_fallback_source_id(&length);
         let is_shareable_type = self.is_shareable_string_array(&length);
         let type_info = TypeInfo::StringArray(length);
@@ -584,7 +602,13 @@ impl TypeEngine {
         engines: &Engines,
         length: usize,
     ) -> TypeId {
-        self.insert_string_array(engines, Length::new(length))
+        self.insert_string_array(
+            engines,
+            NumericLength {
+                val: length,
+                span: Span::dummy(),
+            },
+        )
     }
 
     /// Inserts a new [TypeInfo::ContractCaller] into the [TypeEngine] and returns its [TypeId].
@@ -825,6 +849,7 @@ impl TypeEngine {
             TypeInfo::Unknown => return self.new_unknown(),
             TypeInfo::Numeric => return self.new_numeric(),
             TypeInfo::Placeholder(_) => return self.new_placeholder_impl(ty),
+            TypeInfo::TypeParam(_) => return self.new_type_param_impl(ty),
             TypeInfo::UnknownGeneric { .. } => return self.new_unknown_generic_impl(ty),
             _ => (),
         }
@@ -942,7 +967,8 @@ impl TypeEngine {
             TypeInfo::Unknown
             | TypeInfo::Numeric
             | TypeInfo::Placeholder(_)
-            | TypeInfo::UnknownGeneric { .. } => true,
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Array(.., Length::AmbiguousVariableExpression { .. }) => true,
             TypeInfo::ContractCaller { abi_name, address } => {
                 Self::is_replaceable_contract_caller(abi_name, address)
             }
@@ -994,9 +1020,6 @@ impl TypeEngine {
             | TypeInfo::Contract
             | TypeInfo::Never => false,
 
-            // Note that `TypeParam` is currently not used at all.
-            TypeInfo::TypeParam(_) => false,
-
             // `StringArray`s are not changeable. We will have one shared
             // `TypeInfo` instance for every string size. Note that in case
             // of explicitly defined string arrays, e.g. in the storage or type ascriptions
@@ -1009,6 +1032,7 @@ impl TypeEngine {
             TypeInfo::Unknown
             | TypeInfo::Numeric
             | TypeInfo::Placeholder(_)
+            | TypeInfo::TypeParam(_)
             | TypeInfo::UnknownGeneric { .. } => true,
 
             // The `ContractCaller` can be replaceable, and thus, sometimes changeable.
@@ -1098,8 +1122,7 @@ impl TypeEngine {
             | TypeInfo::Never
             | TypeInfo::Unknown
             | TypeInfo::Numeric
-            | TypeInfo::Contract
-            | TypeInfo::TypeParam(_) => false,
+            | TypeInfo::Contract => false,
 
             // Types that are always distinguishable because they have the `name: Ident`.
             //
@@ -1226,6 +1249,7 @@ impl TypeEngine {
             // The above reasoning for `TypeArgument`s applies also for the `TypeParameter`s.
             // We only need to check if the `tp` is annotated.
             TypeInfo::Placeholder(tp) => tp.is_annotated(),
+            TypeInfo::TypeParam(tp) => tp.is_annotated(),
 
             // TODO: Improve handling of `TypeInfo::Custom` and `TypeInfo::TraitType`` within the `TypeEngine`:
             //       https://github.com/FuelLabs/sway/issues/6601
@@ -1552,7 +1576,7 @@ impl TypeEngine {
             || length.is_annotated())
     }
 
-    fn is_shareable_string_array(&self, length: &Length) -> bool {
+    fn is_shareable_string_array(&self, length: &NumericLength) -> bool {
         // !(false || length.is_annotated())
         !length.is_annotated()
     }
@@ -1599,7 +1623,7 @@ impl TypeEngine {
 
             TypeInfo::UnknownGeneric { .. } => Self::get_unknown_generic_fallback_source_id(ty),
             TypeInfo::Placeholder(_) => self.get_placeholder_fallback_source_id(ty),
-            TypeInfo::StringArray(length) => Self::get_source_id_from_length(length),
+            TypeInfo::StringArray(length) => Self::get_source_id_from_spanned(length),
             TypeInfo::Enum(decl_id) => {
                 let decl = decl_engine.get_enum(decl_id);
                 Self::get_enum_fallback_source_id(&decl)
@@ -1646,8 +1670,8 @@ impl TypeEngine {
         }
     }
 
-    fn get_source_id_from_length(length: &Length) -> Option<SourceId> {
-        length.span().source_id().copied()
+    fn get_source_id_from_spanned(item: &impl Spanned) -> Option<SourceId> {
+        item.span().source_id().copied()
     }
 
     fn get_source_id_from_type_argument(&self, ta: &TypeArgument) -> Option<SourceId> {
@@ -1712,6 +1736,21 @@ impl TypeEngine {
         self.get_source_id_from_type_parameter(tp)
     }
 
+    fn get_type_parameter_fallback_source_id(&self, type_param: &TypeInfo) -> Option<SourceId> {
+        // `TypeInfo::TypeParam` is an always replaceable type and we know we will
+        // get a new instance of it in the engine for every trait type parameter occurrence. This means
+        // that it can never happen that instances from different source files point
+        // to the same `TypeSourceInfo`. Therefore, we can safely remove an instance
+        // of a `TypeParam` from the engine if its source file is garbage collected.
+        //
+        // The source file itself is always the one in which the `name` is situated.
+        let TypeInfo::TypeParam(tp) = &type_param else {
+            unreachable!("The `placeholder` is checked to be of variant `TypeInfo::TypeParam`.");
+        };
+
+        self.get_source_id_from_type_parameter(tp)
+    }
+
     fn get_unknown_generic_fallback_source_id(unknown_generic: &TypeInfo) -> Option<SourceId> {
         // `TypeInfo::UnknownGeneric` is an always replaceable type and we know we will
         // get a new instance of it in the engine for every, e.g., "<T1>", "<T2>", etc. occurrence.
@@ -1756,24 +1795,14 @@ impl TypeEngine {
     fn get_array_fallback_source_id(
         &self,
         elem_type: &TypeArgument,
-        length: &Length,
+        _length: &Length,
     ) -> Option<SourceId> {
-        // For `TypeInfo::Array`, if it is annotated, we take the use site source file.
-        // This can be found in the `elem_type` and the `length`.
-        //
-        // If the array type is not annotated, we are taking the source file of the array element.
-        assert_eq!(
-            elem_type.span.source_id(),
-            length.span().source_id(),
-            "If an array is annotated, the type argument and the length spans must have the same source id."
-        );
-
         self.get_source_id_from_type_argument(elem_type)
     }
 
-    fn get_string_array_fallback_source_id(length: &Length) -> Option<SourceId> {
+    fn get_string_array_fallback_source_id(length: &NumericLength) -> Option<SourceId> {
         // For `TypeInfo::StringArray`, if it is annotated, we take the use site source file found in the `length`.
-        Self::get_source_id_from_length(length)
+        Self::get_source_id_from_spanned(length)
     }
 
     fn get_contract_caller_fallback_source_id(
@@ -1863,10 +1892,10 @@ impl TypeEngine {
         F: Fn(&SourceId) -> bool,
     {
         self.slab
-            .retain(|_, tsi| tsi.source_id.as_ref().map_or(true, &keep));
+            .retain(|_, tsi| tsi.source_id.as_ref().is_none_or(&keep));
         self.shareable_types
             .write()
-            .retain(|tsi, _| tsi.source_id.as_ref().map_or(true, &keep));
+            .retain(|tsi, _| tsi.source_id.as_ref().is_none_or(&keep));
     }
 
     /// Removes all data associated with `program_id` from the type engine.

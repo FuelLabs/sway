@@ -49,8 +49,8 @@ impl ByteSpan {
 
 impl Ord for ByteSpan {
     fn cmp(&self, other: &Self) -> Ordering {
-        // If the starting position is the same encapsulatig span (i.e, wider one) should come
-        // first
+        // If the starting position is the same encapsulating span (i.e, wider one) should come
+        // first.
         match self.start.cmp(&other.start) {
             Ordering::Equal => other.end.cmp(&self.end),
             ord => ord,

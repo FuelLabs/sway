@@ -513,7 +513,7 @@ fn u128_not() {
 fn u128_add() {
     let first = U128::from((0, 0));
     let second = U128::from((0, 1));
-    let max_u64 = U128::from((0, u64::max()));
+    let max_u128 = U128::from((0, u64::max()));
 
     let one = first + second;
     assert(one.upper() == 0);
@@ -523,15 +523,15 @@ fn u128_add() {
     assert(two.upper() == 0);
     assert(two.lower() == 2);
 
-    let add_of_one = max_u64 + one;
+    let add_of_one = max_u128 + one;
     assert(add_of_one.upper() == 1);
     assert(add_of_one.lower() == 0);
 
-    let add_of_two = max_u64 + two;
+    let add_of_two = max_u128 + two;
     assert(add_of_two.upper() == 1);
     assert(add_of_two.lower() == 1);
 
-    let add_max = max_u64 + max_u64;
+    let add_max = max_u128 + max_u128;
     assert(add_max.upper() == 1);
     assert(add_max.lower() == u64::max() - 1);
 }
@@ -539,9 +539,38 @@ fn u128_add() {
 #[test(should_revert)]
 fn revert_u128_add() {
     let one = U128::from((0, 1));
-    let max_u64 = U128::from((u64::max(), u64::max()));
+    let max_u128 = U128::from((u64::max(), u64::max()));
 
-    let _result = one + max_u64;
+    let _result = one + max_u128;
+}
+
+#[test(should_revert)]
+fn revert_u128_add_on_unsafe_math() {
+    let _ = disable_panic_on_unsafe_math();
+    let one = U128::from((0, 1));
+    let max_u128 = U128::from((u64::max(), u64::max()));
+
+    let _result = one + max_u128;
+}
+
+#[test]
+fn u128_add_overflow() {
+    let _ = disable_panic_on_overflow();
+    let one = U128::from((0, 1));
+    let two = U128::from((0, 2));
+    let max_u128 = U128::from((u64::max(), u64::max()));
+
+    let res_1 = one + max_u128;
+    assert(res_1 == U128::zero());
+
+    let res_2 = max_u128 + two;
+    assert(res_2 == one);
+
+    let a = U128::max();
+    let b = U128::from((0, 1));
+    let c = a + b;
+
+    assert(c == U128::from((0, 0)));
 }
 
 #[test]
@@ -573,6 +602,31 @@ fn revert_u128_sub() {
     let _result = first - second;
 }
 
+#[test(should_revert)]
+fn revert_u128_sub_on_unsafe_math() {
+    let _ = disable_panic_on_unsafe_math();
+    let first = U128::from((0, 0));
+    let second = U128::from((0, 1));
+
+    let _result = first - second;
+}
+
+#[test]
+fn u128_sub_underflow() {
+    let _ = disable_panic_on_overflow();
+    let first = U128::from((0, 0));
+    let second = U128::from((0, 1));
+
+    let result = first - second;
+    assert(result == U128::max());
+
+    let a = U128::from((0, 1));
+    let b = U128::from((0, 2));
+    let c = a - b;
+
+    assert(c == U128::max());
+}
+
 #[test]
 fn u128_multiply() {
     let two = U128::from((0, 2));
@@ -599,6 +653,32 @@ fn revert_u128_multiply() {
     let _result = first * second;
 }
 
+#[test(should_revert)]
+fn revert_u128_multiply_on_unsafe_math() {
+    let _ = disable_panic_on_unsafe_math();
+    let first = U128::from((0, 2));
+    let second = U128::from((u64::max(), 1));
+
+    let _result = first * second;
+}
+
+#[test]
+fn u128_multiply_overflow() {
+    let _ = disable_panic_on_overflow();
+    let first = U128::from((0, 3));
+    let second = U128::max();
+
+    let result = first * second;
+    assert(result == U128::from((18446744073709551615, 18446744073709551613)));
+
+    let a = U128::max();
+    let b = U128::from((0, 2));
+    let c = a * b;
+
+    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE
+    assert(c == U128::from((0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFE)));
+}
+
 #[test]
 fn u128_divide() {
     let two = U128::from((0, 2));
@@ -617,6 +697,24 @@ fn u128_divide() {
 
 #[test(should_revert)]
 fn revert_u128_divide_by_zero() {
+    let first = U128::from((0, 1));
+    let second = U128::from((0, 0));
+
+    let _result = first / second;
+}
+
+#[test(should_revert)]
+fn revert_u128_divide_by_zero_disabled_overflow() {
+    let _ = disable_panic_on_overflow();
+    let first = U128::from((0, 1));
+    let second = U128::from((0, 0));
+
+    let _result = first / second;
+}
+
+#[test]
+fn u128_divide_by_zero_unsafe_math() {
+    let _ = disable_panic_on_unsafe_math();
     let first = U128::from((0, 1));
     let second = U128::from((0, 0));
 
@@ -671,6 +769,19 @@ fn u128_pow() {
 }
 
 #[test]
+fn u128_overflowing_pow() {
+    // Overflow on pow should return 0 if panic is disabled
+    let prior_flags = disable_panic_on_overflow();
+    let a = U128::max();
+
+    let res = a.pow(2);
+
+    assert(res == U128::from((0, 0)));
+
+    set_flags(prior_flags);
+}
+
+#[test]
 fn u128_root() {
     let mut u_128: U128 = U128::from((0, 49));
     let mut root_of_u_128 = u_128.sqrt();
@@ -692,6 +803,30 @@ fn u128_root() {
     u_128 = U128::from((0, 1));
     root_of_u_128 = u_128.sqrt();
     assert(root_of_u_128 == U128::from((0, 1)));
+}
+
+#[test(should_revert)]
+fn revert_u128_zero_root() {
+    let zero = U128::zero();
+
+    let _result = zero.sqrt();
+}
+
+#[test(should_revert)]
+fn revert_u128_zero_root_overflow_disabled() {
+    let _ = disable_panic_on_overflow();
+    let zero = U128::zero();
+
+    let _result = zero.sqrt();
+}
+
+#[test]
+fn u128_zero_root_unsafe_math() {
+    let _ = disable_panic_on_unsafe_math();
+    let zero = U128::zero();
+
+    let result = zero.sqrt();
+    assert(result == zero);
 }
 
 #[test]
@@ -748,10 +883,27 @@ fn revert_u128_mod_zero() {
     let result = a % b;
 }
 
+#[test(should_revert)]
+fn revert_u128_mod_zero_disabled_overflow() {
+    let _ = disable_panic_on_overflow();
+    let a = U128::from((0, 1));
+    let b = U128::zero();
+
+    let result = a % b;
+}
+
+#[test]
+fn u128_mod_zero_unsafe_math() {
+    let _ = disable_panic_on_unsafe_math();
+    let a = U128::from((0, 1));
+    let b = U128::zero();
+
+    let result = a % b;
+    assert(result == a);
+}
+
 #[test]
 fn u128_log() {
-    let prior_flags = flags();
-
     let u_128_0: U128 = U128::from((0, 0));
     let u_128_1: U128 = U128::from((0, 1));
     let u_128_2: U128 = U128::from((0, 2));
@@ -778,9 +930,10 @@ fn u128_log() {
     assert(u_128_max.log(u_128_9) == u_128_42);
     assert(u64_max_times_two.log(u_128_2) == u_128_64);
     assert(u64_max_times_two.log(u_128_9) == u_128_20);
+}
 
-    assert(prior_flags == flags());
-
+#[test]
+fn u128_log_unsafe_math() {
     let prior_flags = disable_panic_on_unsafe_math();
 
     let before_flags = flags();
@@ -798,13 +951,40 @@ fn u128_log() {
 }
 
 #[test(should_revert)]
-fn revert_unsafe_math_u128_1log1() {
+fn revert_u128_1log1() {
+    let res = U128::from(1_u64).log(U128::from(1_u64));
+    log(res);
+}
+
+#[test(should_revert)]
+fn revert_u128_disable_overflow() {
     let res = U128::from(1_u64).log(U128::from(1_u64));
     log(res);
 }
 
 #[test(should_revert)]
 fn revert_unsafe_math_u128_0log_3() {
+    let res = U128::from(0_u64).log(U128::from(3_u64));
+    log(res);
+}
+
+#[test(should_revert)]
+fn revert_u128_1log1_disable_overflow() {
+    let _ = disable_panic_on_overflow();
+    let res = U128::from(1_u64).log(U128::from(1_u64));
+    log(res);
+}
+
+#[test(should_revert)]
+fn revert_u128_disable_overflow_disable_overflow() {
+    let _ = disable_panic_on_overflow();
+    let res = U128::from(1_u64).log(U128::from(1_u64));
+    log(res);
+}
+
+#[test(should_revert)]
+fn revert_unsafe_math_u128_0log_3_disable_overflow() {
+    let _ = disable_panic_on_overflow();
     let res = U128::from(0_u64).log(U128::from(3_u64));
     log(res);
 }
@@ -834,6 +1014,26 @@ fn revert_u128_binary_log() {
     let u_128_0: U128 = U128::from((0, 0));
 
     let _result = u_128_0.log2();
+}
+
+#[test(should_revert)]
+fn revert_u128_binary_log_disable_overflow() {
+    let _ = disable_panic_on_overflow();
+    let u_128_0: U128 = U128::from((0, 0));
+
+    let _result = u_128_0.log2();
+}
+
+#[test]
+fn u128_unsafe_math_log2() {
+    let prior_flags = disable_panic_on_unsafe_math();
+    // 0 is not a valid operand for log2
+    let a = U128::zero();
+    let res = a.log2();
+
+    assert(res == U128::zero());
+
+    set_flags(prior_flags);
 }
 
 #[test]
@@ -1128,63 +1328,37 @@ fn parity_u128_log_with_ruint() {
 }
 
 #[test]
-fn u128_overflowing_add() {
-    let prior_flags = disable_panic_on_overflow();
-    let a = U128::max();
-    let b = U128::from((0, 1));
-    let c = a + b;
+fn u128_as_u256() {
+    let mut vals = Vec::new();
+    vals.push(0);
+    vals.push(1);
+    vals.push(2);
+    vals.push(u64::max() - 1);
+    vals.push(u64::max());
 
-    assert(c == U128::from((0, 0)));
+    for val in vals.iter() {
+        // Ensure parity with u256::from(val)
+        let u128_val = U128::from(val);
+        let u256_val = u128_val.as_u256();
+        assert(u256_val == u256::from(val));
 
-    set_flags(prior_flags);
-}
+        // Ensure parity with asm u256 conversion
+        let asm_val = asm(nums: (0, 0, 0, val)) {
+            nums: u256
+        };
+        assert(u256_val == asm_val);
 
-#[test]
-fn u128_underflowing_sub() {
-    let prior_flags = disable_panic_on_overflow();
-    let a = U128::from((0, 1));
-    let b = U128::from((0, 2));
-    let c = a - b;
+        for val2 in vals.iter() {
+            // Ensure parity with u256::from(0, 0, val, val2)
+            let u128_val = U128::from((val, val2));
+            let u256_val = u128_val.as_u256();
+            assert(u256_val == u256::from((0, 0, val, val2)));
 
-    assert(c == U128::max());
-
-    set_flags(prior_flags);
-}
-
-#[test]
-fn u128_overflowing_mul() {
-    let prior_flags = disable_panic_on_overflow();
-    let a = U128::max();
-    let b = U128::from((0, 2));
-    let c = a * b;
-
-    // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE
-    assert(c == U128::from((0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFE)));
-
-    set_flags(prior_flags);
-}
-
-#[test]
-fn u128_overflowing_pow() {
-    // Overflow on pow should return 0 if panic is disabled
-    let prior_flags = disable_panic_on_overflow();
-    let a = U128::max();
-
-    let res = a.pow(2);
-
-    assert(res == U128::from((0, 0)));
-
-    set_flags(prior_flags);
-}
-
-#[test]
-fn u128_unsafemath_log2() {
-    let prior_flags = disable_panic_on_unsafe_math();
-    // 0 is not a valid operand for log2
-    let a = U128::zero();
-    let res = a.log2();
-
-    assert(res == U128::zero());
-
-    set_flags(prior_flags);
+            // Ensure parity with asm u256 conversion
+            let asm_val = asm(nums: (0, 0, val, val2)) {
+                nums: u256
+            };
+            assert(u256_val == asm_val);
+        }
+    }
 }

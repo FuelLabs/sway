@@ -8,7 +8,10 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, ItemAbi};
+use sway_ast::{
+    keywords::{AbiToken, ColonToken, Keyword, Token},
+    ItemAbi,
+};
 use sway_types::{ast::Delimiter, Spanned};
 
 #[cfg(test)]
@@ -22,12 +25,12 @@ impl Format for ItemAbi {
     ) -> Result<(), FormatterError> {
         let start_len = formatted_code.len();
         // `abi name`
-        write!(formatted_code, "{} ", self.abi_token.span().as_str())?;
+        write!(formatted_code, "{} ", AbiToken::AS_STR)?;
         self.name.format(formatted_code, formatter)?;
 
         // ` : super_trait + super_trait`
-        if let Some((colon_token, traits)) = &self.super_traits {
-            write!(formatted_code, " {} ", colon_token.ident().as_str())?;
+        if let Some((_colon_token, traits)) = &self.super_traits {
+            write!(formatted_code, " {} ", ColonToken::AS_STR)?;
             traits.format(formatted_code, formatter)?;
         }
 

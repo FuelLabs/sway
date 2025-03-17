@@ -1,24 +1,22 @@
 library;
 
-use core::ops::Eq;
 use ::asset::Asset;
 
 pub struct Wrapper {
-    pub asset: Asset
+    pub asset: Asset,
 }
 
 impl Wrapper {
     pub fn new(value: u64) -> Self {
         Wrapper {
-            asset: Asset {
-                value
-            }
+            asset: Asset { value },
         }
     }
 }
 
-impl Eq for Wrapper {
+impl PartialEq for Wrapper {
     fn eq(self, other: Self) -> bool {
         self.asset == other.asset
     }
 }
+impl Eq for Wrapper {}

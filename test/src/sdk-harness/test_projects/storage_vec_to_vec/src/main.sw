@@ -8,11 +8,12 @@ pub struct TestStruct {
     val3: u64,
 }
 
-impl Eq for TestStruct {
+impl PartialEq for TestStruct {
     fn eq(self, other: Self) -> bool {
         self.val1 == other.val1 && self.val2 == other.val2 && self.val3 == other.val3
     }
 }
+impl Eq for TestStruct {}
 
 storage {
     storage_vec_u64: StorageVec<u64> = StorageVec {},

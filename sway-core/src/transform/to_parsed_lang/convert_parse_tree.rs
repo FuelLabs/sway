@@ -1,4 +1,5 @@
 use crate::{
+    ast_elements::{length::NumericLength, type_parameter::ConstGenericParameter},
     compiler_generated::{
         generate_destructured_struct_var_name, generate_matched_value_var_name,
         generate_tuple_var_name,
@@ -9,13 +10,14 @@ use crate::{
     type_system::*,
     BuildTarget, Engines,
 };
-
+use either::Either;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use sway_ast::{
     assignable::ElementAccess,
     attribute::Annotated,
     expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
+    generics::GenericParam,
     ty::TyTupleDescriptor,
     AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
     CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
@@ -314,7 +316,7 @@ fn item_use_to_use_statements(
 
 fn use_tree_to_use_statements(
     use_tree: UseTree,
-    is_absolute: bool,
+    is_relative_to_package_root: bool,
     reexport: Visibility,
     path: &mut Vec<Ident>,
     ret: &mut Vec<UseStatement>,
@@ -325,7 +327,7 @@ fn use_tree_to_use_statements(
             for use_tree in imports.into_inner() {
                 use_tree_to_use_statements(
                     use_tree,
-                    is_absolute,
+                    is_relative_to_package_root,
                     reexport,
                     path,
                     ret,
@@ -343,7 +345,7 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: None,
             });
@@ -358,7 +360,7 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: Some(alias),
             });
@@ -368,14 +370,21 @@ fn use_tree_to_use_statements(
                 call_path: path.clone(),
                 span: item_span,
                 import_type: ImportType::Star,
-                is_absolute,
+                is_relative_to_package_root,
                 reexport,
                 alias: None,
             });
         }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
-            use_tree_to_use_statements(*suffix, is_absolute, reexport, path, ret, item_span);
+            use_tree_to_use_statements(
+                *suffix,
+                is_relative_to_package_root,
+                reexport,
+                path,
+                ret,
+                item_span,
+            );
             path.pop().unwrap();
         }
         UseTree::Error { .. } => {
@@ -441,17 +450,18 @@ fn item_struct_to_struct_declaration(
         return Err(emitted);
     }
 
+    let (type_parameters, _) = generic_params_opt_to_type_parameters(
+        context,
+        handler,
+        engines,
+        item_struct.generics,
+        item_struct.where_clause_opt,
+    )?;
     let struct_declaration_id = engines.pe().insert(StructDeclaration {
         name: item_struct.name,
         attributes,
         fields,
-        type_parameters: generic_params_opt_to_type_parameters(
-            context,
-            handler,
-            engines,
-            item_struct.generics,
-            item_struct.where_clause_opt,
-        )?,
+        type_parameters,
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
         span,
     });
@@ -510,15 +520,16 @@ fn item_enum_to_enum_declaration(
         return Err(emitted);
     }
 
+    let (type_parameters, _) = generic_params_opt_to_type_parameters(
+        context,
+        handler,
+        engines,
+        item_enum.generics,
+        item_enum.where_clause_opt,
+    )?;
     let enum_declaration_id = engines.pe().insert(EnumDeclaration {
         name: item_enum.name,
-        type_parameters: generic_params_opt_to_type_parameters(
-            context,
-            handler,
-            engines,
-            item_enum.generics,
-            item_enum.where_clause_opt,
-        )?,
+        type_parameters,
         variants,
         span,
         visibility: pub_token_opt_to_visibility(item_enum.visibility),
@@ -561,6 +572,17 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
+    let (type_parameters, const_generic_parameters) =
+        generic_params_opt_to_type_parameters_with_parent(
+            context,
+            handler,
+            engines,
+            item_fn.fn_signature.generics,
+            parent_generic_params_opt,
+            item_fn.fn_signature.where_clause_opt.clone(),
+            parent_where_clause_opt,
+        )?;
+
     let fn_decl = FunctionDeclaration {
         purity: get_attributed_purity(context, handler, &attributes)?,
         attributes,
@@ -575,15 +597,8 @@ pub fn item_fn_to_function_declaration(
         )?,
         span,
         return_type,
-        type_parameters: generic_params_opt_to_type_parameters_with_parent(
-            context,
-            handler,
-            engines,
-            item_fn.fn_signature.generics,
-            parent_generic_params_opt,
-            item_fn.fn_signature.where_clause_opt.clone(),
-            parent_where_clause_opt,
-        )?,
+        type_parameters,
+        const_generic_parameters,
         where_clause: item_fn
             .fn_signature
             .where_clause_opt
@@ -659,7 +674,7 @@ fn item_trait_to_trait_declaration(
     attributes: AttributesMap,
 ) -> Result<ParsedDeclId<TraitDeclaration>, ErrorEmitted> {
     let span = item_trait.span();
-    let type_parameters = generic_params_opt_to_type_parameters(
+    let (type_parameters, _) = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
@@ -777,13 +792,25 @@ pub fn item_impl_to_declaration(
         .filter_map_ok(|item| item)
         .collect::<Result<_, _>>()?;
 
-    let impl_type_parameters = generic_params_opt_to_type_parameters(
-        context,
-        handler,
-        engines,
-        item_impl.generic_params_opt,
-        item_impl.where_clause_opt,
-    )?;
+    let (impl_type_parameters, impl_const_generics_parameters) =
+        generic_params_opt_to_type_parameters(
+            context,
+            handler,
+            engines,
+            item_impl.generic_params_opt,
+            item_impl.where_clause_opt,
+        )?;
+
+    let impl_const_generics_parameters = impl_const_generics_parameters
+        .iter()
+        .map(|param| {
+            engines.pe().insert(ConstGenericDeclaration {
+                name: param.name.clone(),
+                ty: param.ty,
+                span: param.span.clone(),
+            })
+        })
+        .collect::<Vec<_>>();
 
     match item_impl.trait_opt {
         Some((path_type, _)) => {
@@ -792,6 +819,7 @@ pub fn item_impl_to_declaration(
             let impl_trait = ImplSelfOrTrait {
                 is_self: false,
                 impl_type_parameters,
+                impl_const_generics_parameters,
                 trait_name: trait_name.to_call_path(handler)?,
                 trait_type_arguments,
                 trait_decl_ref: None,
@@ -809,7 +837,7 @@ pub fn item_impl_to_declaration(
                 let impl_self = ImplSelfOrTrait {
                     is_self: true,
                     trait_name: CallPath {
-                        is_absolute: false,
+                        callpath_type: CallPathType::Ambiguous,
                         prefixes: vec![],
                         suffix: BaseIdent::dummy(),
                     },
@@ -817,6 +845,7 @@ pub fn item_impl_to_declaration(
                     trait_type_arguments: vec![],
                     implementing_for,
                     impl_type_parameters,
+                    impl_const_generics_parameters,
                     items,
                     block_span,
                 };
@@ -836,14 +865,20 @@ fn path_type_to_call_path_and_type_arguments(
     let root_opt = path_type.root_opt.clone();
     let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type.clone())?;
 
-    let (is_absolute, qualified_path) =
+    let (is_relative_to_root, qualified_path) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
+
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
 
     let qualified_call_path = QualifiedCallPath {
         call_path: CallPath {
             prefixes,
             suffix: suffix.name,
-            is_absolute,
+            callpath_type,
         },
         qualified_path_root: qualified_path.map(Box::new),
     };
@@ -1203,7 +1238,7 @@ fn generic_params_opt_to_type_parameters(
     engines: &Engines,
     generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
-) -> Result<Vec<TypeParameter>, ErrorEmitted> {
+) -> Result<(Vec<TypeParameter>, Vec<ConstGenericParameter>), ErrorEmitted> {
     generic_params_opt_to_type_parameters_with_parent(
         context,
         handler,
@@ -1223,7 +1258,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
     parent_generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
     parent_where_clause_opt: Option<WhereClause>,
-) -> Result<Vec<TypeParameter>, ErrorEmitted> {
+) -> Result<(Vec<TypeParameter>, Vec<ConstGenericParameter>), ErrorEmitted> {
     let type_engine = engines.te();
 
     let trait_constraints = match where_clause_opt {
@@ -1250,40 +1285,64 @@ fn generic_params_opt_to_type_parameters_with_parent(
             .parameters
             .into_inner()
             .into_iter()
-            .map(|ident| {
-                let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
-                TypeParameter {
-                    type_id: custom_type,
-                    initial_type_id: custom_type,
-                    name: ident,
-                    trait_constraints: Vec::new(),
-                    trait_constraints_span: Span::dummy(),
-                    is_from_parent,
+            .partition_map(|param| {
+                match param {
+                    GenericParam::Trait { ident } => {
+                        let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
+                        Either::Left(TypeParameter {
+                            type_id: custom_type,
+                            initial_type_id: custom_type,
+                            name: ident,
+                            trait_constraints: Vec::new(),
+                            trait_constraints_span: Span::dummy(),
+                            is_from_parent,
+                        })
+                    }
+                    GenericParam::Const { ident, .. } => {
+                        // let the compilation continue,
+                        // but error the user for each const generic being used
+                        // if the feature is disabled
+                        if !context.experimental.const_generics {
+                            handler.emit_err(
+                                sway_features::Feature::ConstGenerics
+                                    .error_because_is_disabled(&ident.span()),
+                            );
+                        }
+                        Either::Right(ConstGenericParameter {
+                            span: ident.span().clone(),
+                            name: ident,
+                            ty: type_engine.id_of_u64(),
+                            is_from_parent,
+                        })
+                    }
                 }
-            })
-            .collect::<Vec<_>>(),
-        None => Vec::new(),
+            }),
+        None => (vec![], vec![]),
     };
 
-    let mut params = generics_to_params(generic_params_opt, false);
-    let parent_params = generics_to_params(parent_generic_params_opt, true);
+    let (mut trait_params, mut const_generic_params) =
+        generics_to_params(generic_params_opt, false);
+    let (trait_parent_params, mut const_generic_parent_params) =
+        generics_to_params(parent_generic_params_opt, true);
+
+    const_generic_params.append(&mut const_generic_parent_params);
 
     let mut errors = Vec::new();
     for (ty_name, bounds) in trait_constraints
         .into_iter()
         .chain(parent_trait_constraints)
     {
-        let param_to_edit = if let Some(o) = params
+        let param_to_edit = if let Some(o) = trait_params
             .iter_mut()
             .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
         {
             o
-        } else if let Some(o2) = parent_params
+        } else if let Some(o2) = trait_parent_params
             .iter()
             .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
         {
-            params.push(o2.clone());
-            params.last_mut().unwrap()
+            trait_params.push(o2.clone());
+            trait_params.last_mut().unwrap()
         } else {
             errors.push(ConvertParseTreeError::ConstrainedNonExistentType {
                 ty_name: ty_name.clone(),
@@ -1304,7 +1363,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
         return Err(errors);
     }
 
-    Ok(params)
+    Ok((trait_params, const_generic_params))
 }
 
 fn pub_token_opt_to_visibility(pub_token_opt: Option<PubToken>) -> Visibility {
@@ -1472,13 +1531,15 @@ fn ty_to_type_info(
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
                 ty_to_type_argument(context, handler, engines, *ty_array_descriptor.ty)?,
-                expr_to_length(context, handler, *ty_array_descriptor.length)?,
+                expr_to_length(context, engines, handler, *ty_array_descriptor.length)?,
             )
         }
         Ty::StringSlice(..) => TypeInfo::StringSlice,
-        Ty::StringArray { length, .. } => {
-            TypeInfo::StringArray(expr_to_length(context, handler, *length.into_inner())?)
-        }
+        Ty::StringArray { length, .. } => TypeInfo::StringArray(expr_to_numeric_length(
+            context,
+            handler,
+            *length.into_inner(),
+        )?),
         Ty::Infer { .. } => TypeInfo::Unknown,
         Ty::Ptr { ty, .. } => {
             let type_argument = ty_to_type_argument(context, handler, engines, *ty.into_inner())?;
@@ -1544,13 +1605,20 @@ fn ty_to_call_path_tree(
             vec![]
         };
 
-        let (is_absolute, qualified_path) =
+        let (is_relative_to_root, qualified_path) =
             path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
+
+        let callpath_type = if is_relative_to_root {
+            CallPathType::RelativeToPackageRoot
+        } else {
+            CallPathType::Ambiguous
+        };
+
         let call_path = QualifiedCallPath {
             call_path: CallPath {
                 prefixes,
                 suffix: suffix.name,
-                is_absolute,
+                callpath_type,
             },
             qualified_path_root: qualified_path.map(Box::new),
         };
@@ -1676,7 +1744,12 @@ fn path_type_to_call_path(
         prefix,
         mut suffix,
     } = path_type;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
@@ -1687,13 +1760,13 @@ fn path_type_to_call_path(
             CallPath {
                 prefixes,
                 suffix: path_type_segment_to_ident(context, handler, call_path_suffix)?,
-                is_absolute,
+                callpath_type,
             }
         }
         None => CallPath {
             prefixes: Vec::new(),
             suffix: path_type_segment_to_ident(context, handler, prefix)?,
-            is_absolute,
+            callpath_type,
         },
     };
     Ok(call_path)
@@ -1844,7 +1917,7 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
-    let (is_absolute, qualified_path_root) =
+    let (is_relative_to_root, qualified_path_root) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
 
     let convert_ty_args = |context: &mut Context, generics_opt: Option<(_, GenericArgs)>| {
@@ -1889,7 +1962,7 @@ fn expr_func_app_to_expression_kind(
     // Route intrinsic calls to different AST node.
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
         Some(Intrinsic::Log)
-            if context.experimental.new_encoding && last.is_none() && !is_absolute =>
+            if context.experimental.new_encoding && last.is_none() && !is_relative_to_root =>
         {
             let span = name_args_span(span, type_arguments_span);
             return Ok(ExpressionKind::IntrinsicFunction(
@@ -1907,7 +1980,7 @@ fn expr_func_app_to_expression_kind(
                                     inner: CallPath {
                                         prefixes: vec![],
                                         suffix: Ident::new_no_span("encode".into()),
-                                        is_absolute: false,
+                                        callpath_type: CallPathType::Ambiguous,
                                     },
                                     type_arguments: TypeArgs::Regular(type_arguments),
                                     span: span.clone(),
@@ -1921,7 +1994,7 @@ fn expr_func_app_to_expression_kind(
                 },
             ));
         }
-        Some(intrinsic) if last.is_none() && !is_absolute => {
+        Some(intrinsic) if last.is_none() && !is_relative_to_root => {
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
                     name: call_seg.name,
@@ -1937,6 +2010,12 @@ fn expr_func_app_to_expression_kind(
         _ => {}
     }
 
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
+
     // Only `foo(args)`? It could either be a function application or an enum variant.
     let last = match last {
         Some(last) => last,
@@ -1948,7 +2027,7 @@ fn expr_func_app_to_expression_kind(
             let call_path = CallPath {
                 prefixes,
                 suffix,
-                is_absolute,
+                callpath_type,
             };
             let span = match type_arguments_span {
                 Some(span) => Span::join(call_path.span(), &span),
@@ -1984,7 +2063,7 @@ fn expr_func_app_to_expression_kind(
     let call_path = CallPath {
         prefixes,
         suffix,
-        is_absolute,
+        callpath_type,
     };
     let call_path_binding = TypeBinding {
         span: name_args_span(call_path.span(), type_arguments_span),
@@ -2062,28 +2141,22 @@ fn expr_to_expression(
                         .into_iter()
                         .map(|expr| expr_to_expression(context, handler, engines, expr))
                         .collect::<Result<_, _>>()?;
-                    let array_expression = ArrayExpression {
-                        contents,
-                        length_span: None,
-                    };
                     Expression {
-                        kind: ExpressionKind::Array(array_expression),
+                        kind: ExpressionKind::Array(ArrayExpression::Explicit {
+                            contents,
+                            length_span: None,
+                        }),
                         span,
                     }
                 }
                 ExprArrayDescriptor::Repeat { value, length, .. } => {
-                    let expression = expr_to_expression(context, handler, engines, *value)?;
-                    let length_span = length.span();
-                    let length = expr_to_usize(context, handler, *length)?;
-                    let contents = iter::repeat_with(|| expression.clone())
-                        .take(length)
-                        .collect();
-                    let array_expression = ArrayExpression {
-                        contents,
-                        length_span: Some(length_span),
-                    };
+                    let value = expr_to_expression(context, handler, engines, *value)?;
+                    let length = expr_to_expression(context, handler, engines, *length)?;
                     Expression {
-                        kind: ExpressionKind::Array(array_expression),
+                        kind: ExpressionKind::Array(ArrayExpression::Repeat {
+                            value: Box::new(value),
+                            length: Box::new(length),
+                        }),
                         span,
                     }
                 }
@@ -2460,7 +2533,7 @@ fn expr_to_expression(
                     assignable.clone(),
                 )?;
                 let rhs = Box::new(op_call(
-                    op_variant.core_name(),
+                    op_variant.std_name(),
                     op_span,
                     span.clone(),
                     &vec![
@@ -2496,11 +2569,11 @@ fn op_call(
         inner: MethodName::FromTrait {
             call_path: CallPath {
                 prefixes: vec![
-                    Ident::new_with_override("core".into(), op_span.clone()),
+                    Ident::new_with_override("std".into(), op_span.clone()),
                     Ident::new_with_override("ops".into(), op_span.clone()),
                 ],
                 suffix: Ident::new_with_override(name.into(), op_span.clone()),
-                is_absolute: true,
+                callpath_type: CallPathType::Full,
             },
         },
         type_arguments: TypeArgs::Regular(vec![]),
@@ -2605,7 +2678,7 @@ fn configurable_field_to_configurable_declaration(
                     inner: CallPath {
                         prefixes: vec![],
                         suffix: Ident::new_with_override("encode".into(), span.clone()),
-                        is_absolute: false,
+                        callpath_type: CallPathType::Ambiguous,
                     },
                     type_arguments: TypeArgs::Regular(vec![type_ascription.clone()]),
                     span: span.clone(),
@@ -2732,14 +2805,36 @@ fn fn_arg_to_function_parameter(
 
 fn expr_to_length(
     context: &mut Context,
+    engines: &Engines,
     handler: &Handler,
     expr: Expr,
 ) -> Result<Length, ErrorEmitted> {
     let span = expr.span();
-    Ok(Length::from_numeric_literal(
-        expr_to_usize(context, handler, expr)?,
-        span,
-    ))
+    match &expr {
+        Expr::Literal(..) => Ok(Length::literal(
+            expr_to_usize(context, handler, expr)?,
+            Some(span),
+        )),
+        _ => {
+            let expr = expr_to_expression(context, handler, engines, expr)?;
+            match expr.kind {
+                ExpressionKind::AmbiguousVariableExpression(ident) => {
+                    Ok(Length::AmbiguousVariableExpression { ident })
+                }
+                _ => Err(handler.emit_err(CompileError::LengthExpressionNotSupported { span })),
+            }
+        }
+    }
+}
+
+fn expr_to_numeric_length(
+    context: &mut Context,
+    handler: &Handler,
+    expr: Expr,
+) -> Result<NumericLength, ErrorEmitted> {
+    let span = expr.span();
+    let val = expr_to_usize(context, handler, expr)?;
+    Ok(NumericLength { val, span })
 }
 
 fn expr_to_usize(
@@ -2783,7 +2878,12 @@ fn path_type_to_supertrait(
         prefix,
         mut suffix,
     } = path_type;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let (prefixes, call_path_suffix) = match suffix.pop() {
         Some((_, call_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
@@ -2802,7 +2902,7 @@ fn path_type_to_supertrait(
     let name = CallPath {
         prefixes,
         suffix,
-        is_absolute,
+        callpath_type,
     };
     /*
     let type_parameters = match generics_opt {
@@ -3379,6 +3479,7 @@ fn literal_to_literal(
                 parsed,
                 ty_opt,
                 span,
+                is_generated_b256: _,
             } = lit_int;
             match ty_opt {
                 None => {
@@ -3491,8 +3592,13 @@ fn path_expr_to_qualified_call_path_binding(
         mut suffix,
         ..
     } = path_expr;
-    let (is_absolute, qualified_path_root) =
+    let (is_relative_to_root, qualified_path_root) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let (prefixes, suffix, span, regular_type_arguments, prefix_type_arguments) = match suffix.pop()
     {
         Some((_, call_path_suffix)) => {
@@ -3554,7 +3660,7 @@ fn path_expr_to_qualified_call_path_binding(
             call_path: CallPath {
                 prefixes,
                 suffix,
-                is_absolute,
+                callpath_type,
             },
             qualified_path_root: qualified_path_root.map(Box::new),
         },
@@ -3606,7 +3712,12 @@ fn path_expr_to_call_path(
         mut suffix,
         ..
     } = path_expr;
-    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
+    let is_relative_to_root = path_root_opt_to_bool(context, handler, root_opt)?;
+    let callpath_type = if is_relative_to_root {
+        CallPathType::RelativeToPackageRoot
+    } else {
+        CallPathType::Ambiguous
+    };
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(context, handler, &prefix)?];
@@ -3617,13 +3728,13 @@ fn path_expr_to_call_path(
             CallPath {
                 prefixes,
                 suffix: path_expr_segment_to_ident(context, handler, &call_path_suffix)?,
-                is_absolute,
+                callpath_type,
             }
         }
         None => CallPath {
             prefixes: Vec::new(),
             suffix: path_expr_segment_to_ident(context, handler, &prefix)?,
-            is_absolute,
+            callpath_type,
         },
     };
     Ok(call_path)

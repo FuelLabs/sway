@@ -1,7 +1,10 @@
 use crate::{
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
-    language::ty::{TyEnumDecl, TyStructDecl},
-    type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
+    language::{
+        ty::{TyEnumDecl, TyStructDecl},
+        CallPathType,
+    },
+    type_system::priv_prelude::*,
 };
 
 #[derive(Debug, Clone)]
@@ -194,6 +197,7 @@ impl<'a> UnifyCheck<'a> {
             ignore_generic_names: false,
         }
     }
+
     pub(crate) fn non_generic_constraint_subset(engines: &'a Engines) -> Self {
         Self {
             engines,
@@ -268,12 +272,32 @@ impl<'a> UnifyCheck<'a> {
 
         // common recursion patterns
         match (&*left_info, &*right_info) {
+            // when a type alias is encountered, defer the decision to the type it contains (i.e. the
+            // type it aliases with)
+            (Alias { ty, .. }, _) => return self.check_inner(ty.type_id, right),
+            (_, Alias { ty, .. }) => return self.check_inner(left, ty.type_id),
+
             (Never, Never) => {
                 return true;
             }
 
             (Array(l0, l1), Array(r0, r1)) => {
-                return self.check_inner(l0.type_id, r0.type_id) && l1.val() == r1.val();
+                let elem_types_unify = self.check_inner(l0.type_id, r0.type_id);
+                return if !elem_types_unify {
+                    false
+                } else {
+                    match (&l1, &r1) {
+                        (Length::Literal { val: l, .. }, Length::Literal { val: r, .. }) => l == r,
+                        (
+                            Length::AmbiguousVariableExpression { ident: l },
+                            Length::AmbiguousVariableExpression { ident: r },
+                        ) => l == r,
+                        (Length::Literal { .. }, Length::AmbiguousVariableExpression { .. }) => {
+                            true
+                        }
+                        _ => false,
+                    }
+                };
             }
 
             (Slice(l0), Slice(r0)) => {
@@ -445,10 +469,6 @@ impl<'a> UnifyCheck<'a> {
                     // any type can be coerced into the placeholder type
                     (_, Placeholder(_)) => true,
 
-                    // Type aliases and the types they encapsulate coerce to each other.
-                    (Alias { ty, .. }, _) => self.check_inner(ty.type_id, right),
-                    (_, Alias { ty, .. }) => self.check_inner(left, ty.type_id),
-
                     (Unknown, _) => true,
                     (_, Unknown) => true,
 
@@ -505,23 +525,15 @@ impl<'a> UnifyCheck<'a> {
                     }
 
                     // any type can be coerced into a generic,
-                    // except if the type already contains the generic
                     (_e, _g @ UnknownGeneric { .. }) => {
-                        !OccursCheck::new(self.engines).check(right, left)
+                        // Perform this check otherwise &T and T would return true
+                        !matches!(&*left_info, TypeInfo::Ref { .. })
                     }
 
-                    (Alias { ty: l_ty, .. }, Alias { ty: r_ty, .. }) => {
-                        self.check_inner(l_ty.type_id, r_ty.type_id)
-                    }
                     (a, b) => a.eq(b, &PartialEqWithEnginesContext::new(self.engines)),
                 }
             }
             NonDynamicEquality => match (&*left_info, &*right_info) {
-                // when a type alias is encountered, defer the decision to the type it contains (i.e. the
-                // type it aliases with)
-                (Alias { ty, .. }, _) => self.check_inner(ty.type_id, right),
-                (_, Alias { ty, .. }) => self.check_inner(left, ty.type_id),
-
                 // these cases are false because, unless left and right have the same
                 // TypeId, they may later resolve to be different types in the type
                 // engine
@@ -735,8 +747,9 @@ impl<'a> UnifyCheck<'a> {
 
     pub(crate) fn check_enums(&self, left: &TyEnumDecl, right: &TyEnumDecl) -> bool {
         assert!(
-            left.call_path.is_absolute && right.call_path.is_absolute,
-            "The call paths of the enum declarations must always be absolute."
+            matches!(left.call_path.callpath_type, CallPathType::Full)
+                && matches!(right.call_path.callpath_type, CallPathType::Full),
+            "call paths of enum declarations must always be full paths"
         );
 
         // Avoid unnecessary `collect::<Vec>>` of variant names
@@ -795,8 +808,9 @@ impl<'a> UnifyCheck<'a> {
 
     pub(crate) fn check_structs(&self, left: &TyStructDecl, right: &TyStructDecl) -> bool {
         assert!(
-            left.call_path.is_absolute && right.call_path.is_absolute,
-            "The call paths of the struct declarations must always be absolute."
+            matches!(left.call_path.callpath_type, CallPathType::Full)
+                && matches!(right.call_path.callpath_type, CallPathType::Full),
+            "call paths of struct declarations must always be full paths"
         );
 
         // Avoid unnecessary `collect::<Vec>>` of variant names
@@ -852,4 +866,43 @@ impl<'a> UnifyCheck<'a> {
 
         self.check_multiple(&l_types, &r_types)
     }
+}
+
+#[test]
+pub fn array_constraint_subset() {
+    let engines = Engines::default();
+    let array_u64_1 = engines.te().insert_array(
+        &engines,
+        TypeArgument {
+            type_id: engines.te().id_of_u64(),
+            initial_type_id: engines.te().id_of_u64(),
+            span: sway_types::Span::dummy(),
+            call_path_tree: None,
+        },
+        Length::Literal {
+            val: 1,
+            span: sway_types::Span::dummy(),
+        },
+    );
+    let array_u64_n = engines.te().insert_array(
+        &engines,
+        TypeArgument {
+            type_id: engines.te().id_of_u64(),
+            initial_type_id: engines.te().id_of_u64(),
+            span: sway_types::Span::dummy(),
+            call_path_tree: None,
+        },
+        Length::AmbiguousVariableExpression {
+            ident: sway_types::BaseIdent::new_no_span("N".into()),
+        },
+    );
+
+    // [u64; 1] is a subset of [u64; N]
+    let check = UnifyCheck::constraint_subset(&engines);
+    assert!(check.check(array_u64_1, array_u64_n));
+    assert!(!check.check(array_u64_n, array_u64_1));
+
+    let check = UnifyCheck::non_generic_constraint_subset(&engines);
+    assert!(check.check(array_u64_1, array_u64_n));
+    assert!(!check.check(array_u64_n, array_u64_1));
 }

@@ -18,8 +18,8 @@ use crate::{
     fuel_prelude::fuel_asm::{self, op},
 };
 use fuel_vm::fuel_asm::{
-    op::{ADD, MOVI},
-    Imm18,
+    op::{ADD, ADDI, MOVI},
+    Imm12, Imm18,
 };
 use std::fmt::{self, Write};
 use sway_types::span::Span;
@@ -281,6 +281,12 @@ pub(crate) enum AllocatedOpcode {
     ),
 
     /* Other Instructions */
+    ECAL(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
     FLAG(AllocatedRegister),
     GM(AllocatedRegister, VirtualImmediate18),
     GTF(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
@@ -408,6 +414,7 @@ impl AllocatedOpcode {
             EPAR(r1, _r2, _r3, _r4) => vec![r1],
 
             /* Other Instructions */
+            ECAL(_r1, _r2, _r3, _r4) => vec![],
             FLAG(_r1) => vec![],
             GM(r1, _imm) => vec![r1],
             GTF(r1, _r2, _i) => vec![r1],
@@ -539,6 +546,7 @@ impl fmt::Display for AllocatedOpcode {
             EPAR(a, b, c, d) => write!(fmtr, "epar {a} {b} {c} {d}"),
 
             /* Other Instructions */
+            ECAL(a, b, c, d) => write!(fmtr, "ecal {a} {b} {c} {d}"),
             FLAG(a) => write!(fmtr, "flag {a}"),
             GM(a, b) => write!(fmtr, "gm   {a} {b}"),
             GTF(a, b, c) => write!(fmtr, "gtf  {a} {b} {c}"),
@@ -603,51 +611,67 @@ impl AllocatedOp {
         FuelAsmData::Instructions(vec![match &self.opcode {
             /* Arithmetic/Logic (ALU) Instructions */
             ADD(a, b, c) => op::ADD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            ADDI(a, b, c) => op::ADDI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            ADDI(a, b, c) => op::ADDI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             AND(a, b, c) => op::AND::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            ANDI(a, b, c) => op::ANDI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            ANDI(a, b, c) => op::ANDI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             DIV(a, b, c) => op::DIV::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            DIVI(a, b, c) => op::DIVI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            DIVI(a, b, c) => op::DIVI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             EQ(a, b, c) => op::EQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             EXP(a, b, c) => op::EXP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            EXPI(a, b, c) => op::EXPI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            EXPI(a, b, c) => op::EXPI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             GT(a, b, c) => op::GT::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             LT(a, b, c) => op::LT::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             MLOG(a, b, c) => op::MLOG::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             MOD(a, b, c) => op::MOD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            MODI(a, b, c) => op::MODI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            MODI(a, b, c) => op::MODI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             MOVE(a, b) => op::MOVE::new(a.to_reg_id(), b.to_reg_id()).into(),
-            MOVI(a, b) => op::MOVI::new(a.to_reg_id(), b.value.into()).into(),
+            MOVI(a, b) => op::MOVI::new(a.to_reg_id(), b.value().into()).into(),
             MROO(a, b, c) => op::MROO::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             MUL(a, b, c) => op::MUL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            MULI(a, b, c) => op::MULI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            MULI(a, b, c) => op::MULI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             NOOP => op::NOOP::new().into(),
             NOT(a, b) => op::NOT::new(a.to_reg_id(), b.to_reg_id()).into(),
             OR(a, b, c) => op::OR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            ORI(a, b, c) => op::ORI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            ORI(a, b, c) => op::ORI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             SLL(a, b, c) => op::SLL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            SLLI(a, b, c) => op::SLLI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            SLLI(a, b, c) => op::SLLI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             SRL(a, b, c) => op::SRL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            SRLI(a, b, c) => op::SRLI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            SRLI(a, b, c) => op::SRLI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             SUB(a, b, c) => op::SUB::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            SUBI(a, b, c) => op::SUBI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            SUBI(a, b, c) => op::SUBI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             XOR(a, b, c) => op::XOR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            XORI(a, b, c) => op::XORI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
-            WQOP(a, b, c, d) => {
-                op::WQOP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
-            }
-            WQML(a, b, c, d) => {
-                op::WQML::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
-            }
-            WQDV(a, b, c, d) => {
-                op::WQDV::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
-            }
+            XORI(a, b, c) => op::XORI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            WQOP(a, b, c, d) => op::WQOP::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
+            WQML(a, b, c, d) => op::WQML::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
+            WQDV(a, b, c, d) => op::WQDV::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
             WQMD(a, b, c, d) => {
                 op::WQMD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
-            WQCM(a, b, c, d) => {
-                op::WQCM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
-            }
+            WQCM(a, b, c, d) => op::WQCM::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
             WQAM(a, b, c, d) => {
                 op::WQAM::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
@@ -657,39 +681,39 @@ impl AllocatedOp {
 
             /* Control Flow Instructions */
             JMP(a) => op::JMP::new(a.to_reg_id()).into(),
-            JI(a) => op::JI::new(a.value.into()).into(),
+            JI(a) => op::JI::new(a.value().into()).into(),
             JNE(a, b, c) => op::JNE::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            JNEI(a, b, c) => op::JNEI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
-            JNZI(a, b) => op::JNZI::new(a.to_reg_id(), b.value.into()).into(),
-            JMPB(a, b) => op::JMPB::new(a.to_reg_id(), b.value.into()).into(),
-            JMPF(a, b) => op::JMPF::new(a.to_reg_id(), b.value.into()).into(),
-            JNZB(a, b, c) => op::JNZB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
-            JNZF(a, b, c) => op::JNZF::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            JNEI(a, b, c) => op::JNEI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            JNZI(a, b) => op::JNZI::new(a.to_reg_id(), b.value().into()).into(),
+            JMPB(a, b) => op::JMPB::new(a.to_reg_id(), b.value().into()).into(),
+            JMPF(a, b) => op::JMPF::new(a.to_reg_id(), b.value().into()).into(),
+            JNZB(a, b, c) => op::JNZB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            JNZF(a, b, c) => op::JNZF::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             RET(a) => op::RET::new(a.to_reg_id()).into(),
 
             /* Memory Instructions */
             ALOC(a) => op::ALOC::new(a.to_reg_id()).into(),
-            CFEI(a) if a.value == 0 => return FuelAsmData::Instructions(vec![]),
-            CFEI(a) => op::CFEI::new(a.value.into()).into(),
-            CFSI(a) if a.value == 0 => return FuelAsmData::Instructions(vec![]),
-            CFSI(a) => op::CFSI::new(a.value.into()).into(),
+            CFEI(a) if a.value() == 0 => return FuelAsmData::Instructions(vec![]),
+            CFEI(a) => op::CFEI::new(a.value().into()).into(),
+            CFSI(a) if a.value() == 0 => return FuelAsmData::Instructions(vec![]),
+            CFSI(a) => op::CFSI::new(a.value().into()).into(),
             CFE(a) => op::CFE::new(a.to_reg_id()).into(),
             CFS(a) => op::CFS::new(a.to_reg_id()).into(),
-            LB(a, b, c) => op::LB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
-            LW(a, b, c) => op::LW::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            LB(a, b, c) => op::LB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            LW(a, b, c) => op::LW::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             MCL(a, b) => op::MCL::new(a.to_reg_id(), b.to_reg_id()).into(),
-            MCLI(a, b) => op::MCLI::new(a.to_reg_id(), b.value.into()).into(),
+            MCLI(a, b) => op::MCLI::new(a.to_reg_id(), b.value().into()).into(),
             MCP(a, b, c) => op::MCP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            MCPI(a, b, c) => op::MCPI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            MCPI(a, b, c) => op::MCPI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             MEQ(a, b, c, d) => {
                 op::MEQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
-            PSHH(mask) => op::PSHH::new(mask.value.into()).into(),
-            PSHL(mask) => op::PSHL::new(mask.value.into()).into(),
-            POPH(mask) => op::POPH::new(mask.value.into()).into(),
-            POPL(mask) => op::POPL::new(mask.value.into()).into(),
-            SB(a, b, c) => op::SB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
-            SW(a, b, c) => op::SW::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            PSHH(mask) => op::PSHH::new(mask.value().into()).into(),
+            PSHL(mask) => op::PSHL::new(mask.value().into()).into(),
+            POPH(mask) => op::POPH::new(mask.value().into()).into(),
+            POPL(mask) => op::POPL::new(mask.value().into()).into(),
+            SB(a, b, c) => op::SB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            SW(a, b, c) => op::SW::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
 
             /* Contract Instructions */
             BAL(a, b, c) => op::BAL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
@@ -706,9 +730,13 @@ impl AllocatedOp {
             CROO(a, b) => op::CROO::new(a.to_reg_id(), b.to_reg_id()).into(),
             CSIZ(a, b) => op::CSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
             BSIZ(a, b) => op::BSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
-            LDC(a, b, c, d) => {
-                op::LDC::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
-            }
+            LDC(a, b, c, d) => op::LDC::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
             BLDD(a, b, c, d) => {
                 op::BLDD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
@@ -755,15 +783,18 @@ impl AllocatedOp {
             }
 
             /* Other Instructions */
+            ECAL(a, b, c, d) => {
+                op::ECAL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
             FLAG(a) => op::FLAG::new(a.to_reg_id()).into(),
-            GM(a, b) => op::GM::new(a.to_reg_id(), b.value.into()).into(),
-            GTF(a, b, c) => op::GTF::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            GM(a, b) => op::GM::new(a.to_reg_id(), b.value().into()).into(),
+            GTF(a, b, c) => op::GTF::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
 
             /* Non-VM Instructions */
             BLOB(a) => {
                 return FuelAsmData::Instructions(
                     std::iter::repeat(op::NOOP::new().into())
-                        .take(a.value as usize)
+                        .take(a.value() as usize)
                         .collect(),
                 )
             }
@@ -795,17 +826,28 @@ fn addr_of(
     data_section: &DataSection,
 ) -> Vec<fuel_asm::Instruction> {
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
-    vec![
-        fuel_asm::Instruction::MOVI(MOVI::new(
-            dest.to_reg_id(),
-            Imm18::new(offset_bytes.try_into().unwrap()),
-        )),
-        fuel_asm::Instruction::ADD(ADD::new(
-            dest.to_reg_id(),
+
+    if offset_bytes <= u64::from(Imm12::MAX.to_u16()) {
+        // Small enough to fit into an ADDI instruction immediate
+        vec![fuel_asm::Instruction::ADDI(ADDI::new(
             dest.to_reg_id(),
             fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-        )),
-    ]
+            Imm12::new(offset_bytes.try_into().unwrap()),
+        ))]
+    } else {
+        // Offset too large to fit into ADDI immediate, so we need to use MOVI first
+        vec![
+            fuel_asm::Instruction::MOVI(MOVI::new(
+                dest.to_reg_id(),
+                Imm18::new(offset_bytes.try_into().unwrap()),
+            )),
+            fuel_asm::Instruction::ADD(ADD::new(
+                dest.to_reg_id(),
+                dest.to_reg_id(),
+                fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+            )),
+        ]
+    }
 }
 
 /// Converts a virtual load word instruction which uses data labels into one which uses
@@ -885,14 +927,14 @@ fn realize_load(
         vec![fuel_asm::op::LB::new(
             dest.to_reg_id(),
             fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            offset.value.into(),
+            offset.value().into(),
         )
         .into()]
     } else {
         vec![fuel_asm::op::LW::new(
             dest.to_reg_id(),
             fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            offset.value.into(),
+            offset.value().into(),
         )
         .into()]
     }

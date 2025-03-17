@@ -15,6 +15,10 @@ use ::tx::{
     tx_type,
 };
 use ::option::Option::{self, *};
+use ::ops::*;
+use ::primitive_conversions::u16::*;
+use ::raw_ptr::*;
+use ::codec::*;
 
 // GTF Opcode const selectors
 //
@@ -275,7 +279,7 @@ pub fn output_asset_to(index: u64) -> Option<Address> {
     }
 }
 
-impl core::ops::Eq for Output {
+impl PartialEq for Output {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Output::Coin, Output::Coin) => true,
@@ -287,3 +291,4 @@ impl core::ops::Eq for Output {
         }
     }
 }
+impl Eq for Output {}

@@ -68,6 +68,6 @@ pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
     FALLBACK_ATTRIBUTE_NAME,
 ];
 
-pub const CORE: &str = "core";
 pub const STD: &str = "std";
 pub const PRELUDE: &str = "prelude";
+pub const CONTRACT_ID: &str = "CONTRACT_ID";

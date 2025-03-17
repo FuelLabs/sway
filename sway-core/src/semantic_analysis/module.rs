@@ -27,7 +27,9 @@ use crate::{
 };
 
 use super::{
-    declaration::auto_impl::{self, EncodingAutoImplContext},
+    declaration::auto_impl::{
+        abi_encoding::AbiEncodingAutoImplContext, marker_traits::MarkerTraitsAutoImplContext,
+    },
     symbol_collection_context::SymbolCollectionContext,
 };
 
@@ -270,7 +272,7 @@ impl ty::TyModule {
 
         // Create a cache key and get the module cache
         let path = engines.se().get_path(source_id);
-        let include_tests = build_config.map_or(false, |x| x.include_tests);
+        let include_tests = build_config.is_some_and(|x| x.include_tests);
         let key = ModuleCacheKey::new(path.clone().into(), include_tests);
         let cache = engines.qe().module_cache.read();
         cache.get(&key).and_then(|entry| {
@@ -393,8 +395,7 @@ impl ty::TyModule {
 
             match (&kind, main_decl.is_some()) {
                 (TreeType::Predicate, true) => {
-                    let mut fn_generator =
-                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    let mut fn_generator = AbiEncodingAutoImplContext::new(&mut ctx);
                     if let Ok(node) = fn_generator.generate_predicate_entry(
                         engines,
                         main_decl.as_ref().unwrap(),
@@ -404,8 +405,7 @@ impl ty::TyModule {
                     }
                 }
                 (TreeType::Script, true) => {
-                    let mut fn_generator =
-                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    let mut fn_generator = AbiEncodingAutoImplContext::new(&mut ctx);
                     if let Ok(node) = fn_generator.generate_script_entry(
                         engines,
                         main_decl.as_ref().unwrap(),
@@ -443,8 +443,7 @@ impl ty::TyModule {
                             .all(|si| !PartialEqWithEngines::eq(method, si, &partialeq_ctx))
                     });
 
-                    let mut fn_generator =
-                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    let mut fn_generator = AbiEncodingAutoImplContext::new(&mut ctx);
                     if let Ok(node) = fn_generator.generate_contract_entry(
                         engines,
                         parsed.span.source_id().map(|x| x.program_id()),
@@ -463,7 +462,6 @@ impl ty::TyModule {
         let ty_module = Arc::new(Self {
             span: span.clone(),
             submodules,
-            namespace: ctx.namespace.clone(),
             all_nodes,
             attributes: attributes.clone(),
         });
@@ -476,7 +474,7 @@ impl ty::TyModule {
                 .and_then(|lsp| lsp.file_versions.get(&path).copied())
                 .flatten();
 
-            let include_tests = build_config.map_or(false, |x| x.include_tests);
+            let include_tests = build_config.is_some_and(|x| x.include_tests);
             let key = ModuleCacheKey::new(path.clone().into(), include_tests);
             engines.qe().update_typed_module_cache_entry(
                 &key,
@@ -497,9 +495,6 @@ impl ty::TyModule {
         predicate: fn(&ImplSelfOrTrait) -> bool,
     ) -> HashMap<BaseIdent, HashSet<CallPath>> {
         let engines = ctx.engines();
-        // Check which structs and enums needs to have auto impl for AbiEncode
-        // We need to do this before type checking, because the impls must be right after
-        // the declarations
         let mut impls = HashMap::<BaseIdent, HashSet<CallPath>>::new();
 
         for node in nodes.iter() {
@@ -540,12 +535,17 @@ impl ty::TyModule {
         nodes: &[AstNode],
     ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
         let engines = ctx.engines();
+
+        // Check which structs and enums needs to have auto impl for `AbiEncode` and `AbiDecode`.
+        // We need to do this before type checking, because the impls must be right after
+        // the declarations.
         let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
             decl.trait_name.suffix.as_str() == "AbiEncode"
         });
 
         let mut typed_nodes = vec![];
         for node in nodes {
+            // Check if the encoding traits are explicitly implemented.
             let auto_impl_encoding_traits = match &node.content {
                 AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_struct(decl_id);
@@ -562,28 +562,37 @@ impl ty::TyModule {
                 continue;
             };
 
+            // Auto impl encoding traits only if they are not explicitly implemented.
+            let mut generated = vec![];
             if ctx.experimental.new_encoding {
-                let mut generated = vec![];
-                if let (true, Some(mut ctx)) = (
+                if let (true, mut ctx) = (
                     auto_impl_encoding_traits,
-                    EncodingAutoImplContext::new(&mut ctx),
+                    AbiEncodingAutoImplContext::new(&mut ctx),
                 ) {
                     match &node.content {
                         TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
                         | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {
-                            let (a, b) = ctx.generate(engines, decl);
+                            let (a, b) = ctx.generate_abi_encode_and_decode_impls(engines, decl);
                             generated.extend(a);
                             generated.extend(b);
                         }
                         _ => {}
                     }
                 };
-
-                typed_nodes.push(node);
-                typed_nodes.extend(generated);
-            } else {
-                typed_nodes.push(node);
             }
+
+            // Always auto impl marker traits. If an explicit implementation exists, that will be
+            // reported as an error when type-checking trait impls.
+            if ctx.experimental.error_type {
+                let mut ctx = MarkerTraitsAutoImplContext::new(&mut ctx);
+                if let TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) = &node.content {
+                    let a = ctx.generate_enum_marker_trait_impl(engines, decl);
+                    generated.extend(a);
+                }
+            }
+
+            typed_nodes.push(node);
+            typed_nodes.extend(generated);
         }
 
         Ok(typed_nodes)
@@ -687,17 +696,18 @@ impl ty::TySubmodule {
             visibility,
         } = submodule;
         parent_ctx.enter_submodule(
+            handler,
             engines,
             mod_name,
             *visibility,
             module.span.clone(),
             |submod_ctx| ty::TyModule::collect(handler, engines, submod_ctx, module),
-        )
+        )?
     }
 
     pub fn type_check(
         handler: &Handler,
-        parent_ctx: TypeCheckContext,
+        mut parent_ctx: TypeCheckContext,
         engines: &Engines,
         mod_name: ModName,
         kind: TreeType,
@@ -709,13 +719,25 @@ impl ty::TySubmodule {
             mod_name_span,
             visibility,
         } = submodule;
-        parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
-            let module_res =
-                ty::TyModule::type_check(handler, submod_ctx, engines, kind, module, build_config);
-            module_res.map(|module| ty::TySubmodule {
-                module,
-                mod_name_span: mod_name_span.clone(),
-            })
-        })
+        parent_ctx.enter_submodule(
+            handler,
+            mod_name,
+            *visibility,
+            module.span.clone(),
+            |submod_ctx| {
+                let module_res = ty::TyModule::type_check(
+                    handler,
+                    submod_ctx,
+                    engines,
+                    kind,
+                    module,
+                    build_config,
+                );
+                module_res.map(|module| ty::TySubmodule {
+                    module,
+                    mod_name_span: mod_name_span.clone(),
+                })
+            },
+        )?
     }
 }

@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::AbiCastArgs;
+use sway_ast::{keywords::Token, AbiCastArgs, CommaToken};
 use sway_types::{ast::Delimiter, Spanned};
 
 impl Format for AbiCastArgs {
@@ -17,7 +17,7 @@ impl Format for AbiCastArgs {
     ) -> Result<(), FormatterError> {
         Self::open_parenthesis(formatted_code, formatter)?;
         self.name.format(formatted_code, formatter)?;
-        write!(formatted_code, "{} ", self.comma_token.span().as_str())?;
+        write!(formatted_code, "{} ", CommaToken::AS_STR)?;
         self.address.format(formatted_code, formatter)?;
         Self::close_parenthesis(formatted_code, formatter)?;
 

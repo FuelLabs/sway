@@ -1,6 +1,9 @@
 //! A library for allocating memory inspired by [Rust's std::alloc](https://doc.rust-lang.org/std/alloc/index.html).
 library;
 
+use ::ops::*;
+use ::raw_ptr::*;
+
 /// Allocates zeroed memory on the heap.
 ///
 /// # Additional Information

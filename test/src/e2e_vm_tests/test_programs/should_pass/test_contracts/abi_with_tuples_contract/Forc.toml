@@ -6,5 +6,5 @@ name = "abi_with_tuples_contract"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }
 abi_with_tuples = { path = "../../test_abis/abi_with_tuples" }

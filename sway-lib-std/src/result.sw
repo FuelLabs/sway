@@ -57,6 +57,8 @@ library;
 
 use ::logging::log;
 use ::revert::revert;
+use ::codec::*;
+use ::ops::*;
 
 // ANCHOR: docs_result
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
@@ -270,10 +272,10 @@ impl<T, E> Result<T, E> {
     // - `err(self) -> Option<E>`
 }
 
-impl<T, E> Eq for Result<T, E>
+impl<T, E> PartialEq for Result<T, E>
 where
-    T: Eq,
-    E: Eq,
+    T: PartialEq,
+    E: PartialEq,
 {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -283,3 +285,8 @@ where
         }
     }
 }
+impl<T, E> Eq for Result<T, E>
+where
+    T: Eq,
+    E: Eq,
+{}

@@ -1,16 +1,28 @@
 category = "fail"
 
 # check: vector.push(false);
-# nextln: $()No method "push(Vec<u8>, bool)" found for type "Vec<u8>".
-# nextln: $()Matching method:
-# nextln: $()push(Vec<u8>, u8) -> () in Vec<u8>
+# nextln: $()Mismatched types.
+# nextln: $()expected: u8
+# nextln: $()found:    bool.
+# nextln: $()help: Function application argument type must match function parameter type.
+
+# check: vector.push(false);
+# nextln: $()This parameter was declared as type u8, but argument of type bool was provided.
 
 # check: vector.push("this should break it 1");
-# nextln: $()No method "push(Vec<u8>, str)" found for type "Vec<u8>". 
-# nextln: $()Matching method: 
-# nextln: $()push(Vec<u8>, u8) -> () in Vec<u8>
+# nextln: $()Mismatched types.
+# nextln: $()expected: u8
+# nextln: $()found:    str.
+# nextln: $()help: Function application argument type must match function parameter type.
+
+# check: vector.push("this should break it 1");
+# nextln: $()This parameter was declared as type u8, but argument of type str was provided.
 
 # check: vector.push("this should break it 2");
-# nextln: $()No method "push(Vec<u8>, str)" found for type "Vec<u8>".
-# nextln: $()Matching method:
-# nextln: $()push(Vec<u8>, u8) -> () in Vec<u8>
+# nextln: $()Mismatched types.
+# nextln: $()expected: u8
+# nextln: $()found:    str.
+# nextln: $()help: Function application argument type must match function parameter type.
+
+# check: vector.push("this should break it 2");
+# nextln: $()This parameter was declared as type u8, but argument of type str was provided.

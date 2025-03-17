@@ -23,6 +23,9 @@ pub fn possibly_nonzero_u64_expression(ctx: &TypeCheckContext, expr: &ty::TyExpr
             Some(expr) => possibly_nonzero_u64_expression(ctx, expr),
             None => false,
         },
+        ConstGenericExpression { .. } => {
+            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+        }
         VariableExpression { name, .. } => {
             match ctx.resolve_symbol(&Handler::default(), name).ok() {
                 Some(ty_decl) => {
@@ -67,7 +70,8 @@ pub fn possibly_nonzero_u64_expression(ctx: &TypeCheckContext, expr: &ty::TyExpr
         // but we still consider these as non-zero to be on the safe side
         LazyOperator { .. }
         | Tuple { .. }
-        | Array { .. }
+        | ArrayExplicit { .. }
+        | ArrayRepeat { .. }
         | StructExpression { .. }
         | FunctionParameter
         | EnumInstantiation { .. }

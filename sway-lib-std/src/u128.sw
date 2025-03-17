@@ -2,7 +2,7 @@
 library;
 
 use ::assert::assert;
-use ::convert::{From, Into};
+use ::convert::{From, Into, TryFrom};
 use ::flags::{
     disable_panic_on_overflow,
     panic_on_overflow_enabled,
@@ -13,6 +13,8 @@ use ::registers::{flags, overflow};
 use ::math::*;
 use ::result::Result::{self, *};
 use ::option::Option::{self, None, Some};
+use ::ops::*;
+use ::codec::*;
 
 /// The 128-bit unsigned integer type.
 ///
@@ -144,13 +146,14 @@ impl From<U128> for (u64, u64) {
     }
 }
 
-impl core::ops::Eq for U128 {
+impl PartialEq for U128 {
     fn eq(self, other: Self) -> bool {
         self.lower == other.lower && self.upper == other.upper
     }
 }
+impl Eq for U128 {}
 
-impl core::ops::Ord for U128 {
+impl Ord for U128 {
     fn gt(self, other: Self) -> bool {
         self.upper > other.upper || self.upper == other.upper && self.lower > other.lower
     }
@@ -160,7 +163,7 @@ impl core::ops::Ord for U128 {
     }
 }
 
-impl core::ops::OrdEq for U128 {}
+impl OrdEq for U128 {}
 
 impl u64 {
     /// Performs addition between two `u64` values, returning a `U128`.
@@ -290,6 +293,7 @@ impl U128 {
         }
     }
 
+    // TODO: Rename to `try_as_u64` to be consistent with all other downcasts
     /// Safely downcast to `u64` without loss of precision.
     ///
     /// # Additional Information
@@ -321,6 +325,27 @@ impl U128 {
         match self.upper {
             0 => Ok(self.lower),
             _ => Err(U128Error::LossOfPrecision),
+        }
+    }
+
+    /// Upcasts a `U128` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The `u256` representation of the `U128` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let u128_value = U128::from(0u64);
+    ///     let u256_value = u128_value.as_u256();
+    /// }
+    pub fn as_u256(self) -> u256 {
+        asm(nums: (0, 0, self.upper, self.lower)) {
+            nums: u256
         }
     }
 
@@ -481,19 +506,19 @@ impl U128 {
     }
 }
 
-impl core::ops::BitwiseAnd for U128 {
+impl BitwiseAnd for U128 {
     fn binary_and(self, other: Self) -> Self {
         Self::from((self.upper & other.upper, self.lower & other.lower))
     }
 }
 
-impl core::ops::BitwiseOr for U128 {
+impl BitwiseOr for U128 {
     fn binary_or(self, other: Self) -> Self {
         Self::from((self.upper | other.upper, self.lower | other.lower))
     }
 }
 
-impl core::ops::Shift for U128 {
+impl Shift for U128 {
     fn lsh(self, rhs: u64) -> Self {
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
@@ -543,7 +568,7 @@ impl core::ops::Shift for U128 {
     }
 }
 
-impl core::ops::Not for U128 {
+impl Not for U128 {
     fn not(self) -> Self {
         Self {
             upper: !self.upper,
@@ -552,7 +577,7 @@ impl core::ops::Not for U128 {
     }
 }
 
-impl core::ops::Add for U128 {
+impl Add for U128 {
     /// Add a `U128` to a `U128`. Reverts on overflow.
     fn add(self, other: Self) -> Self {
         let mut upper_128 = self.upper.overflowing_add(other.upper);
@@ -582,7 +607,7 @@ impl core::ops::Add for U128 {
     }
 }
 
-impl core::ops::Subtract for U128 {
+impl Subtract for U128 {
     /// Subtract a `U128` from a `U128`. Reverts on underflow.
     fn subtract(self, other: Self) -> Self {
         // panic_on_overflow_enabled is also for underflow
@@ -605,7 +630,7 @@ impl core::ops::Subtract for U128 {
         Self { upper, lower }
     }
 }
-impl core::ops::Multiply for U128 {
+impl Multiply for U128 {
     /// Multiply a `U128` with a `U128`. Reverts of overflow.
     fn multiply(self, other: Self) -> Self {
         // in case both of the `U128` upper parts are bigger than zero,
@@ -628,7 +653,7 @@ impl core::ops::Multiply for U128 {
     }
 }
 
-impl core::ops::Divide for U128 {
+impl Divide for U128 {
     /// Divide a `U128` by a `U128`. Reverts if divisor is zero.
     fn divide(self, divisor: Self) -> Self {
         let zero = Self::from((0, 0));
@@ -668,9 +693,11 @@ impl core::ops::Divide for U128 {
     }
 }
 
-impl core::ops::Mod for U128 {
+impl Mod for U128 {
     fn modulo(self, other: Self) -> Self {
-        assert(other != Self::zero());
+        if panic_on_unsafe_math_enabled() {
+            assert(other != Self::zero());
+        }
 
         // a mod b = a - b * (a / b)
         let quotient = self / other;
@@ -770,6 +797,10 @@ impl Root for U128 {
     /// Integer square root using [Newton's Method](https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton's_method).
     fn sqrt(self) -> Self {
         let zero = Self::from((0, 0));
+        if panic_on_unsafe_math_enabled() {
+            assert(self != zero);
+        }
+
         let mut x0 = self >> 1;
         let mut s = self;
 
@@ -876,12 +907,110 @@ impl Logarithm for U128 {
     }
 }
 
-impl core::ops::TotalOrd for U128 {
+impl TotalOrd for U128 {
     fn min(self, other: Self) -> Self {
         if self < other { self } else { other }
     }
 
     fn max(self, other: Self) -> Self {
         if self > other { self } else { other }
+    }
+}
+
+impl TryFrom<U128> for u8 {
+    fn try_from(u: U128) -> Option<Self> {
+        if u.upper() == 0 {
+            <u8 as TryFrom<u64>>::try_from(u.lower())
+        } else {
+            None
+        }
+    }
+}
+
+impl TryFrom<U128> for u16 {
+    fn try_from(u: U128) -> Option<Self> {
+        if u.upper() == 0 {
+            <u16 as TryFrom<u64>>::try_from(u.lower())
+        } else {
+            None
+        }
+    }
+}
+
+impl TryFrom<U128> for u32 {
+    fn try_from(u: U128) -> Option<Self> {
+        if u.upper() == 0 {
+            <u32 as TryFrom<u64>>::try_from(u.lower())
+        } else {
+            None
+        }
+    }
+}
+
+impl TryFrom<U128> for u64 {
+    fn try_from(u: U128) -> Option<Self> {
+        if u.upper() == 0 {
+            Some(u.lower())
+        } else {
+            None
+        }
+    }
+}
+
+impl From<U128> for u256 {
+    /// Converts a `U128` to a `u256`.
+    ///
+    /// # Arguments
+    ///
+    /// * `num`: [U128] - The `U128` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The `u256` representation of the `U128` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///    let u128_value = U128::from((18446744073709551615_u64, 18446744073709551615_u64));
+    ///    let u256_value = u256::from(u128_value);
+    /// }
+    /// ```
+    fn from(num: U128) -> Self {
+        let input = (0u64, 0u64, num.upper(), num.lower());
+        asm(input: input) {
+            input: u256
+        }
+    }
+}
+
+impl From<U128> for b256 {
+    /// Converts a `U128` to a `b256`.
+    ///
+    /// # Arguments
+    ///
+    /// * `num`: [U128] - The `U128` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The `b256` representation of the `U128` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///    let u128_value = U128::from((18446744073709551615_u64, 18446744073709551615_u64));
+    ///    let b256_value = b256::from(u128_value);
+    /// }
+    /// ```
+    fn from(num: U128) -> Self {
+        let input = (0u64, 0u64, num.upper(), num.lower());
+        asm(input: input) {
+            input: b256
+        }
     }
 }

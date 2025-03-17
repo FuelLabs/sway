@@ -1,16 +1,17 @@
 script;
 
-use core::ops::{Eq, Ord};
+use std::ops::{Eq, Ord};
 
 enum X {
     Y: (),
 }
 
-impl Eq for X {
+impl PartialEq for X {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
+impl Eq for X {}
 
 impl Ord for X {
     fn lt(self, other: Self) -> bool {

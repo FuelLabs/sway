@@ -102,6 +102,7 @@ fn instr_to_expr(context: &Context, vntable: &VNTable, instr: Value) -> Option<E
         InstOp::ContractCall { .. } => None,
         InstOp::FuelVm(_) => None,
         InstOp::GetLocal(_) => None,
+        InstOp::GetGlobal(_) => None,
         InstOp::GetConfig(_, _) => None,
         InstOp::GetElemPtr {
             base,
@@ -242,7 +243,7 @@ pub fn cse(
                     let c = val
                         .get_constant(context)
                         .expect("const_map can only contain consts");
-                    const_opd_const.eq(context, c)
+                    const_opd_const == c
                 })
             }) {
                 vntable

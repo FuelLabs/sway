@@ -1,6 +1,6 @@
 library;
 
-use core::ops::*;
+use std::ops::*;
 use std::hash::*;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -16,11 +16,12 @@ pub enum MyEnum {
     Y: u64,
 }
 
-impl Eq for MyStruct {
+impl PartialEq for MyStruct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
+impl Eq for MyStruct {}
 
 impl Hash for MyStruct {
     fn hash(self, ref mut state: Hasher) {
@@ -29,7 +30,7 @@ impl Hash for MyStruct {
     }
 }
 
-impl Eq for MyEnum {
+impl PartialEq for MyEnum {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (MyEnum::X(val1), MyEnum::X(val2)) => val1 == val2,
@@ -38,6 +39,7 @@ impl Eq for MyEnum {
         }
     }
 }
+impl Eq for MyEnum {}
 
 impl Hash for MyEnum {
     fn hash(self, ref mut state: Hasher) {
@@ -54,17 +56,19 @@ impl Hash for MyEnum {
     }
 }
 
-impl Eq for (u64, u64) {
+impl PartialEq for (u64, u64) {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
     }
 }
+impl Eq for (u64, u64) {}
 
-impl Eq for [u64; 3] {
+impl PartialEq for [u64; 3] {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
     }
 }
+impl Eq for [u64; 3] {}
 
 /////////////////////////////////////////////////////////////////////////////
 // Error 
@@ -82,7 +86,7 @@ pub enum Error {
     StringError: str,
 }
 
-impl Eq for Error {
+impl PartialEq for Error {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Error::BoolError(val1), Error::BoolError(val2)) => val1 == val2,
@@ -98,6 +102,7 @@ impl Eq for Error {
         }
     }
 }
+impl Eq for Error {}
 
 impl Hash for Error {
     fn hash(self, ref mut state: Hasher) {

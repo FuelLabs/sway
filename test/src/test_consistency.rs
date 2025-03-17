@@ -80,19 +80,14 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
         } else {
             // 'implicit-std' is not explicitly set.
             // Since the default value for 'implicit-std' is `true` we either need to
-            // set it explicitly to `false`, or explicitly import local std or core library.
-            let imported_core = imported_lib(toml, "core");
+            // set it explicitly to `false`, or explicitly import local std library.
             let imported_std = imported_lib(toml, "std");
 
-            if imported_core.is_none() && imported_std.is_none() {
+            if imported_std.is_none() {
                 Err(anyhow!("`implicit-std` is `true` by default. Either explicitly set it to `false`, or import the standard library by using, e.g., `std = {{ path = \"../<...>/sway-lib-std\" }}`."))
             } else {
                 // At least one of the libraries is imported.
                 // Let's check that the local library is imported.
-                if imported_core.is_some() {
-                    check_local_import(imported_core.unwrap(), "core")?;
-                }
-
                 if imported_std.is_some() {
                     check_local_import(imported_std.unwrap(), "std")?;
                 }
@@ -113,7 +108,7 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
                 .and_then(|t| {
                     t.values().find(|v| {
                         v.get("package")
-                            .map_or(false, |p| p.as_str().unwrap_or_default() == lib_name)
+                            .is_some_and(|p| p.as_str().unwrap_or_default() == lib_name)
                     })
                 })
             {
@@ -216,7 +211,7 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
         } else if path.is_file()
             && path
                 .file_name()
-                .map(|f| f.to_ascii_lowercase() == "forc.toml")
+                .map(|f| f.eq_ignore_ascii_case("forc.toml"))
                 .unwrap_or(false)
         {
             forc_tomls.push(path.to_path_buf());

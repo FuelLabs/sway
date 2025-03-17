@@ -1,0 +1,8 @@
+[[package]]
+name = "mutability_of_references_memcpy_bug"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-1F6D5E67DD060824"

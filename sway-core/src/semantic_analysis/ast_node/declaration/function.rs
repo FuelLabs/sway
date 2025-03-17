@@ -78,6 +78,7 @@ impl ty::TyFunctionDecl {
             kind,
             ..
         } = fn_decl;
+
         let mut return_type = fn_decl.return_type.clone();
 
         let type_engine = ctx.engines.te();
@@ -103,7 +104,7 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(handler, Some(span.clone()), |mut ctx| {
+            .scoped(handler, Some(span.clone()), |ctx| {
                 // Type check the type parameters.
                 let new_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -111,6 +112,7 @@ impl ty::TyFunctionDecl {
                     type_parameters.clone(),
                     None,
                 )?;
+                let new_const_generic_parameters = fn_decl.const_generic_parameters.clone();
 
                 // type check the function parameters, which will also insert them into the namespace
                 let mut new_parameters = vec![];
@@ -170,6 +172,7 @@ impl ty::TyFunctionDecl {
                     attributes: attributes.clone(),
                     return_type,
                     type_parameters: new_type_parameters,
+                    const_generic_parameters: new_const_generic_parameters,
                     visibility,
                     is_contract_call,
                     purity: *purity,
@@ -198,7 +201,7 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(handler, Some(fn_decl.span.clone()), |mut ctx| {
+            .scoped(handler, Some(fn_decl.span.clone()), |ctx| {
                 let FunctionDeclaration { body, .. } = fn_decl;
 
                 let ty::TyFunctionDecl {
@@ -338,6 +341,7 @@ fn test_function_selector_behavior() {
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],
+        const_generic_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
         where_clause: vec![],
@@ -389,6 +393,7 @@ fn test_function_selector_behavior() {
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],
+        const_generic_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
         where_clause: vec![],

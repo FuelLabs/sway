@@ -98,51 +98,48 @@ pub(crate) fn get_call_paths_for_name<'s>(
         .filter_map(move |item| {
             // If the typed token is a declaration, then we can import it.
             match item.value().as_typed().as_ref() {
-                Some(TypedAstToken::TypedDeclaration(ty_decl)) => {
-                    return match ty_decl {
-                        TyDecl::StructDecl(decl) => {
-                            let struct_decl = ctx.engines.de().get_struct(&decl.decl_id);
-                            let call_path = struct_decl
-                                .call_path
-                                .to_import_path(ctx.engines, &namespace);
-                            Some(call_path)
-                        }
-                        TyDecl::EnumDecl(decl) => {
-                            let enum_decl = ctx.engines.de().get_enum(&decl.decl_id);
-                            let call_path =
-                                enum_decl.call_path.to_import_path(ctx.engines, &namespace);
-                            Some(call_path)
-                        }
-                        TyDecl::TraitDecl(decl) => {
-                            let trait_decl = ctx.engines.de().get_trait(&decl.decl_id);
-                            let call_path =
-                                trait_decl.call_path.to_import_path(ctx.engines, &namespace);
-                            Some(call_path)
-                        }
-                        TyDecl::FunctionDecl(decl) => {
-                            let function_decl = ctx.engines.de().get_function(&decl.decl_id);
-                            let call_path = function_decl
-                                .call_path
-                                .to_import_path(ctx.engines, &namespace);
-                            Some(call_path)
-                        }
-                        TyDecl::ConstantDecl(decl) => {
-                            let constant_decl = ctx.engines.de().get_constant(&decl.decl_id);
-                            let call_path = constant_decl
-                                .call_path
-                                .to_import_path(ctx.engines, &namespace);
-                            Some(call_path)
-                        }
-                        TyDecl::TypeAliasDecl(decl) => {
-                            let type_alias_decl = ctx.engines.de().get_type_alias(&decl.decl_id);
-                            let call_path = type_alias_decl
-                                .call_path
-                                .to_import_path(ctx.engines, &namespace);
-                            Some(call_path)
-                        }
-                        _ => None,
-                    };
-                }
+                Some(TypedAstToken::TypedDeclaration(ty_decl)) => match ty_decl {
+                    TyDecl::StructDecl(decl) => {
+                        let struct_decl = ctx.engines.de().get_struct(&decl.decl_id);
+                        let call_path = struct_decl
+                            .call_path
+                            .to_import_path(ctx.engines, &namespace);
+                        Some(call_path)
+                    }
+                    TyDecl::EnumDecl(decl) => {
+                        let enum_decl = ctx.engines.de().get_enum(&decl.decl_id);
+                        let call_path = enum_decl.call_path.to_import_path(ctx.engines, &namespace);
+                        Some(call_path)
+                    }
+                    TyDecl::TraitDecl(decl) => {
+                        let trait_decl = ctx.engines.de().get_trait(&decl.decl_id);
+                        let call_path =
+                            trait_decl.call_path.to_import_path(ctx.engines, &namespace);
+                        Some(call_path)
+                    }
+                    TyDecl::FunctionDecl(decl) => {
+                        let function_decl = ctx.engines.de().get_function(&decl.decl_id);
+                        let call_path = function_decl
+                            .call_path
+                            .to_import_path(ctx.engines, &namespace);
+                        Some(call_path)
+                    }
+                    TyDecl::ConstantDecl(decl) => {
+                        let constant_decl = ctx.engines.de().get_constant(&decl.decl_id);
+                        let call_path = constant_decl
+                            .call_path
+                            .to_import_path(ctx.engines, &namespace);
+                        Some(call_path)
+                    }
+                    TyDecl::TypeAliasDecl(decl) => {
+                        let type_alias_decl = ctx.engines.de().get_type_alias(&decl.decl_id);
+                        let call_path = type_alias_decl
+                            .call_path
+                            .to_import_path(ctx.engines, &namespace);
+                        Some(call_path)
+                    }
+                    _ => None,
+                },
                 Some(TypedAstToken::TypedFunctionDeclaration(TyFunctionDecl {
                     call_path, ..
                 }))
@@ -325,7 +322,7 @@ mod tests {
         CallPath {
             prefixes: get_mock_prefixes(prefixes),
             suffix: Ident::new_no_span(suffix.to_string()),
-            is_absolute: false,
+            callpath_type: sway_core::language::CallPathType::Full,
         }
     }
 
@@ -364,7 +361,7 @@ mod tests {
             call_path: get_prefixes_from_src(src, prefixes),
             span: get_span_from_src(src, text).unwrap(),
             import_type,
-            is_absolute: false,
+            is_relative_to_package_root: false,
             alias: None,
         }
     }

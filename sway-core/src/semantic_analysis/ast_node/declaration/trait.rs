@@ -104,7 +104,7 @@ impl TyTraitDecl {
 
         // A temporary namespace for checking within the trait's scope.
         ctx.with_self_type(Some(self_type))
-            .scoped(handler, Some(span.clone()), |mut ctx| {
+            .scoped(handler, Some(span.clone()), |ctx| {
                 // Type check the type parameters.
                 let new_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -167,6 +167,7 @@ impl TyTraitDecl {
                     CallPath::ident_to_fullpath(name.clone(), ctx.namespace),
                     new_type_parameters.iter().map(|x| x.into()).collect(),
                     self_type,
+                    vec![],
                     &dummy_interface_surface,
                     &span,
                     None,
@@ -235,6 +236,7 @@ impl TyTraitDecl {
                     CallPath::ident_to_fullpath(name.clone(), ctx.namespace()),
                     new_type_parameters.iter().map(|x| x.into()).collect(),
                     self_type,
+                    vec![],
                     &dummy_interface_surface,
                     &span,
                     None,
@@ -396,6 +398,7 @@ impl TyTraitDecl {
                 .map(|type_arg| type_arg.type_id)
                 .collect(),
         );
+
         for item in ctx
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
                 type_id,
@@ -613,6 +616,7 @@ impl TyTraitDecl {
             trait_name.clone(),
             type_arguments.to_vec(),
             type_id,
+            vec![],
             &all_items,
             &trait_name.span(),
             Some(self.span()),

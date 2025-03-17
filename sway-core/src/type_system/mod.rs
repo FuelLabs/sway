@@ -13,7 +13,7 @@ use std::ops::Deref;
 pub use substitute::subst_types::SubstTypesContext;
 
 #[cfg(test)]
-use crate::language::CallPath;
+use crate::language::{CallPath, CallPathType};
 #[cfg(test)]
 use crate::{language::ty::TyEnumDecl, transform::AttributesMap};
 pub use priv_prelude::*;
@@ -111,7 +111,7 @@ fn generic_enum_resolution() {
     }];
 
     let mut call_path: CallPath<BaseIdent> = result_name.clone().into();
-    call_path.is_absolute = true;
+    call_path.callpath_type = CallPathType::Full;
     let decl_ref_1 = engines.de().insert(
         TyEnumDecl {
             call_path,
@@ -153,7 +153,7 @@ fn generic_enum_resolution() {
     };
 
     let mut call_path: CallPath<BaseIdent> = result_name.into();
-    call_path.is_absolute = true;
+    call_path.callpath_type = CallPathType::Full;
     let decl_ref_2 = engines.de().insert(
         TyEnumDecl {
             call_path,

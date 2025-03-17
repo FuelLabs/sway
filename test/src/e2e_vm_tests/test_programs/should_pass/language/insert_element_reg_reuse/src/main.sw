@@ -1,6 +1,6 @@
 script;
 
-impl core::ops::Eq for [u64; 2] {
+impl PartialEq for [u64; 2] {
     fn eq(self, other: Self) -> bool {
         let mut i = 0;
         while i < 2 {
@@ -12,8 +12,9 @@ impl core::ops::Eq for [u64; 2] {
         true
     }
 }
+impl Eq for [u64; 2] {}
 
-impl core::ops::Eq for Vec<[u64; 2]> {
+impl PartialEq for Vec<[u64; 2]> {
     fn eq(self, other: Self) -> bool {
         if self.len() != other.len() {
             return false;
@@ -28,6 +29,7 @@ impl core::ops::Eq for Vec<[u64; 2]> {
         true
     }
 }
+impl Eq for Vec<[u64; 2]> {}
 
 fn tester1(arg: Vec<[u64; 2]>) {
     let mut expected = Vec::new();
@@ -46,19 +48,18 @@ fn tester2(arg: Vec<[u64; 2]>) {
 }
 
 fn main() -> u64 {
+    let mut arg1 = Vec::new();
+    arg1.push([0, 1]);
+    arg1.push([0, 1]);
+    tester1(arg1);
 
-  let mut arg1 = Vec::new();
-  arg1.push([0, 1]);
-  arg1.push([0, 1]);
-  tester1(arg1);
+    let mut arg2 = Vec::new();
+    arg2.push([0, 1]);
+    arg2.push([0, 2]);
+    tester2(arg2);
 
-  let mut arg2 = Vec::new();
-  arg2.push([0, 1]);
-  arg2.push([0, 2]);
-  tester2(arg2);
+    arg1.push([0, 1]);
+    tester2(arg1);
 
-  arg1.push([0, 1]);
-  tester2(arg1);
-
-  1
+    1
 }

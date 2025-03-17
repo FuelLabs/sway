@@ -1,6 +1,5 @@
 script;
 
-use core::ops::Eq;
 use std::assert::*;
 
 enum Initialized {
@@ -8,7 +7,7 @@ enum Initialized {
     False: (),
 }
 
-impl Eq for Initialized {
+impl PartialEq for Initialized {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Initialized::True, Initialized::True) => true,
@@ -17,6 +16,7 @@ impl Eq for Initialized {
         }
     }
 }
+impl Eq for Initialized {}
 
 impl Initialized {
     fn foo(self) -> bool {

@@ -27,22 +27,24 @@ pub(super) fn compile_script(
     engines: &Engines,
     context: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Script);
+
+    compile_constants_for_package(engines, context, module, namespace)?;
+
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        namespace.current_package_root_module(),
         logged_types_map,
         messages_types_map,
         cache,
@@ -78,22 +80,24 @@ pub(super) fn compile_predicate(
     engines: &Engines,
     context: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Predicate);
+
+    compile_constants_for_package(engines, context, module, namespace)?;
+
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        namespace.current_package_root_module(),
         logged_types,
         messages_types,
         cache,
@@ -129,7 +133,7 @@ pub(super) fn compile_contract(
     context: &mut Context,
     entry_function: Option<&DeclId<ty::TyFunctionDecl>>,
     abi_entries: &[DeclId<ty::TyFunctionDecl>],
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -138,15 +142,17 @@ pub(super) fn compile_contract(
     cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Contract);
+
+    compile_constants_for_package(engines, context, module, namespace)?;
+
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
     compile_configurables(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        namespace.current_package_root_module(),
         logged_types_map,
         messages_types_map,
         cache,
@@ -180,22 +186,24 @@ pub(super) fn compile_contract(
         )?;
     }
 
-    // Fallback function needs to be compiled
-    for decl in declarations {
-        if let ty::TyDecl::FunctionDecl(decl) = decl {
-            let decl_id = decl.decl_id;
-            let decl = engines.de().get(&decl_id);
-            if decl.is_fallback() {
-                compile_abi_method(
-                    context,
-                    &mut md_mgr,
-                    module,
-                    &decl_id,
-                    logged_types_map,
-                    messages_types_map,
-                    engines,
-                    cache,
-                )?;
+    if !context.experimental.new_encoding {
+        // Fallback function needs to be compiled
+        for decl in declarations {
+            if let ty::TyDecl::FunctionDecl(decl) = decl {
+                let decl_id = decl.decl_id;
+                let decl = engines.de().get(&decl_id);
+                if decl.is_fallback() {
+                    compile_abi_method(
+                        context,
+                        &mut md_mgr,
+                        module,
+                        &decl_id,
+                        logged_types_map,
+                        messages_types_map,
+                        engines,
+                        cache,
+                    )?;
+                }
             }
         }
     }
@@ -218,16 +226,18 @@ pub(super) fn compile_contract(
 pub(super) fn compile_library(
     engines: &Engines,
     context: &mut Context,
-    namespace: &namespace::Module,
+    namespace: &namespace::Root,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Library);
+
+    compile_constants_for_package(engines, context, module, namespace)?;
+
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
     compile_tests(
         engines,
         context,
@@ -242,15 +252,41 @@ pub(super) fn compile_library(
     Ok(module)
 }
 
-pub(crate) fn compile_constants(
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn compile_constants_for_package(
+    engines: &Engines,
+    context: &mut Context,
+    module: Module,
+    namespace: &namespace::Root,
+) -> Result<Module, Vec<CompileError>> {
+    let mut md_mgr = MetadataManager::default();
+
+    // Collect constant for all dependencies
+    for ext_package in namespace.external_packages().values() {
+        compile_constants_for_package(engines, context, module, ext_package)?;
+    }
+
+    compile_constants(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace.current_package_root_module(),
+    )
+    .map_err(|err| vec![err])?;
+
+    Ok(module)
+}
+
+fn compile_constants(
     engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: &namespace::Module,
 ) -> Result<(), CompileError> {
-    for decl_name in module_ns.current_items().get_all_declared_symbols() {
-        if let Some(resolved_decl) = module_ns.current_items().symbols.get(decl_name) {
+    for decl_name in module_ns.root_items().get_all_declared_symbols() {
+        if let Some(resolved_decl) = module_ns.root_items().symbols.get(decl_name) {
             if let ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) =
                 &resolved_decl.expect_typed_ref()
             {
@@ -291,10 +327,10 @@ pub(crate) fn compile_configurables(
     messages_types_map: &HashMap<TypeId, MessageId>,
     cache: &mut CompiledFunctionCache,
 ) -> Result<(), CompileError> {
-    for decl_name in module_ns.current_items().get_all_declared_symbols() {
+    for decl_name in module_ns.root_items().get_all_declared_symbols() {
         if let Some(ResolvedDeclaration::Typed(ty::TyDecl::ConfigurableDecl(
             ty::ConfigurableDecl { decl_id, .. },
-        ))) = module_ns.current_items().symbols.get(decl_name)
+        ))) = module_ns.root_items().symbols.get(decl_name)
         {
             let decl = engines.de().get(decl_id);
 
@@ -322,7 +358,7 @@ pub(crate) fn compile_configurables(
             let opt_metadata = md_mgr.span_to_md(context, &decl.span);
 
             if context.experimental.new_encoding {
-                let mut encoded_bytes = match constant.value {
+                let mut encoded_bytes = match constant.get_content(context).value.clone() {
                     ConstantValue::RawUntypedSlice(bytes) => bytes,
                     _ => unreachable!(),
                 };
@@ -617,11 +653,12 @@ fn compile_fn(
     // Special case: sometimes the returned value at the end of the function block is hacked
     // together and is invalid.  This can happen with diverging control flow or with implicit
     // returns.  We can double check here and make sure the return value type is correct.
+    let undef = Constant::unique(context, ConstantContent::get_undef(ret_type));
     ret_val = match ret_val.get_type(context) {
         Some(ret_val_type) if ret_type.eq(context, &ret_val_type) => ret_val,
 
         // Mismatched or unavailable type.  Set ret_val to a correctly typed Undef.
-        _otherwise => Value::new_constant(context, Constant::get_undef(ret_type)),
+        _otherwise => Value::new_constant(context, undef),
     };
 
     // Another special case: if the last expression in a function is a return then we don't want to
@@ -642,7 +679,7 @@ fn compile_fn(
             || compiler.current_block.num_predecessors(context) > 0)
     {
         if ret_type.is_unit(context) {
-            ret_val = Constant::get_unit(context);
+            ret_val = ConstantContent::get_unit(context);
         }
         compiler
             .current_block

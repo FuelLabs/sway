@@ -295,7 +295,7 @@ pub enum ReassignmentOpVariant {
 }
 
 impl ReassignmentOpVariant {
-    pub fn core_name(&self) -> &'static str {
+    pub fn std_name(&self) -> &'static str {
         match self {
             ReassignmentOpVariant::Equals => "eq",
             ReassignmentOpVariant::AddEquals => "add",
@@ -304,6 +304,18 @@ impl ReassignmentOpVariant {
             ReassignmentOpVariant::DivEquals => "divide",
             ReassignmentOpVariant::ShlEquals => "lsh",
             ReassignmentOpVariant::ShrEquals => "rsh",
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ReassignmentOpVariant::Equals => EqToken::AS_STR,
+            ReassignmentOpVariant::AddEquals => AddEqToken::AS_STR,
+            ReassignmentOpVariant::SubEquals => SubEqToken::AS_STR,
+            ReassignmentOpVariant::MulEquals => StarEqToken::AS_STR,
+            ReassignmentOpVariant::DivEquals => DivEqToken::AS_STR,
+            ReassignmentOpVariant::ShlEquals => ShlEqToken::AS_STR,
+            ReassignmentOpVariant::ShrEquals => ShrEqToken::AS_STR,
         }
     }
 }

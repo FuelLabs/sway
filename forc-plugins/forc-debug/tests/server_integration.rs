@@ -2,12 +2,16 @@ use dap::{
     events::{Event, OutputEventBody},
     requests::{Command, LaunchRequestArguments, SetBreakpointsArguments, VariablesArguments},
     responses::ResponseBody,
-    types::{OutputEventCategory, Source, SourceBreakpoint, StoppedEventReason, Variable},
+    types::{
+        OutputEventCategory, Source, SourceBreakpoint, StartDebuggingRequestKind,
+        StoppedEventReason, Variable,
+    },
 };
 use forc_debug::server::{
     AdditionalData, DapServer, INSTRUCTIONS_VARIABLE_REF, REGISTERS_VARIABLE_REF,
 };
 use std::{
+    collections::BTreeMap,
     env,
     io::Write,
     path::PathBuf,
@@ -277,6 +281,66 @@ fn test_server_launch_mode() {
     assert!(body.output.contains("test test_2 ... ok"));
     assert!(body.output.contains("test test_3 ... ok"));
     assert!(body.output.contains("Result: OK. 3 passed. 0 failed"));
+}
+
+#[test]
+fn test_sourcemap_build() {
+    let mut server = DapServer::new(Box::new(std::io::stdin()), Box::new(std::io::sink()));
+
+    let program_path = test_fixtures_dir().join("simple/src/main.sw");
+
+    // Initialize and set the program path
+    server.handle_command(&Command::Initialize(Default::default()));
+    server.state.program_path = program_path.clone();
+    server.state.mode = Some(StartDebuggingRequestKind::Launch);
+
+    // Explicitly build the tests
+    server.build_tests().expect("Failed to build tests");
+
+    // Group instructions by line number
+    let mut line_to_instructions: BTreeMap<i64, Vec<usize>> = BTreeMap::new();
+    let source_map = &server.state.source_map;
+
+    for pc in source_map.map.keys() {
+        if let Some((path, range)) = source_map.addr_to_span(*pc) {
+            if path == program_path {
+                line_to_instructions
+                    .entry(range.start.line as i64)
+                    .or_default()
+                    .push(*pc);
+            }
+        }
+    }
+
+    // Verify essential source locations are mapped correctly
+    let key_locations = [
+        // Main function and its contents
+        (3, 4, "main function parameters"), // Should have 4 instructions
+        (4, 2, "addition operation"),       // Should have 2 instructions (add operation)
+        // Helper function and its contents
+        (11, 4, "helper function parameters"), // Should have 4 instructions
+        (12, 2, "helper addition operation"),  // Should have 2 instructions
+        // Test functions (identical patterns)
+        (21, 1, "test_1 first line"),  // Each test line should have
+        (22, 1, "test_1 second line"), // exactly one instruction
+        (23, 1, "test_1 helper call"),
+        (24, 1, "test_1 assertion"),
+    ];
+
+    for (line, expected_count, description) in key_locations {
+        let instructions = line_to_instructions
+            .get(&line)
+            .unwrap_or_else(|| panic!("Missing mapping for line {}: {}", line, description));
+        assert_eq!(
+            instructions.len(),
+            expected_count,
+            "Line {} ({}): Expected {} instructions, found {:?}",
+            line,
+            description,
+            expected_count,
+            instructions
+        );
+    }
 }
 
 /// Asserts that the given event is a Stopped event with a breakpoint reason and the given breakpoint ID.

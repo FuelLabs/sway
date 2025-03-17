@@ -1,11 +1,13 @@
+use std::sync::Arc;
+
 use crate::{
     language::{
         parsed::ParseProgram,
-        ty::{self, TyProgram},
+        ty::{self, TyModule, TyProgram},
     },
     metadata::MetadataManager,
     semantic_analysis::{
-        namespace::{self},
+        namespace::{self, Root},
         TypeCheckContext,
     },
     BuildConfig, Engines,
@@ -18,6 +20,13 @@ use super::{
     symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
     TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
 };
+
+#[derive(Clone, Debug)]
+pub struct TypeCheckFailed {
+    pub root_module: Option<Arc<TyModule>>,
+    pub namespace: Root,
+    pub error: ErrorEmitted,
+}
 
 impl TyProgram {
     /// Collects the given parsed program to produce a symbol maps.
@@ -51,7 +60,7 @@ impl TyProgram {
         package_name: &str,
         build_config: Option<&BuildConfig>,
         experimental: ExperimentalFeatures,
-    ) -> Result<Self, ErrorEmitted> {
+    ) -> Result<Self, TypeCheckFailed> {
         let mut ctx =
             TypeCheckContext::from_root(&mut namespace, collection_ctx, engines, experimental)
                 .with_kind(parsed.kind);
@@ -65,7 +74,12 @@ impl TyProgram {
             parsed.kind,
             root,
             build_config,
-        )?;
+        )
+        .map_err(|error| TypeCheckFailed {
+            error,
+            root_module: None,
+            namespace: ctx.namespace.root_ref().clone(),
+        })?;
 
         let (kind, declarations, configurables) = Self::validate_root(
             handler,
@@ -74,11 +88,17 @@ impl TyProgram {
             *kind,
             package_name,
             ctx.experimental,
-        )?;
+        )
+        .map_err(|error| TypeCheckFailed {
+            error,
+            root_module: Some(root.clone()),
+            namespace: ctx.namespace.root_ref().clone(),
+        })?;
 
         let program = TyProgram {
             kind,
-            root: (*root).clone(),
+            root_module: (*root).clone(),
+            namespace,
             declarations,
             configurables,
             storage_slots: vec![],
@@ -90,13 +110,13 @@ impl TyProgram {
     }
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
-        self,
+        &mut self,
         handler: &Handler,
         engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
-    ) -> Result<Self, ErrorEmitted> {
+    ) -> Result<(), ErrorEmitted> {
         let decl_engine = engines.de();
         match &self.kind {
             ty::TyProgramKind::Contract { .. } => {
@@ -115,21 +135,19 @@ impl TyProgram {
                         // Sort the slots to standardize the output. Not strictly required by the
                         // spec.
                         storage_slots.sort();
-                        Ok(Self {
-                            storage_slots,
-                            ..self
-                        })
+                        self.storage_slots = storage_slots;
+                        Ok(())
                     }
-                    _ => Ok(Self {
-                        storage_slots: vec![],
-                        ..self
-                    }),
+                    _ => {
+                        self.storage_slots = vec![];
+                        Ok(())
+                    }
                 }
             }
-            _ => Ok(Self {
-                storage_slots: vec![],
-                ..self
-            }),
+            _ => {
+                self.storage_slots = vec![];
+                Ok(())
+            }
         }
     }
 }
@@ -140,7 +158,7 @@ impl TypeCheckAnalysis for TyProgram {
         handler: &Handler,
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
-        for node in self.root.all_nodes.iter() {
+        for node in self.root_module.all_nodes.iter() {
             node.type_check_analyze(handler, ctx)?;
         }
         Ok(())
@@ -154,7 +172,7 @@ impl TypeCheckFinalization for TyProgram {
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
-            for node in self.root.all_nodes.iter_mut() {
+            for node in self.root_module.all_nodes.iter_mut() {
                 let _ = node.type_check_finalize(handler, ctx);
             }
             Ok(())

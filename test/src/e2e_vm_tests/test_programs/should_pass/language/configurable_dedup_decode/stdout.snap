@@ -1,12 +1,11 @@
 ---
 source: test/tests/tests.rs
-snapshot_kind: text
+assertion_line: 115
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode
-   Compiling library core (sway-lib-core)
    Compiling library std (sway-lib-std)
 // IR: Final
 library {
@@ -233,37 +232,37 @@ script {
 !0 = "test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode/src/main.sw"
 !1 = span !0 177 182
 !2 = span !0 136 143
-!3 = "sway-lib-core/src/codec.sw"
-!4 = span !3 64814 64817
-!5 = span !3 64828 64831
-!6 = span !3 64838 64844
-!7 = span !3 64784 65117
-!8 = fn_name_span !3 64791 64810
+!3 = "sway-lib-std/src/codec.sw"
+!4 = span !3 68021 68024
+!5 = span !3 68035 68038
+!6 = span !3 68045 68051
+!7 = span !3 67991 68324
+!8 = fn_name_span !3 67998 68017
 !9 = inline "never"
 !10 = (!7 !8 !9)
-!11 = span !3 64885 64937
-!12 = span !3 64967 64973
-!13 = span !3 64953 64974
-!14 = fn_call_path_span !3 64953 64966
-!15 = span !3 102115 102136
-!16 = fn_call_path_span !3 102115 102128
+!11 = span !3 68092 68144
+!12 = span !3 68174 68180
+!13 = span !3 68160 68181
+!14 = fn_call_path_span !3 68160 68173
+!15 = span !3 105408 105429
+!16 = fn_call_path_span !3 105408 105421
 !17 = (!13 !14 !15 !16)
-!18 = span !3 64942 64975
-!19 = span !3 65033 65037
-!20 = span !3 65023 65038
-!21 = span !3 64980 65115
-!22 = span !3 65088 65108
+!18 = span !3 68149 68182
+!19 = span !3 68240 68244
+!20 = span !3 68230 68245
+!21 = span !3 68187 68322
+!22 = span !3 68295 68315
 !23 = span !3 652 655
 !24 = span !3 666 670
 !25 = span !3 634 729
 !26 = fn_name_span !3 641 651
 !27 = (!25 !26)
-!28 = span !3 65527 65533
-!29 = span !3 65505 65600
-!30 = fn_name_span !3 65508 65518
+!28 = span !3 68734 68740
+!29 = span !3 68712 68807
+!30 = fn_name_span !3 68715 68725
 !31 = (!29 !30)
-!32 = span !3 65566 65594
-!33 = fn_call_path_span !3 65573 65585
+!32 = span !3 68773 68801
+!33 = fn_call_path_span !3 68780 68792
 !34 = span !3 593 605
 !35 = (!32 !33 !34)
 !36 = (!32 !33)
@@ -281,8 +280,8 @@ script {
 !48 = (!46 !47)
 !49 = span !42 90 111
 !50 = fn_call_path_span !42 90 96
-!51 = span !3 64530 64543
-!52 = fn_call_path_span !3 64530 64541
+!51 = span !3 67737 67750
+!52 = fn_call_path_span !3 67737 67748
 !53 = (!49 !50 !51 !52)
 !54 = (!49 !50 !51 !52)
 !55 = (!49 !50 !51 !52)
@@ -296,8 +295,8 @@ script {
 !63 = span !3 159 222
 !64 = (!49 !50 !51 !52 !63)
 !65 = (!49 !50 !51 !52)
-!66 = span !3 64514 64544
-!67 = fn_call_path_span !3 64519 64529
+!66 = span !3 67721 67751
+!67 = fn_call_path_span !3 67726 67736
 !68 = (!49 !50 !66 !67)
 !69 = (!49 !50 !66 !67)
 !70 = span !3 55 82
@@ -327,12 +326,12 @@ script {
 !94 = span !3 4684 4767
 !95 = (!49 !50 !66 !67 !94)
 !96 = (!49 !50 !66 !67)
-!97 = span !3 64501 64545
+!97 = span !3 67708 67752
 !98 = (!49 !50 !97)
-!99 = span !3 64550 64556
+!99 = span !3 67757 67763
 !100 = (!49 !50 !99)
-!101 = span !3 64550 64571
-!102 = fn_call_path_span !3 64557 64569
+!101 = span !3 67757 67778
+!102 = fn_call_path_span !3 67764 67776
 !103 = (!49 !50 !101 !102)
 !104 = (!49 !50 !101 !102)
 !105 = (!49 !50 !101 !102 !70)
@@ -379,99 +378,85 @@ addi $$arg2 $ssp i0           ; get pointer to configurable TUPLE stack address
 sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
 srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
 addi $$reta $$reta i4         ; set new return address
-jmpf $zero i93                ; decode configurable TUPLE
+jmpf $zero i78                ; decode configurable TUPLE
 addr $$arg0 data_Configurable_1; get pointer to configurable WRAPPED default value
 addi $$arg1 $zero i8          ; get length of configurable WRAPPED default value
 addi $$arg2 $ssp i8           ; get pointer to configurable WRAPPED stack address
 sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
 srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
 addi $$reta $$reta i4         ; set new return address
-jmpf $zero i85                ; decode configurable WRAPPED
+jmpf $zero i71                ; decode configurable WRAPPED
 move $$locbase $sp            ; save locals base register for function __entry
 cfei i360                     ; allocate 360 bytes for locals and 0 slots for call arguments
-addi $r6 $$locbase i320       ; get offset to local
+addi $r0 $$locbase i320       ; get offset to local
 sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
 srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
 addi $$reta $$reta i4         ; [call]: set new return address
-jmpf $zero i140               ; [call]: call main_8
-move $r0 $$retv               ; [call]: copy the return value
-movi $r1 i1024                ; initialize constant into register
-aloc $r1
-move $r1 $hp                  ; return value from ASM block with return register hp
-addi $r2 $$locbase i112       ; get offset to local
-sw   $$locbase $r1 i14        ; store word
-movi $r1 i1024                ; initialize constant into register
-sw   $$locbase $r1 i15        ; store word
+jmpf $zero i126               ; [call]: call main_8
+move $r1 $$retv               ; [call]: copy the return value
+movi $r2 i1024                ; initialize constant into register
+aloc $r2
+move $r2 $hp                  ; return value from ASM block with return register hp
+addi $r3 $$locbase i112       ; get offset to local
+sw   $$locbase $r2 i14        ; store word
+movi $r2 i1024                ; initialize constant into register
+sw   $$locbase $r2 i15        ; store word
 sw   $$locbase $zero i16      ; store word
-movi $r1 i24                  ; get data length for memory copy
-mcp  $$locbase $r2 $r1        ; copy memory
-addi $r1 $$locbase i184       ; get offset to local
-movi $r2 i24                  ; get data length for memory copy
-mcp  $r1 $$locbase $r2        ; copy memory
-addi $r2 $$locbase i272       ; get offset to local
-movi $r3 i24                  ; get data length for memory copy
-mcp  $r2 $r1 $r3              ; copy memory
-addi $r1 $$locbase i24        ; get offset to local
-movi $r3 i24                  ; get data length for memory copy
-mcp  $r1 $r2 $r3              ; copy memory
-addi $r2 $$locbase i136       ; get offset to local
-movi $r3 i24                  ; get data length for memory copy
-mcp  $r2 $r1 $r3              ; copy memory
-lw   $r5 $$locbase i17        ; load word
-lw   $r4 $$locbase i18        ; load word
-lw   $r1 $$locbase i19        ; load word
-movi $r2 i8                   ; initialize constant into register
-add  $r2 $r1 $r2
-gt   $r3 $r2 $r4
-jnzf $r3 $zero i1
+mcpi $$locbase $r3 i24        ; copy memory
+addi $r2 $$locbase i184       ; get offset to local
+mcpi $r2 $$locbase i24        ; copy memory
+addi $r3 $$locbase i272       ; get offset to local
+mcpi $r3 $r2 i24              ; copy memory
+addi $r2 $$locbase i24        ; get offset to local
+mcpi $r2 $r3 i24              ; copy memory
+addi $r3 $$locbase i136       ; get offset to local
+mcpi $r3 $r2 i24              ; copy memory
+lw   $r6 $$locbase i17        ; load word
+lw   $r5 $$locbase i18        ; load word
+lw   $r2 $$locbase i19        ; load word
+movi $r3 i8                   ; initialize constant into register
+add  $r3 $r2 $r3
+gt   $r4 $r3 $r5
+jnzf $r4 $zero i1
 jmpf $zero i7
-movi $r3 i2                   ; initialize constant into register
-mul  $r3 $r4 $r3
-movi $r4 i8                   ; initialize constant into register
-add  $r4 $r3 $r4
-aloc $r4
-mcp  $hp $r5 $r1
-move $r5 $hp                  ; return value from ASM block with return register hp
-add  $r1 $r5 $r1
-sw   $r1 $r0 i0               ; store word
-addi $r0 $$locbase i208       ; get offset to local
-sw   $$locbase $r5 i26        ; store word
-sw   $$locbase $r4 i27        ; store word
-sw   $$locbase $r2 i28        ; store word
-addi $r1 $$locbase i48        ; get offset to local
-movi $r2 i24                  ; get data length for memory copy
-mcp  $r1 $r0 $r2              ; copy memory
-addi $r0 $$locbase i248       ; get offset to local
-movi $r2 i24                  ; get data length for memory copy
-mcp  $r0 $r1 $r2              ; copy memory
+movi $r4 i2                   ; initialize constant into register
+mul  $r4 $r5 $r4
+movi $r5 i8                   ; initialize constant into register
+add  $r5 $r4 $r5
+aloc $r5
+mcp  $hp $r6 $r2
+move $r6 $hp                  ; return value from ASM block with return register hp
+add  $r2 $r6 $r2
+sw   $r2 $r1 i0               ; store word
+addi $r1 $$locbase i208       ; get offset to local
+sw   $$locbase $r6 i26        ; store word
+sw   $$locbase $r5 i27        ; store word
+sw   $$locbase $r3 i28        ; store word
+addi $r2 $$locbase i48        ; get offset to local
+mcpi $r2 $r1 i24              ; copy memory
+addi $r1 $$locbase i248       ; get offset to local
+mcpi $r1 $r2 i24              ; copy memory
+addi $r2 $$locbase i336       ; get offset to local
+mcpi $r2 $r1 i24              ; copy memory
 addi $r1 $$locbase i336       ; get offset to local
-movi $r2 i24                  ; get data length for memory copy
-mcp  $r1 $r0 $r2              ; copy memory
-addi $r0 $$locbase i336       ; get offset to local
-addi $r1 $$locbase i296       ; get offset to local
-movi $r2 i24                  ; get data length for memory copy
-mcp  $r1 $r0 $r2              ; copy memory
-addi $r0 $$locbase i72        ; get offset to local
-movi $r2 i24                  ; get data length for memory copy
-mcp  $r0 $r1 $r2              ; copy memory
-addi $r1 $$locbase i160       ; get offset to local
-movi $r2 i24                  ; get data length for memory copy
-mcp  $r1 $r0 $r2              ; copy memory
-lw   $r0 $$locbase i20        ; load word
-addi $r1 $r1 i16              ; get offset to aggregate element
-addi $r2 $$locbase i232       ; get offset to local
-sw   $$locbase $r0 i29        ; store word
-addi $r0 $r2 i8               ; get offset to aggregate element
-movi $r3 i8                   ; get data length for memory copy
-mcp  $r0 $r1 $r3              ; copy memory
-addi $r0 $$locbase i96        ; get offset to local
-movi $r1 i16                  ; get data length for memory copy
-mcp  $r0 $r2 $r1              ; copy memory
-movi $r1 i16                  ; get data length for memory copy
-mcp  $r6 $r0 $r1              ; copy memory
-lw   $r0 $r6 i1               ; load size of returned slice
-lw   $r6 $r6 i0               ; load pointer to returned slice
-retd  $r6 $r0
+addi $r2 $$locbase i296       ; get offset to local
+mcpi $r2 $r1 i24              ; copy memory
+addi $r1 $$locbase i72        ; get offset to local
+mcpi $r1 $r2 i24              ; copy memory
+addi $r2 $$locbase i160       ; get offset to local
+mcpi $r2 $r1 i24              ; copy memory
+lw   $r1 $$locbase i20        ; load word
+addi $r2 $r2 i16              ; get offset to aggregate element
+addi $r3 $$locbase i232       ; get offset to local
+sw   $$locbase $r1 i29        ; store word
+addi $r1 $r3 i8               ; get offset to aggregate element
+mcpi $r1 $r2 i8               ; copy memory
+addi $r1 $$locbase i96        ; get offset to local
+mcpi $r1 $r3 i16              ; copy memory
+mcpi $r0 $r1 i16              ; copy memory
+lw   $r1 $r0 i1               ; load size of returned slice
+lw   $r0 $r0 i0               ; load pointer to returned slice
+retd  $r0 $r1
 pshl i15                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function abi_decode_in_place_0
@@ -537,12 +522,12 @@ jmp $$reta                    ; return from call
 pshl i7                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function main_8
-move $r2 $$reta               ; save return address
-lw   $r0 $ssp i1              ; load word
-lw   $r1 $ssp i0              ; load word
-add  $r0 $r0 $r1
-move $$retv $r0               ; set return value
-move $$reta $r2               ; restore return address
+move $r0 $$reta               ; save return address
+lw   $r1 $ssp i1              ; load word
+lw   $r2 $ssp i0              ; load word
+add  $r1 $r1 $r2
+move $$retv $r1               ; set return value
+move $$reta $r0               ; restore return address
 poph i524288                  ; restore registers 40..64
 popl i7                       ; restore registers 16..40
 jmp $$reta                    ; return from call
@@ -551,4 +536,4 @@ data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
 data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
-    Finished release [optimized + fuel] target(s) [752 B] in ???
+    Finished release [optimized + fuel] target(s) [688 B] in ???

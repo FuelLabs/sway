@@ -55,13 +55,13 @@ impl ty::TyAstNode {
         let node = ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(stmt) => {
-                    handle_use_statement(&mut ctx, engines, &stmt, handler);
+                    handle_use_statement(&mut ctx, &stmt, handler);
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
                         side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
                             alias: stmt.alias,
                             call_path: stmt.call_path,
                             span: stmt.span,
-                            is_absolute: stmt.is_absolute,
+                            is_relative_to_package_root: stmt.is_relative_to_package_root,
                             import_type: stmt.import_type,
                         }),
                     })
@@ -77,9 +77,9 @@ impl ty::TyAstNode {
                         ),
                     })
                 }
-                AstNodeContent::Declaration(decl) => {
-                    ty::TyAstNodeContent::Declaration(ty::TyDecl::type_check(handler, ctx, decl)?)
-                }
+                AstNodeContent::Declaration(decl) => ty::TyAstNodeContent::Declaration(
+                    ty::TyDecl::type_check(handler, &mut ctx, decl)?,
+                ),
                 AstNodeContent::Expression(expr) => {
                     let mut ctx = ctx;
                     match expr.kind {
@@ -136,31 +136,12 @@ fn collect_use_statement(
     ctx: &mut SymbolCollectionContext,
     stmt: &UseStatement,
 ) {
-    let mut is_external = false;
-    if let Some(submodule) = ctx
-        .namespace
-        .module(engines)
-        .submodule(engines, &[stmt.call_path[0].clone()])
-    {
-        is_external |= submodule.read(engines, |m| m.is_external);
-    }
-    // We create an inner module for each module being processed during the collection.
-    // This does not play well with the existing way we use to lookup an external module.
-    // So check again starting from the root to make sure we find the right module.
-    // Clean this up once paths are normalized before collection and we can just rely on
-    // absolute paths.
-    if let Some(submodule) = ctx
-        .namespace
-        .root_module()
-        .submodule(engines, &[stmt.call_path[0].clone()])
-    {
-        is_external |= submodule.read(engines, |m| m.is_external);
-    }
-    let path = if is_external || stmt.is_absolute {
-        stmt.call_path.clone()
-    } else {
-        ctx.namespace.prepend_module_path(&stmt.call_path)
-    };
+    let path = ctx.namespace.parsed_path_to_full_path(
+        engines,
+        &stmt.call_path,
+        stmt.is_relative_to_package_root,
+    );
+
     let _ = match stmt.import_type {
         ImportType::Star => {
             // try a standard starimport first
@@ -169,7 +150,7 @@ fn collect_use_statement(
             if import.is_ok() {
                 handler.append(star_import_handler);
                 import
-            } else {
+            } else if path.len() >= 2 {
                 // if it doesn't work it could be an enum star import
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
@@ -191,6 +172,9 @@ fn collect_use_statement(
                     handler.append(star_import_handler);
                     import
                 }
+            } else {
+                handler.append(star_import_handler);
+                import
             }
         }
         ImportType::SelfImport(_) => {
@@ -211,8 +195,9 @@ fn collect_use_statement(
             if import.is_ok() {
                 handler.append(item_import_handler);
                 import
-            } else {
+            } else if path.len() >= 2 {
                 // if it doesn't work it could be an enum variant import
+                // For this to work the path must have at least 2 elements: The current package name and the enum name
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
                     let variant_import = ctx.variant_import(
@@ -224,6 +209,7 @@ fn collect_use_statement(
                         stmt.alias.clone(),
                         stmt.reexport,
                     );
+
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
                         variant_import
@@ -235,31 +221,21 @@ fn collect_use_statement(
                     handler.append(item_import_handler);
                     import
                 }
+            } else {
+                handler.append(item_import_handler);
+                import
             }
         }
     };
 }
 
 // To be removed once TypeCheckContext is ported to use SymbolCollectionContext.
-fn handle_use_statement(
-    ctx: &mut TypeCheckContext<'_>,
-    engines: &Engines,
-    stmt: &UseStatement,
-    handler: &Handler,
-) {
-    let mut is_external = false;
-    if let Some(submodule) = ctx
-        .namespace()
-        .module(engines)
-        .submodule(engines, &[stmt.call_path[0].clone()])
-    {
-        is_external = submodule.read(engines, |m| m.is_external);
-    }
-    let path = if is_external || stmt.is_absolute {
-        stmt.call_path.clone()
-    } else {
-        ctx.namespace().prepend_module_path(&stmt.call_path)
-    };
+fn handle_use_statement(ctx: &mut TypeCheckContext<'_>, stmt: &UseStatement, handler: &Handler) {
+    let path = ctx.namespace.parsed_path_to_full_path(
+        ctx.engines,
+        &stmt.call_path,
+        stmt.is_relative_to_package_root,
+    );
     let _ = match stmt.import_type {
         ImportType::Star => {
             // try a standard starimport first
@@ -268,7 +244,7 @@ fn handle_use_statement(
             if import.is_ok() {
                 handler.append(star_import_handler);
                 import
-            } else {
+            } else if path.len() >= 2 {
                 // if it doesn't work it could be an enum star import
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
@@ -289,6 +265,9 @@ fn handle_use_statement(
                     handler.append(star_import_handler);
                     import
                 }
+            } else {
+                handler.append(star_import_handler);
+                import
             }
         }
         ImportType::SelfImport(_) => {
@@ -308,8 +287,9 @@ fn handle_use_statement(
             if import.is_ok() {
                 handler.append(item_import_handler);
                 import
-            } else {
+            } else if path.len() >= 2 {
                 // if it doesn't work it could be an enum variant import
+                // For this to work the path must have at least 2 elements: The current package name and the enum name.
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
                     let variant_import = ctx.variant_import(
@@ -331,6 +311,9 @@ fn handle_use_statement(
                     handler.append(item_import_handler);
                     import
                 }
+            } else {
+                handler.append(item_import_handler);
+                import
             }
         }
     };

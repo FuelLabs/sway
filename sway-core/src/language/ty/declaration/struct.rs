@@ -1,8 +1,11 @@
 use crate::{
+    decl_engine::MaterializeConstGenerics,
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
-    language::{parsed::StructDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
+    language::{
+        parsed::StructDeclaration, ty::TyDeclParsedType, CallPath, CallPathType, Visibility,
+    },
     transform,
     type_system::*,
     Namespace,
@@ -13,6 +16,7 @@ use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
 };
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -93,6 +97,18 @@ impl MonomorphizeHelper for TyStructDecl {
     }
 }
 
+impl MaterializeConstGenerics for TyStructDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &Engines,
+        _handler: &Handler,
+        _name: &str,
+        _value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+}
+
 impl TyStructDecl {
     /// Returns names of the [TyStructField]s of the struct `self` accessible in the given context.
     /// If `is_public_struct_access` is true, only the names of the public fields are returned, otherwise
@@ -152,14 +168,14 @@ pub struct StructAccessInfo {
 impl StructAccessInfo {
     pub fn get_info(engines: &Engines, struct_decl: &TyStructDecl, namespace: &Namespace) -> Self {
         assert!(
-            struct_decl.call_path.is_absolute,
-            "The call path of the struct declaration must always be absolute."
+            matches!(struct_decl.call_path.callpath_type, CallPathType::Full),
+            "The call path of the struct declaration must always be fully resolved."
         );
 
         let struct_can_be_changed =
             module_can_be_changed(engines, namespace, &struct_decl.call_path.prefixes);
         let is_public_struct_access =
-            !namespace.module_is_submodule_of(engines, &struct_decl.call_path.prefixes, true);
+            !namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
 
         Self {
             struct_can_be_changed,

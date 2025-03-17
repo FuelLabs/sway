@@ -1,0 +1,8 @@
+[[package]]
+name = "const_generics"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-04B19932ACF7269D"
