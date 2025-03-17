@@ -59,19 +59,28 @@ pub fn list_contract_functions<W: Write>(
                             )
                         })?
                     };
-                    Ok((func_args, func_args_input))
+                    Ok((func_args, func_args_input, param_type))
                 })
                 .collect::<Result<Vec<_>>>()?;
 
             let func_args_types = func_args
                 .iter()
-                .map(|(func_args, _)| func_args.to_owned())
+                .map(|(func_args, _, _)| func_args.to_owned())
                 .collect::<Vec<String>>()
                 .join(", ");
 
             let func_args_inputs = func_args
                 .iter()
-                .map(|(_, func_args_input)| format!("\"{}\"", func_args_input))
+                .map(|(_, func_args_input, param_type)| match param_type {
+                    ParamType::Array(_, _)
+                    | ParamType::Unit
+                    | ParamType::Tuple(_)
+                    | ParamType::Struct { .. }
+                    | ParamType::Enum { .. }
+                    | ParamType::RawSlice
+                    | ParamType::Vector(_) => format!("\"{}\"", func_args_input),
+                    _ => func_args_input.to_owned(),
+                })
                 .collect::<Vec<String>>()
                 .join(" ");
 
