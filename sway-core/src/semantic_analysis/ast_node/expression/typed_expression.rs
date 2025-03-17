@@ -2496,7 +2496,7 @@ impl ty::TyExpression {
                             ..
                         }) => {
                             let prefix_expr = ty::TyExpression::type_check(
-                                handler,
+                                &Handler::default(),
                                 ctx.by_ref(),
                                 prefix.as_ref(),
                             )
@@ -2508,29 +2508,9 @@ impl ty::TyExpression {
                             {
                                 TypeInfo::Struct(decl_ref) => {
                                     let struct_decl = engines.de().get_struct(decl_ref);
-
-                                    match struct_decl.find_field(&idx_name) {
-                                        None => {
-                                            handler.emit_err(CompileError::InternalOwned(
-                                                    format!(
-                                                        "Unknown field name \"{idx_name}\" for struct \"{}\" \
-                                                            in reassignment.",
-                                                        struct_decl.call_path.suffix.as_str(),
-                                                    ),
-                                                    idx_name.span(),
-                                                ));
-                                            None
-                                        }
-                                        Some(field_to_access) => Some(field_to_access.clone()),
-                                    }
+                                    struct_decl.find_field(&idx_name).cloned()
                                 }
-                                _ => {
-                                    handler.emit_err(CompileError::Internal(
-                                        "Expected struct type in struct field projection.",
-                                        idx_name.span(),
-                                    ));
-                                    None
-                                }
+                                _ => None,
                             };
 
                             indices.push(ty::ProjectionKind::StructField {
