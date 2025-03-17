@@ -5,9 +5,11 @@ use sway_types::Span;
 
 mod annotated;
 mod attribute;
+mod expr;
 mod function;
 mod literal;
 mod module;
+mod path_expression_segment;
 mod storage_field;
 
 /// A wrapper around a lexed tree element that will be modified.

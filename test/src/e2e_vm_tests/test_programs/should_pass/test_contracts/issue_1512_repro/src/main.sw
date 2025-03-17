@@ -23,20 +23,12 @@ pub trait AltFrom {
 
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for U128Duplicate {
+impl PartialEq for U128Duplicate {
     fn eq(self, other: Self) -> bool {
         self.lower == other.lower && self.upper == other.upper
     }
 }
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for U128Duplicate {
-    fn eq(self, other: Self) -> bool {
-        self.lower == other.lower && self.upper == other.upper
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for U128Duplicate {}
+impl Eq for U128Duplicate {}
 
 /// Function for creating U128 from its u64 components
 impl AltFrom for U128Duplicate {

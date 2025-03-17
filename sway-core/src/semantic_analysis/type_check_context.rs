@@ -19,7 +19,8 @@ use crate::{
         Namespace,
     },
     type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
-    EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeSubstMap, UnifyCheck,
+    EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap,
+    UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
@@ -788,7 +789,7 @@ impl<'a> TypeCheckContext<'a> {
 
     /// Given a `method_name` and a `type_id`, find that method on that type in the namespace.
     /// `annotation_type` is the expected method return type. Requires `argument_types` because:
-    /// - standard operations like +, <=, etc. are called like "core::ops::<operation>" and the
+    /// - standard operations like +, <=, etc. are called like "std::ops::<operation>" and the
     ///   actual self type of the trait implementation is determined by the passed argument type.
     /// - we can have several implementations of generic traits for different types, that can
     ///   result in a method of a same name, but with different type arguments.
@@ -1229,7 +1230,7 @@ impl<'a> TypeCheckContext<'a> {
             return;
         };
 
-        let _ = src_mod.walk_scope_chain(|lexical_scope| {
+        let _ = src_mod.walk_scope_chain_early_return(|lexical_scope| {
             impls_to_insert.extend(
                 lexical_scope
                     .items
@@ -1291,6 +1292,7 @@ impl<'a> TypeCheckContext<'a> {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
+        mut impl_type_parameters: Vec<TypeParameter>,
         items: &[ty::TyImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
@@ -1298,6 +1300,20 @@ impl<'a> TypeCheckContext<'a> {
         is_extending_existing_impl: IsExtendingExistingImpl,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
+
+        // Use trait name with full path, improves consistency between
+        // this inserting and getting in `get_methods_for_type_and_trait_name`.
+        impl_type_parameters.iter_mut().for_each(|tp| {
+            tp.trait_constraints.iter_mut().for_each(|tc| {
+                tc.trait_name = tc.trait_name.to_fullpath(self.engines(), self.namespace())
+            })
+        });
+
+        let impl_type_parameters_ids = impl_type_parameters
+            .iter()
+            .map(|type_parameter| engines.te().new_type_param(type_parameter.clone()))
+            .collect::<Vec<_>>();
+
         // CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
         // to the actual trait declaration. Since the path of the trait declaration is used as a key
         // in the trait map, we need to find the actual declaration path.
@@ -1316,6 +1332,7 @@ impl<'a> TypeCheckContext<'a> {
                 canonical_trait_path,
                 trait_type_args,
                 type_id,
+                impl_type_parameters_ids,
                 &items,
                 impl_span,
                 trait_decl_span,

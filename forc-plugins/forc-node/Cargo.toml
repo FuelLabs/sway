@@ -1,5 +1,6 @@
 [package]
 name = "forc-node"
+description = "a wrapper around fuel-core to bootstrap nodes"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

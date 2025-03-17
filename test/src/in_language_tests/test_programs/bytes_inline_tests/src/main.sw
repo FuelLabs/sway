@@ -864,25 +864,6 @@ fn bytes_from_b256() {
 }
 
 #[test]
-#[cfg(experimental_try_from_bytes_for_b256 = false)]
-fn bytes_into_b256() {
-    let mut initial_bytes = Bytes::with_capacity(32);
-
-    let mut i = 0;
-    while i < 32 {
-        // 0x33 is 51 in decimal
-        initial_bytes.push(51u8);
-        i += 1;
-    }
-
-    let value: b256 = initial_bytes.into();
-    let expected: b256 = 0x3333333333333333333333333333333333333333333333333333333333333333;
-
-    assert(value == expected);
-}
-
-#[test]
-#[cfg(experimental_try_from_bytes_for_b256 = true)]
 fn bytes_try_into_b256() {
     let mut initial_bytes = Bytes::with_capacity(32);
 
@@ -919,25 +900,6 @@ fn bytes_try_into_b256() {
 }
 
 #[test]
-#[cfg(experimental_try_from_bytes_for_b256 = false)]
-fn bytes_b256_from() {
-    let control = 0x3333333333333333333333333333333333333333333333333333333333333333;
-    let mut bytes = Bytes::with_capacity(32);
-
-    let mut i = 0;
-    while i < 32 {
-        // 0x33 is 51 in decimal
-        bytes.push(51u8);
-        i += 1;
-    }
-
-    let result_b256: b256 = b256::from(bytes);
-
-    assert(result_b256 == control);
-}
-
-#[test]
-#[cfg(experimental_try_from_bytes_for_b256 = true)]
 fn bytes_b256_try_from() {
     let control = 0x3333333333333333333333333333333333333333333333333333333333333333;
     let mut bytes = Bytes::with_capacity(32);

@@ -1,13 +1,8 @@
 [[package]]
-name = 'bitwise_not'
-source = 'member'
-dependencies = ['std']
+name = "bitwise_not"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-B0FB458CB26275AC'
-
-[[package]]
-name = 'std'
-source = 'path+from-root-B0FB458CB26275AC'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-B0FB458CB26275AC"

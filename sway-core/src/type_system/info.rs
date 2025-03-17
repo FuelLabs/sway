@@ -107,7 +107,7 @@ pub enum TypeInfo {
     ///
     /// NOTE: This type is *not used yet*.
     // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Param
-    TypeParam(usize),
+    TypeParam(TypeParameter),
     StringSlice,
     StringArray(NumericLength),
     UnsignedInteger(IntegerBits),
@@ -226,8 +226,8 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::Placeholder(ty) => {
                 ty.hash(state, engines);
             }
-            TypeInfo::TypeParam(n) => {
-                n.hash(state);
+            TypeInfo::TypeParam(param) => {
+                param.hash(state, engines);
             }
             TypeInfo::Alias { name, ty } => {
                 name.hash(state);
@@ -287,7 +287,7 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => l == r && ltc.eq(rtc, ctx),
             (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, ctx),
-            (Self::TypeParam(l), Self::TypeParam(r)) => l == r,
+            (Self::TypeParam(l), Self::TypeParam(r)) => l.eq(r, ctx),
             (
                 Self::Custom {
                     qualified_call_path: l_name,
@@ -544,7 +544,7 @@ impl DisplayWithEngines for TypeInfo {
             Never => "!".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(type_param) => type_param.name.to_string(),
-            TypeParam(n) => format!("{n}"),
+            TypeParam(param) => format!("{}", param.name),
             StringSlice => "str".into(),
             StringArray(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
@@ -662,7 +662,7 @@ impl DebugWithEngines for TypeInfo {
                 }
             }
             Placeholder(t) => format!("placeholder({:?})", engines.help_out(t)),
-            TypeParam(n) => format!("typeparam({n})"),
+            TypeParam(param) => format!("typeparam({})", param.name),
             StringSlice => "str".into(),
             StringArray(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
@@ -1650,7 +1650,7 @@ impl TypeInfo {
             Never => "never".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
-            TypeParam(n) => format!("typeparam({n})"),
+            TypeParam(param) => format!("typeparam({})", param.name),
             StringSlice => "str".into(),
             StringArray(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {

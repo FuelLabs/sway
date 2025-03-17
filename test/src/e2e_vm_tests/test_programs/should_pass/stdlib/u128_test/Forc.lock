@@ -1,11 +1,6 @@
 [[package]]
-name = "core"
-source = "path+from-root-0D23B6B26191A970"
-
-[[package]]
 name = "std"
 source = "path+from-root-0D23B6B26191A970"
-dependencies = ["core"]
 
 [[package]]
 name = "u128_test"

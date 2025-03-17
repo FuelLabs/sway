@@ -3329,11 +3329,16 @@ impl<'eng> FnCompiler<'eng> {
             Ok(TerminatorValue::new(val, context))
         } else if let Some(val) = self.function.get_arg(context, name.as_str()) {
             Ok(TerminatorValue::new(val, context))
-        } else if let Some(const_val) = self
+        } else if let Some(global_val) = self
             .module
-            .get_global_constant(context, &call_path.as_vec_string())
+            .get_global_variable(context, &call_path.as_vec_string())
         {
-            Ok(TerminatorValue::new(const_val, context))
+            let val = self
+                .current_block
+                .append(context)
+                .get_global(global_val)
+                .add_metadatum(context, span_md_idx);
+            Ok(TerminatorValue::new(val, context))
         } else if self
             .module
             .get_config(context, &call_path.suffix.to_string())
@@ -4455,11 +4460,7 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<TerminatorValue, CompileError> {
         // Use the `struct_field_names` to get a field id that is unique even for zero-sized values that live in the same slot.
         // We calculate the `unique_field_id` early, here, before the `storage_filed_names` get consumed by `get_storage_key` below.
-        let unique_field_id = get_storage_field_id(
-            &storage_field_names,
-            &struct_field_names,
-            context.experimental,
-        );
+        let unique_field_id = get_storage_field_id(&storage_field_names, &struct_field_names);
 
         // Get the actual storage key as a `Bytes32` as well as the offset, in words,
         // within the slot. The offset depends on what field of the top level storage
@@ -4493,10 +4494,7 @@ impl<'eng> FnCompiler<'eng> {
             // plus the offset, in number of slots, computed above. The offset within this
             // particular slot is the remaining offset, in words.
             (
-                add_to_b256(
-                    get_storage_key(storage_field_names, key, context.experimental),
-                    offset_in_slots,
-                ),
+                add_to_b256(get_storage_key(storage_field_names, key), offset_in_slots),
                 offset_remaining,
             )
         };

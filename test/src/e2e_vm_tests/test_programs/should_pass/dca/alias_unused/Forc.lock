@@ -1,8 +1,8 @@
 [[package]]
 name = "alias_unused"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-7E37357576BFA81B"

@@ -14,4 +14,3 @@ keywords = ["library", "standard"]
 
 
 [dependencies]
-core = { path = "../sway-lib-core" }

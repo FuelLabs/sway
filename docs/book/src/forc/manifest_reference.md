@@ -238,7 +238,7 @@ In the example above, `std` is patched with the `test` branch from `std` repo. Y
 std = { path = "/path/to/local_std_version" }
 ```
 
-Just like `std` or `core` you can also patch dependencies you declared with a git repo.
+Just like `std` you can also patch dependencies you declared with a git repo.
 
 ```toml
 [project]

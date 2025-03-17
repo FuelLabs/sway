@@ -1,8 +1,8 @@
 [[package]]
 name = "alias_lib"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-88457E6D05374F3B"

@@ -1,0 +1,8 @@
+[[package]]
+name = "referencing_global_constants"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-1B1094E02C4E7AA3"

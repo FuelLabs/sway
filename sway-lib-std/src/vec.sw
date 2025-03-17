@@ -6,6 +6,9 @@ use ::assert::assert;
 use ::option::Option::{self, *};
 use ::convert::From;
 use ::iterator::*;
+use ::codec::*;
+use ::ops::*;
+use ::raw_slice::*;
 use ::clone::Clone;
 
 struct RawVec<T> {

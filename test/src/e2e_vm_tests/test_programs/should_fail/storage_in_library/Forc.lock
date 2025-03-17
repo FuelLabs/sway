@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-76B2D1CD254916E4"
 
 [[package]]
 name = "storage_in_library"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

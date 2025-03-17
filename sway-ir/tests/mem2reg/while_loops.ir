@@ -335,7 +335,7 @@ script {
 !68 = span !0 963 998
 !69 = span !0 976 997
 !70 = span !0 1004 1008
-!71 = "sway/sway-lib-core/src/ops.sw"
+!71 = "sway/sway-lib-std/src/ops.sw"
 !72 = span !71 117 121
 !73 = span !71 123 128
 !74 = span !71 110 178

@@ -1,8 +1,8 @@
 [[package]]
 name = "abi_with_generic_types"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-B63CB29598356ED6"

@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-987CA0C143EB9BCC'
+name = "eq_intrinsic"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'eq_intrinsic'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-987CA0C143EB9BCC'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-987CA0C143EB9BCC"

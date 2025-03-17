@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-320F50F2CB619270"
 
 [[package]]
 name = "struct_init_reorder"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

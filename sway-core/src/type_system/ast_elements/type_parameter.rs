@@ -91,14 +91,14 @@ impl OrdWithEngines for TypeParameter {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let TypeParameter {
             type_id: lti,
-            name: ln,
+            name: lname,
             trait_constraints: ltc,
             // these fields are not compared because they aren't relevant/a
             // reliable source of obj v. obj distinction
             trait_constraints_span: _,
             initial_type_id: _,
             is_from_parent: _,
-        } = self;
+        } = &self;
         let TypeParameter {
             type_id: rti,
             name: rn,
@@ -108,15 +108,13 @@ impl OrdWithEngines for TypeParameter {
             trait_constraints_span: _,
             initial_type_id: _,
             is_from_parent: _,
-        } = other;
-        ln.cmp(rn)
-            .then_with(|| {
-                ctx.engines()
-                    .te()
-                    .get(*lti)
-                    .cmp(&ctx.engines().te().get(*rti), ctx)
-            })
-            .then_with(|| ltc.cmp(rtc, ctx))
+        } = &other;
+        let type_engine = ctx.engines().te();
+        let ltype = type_engine.get(*lti);
+        let rtype = type_engine.get(*rti);
+        ltype
+            .cmp(&rtype, ctx)
+            .then_with(|| lname.cmp(rn).then_with(|| ltc.cmp(rtc, ctx)))
     }
 }
 
