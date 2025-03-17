@@ -228,11 +228,7 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
 fn format_manifest(app: &App, manifest_file: PathBuf) -> Result<bool> {
     if let Ok(manifest_content) = fs::read_to_string(&manifest_file) {
         let mut edited = false;
-        let taplo_alphabetize = taplo_fmt::Options {
-            reorder_keys: true,
-            ..Default::default()
-        };
-        let formatted_content = taplo_fmt::format(&manifest_content, taplo_alphabetize);
+        let formatted_content = taplo_fmt::format(&manifest_content, taplo_fmt::Options::default());
         if !app.check {
             write_file_formatted(&manifest_file, &formatted_content)?;
         } else if formatted_content != manifest_content {
