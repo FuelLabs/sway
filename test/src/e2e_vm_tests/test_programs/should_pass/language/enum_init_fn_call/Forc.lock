@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-9ED436919AA602B8'
+name = "enum_init_fn_call"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'enum_init_fn_call'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-9ED436919AA602B8'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-9ED436919AA602B8"

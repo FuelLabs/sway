@@ -204,6 +204,8 @@ pub struct Project {
     pub homepage: Option<Url>,
     pub repository: Option<Url>,
     pub documentation: Option<Url>,
+    pub categories: Option<Vec<String>>,
+    pub keywords: Option<Vec<String>>,
     #[serde(default = "default_entry")]
     pub entry: String,
     pub implicit_std: Option<bool>,
@@ -524,7 +526,7 @@ impl GenericManifestFile for PackageManifestFile {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -592,7 +594,7 @@ impl PackageManifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -610,7 +612,7 @@ impl PackageManifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_string(contents: String) -> Result<Self> {
@@ -727,23 +729,18 @@ impl PackageManifest {
         self.proxy.as_ref()
     }
 
-    /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
+    /// Check for the `std` package under `[dependencies]`. If it is missing, add
     /// `std` implicitly.
     ///
     /// This makes the common case of depending on `std` a lot smoother for most users, while still
-    /// allowing for the uncommon case of custom `core`/`std` deps.
-    ///
-    /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
-    /// guarantee that the user's `core` is compatible with the implicit `std`.
+    /// allowing for the uncommon case of custom `std` deps.
     fn implicitly_include_std_if_missing(&mut self) {
-        use sway_types::constants::{CORE, STD};
+        use sway_types::constants::STD;
         // Don't include `std` if:
-        // - this *is* `core` or `std`.
-        // - either `core` or `std` packages are already specified.
+        // - this *is* `std`.
+        // - `std` package is already specified.
         // - a dependency already exists with the name "std".
-        if self.project.name == CORE
-            || self.project.name == STD
-            || self.pkg_dep(CORE).is_some()
+        if self.project.name == STD
             || self.pkg_dep(STD).is_some()
             || self.dep(STD).is_some()
             || !self.project.implicit_std.unwrap_or(true)
@@ -1399,6 +1396,8 @@ mod tests {
             description: Some("test description".to_string()),
             homepage: None,
             documentation: None,
+            categories: None,
+            keywords: None,
             repository: None,
             organization: None,
             license: "Apache-2.0".to_string(),
@@ -1425,6 +1424,8 @@ mod tests {
             description: Some("test description".to_string()),
             homepage: Some(Url::parse("https://example.com").unwrap()),
             documentation: Some(Url::parse("https://docs.example.com").unwrap()),
+            categories: Some(vec!["test-category".to_string()]),
+            keywords: Some(vec!["test-keyword".to_string()]),
             repository: Some(Url::parse("https://example.com").unwrap()),
             organization: None,
             license: "Apache-2.0".to_string(),
@@ -1446,6 +1447,8 @@ mod tests {
         assert_eq!(project.repository, deserialized.repository);
         assert_eq!(project.metadata, deserialized.metadata);
         assert_eq!(project.metadata, None);
+        assert_eq!(project.categories, deserialized.categories);
+        assert_eq!(project.keywords, deserialized.keywords);
     }
 
     #[test]
@@ -1457,11 +1460,11 @@ mod tests {
             authors = ["Test Author"]
             description = "A test project"
             version = "1.0.0"
+            keywords = ["test", "project"]
+            categories = ["test"]
 
             [metadata]
             mykey = "https://example.com"
-            keywords = ["test", "project"]
-            categories = ["test"]
         "#;
 
         let project: Project = toml::from_str(toml_str).unwrap();
@@ -1474,10 +1477,6 @@ mod tests {
             table.get("mykey").unwrap().as_str().unwrap(),
             "https://example.com"
         );
-
-        let keywords = table.get("keywords").unwrap().as_array().unwrap();
-        assert_eq!(keywords[0].as_str().unwrap(), "test");
-        assert_eq!(keywords[1].as_str().unwrap(), "project");
     }
 
     #[test]

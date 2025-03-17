@@ -40,7 +40,7 @@ use either::Either;
 use indexmap::IndexMap;
 use namespace::{LexicalScope, Module, ResolvedDeclaration};
 use rustc_hash::FxHashSet;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
@@ -54,7 +54,7 @@ use type_resolve::{resolve_call_path, VisibilityCheck};
 
 #[allow(clippy::too_many_arguments)]
 impl ty::TyExpression {
-    pub(crate) fn core_ops_eq(
+    pub(crate) fn std_ops_eq(
         handler: &Handler,
         ctx: TypeCheckContext,
         arguments: Vec<ty::TyExpression>,
@@ -62,10 +62,10 @@ impl ty::TyExpression {
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let ctx = ctx.with_type_annotation(type_engine.id_of_bool());
-        Self::core_ops(handler, ctx, OpVariant::Equals, arguments, span)
+        Self::std_ops(handler, ctx, OpVariant::Equals, arguments, span)
     }
 
-    pub(crate) fn core_ops_neq(
+    pub(crate) fn std_ops_neq(
         handler: &Handler,
         ctx: TypeCheckContext,
         arguments: Vec<ty::TyExpression>,
@@ -73,10 +73,10 @@ impl ty::TyExpression {
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let ctx = ctx.with_type_annotation(type_engine.id_of_bool());
-        Self::core_ops(handler, ctx, OpVariant::NotEquals, arguments, span)
+        Self::std_ops(handler, ctx, OpVariant::NotEquals, arguments, span)
     }
 
-    fn core_ops(
+    fn std_ops(
         handler: &Handler,
         mut ctx: TypeCheckContext,
         op_variant: OpVariant,
@@ -87,7 +87,7 @@ impl ty::TyExpression {
 
         let call_path = CallPath {
             prefixes: vec![
-                Ident::new_with_override("core".into(), span.clone()),
+                Ident::new_with_override("std".into(), span.clone()),
                 Ident::new_with_override("ops".into(), span.clone()),
             ],
             suffix: Op {
@@ -116,6 +116,7 @@ impl ty::TyExpression {
             ctx,
             decl_ref.clone(),
             method_name_binding.type_arguments.to_vec_mut(),
+            BTreeMap::new(),
         )?;
         let method = decl_engine.get_function(&decl_ref);
         // check that the number of parameters and the number of the arguments is the same
@@ -695,6 +696,22 @@ impl ty::TyExpression {
                     span,
                 }
             }
+            Some(ty::TyDecl::ConstGenericDecl(ty::ConstGenericDecl { decl_id })) => {
+                let decl = (*decl_engine.get(&decl_id)).clone();
+                ty::TyExpression {
+                    return_type: decl.return_type,
+                    expression: ty::TyExpressionVariant::ConstGenericExpression {
+                        decl: Box::new(decl),
+                        span: name.span(),
+                        call_path: Some(CallPath {
+                            prefixes: vec![],
+                            suffix: name.clone(),
+                            callpath_type: CallPathType::Ambiguous,
+                        }),
+                    },
+                    span,
+                }
+            }
             Some(ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. })) => {
                 let decl = decl_engine.get_abi(&decl_id);
                 ty::TyExpression {
@@ -1238,11 +1255,12 @@ impl ty::TyExpression {
                 )
             })?;
 
-        // The type of a storage access is `core::storage::StorageKey`. This is
+        // The type of a storage access is `std::storage::storage_key::StorageKey`. This is
         // the path to it.
         let storage_key_mod_path = vec![
-            Ident::new_with_override("core".into(), span.clone()),
+            Ident::new_with_override("std".into(), span.clone()),
             Ident::new_with_override("storage".into(), span.clone()),
+            Ident::new_with_override("storage_key".into(), span.clone()),
         ];
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
@@ -1278,6 +1296,7 @@ impl ty::TyExpression {
             handler,
             &mut storage_key_struct_decl,
             &mut type_arguments,
+            BTreeMap::new(),
             EnforceTypeArguments::Yes,
             span,
         )?;
@@ -1983,6 +2002,7 @@ impl ty::TyExpression {
             abi_name.clone(),
             vec![],
             return_type,
+            vec![],
             &abi_items,
             span,
             Some(span.clone()),
@@ -2554,7 +2574,7 @@ impl ty::TyExpression {
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> Result<(TypeId, TypeId), ErrorEmitted> {
-        let ret = module.walk_scope_chain(|lexical_scope| {
+        let ret = module.walk_scope_chain_early_return(|lexical_scope| {
             Self::find_subfield_type_helper(
                 lexical_scope,
                 handler,

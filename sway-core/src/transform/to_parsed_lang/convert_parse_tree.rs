@@ -572,15 +572,17 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
-    let (type_parameters, _) = generic_params_opt_to_type_parameters_with_parent(
-        context,
-        handler,
-        engines,
-        item_fn.fn_signature.generics,
-        parent_generic_params_opt,
-        item_fn.fn_signature.where_clause_opt.clone(),
-        parent_where_clause_opt,
-    )?;
+    let (type_parameters, const_generic_parameters) =
+        generic_params_opt_to_type_parameters_with_parent(
+            context,
+            handler,
+            engines,
+            item_fn.fn_signature.generics,
+            parent_generic_params_opt,
+            item_fn.fn_signature.where_clause_opt.clone(),
+            parent_where_clause_opt,
+        )?;
+
     let fn_decl = FunctionDeclaration {
         purity: get_attributed_purity(context, handler, &attributes)?,
         attributes,
@@ -596,6 +598,7 @@ pub fn item_fn_to_function_declaration(
         span,
         return_type,
         type_parameters,
+        const_generic_parameters,
         where_clause: item_fn
             .fn_signature
             .where_clause_opt
@@ -2530,7 +2533,7 @@ fn expr_to_expression(
                     assignable.clone(),
                 )?;
                 let rhs = Box::new(op_call(
-                    op_variant.core_name(),
+                    op_variant.std_name(),
                     op_span,
                     span.clone(),
                     &vec![
@@ -2566,7 +2569,7 @@ fn op_call(
         inner: MethodName::FromTrait {
             call_path: CallPath {
                 prefixes: vec![
-                    Ident::new_with_override("core".into(), op_span.clone()),
+                    Ident::new_with_override("std".into(), op_span.clone()),
                     Ident::new_with_override("ops".into(), op_span.clone()),
                 ],
                 suffix: Ident::new_with_override(name.into(), op_span.clone()),

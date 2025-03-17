@@ -81,3 +81,17 @@ impl UpdateConstantExpression for TyCodeBlock {
             .for_each(|x| x.update_constant_expression(engines, implementing_type));
     }
 }
+
+impl MaterializeConstGenerics for TyCodeBlock {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        self.contents
+            .iter_mut()
+            .try_for_each(|x| x.materialize_const_generics(engines, handler, name, value))
+    }
+}

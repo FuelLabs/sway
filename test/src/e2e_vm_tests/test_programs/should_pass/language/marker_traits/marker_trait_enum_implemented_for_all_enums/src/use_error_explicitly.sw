@@ -1,6 +1,6 @@
 library;
 
-use core::marker::Enum;
+use std::marker::Enum;
 
 use ::enums_01::{LibEnum01, EmptyLibEnum01};
 

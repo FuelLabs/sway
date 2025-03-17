@@ -365,6 +365,9 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { .. }) => {
                     unreachable!()
                 }
+                ty::TyDecl::ConstGenericDecl(_) => {
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.engines.de().get_enum(decl_id);
                     create_tagged_union_type(
@@ -623,6 +626,10 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::ConfigurableExpression {
                 decl: const_decl, ..
             } => self.compile_config_expr(context, const_decl, span_md_idx),
+            ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                let value = decl.value.as_ref().unwrap();
+                self.compile_expression(context, md_mgr, value)
+            }
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..
             } => self.compile_var_expr(context, call_path, name, span_md_idx),
@@ -4725,11 +4732,7 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<TerminatorValue, CompileError> {
         // Use the `struct_field_names` to get a field id that is unique even for zero-sized values that live in the same slot.
         // We calculate the `unique_field_id` early, here, before the `storage_filed_names` get consumed by `get_storage_key` below.
-        let unique_field_id = get_storage_field_id(
-            &storage_field_names,
-            &struct_field_names,
-            context.experimental,
-        );
+        let unique_field_id = get_storage_field_id(&storage_field_names, &struct_field_names);
 
         // Get the actual storage key as a `Bytes32` as well as the offset, in words,
         // within the slot. The offset depends on what field of the top level storage
@@ -4763,10 +4766,7 @@ impl<'eng> FnCompiler<'eng> {
             // plus the offset, in number of slots, computed above. The offset within this
             // particular slot is the remaining offset, in words.
             (
-                add_to_b256(
-                    get_storage_key(storage_field_names, key, context.experimental),
-                    offset_in_slots,
-                ),
+                add_to_b256(get_storage_key(storage_field_names, key), offset_in_slots),
                 offset_remaining,
             )
         };

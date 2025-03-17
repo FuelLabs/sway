@@ -3,7 +3,7 @@ library;
 mod use_error_explicitly;
 mod use_error_via_glob;
 
-// Using `Error` from core library prelude.
+// Using `Error` from std library prelude.
 fn implements_error<T>(_t: T) where T: Error { }
 fn implements_error_no_args<T>() where T: Error { }
 

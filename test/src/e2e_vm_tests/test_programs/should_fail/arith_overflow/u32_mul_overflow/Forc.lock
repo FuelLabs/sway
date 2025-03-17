@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-AB517F9AE0FD4751"
 
 [[package]]
 name = "u32_mul_overflow"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

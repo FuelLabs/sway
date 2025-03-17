@@ -1860,7 +1860,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // XXX not required after we have FuelVM specific verifier.
         if !key
             .get_type(self.context)
-            .map_or(true, |key_ty| key_ty.is_ptr(self.context))
+            .is_none_or(|key_ty| key_ty.is_ptr(self.context))
         {
             return Err(CompileError::Internal(
                 "Key value for state clear is not a pointer.",
@@ -1962,7 +1962,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // XXX not required after we have FuelVM specific verifier.
         if !key
             .get_type(self.context)
-            .map_or(true, |key_ty| key_ty.is_ptr(self.context))
+            .is_none_or(|key_ty| key_ty.is_ptr(self.context))
         {
             return Err(CompileError::Internal(
                 "Key value for state load word is not a pointer.",
@@ -2032,7 +2032,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         if stored_val
             .get_type(self.context)
-            .map_or(true, |ty| !self.is_copy_type(&ty))
+            .is_none_or(|ty| !self.is_copy_type(&ty))
         {
             Err(CompileError::Internal(
                 "Attempt to store a non-copy type.",

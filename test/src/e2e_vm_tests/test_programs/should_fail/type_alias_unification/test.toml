@@ -1,0 +1,7 @@
+category = "fail"
+
+#check: $()Trait is already implemented for type
+#check: $()This is the already existing implementation of "MyTrait" for "B" (which is an alias for "A").
+#check: $()Trait "type_alias_unification::MyTrait" is already implemented for type "B" (which is an alias for "A").
+
+#check: $()Aborting due to 1 error.

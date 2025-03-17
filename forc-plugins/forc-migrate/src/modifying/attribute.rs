@@ -4,7 +4,6 @@ use sway_ast::{
     keywords::{HashBangToken, HashToken, Token},
     AttributeDecl, Literal, Parens, Punctuated,
 };
-use sway_features::Feature;
 use sway_types::{
     constants::{CFG_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME},
     Ident, Span, Spanned,
@@ -15,7 +14,7 @@ use crate::assert_insert_span;
 use super::{Modifier, New};
 
 #[allow(dead_code)]
-impl<'a> Modifier<'a, Attribute> {
+impl Modifier<'_, Attribute> {
     pub(crate) fn set_name<S: AsRef<str> + ?Sized>(&mut self, name: &S) -> &mut Self {
         // We preserve the current span of the name.
         let insert_span = self.element.name.span();
@@ -85,7 +84,7 @@ impl New {
     /// Creates an [AttributeDecl] representing a single `cfg` experimental attribute. E.g. `#[cfg(experimental_flag = value)]`.
     pub(crate) fn cfg_experimental_attribute_decl(
         insert_span: Span,
-        feature: Feature,
+        feature_name: &str,
         value: bool,
     ) -> AttributeDecl {
         assert_insert_span!(insert_span);
@@ -100,7 +99,7 @@ impl New {
                     final_value_opt: Some(Box::new(New::attribute_with_arg(
                         insert_span.clone(),
                         CFG_ATTRIBUTE_NAME,
-                        &format!("experimental_{}", feature.name()),
+                        &format!("experimental_{}", feature_name),
                         Some(New::literal_bool(insert_span.clone(), value)),
                     ))),
                 },

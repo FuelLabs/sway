@@ -625,6 +625,7 @@ pub enum CompileError {
     ConflictingImplsForTraitAndType {
         trait_name: String,
         type_implementing_for: String,
+        type_implementing_for_unaliased: String,
         existing_impl_span: Span,
         second_impl_span: Span,
     },
@@ -640,7 +641,9 @@ pub enum CompileError {
         decl_kind: String,
         decl_name: String,
         type_implementing_for: String,
-        span: Span,
+        type_implementing_for_unaliased: String,
+        existing_impl_span: Span,
+        second_impl_span: Span,
     },
     #[error("The function \"{fn_name}\" in {interface_name} is defined with {num_parameters} parameters, but the provided implementation has {provided_parameters} parameters.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
@@ -1035,8 +1038,8 @@ pub enum CompileError {
     FallbackFnsCannotHaveParameters { span: Span },
     #[error("Could not generate the entry method. See errors above for more details.")]
     CouldNotGenerateEntry { span: Span },
-    #[error("Missing `core` in dependencies.")]
-    CouldNotGenerateEntryMissingCore { span: Span },
+    #[error("Missing `std` in dependencies.")]
+    CouldNotGenerateEntryMissingStd { span: Span },
     #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
     CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
     #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
@@ -1180,7 +1183,9 @@ impl Spanned for CompileError {
                 second_impl_span, ..
             } => second_impl_span.clone(),
             MarkerTraitExplicitlyImplemented { span, .. } => span.clone(),
-            DuplicateDeclDefinedForType { span, .. } => span.clone(),
+            DuplicateDeclDefinedForType {
+                second_impl_span, ..
+            } => second_impl_span.clone(),
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
             RecursiveCall { span, .. } => span.clone(),
@@ -1276,7 +1281,7 @@ impl Spanned for CompileError {
             FallbackFnsAreContractOnly { span } => span.clone(),
             FallbackFnsCannotHaveParameters { span } => span.clone(),
             CouldNotGenerateEntry { span } => span.clone(),
-            CouldNotGenerateEntryMissingCore { span } => span.clone(),
+            CouldNotGenerateEntryMissingStd { span } => span.clone(),
             CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
             CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
             EncodingUnsupportedType { span } => span.clone(),
@@ -2317,26 +2322,61 @@ impl ToDiagnostic for CompileError {
                     format!("{}- referencing a mutable copy of \"{decl_name}\", by returning it from a block: `&mut {{ {decl_name} }}`.", Indent::Single)
                 ],
             },
-            ConflictingImplsForTraitAndType { trait_name, type_implementing_for, existing_impl_span, second_impl_span } => Diagnostic {
+            ConflictingImplsForTraitAndType { trait_name, type_implementing_for, type_implementing_for_unaliased, existing_impl_span, second_impl_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Trait is already implemented for type".to_string())),
                 issue: Issue::error(
                     source_engine,
                     second_impl_span.clone(),
-                    format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\".")
+                    if type_implementing_for == type_implementing_for_unaliased {
+                        format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\".")
+                    } else {
+                        format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\" (which is an alias for \"{type_implementing_for_unaliased}\").")
+                    }
                 ),
                 hints: vec![
                     Hint::info(
                         source_engine,
                         existing_impl_span.clone(),
-                        format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\".",
-                            call_path_suffix_with_args(trait_name)
-                        )
+                        if type_implementing_for == type_implementing_for_unaliased {
+                            format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\".",
+                                    call_path_suffix_with_args(trait_name)
+                            )
+                        } else {
+                            format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\" (which is an alias for \"{type_implementing_for_unaliased}\").",
+                                    call_path_suffix_with_args(trait_name)
+                            )
+                        }
                     ),
                 ],
                 help: vec![
                     "In Sway, there can be at most one implementation of a trait for any given type.".to_string(),
                     "This property is called \"trait coherence\".".to_string(),
                 ],
+            },
+            DuplicateDeclDefinedForType { decl_kind, decl_name, type_implementing_for, type_implementing_for_unaliased, existing_impl_span, second_impl_span } => {
+                let decl_kind_snake_case = sway_types::style::to_upper_camel_case(decl_kind);
+                Diagnostic {
+                    reason: Some(Reason::new(code(1), "Type contains duplicate declarations".to_string())),
+                    issue: Issue::error(
+                        source_engine,
+                        second_impl_span.clone(),
+                        if type_implementing_for == type_implementing_for_unaliased {
+                            format!("{decl_kind_snake_case} \"{decl_name}\" already declared in type \"{type_implementing_for}\".")
+                        } else {
+                            format!("{decl_kind_snake_case} \"{decl_name}\" already declared in type \"{type_implementing_for}\" (which is an alias for \"{type_implementing_for_unaliased}\").")
+                        }
+                    ),
+                    hints: vec![
+                        Hint::info(
+                            source_engine,
+                            existing_impl_span.clone(),
+                            format!("\"{decl_name}\" previously defined here.")
+                        )
+                    ],
+                    help: vec![
+                        "A type may not contain two or more declarations of the same name".to_string(),
+                    ],
+                }
             },
             MarkerTraitExplicitlyImplemented { marker_trait_full_name, span} => Diagnostic {
                 reason: Some(Reason::new(code(1), "Marker traits cannot be explicitly implemented".to_string())),
@@ -2758,8 +2798,8 @@ impl ToDiagnostic for CompileError {
                 ),
                 hints: vec![],
                 help: vec![
-                    "The function \"abi_decode_in_place\" is usually defined in the standard library module \"core::codec\".".into(),
-                    "Verify that you are using a version of the \"core\" standard library that contains this function.".into(),
+                    "The function \"abi_decode_in_place\" is usually defined in the standard library module \"std::codec\".".into(),
+                    "Verify that you are using a version of the \"std\" standard library that contains this function.".into(),
                 ],
             },
             StorageAccessMismatched { span, is_pure, suggested_attributes, storage_access_violations } => Diagnostic {
@@ -2996,16 +3036,16 @@ impl fmt::Display for StorageAccess {
 
 /// Extracts only the suffix part of the `marker_trait_full_name`, without the arguments.
 /// E.g.:
-/// - `core::marker::Error` => `Error`
-/// - `core::marker::SomeMarkerTrait::<T>` => `SomeMarkerTrait`
-/// - `core::marker::SomeMarkerTrait<T>` => `SomeMarkerTrait`
+/// - `std::marker::Error` => `Error`
+/// - `std::marker::SomeMarkerTrait::<T>` => `SomeMarkerTrait`
+/// - `std::marker::SomeMarkerTrait<T>` => `SomeMarkerTrait`
 ///
-/// Panics if the `marker_trait_full_name` does not start with "core::marker::".
+/// Panics if the `marker_trait_full_name` does not start with "std::marker::".
 fn marker_trait_name(marker_trait_full_name: &str) -> &str {
-    const MARKER_TRAITS_MODULE: &str = "core::marker::";
+    const MARKER_TRAITS_MODULE: &str = "std::marker::";
     assert!(
         marker_trait_full_name.starts_with(MARKER_TRAITS_MODULE),
-        "`marker_trait_full_name` must start with \"core::marker::\", but it was \"{}\"",
+        "`marker_trait_full_name` must start with \"std::marker::\", but it was \"{}\"",
         marker_trait_full_name
     );
 

@@ -1,5 +1,0 @@
-category = "compile"
-expected_warnings = 0
-
-experimental = { new_encoding = true, partial_eq = true }
-

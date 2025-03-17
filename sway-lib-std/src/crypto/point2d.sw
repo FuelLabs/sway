@@ -3,6 +3,8 @@ library;
 use ::convert::{From, TryFrom};
 use ::bytes::{Bytes, *};
 use ::option::Option::{self, *};
+use ::ops::*;
+use ::primitive_conversions::u256::*;
 
 // NOTE: Bytes are used to support numbers greater than 32 bytes for future curves.
 /// A 2D point on a field.
@@ -17,32 +19,7 @@ pub struct Point2D {
     y: Bytes,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Point2D {
-    fn eq(self, other: Self) -> bool {
-        // All points must be of length 32
-        if self.x.len() != 32
-            || self.y.len() != 32
-            || other.x.len() != 32
-            || other.y.len() != 32
-        {
-            return false;
-        }
-
-        let mut iter = 0;
-        while iter < 32 {
-            if self.x.get(iter).unwrap() != other.x.get(iter).unwrap() {
-                return false;
-            } else if self.y.get(iter).unwrap() != other.y.get(iter).unwrap() {
-                return false;
-            }
-
-            iter += 1;
-        }
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
+// All points must be of length 32
 impl PartialEq for Point2D {
     fn eq(self, other: Self) -> bool {
         if self.x.len() != 32
@@ -66,7 +43,6 @@ impl PartialEq for Point2D {
         true
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Point2D {}
 
 impl Point2D {

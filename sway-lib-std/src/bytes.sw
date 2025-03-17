@@ -7,6 +7,9 @@ use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
 use ::clone::Clone;
+use ::codec::*;
+use ::raw_slice::*;
+use ::ops::*;
 use ::iterator::*;
 
 struct RawBytes {
@@ -954,8 +957,7 @@ impl Bytes {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for Bytes {
+impl PartialEq for Bytes {
     fn eq(self, other: Self) -> bool {
         if self.len != other.len {
             return false;
@@ -967,21 +969,7 @@ impl core::ops::Eq for Bytes {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Bytes {
-    fn eq(self, other: Self) -> bool {
-        if self.len != other.len {
-            return false;
-        }
-
-        asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
-            meq result r2 r3 r4;
-            result: bool
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Bytes {}
+impl Eq for Bytes {}
 
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the type.
@@ -1005,17 +993,41 @@ impl From<b256> for Bytes {
     }
 }
 
-impl From<Bytes> for b256 {
-    // NOTE: this cas be lossy! Added here as the From trait currently requires it,
-    // but the conversion from `Bytes` ->`b256` should be implemented as
-    // `impl TryFrom<Bytes> for b256` when the `TryFrom` trait lands:
-    // https://github.com/FuelLabs/sway/pull/3881
-    fn from(bytes: Bytes) -> b256 {
+impl TryFrom<Bytes> for b256 {
+    fn try_from(bytes: Bytes) -> Option<Self> {
+        if bytes.len() != 32 {
+            return None;
+        }
         let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
         let ptr = __addr_of(value);
         bytes.buf.ptr().copy_to::<b256>(ptr, 1);
 
-        value
+        Some(value)
+    }
+}
+
+impl Into<Bytes> for b256 {
+    fn into(self) -> Bytes {
+        // Artificially create bytes with capacity and len
+        let mut bytes = Bytes::with_capacity(32);
+        bytes.len = 32;
+        // Copy bytes from contract_id into the buffer of the target bytes
+        __addr_of(self).copy_bytes_to(bytes.buf.ptr, 32);
+
+        bytes
+    }
+}
+
+impl TryInto<b256> for Bytes {
+    fn try_into(self) -> Option<b256> {
+        if self.len != 32 {
+            return None;
+        }
+        let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let ptr = __addr_of(value);
+        self.buf.ptr().copy_to::<b256>(ptr, 1);
+
+        Some(value)
     }
 }
 

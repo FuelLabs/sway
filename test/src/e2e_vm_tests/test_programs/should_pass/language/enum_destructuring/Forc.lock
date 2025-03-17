@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-4F875AA377BDB49F'
+name = "enum_destructuring"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'enum_destructuring'
-source = 'member'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-4F875AA377BDB49F"

@@ -342,7 +342,6 @@ name = "Fuel example project"
 
 
 [dependencies]
-core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
 std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 "#;
         let taplo_alphabetize = taplo_fmt::Options {
@@ -359,7 +358,6 @@ std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 
 
     [dependencies]
-        core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
                     std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 "#;
         let formatted_content =
@@ -373,7 +371,6 @@ name = "Fuel example project"
 
 
 [dependencies]
-core = {git="https://github.com/FuelLabs/sway-lib-core",version="v0.0.1"}
 std         =     {   git     =  "https://github.com/FuelLabs/sway-lib-std"  , version = "v0.0.1"           }
 "#;
         let formatted_content = taplo_fmt::format(whitespace_forc_manifest, taplo_alphabetize);
@@ -390,7 +387,6 @@ name = "Fuel example project"
 
 
 [dependencies]
-core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
 std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 "#;
         let taplo_alphabetize = taplo_fmt::Options {
@@ -408,7 +404,6 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 
 [dependencies]
 std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
-core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
     "#;
         let formatted_content = taplo_fmt::format(disordered_forc_manifest, taplo_alphabetize);
         assert_eq!(formatted_content, correct_forc_manifest);

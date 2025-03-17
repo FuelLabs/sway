@@ -3,8 +3,11 @@ library;
 
 use ::convert::{From, Into, TryFrom};
 use ::hash::{Hash, Hasher};
+use ::ops::*;
+use ::primitives::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
+use ::codec::*;
 
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
@@ -70,20 +73,12 @@ impl Address {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for Address {
+impl PartialEq for Address {
     fn eq(self, other: Self) -> bool {
         self.bits == other.bits
     }
 }
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Address {
-    fn eq(self, other: Self) -> bool {
-        self.bits == other.bits
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Address {}
+impl Eq for Address {}
 
 /// Functions for casting between the `b256` and `Address` types.
 impl From<b256> for Address {

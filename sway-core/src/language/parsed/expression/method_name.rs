@@ -18,7 +18,7 @@ pub enum MethodName {
     FromModule { method_name: Ident },
     /// something like a::b::c()
     /// in this case, the path defines where the fn symbol is defined
-    /// used for things like core::ops::add(a, b).
+    /// used for things like std::ops::add(a, b).
     /// in this case, the first argument determines the type to look for
     FromTrait { call_path: CallPath },
     /// Represents a method lookup with a fully qualified path.

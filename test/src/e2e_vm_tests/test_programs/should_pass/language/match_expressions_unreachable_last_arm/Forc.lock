@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-FFD06FD4373F3360'
+name = "match_expressions_unreachable_last_arm"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'match_expressions_unreachable_last_arm'
-source = 'member'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-FFD06FD4373F3360"

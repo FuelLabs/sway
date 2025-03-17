@@ -151,14 +151,12 @@ fn nested_match(input: TopLevel) -> u64 {
 // ANCHOR_END: nested_enum_match
 
 // ANCHOR: complex_multi_arg_enum_match
-use core::ops::Eq;
-
 enum Binary {
     True: (),
     False: (),
 }
 
-impl Eq for Binary {
+impl PartialEq for Binary {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Binary::True, Binary::True) => true,

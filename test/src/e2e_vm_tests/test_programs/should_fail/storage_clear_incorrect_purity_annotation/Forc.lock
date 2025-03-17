@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-BB0D5D60D9FB76A1"
 
 [[package]]
 name = "storage_clear_incorrect_purity_annotation"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

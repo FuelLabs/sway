@@ -1,39 +1,21 @@
 script;
 
-use core::ops::Eq;
-
 struct Struct {
     x: u64,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Struct {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Struct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Struct {}
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for [Struct; 3] {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for [Struct; 3] {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for [Struct; 3] {}
 
 // TODO-IG: Add tests for other expressions.

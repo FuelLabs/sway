@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-89DFACC7FCC0773C'
+name = "intrinsics"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'intrinsics'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-89DFACC7FCC0773C'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-89DFACC7FCC0773C"

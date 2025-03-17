@@ -70,6 +70,9 @@ impl TyDecl {
             parsed::Declaration::TypeAliasDeclaration(decl_id) => {
                 TyTypeAliasDecl::collect(handler, engines, ctx, decl_id)?
             }
+            parsed::Declaration::ConstGenericDeclaration(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         };
 
         Ok(())
@@ -243,6 +246,7 @@ impl TyDecl {
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
                         impl_trait.implementing_for.type_id,
+                        impl_trait.impl_type_parameters.clone(),
                         &impl_trait.items,
                         &impl_trait.span,
                         impl_trait
@@ -310,6 +314,7 @@ impl TyDecl {
                     impl_trait.trait_name.clone(),
                     impl_trait.trait_type_arguments.clone(),
                     impl_trait.implementing_for.type_id,
+                    impl_trait.impl_type_parameters.clone(),
                     impl_trait_items,
                     &impl_trait.span,
                     impl_trait
@@ -538,6 +543,9 @@ impl TyDecl {
             parsed::Declaration::TraitFnDeclaration(_decl_id) => {
                 unreachable!();
             }
+            parsed::Declaration::ConstGenericDeclaration(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         };
 
         Ok(decl)
@@ -561,6 +569,9 @@ impl TypeCheckAnalysis for TyDecl {
             TyDecl::ConfigurableDecl(node) => {
                 let const_decl = ctx.engines.de().get_configurable(&node.decl_id);
                 const_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             TyDecl::FunctionDecl(node) => {
                 let fn_decl = ctx.engines.de().get_function(&node.decl_id);
@@ -618,6 +629,9 @@ impl TypeCheckFinalization for TyDecl {
             TyDecl::ConfigurableDecl(node) => {
                 let mut config_decl = (*ctx.engines.de().get_configurable(&node.decl_id)).clone();
                 config_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             TyDecl::FunctionDecl(node) => {
                 let mut fn_decl = (*ctx.engines.de().get_function(&node.decl_id)).clone();
