@@ -12,5 +12,4 @@ organization = "FuelLabs"
 categories = ["Algorithms", "Data structures", "Cryptography"]
 keywords = ["library", "standard"]
 
-
 [dependencies]
