@@ -2795,6 +2795,7 @@ impl ty::TyExpression {
                             // we would need to bring the full span of the index all the way from
                             // the parsing stage. An effort that doesn't pay off at the moment.
                             // TODO: Include the closing square bracket into the error span.
+                            // https://github.com/FuelLabs/sway/issues/7023
                             full_span_for_error = Span::join(full_span_for_error, index_span);
                         }
                         _ => {
