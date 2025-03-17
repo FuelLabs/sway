@@ -311,6 +311,93 @@ mod tx {
     }
 
     #[tokio::test]
+    async fn can_get_expiration() {
+        let (contract_instance, _, _, _) = get_contracts(true).await;
+
+        let provider = contract_instance.wallet.try_provider().unwrap();
+
+        // With the first call, block will be 0, so this should be valid
+        let result = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(0))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, Some(0 as u32));
+
+        // Now it is an error as it is now block number 1
+        let err = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(0))
+            .call()
+            .await
+            .expect_err("expiration reached");
+
+        assert!(err.to_string().contains("TransactionExpiration"));
+
+        // Testing with other numbers
+        let result = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(10))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, Some(10 as u32));
+
+        
+        let result = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(1234567890))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, Some(1234567890 as u32));
+
+        let result = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(u32::max()))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, Some(u32::max()));
+
+        let result = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(u64::max()))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, Some(u32::max())); // Is this a bug?
+
+        // Assert none is returned with no expiration
+        let no_expiration = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(no_expiration.value, None);
+
+        // Assert tx errors after expiration
+        provider.produce_blocks(15, None).await?;
+        let err = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(10))
+            .call()
+            .await
+            .expect_err("expiration reached");
+
+        assert!(err.to_string().contains("TransactionExpiration"));
+    }
+
+    #[tokio::test]
     async fn can_get_script_length() {
         let (contract_instance, _, _, _) = get_contracts(true).await;
         // TODO use programmatic script length https://github.com/FuelLabs/fuels-rs/issues/181

@@ -265,7 +265,7 @@ pub fn tx_max_fee() -> Option<u64> {
 ///
 /// # Returns
 ///
-/// * [Option<u32>] - The expiration for the transaction.
+/// * [Option<u64>] - The expiration for the transaction.
 ///
 /// # Examples
 ///
@@ -277,10 +277,10 @@ pub fn tx_max_fee() -> Option<u64> {
 ///     log(expiration);
 /// }
 /// ```
-pub fn tx_expiration() -> Option<u32> {
+pub fn tx_expiration() -> Option<u64> {
     let bits = policies();
     if bits & EXPIRATION_POLICY > 0 {
-        Some(__gtf::<u32>(0, GTF_POLICY_EXPIRATION))
+        Some(__gtf::<u64>(0, GTF_POLICY_EXPIRATION))
     } else {
         None
     }
