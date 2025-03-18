@@ -151,7 +151,6 @@ impl Session {
         let source_id = { engines.se().get_source_id(&path) };
         engines.clear_module(&source_id);
 
-
         Ok(())
     }
 
