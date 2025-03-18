@@ -139,7 +139,7 @@ impl ServerState {
                             // Call this on the engines clone so we don't clear types that are still in use
                             // and might be needed in the case cancel compilation was triggered.
                             if let Err(err) =
-                                session.garbage_collect_module(&mut engines_clone, &uri, true)
+                                session.garbage_collect_module(&mut engines_clone, &uri)
                             {
                                 tracing::error!(
                                     "Unable to perform garbage collection: {}",

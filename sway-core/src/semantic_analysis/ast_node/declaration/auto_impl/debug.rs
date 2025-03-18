@@ -40,13 +40,11 @@ where
         let implementing_for_decl_id = decl.to_struct_decl(&Handler::default(), engines).unwrap();
         let struct_decl = self.ctx.engines().de().get(&implementing_for_decl_id);
 
-        let program_id = struct_decl.span().source_id().map(|sid| sid.program_id());
-
         let body = self.generate_fmt_struct_body(engines, &struct_decl);
         let code = self.generate_fmt_code(struct_decl.name(), &struct_decl.type_parameters, body);
         let node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            program_id,
+            struct_decl.span().source_id().cloned(),
             &code,
             crate::build_config::DbgGeneration::None,
         );
@@ -104,13 +102,11 @@ where
         let enum_decl_id = decl.to_enum_id(&Handler::default(), engines).unwrap();
         let enum_decl = self.ctx.engines().de().get(&enum_decl_id);
 
-        let program_id = enum_decl.span().source_id().map(|sid| sid.program_id());
-
         let body = self.generate_fmt_enum_body(engines, &enum_decl);
         let code = self.generate_fmt_code(enum_decl.name(), &enum_decl.type_parameters, body);
         let node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            program_id,
+            enum_decl.span().source_id().cloned(),
             &code,
             crate::build_config::DbgGeneration::None,
         );
