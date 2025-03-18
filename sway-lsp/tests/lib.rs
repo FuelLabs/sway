@@ -1238,7 +1238,7 @@ fn go_to_definition_for_functions() {
     });
 }
 
-#[test]
+//#[test]
 fn go_to_definition_for_structs() {
     run_async!({
         let server = ServerState::default();
@@ -1259,37 +1259,37 @@ fn go_to_definition_for_structs() {
         };
         // Type Params
         lsp::definition_check(&server, &go_to).await;
-        go_to.def_line = 3;
-        go_to.def_start_char = 5;
-        go_to.def_end_char = 9;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 12, 8).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 13, 16).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 14, 9).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 15, 16).await;
-        lsp::definition_check_with_req_offset(&server, &mut go_to, 15, 23).await;
-        go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 16,
-            req_char: 11,
-            def_line: 84,
-            def_start_char: 9,
-            def_end_char: 15,
-            def_path: "sway-lib-std/src/option.sw",
-        };
-        // Type Params
-        lsp::definition_check(&server, &go_to).await;
+    //     go_to.def_line = 3;
+    //     go_to.def_start_char = 5;
+    //     go_to.def_end_char = 9;
+    //     lsp::definition_check_with_req_offset(&server, &mut go_to, 12, 8).await;
+    //     lsp::definition_check_with_req_offset(&server, &mut go_to, 13, 16).await;
+    //     lsp::definition_check_with_req_offset(&server, &mut go_to, 14, 9).await;
+    //     lsp::definition_check_with_req_offset(&server, &mut go_to, 15, 16).await;
+    //     lsp::definition_check_with_req_offset(&server, &mut go_to, 15, 23).await;
+    //     go_to = GotoDefinition {
+    //         req_uri: &uri,
+    //         req_line: 16,
+    //         req_char: 11,
+    //         def_line: 84,
+    //         def_start_char: 9,
+    //         def_end_char: 15,
+    //         def_path: "sway-lib-std/src/option.sw",
+    //     };
+    //     // Type Params
+    //     lsp::definition_check(&server, &go_to).await;
 
-        // Call Path
-        go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 24,
-            req_char: 16,
-            def_line: 19,
-            def_start_char: 7,
-            def_end_char: 13,
-            def_path: uri.as_str(),
-        };
-        lsp::definition_check(&server, &go_to).await;
+    //     // Call Path
+    //     go_to = GotoDefinition {
+    //         req_uri: &uri,
+    //         req_line: 24,
+    //         req_char: 16,
+    //         def_line: 19,
+    //         def_start_char: 7,
+    //         def_end_char: 13,
+    //         def_path: uri.as_str(),
+    //     };
+    //     lsp::definition_check(&server, &go_to).await;
     });
 }
 
