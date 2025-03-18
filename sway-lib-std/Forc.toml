@@ -3,6 +3,13 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "lib.sw"
 license = "Apache-2.0"
 name = "std"
+version = "0.1.0"
+description = "The standard library for the Sway programming language."
+homepage = "https://github.com/FuelLabs/sway"
+repository = "https://github.com/FuelLabs/sway"
+documentation = "https://docs.fuel.network/docs/sway/"
+organization = "FuelLabs"
+categories = ["Algorithms", "Data structures", "Cryptography"]
+keywords = ["library", "standard"]
 
 [dependencies]
-core = { path = "../sway-lib-core" }

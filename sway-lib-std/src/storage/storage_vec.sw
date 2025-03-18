@@ -8,6 +8,7 @@ use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 use ::vec::Vec;
 use ::iterator::Iterator;
+use ::codec::*;
 
 /// A persistent vector struct.
 pub struct StorageVec<V> {}

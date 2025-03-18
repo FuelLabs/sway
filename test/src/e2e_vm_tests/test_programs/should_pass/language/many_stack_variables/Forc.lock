@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-5A0A8AEC06508E21'
+name = "many_stack_variables"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'many_stack_variables'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-5A0A8AEC06508E21'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-5A0A8AEC06508E21"

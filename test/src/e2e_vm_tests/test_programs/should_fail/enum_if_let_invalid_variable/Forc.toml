@@ -5,4 +5,5 @@ license = "Apache-2.0"
 name = "enum_if_let_invalid_variable"
 
 [dependencies]
-core = { path = "../../../../../../sway-lib-core" }
+std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
+

@@ -1,6 +1,0 @@
-category = "run"
-expected_result = { action = "return_data", value = "000000000000002A" }
-validate_abi = false
-expected_warnings = 2 # TODO-DCA: Set to zero once https://github.com/FuelLabs/sway/issues/5921 is fixed.
-
-experimental = { new_encoding = true, partial_eq = true }

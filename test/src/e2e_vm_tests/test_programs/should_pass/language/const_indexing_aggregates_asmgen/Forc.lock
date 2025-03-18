@@ -4,10 +4,5 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "core"
-source = "path+from-root-BA8D9B16C05D491F"
-
-[[package]]
 name = "std"
 source = "path+from-root-BA8D9B16C05D491F"
-dependencies = ["core"]

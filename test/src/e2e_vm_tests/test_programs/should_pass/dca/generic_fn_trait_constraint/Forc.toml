@@ -6,4 +6,4 @@ name = "generic_fn_trait_constraint"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }

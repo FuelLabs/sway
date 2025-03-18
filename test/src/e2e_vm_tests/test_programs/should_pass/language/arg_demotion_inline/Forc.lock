@@ -1,8 +1,8 @@
 [[package]]
 name = "arg_demotion_inline"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-603115901A793008"

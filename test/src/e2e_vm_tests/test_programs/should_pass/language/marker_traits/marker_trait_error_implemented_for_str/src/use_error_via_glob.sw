@@ -1,6 +1,6 @@
 library;
 
-use core::marker::*;
+use std::marker::*;
 
 fn implements_error<T>(_t: T) where T: Error { }
 fn implements_error_no_args<T>() where T: Error { }

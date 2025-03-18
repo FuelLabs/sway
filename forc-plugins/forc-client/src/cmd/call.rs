@@ -178,6 +178,11 @@ impl FromStr for OutputFormat {
     --amount 100 \
     --asset-id 0x0087675439e10a8351b1d5e4cf9d0ea6da77675623ff6b16470b5e3c58998423 \
     --live
+
+# List all available functions in a contract
+» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+    --abi ./contract-abi.json \
+    --list-functions
 "#)]
 pub struct Command {
     /// The contract ID to call.
@@ -190,7 +195,9 @@ pub struct Command {
     /// The function selector to call.
     /// The function selector is the name of the function to call (e.g. "transfer").
     /// It must be a valid selector present in the ABI file.
-    pub function: FuncType,
+    /// Not required when --list-functions is specified.
+    #[clap(required_unless_present = "list_functions")]
+    pub function: Option<FuncType>,
 
     /// Arguments to pass into the function to be called.
     pub function_args: Vec<String>,
@@ -209,6 +216,11 @@ pub struct Command {
     /// The execution mode to use for the call; defaults to dry-run; possible values: dry-run, simulate, live
     #[clap(long, default_value = "dry-run")]
     pub mode: ExecutionMode,
+
+    /// List all available functions in the contract
+    /// Requires ABI and contract ID to be provided
+    #[clap(long, alias = "list-functions")]
+    pub list_functions: bool,
 
     /// The gas price to use for the call; defaults to 0
     #[clap(flatten)]

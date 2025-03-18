@@ -684,7 +684,7 @@ impl OpVariant {
     /// For all the operators except [OpVariant::Or] and [OpVariant::And],
     /// returns the name of the method that can be found on the corresponding
     /// operator trait. E.g., for `+` that will be the method `add` defined in
-    /// `core::ops::Add::add`.
+    /// `std::ops::Add::add`.
     ///
     /// [OpVariant::Or] and [OpVariant::And] are lazy and must be handled
     /// internally by the compiler.

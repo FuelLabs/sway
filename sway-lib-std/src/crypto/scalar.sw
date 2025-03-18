@@ -3,6 +3,8 @@ library;
 use ::convert::{From, TryFrom};
 use ::bytes::{Bytes, *};
 use ::option::Option::{self, *};
+use ::ops::*;
+use ::primitive_conversions::u256::*;
 
 // NOTE: Bytes are used to support numbers greater than 32 bytes for future curves.
 /// The Scalar type used in cryptographic operations.
@@ -10,27 +12,7 @@ pub struct Scalar {
     bytes: Bytes,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Scalar {
-    fn eq(self, other: Self) -> bool {
-        // All scalars must be of length 32
-        if self.bytes.len() != 32 || other.bytes.len() != 32 {
-            return false;
-        }
-
-        let mut iter = 0;
-        while iter < 32 {
-            if self.bytes.get(iter).unwrap() != other.bytes.get(iter).unwrap()
-            {
-                return false;
-            }
-
-            iter += 1;
-        }
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
+// All scalars must be of length 32
 impl PartialEq for Scalar {
     fn eq(self, other: Self) -> bool {
         if self.bytes.len() != 32 || other.bytes.len() != 32 {
@@ -49,7 +31,6 @@ impl PartialEq for Scalar {
         true
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Scalar {}
 
 impl Scalar {

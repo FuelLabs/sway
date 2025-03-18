@@ -25,7 +25,7 @@ impl Enum for EmptyStruct {
 
 impl Enum for [u64;0] { }
 
-impl core::marker::Enum for (u8, u16, u32, u64, u256) { }
+impl std::marker::Enum for (u8, u16, u32, u64, u256) { }
 
 // Implement `Error`.
 impl Error for MyEnum { }
@@ -40,4 +40,4 @@ impl Error for EmptyStruct {
 
 impl Error for [u64;0] { }
 
-impl core::marker::Error for (u8, u16, u32, u64, u256) { }
+impl std::marker::Error for (u8, u16, u32, u64, u256) { }

@@ -789,7 +789,7 @@ impl<'a> TypeCheckContext<'a> {
 
     /// Given a `method_name` and a `type_id`, find that method on that type in the namespace.
     /// `annotation_type` is the expected method return type. Requires `argument_types` because:
-    /// - standard operations like +, <=, etc. are called like "core::ops::<operation>" and the
+    /// - standard operations like +, <=, etc. are called like "std::ops::<operation>" and the
     ///   actual self type of the trait implementation is determined by the passed argument type.
     /// - we can have several implementations of generic traits for different types, that can
     ///   result in a method of a same name, but with different type arguments.
@@ -1230,7 +1230,7 @@ impl<'a> TypeCheckContext<'a> {
             return;
         };
 
-        let _ = src_mod.walk_scope_chain(|lexical_scope| {
+        let _ = src_mod.walk_scope_chain_early_return(|lexical_scope| {
             impls_to_insert.extend(
                 lexical_scope
                     .items

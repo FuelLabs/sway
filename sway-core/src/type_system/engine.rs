@@ -216,7 +216,7 @@ macro_rules! type_engine_shareable_built_in_types {
     // The actual recursion step that generates the `id_of_<type>` functions.
     (@step $idx:expr, ($ty_name:ident, $ti:expr, $ti_pat:pat), $(($tail_ty_name:ident, $tail_ti:expr, $tail_ti_pat:pat),)*) => {
         paste::paste! {
-            pub(crate) const fn [<id_of_ $ty_name>](&self) -> TypeId {
+            pub const fn [<id_of_ $ty_name>](&self) -> TypeId {
                 TypeId::new($idx)
             }
         }
