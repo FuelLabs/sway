@@ -1,6 +1,7 @@
 mod e2e_vm_tests;
 mod ir_generation;
 mod reduced_std_libs;
+mod snapshot;
 mod test_consistency;
 
 use anyhow::Result;
@@ -29,11 +30,7 @@ struct Cli {
     #[arg(long, visible_alias = "abi")]
     abi_only: bool,
 
-    /// Only run tests with no core dependencies
-    #[arg(long, visible_alias = "exclude_core")]
-    exclude_core: bool,
-
-    /// Only run tests with no std dependencies
+    /// Only run tests with no `std` dependencies
     #[arg(long, visible_alias = "exclude_std")]
     exclude_std: bool,
 
@@ -49,11 +46,11 @@ struct Cli {
     #[arg(long, env = "SWAY_TEST_VERBOSE")]
     verbose: bool,
 
-    /// Compile sway code in release mode
+    /// Compile Sway code in release mode
     #[arg(long)]
     release: bool,
 
-    /// Intended for use in `CI` to ensure test lock files are up to date
+    /// Intended for use in CI to ensure test lock files are up to date
     #[arg(long)]
     locked: bool,
 
@@ -79,6 +76,55 @@ struct Cli {
 
     #[command(flatten)]
     experimental: sway_features::CliFields,
+
+    /// Only run tests of a particular kind
+    #[arg(long, short, num_args(1..=4), value_parser = clap::builder::PossibleValuesParser::new(&TestKindOpt::CLI_OPTIONS))]
+    kind: Option<Vec<String>>,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct TestKind {
+    pub e2e: bool,
+    pub ir: bool,
+    pub snapshot: bool,
+}
+
+impl TestKind {
+    fn all() -> Self {
+        Self {
+            e2e: true,
+            ir: true,
+            snapshot: true,
+        }
+    }
+}
+
+pub struct TestKindOpt(pub TestKind);
+
+impl TestKindOpt {
+    const E2E: &'static str = "e2e";
+    const IR: &'static str = "ir";
+    const SNAPSHOT: &'static str = "snapshot";
+    const ALL: &'static str = "all";
+    pub const CLI_OPTIONS: [&'static str; 4] = [Self::E2E, Self::IR, Self::SNAPSHOT, Self::ALL];
+}
+
+impl From<&Vec<String>> for TestKindOpt {
+    fn from(value: &Vec<String>) -> Self {
+        let contains_opt = |opt: &str| value.iter().any(|val| *val == opt);
+
+        let test_kind = if contains_opt(Self::ALL) {
+            TestKind::all()
+        } else {
+            TestKind {
+                e2e: contains_opt(Self::E2E),
+                ir: contains_opt(Self::IR),
+                snapshot: contains_opt(Self::SNAPSHOT),
+            }
+        };
+
+        Self(test_kind)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -87,7 +133,6 @@ pub struct FilterConfig {
     pub exclude: Option<regex::Regex>,
     pub skip_until: Option<regex::Regex>,
     pub abi_only: bool,
-    pub exclude_core: bool,
     pub exclude_std: bool,
     pub contract_only: bool,
     pub first_only: bool,
@@ -104,6 +149,7 @@ pub struct RunConfig {
     pub print_asm: PrintAsm,
     pub print_bytecode: bool,
     pub experimental: sway_features::CliFields,
+    pub kind: TestKind,
 }
 
 #[tokio::main]
@@ -117,7 +163,6 @@ async fn main() -> Result<()> {
         exclude: cli.exclude,
         skip_until: cli.skip_until,
         abi_only: cli.abi_only,
-        exclude_core: cli.exclude_core,
         exclude_std: cli.exclude_std,
         contract_only: cli.contract_only,
         first_only: cli.first_only,
@@ -145,21 +190,27 @@ async fn main() -> Result<()> {
             .as_ref()
             .map_or(PrintAsm::default(), |opts| PrintAsmCliOpt::from(opts).0),
         print_bytecode: cli.print_bytecode,
+        kind: cli
+            .kind
+            .as_ref()
+            .map_or(TestKind::all(), |opts| TestKindOpt::from(opts).0),
     };
 
     // Check that the tests are consistent
     test_consistency::check()?;
 
-    // Create reduced versions of the `std` library.
+    // Create reduced versions of the `std` library
     reduced_std_libs::create()?;
 
     // Run E2E tests
-    e2e_vm_tests::run(&filter_config, &run_config)
-        .instrument(tracing::trace_span!("E2E"))
-        .await?;
+    if run_config.kind.e2e {
+        e2e_vm_tests::run(&filter_config, &run_config)
+            .instrument(tracing::trace_span!("E2E"))
+            .await?;
+    }
 
     // Run IR tests
-    if !filter_config.first_only {
+    if run_config.kind.ir && !filter_config.first_only {
         println!("\n");
         ir_generation::run(filter_config.include.as_ref(), cli.verbose, &run_config)
             .instrument(tracing::trace_span!("IR"))
@@ -167,16 +218,12 @@ async fn main() -> Result<()> {
     }
 
     // Run snapshot tests
-    let mut args = vec!["t", "--release", "-p", "test", "--"];
-    if let Some(include) = cli.include.as_ref().map(|x| x.as_str()) {
-        args.push(include);
+    if run_config.kind.snapshot && !filter_config.first_only {
+        println!("\n");
+        snapshot::run(filter_config.include.as_ref())
+            .instrument(tracing::trace_span!("SNAPSHOT"))
+            .await?;
     }
-
-    let mut t = std::process::Command::new("cargo")
-        .args(args)
-        .spawn()
-        .unwrap();
-    assert!(t.wait().unwrap().success());
 
     Ok(())
 }
