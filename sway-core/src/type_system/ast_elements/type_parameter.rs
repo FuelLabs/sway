@@ -275,21 +275,23 @@ impl TypeParameter {
         match ctx.resolve_call_path(handler, &tc.trait_name).ok() {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let trait_decl = ctx.engines.de().get_trait(&decl_id);
-                let mut result = trait_decl
-                    .supertraits
-                    .iter()
-                    .flat_map(|supertrait| {
-                        TypeParameter::expand_trait_constraints(
-                            handler,
-                            ctx,
-                            &TraitConstraint {
-                                trait_name: supertrait.name.clone(),
-                                type_arguments: tc.type_arguments.clone(),
-                            },
-                        )
-                    })
-                    .collect::<Vec<TraitConstraint>>();
-                result.push(tc.clone());
+                let mut result = vec![tc.clone()];
+                result.extend(
+                    trait_decl
+                        .supertraits
+                        .iter()
+                        .flat_map(|supertrait| {
+                            TypeParameter::expand_trait_constraints(
+                                handler,
+                                ctx,
+                                &TraitConstraint {
+                                    trait_name: supertrait.name.clone(),
+                                    type_arguments: tc.type_arguments.clone(),
+                                },
+                            )
+                        })
+                        .collect::<Vec<TraitConstraint>>(),
+                );
                 result
             }
             _ => vec![tc.clone()],
