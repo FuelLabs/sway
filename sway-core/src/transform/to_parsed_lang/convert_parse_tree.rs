@@ -2010,8 +2010,6 @@ fn expr_func_app_to_expression_kind(
         //      arg.fmt(f);
         //      arg
         // }"
-        //
-        // , and in release becomes "arg"
         Some(Intrinsic::Dbg)
             if context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root =>
         {
@@ -2113,7 +2111,7 @@ fn expr_func_app_to_expression_kind(
                         Pattern::AmbiguousSingleIdent(arg_ident.clone()),
                         None,
                         arguments[0].clone(),
-                        span.clone(),
+                        Span::dummy(),
                     )
                     .unwrap()
                     .pop()
@@ -2123,7 +2121,7 @@ fn expr_func_app_to_expression_kind(
                         content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                             f_decl_pid,
                         )),
-                        span: span.clone(),
+                        span: Span::dummy(),
                     },
                     // f.print_str("[" + <current file> + ":" + <current line> + ":" + <current col> + "] = ");
                     ast_node_to_print_str(
@@ -2144,24 +2142,24 @@ fn expr_func_app_to_expression_kind(
                                             method_name: BaseIdent::new_no_span("fmt".into()),
                                         },
                                         type_arguments: TypeArgs::Regular(vec![]),
-                                        span: span.clone(),
+                                        span: Span::dummy(),
                                     },
                                     contract_call_params: vec![],
                                     arguments: vec![
                                         Expression {
                                             kind: ExpressionKind::Variable(arg_ident.clone()),
-                                            span: span.clone(),
+                                            span: Span::dummy(),
                                         },
                                         Expression {
                                             kind: ExpressionKind::Variable(f_ident.clone()),
-                                            span: span.clone(),
+                                            span: Span::dummy(),
                                         },
                                     ],
                                 },
                             )),
-                            span: span.clone(),
+                            span: Span::dummy(),
                         }),
-                        span: span.clone(),
+                        span: Span::dummy(),
                     },
                     // f.print_str(<newline>);
                     ast_node_to_print_str(f_ident.clone(), "\n", &span),
@@ -2172,17 +2170,19 @@ fn expr_func_app_to_expression_kind(
                                 kind: ExpressionKind::AmbiguousVariableExpression(
                                     arg_ident.clone(),
                                 ),
-                                span: span.clone(),
+                                span: Span::dummy(),
                             })),
-                            span: arguments[0].span.clone(),
+                            span: Span::dummy(),
                         }),
-                        span: span.clone(),
+                        span: Span::dummy(),
                     },
                 ],
-                whole_block_span: span,
+                whole_block_span: Span::dummy(),
             };
+
             return Ok(ExpressionKind::CodeBlock(block));
         }
+        // ... and in release becomes "arg"
         Some(Intrinsic::Dbg)
             if !context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root =>
         {
