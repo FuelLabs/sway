@@ -1,6 +1,7 @@
 script;
 
 mod lib;
+mod lib2; // Contains uses of std::prelude items to ensure they are imported correctly.
 
 // Glob import should shadow the Add trait from the core prelude
 use lib::*;
@@ -11,7 +12,7 @@ struct S {
 
 impl Add for S {
     fn add (self, other: S) -> u64 {
-	self.a - other.a
+        self.a - other.a
     }
 }
 

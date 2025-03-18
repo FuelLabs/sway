@@ -1,8 +1,8 @@
 library;
 
-// Shadows the Add trait from core::ops, imported via core::prelude
+// Shadows the Add trait from std::ops, imported via std::prelude
 pub trait Add {
-    // Same name as core::ops::Add, but different return type
+    // Same name as std::ops::Add, but different return type
     fn add(self, other: Self) -> u64;
 }
 
