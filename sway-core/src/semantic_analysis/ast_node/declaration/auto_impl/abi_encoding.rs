@@ -13,7 +13,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{BaseIdent, Named, ProgramId, Span, Spanned};
+use sway_types::{BaseIdent, Named, SourceId, Span, Spanned};
 
 #[derive(Default)]
 pub struct AbiEncodingAutoImplInfo {}
@@ -208,8 +208,6 @@ where
         let implementing_for_decl_id = decl.to_struct_decl(&Handler::default(), engines).unwrap();
         let struct_decl = self.ctx.engines().de().get(&implementing_for_decl_id);
 
-        let program_id = struct_decl.span().source_id().map(|sid| sid.program_id());
-
         let abi_encode_body = self.generate_abi_encode_struct_body(engines, &struct_decl);
         let abi_encode_code = self.generate_abi_encode_code(
             struct_decl.name(),
@@ -218,7 +216,7 @@ where
         );
         let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            program_id,
+            struct_decl.span().source_id().cloned(),
             &abi_encode_code,
             crate::build_config::DbgGeneration::None,
         );
@@ -231,7 +229,7 @@ where
         );
         let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            program_id,
+            struct_decl.span().source_id().cloned(),
             &abi_decode_code,
             crate::build_config::DbgGeneration::None,
         );
@@ -257,8 +255,6 @@ where
         let enum_decl_id = decl.to_enum_id(&Handler::default(), engines).unwrap();
         let enum_decl = self.ctx.engines().de().get(&enum_decl_id);
 
-        let program_id = enum_decl.span().source_id().map(|sid| sid.program_id());
-
         let abi_encode_body = self.generate_abi_encode_enum_body(engines, &enum_decl);
         let abi_encode_code = self.generate_abi_encode_code(
             enum_decl.name(),
@@ -267,7 +263,7 @@ where
         );
         let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            program_id,
+            enum_decl.span().source_id().cloned(),
             &abi_encode_code,
             crate::build_config::DbgGeneration::None,
         );
@@ -280,7 +276,7 @@ where
         );
         let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            program_id,
+            enum_decl.span().source_id().cloned(),
             &abi_decode_code,
             crate::build_config::DbgGeneration::None,
         );
@@ -307,7 +303,7 @@ where
     pub(crate) fn generate_contract_entry(
         &mut self,
         engines: &Engines,
-        program_id: Option<ProgramId>,
+        source_id: Option<SourceId>,
         contract_fns: &[DeclId<TyFunctionDecl>],
         fallback_fn: Option<DeclId<TyFunctionDecl>>,
         handler: &Handler,
@@ -462,7 +458,7 @@ where
 
         let entry_fn = self.parse_fn_to_ty_ast_node(
             engines,
-            program_id,
+            source_id,
             FunctionDeclarationKind::Entry,
             &code,
             crate::build_config::DbgGeneration::None,
@@ -486,8 +482,6 @@ where
         decl: &TyFunctionDecl,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
-        let program_id = decl.span.source_id().map(|sid| sid.program_id());
-
         let Some(args_types) = decl
             .parameters
             .iter()
@@ -524,7 +518,7 @@ where
 
         let entry_fn = self.parse_fn_to_ty_ast_node(
             engines,
-            program_id,
+            decl.span.source_id().cloned(),
             FunctionDeclarationKind::Entry,
             &code,
             crate::build_config::DbgGeneration::None,
@@ -580,8 +574,6 @@ where
         decl: &TyFunctionDecl,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
-        let program_id = decl.span.source_id().map(|sid| sid.program_id());
-
         let Some(args_types) = decl
             .parameters
             .iter()
@@ -635,7 +627,7 @@ where
 
         let entry_fn = self.parse_fn_to_ty_ast_node(
             engines,
-            program_id,
+            decl.span.source_id().cloned(),
             FunctionDeclarationKind::Entry,
             &code,
             crate::build_config::DbgGeneration::None,
