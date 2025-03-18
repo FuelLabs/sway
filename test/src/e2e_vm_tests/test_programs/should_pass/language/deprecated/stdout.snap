@@ -5,7 +5,6 @@ source: test/tests/tests.rs
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/deprecated
-   Compiling library core (sway-lib-core)
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script deprecated (test/src/e2e_vm_tests/test_programs/should_pass/language/deprecated)
 warning
