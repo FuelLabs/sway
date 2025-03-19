@@ -312,9 +312,9 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_expiration() {
-        let (contract_instance, _, _, _) = get_contracts(true).await;
+        let (contract_instance, _, wallet, _) = get_contracts(true).await;
 
-        let provider = contract_instance.wallet.try_provider().unwrap();
+        let provider = wallet.try_provider().unwrap();
 
         // With the first call, block will be 0, so this should be valid
         let result = contract_instance
