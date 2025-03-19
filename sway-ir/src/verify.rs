@@ -548,11 +548,14 @@ impl InstructionVerifier<'_, '_> {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }
             }
-            BinaryOpKind::Add
-            | BinaryOpKind::Sub
-            | BinaryOpKind::Mul
-            | BinaryOpKind::Div
-            | BinaryOpKind::Mod => {
+            BinaryOpKind::Add => {
+                if !arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context) {
+                    if !(arg1_ty.is_ptr(self.context) && arg2_ty.is_uint64(self.context)) {
+                        return Err(IrError::VerifyBinaryOpIncorrectArgType);
+                    }
+                }
+            }
+            BinaryOpKind::Sub | BinaryOpKind::Mul | BinaryOpKind::Div | BinaryOpKind::Mod => {
                 if !arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context) {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }
