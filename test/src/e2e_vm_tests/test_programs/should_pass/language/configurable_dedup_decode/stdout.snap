@@ -1,6 +1,5 @@
 ---
-source: test/tests/tests.rs
-snapshot_kind: text
+source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
 exit status: 0
@@ -244,8 +243,8 @@ script {
 !12 = span !3 68174 68180
 !13 = span !3 68160 68181
 !14 = fn_call_path_span !3 68160 68173
-!15 = span !3 105408 105429
-!16 = fn_call_path_span !3 105408 105421
+!15 = span !3 108673 108694
+!16 = fn_call_path_span !3 108673 108686
 !17 = (!13 !14 !15 !16)
 !18 = span !3 68149 68182
 !19 = span !3 68240 68244
