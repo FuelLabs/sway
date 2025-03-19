@@ -244,7 +244,7 @@ pub(super) async fn run(
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default();
-		let mut initial_namespace = Package::new(core_lib_name.clone(), None, ProgramId::new(0), false);
+                let mut initial_namespace = Package::new(core_lib_name.clone(), None, ProgramId::new(0), false);
 		initial_namespace.add_external("std".to_owned(), std_package.clone());
                 let compile_res = compile_to_ast(
                     &handler,
