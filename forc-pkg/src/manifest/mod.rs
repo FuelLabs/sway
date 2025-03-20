@@ -1407,6 +1407,7 @@ mod tests {
             forc_version: None,
             experimental: HashMap::new(),
             metadata: Some(toml::Value::from(toml::value::Table::new())),
+            dbg_release: None,
         };
 
         let serialized = toml::to_string(&project).unwrap();
@@ -1435,6 +1436,7 @@ mod tests {
             forc_version: None,
             experimental: HashMap::new(),
             metadata: None,
+            dbg_release: None,
         };
 
         let serialized = toml::to_string(&project).unwrap();
