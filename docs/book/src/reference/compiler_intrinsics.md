@@ -372,3 +372,18 @@ Runtime bound checks are not generated, and must be done manually when and where
 
 - `item` is a reference to an array or a reference to a slice;
 - when `index` is a literal, it must be smaller than `item` length;
+
+---
+
+```sway
+__dbg(value: T) -> T
+```
+
+**Description:** Automatically calls the `Debug` trait on the passed `value`, with file, line and column information. The value is returned to allow be used inside any expression.
+
+Only generate the expected output in `Debug` mode, when in `Release` behaves as identity function, just returning the passed value. 
+To enable the output generation in "Release", must be enabled in the project `Forc.toml`
+
+**Constraints:**
+
+- `T` must implement Debug
