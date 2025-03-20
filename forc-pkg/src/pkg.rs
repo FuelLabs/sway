@@ -2418,8 +2418,6 @@ pub fn build(
                 .se()
                 .get_or_create_program_id_from_manifest_path(&manifest.entry_path());
 
-            
-
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
             let dep_namespace = match dependency_namespace(
