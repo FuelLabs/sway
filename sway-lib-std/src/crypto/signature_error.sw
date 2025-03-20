@@ -1,5 +1,7 @@
 library;
 
+use ::codec::*;
+
 /// The error type used when a cryptographic signature function fails.
 pub enum SignatureError {
     /// The error variant used when the recover fails.

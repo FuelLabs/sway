@@ -8,6 +8,7 @@ use ::convert::{From, TryFrom, TryInto};
 use ::option::Option::{self, *};
 use ::hash::*;
 use ::ops::*;
+use ::codec::*;
 
 /// Asymmetric public key, i.e. verifying key, in uncompressed form.
 ///
