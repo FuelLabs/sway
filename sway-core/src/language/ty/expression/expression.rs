@@ -416,6 +416,18 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::Literal(_) | TyExpressionVariant::VariableExpression { .. } => {
                 Ok(())
             }
+            TyExpressionVariant::ArrayRepeat {
+                elem_type,
+                value: elem_value,
+                length,
+            } => {
+                elem_type.materialize_const_generics(engines, handler, name, value)?;
+                elem_value.materialize_const_generics(engines, handler, name, value)?;
+                length.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::Ref(r) => {
+                r.materialize_const_generics(engines, handler, name, value)
+            }
             _ => Err(handler.emit_err(
                 sway_error::error::CompileError::ConstGenericNotSupportedHere {
                     span: self.span.clone(),
@@ -734,13 +746,6 @@ impl TyExpression {
                 elem_type,
                 contents,
             } => Some((elem_type, contents)),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn as_literal_u64(&self) -> Option<u64> {
-        match &self.expression {
-            TyExpressionVariant::Literal(Literal::U64(v)) => Some(*v),
             _ => None,
         }
     }
