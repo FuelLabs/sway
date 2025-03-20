@@ -3724,8 +3724,8 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         elem_type: TypeId,
-        value: &ty::TyExpression,
-        length: &ty::TyExpression,
+        value_expr: &ty::TyExpression,
+        length_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let elem_type = convert_resolved_typeid_no_span(
@@ -3735,7 +3735,17 @@ impl<'eng> FnCompiler<'eng> {
             elem_type,
         )?;
 
-        let length_as_u64 = length.as_literal_u64().unwrap();
+        let length_as_u64 = compile_constant_expression_to_constant(
+            self.engines,
+            context,
+            md_mgr,
+            self.module,
+            None,
+            Some(self),
+            length_expr,
+        )?;
+        // SAFETY: Safe by the type-checking, that only allows u64 as the array length
+        let length_as_u64 = length_as_u64.get_content(context).as_uint().unwrap();
         let array_type = Type::new_array(context, elem_type, length_as_u64);
 
         let temp_name = self.lexical_map.insert_anon();
@@ -3750,7 +3760,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         let value_value = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, value)?
+            self.compile_expression_to_value(context, md_mgr, value_expr)?
         );
 
         if length_as_u64 > 5 {

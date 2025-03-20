@@ -318,9 +318,7 @@ impl Parse for ty::TyExpression {
                 ..
             } => {
                 collect_const_generic_decl(ctx, decl, Some(&Ident::new(span.clone())));
-                if let Some(call_path) = call_path {
-                    collect_call_path_prefixes(ctx, &call_path.prefixes, call_path.callpath_type);
-                }
+                collect_call_path_prefixes(ctx, &call_path.prefixes, call_path.callpath_type);
             }
             ty::TyExpressionVariant::VariableExpression {
                 ref name,
