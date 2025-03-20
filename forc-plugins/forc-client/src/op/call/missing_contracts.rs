@@ -1,10 +1,11 @@
 use anyhow::{bail, Result};
 use fuel_tx::{PanicReason, Receipt};
 use fuels::programs::calls::{traits::TransactionTuner, ContractCall};
-use fuels_accounts::{provider::Provider, wallet::WalletUnlocked};
+use fuels_accounts::{provider::Provider, wallet::{Wallet, Unlocked}, signers::private_key::PrivateKeySigner};
 use fuels_core::types::{
     bech32::Bech32ContractId, transaction::TxPolicies, transaction_builders::VariableOutputPolicy,
 };
+use fuels::types::transaction_builders::BuildableTransaction;
 
 /// Get the missing contracts from a contract call by dry-running the transaction
 /// to find contracts that are not explicitly listed in the call's `external_contracts` field.
@@ -14,7 +15,7 @@ pub async fn get_missing_contracts(
     tx_policies: &TxPolicies,
     variable_output_policy: &VariableOutputPolicy,
     log_decoder: &fuels_core::codec::LogDecoder,
-    account: &WalletUnlocked,
+    account: &Wallet<Unlocked<PrivateKeySigner>>,
     max_attempts: Option<u64>,
 ) -> Result<Vec<Bech32ContractId>> {
     let max_attempts = max_attempts.unwrap_or(10);
@@ -26,7 +27,9 @@ pub async fn get_missing_contracts(
         ));
 
         let tx = call
-            .build_tx(*tx_policies, *variable_output_policy, account)
+            .transaction_builder(*tx_policies, *variable_output_policy, account)
+            .await?
+            .build(provider)
             .await?;
 
         match provider

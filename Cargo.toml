@@ -89,21 +89,21 @@ fuel-abi-types = "0.8"
 # Although ALL verions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball
-fuel-core-client = { version = "0.41.4", default-features = false }
+fuel-core-client = { version = "0.41.7", default-features = false }
 fuel-core-types = { version = "0.41", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.70"
-fuels-core = "0.70"
-fuels-accounts = "0.70"
+fuels = "0.71"
+fuels-core = "0.71"
+fuels-accounts = "0.71"
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.59"
-fuel-crypto = "0.59"
-fuel-types = "0.59"
-fuel-tx = "0.59"
-fuel-vm = "0.59"
+fuel-asm = "0.59.1"
+fuel-crypto = "0.59.1"
+fuel-types = "0.59.1"
+fuel-tx = "0.59.1"
+fuel-vm = "0.59.1"
 
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.12"

@@ -17,7 +17,8 @@ use either::Either;
 use fuel_abi_types::abi::{program::ProgramABI, unified_program::UnifiedProgramABI};
 use fuel_tx::Receipt;
 use fuels::{
-    accounts::{provider::Provider, wallet::WalletUnlocked},
+    types::param_types::ParamType,
+    accounts::{provider::Provider, wallet::Wallet, signers::private_key::PrivateKeySigner},
     crypto::SecretKey,
     programs::calls::{
         receipt_parser::ReceiptParser,
@@ -25,6 +26,7 @@ use fuels::{
         ContractCall,
     },
 };
+use fuels_accounts::ViewOnlyAccount;
 use fuels_core::{
     codec::{
         encode_fn_selector, log_formatters_lookup, ABIDecoder, ABIEncoder, DecoderConfig,
@@ -32,7 +34,6 @@ use fuels_core::{
     },
     types::{
         bech32::Bech32ContractId,
-        param_types::ParamType,
         transaction::{Transaction, TxPolicies},
         transaction_builders::{BuildableTransaction, ScriptBuildStrategy, VariableOutputPolicy},
         ContractId,
@@ -137,12 +138,14 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
         output_param: output_param.clone(),
         is_payable: call_parameters.amount > 0,
         custom_assets: Default::default(),
+        inputs: Vec::new(),
+        outputs: Vec::new(),
     };
 
     let node_url = node.get_node_url(&None)?;
     let provider = Provider::connect(node_url).await?;
     let wallet = get_wallet(caller.signing_key, caller.wallet, provider).await?;
-    let provider = wallet.provider().unwrap();
+    let provider = wallet.provider();
 
     let tx_policies = gas
         .as_ref()
@@ -186,7 +189,10 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
         cmd::call::ExecutionMode::DryRun => {
             let tx = call
                 .with_external_contracts(external_contracts)
-                .build_tx(tx_policies, variable_output_policy, &wallet)
+                .transaction_builder(tx_policies, variable_output_policy, &wallet)
+                .await
+                .expect("Failed to initialize transaction builder")
+                .build(provider)
                 .await
                 .expect("Failed to build transaction");
             let tx_hash = tx.id(chain_id);
@@ -224,7 +230,10 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
             );
             let tx = call
                 .with_external_contracts(external_contracts)
-                .build_tx(tx_policies, variable_output_policy, &wallet)
+                .transaction_builder(tx_policies, variable_output_policy, &wallet)
+                .await
+                .expect("Failed to initialize transaction builder")
+                .build(provider)
                 .await
                 .expect("Failed to build transaction");
             let tx_hash = tx.id(chain_id);
@@ -317,11 +326,12 @@ async fn get_wallet(
     signing_key: Option<SecretKey>,
     use_wallet: bool,
     provider: Provider,
-) -> Result<WalletUnlocked> {
+) -> Result<Wallet> {
     match (signing_key, use_wallet) {
         (None, false) => {
             let secret_key = SecretKey::from_str(DEFAULT_PRIVATE_KEY).unwrap();
-            let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+            let signer = PrivateKeySigner::new(secret_key);
+            let wallet = Wallet::new(signer, provider);
             forc_tracing::println_warning(&format!(
                 "No signing key or wallet flag provided. Using default signer: 0x{}",
                 wallet.address().hash()
@@ -329,7 +339,8 @@ async fn get_wallet(
             Ok(wallet)
         }
         (Some(secret_key), false) => {
-            let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+            let signer = PrivateKeySigner::new(secret_key);
+            let wallet = Wallet::new(signer, provider);
             forc_tracing::println_warning(&format!(
                 "Using account {} derived from signing key...",
                 wallet.address().hash()
@@ -345,7 +356,8 @@ async fn get_wallet(
             forc_tracing::println_warning(
                 "Signing key is provided while requesting to use forc-wallet. Using signing key...",
             );
-            let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+            let signer = PrivateKeySigner::new(secret_key);
+            let wallet = Wallet::new(signer, provider);
             Ok(wallet)
         }
     }
@@ -356,6 +368,7 @@ pub(crate) mod tests {
     use super::*;
     use fuels::accounts::wallet::Wallet;
     use fuels::prelude::*;
+    use rand::thread_rng;
 
     abigen!(Contract(
         name = "TestContract",
@@ -363,7 +376,7 @@ pub(crate) mod tests {
     ));
 
     pub async fn get_contract_instance(
-    ) -> (TestContract<WalletUnlocked>, ContractId, WalletUnlocked) {
+    ) -> (TestContract<Wallet>, ContractId, Wallet) {
         // Launch a local network and deploy the contract
         let mut wallets = launch_custom_provider_and_get_wallets(
             WalletsConfig::new(
@@ -385,7 +398,8 @@ pub(crate) mod tests {
         .unwrap()
         .deploy(&wallet, TxPolicies::default())
         .await
-        .unwrap();
+        .unwrap()
+        .contract_id;
 
         let instance = TestContract::new(id.clone(), wallet.clone());
 
@@ -394,14 +408,14 @@ pub(crate) mod tests {
 
     fn get_contract_call_cmd(
         id: ContractId,
-        wallet: &WalletUnlocked,
+        wallet: &Wallet,
         selector: &str,
         args: Vec<&str>,
     ) -> cmd::Call {
         // get secret key from wallet - use unsafe because secret_key is private
         // 0000000000000000000000000000000000000000000000000000000000000001
         let secret_key =
-            unsafe { std::mem::transmute::<&WalletUnlocked, &(Wallet, SecretKey)>(wallet).1 };
+            unsafe { std::mem::transmute::<&Wallet, &(Wallet, SecretKey)>(wallet).1 };
         cmd::Call {
             contract_id: id,
             abi: Either::Left(std::path::PathBuf::from(
@@ -410,7 +424,7 @@ pub(crate) mod tests {
             function: Some(cmd::call::FuncType::Selector(selector.into())),
             function_args: args.into_iter().map(String::from).collect(),
             node: crate::NodeTarget {
-                node_url: Some(wallet.provider().unwrap().url().to_owned()),
+                node_url: Some(wallet.provider().url().to_owned()),
                 ..Default::default()
             },
             caller: cmd::call::Caller {
@@ -672,7 +686,7 @@ pub(crate) mod tests {
     async fn contract_value_forwarding() {
         let (_, id, wallet) = get_contract_instance().await;
 
-        let provider = wallet.provider().unwrap();
+        let provider = wallet.provider();
         let consensus_parameters = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_parameters.base_asset_id();
         let get_recipient_balance = |addr: Bech32Address| async move {
@@ -711,7 +725,7 @@ pub(crate) mod tests {
         assert_eq!(get_contract_balance(id).await, 1);
 
         // contract call transfer funds to another address
-        let random_wallet = WalletUnlocked::new_random(None);
+        let random_wallet = Wallet::random(&mut thread_rng(), provider.clone());
         let (amount, asset_id, recipient) = (
             "2",
             &format!("{{0x{}}}", base_asset_id),
@@ -735,7 +749,7 @@ pub(crate) mod tests {
         // contract call transfer funds to another address
         // specify amount x, provide amount x - 1
         // fails with panic reason 'NotEnoughBalance'
-        let random_wallet = WalletUnlocked::new_random(None);
+        let random_wallet = Wallet::random(&mut thread_rng(), provider.clone());
         let (amount, asset_id, recipient) = (
             "5",
             &format!("{{0x{}}}", base_asset_id),
@@ -758,7 +772,7 @@ pub(crate) mod tests {
 
         // contract call transfer funds to another address
         // specify amount x, provide amount x + 5; should succeed
-        let random_wallet = WalletUnlocked::new_random(None);
+        let random_wallet = Wallet::random(&mut thread_rng(), provider.clone());
         let (amount, asset_id, recipient) = (
             "3",
             &format!("{{0x{}}}", base_asset_id),

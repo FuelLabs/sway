@@ -19,11 +19,8 @@ use fuel_tx::{AssetId, ContractId};
 use fuels::{
     macros::abigen, programs::responses::CallResponse, types::checksum_address::checksum_encode,
 };
-use fuels_accounts::{
-    provider::Provider,
-    wallet::{Wallet, WalletUnlocked},
-    ViewOnlyAccount,
-};
+use fuels_accounts::{provider::Provider, ViewOnlyAccount, wallet::{Wallet, Unlocked}, signers::private_key::PrivateKeySigner};
+
 use std::{collections::BTreeMap, path::Path, str::FromStr};
 
 use super::aws::{AwsClient, AwsConfig};
@@ -144,7 +141,7 @@ async fn collect_account_balances(
 ) -> Result<AccountBalances> {
     let accounts: Vec<_> = accounts_map
         .values()
-        .map(|addr| Wallet::from_address((*addr).into(), Some(provider.clone())))
+        .map(|addr| Wallet::new_locked((*addr).into(), provider.clone()))
         .collect();
 
     futures::future::try_join_all(accounts.iter().map(|acc| acc.get_balances()))
@@ -229,7 +226,8 @@ pub(crate) async fn select_account(
         SignerSelectionMode::Manual => {
             let secret_key = select_manual_secret_key(default_sign, signing_key)
                 .ok_or_else(|| anyhow::anyhow!("missing manual secret key"))?;
-            let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+            let signer = PrivateKeySigner::new(secret_key);
+            let wallet = Wallet::new(signer, provider.clone());
             Ok(ForcClientAccount::Wallet(wallet))
         }
         SignerSelectionMode::AwsSigner(arn) => {
@@ -246,7 +244,7 @@ pub(crate) async fn select_account(
 pub(crate) async fn select_local_wallet_account(
     password: &str,
     provider: &Provider,
-) -> Result<WalletUnlocked> {
+) -> Result<Wallet<Unlocked<PrivateKeySigner>>> {
     let wallet_path = default_wallet_path();
     let accounts = collect_user_accounts(&wallet_path, password)?;
     let account_balances = collect_account_balances(&accounts, provider).await?;
@@ -283,7 +281,8 @@ pub(crate) async fn select_local_wallet_account(
     }
 
     let secret_key = secret_key_from_forc_wallet(&wallet_path, account_index, password)?;
-    let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    let signer = PrivateKeySigner::new(secret_key);
+    let wallet = Wallet::new(signer, provider.clone());
     Ok(wallet)
 }
 
