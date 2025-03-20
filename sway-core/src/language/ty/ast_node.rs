@@ -147,13 +147,14 @@ impl MaterializeConstGenerics for TyAstNode {
         name: &str,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
-        match self.content {
-            TyAstNodeContent::Declaration(_) => Ok(()),
-            TyAstNodeContent::Expression(ref mut expr) => {
+        match &mut self.content {
+            TyAstNodeContent::Declaration(TyDecl::VariableDecl(decl)) => decl
+                .body
+                .materialize_const_generics(engines, handler, name, value),
+            TyAstNodeContent::Expression(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
             }
-            TyAstNodeContent::SideEffect(_) => Ok(()),
-            TyAstNodeContent::Error(_, _) => Ok(()),
+            _ => Ok(()),
         }
     }
 }
