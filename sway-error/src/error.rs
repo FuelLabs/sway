@@ -919,7 +919,7 @@ pub enum CompileError {
         span: Span,
         hint: String,
     },
-    #[error("Call to \"{name}\" expects {expected} arguments")]
+    #[error("Call to \"{name}\" expects {expected} argument(s)")]
     IntrinsicIncorrectNumArgs {
         name: String,
         expected: u64,

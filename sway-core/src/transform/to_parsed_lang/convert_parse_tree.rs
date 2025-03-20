@@ -1997,15 +1997,7 @@ fn expr_func_app_to_expression_kind(
         }
         // "__dbg(arg)" in debug becomes "{
         //      let mut f = Formatter { };
-        //      f.print_str("[");
-        //      f.print_str(<current file>);
-        //      f.print_str(":");
-        //      f.print_str(<current line>);
-        //      f.print_str(":");
-        //      f.print_str(<current col>);
-        //      f.print_str("] ");
-        //      f.print_str(<current expr>);
-        //      f.print_str(" = ");
+        //      f.print_str("[{current_file}:{current_line}:{current_col}] = ");
         //      let arg = arg;
         //      arg.fmt(f);
         //      arg
@@ -2013,6 +2005,14 @@ fn expr_func_app_to_expression_kind(
         Some(Intrinsic::Dbg)
             if context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root =>
         {
+            if arguments.len() > 1 {
+                return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+                    name: Intrinsic::Dbg.to_string(),
+                    expected: 1,
+                    span,
+                }));
+            }
+
             let f_id: String = format!("f_{}", context.next_for_unique_suffix());
             let f_ident = BaseIdent::new_no_span(f_id.to_string());
 

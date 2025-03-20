@@ -2169,7 +2169,6 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         member_filter,
         experimental,
         no_experimental,
-        release,
         ..
     } = &build_options;
 
@@ -2217,11 +2216,6 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         &outputs,
         experimental,
         no_experimental,
-        if *release {
-            DbgGeneration::None
-        } else {
-            DbgGeneration::Full
-        },
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     let total_size = built_packages
@@ -2339,7 +2333,6 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     experimental: &[sway_features::Feature],
     no_experimental: &[sway_features::Feature],
-    dbg_generation: sway_core::DbgGeneration,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2367,6 +2360,10 @@ pub fn build(
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let program_ty = manifest.program_type().ok();
+        let dbg_generation = match (profile.is_release(), manifest.project.dbg_release) {
+            (true, Some(true)) | (false, _) => DbgGeneration::Full,
+            (true, _) => DbgGeneration::None,
+        };
 
         print_compiling(
             program_ty.as_ref(),
@@ -2420,6 +2417,8 @@ pub fn build(
             let program_id = engines
                 .se()
                 .get_or_create_program_id_from_manifest_path(&manifest.entry_path());
+
+            
 
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
