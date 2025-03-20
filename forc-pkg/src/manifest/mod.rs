@@ -213,7 +213,7 @@ pub struct Project {
     #[serde(default)]
     pub experimental: HashMap<String, bool>,
     pub metadata: Option<toml::Value>,
-    pub dbg_release: Option<bool>
+    pub dbg_release: Option<bool>,
 }
 
 // Validation function for the `name` field
