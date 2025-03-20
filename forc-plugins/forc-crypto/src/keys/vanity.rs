@@ -1,5 +1,7 @@
 use fuel_crypto::{fuel_types::Address, PublicKey, SecretKey};
-use fuels_accounts::signers::{private_key::generate_mnemonic_phrase, derivation::DEFAULT_DERIVATION_PATH};
+use fuels_accounts::signers::{
+    derivation::DEFAULT_DERIVATION_PATH, private_key::generate_mnemonic_phrase,
+};
 use fuels_core::types::{
     bech32::{Bech32Address, FUEL_BECH32_HRP},
     checksum_address::checksum_encode,

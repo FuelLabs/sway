@@ -4,7 +4,11 @@ use fuels::{
     prelude::*,
     types::{coin_type_id::CoinTypeId, input::Input},
 };
-use fuels_accounts::{Account, wallet::{Wallet, Unlocked}, signers::private_key::PrivateKeySigner};
+use fuels_accounts::{
+    signers::private_key::PrivateKeySigner,
+    wallet::{Unlocked, Wallet},
+    Account,
+};
 
 use super::aws::AwsSigner;
 

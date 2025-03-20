@@ -19,7 +19,12 @@ use fuel_tx::{AssetId, ContractId};
 use fuels::{
     macros::abigen, programs::responses::CallResponse, types::checksum_address::checksum_encode,
 };
-use fuels_accounts::{provider::Provider, ViewOnlyAccount, wallet::{Wallet, Unlocked}, signers::private_key::PrivateKeySigner};
+use fuels_accounts::{
+    provider::Provider,
+    signers::private_key::PrivateKeySigner,
+    wallet::{Unlocked, Wallet},
+    ViewOnlyAccount,
+};
 
 use std::{collections::BTreeMap, path::Path, str::FromStr};
 

@@ -1,11 +1,15 @@
 use anyhow::{bail, Result};
 use fuel_tx::{PanicReason, Receipt};
 use fuels::programs::calls::{traits::TransactionTuner, ContractCall};
-use fuels_accounts::{provider::Provider, wallet::{Wallet, Unlocked}, signers::private_key::PrivateKeySigner};
+use fuels::types::transaction_builders::BuildableTransaction;
+use fuels_accounts::{
+    provider::Provider,
+    signers::private_key::PrivateKeySigner,
+    wallet::{Unlocked, Wallet},
+};
 use fuels_core::types::{
     bech32::Bech32ContractId, transaction::TxPolicies, transaction_builders::VariableOutputPolicy,
 };
-use fuels::types::transaction_builders::BuildableTransaction;
 
 /// Get the missing contracts from a contract call by dry-running the transaction
 /// to find contracts that are not explicitly listed in the call's `external_contracts` field.

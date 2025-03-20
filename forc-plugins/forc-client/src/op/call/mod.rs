@@ -17,14 +17,14 @@ use either::Either;
 use fuel_abi_types::abi::{program::ProgramABI, unified_program::UnifiedProgramABI};
 use fuel_tx::Receipt;
 use fuels::{
-    types::param_types::ParamType,
-    accounts::{provider::Provider, wallet::Wallet, signers::private_key::PrivateKeySigner},
+    accounts::{provider::Provider, signers::private_key::PrivateKeySigner, wallet::Wallet},
     crypto::SecretKey,
     programs::calls::{
         receipt_parser::ReceiptParser,
         traits::{ContractDependencyConfigurator, TransactionTuner},
         ContractCall,
     },
+    types::param_types::ParamType,
 };
 use fuels_accounts::ViewOnlyAccount;
 use fuels_core::{
@@ -375,8 +375,7 @@ pub(crate) mod tests {
         abi = "forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json"
     ));
 
-    pub async fn get_contract_instance(
-    ) -> (TestContract<Wallet>, ContractId, Wallet) {
+    pub async fn get_contract_instance() -> (TestContract<Wallet>, ContractId, Wallet) {
         // Launch a local network and deploy the contract
         let mut wallets = launch_custom_provider_and_get_wallets(
             WalletsConfig::new(
@@ -414,8 +413,7 @@ pub(crate) mod tests {
     ) -> cmd::Call {
         // get secret key from wallet - use unsafe because secret_key is private
         // 0000000000000000000000000000000000000000000000000000000000000001
-        let secret_key =
-            unsafe { std::mem::transmute::<&Wallet, &(Wallet, SecretKey)>(wallet).1 };
+        let secret_key = unsafe { std::mem::transmute::<&Wallet, &(Wallet, SecretKey)>(wallet).1 };
         cmd::Call {
             contract_id: id,
             abi: Either::Left(std::path::PathBuf::from(
