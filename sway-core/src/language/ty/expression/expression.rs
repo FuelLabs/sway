@@ -449,7 +449,8 @@ impl TyExpression {
     }
 
     // Checks if this expression references a deprecated item
-    // TODO: Change this fn for more deprecated checks.
+    // TODO: Extend checks in this function to fully implement deprecation.
+    //       See: https://github.com/FuelLabs/sway/issues/6942
     pub(crate) fn check_deprecated(
         &self,
         engines: &Engines,
@@ -597,7 +598,8 @@ impl TyExpression {
             TyExpressionVariant::FunctionParameter => {}
             TyExpressionVariant::MatchExp {
                 desugared,
-                // TODO: We must also check scrutinees.
+                // TODO: Check the scrutinees.
+                //       See: https://github.com/FuelLabs/sway/issues/6942
                 ..
             } => {
                 desugared.check_deprecated(engines, handler, allow_deprecated);
@@ -666,11 +668,13 @@ impl TyExpression {
                 }
             }
             TyExpressionVariant::AbiCast { address, .. } => {
-                // TODO: check abi name?
+                // TODO: Check the abi name.
+                //       See: https://github.com/FuelLabs/sway/issues/6942
                 address.check_deprecated(engines, handler, allow_deprecated);
             }
             TyExpressionVariant::StorageAccess(access) => {
-                // TODO: check storage access?
+                // TODO: Check the storage access.
+                //       See: https://github.com/FuelLabs/sway/issues/6942
                 if let Some(expr) = &access.key_expression {
                     expr.check_deprecated(engines, handler, allow_deprecated);
                 }
@@ -686,11 +690,11 @@ impl TyExpression {
             }
             TyExpressionVariant::UnsafeDowncast {
                 exp,
-                //variant,
+                // TODO: Check the variant.
+                //       See: https://github.com/FuelLabs/sway/issues/6942
                 ..
             } => {
                 exp.check_deprecated(engines, handler, allow_deprecated);
-                // TODO: maybe check variant?
             }
             TyExpressionVariant::WhileLoop { condition, body } => {
                 condition.check_deprecated(engines, handler, allow_deprecated);

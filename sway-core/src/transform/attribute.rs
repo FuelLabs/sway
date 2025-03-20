@@ -1,4 +1,4 @@
-//! Each item may have a list of attributes, each with a name  and a list of zero or more args.
+//! Each item may have a list of attributes, each with a name and a list of zero or more args.
 //! Attributes may be specified more than once in which case we use the union of their args.
 //!
 //! E.g.,

@@ -65,15 +65,6 @@ impl Handler {
             Some(err) => Err(err),
             None => closure_res,
         }
-        // let had_errors = scoped_handler.has_errors();
-
-        // self.append(scoped_handler);
-
-        // if had_errors {
-        //     Err(ErrorEmitted { _priv: () })
-        // } else {
-        //     closure_res
-        // }
     }
 
     /// Extract all the warnings and errors from this handler.

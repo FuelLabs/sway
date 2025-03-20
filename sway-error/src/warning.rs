@@ -522,7 +522,7 @@ impl ToDiagnostic for CompileWarning {
             },
             // "\"{arg}\" is an unknown argument for attribute \"{attribute}\". Known arguments are: {}.", sequence_to_str(&expected_args, Enclosing::DoubleQuote, usize::MAX)
            _ => Diagnostic {
-                    // TODO: Temporary we use self here to achieve backward compatibility.
+                    // TODO: Temporarily we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
                     //       switch to our own #[error] macro. All the values for the formatting
                     //       of a diagnostic must come from the enum variant parameters.

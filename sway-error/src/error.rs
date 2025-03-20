@@ -2901,7 +2901,7 @@ impl ToDiagnostic for CompileError {
                         help: vec![],
                     },
                     _ => Diagnostic {
-                                // TODO: Temporary we use `self` here to achieve backward compatibility.
+                                // TODO: Temporarily we use `self` here to achieve backward compatibility.
                                 //       In general, `self` must not be used. All the values for the formatting
                                 //       of a diagnostic must come from its enum variant parameters.
                                 issue: Issue::error(source_engine, self.span(), format!("{}", self)),
@@ -3011,7 +3011,7 @@ impl ToDiagnostic for CompileError {
 		help: vec![format!("The methods of a contract must have distinct function selectors, which are computed from the method hash. \nRenaming one of the methods should solve the problem")]
 	    },
             _ => Diagnostic {
-                    // TODO: Temporary we use `self` here to achieve backward compatibility.
+                    // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting
                     //       of a diagnostic must come from its enum variant parameters.
                     issue: Issue::error(source_engine, self.span(), format!("{}", self)),
