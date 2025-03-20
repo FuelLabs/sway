@@ -381,7 +381,7 @@ __dbg(value: T) -> T
 
 **Description:** Automatically calls the `Debug` trait on the passed `value`, with file, line and column information. The value is returned to allow be used inside any expression.
 
-Only generate the expected output in `Debug` mode, when in `Release` behaves as identity function, just returning the passed value. 
+Only generate the expected output in `Debug` mode, when in `Release` behaves as identity function, just returning the passed value.
 To enable the output generation in "Release", must be enabled in the project `Forc.toml`
 
 **Constraints:**
