@@ -85,7 +85,7 @@ impl BuildProfile {
     }
 
     pub fn is_release(&self) -> bool {
-        self.name ==  Self::RELEASE
+        self.name == Self::RELEASE
     }
 }
 
