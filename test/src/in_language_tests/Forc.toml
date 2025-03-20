@@ -8,6 +8,7 @@ members = [
   "test_programs/b512_inline_tests",
   "test_programs/block_inline_tests",
   "test_programs/bytes_inline_tests",
+  "test_programs/codec_implemented_tests"
   "test_programs/contract_id_inline_tests",
   "test_programs/contract_id_contract_tests",
   "test_programs/crypto_point2d_inline_tests",
