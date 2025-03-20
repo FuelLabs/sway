@@ -26,13 +26,13 @@ fn main() -> u64 {
 
 The application above will print:
 
-```
+```terminal
 [src/main.sw:3:5] = 1
 ```
 
 Structs can be customized by implementing the `Debug` trait.
 
-```
+```sway
 script;
 struct S { }
 impl Debug for S {
@@ -52,7 +52,7 @@ fn main() -> u64 {
 This code is very similar to what the Sway compiler generates by default for all declared types.
 And this is what is printed:
 
-```
+```terminal
 [src/main.sw:12:13] = S2 { field1: 1, field2: "Hello" }
 [src/main.sw:13:5] = 1
 ```
