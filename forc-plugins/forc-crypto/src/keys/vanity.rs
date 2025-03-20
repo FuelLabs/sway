@@ -274,7 +274,7 @@ fn generate_wallet(use_mnemonic: bool) -> anyhow::Result<(Address, SecretKey, Op
     let (private_key, mnemonic) = if use_mnemonic {
         let mnemonic = generate_mnemonic_phrase(&mut rng, 24)?;
         let private_key =
-            SecretKey::new_from_mnemonic_phrase_with_path(&mnemonic, &DEFAULT_DERIVATION_PATH)?;
+            SecretKey::new_from_mnemonic_phrase_with_path(&mnemonic, DEFAULT_DERIVATION_PATH)?;
         (private_key, Some(mnemonic))
     } else {
         (SecretKey::random(&mut rng), None)
