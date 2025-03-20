@@ -12,7 +12,10 @@ use fuels::{
     macros::abigen,
     types::{transaction::TxPolicies, AsciiString, Bits256, SizedAsciiString},
 };
-use fuels_accounts::{provider::Provider, signers::private_key::PrivateKeySigner, wallet::Wallet, Account, ViewOnlyAccount};
+use fuels_accounts::{
+    provider::Provider, signers::private_key::PrivateKeySigner, wallet::Wallet, Account,
+    ViewOnlyAccount,
+};
 use portpicker::Port;
 use rand::thread_rng;
 use rexpect::spawn;
@@ -658,14 +661,12 @@ async fn test_non_owner_fails_to_set_target() {
     let provider = Provider::connect(&node_url).await.unwrap();
     let attacker_secret_key = SecretKey::random(&mut thread_rng());
     let attacker_signer = PrivateKeySigner::new(attacker_secret_key);
-    let attacker_wallet =
-        Wallet::new(attacker_signer.clone(), provider.clone());
+    let attacker_wallet = Wallet::new(attacker_signer.clone(), provider.clone());
 
     let owner_secret_key =
         SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
     let owner_signer = PrivateKeySigner::new(owner_secret_key);
-    let owner_wallet =
-        Wallet::new(owner_signer, provider.clone());
+    let owner_wallet = Wallet::new(owner_signer, provider.clone());
     let consensus_parameters = provider.consensus_parameters().await.unwrap();
     let base_asset_id = consensus_parameters.base_asset_id();
 
