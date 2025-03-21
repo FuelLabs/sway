@@ -171,7 +171,7 @@ where
             panic!(
                 "{:?} {:?}",
                 handler,
-                original_source_id.map(|x| engines.se().get_file_name(&x))
+                original_source_id.map(|x| engines.se().get_file_name(x))
             );
         }
         assert!(!handler.has_warnings(), "{:?}", handler);

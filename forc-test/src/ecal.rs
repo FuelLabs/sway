@@ -1,4 +1,7 @@
-use fuel_vm::{interpreter::EcalHandler, prelude::{Interpreter, RegId}};
+use fuel_vm::{
+    interpreter::EcalHandler,
+    prelude::{Interpreter, RegId},
+};
 
 // ssize_t write(int fd, const void buf[.count], size_t count);
 pub const WRITE_SYSCALL: u64 = 1000;
@@ -32,13 +35,13 @@ impl Syscall {
 }
 
 /// Handle VM `ecal` as syscalls.
-/// 
+///
 /// The application of the syscalls can be turned off,
 /// guaranteeing total isolation from the outside world.
-/// 
-/// Capture of the syscalls can be turned on, allowing the 
+///
+/// Capture of the syscalls can be turned on, allowing the
 /// its application even after the VM is not running anymore.
-/// 
+///
 /// Supported syscalls:
 /// 1000 - write(fd: u64, buf: raw_ptr, count: u64) -> u64
 #[derive(Debug, Clone, Default)]
@@ -104,7 +107,7 @@ impl EcalHandler for EcalSyscallHandler {
         if s.apply {
             syscall.apply();
         }
-        
+
         if s.capture {
             s.captured.push(syscall);
         }
