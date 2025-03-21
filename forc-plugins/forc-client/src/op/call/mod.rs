@@ -146,6 +146,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
     let provider = Provider::connect(node_url).await?;
     let wallet = get_wallet(caller.signing_key, caller.wallet, provider).await?;
     let provider = wallet.provider();
+    let consensus_parameters = provider.consensus_parameters().await?;
 
     let tx_policies = gas
         .as_ref()
@@ -184,15 +185,17 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
         }
     };
 
-    let chain_id = provider.consensus_parameters().await?.chain_id();
+    let chain_id = consensus_parameters.chain_id();
+    let tb = call
+        .clone()
+        .with_external_contracts(external_contracts)
+        .transaction_builder(tx_policies, variable_output_policy, &wallet)
+        .await
+        .expect("Failed to initialize transaction builder");
     let (tx_status, tx_hash) = match mode {
         cmd::call::ExecutionMode::DryRun => {
             let tx = call
-                .with_external_contracts(external_contracts)
-                .transaction_builder(tx_policies, variable_output_policy, &wallet)
-                .await
-                .expect("Failed to initialize transaction builder")
-                .build(provider)
+                .build_tx(tb, &wallet)
                 .await
                 .expect("Failed to build transaction");
             let tx_hash = tx.id(chain_id);
@@ -207,14 +210,11 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
                 "Simulating transaction with wallet... {}",
                 wallet.address().hash()
             ));
+            let tb = tb.with_build_strategy(ScriptBuildStrategy::StateReadOnly);
             let tx = call
-                .with_external_contracts(external_contracts)
-                .transaction_builder(tx_policies, variable_output_policy, &wallet)
+                .build_tx(tb, &wallet)
                 .await
-                .expect("Failed to build transaction")
-                .with_build_strategy(ScriptBuildStrategy::StateReadOnly)
-                .build(provider)
-                .await?;
+                .expect("Failed to build transaction");
             let tx_hash = tx.id(chain_id);
             let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
             let tx_status = provider
@@ -229,11 +229,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
                 &format!("0x{}", wallet.address().hash()),
             );
             let tx = call
-                .with_external_contracts(external_contracts)
-                .transaction_builder(tx_policies, variable_output_policy, &wallet)
-                .await
-                .expect("Failed to initialize transaction builder")
-                .build(provider)
+                .build_tx(tb, &wallet)
                 .await
                 .expect("Failed to build transaction");
             let tx_hash = tx.id(chain_id);
