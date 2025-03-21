@@ -109,7 +109,7 @@ pub(super) fn compile_predicate(
         &mut md_mgr,
         module,
         entry_function,
-        &HashMap::new(),
+        logged_types,
         &HashMap::new(),
         None,
         cache,

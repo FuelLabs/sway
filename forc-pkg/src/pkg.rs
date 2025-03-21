@@ -103,7 +103,7 @@ pub struct PinnedId(u64);
 #[derive(Debug, Clone)]
 pub struct BuiltPackage {
     pub descriptor: PackageDescriptor,
-    pub program_abi: ProgramABI,
+    pub program_abi: Arc<ProgramABI>,
     pub storage_slots: Vec<StorageSlot>,
     pub warnings: Vec<CompileWarning>,
     pub source_map: SourceMap,
@@ -308,6 +308,10 @@ pub struct BuildOpts {
     pub error_on_warnings: bool,
     /// Include all test functions within the build.
     pub tests: bool,
+    /// Controls predicate log generation behavior.
+    /// When enabled, the `__log` intrinsic will compile to ECAL (Execution Call) instruction instead
+    /// of LOGD (Log Data) instruction for predicates, allowing forc-test to capture logs from predicates.
+    pub enable_predicate_logs: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
     /// Set of enabled experimental flags
@@ -442,7 +446,7 @@ impl BuiltPackage {
     }
 
     pub fn json_abi_string(&self, minify_json_abi: bool) -> Result<Option<String>> {
-        match &self.program_abi {
+        match self.program_abi.as_ref() {
             ProgramABI::Fuel(program_abi) => {
                 if !program_abi.functions.is_empty() {
                     let json_string = if minify_json_abi {
@@ -1562,6 +1566,7 @@ pub fn sway_build_config(
     )
     .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
+    .with_enable_predicate_logs(build_profile.enable_predicate_logs)
     .with_time_phases(build_profile.time_phases)
     .with_profile(build_profile.profile)
     .with_metrics(build_profile.metrics_outfile.clone())
@@ -2076,6 +2081,7 @@ fn build_profile_from_opts(
         release,
         metrics_outfile,
         tests,
+        enable_predicate_logs,
         error_on_warnings,
         ..
     } = build_options;
@@ -2117,6 +2123,7 @@ fn build_profile_from_opts(
         profile.metrics_outfile.clone_from(metrics_outfile);
     }
     profile.include_tests |= tests;
+    profile.enable_predicate_logs |= enable_predicate_logs;
     profile.error_on_warnings |= error_on_warnings;
     // profile.experimental = *experimental;
 
@@ -2521,7 +2528,7 @@ pub fn build(
 
         let built_pkg = BuiltPackage {
             descriptor,
-            program_abi: compiled.program_abi,
+            program_abi: Arc::new(compiled.program_abi),
             storage_slots: compiled.storage_slots,
             source_map: compiled.source_map,
             tree_type: compiled.tree_type,
