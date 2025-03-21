@@ -7,7 +7,7 @@ use crate::{
     },
     metadata::MetadataManager,
     semantic_analysis::{
-        namespace::{self, Root},
+        namespace::{self, Package},
         TypeCheckContext,
     },
     BuildConfig, Engines,
@@ -24,7 +24,7 @@ use super::{
 #[derive(Clone, Debug)]
 pub struct TypeCheckFailed {
     pub root_module: Option<Arc<TyModule>>,
-    pub namespace: Root,
+    pub namespace: Package,
     pub error: ErrorEmitted,
 }
 
@@ -78,7 +78,7 @@ impl TyProgram {
         .map_err(|error| TypeCheckFailed {
             error,
             root_module: None,
-            namespace: ctx.namespace.root_ref().clone(),
+            namespace: ctx.namespace.current_package_ref().clone(),
         })?;
 
         let (kind, declarations, configurables) = Self::validate_root(
@@ -92,7 +92,7 @@ impl TyProgram {
         .map_err(|error| TypeCheckFailed {
             error,
             root_module: Some(root.clone()),
-            namespace: ctx.namespace.root_ref().clone(),
+            namespace: ctx.namespace.current_package_ref().clone(),
         })?;
 
         let program = TyProgram {
