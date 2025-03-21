@@ -127,7 +127,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_list_contract_functions() {
-        let (_, id, _) = get_contract_instance().await;
+        let (_, id, _, _) = get_contract_instance().await;
 
         // Load a test ABI
         let abi_path_str = "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json";
