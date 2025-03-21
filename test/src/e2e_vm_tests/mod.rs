@@ -8,10 +8,10 @@ use crate::{FilterConfig, RunConfig};
 
 use anyhow::{anyhow, bail, Result};
 use colored::*;
+use forc_test::ecal::Syscall;
 use core::fmt;
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::BuildProfile;
-use forc_test::execute::CapturedEcal;
 use forc_util::tx_utils::decode_log_data;
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_types::canonical::Input;
@@ -412,11 +412,11 @@ impl TestContext {
                         let _ = writeln!(output, "  {}", "Captured Output".green().bold());
                         for captured in ecal.captured.iter() {
                             match captured {
-                                CapturedEcal::Write { bytes, .. } => {
+                                Syscall::Write { bytes, .. } => {
                                     let s = std::str::from_utf8(bytes.as_slice()).unwrap();
                                     output.push_str(s);
                                 }
-                                CapturedEcal::Unknown { ra, rb, rc, rd } => {
+                                Syscall::Unknown { ra, rb, rc, rd } => {
                                     let _ = writeln!(
                                         output,
                                         "Unknown ecal: {} {} {} {}",

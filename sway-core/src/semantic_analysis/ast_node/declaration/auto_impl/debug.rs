@@ -44,7 +44,7 @@ where
         let code = self.generate_fmt_code(struct_decl.name(), &struct_decl.type_parameters, body);
         let node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            struct_decl.span().source_id().cloned(),
+            struct_decl.span().source_id(),
             &code,
             crate::build_config::DbgGeneration::None,
         );
@@ -106,7 +106,7 @@ where
         let code = self.generate_fmt_code(enum_decl.name(), &enum_decl.type_parameters, body);
         let node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            enum_decl.span().source_id().cloned(),
+            enum_decl.span().source_id(),
             &code,
             crate::build_config::DbgGeneration::None,
         );

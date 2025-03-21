@@ -3,6 +3,8 @@ library;
 use ::raw_ptr::*;
 use ::codec::*;
 
+const STDERR: u64 = 2;
+
 // ssize_t write(int fd, const void buf[.count], size_t count);
 fn syscall_write(fd: u64, buf: raw_ptr, count: u64) {
     asm(id: 1000, fd: fd, buf: buf, count: count) {
@@ -30,11 +32,11 @@ pub struct Formatter {}
 impl Formatter {
     pub fn print_newline(self) {
         let lf = [10u8];
-        syscall_write(0, __addr_of(lf), 1);
+        syscall_write(STDERR, __addr_of(lf), 1);
     }
 
     pub fn print_str(self, s: str) {
-        syscall_write(0, s.as_ptr(), s.len());
+        syscall_write(STDERR, s.as_ptr(), s.len());
     }
 
     pub fn print_u8(self, value: u8) {
@@ -48,7 +50,7 @@ impl Formatter {
             value = value / 10;
         }
 
-        syscall_write(0, __addr_of(digits).add::<u8>(i), 64 - i);
+        syscall_write(STDERR, __addr_of(digits).add::<u8>(i), 64 - i);
     }
 
     pub fn print_u16(self, value: u16) {
@@ -64,7 +66,7 @@ impl Formatter {
             value = value / 10;
         }
 
-        syscall_write(0, __addr_of(digits).add::<u8>(i), 64 - i);
+        syscall_write(STDERR, __addr_of(digits).add::<u8>(i), 64 - i);
     }
 
     pub fn print_u32(self, value: u32) {
@@ -80,7 +82,7 @@ impl Formatter {
             value = value / 10;
         }
 
-        syscall_write(0, __addr_of(digits).add::<u8>(i), 64 - i);
+        syscall_write(STDERR, __addr_of(digits).add::<u8>(i), 64 - i);
     }
 
     pub fn print_u64(self, value: u64) {
@@ -96,7 +98,7 @@ impl Formatter {
             value = value / 10;
         }
 
-        syscall_write(0, __addr_of(digits).add::<u8>(i), 64 - i);
+        syscall_write(STDERR, __addr_of(digits).add::<u8>(i), 64 - i);
     }
 
     pub fn print_u256(self, value: u256) {
@@ -117,7 +119,7 @@ impl Formatter {
             value = value / 10;
         }
 
-        syscall_write(0, __addr_of(digits).add::<u8>(i), 80 - i);
+        syscall_write(STDERR, __addr_of(digits).add::<u8>(i), 80 - i);
     }
 
     pub fn debug_struct(self, name: str) -> DebugStruct {

@@ -7,7 +7,7 @@ use forc_client::{
     NodeTarget,
 };
 use forc_pkg::{BuildProfile, Built, BuiltPackage, PrintOpts};
-use forc_test::execute::EcalState;
+use forc_test::ecal::EcalSyscallHandler;
 use fuel_tx::TransactionBuilder;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
@@ -144,7 +144,7 @@ pub(crate) async fn runs_on_node(
 }
 
 pub(crate) enum VMExecutionResult {
-    Fuel(ProgramState, Vec<Receipt>, Box<EcalState>),
+    Fuel(ProgramState, Vec<Receipt>, Box<EcalSyscallHandler>),
     Evm(revm::primitives::result::ExecutionResult),
 }
 
@@ -208,7 +208,7 @@ pub(crate) fn runs_in_vm(
                 .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
             let mem_instance = MemoryInstance::new();
-            let mut i: Interpreter<_, _, _, EcalState> =
+            let mut i: Interpreter<_, _, _, EcalSyscallHandler> =
                 Interpreter::with_storage(mem_instance, storage, Default::default());
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
 

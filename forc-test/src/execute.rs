@@ -1,3 +1,4 @@
+use crate::ecal::EcalSyscallHandler;
 use crate::maxed_consensus_params;
 use crate::setup::TestSetup;
 use crate::TestResult;
@@ -6,7 +7,6 @@ use forc_pkg::PkgTestEntry;
 use fuel_tx::{self as tx, output::contract::Contract, Chargeable, Finalizable};
 use fuel_vm::error::InterpreterError;
 use fuel_vm::fuel_asm;
-use fuel_vm::interpreter::EcalHandler;
 use fuel_vm::prelude::Instruction;
 use fuel_vm::prelude::RegId;
 use fuel_vm::{
@@ -21,85 +21,10 @@ use vm::interpreter::{InterpreterParams, MemoryInstance};
 use vm::state::DebugEval;
 use vm::state::ProgramState;
 
-#[derive(Debug, Clone)]
-pub enum CapturedEcal {
-    Write { fd: u64, bytes: Vec<u8> },
-    Unknown { ra: u64, rb: u64, rc: u64, rd: u64 },
-}
-
-impl CapturedEcal {
-    pub fn apply(&self) {
-        match self {
-            CapturedEcal::Write { fd, bytes } => {
-                let s = std::str::from_utf8(bytes.as_slice()).unwrap();
-
-                use std::io::Write;
-                use std::os::fd::FromRawFd;
-
-                let mut f = unsafe { std::fs::File::from_raw_fd(*fd as i32) };
-                write!(&mut f, "{}", s).unwrap();
-
-                // Dont close the fd
-                std::mem::forget(f);
-            }
-            CapturedEcal::Unknown { ra, rb, rc, rd } => {
-                println!("Unknown ecal: {} {} {} {}", ra, rb, rc, rd);
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct EcalState {
-    pub captured: Vec<CapturedEcal>,
-}
-
-impl EcalState {
-    pub fn clear(&mut self) {
-        self.captured.clear();
-    }
-}
-
-impl EcalHandler for EcalState {
-    fn ecal<M, S, Tx>(
-        vm: &mut Interpreter<M, S, Tx, Self>,
-        a: RegId,
-        b: RegId,
-        c: RegId,
-        d: RegId,
-    ) -> fuel_vm::error::SimpleResult<()>
-    where
-        M: fuel_vm::prelude::Memory,
-    {
-        let regs = vm.registers();
-        match regs[a.to_u8() as usize] {
-            1000 => {
-                let addr = regs[c.to_u8() as usize];
-                let count = regs[d.to_u8() as usize];
-                let bytes = vm.memory().read(addr, count).unwrap().to_vec();
-                let fd = regs[b.to_u8() as usize];
-                vm.ecal_state_mut()
-                    .captured
-                    .push(CapturedEcal::Write { fd, bytes })
-            }
-            _ => {
-                let ra = regs[a.to_u8() as usize];
-                let rb = regs[b.to_u8() as usize];
-                let rc = regs[c.to_u8() as usize];
-                let rd = regs[d.to_u8() as usize];
-                vm.ecal_state_mut()
-                    .captured
-                    .push(CapturedEcal::Unknown { ra, rb, rc, rd })
-            }
-        }
-        Ok(())
-    }
-}
-
 /// An interface for executing a test within a VM [Interpreter] instance.
 #[derive(Debug, Clone)]
 pub struct TestExecutor {
-    pub interpreter: Interpreter<MemoryInstance, MemoryStorage, tx::Script, EcalState>,
+    pub interpreter: Interpreter<MemoryInstance, MemoryStorage, tx::Script, EcalSyscallHandler>,
     pub tx: vm::checked_transaction::Ready<tx::Script>,
     pub test_entry: PkgTestEntry,
     pub name: String,
