@@ -1,0 +1,31 @@
+category = "fail"
+
+# check: $()(*p)[1] = 1u8;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    u8.
+
+# check: $()(*p).0 = 0u8;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    u8.
+
+# check: $()(*p).a = 2u8;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    u8.
+
+# check: $()(**p2)[1] = 1u8;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    u8.
+
+# check: $()(**p2).0 = 0u8;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    u8.
+
+# check: $()(**p2).a = 2u8;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    u8.

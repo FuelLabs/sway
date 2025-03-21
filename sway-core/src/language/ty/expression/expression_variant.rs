@@ -1586,7 +1586,28 @@ impl DebugWithEngines for TyExpressionVariant {
             TyExpressionVariant::Continue => "continue".to_string(),
             TyExpressionVariant::Reassignment(reassignment) => {
                 let target = match &reassignment.lhs {
-                    TyReassignmentTarget::Deref(exp) => format!("{:?}", engines.help_out(exp)),
+                    TyReassignmentTarget::DerefAccess { exp, indices } => {
+                        let mut target = format!("{:?}", engines.help_out(exp));
+                        for index in indices {
+                            match index {
+                                ProjectionKind::StructField {
+                                    name,
+                                    field_to_access: _,
+                                } => {
+                                    target.push('.');
+                                    target.push_str(name.as_str());
+                                }
+                                ProjectionKind::TupleField { index, .. } => {
+                                    target.push('.');
+                                    target.push_str(index.to_string().as_str());
+                                }
+                                ProjectionKind::ArrayIndex { index, .. } => {
+                                    write!(&mut target, "[{:?}]", engines.help_out(index)).unwrap();
+                                }
+                            }
+                        }
+                        target
+                    }
                     TyReassignmentTarget::ElementAccess {
                         base_name,
                         base_type: _,
@@ -1595,7 +1616,10 @@ impl DebugWithEngines for TyExpressionVariant {
                         let mut target = base_name.to_string();
                         for index in indices {
                             match index {
-                                ProjectionKind::StructField { name } => {
+                                ProjectionKind::StructField {
+                                    name,
+                                    field_to_access: _,
+                                } => {
                                     target.push('.');
                                     target.push_str(name.as_str());
                                 }

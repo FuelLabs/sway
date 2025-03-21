@@ -2069,7 +2069,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                         }
                     }
                 }
-                ty::TyReassignmentTarget::Deref(exp) => {
+                ty::TyReassignmentTarget::DerefAccess { exp, indices } => {
                     connect_expression(
                         engines,
                         &exp.expression,
@@ -2081,6 +2081,22 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                         exp.span.clone(),
                         options,
                     )?;
+
+                    for projection in indices {
+                        if let ProjectionKind::ArrayIndex { index, index_span } = projection {
+                            connect_expression(
+                                engines,
+                                &index.expression,
+                                graph,
+                                leaves,
+                                exit_node,
+                                "variable reassignment LHS array index",
+                                tree_type,
+                                index_span.clone(),
+                                options,
+                            )?;
+                        }
+                    }
                 }
             };
 

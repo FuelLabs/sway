@@ -473,17 +473,22 @@ impl Expr {
         if let Expr::Deref { star_token, expr } = self {
             Ok(Assignable::Deref { star_token, expr })
         } else {
-            Ok(Assignable::ElementAccess(self.try_into_element_access()?))
+            Ok(Assignable::ElementAccess(
+                self.try_into_element_access(false)?,
+            ))
         }
     }
 
-    fn try_into_element_access(self) -> Result<ElementAccess, Expr> {
-        match self {
+    fn try_into_element_access(
+        self,
+        accept_deref_without_parens: bool,
+    ) -> Result<ElementAccess, Expr> {
+        match self.clone() {
             Expr::Path(path_expr) => match path_expr.try_into_ident() {
                 Ok(name) => Ok(ElementAccess::Var(name)),
                 Err(path_expr) => Err(Expr::Path(path_expr)),
             },
-            Expr::Index { target, arg } => match target.try_into_element_access() {
+            Expr::Index { target, arg } => match target.try_into_element_access(false) {
                 Ok(target) => Ok(ElementAccess::Index {
                     target: Box::new(target),
                     arg,
@@ -494,7 +499,7 @@ impl Expr {
                 target,
                 dot_token,
                 name,
-            } => match target.try_into_element_access() {
+            } => match target.try_into_element_access(false) {
                 Ok(target) => Ok(ElementAccess::FieldProjection {
                     target: Box::new(target),
                     dot_token,
@@ -507,7 +512,7 @@ impl Expr {
                 dot_token,
                 field,
                 field_span,
-            } => match target.try_into_element_access() {
+            } => match target.try_into_element_access(false) {
                 Ok(target) => Ok(ElementAccess::TupleFieldProjection {
                     target: Box::new(target),
                     dot_token,
@@ -516,6 +521,30 @@ impl Expr {
                 }),
                 error => error,
             },
+            Expr::Parens(Parens { inner, .. }) => {
+                if let Expr::Deref { expr, star_token } = *inner {
+                    match expr.try_into_element_access(true) {
+                        Ok(target) => Ok(ElementAccess::Deref {
+                            target: Box::new(target),
+                            star_token,
+                            is_root_element: true,
+                        }),
+                        error => error,
+                    }
+                } else {
+                    Err(self)
+                }
+            }
+            Expr::Deref { expr, star_token } if accept_deref_without_parens => {
+                match expr.try_into_element_access(true) {
+                    Ok(target) => Ok(ElementAccess::Deref {
+                        target: Box::new(target),
+                        star_token,
+                        is_root_element: false,
+                    }),
+                    error => error,
+                }
+            }
             expr => Err(expr),
         }
     }
