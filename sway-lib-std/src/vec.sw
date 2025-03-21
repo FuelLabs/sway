@@ -665,14 +665,12 @@ impl<T> Vec<T> {
     }
 }
 
-#[cfg(experimental_references = false)]
 impl<T> AsRawSlice for Vec<T> {
     fn as_raw_slice(self) -> raw_slice {
         raw_slice::from_parts::<T>(self.buf.ptr(), self.len)
     }
 }
 
-#[cfg(experimental_references = false)]
 impl<T> From<raw_slice> for Vec<T> {
     fn from(slice: raw_slice) -> Self {
         let len = slice.len::<T>();
@@ -682,19 +680,19 @@ impl<T> From<raw_slice> for Vec<T> {
     }
 }
 
-#[cfg(experimental_references = true)]
-impl<T> From<raw_slice> for Vec<T> {
-    fn from(slice: raw_slice) -> Self {
-        let len = slice.len::<T>();
-        let buf = core::slice::from_parts_mut::<T>(slice.ptr(), len);
-        Self { buf, len }
-    }
-}
-
-#[cfg(experimental_references = false)]
 impl<T> From<Vec<T>> for raw_slice {
     fn from(vec: Vec<T>) -> Self {
         raw_slice::from_parts::<T>(vec.ptr(), vec.len)
+    }
+}
+
+#[cfg(experimental_references = true)]
+impl<T> From<&[T]> for Vec<T> {
+    fn from(s: &[T]) -> Self {
+        let len = s.len();
+        let buf = alloc_slice::<T>(len);
+        s.ptr().copy_to::<T>(buf.ptr(), len);
+        Self { buf, len }
     }
 }
 
@@ -959,29 +957,8 @@ fn ok_vec_tests() {
     // with_capacity()
     let v = Vec::with_capacity(3);
     assert_vec_items(v, __slice(&[], 0, 0), 3);
-
-    // Vec<Vec<u8>> -> &[Vec<u8>] -> Vec<Vec<u8>>
-    // use ::convert::*;
-    // let mut v: Vec<Vec<u8>> = Vec::new();
-
-    // let mut item = Vec::new();
-    // item.push(1);
-    // item.push(2);
-    // item.push(3);
-    // v.push(item);
-
-    //let v_as_slice = v.as_raw_slice();
-    //let mut v2: Vec<Vec<u8>> =  v_as_slice.into();
-
-    //let mut item = v2.get(0).unwrap();
-    //item.push(4);
-    //item.set(0, 7);
-
-    //assert_eq(v.get(0).unwrap().get(0).unwrap(), 7);
-    //assert_eq(v2.get(0).unwrap().len(), 3);
 }
 
-#[cfg(experimental_references = false)]
 #[test]
 fn ok_vec_as_raw_slice() {
     use ::convert::Into;
@@ -993,8 +970,85 @@ fn ok_vec_as_raw_slice() {
 
     assert_vec_items(v, __slice(&[1u8, 2u8, 3u8], 0, 3), 4);
 
-    let v_as_slice: raw_slice = v.as_raw_slice();
-    let mut v2: Vec<u8> = v_as_slice.into();
+    let v_as_raw_slice: raw_slice = v.as_raw_slice();
+    let mut v2: Vec<u8> = v_as_raw_slice.into();
 
     assert_vec_items(v2, __slice(&[1u8, 2u8, 3u8], 0, 3), 3);
+}
+
+#[cfg(experimental_references = true)]
+#[test]
+fn ok_vec_as_slice() {
+    use ::convert::Into;
+
+    let mut v = Vec::new();
+    v.push(1);
+    v.push(2);
+    v.push(3);
+
+    assert_vec_items(v, __slice(&[1u8, 2u8, 3u8], 0, 3), 4);
+
+    let v_as_slice: &[u8] = v.as_slice();
+    let mut v2: Vec<u8> = Vec::<u8>::from(v_as_slice);
+
+    assert_vec_items(v2, __slice(&[1u8, 2u8, 3u8], 0, 3), 3);
+}
+
+#[cfg(experimental_references = false)]
+#[test]
+fn ok_vec_do_not_alias() {
+    let mut v1: Vec<u8> = Vec::new();
+    v1.push(1);
+    v1.push(2);
+    v1.push(3);
+
+    // clone do not alias
+    let v2 = v1.clone();
+    assert(v1.ptr() != v2.ptr());
+
+    // from raw_slice do not alias
+    let v1_raw_slice = v1.as_raw_slice();
+    let v2 = Vec::<u8>::from(v1_raw_slice);
+    assert(v1.ptr() != v2.ptr());
+    assert(v1_raw_slice.ptr() != v2.ptr());
+    assert(v1_raw_slice.ptr() == v1.ptr()); // as_raw_slice do alias!
+
+    // abi_decode do not alias
+    let encoded_bytes = encode(v1);
+    let mut v2 = abi_decode::<Vec<u8>>(encoded_bytes);
+    assert(v1.ptr() != v2.ptr());
+    assert(encoded_bytes.ptr() != v2.ptr());
+}
+
+#[cfg(experimental_references = true)]
+#[test]
+fn ok_vec_do_not_alias() {
+    let mut v1: Vec<u8> = Vec::new();
+    v1.push(1);
+    v1.push(2);
+    v1.push(3);
+
+    // clone do not alias
+    let v2 = v1.clone();
+    assert(v1.ptr() != v2.ptr());
+
+    // from raw_slice do not alias
+    let v1_raw_slice: raw_slice = v1.as_raw_slice();
+    let v2 = Vec::<u8>::from(v1_raw_slice);
+    assert(v1.ptr() != v2.ptr());
+    assert(v1_raw_slice.ptr() != v2.ptr());
+    assert(v1_raw_slice.ptr() == v1.ptr()); // as_raw_slice do alias!
+
+    // from slice do not alias
+    let v1_slice: &[u8] = v1.as_slice();
+    let v2 = Vec::<u8>::from(v1_slice);
+    assert(v1.ptr() != v2.ptr());
+    assert(v1_slice.ptr() != v2.ptr());
+    assert(v1_slice.ptr() == v1.ptr()); // as_slice do alias!
+
+    // abi_decode do not alias
+    let encoded_bytes = encode(v1);
+    let mut v2 = abi_decode::<Vec<u8>>(encoded_bytes);
+    assert(v1.ptr() != v2.ptr());
+    assert(encoded_bytes.ptr() != v2.ptr());
 }
