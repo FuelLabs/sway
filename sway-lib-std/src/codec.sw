@@ -721,7 +721,8 @@ where
         while i < N {
             buffer = self[i].abi_encode(buffer);
             i += 1;
-        };
+        }
+        buffer
     }
 }
 

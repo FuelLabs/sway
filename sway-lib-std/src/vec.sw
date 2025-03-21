@@ -10,7 +10,7 @@ use ::codec::*;
 use ::ops::*;
 use ::raw_slice::*;
 use ::clone::Clone;
-
+use ::slice::*;
 
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'. It has ownership over its buffer.
 pub struct Vec<T> {
