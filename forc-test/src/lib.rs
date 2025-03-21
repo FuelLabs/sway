@@ -1,6 +1,6 @@
+pub mod ecal;
 pub mod execute;
 pub mod setup;
-pub mod ecal;
 
 use crate::execute::TestExecutor;
 use crate::setup::{
