@@ -1,7 +1,6 @@
 use anyhow::{bail, Result};
 use fuel_tx::{PanicReason, Receipt};
 use fuels::programs::calls::{traits::TransactionTuner, ContractCall};
-use fuels::types::transaction_builders::BuildableTransaction;
 use fuels_accounts::{
     provider::Provider,
     signers::private_key::PrivateKeySigner,
@@ -30,11 +29,14 @@ pub async fn get_missing_contracts(
             attempt
         ));
 
-        let tx = call
+        let tb = call
             .transaction_builder(*tx_policies, *variable_output_policy, account)
-            .await?
-            .build(provider)
-            .await?;
+            .await
+            .expect("Failed to initialize transaction builder");
+        let tx = call
+            .build_tx(tb, account)
+            .await
+            .expect("Failed to build transaction");
 
         match provider
             .dry_run(tx)
