@@ -27,6 +27,7 @@ pub mod never;
 pub mod b512;
 pub mod u128;
 pub mod primitive_conversions;
+pub mod debug;
 pub mod math;
 pub mod alias;
 pub mod hash;

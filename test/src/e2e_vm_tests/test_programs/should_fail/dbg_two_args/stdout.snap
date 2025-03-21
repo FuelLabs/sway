@@ -1,0 +1,22 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/dbg_two_args
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/dbg_two_args
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling script dbg_two_args (test/src/e2e_vm_tests/test_programs/should_fail/dbg_two_args)
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/dbg_two_args/src/main.sw:4:13
+  |
+2 | 
+3 | fn main() {
+4 |     let _ = __dbg(1, 2);
+  |             ^^^^^^^^^^^ Call to "dbg" expects 1 argument(s)
+5 | }
+  |
+____
+
+  Aborting due to 1 error.
+error: Failed to compile dbg_two_args

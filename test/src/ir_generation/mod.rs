@@ -237,6 +237,7 @@ pub(super) async fn run(
                     path.clone(),
                     PathBuf::from("/"),
                     build_target,
+                    sway_core::DbgGeneration::Full,
                 );
 
                 // Include unit tests in the build.

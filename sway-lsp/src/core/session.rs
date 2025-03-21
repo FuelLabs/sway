@@ -150,6 +150,7 @@ impl Session {
         let path = uri.to_file_path().unwrap();
         let source_id = { engines.se().get_source_id(&path) };
         engines.clear_module(&source_id);
+
         Ok(())
     }
 
@@ -195,6 +196,7 @@ impl Session {
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
         let _p = tracing::trace_span!("token_definition_response").entered();
+        dbg!(uri.as_str(), position);
         self.token_map
             .token_at_position(uri, position)
             .and_then(|item| item.value().declared_token_ident(&self.engines.read()))
@@ -326,6 +328,7 @@ pub fn compile(
         retrigger_compilation,
         &[],
         &[sway_features::Feature::NewEncoding],
+        sway_core::DbgGeneration::Full,
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
