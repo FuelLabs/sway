@@ -5,11 +5,11 @@ use sway_core::{
     transform, Engines,
 };
 
-/// Gets attributes map from typed token, falling back to parsed AST node if needed.
+/// Gets attributes from typed token, falling back to parsed AST node if needed.
 /// Callback can be used to retrieve doc comment attributes or storage attributes.
-pub fn attributes_map<F>(engines: &Engines, token: &Token, mut callback: F)
+pub fn attributes<F>(engines: &Engines, token: &Token, mut callback: F)
 where
-    F: FnMut(&transform::AttributesMap),
+    F: FnMut(&transform::Attributes),
 {
     match &token.ast_node {
         TokenAstNode::Typed(typed_token) => match typed_token {
@@ -103,28 +103,28 @@ where
 
 pub fn doc_comment_attributes<F>(engines: &Engines, token: &Token, mut callback: F)
 where
-    F: FnMut(&[transform::Attribute]),
+    F: FnMut(&[&transform::Attribute]),
 {
-    attributes_map(engines, token, |attribute_map| {
-        let attrs = attribute_map
-            .get(&transform::AttributeKind::DocComment)
-            .map(Vec::as_slice);
-        if let Some(attrs) = attrs {
-            callback(attrs);
+    attributes(engines, token, |attributes| {
+        let attrs = attributes
+            .of_kind(transform::AttributeKind::DocComment)
+            .collect::<Vec<_>>();
+        if !attrs.is_empty() {
+            callback(attrs.as_slice())
         }
     });
 }
 
 pub fn storage_attributes<F>(engines: &Engines, token: &Token, callback: F)
 where
-    F: Fn(&[transform::Attribute]),
+    F: Fn(&[&transform::Attribute]),
 {
-    attributes_map(engines, token, |attribute_map| {
-        let attrs = attribute_map
-            .get(&transform::AttributeKind::Storage)
-            .map(Vec::as_slice);
-        if let Some(attrs) = attrs {
-            callback(attrs);
+    attributes(engines, token, |attributes| {
+        let attrs = attributes
+            .of_kind(transform::AttributeKind::Storage)
+            .collect::<Vec<_>>();
+        if !attrs.is_empty() {
+            callback(attrs.as_slice())
         }
     });
 }

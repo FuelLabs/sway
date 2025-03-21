@@ -5,12 +5,6 @@ use clap::{Parser, ValueEnum};
 macro_rules! features {
     ($($name:ident = $enabled:literal, $url:literal),* $(,)?) => {
         paste::paste! {
-            pub const CFG: &[&str] = &[
-                $(
-                    stringify!([<experimental_ $name:snake>]),
-                )*
-            ];
-
             #[derive(Copy, Clone, Debug, ValueEnum, PartialEq, Eq, Hash)]
             #[value(rename_all = "snake")]
             pub enum Feature {
@@ -20,6 +14,12 @@ macro_rules! features {
             }
 
             impl Feature {
+                pub const CFG: &[&str] = &[
+                    $(
+                        stringify!([<experimental_ $name:snake>]),
+                    )*
+                ];
+
                 pub fn name(&self) -> &'static str {
                     match self {
                         $(

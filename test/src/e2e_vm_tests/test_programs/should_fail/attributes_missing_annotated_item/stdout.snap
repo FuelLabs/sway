@@ -1,0 +1,296 @@
+---
+source: test/tests/tests.rs
+assertion_line: 115
+snapshot_kind: text
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item
+   Compiling library attributes_missing_annotated_item (test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item)
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:18:24
+   |
+16 | 
+17 | pub struct S1 {
+18 |     #[allow(dead_code)]
+   |                        ^ Expected an annotated element.
+19 | }
+20 | 
+21 | pub struct S2 {
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:22:27
+   |
+20 | 
+21 | pub struct S2 {
+22 |     /// Outer doc comment.
+   |                           ^ Expected a documented element.
+23 | }
+24 | 
+25 | pub struct S3 {
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:26:5
+   |
+24 | 
+25 | pub struct S3 {
+26 |     //! Inner doc comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^ Expected an inner doc comment (`//!`) to be at the top of the module file.
+27 | }
+28 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:30:24
+   |
+28 | 
+29 | impl S1 {
+30 |     #[allow(dead_code)]
+   |                        ^ Expected an annotated element.
+31 | }
+32 | 
+33 | impl S2 {
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:34:27
+   |
+32 | 
+33 | impl S2 {
+34 |     /// Outer doc comment.
+   |                           ^ Expected a documented element.
+35 | }
+36 | 
+37 | impl S3 {
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:38:5
+   |
+36 | 
+37 | impl S3 {
+38 |     //! Inner doc comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^ Expected an inner doc comment (`//!`) to be at the top of the module file.
+39 | }
+40 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:42:24
+   |
+40 | 
+41 | pub enum E {
+42 |     #[allow(dead_code)]
+   |                        ^ Expected an annotated element.
+43 | }
+44 | 
+45 | #[allow(dead_code)]
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:47:24
+   |
+45 | #[allow(dead_code)]
+46 | trait T1 {
+47 |     #[allow(dead_code)]
+   |                        ^ Expected an annotated element.
+48 | }
+49 | 
+50 | #[allow(dead_code)]
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:52:27
+   |
+50 | #[allow(dead_code)]
+51 | trait T2 {
+52 |     /// Outer doc comment.
+   |                           ^ Expected a documented element.
+53 | }
+54 | 
+55 | #[allow(dead_code)]
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:57:5
+   |
+55 | #[allow(dead_code)]
+56 | trait T3 {
+57 |     //! Inner doc comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^ Expected an inner doc comment (`//!`) to be at the top of the module file.
+58 | }
+59 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:61:24
+   |
+59 | 
+60 | impl T1 for S1 {
+61 |     #[allow(dead_code)]
+   |                        ^ Expected an annotated element.
+62 | }
+63 | 
+64 | impl T2 for S2 {
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:65:27
+   |
+63 | 
+64 | impl T2 for S2 {
+65 |     /// Outer doc comment.
+   |                           ^ Expected a documented element.
+66 | }
+67 | 
+68 | impl T3 for S3 {
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:69:5
+   |
+67 | 
+68 | impl T3 for S3 {
+69 |     //! Inner doc comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^ Expected an inner doc comment (`//!`) to be at the top of the module file.
+70 | }
+71 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/main.sw:76:57
+   |
+74 | 
+75 | /// And even an empty line in-between them.
+76 | /// But it doesn't have an item following the comment :-(
+   |                                                         ^ Expected a documented element.
+   |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/nested_annotations.sw:5:5
+  |
+3 | 
+4 | pub fn fa() {
+5 |     /// This is an outer doc comment.
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected an expression.
+6 | }
+7 | 
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/nested_annotations.sw:9:5
+   |
+ 7 | 
+ 8 | pub fn fb() {
+ 9 |     //! This is an inner doc comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected an expression.
+10 | }
+11 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/nested_annotations.sw:13:5
+   |
+11 | 
+12 | pub fn fc() {
+13 |     #[allow(dead_code)]
+   |     ^ Expected an expression.
+14 | }
+   |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/trailing_single_inner_attribute.sw:4:20
+  |
+2 | library;
+3 | 
+4 | #![allow(dead_code)]
+  |                    ^ Expected an annotated element.
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/trailing_single_inner_doc_comment.sw:3:1
+  |
+1 | library;
+2 | 
+3 | //! This is a misplaced inner doc comment.
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected an inner doc comment (`//!`) to be at the top of the module file.
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/trailing_single_outer_attribute.sw:3:19
+  |
+1 | library;
+2 | 
+3 | #[allow(dead_code)]
+  |                   ^ Expected an annotated element.
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/trailing_multiple_inner_doc_comments.sw:3:1
+  |
+1 |   library;
+2 |   
+3 | / //! This is a misplaced inner doc comment.
+4 | | //! It has several lines.
+5 | | 
+6 | | //! Even an empty line in-between them.
+7 | | //! And there are no items following them.
+  | |_^ Expected an inner doc comment (`//!`) to be at the top of the module file.
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/trailing_multiple_inner_attributes.sw:5:21
+  |
+3 | 
+4 | #![allow(dead_code)]
+5 | #![allow(deprecated)]
+  |                     ^ Expected an annotated element.
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/trailing_multiple_outer_attributes.sw:4:20
+  |
+2 | 
+3 | #[allow(dead_code)]
+4 | #[allow(deprecated)]
+  |                    ^ Expected an annotated element.
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/trailing_multiple_mixed_attributes_and_comments.sw:12:18
+   |
+10 | /// Outer comment.
+11 | #[allow(deprecated)]
+12 | //! Inner comment.
+   |                  ^ Expected an annotated element.
+   |
+____
+
+  Aborting due to 24 errors.
+error: Failed to compile attributes_missing_annotated_item

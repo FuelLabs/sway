@@ -18,7 +18,7 @@ impl<T> Modifier<'_, Annotated<T>> {
         &mut self,
         attribute_span: &Span,
     ) -> &mut Self {
-        self.element.attribute_list.retain(|attribute_decl| {
+        self.element.attributes.retain(|attribute_decl| {
             attribute_decl
                 .attribute
                 .inner

@@ -9,7 +9,7 @@ use crate::{
         },
         CallPath, CallPathType, Visibility,
     },
-    transform::{self, AttributesMap},
+    transform::Attributes,
     type_system::TypeInfo,
     Engines, TypeArgument, TypeEngine, TypeId,
 };
@@ -21,11 +21,7 @@ use sway_error::{
     handler::Handler,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{
-    constants::{ALLOW_DEAD_CODE_NAME, STD},
-    span::Span,
-    Ident, Named, Spanned,
-};
+use sway_types::{constants::STD, span::Span, Ident, Named, Spanned};
 
 // Defines if this node is a root in the dca graph or not
 fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeType) -> bool {
@@ -2552,23 +2548,10 @@ fn connect_call_path_decl<'eng: 'cfg, 'cfg>(
     Ok(())
 }
 
-/// Checks [AttributesMap] for `#[allow(dead_code)]` usage, if so returns true
+/// Checks `attributes` for any `#[allow(dead_code)]` usage, if so returns true
 /// otherwise returns false.
-fn allow_dead_code(attributes: AttributesMap) -> bool {
-    fn allow_dead_code_helper(attributes: AttributesMap) -> Option<bool> {
-        Some(
-            attributes
-                .get(&transform::AttributeKind::Allow)?
-                .last()?
-                .args
-                .first()?
-                .name
-                .as_str()
-                == ALLOW_DEAD_CODE_NAME,
-        )
-    }
-
-    allow_dead_code_helper(attributes).unwrap_or_default()
+fn allow_dead_code(attributes: Attributes) -> bool {
+    attributes.has_allow_dead_code()
 }
 
 /// Returns true when the given `node` contains the attribute `#[allow(dead_code)]`

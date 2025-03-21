@@ -6,7 +6,9 @@ use std::{
     fmt::{self, Display},
 };
 
-use sway_types::{SourceEngine, SourceId};
+use sway_types::{SourceEngine, SourceId, Span};
+
+use crate::diagnostic::Hint;
 
 /// Returns the file name (with extension) for the provided `source_id`,
 /// or `None` if the `source_id` is `None` or the file name cannot be
@@ -18,10 +20,10 @@ pub fn get_file_name(source_engine: &SourceEngine, source_id: Option<&SourceId>)
     }
 }
 
-/// Returns reading-friendly textual representation for `number` smaller than or equal to 10
+/// Returns reading-friendly textual representation for `num` smaller than or equal to 10
 /// or its numeric representation if it is greater than 10.
-pub fn number_to_str(number: usize) -> String {
-    match number {
+pub fn num_to_str(num: usize) -> String {
+    match num {
         0 => "zero".to_string(),
         1 => "one".to_string(),
         2 => "two".to_string(),
@@ -33,7 +35,19 @@ pub fn number_to_str(number: usize) -> String {
         8 => "eight".to_string(),
         9 => "nine".to_string(),
         10 => "ten".to_string(),
-        _ => format!("{number}"),
+        _ => format!("{num}"),
+    }
+}
+
+/// Returns reading-friendly textual representation for `num` smaller than or equal to 10
+/// or its numeric representation if it is greater than 10.
+///
+/// Zero is returned as "none".
+pub fn num_to_str_or_none(num: usize) -> String {
+    if num == 0 {
+        "none".to_string()
+    } else {
+        num_to_str(num)
     }
 }
 
@@ -150,7 +164,7 @@ where
                 .collect::<Vec<_>>()
                 .join(", "),
             and_or,
-            number_to_str(remaining.len())
+            num_to_str(remaining.len())
         )
     } else {
         match to_display {
@@ -221,7 +235,7 @@ where
     if !remaining.is_empty() {
         result.push(format!(
             "{indent}- and {} more",
-            number_to_str(remaining.len())
+            num_to_str(remaining.len())
         ));
     }
 
@@ -282,8 +296,8 @@ pub fn call_path_suffix_with_args(call_path: &String) -> Cow<String> {
 /// `word` is in singular.
 ///
 /// If an article is returned, it is followed by a space, e.g. "a ".
-pub fn a_or_an(word: &'static str) -> &'static str {
-    let is_a = in_definite::is_an(word);
+pub fn a_or_an<S: AsRef<str> + ?Sized>(word: &S) -> &'static str {
+    let is_a = in_definite::is_an(word.as_ref());
     match is_a {
         in_definite::Is::An => "an ",
         in_definite::Is::A => "a ",
@@ -349,4 +363,34 @@ where
         .take(max_num_of_suggestions)
         .map(|(_, pv)| pv)
         .collect()
+}
+
+/// Returns a single line "Did you mean" [Hint::help]. E.g.: Did you mean "this" or "that"?
+///
+/// The input value is taken from the `span` and the help hint is positioned at that `span`.
+/// Each suggestion are enclosed in `enclosing`.
+pub fn did_you_mean_help<T, I>(
+    source_engine: &SourceEngine,
+    span: Span,
+    possible_values: I,
+    max_num_of_suggestions: usize,
+    enclosing: Enclosing,
+) -> Hint
+where
+    T: AsRef<str>,
+    I: IntoIterator<Item = T>,
+{
+    let suggestions = &did_you_mean(span.as_str(), possible_values, max_num_of_suggestions);
+    if suggestions.is_empty() {
+        Hint::none()
+    } else {
+        Hint::help(
+            source_engine,
+            span,
+            format!(
+                "Did you mean {}?",
+                sequence_to_str_or(suggestions, enclosing, max_num_of_suggestions)
+            ),
+        )
+    }
 }

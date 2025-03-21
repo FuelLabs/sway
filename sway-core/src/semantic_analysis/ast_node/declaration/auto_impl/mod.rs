@@ -146,7 +146,6 @@ where
             engines,
             item,
             false,
-            None,
             Some(kind),
         )
         .unwrap();
@@ -221,7 +220,7 @@ where
 
         let item = Self::parse(engines, program_id, code);
         let nodes = crate::transform::to_parsed_lang::item_to_ast_nodes(
-            &mut ctx, &handler, engines, item, false, None, None,
+            &mut ctx, &handler, engines, item, false, None,
         )
         .unwrap();
 

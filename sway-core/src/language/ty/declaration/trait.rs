@@ -35,7 +35,7 @@ pub struct TyTraitDecl {
     pub items: Vec<TyTraitItem>,
     pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub call_path: CallPath,
     pub span: Span,
 }
