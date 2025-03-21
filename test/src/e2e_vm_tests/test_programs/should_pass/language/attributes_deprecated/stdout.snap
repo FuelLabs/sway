@@ -1,5 +1,6 @@
 ---
-source: test/tests/tests.rs
+source: test/src/snapshot/mod.rs
+assertion_line: 125
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated --release
 exit status: 0
@@ -18,138 +19,147 @@ warning: Struct is deprecated
 ____
 
 warning: Struct field is deprecated
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:86:17
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:87:17
    |
 ...
-86 |     let _ = nds.deprecated_field;
+87 |     let _ = nds.deprecated_field;
    |                 ---------------- Struct field "deprecated_field" is deprecated.
    |
 ____
 
-warning: Function is deprecated
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:87:9
+warning: Struct field is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:89:14
    |
 ...
-87 |     nds.deprecated_method();
+89 |     (*r_nds).deprecated_field = 1;
+   |              ---------------- Struct field "deprecated_field" is deprecated.
+   |
+____
+
+warning: Function is deprecated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:90:9
+   |
+...
+90 |     nds.deprecated_method();
    |         ----------------- Function "deprecated_method" is deprecated.
    |
 ____
 
 warning: Function is deprecated
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:88:9
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:91:9
    |
 ...
-88 |     nds.deprecated_assoc_fun();
+91 |     nds.deprecated_assoc_fun();
    |         -------------------- Function "deprecated_assoc_fun" is deprecated.
    |
 ____
 
 warning: Constant is deprecated
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:89:34
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:92:34
    |
 ...
-89 |     let _ = NonDeprecatedStruct::DEPRECATED_ASSOC_CONST;
+92 |     let _ = NonDeprecatedStruct::DEPRECATED_ASSOC_CONST;
    |                                  ---------------------- Constant "DEPRECATED_ASSOC_CONST" is deprecated.
    |
 ____
 
 warning: Enum is deprecated
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:91:13
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:94:13
    |
 ...
-91 |     let _ = DeprecatedEnum::A(0);
+94 |     let _ = DeprecatedEnum::A(0);
    |             ----------------- Enum "DeprecatedEnum" is deprecated.
    |             ----------------- help: Use "NonDeprecatedEnum" instead.
    |
 ____
 
 warning: Enum variant is deprecated
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:92:34
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:95:34
    |
 ...
-92 |     let nde = NonDeprecatedEnum::DeprecatedVariant(0);
+95 |     let nde = NonDeprecatedEnum::DeprecatedVariant(0);
    |                                  ----------------- Enum variant "DeprecatedVariant" is deprecated.
    |
 ____
 
 warning: Function is deprecated
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:93:9
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:96:9
    |
 ...
-93 |     nde.deprecated_method();
+96 |     nde.deprecated_method();
    |         ----------------- Function "deprecated_method" is deprecated.
    |
 ____
 
 warning: Function is deprecated
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:94:9
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:97:9
    |
 ...
-94 |     nde.deprecated_assoc_fun();
+97 |     nde.deprecated_assoc_fun();
    |         -------------------- Function "deprecated_assoc_fun" is deprecated.
    |
 ____
 
 warning: Function is deprecated
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:98:5
-   |
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:101:5
+    |
 ...
-98 |     deprecated(ds);
-   |     ---------- Function "deprecated" is deprecated.
-   |     ---------- help: Use "non_deprecated" instead.
-   |
+101 |     deprecated(ds);
+    |     ---------- Function "deprecated" is deprecated.
+    |     ---------- help: Use "non_deprecated" instead.
+    |
 ____
 
 warning: Configurable is deprecated
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:100:13
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:103:13
     |
 ...
-100 |     let _ = DEPRECATED;
+103 |     let _ = DEPRECATED;
     |             ---------- Configurable "DEPRECATED" is deprecated.
     |
 ____
 
 warning: Function is deprecated
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:106:9
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:109:9
     |
 ...
-106 |     nds.deprecated_to_be_trait_method();
+109 |     nds.deprecated_to_be_trait_method();
     |         ----------------------------- Function "deprecated_to_be_trait_method" is deprecated.
     |
 ____
 
 warning: Function is deprecated
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:107:9
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:110:9
     |
 ...
-107 |     nds.deprecated_trait_provided_method();
+110 |     nds.deprecated_trait_provided_method();
     |         -------------------------------- Function "deprecated_trait_provided_method" is deprecated.
     |
 ____
 
 warning: Function is deprecated
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:108:5
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:111:5
     |
 ...
-108 |     NonDeprecatedStruct::deprecated_to_be_trait_assoc_fun();
+111 |     NonDeprecatedStruct::deprecated_to_be_trait_assoc_fun();
     |     ----------------------------------------------------- Function "deprecated_to_be_trait_assoc_fun" is deprecated.
     |
 ____
 
 warning: Function is deprecated
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:109:5
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:112:5
     |
 ...
-109 |     NonDeprecatedStruct::deprecated_trait_provided_assoc_fun();
+112 |     NonDeprecatedStruct::deprecated_trait_provided_assoc_fun();
     |     -------------------------------------------------------- Function "deprecated_trait_provided_assoc_fun" is deprecated.
     |
 ____
 
 warning: Struct field is deprecated
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:116:31
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated/src/main.sw:119:31
     |
 ...
-116 |         NonDeprecatedStruct { deprecated_field, .. } => {
+119 |         NonDeprecatedStruct { deprecated_field, .. } => {
     |                               ---------------- Struct field "deprecated_field" is deprecated.
     |
 ____
@@ -172,5 +182,5 @@ warning: Function is deprecated
   |
 ____
 
-  Compiled contract "attributes_deprecated" with 18 warnings.
+  Compiled contract "attributes_deprecated" with 19 warnings.
     Finished release [optimized + fuel] target(s) [1.152 KB] in ???

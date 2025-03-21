@@ -82,8 +82,11 @@ impl NonDeprecatedTrait for NonDeprecatedStruct {
 pub fn call_deprecated() {
     let ds = DeprecatedStruct { a: 0 };
     let _ = ds.a;
-    let nds = NonDeprecatedStruct { deprecated_field: 0 };
+
+    let mut nds = NonDeprecatedStruct { deprecated_field: 0 };
     let _ = nds.deprecated_field;
+    let r_nds = &mut nds;
+    (*r_nds).deprecated_field = 1;
     nds.deprecated_method();
     nds.deprecated_assoc_fun();
     let _ = NonDeprecatedStruct::DEPRECATED_ASSOC_CONST;
