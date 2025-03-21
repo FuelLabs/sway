@@ -3569,68 +3569,10 @@ impl<'eng> FnCompiler<'eng> {
                     // A non-aggregate; use a direct `store`.
                     lhs_val
                 } else {
-                    // Create a GEP by following the chain of LHS indices. We use a scan which is
-                    // essentially a map with context, which is the parent type id for the current field.
-                    let mut gep_indices = Vec::<Value>::new();
-                    let mut cur_type_id = *base_type;
-                    // TODO-IG: Add support for projections being references themselves.
-                    for idx_kind in indices.iter() {
-                        let cur_type_info_arc = self.engines.te().get_unaliased(cur_type_id);
-                        let cur_type_info = &*cur_type_info_arc;
-                        match (idx_kind, cur_type_info) {
-                            (
-                                ProjectionKind::StructField { name: idx_name },
-                                TypeInfo::Struct(decl_ref),
-                            ) => {
-                                let struct_decl = self.engines.de().get_struct(decl_ref);
-
-                                match struct_decl.get_field_index_and_type(idx_name) {
-                                    None => {
-                                        return Err(CompileError::InternalOwned(
-                                            format!(
-                                            "Unknown field name \"{idx_name}\" for struct \"{}\" \
-                                                    in reassignment.",
-                                            struct_decl.call_path.suffix.as_str(),
-                                        ),
-                                            idx_name.span(),
-                                        ))
-                                    }
-                                    Some((field_idx, field_type_id)) => {
-                                        cur_type_id = field_type_id;
-                                        gep_indices.push(ConstantContent::get_uint(
-                                            context, 64, field_idx,
-                                        ));
-                                    }
-                                }
-                            }
-                            (
-                                ProjectionKind::TupleField { index, .. },
-                                TypeInfo::Tuple(field_tys),
-                            ) => {
-                                cur_type_id = field_tys[*index].type_id;
-                                gep_indices.push(ConstantContent::get_uint(
-                                    context,
-                                    64,
-                                    *index as u64,
-                                ));
-                            }
-                            (
-                                ProjectionKind::ArrayIndex { index, .. },
-                                TypeInfo::Array(elem_ty, _),
-                            ) => {
-                                cur_type_id = elem_ty.type_id;
-                                let val = return_on_termination_or_extract!(
-                                    self.compile_expression_to_value(context, md_mgr, index)?
-                                );
-                                gep_indices.push(val);
-                            }
-                            _ => {
-                                return Err(CompileError::Internal(
-                                    "Unknown field in reassignment.",
-                                    idx_kind.span(),
-                                ))
-                            }
-                        }
+                    let (terminator, gep_indices) =
+                        self.compile_indices(context, md_mgr, *base_type, indices)?;
+                    if let Some(terminator) = terminator {
+                        return Ok(terminator);
                     }
 
                     // Using the type of the RHS for the GEP, rather than the final inner type of the
@@ -3650,7 +3592,10 @@ impl<'eng> FnCompiler<'eng> {
                         .add_metadatum(context, span_md_idx)
                 }
             }
-            ty::TyReassignmentTarget::Deref(dereference_exp) => {
+            ty::TyReassignmentTarget::DerefAccess {
+                exp: dereference_exp,
+                indices,
+            } => {
                 let TyExpressionVariant::Deref(reference_exp) = &dereference_exp.expression else {
                     return Err(CompileError::Internal(
                         "Left-hand side of the reassignment must be dereferencing.",
@@ -3661,7 +3606,36 @@ impl<'eng> FnCompiler<'eng> {
                 let (ptr, _) =
                     self.compile_deref_up_to_ptr(context, md_mgr, reference_exp, span_md_idx)?;
 
-                return_on_termination_or_extract!(ptr)
+                if indices.is_empty() {
+                    // A non-aggregate;
+                    return_on_termination_or_extract!(ptr)
+                } else {
+                    let (terminator, gep_indices) = self.compile_indices(
+                        context,
+                        md_mgr,
+                        dereference_exp.return_type,
+                        indices,
+                    )?;
+                    if let Some(terminator) = terminator {
+                        return Ok(terminator);
+                    }
+
+                    // Using the type of the RHS for the GEP, rather than the final inner type of the
+                    // aggregate, but getting the latter is a bit of a pain, though the `scan` above knew it.
+                    // The program is type checked and the IR types on the LHS and RHS are the same.
+                    let field_type = rhs.get_type(context).ok_or_else(|| {
+                        CompileError::Internal(
+                            "Failed to determine type of reassignment.",
+                            dereference_exp.span.clone(),
+                        )
+                    })?;
+
+                    // Create the GEP.
+                    self.current_block
+                        .append(context)
+                        .get_elem_ptr(ptr.value, field_type, gep_indices)
+                        .add_metadatum(context, span_md_idx)
+                }
             }
         };
 
@@ -3672,6 +3646,77 @@ impl<'eng> FnCompiler<'eng> {
 
         let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
         Ok(TerminatorValue::new(val, context))
+    }
+
+    fn compile_indices(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        base_type: TypeId,
+        indices: &[ProjectionKind],
+    ) -> Result<(Option<TerminatorValue>, Vec<Value>), CompileError> {
+        // Create a GEP by following the chain of LHS indices. We use a scan which is
+        // essentially a map with context, which is the parent type id for the current field.
+        let mut gep_indices = Vec::<Value>::new();
+        let mut cur_type_id = base_type;
+        for idx_kind in indices.iter() {
+            while let TypeInfo::Ref {
+                referenced_type, ..
+            } = &*self.engines.te().get_unaliased(cur_type_id)
+            {
+                cur_type_id = referenced_type.type_id;
+            }
+            let cur_type_info_arc = self.engines.te().get_unaliased(cur_type_id);
+            let cur_type_info = &*cur_type_info_arc;
+            match (idx_kind, cur_type_info) {
+                (
+                    ProjectionKind::StructField {
+                        name: idx_name,
+                        field_to_access: _,
+                    },
+                    TypeInfo::Struct(decl_ref),
+                ) => {
+                    let struct_decl = self.engines.de().get_struct(decl_ref);
+
+                    match struct_decl.get_field_index_and_type(idx_name) {
+                        None => {
+                            return Err(CompileError::InternalOwned(
+                                format!(
+                                    "Unknown field name \"{idx_name}\" for struct \"{}\" \
+                                        in reassignment.",
+                                    struct_decl.call_path.suffix.as_str(),
+                                ),
+                                idx_name.span(),
+                            ))
+                        }
+                        Some((field_idx, field_type_id)) => {
+                            cur_type_id = field_type_id;
+                            gep_indices.push(ConstantContent::get_uint(context, 64, field_idx));
+                        }
+                    }
+                }
+                (ProjectionKind::TupleField { index, .. }, TypeInfo::Tuple(field_tys)) => {
+                    cur_type_id = field_tys[*index].type_id;
+                    gep_indices.push(ConstantContent::get_uint(context, 64, *index as u64));
+                }
+                (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
+                    cur_type_id = elem_ty.type_id;
+                    let val = self.compile_expression_to_value(context, md_mgr, index)?;
+                    if val.is_terminator {
+                        return Ok((Some(val), vec![]));
+                    }
+                    gep_indices.push(val.value);
+                }
+                _ => {
+                    return Err(CompileError::Internal(
+                        "Unknown field in reassignment.",
+                        idx_kind.span(),
+                    ))
+                }
+            }
+        }
+
+        Ok((None, gep_indices))
     }
 
     fn compile_array_repeat_expr(

@@ -571,6 +571,7 @@ fn const_eval_typed_expr(
             }) => {
                 let field_kind = ty::ProjectionKind::StructField {
                     name: field_to_access.name.clone(),
+                    field_to_access: Some(Box::new(field_to_access.clone())),
                 };
                 get_struct_name_field_index_and_type(
                     lookup.engines.te(),
@@ -786,7 +787,7 @@ fn const_eval_typed_expr(
                         });
                     }
                 }
-                ty::TyReassignmentTarget::Deref(_) => {
+                ty::TyReassignmentTarget::DerefAccess { .. } => {
                     return Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: expr.span.clone(),
                     });
