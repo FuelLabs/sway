@@ -457,7 +457,7 @@ impl ty::TyModule {
                     let mut fn_generator = AbiEncodingAutoImplContext::new(&mut ctx);
                     if let Ok(node) = fn_generator.generate_contract_entry(
                         engines,
-                        parsed.span.source_id().cloned(),
+                        parsed.span.source_id(),
                         &contract_fns,
                         fallback_fn,
                         handler,
