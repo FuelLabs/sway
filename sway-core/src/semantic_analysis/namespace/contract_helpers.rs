@@ -12,23 +12,23 @@ use crate::{
         ty::{TyAstNode, TyAstNodeContent},
     },
     semantic_analysis::{
-        namespace::Root, symbol_collection_context::SymbolCollectionContext, TypeCheckContext,
+        namespace::Package, symbol_collection_context::SymbolCollectionContext, TypeCheckContext,
     },
     transform::to_parsed_lang,
     Engines, Ident, Namespace,
 };
 
 /// Factory function for contracts
-pub fn namespace_with_contract_id(
+pub fn package_with_contract_id(
     engines: &Engines,
     package_name: Ident,
     program_id: ProgramId,
     contract_id_value: String,
     experimental: crate::ExperimentalFeatures,
-) -> Result<Root, vec1::Vec1<CompileError>> {
-    let root = Root::new(package_name, None, program_id, true);
+) -> Result<Package, vec1::Vec1<CompileError>> {
+    let package = Package::new(package_name, None, program_id, true);
     let handler = <_>::default();
-    bind_contract_id_in_root_module(&handler, engines, contract_id_value, root, experimental)
+    bind_contract_id_in_root_module(&handler, engines, contract_id_value, package, experimental)
         .map_err(|_| {
             let (errors, warnings) = handler.consume();
             assert!(warnings.is_empty());
@@ -42,9 +42,9 @@ fn bind_contract_id_in_root_module(
     handler: &Handler,
     engines: &Engines,
     contract_id_value: String,
-    root: Root,
+    package: Package,
     experimental: crate::ExperimentalFeatures,
-) -> Result<Root, ErrorEmitted> {
+) -> Result<Package, ErrorEmitted> {
     // this for loop performs a miniature compilation of each const item in the config
     // FIXME(Centril): Stop parsing. Construct AST directly instead!
     // parser config
@@ -89,15 +89,14 @@ fn bind_contract_id_in_root_module(
         span: const_item_span.clone(),
     };
     // This is pretty hacky but that's okay because of this code is being removed pretty soon
-    // The root object
-    let mut namespace = Namespace::new(handler, engines, root, false)?;
+    let mut namespace = Namespace::new(handler, engines, package, false)?;
     let mut symbol_ctx = SymbolCollectionContext::new(namespace.clone());
     let type_check_ctx =
         TypeCheckContext::from_namespace(&mut namespace, &mut symbol_ctx, engines, experimental);
     // Typecheck the const declaration. This will add the binding in the supplied namespace
     let type_checked = TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap();
     if let TyAstNodeContent::Declaration(_) = type_checked.content {
-        Ok(namespace.root())
+        Ok(namespace.current_package())
     } else {
         Err(handler.emit_err(CompileError::Internal(
             "Contract ID declaration did not typecheck to a declaration, which should be impossible",

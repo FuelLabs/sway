@@ -3291,7 +3291,7 @@ mod tests {
         experimental: ExperimentalFeatures,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
-        let root_module = namespace::Root::new(root_module_name, None, ProgramId::new(0), false);
+        let root_module = namespace::Package::new(root_module_name, None, ProgramId::new(0), false);
         let collection_ctx_ns = Namespace::new(handler, engines, root_module.clone(), true)?;
         let mut collection_ctx = SymbolCollectionContext::new(collection_ctx_ns);
         let mut namespace = Namespace::new(handler, engines, root_module, true)?;
