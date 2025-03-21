@@ -12,6 +12,7 @@ use ::crypto::{
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
 use ::vm::evm::evm_address::EvmAddress;
+use ::codec::*;
 
 /// An ECDSA signature.
 pub enum Signature {
