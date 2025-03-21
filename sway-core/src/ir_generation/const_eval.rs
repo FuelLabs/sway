@@ -308,8 +308,9 @@ fn const_eval_typed_expr(
     }
 
     Ok(match &expr.expression {
-        ty::TyExpressionVariant::ConstGenericExpression { .. } => {
-            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+        ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+            assert!(decl.value.is_some());
+            const_eval_typed_expr(lookup, known_consts, decl.value.as_ref().unwrap())?
         }
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
             let implied_lit = match &*lookup.engines.te().get(expr.return_type) {
@@ -570,6 +571,7 @@ fn const_eval_typed_expr(
             }) => {
                 let field_kind = ty::ProjectionKind::StructField {
                     name: field_to_access.name.clone(),
+                    field_to_access: Some(Box::new(field_to_access.clone())),
                 };
                 get_struct_name_field_index_and_type(
                     lookup.engines.te(),
@@ -785,7 +787,7 @@ fn const_eval_typed_expr(
                         });
                     }
                 }
-                ty::TyReassignmentTarget::Deref(_) => {
+                ty::TyReassignmentTarget::DerefAccess { .. } => {
                     return Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: expr.span.clone(),
                     });

@@ -1,23 +1,2 @@
 category = "compile"
-expected_warnings = 20
-
-# check: $()deprecated struct field
-# check: $()deprecated struct
-# check: $()deprecated enum
-# check: $()deprecated enum
-# check: $()deprecated enum variant
-# check: $()deprecated struct
-# check: $()deprecated enum
-# check: $()deprecated function
-# check: $()deprecated struct
-# check: $()deprecated function
-# check: $()deprecated function
-# check: $()deprecated enum
-# check: $()deprecated function
-# check: $()deprecated struct
-# check: $()deprecated struct field
-# check: $()deprecated enum
-# check: $()deprecated enum
-# check: $()deprecated enum variant
-# check: $()deprecated struct
-# check: $()deprecated function
+expected_warnings = 21

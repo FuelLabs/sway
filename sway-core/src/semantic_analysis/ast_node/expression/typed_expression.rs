@@ -48,7 +48,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, u256::U256, Ident, Named, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, u256::U256, BaseIdent, Ident, Named, Span, Spanned};
 use symbol_collection_context::SymbolCollectionContext;
 use type_resolve::{resolve_call_path, VisibilityCheck};
 
@@ -703,11 +703,11 @@ impl ty::TyExpression {
                     expression: ty::TyExpressionVariant::ConstGenericExpression {
                         decl: Box::new(decl),
                         span: name.span(),
-                        call_path: Some(CallPath {
+                        call_path: CallPath {
                             prefixes: vec![],
                             suffix: name.clone(),
                             callpath_type: CallPathType::Ambiguous,
-                        }),
+                        },
                     },
                     span,
                 }
@@ -2046,6 +2046,12 @@ impl ty::TyExpression {
             _ => TypeInfo::Unknown,
         };
         let elem_type = type_engine.insert(engines, elem_type, None);
+        let elem_type_arg = TypeArgument {
+            type_id: elem_type,
+            initial_type_id: elem_type,
+            span: span.clone(),
+            call_path_tree: None,
+        };
 
         let value_ctx = ctx
             .by_ref()
@@ -2058,17 +2064,27 @@ impl ty::TyExpression {
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.id_of_u64());
-        let length = Self::type_check(handler, length_ctx, length)
+        let length_expr = Self::type_check(handler, length_ctx, length)
             .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
-        let length_u64 = length.as_literal_u64().unwrap() as usize;
+        let length = match &length_expr.expression {
+            TyExpressionVariant::Literal(Literal::U64(val)) => Length::Literal {
+                val: *val as usize,
+                span: span.clone(),
+            },
+            TyExpressionVariant::ConstGenericExpression { call_path, .. } => {
+                Length::AmbiguousVariableExpression {
+                    ident: call_path.suffix.clone(),
+                }
+            }
+            _ => return Err(handler.emit_err(CompileError::ConstGenericNotSupportedHere { span })),
+        };
 
-        let return_type =
-            type_engine.insert_array_without_annotations(engines, elem_type, length_u64);
+        let return_type = type_engine.insert_array(engines, elem_type_arg, length);
         Ok(ty::TyExpression {
             expression: ty::TyExpressionVariant::ArrayRepeat {
                 elem_type,
                 value: Box::new(value),
-                length: Box::new(length),
+                length: Box::new(length_expr),
             },
             return_type,
             span,
@@ -2419,7 +2435,10 @@ impl ty::TyExpression {
 
                 let expected_rhs_type = deref_exp.return_type;
                 (
-                    TyReassignmentTarget::Deref(Box::new(deref_exp)),
+                    TyReassignmentTarget::DerefAccess {
+                        exp: Box::new(deref_exp),
+                        indices: vec![],
+                    },
                     expected_rhs_type,
                 )
             }
@@ -2427,10 +2446,15 @@ impl ty::TyExpression {
                 let lhs_span = path.span.clone();
                 let mut expr = path;
                 let mut indices = Vec::new();
+
+                // This variaable is used after the loop.
+                #[allow(unused_assignments)]
+                let mut base_deref_expr = None;
                 // Loop through the LHS "backwards" starting from the outermost expression
                 // (the whole LHS) and moving towards the first identifier that must
                 // be a mutable variable.
                 let (base_name, base_type) = loop {
+                    base_deref_expr = None;
                     match expr.kind {
                         ExpressionKind::Variable(name) => {
                             // check that the reassigned name exists
@@ -2473,7 +2497,7 @@ impl ty::TyExpression {
                                 decl => {
                                     return Err(handler.emit_err(
                                         CompileError::DeclAssignmentTargetCannotBeAssignedTo {
-                                            decl_name: decl.get_decl_ident(ctx.engines),
+                                            decl_name: decl.get_decl_ident(engines),
                                             decl_friendly_type_name: decl
                                                 .friendly_type_name_with_acronym(),
                                             lhs_span,
@@ -2484,11 +2508,30 @@ impl ty::TyExpression {
                         }
                         ExpressionKind::Subfield(SubfieldExpression {
                             prefix,
-                            field_to_access,
+                            field_to_access: idx_name,
                             ..
                         }) => {
+                            let prefix_expr = ty::TyExpression::type_check(
+                                &Handler::default(),
+                                ctx.by_ref(),
+                                prefix.as_ref(),
+                            )
+                            .unwrap_or_else(|err| {
+                                ty::TyExpression::error(err, span.clone(), engines)
+                            });
+
+                            let field_to_access = match &*engines.te().get(prefix_expr.return_type)
+                            {
+                                TypeInfo::Struct(decl_ref) => {
+                                    let struct_decl = engines.de().get_struct(decl_ref);
+                                    struct_decl.find_field(&idx_name).cloned()
+                                }
+                                _ => None,
+                            };
+
                             indices.push(ty::ProjectionKind::StructField {
-                                name: field_to_access,
+                                name: idx_name,
+                                field_to_access: field_to_access.map(Box::new),
                             });
                             expr = prefix;
                         }
@@ -2517,6 +2560,18 @@ impl ty::TyExpression {
                             });
                             expr = prefix;
                         }
+                        ExpressionKind::Deref(reference_exp) => {
+                            let reference_exp_span = reference_exp.span();
+                            let deref_expr = Self::type_check_deref(
+                                handler,
+                                ctx.by_ref(),
+                                &reference_exp,
+                                reference_exp_span.clone(),
+                            )?;
+                            base_deref_expr = Some(deref_expr.clone());
+
+                            break (BaseIdent::new(deref_expr.span), deref_expr.return_type);
+                        }
                         _ => {
                             return Err(
                                 handler.emit_err(CompileError::InvalidExpressionOnLhs { span })
@@ -2534,18 +2589,29 @@ impl ty::TyExpression {
                             ctx.engines(),
                             ctx.namespace(),
                             &base_name,
+                            &base_deref_expr,
                             &indices,
                         )
                     })?;
 
-                (
-                    TyReassignmentTarget::ElementAccess {
-                        base_name,
-                        base_type,
-                        indices,
-                    },
-                    ty_of_field,
-                )
+                if let Some(base_deref_expr) = base_deref_expr {
+                    (
+                        TyReassignmentTarget::DerefAccess {
+                            exp: Box::new(base_deref_expr),
+                            indices,
+                        },
+                        ty_of_field,
+                    )
+                } else {
+                    (
+                        TyReassignmentTarget::ElementAccess {
+                            base_name,
+                            base_type,
+                            indices,
+                        },
+                        ty_of_field,
+                    )
+                }
             }
         };
 
@@ -2572,6 +2638,7 @@ impl ty::TyExpression {
         engines: &Engines,
         namespace: &Namespace,
         base_name: &Ident,
+        base_deref_expr: &Option<TyExpression>,
         projections: &[ty::ProjectionKind],
     ) -> Result<(TypeId, TypeId), ErrorEmitted> {
         let ret = module.walk_scope_chain_early_return(|lexical_scope| {
@@ -2581,6 +2648,7 @@ impl ty::TyExpression {
                 engines,
                 namespace,
                 base_name,
+                base_deref_expr,
                 projections,
             )
         })?;
@@ -2604,21 +2672,27 @@ impl ty::TyExpression {
         engines: &Engines,
         namespace: &Namespace,
         base_name: &Ident,
+        base_deref_expr: &Option<TyExpression>,
         projections: &[ty::ProjectionKind],
     ) -> Result<Option<(TypeId, TypeId)>, ErrorEmitted> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
 
-        let symbol = match lexical_scope.items.symbols.get(base_name).cloned() {
-            Some(s) => s,
-            None => {
-                return Ok(None);
+        let mut symbol = if let Some(ref base_deref_expr) = base_deref_expr {
+            base_deref_expr.return_type
+        } else {
+            let symbol = match lexical_scope.items.symbols.get(base_name).cloned() {
+                Some(s) => s,
+                None => {
+                    return Ok(None);
+                }
+            };
+            match symbol {
+                ResolvedDeclaration::Parsed(_) => unreachable!(),
+                ResolvedDeclaration::Typed(ty_decl) => ty_decl.return_type(handler, engines)?,
             }
         };
-        let mut symbol = match symbol {
-            ResolvedDeclaration::Parsed(_) => unreachable!(),
-            ResolvedDeclaration::Typed(ty_decl) => ty_decl.return_type(handler, engines)?,
-        };
+
         let mut symbol_span = base_name.span();
         let mut parent_rover = symbol;
         let mut full_span_for_error = base_name.span();
@@ -2632,7 +2706,10 @@ impl ty::TyExpression {
             match (resolved_type, projection) {
                 (
                     TypeInfo::Struct(decl_ref),
-                    ty::ProjectionKind::StructField { name: field_name },
+                    ty::ProjectionKind::StructField {
+                        name: field_name,
+                        field_to_access: _,
+                    },
                 ) => {
                     let struct_decl = decl_engine.get_struct(&decl_ref);
                     let (struct_can_be_changed, is_public_struct_access) =
@@ -2693,43 +2770,65 @@ impl ty::TyExpression {
                     symbol_span = index_span.clone();
                     full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
-                (
-                    TypeInfo::Array(elem_ty, array_length),
-                    ty::ProjectionKind::ArrayIndex { index, index_span },
-                ) if array_length.as_literal_val().is_some() => {
-                    parent_rover = symbol;
-                    symbol = elem_ty.type_id;
-                    symbol_span = index_span.clone();
-
-                    if let Some(index_literal) = index
-                        .expression
-                        .as_literal()
-                        .and_then(|x| x.cast_value_to_u64())
+                (mut actually, ty::ProjectionKind::ArrayIndex { index, index_span }) => {
+                    if let TypeInfo::Ref {
+                        referenced_type, ..
+                    } = actually
                     {
-                        // SAFETY: safe by the guard above
-                        let array_length = array_length
-                            .as_literal_val()
-                            .expect("unexpected non literal array length")
-                            as u64;
-                        if index_literal >= array_length {
-                            return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
-                                index: index_literal,
-                                count: array_length,
-                                span: index.span.clone(),
+                        actually = (*engines.te().get(referenced_type.type_id)).clone();
+                    }
+                    match actually {
+                        TypeInfo::Array(elem_ty, array_length)
+                            if array_length.as_literal_val().is_some() =>
+                        {
+                            parent_rover = symbol;
+                            symbol = elem_ty.type_id;
+                            symbol_span = index_span.clone();
+
+                            if let Some(index_literal) = index
+                                .expression
+                                .as_literal()
+                                .and_then(|x| x.cast_value_to_u64())
+                            {
+                                // SAFETY: safe by the guard above
+                                let array_length = array_length
+                                    .as_literal_val()
+                                    .expect("unexpected non literal array length")
+                                    as u64;
+                                if index_literal >= array_length {
+                                    return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
+                                        index: index_literal,
+                                        count: array_length,
+                                        span: index.span.clone(),
+                                    }));
+                                }
+                            }
+
+                            // `index_span` does not contain the enclosing square brackets.
+                            // Which means, if this array index access is the last one before the
+                            // erroneous expression, the `full_span_for_error` will be missing the
+                            // closing `]`. We can live with this small glitch so far. To fix it,
+                            // we would need to bring the full span of the index all the way from
+                            // the parsing stage. An effort that doesn't pay off at the moment.
+                            // TODO: Include the closing square bracket into the error span.
+                            // https://github.com/FuelLabs/sway/issues/7023
+                            full_span_for_error = Span::join(full_span_for_error, index_span);
+                        }
+                        _ => {
+                            return Err(handler.emit_err(CompileError::NotIndexable {
+                                actually: engines.help_out(actually).to_string(),
+                                span: full_span_for_error,
                             }));
                         }
                     }
-
-                    // `index_span` does not contain the enclosing square brackets.
-                    // Which means, if this array index access is the last one before the
-                    // erroneous expression, the `full_span_for_error` will be missing the
-                    // closing `]`. We can live with this small glitch so far. To fix it,
-                    // we would need to bring the full span of the index all the way from
-                    // the parsing stage. An effort that doesn't pay off at the moment.
-                    // TODO: Include the closing square bracket into the error span.
-                    full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
-                (actually, ty::ProjectionKind::StructField { name }) => {
+                (
+                    actually,
+                    ty::ProjectionKind::StructField {
+                        name,
+                        field_to_access: _,
+                    },
+                ) => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
                         actually: engines.help_out(actually).to_string(),
                         storage_variable: None,
@@ -2751,12 +2850,6 @@ impl ty::TyExpression {
                             index_span: index_span.clone(),
                         }),
                     );
-                }
-                (actually, ty::ProjectionKind::ArrayIndex { .. }) => {
-                    return Err(handler.emit_err(CompileError::NotIndexable {
-                        actually: engines.help_out(actually).to_string(),
-                        span: full_span_for_error,
-                    }));
                 }
             }
         }

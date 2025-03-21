@@ -318,9 +318,7 @@ impl Parse for ty::TyExpression {
                 ..
             } => {
                 collect_const_generic_decl(ctx, decl, Some(&Ident::new(span.clone())));
-                if let Some(call_path) = call_path {
-                    collect_call_path_prefixes(ctx, &call_path.prefixes, call_path.callpath_type);
-                }
+                collect_call_path_prefixes(ctx, &call_path.prefixes, call_path.callpath_type);
             }
             ty::TyExpressionVariant::VariableExpression {
                 ref name,
@@ -1152,7 +1150,33 @@ impl Parse for ty::TyReassignment {
     fn parse(&self, ctx: &ParseContext) {
         self.rhs.parse(ctx);
         match &self.lhs {
-            TyReassignmentTarget::Deref(exp) => exp.parse(ctx),
+            TyReassignmentTarget::DerefAccess { exp, indices } => {
+                exp.parse(ctx);
+                adaptive_iter(indices, |proj_kind| {
+                    if let ty::ProjectionKind::StructField {
+                        name,
+                        field_to_access: _,
+                    } = proj_kind
+                    {
+                        if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name))
+                        {
+                            token.ast_node =
+                                TokenAstNode::Typed(TypedAstToken::TypedReassignment(self.clone()));
+                            if let Some(struct_decl) = &ctx
+                                .tokens
+                                .struct_declaration_of_type_id(ctx.engines, &exp.return_type)
+                            {
+                                struct_decl.fields.iter().for_each(|decl_field| {
+                                    if &decl_field.name == name {
+                                        token.type_def =
+                                            Some(TypeDefinition::Ident(decl_field.name.clone()));
+                                    }
+                                });
+                            }
+                        }
+                    }
+                });
+            }
             TyReassignmentTarget::ElementAccess {
                 base_name,
                 base_type,
@@ -1163,7 +1187,11 @@ impl Parse for ty::TyReassignment {
                         TokenAstNode::Typed(TypedAstToken::TypedReassignment(self.clone()));
                 }
                 adaptive_iter(indices, |proj_kind| {
-                    if let ty::ProjectionKind::StructField { name } = proj_kind {
+                    if let ty::ProjectionKind::StructField {
+                        name,
+                        field_to_access: _,
+                    } = proj_kind
+                    {
                         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name))
                         {
                             token.ast_node =

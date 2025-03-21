@@ -21,7 +21,7 @@ remove_generated_code "ARRAY_DECODE"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="impl<T> AbiDecode for [T; $i] where T: AbiDecode { fn abi_decode(ref mut buffer: BufferReader) -> [T; $i] { let first: T = buffer.decode::<T>(); let mut array = [first; $i]; let mut i = 1; while i < $i { array[i] = buffer.decode::<T>(); i += 1; }; array } }"
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> AbiDecode for [T; $i] where T: AbiDecode { fn abi_decode(ref mut buffer: BufferReader) -> [T; $i] { let first: T = buffer.decode::<T>(); let mut array = [first; $i]; let mut i = 1; while i < $i { array[i] = buffer.decode::<T>(); i += 1; }; array } }"
     sed -i "s/\/\/ BEGIN ARRAY_DECODE/\/\/ BEGIN ARRAY_DECODE\n$CODE/g" ./src/codec.sw
 done
 
