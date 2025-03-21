@@ -731,7 +731,8 @@ impl TyExpression {
                                         &field_to_access.attributes,
                                         &idx_name.span(),
                                         handler,
-                                        "deprecated struct field",
+                                        DeprecatedElement::StructField,
+                                        idx_name.as_str(),
                                         allow_deprecated,
                                     );
                                 }
@@ -747,6 +748,8 @@ impl TyExpression {
                         }
                     }
                 }
+                // TODO: Check `TyReassignmentTarget::ElementAccess`.
+                //       See: https://github.com/FuelLabs/sway/issues/6942
                 reass
                     .rhs
                     .check_deprecated(engines, handler, allow_deprecated);
