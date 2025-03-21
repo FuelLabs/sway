@@ -216,7 +216,7 @@ where
         );
         let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            struct_decl.span().source_id().cloned(),
+            struct_decl.span().source_id(),
             &abi_encode_code,
             crate::build_config::DbgGeneration::None,
         );
@@ -229,7 +229,7 @@ where
         );
         let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            struct_decl.span().source_id().cloned(),
+            struct_decl.span().source_id(),
             &abi_decode_code,
             crate::build_config::DbgGeneration::None,
         );
@@ -263,7 +263,7 @@ where
         );
         let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            enum_decl.span().source_id().cloned(),
+            enum_decl.span().source_id(),
             &abi_encode_code,
             crate::build_config::DbgGeneration::None,
         );
@@ -276,7 +276,7 @@ where
         );
         let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
-            enum_decl.span().source_id().cloned(),
+            enum_decl.span().source_id(),
             &abi_decode_code,
             crate::build_config::DbgGeneration::None,
         );
@@ -303,7 +303,7 @@ where
     pub(crate) fn generate_contract_entry(
         &mut self,
         engines: &Engines,
-        source_id: Option<SourceId>,
+        original_source_id: Option<&SourceId>,
         contract_fns: &[DeclId<TyFunctionDecl>],
         fallback_fn: Option<DeclId<TyFunctionDecl>>,
         handler: &Handler,
@@ -458,7 +458,7 @@ where
 
         let entry_fn = self.parse_fn_to_ty_ast_node(
             engines,
-            source_id,
+            original_source_id,
             FunctionDeclarationKind::Entry,
             &code,
             crate::build_config::DbgGeneration::None,
@@ -518,7 +518,7 @@ where
 
         let entry_fn = self.parse_fn_to_ty_ast_node(
             engines,
-            decl.span.source_id().cloned(),
+            decl.span.source_id(),
             FunctionDeclarationKind::Entry,
             &code,
             crate::build_config::DbgGeneration::None,
@@ -627,7 +627,7 @@ where
 
         let entry_fn = self.parse_fn_to_ty_ast_node(
             engines,
-            decl.span.source_id().cloned(),
+            decl.span.source_id(),
             FunctionDeclarationKind::Entry,
             &code,
             crate::build_config::DbgGeneration::None,
