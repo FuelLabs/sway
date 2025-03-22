@@ -205,6 +205,7 @@ async fn deploy_chunked(
         fuels::programs::contract::Contract::loader_from_blobs(blobs, salt, storage_slots)?
             .deploy(account, tx_policies)
             .await?
+            .contract_id
             .into();
 
     println_action_green(
@@ -249,6 +250,7 @@ async fn deploy_new_proxy(
     )?
     .deploy(account, tx_policies)
     .await?
+    .contract_id
     .into();
 
     let chain_info = provider.chain_info().await?;
