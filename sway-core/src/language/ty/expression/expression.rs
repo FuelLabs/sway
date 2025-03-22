@@ -416,6 +416,18 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::Literal(_) | TyExpressionVariant::VariableExpression { .. } => {
                 Ok(())
             }
+            TyExpressionVariant::ArrayRepeat {
+                elem_type,
+                value: elem_value,
+                length,
+            } => {
+                elem_type.materialize_const_generics(engines, handler, name, value)?;
+                elem_value.materialize_const_generics(engines, handler, name, value)?;
+                length.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::Ref(r) => {
+                r.materialize_const_generics(engines, handler, name, value)
+            }
             _ => Err(handler.emit_err(
                 sway_error::error::CompileError::ConstGenericNotSupportedHere {
                     span: self.span.clone(),
@@ -698,8 +710,34 @@ impl TyExpression {
             TyExpressionVariant::Break => {}
             TyExpressionVariant::Continue => {}
             TyExpressionVariant::Reassignment(reass) => {
-                if let TyReassignmentTarget::Deref(expr) = &reass.lhs {
-                    expr.check_deprecated(engines, handler, allow_deprecated);
+                if let TyReassignmentTarget::DerefAccess { exp, indices } = &reass.lhs {
+                    exp.check_deprecated(engines, handler, allow_deprecated);
+                    for indice in indices {
+                        match indice {
+                            ProjectionKind::StructField {
+                                name: idx_name,
+                                field_to_access,
+                            } => {
+                                if let Some(field_to_access) = field_to_access {
+                                    emit_warning_if_deprecated(
+                                        &field_to_access.attributes,
+                                        &idx_name.span(),
+                                        handler,
+                                        "deprecated struct field",
+                                        allow_deprecated,
+                                    );
+                                }
+                            }
+                            ProjectionKind::TupleField {
+                                index: _,
+                                index_span: _,
+                            } => {}
+                            ProjectionKind::ArrayIndex {
+                                index,
+                                index_span: _,
+                            } => index.check_deprecated(engines, handler, allow_deprecated),
+                        }
+                    }
                 }
                 reass
                     .rhs
@@ -726,13 +764,6 @@ impl TyExpression {
                 elem_type,
                 contents,
             } => Some((elem_type, contents)),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn as_literal_u64(&self) -> Option<u64> {
-        match &self.expression {
-            TyExpressionVariant::Literal(Literal::U64(v)) => Some(*v),
             _ => None,
         }
     }

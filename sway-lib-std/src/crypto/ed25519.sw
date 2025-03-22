@@ -9,6 +9,7 @@ use ::hash::*;
 use ::result::Result::{self, *};
 use ::option::Option::{self, *};
 use ::ops::*;
+use ::codec::*;
 
 /// An ed25519 signature.
 pub struct Ed25519 {

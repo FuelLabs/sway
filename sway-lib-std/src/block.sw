@@ -6,6 +6,7 @@ use ::result::Result::{self, *};
 use ::logging::log;
 use ::primitives::*;
 use ::ops::*;
+use ::codec::*;
 
 /// Error type for when the block hash cannot be found.
 pub enum BlockHashError {

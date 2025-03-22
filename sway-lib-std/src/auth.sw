@@ -16,6 +16,7 @@ use ::inputs::{
 };
 use ::revert::revert;
 use ::vec::Vec;
+use ::codec::*;
 
 /// The error type used when an `Identity` cannot be determined.
 pub enum AuthError {

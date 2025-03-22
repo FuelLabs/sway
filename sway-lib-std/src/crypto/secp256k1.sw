@@ -12,6 +12,8 @@ use ::result::Result::{self, *};
 use ::option::Option::{self, *};
 use ::vm::evm::evm_address::EvmAddress;
 use ::ops::*;
+use ::codec::*;
+
 /// A secp256k1 signature.
 pub struct Secp256k1 {
     /// The underlying raw `[u8; 64]` data of the signature.

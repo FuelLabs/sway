@@ -204,7 +204,7 @@ impl Parse for ty::TySideEffect {
                     ));
                     if let Some(span) = ctx
                         .namespace
-                        .current_package_root_module()
+                        .root_module()
                         .submodule(&[mod_name.clone()])
                         .and_then(|tgt_submod| tgt_submod.span().clone())
                     {
@@ -318,9 +318,7 @@ impl Parse for ty::TyExpression {
                 ..
             } => {
                 collect_const_generic_decl(ctx, decl, Some(&Ident::new(span.clone())));
-                if let Some(call_path) = call_path {
-                    collect_call_path_prefixes(ctx, &call_path.prefixes, call_path.callpath_type);
-                }
+                collect_call_path_prefixes(ctx, &call_path.prefixes, call_path.callpath_type);
             }
             ty::TyExpressionVariant::VariableExpression {
                 ref name,
@@ -536,7 +534,7 @@ impl Parse for ty::TyExpression {
                     ));
                     if let Some(storage) = ctx
                         .namespace
-                        .current_package_root_module()
+                        .root_module()
                         .root_items()
                         .get_declared_storage(ctx.engines.de())
                     {
@@ -555,7 +553,7 @@ impl Parse for ty::TyExpression {
                         );
                         if let Some(storage_field) = ctx
                             .namespace
-                            .current_package_root_module()
+                            .root_module()
                             .root_items()
                             .get_declared_storage(ctx.engines.de())
                             .and_then(|storage| {
@@ -1152,7 +1150,33 @@ impl Parse for ty::TyReassignment {
     fn parse(&self, ctx: &ParseContext) {
         self.rhs.parse(ctx);
         match &self.lhs {
-            TyReassignmentTarget::Deref(exp) => exp.parse(ctx),
+            TyReassignmentTarget::DerefAccess { exp, indices } => {
+                exp.parse(ctx);
+                adaptive_iter(indices, |proj_kind| {
+                    if let ty::ProjectionKind::StructField {
+                        name,
+                        field_to_access: _,
+                    } = proj_kind
+                    {
+                        if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name))
+                        {
+                            token.ast_node =
+                                TokenAstNode::Typed(TypedAstToken::TypedReassignment(self.clone()));
+                            if let Some(struct_decl) = &ctx
+                                .tokens
+                                .struct_declaration_of_type_id(ctx.engines, &exp.return_type)
+                            {
+                                struct_decl.fields.iter().for_each(|decl_field| {
+                                    if &decl_field.name == name {
+                                        token.type_def =
+                                            Some(TypeDefinition::Ident(decl_field.name.clone()));
+                                    }
+                                });
+                            }
+                        }
+                    }
+                });
+            }
             TyReassignmentTarget::ElementAccess {
                 base_name,
                 base_type,
@@ -1163,7 +1187,11 @@ impl Parse for ty::TyReassignment {
                         TokenAstNode::Typed(TypedAstToken::TypedReassignment(self.clone()));
                 }
                 adaptive_iter(indices, |proj_kind| {
-                    if let ty::ProjectionKind::StructField { name } = proj_kind {
+                    if let ty::ProjectionKind::StructField {
+                        name,
+                        field_to_access: _,
+                    } = proj_kind
+                    {
                         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name))
                         {
                             token.ast_node =
@@ -1572,7 +1600,7 @@ fn collect_qualified_path_root(
 fn mod_path_to_full_path(
     mod_path: &[Ident],
     is_relative_to_package_root: bool,
-    namespace: &sway_core::namespace::Root,
+    namespace: &sway_core::namespace::Package,
 ) -> Vec<Ident> {
     let mut path = mod_path.to_owned();
 
@@ -1590,11 +1618,9 @@ fn mod_path_to_full_path(
     // <external>::Y => <external>::Y - do nothing
     if is_relative_to_package_root
         || mod_path.is_empty()
-        || namespace
-            .current_package_root_module()
-            .has_submodule(&mod_path[0])
+        || namespace.root_module().has_submodule(&mod_path[0])
     {
-        path.insert(0, namespace.current_package_name().clone());
+        path.insert(0, namespace.name().clone());
     }
 
     path

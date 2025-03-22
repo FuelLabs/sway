@@ -30,7 +30,9 @@ fn depr_b(_b: B) {}
 
 // TODO: support for traits, abis and their methods
 pub fn main() {
-    let a = A { a: 0, b: 0 };
+    let mut a = A { a: 0, b: 0 };
+    let mut a_ref = &a;
+    (*a_ref).a = 1;
     let b = B::A;
     depr(a);
     depr(A { a: 0, b: 0  });

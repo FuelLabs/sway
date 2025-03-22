@@ -28,7 +28,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
-use sway_core::namespace::Root;
+use sway_core::namespace::Package;
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -181,7 +181,7 @@ pub struct CompiledPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
-    pub root_module: namespace::Root,
+    pub namespace: namespace::Package,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
 }
@@ -1583,7 +1583,7 @@ pub fn sway_build_config(
 /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
 #[allow(clippy::too_many_arguments)]
 pub fn dependency_namespace(
-    lib_namespace_map: &HashMap<NodeIx, namespace::Root>,
+    lib_namespace_map: &HashMap<NodeIx, namespace::Package>,
     compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
@@ -1591,12 +1591,12 @@ pub fn dependency_namespace(
     contract_id_value: Option<ContractIdConst>,
     program_id: ProgramId,
     experimental: ExperimentalFeatures,
-) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
+) -> Result<namespace::Package, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Ident::new_no_span(node_idx.name.clone());
-    let mut root_namespace = if let Some(contract_id_value) = contract_id_value {
-        namespace::namespace_with_contract_id(
+    let mut namespace = if let Some(contract_id_value) = contract_id_value {
+        namespace::package_with_contract_id(
             engines,
             name.clone(),
             program_id,
@@ -1604,7 +1604,7 @@ pub fn dependency_namespace(
             experimental,
         )?
     } else {
-        Root::new(name.clone(), None, program_id, false)
+        Package::new(name.clone(), None, program_id, false)
     };
 
     // Add direct dependencies.
@@ -1628,7 +1628,7 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Ident::new_no_span(node_idx.name.clone());
-                namespace::namespace_with_contract_id(
+                namespace::package_with_contract_id(
                     engines,
                     name.clone(),
                     program_id,
@@ -1637,10 +1637,10 @@ pub fn dependency_namespace(
                 )?
             }
         };
-        root_namespace.add_external(dep_name, dep_namespace);
+        namespace.add_external(dep_name, dep_namespace);
     }
 
-    Ok(root_namespace)
+    Ok(namespace)
 }
 
 /// Compiles the given package.
@@ -1665,7 +1665,7 @@ pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
     engines: &Engines,
-    namespace: namespace::Root,
+    namespace: namespace::Package,
     source_map: &mut SourceMap,
     experimental: ExperimentalFeatures,
 ) -> Result<CompiledPackage> {
@@ -1888,7 +1888,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        root_module: typed_program.namespace.root_ref().clone(),
+        namespace: typed_program.namespace.current_package_ref().clone(),
         warnings,
         metrics,
     };
@@ -2515,7 +2515,7 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            lib_namespace_map.insert(node, compiled.root_module);
+            lib_namespace_map.insert(node, compiled.namespace);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
 
@@ -2647,8 +2647,8 @@ pub fn check(
 
         if let Ok(typed_program) = programs.typed.as_ref() {
             if let TreeType::Library = typed_program.kind.tree_type() {
-                let mut lib_root = typed_program.namespace.root_ref().clone();
-                lib_root.current_package_root_module_mut().set_span(
+                let mut lib_namespace = typed_program.namespace.current_package_ref().clone();
+                lib_namespace.root_module_mut().set_span(
                     Span::new(
                         manifest.entry_string()?,
                         0,
@@ -2657,7 +2657,7 @@ pub fn check(
                     )
                     .unwrap(),
                 );
-                lib_namespace_map.insert(node, lib_root);
+                lib_namespace_map.insert(node, lib_namespace);
             }
             source_map.insert_dependency(manifest.dir());
         } else {

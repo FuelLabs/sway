@@ -3,6 +3,7 @@ library;
 
 use ::alloc::alloc_bytes;
 use ::bytes::*;
+use ::codec::*;
 
 pub struct Hasher {
     bytes: Bytes,
