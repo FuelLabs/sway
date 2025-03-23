@@ -218,8 +218,8 @@ mod tests {
     // Attribute name and its list of parameters
     type ParameterizedAttr<'a> = (&'a str, Option<Vec<&'a str>>);
 
-    fn attributes(attribute_list: &[AttributeDecl]) -> Vec<Vec<ParameterizedAttr>> {
-        attribute_list
+    fn attributes(attributes: &[AttributeDecl]) -> Vec<Vec<ParameterizedAttr>> {
+        attributes
             .iter()
             .map(|attr_decl| {
                 attr_decl
@@ -244,9 +244,11 @@ mod tests {
         let item = parse::<Item>(
             r#"
             // I will be ignored.
-            //! I will be ignored.
-            /// This is a doc comment.
-            //! I will be ignored.
+            //! This is a misplaced inner doc comment.
+            /// This is an outer doc comment.
+            //! This is a misplaced inner doc comment.
+            // I will be ignored.
+            /// This is an outer doc comment.
             // I will be ignored.
             fn f() -> bool {
                 false
@@ -255,8 +257,19 @@ mod tests {
         );
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
-            attributes(&item.attribute_list),
-            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
+            attributes(&item.attributes),
+            vec![
+                [(
+                    "doc-comment",
+                    Some(vec![" This is a misplaced inner doc comment."])
+                )],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+                [(
+                    "doc-comment",
+                    Some(vec![" This is a misplaced inner doc comment."])
+                )],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+            ]
         );
     }
 
@@ -265,15 +278,19 @@ mod tests {
         let item = parse::<Item>(
             r#"
             // I will be ignored.
-            //! I will be ignored. 
-            /// This is a doc comment.
-            //! I will be ignored.
+            //! This is a misplaced inner doc comment.
+            /// This is an outer doc comment.
+            //! This is a misplaced inner doc comment.
+            // I will be ignored.
+            /// This is an outer doc comment.
             // I will be ignored.
             struct MyStruct {
                 // I will be ignored.
-                //! I will be ignored.
-                /// This is a doc comment.
-                //! I will be ignored.
+                //! This is a misplaced inner doc comment.
+                /// This is an outer doc comment.
+                //! This is a misplaced inner doc comment.
+                // I will be ignored.
+                /// This is an outer doc comment.
                 // I will be ignored.
                 a: bool,
             }
@@ -283,8 +300,19 @@ mod tests {
         /* struct annotations */
         assert!(matches!(item.value, ItemKind::Struct(_)));
         assert_eq!(
-            attributes(&item.attribute_list),
-            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
+            attributes(&item.attributes),
+            vec![
+                [(
+                    "doc-comment",
+                    Some(vec![" This is a misplaced inner doc comment."])
+                )],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+                [(
+                    "doc-comment",
+                    Some(vec![" This is a misplaced inner doc comment."])
+                )],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+            ]
         );
 
         /* struct field annotations */
@@ -294,8 +322,19 @@ mod tests {
         };
 
         assert_eq!(
-            attributes(&item.attribute_list),
-            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
+            attributes(&item.attributes),
+            vec![
+                [(
+                    "doc-comment",
+                    Some(vec![" This is a misplaced inner doc comment."])
+                )],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+                [(
+                    "doc-comment",
+                    Some(vec![" This is a misplaced inner doc comment."])
+                )],
+                [("doc-comment", Some(vec![" This is an outer doc comment."]))],
+            ]
         );
     }
 
@@ -310,7 +349,7 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
-        assert!(item.attribute_list.is_empty());
+        assert!(item.attributes.is_empty());
     }
 
     #[test]
@@ -325,7 +364,7 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
-        assert_eq!(attributes(&item.attribute_list), vec![[("foo", None)]]);
+        assert_eq!(attributes(&item.attributes), vec![[("foo", None)]]);
     }
 
     #[test]
@@ -341,7 +380,7 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
-            attributes(&item.attribute_list),
+            attributes(&item.attributes),
             vec![[("cfg", Some(vec!["target"]))]]
         );
     }
@@ -359,7 +398,7 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
-            attributes(&item.attribute_list),
+            attributes(&item.attributes),
             vec![[("cfg", Some(vec!["target", "feature"]))]]
         );
     }
@@ -379,7 +418,7 @@ mod tests {
         assert!(matches!(item.value, ItemKind::Fn(_)));
 
         assert_eq!(
-            attributes(&item.attribute_list),
+            attributes(&item.attributes),
             vec![[("foo", None)], [("bar", None)]]
         );
     }
@@ -397,7 +436,7 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
-            attributes(&item.attribute_list),
+            attributes(&item.attributes),
             vec![[("foo", Some(vec!["one"]))]]
         );
     }
@@ -414,10 +453,7 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
-        assert_eq!(
-            attributes(&item.attribute_list),
-            vec![[("foo", Some(vec![]))]]
-        );
+        assert_eq!(attributes(&item.attributes), vec![[("foo", Some(vec![]))]]);
     }
 
     #[test]
@@ -434,7 +470,7 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
-            attributes(&item.attribute_list),
+            attributes(&item.attributes),
             vec![[("bar", None)], [("foo", Some(vec!["one"]))]]
         );
     }
@@ -453,7 +489,7 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
-            attributes(&item.attribute_list),
+            attributes(&item.attributes),
             vec![[("foo", Some(vec!["one"]))], [("bar", None)]]
         );
     }
@@ -471,7 +507,7 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
-            attributes(&item.attribute_list),
+            attributes(&item.attributes),
             vec![[("foo", Some(vec!["one", "two"]))]]
         );
     }
@@ -491,7 +527,7 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
-            attributes(&item.attribute_list),
+            attributes(&item.attributes),
             vec![
                 [("bar", None)],
                 [("foo", Some(vec!["one"]))],
@@ -513,7 +549,7 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
-            attributes(&item.attribute_list),
+            attributes(&item.attributes),
             vec![[
                 ("bar", None),
                 ("foo", Some(vec!["one"])),
@@ -541,7 +577,7 @@ mod tests {
 
         // The trait itself has no attributes.
         assert!(matches!(item.value, ItemKind::Trait(_)));
-        assert_eq!(item.attribute_list.len(), 0);
+        assert_eq!(item.attributes.len(), 0);
 
         if let ItemKind::Trait(item_trait) = item.value {
             let mut decls = item_trait.trait_items.get().iter();
@@ -551,7 +587,7 @@ mod tests {
             let annotated = trait_item.unwrap();
             if let ItemTraitItem::Fn(_fn_sig, _) = &annotated.value {
                 assert_eq!(
-                    attributes(&annotated.attribute_list),
+                    attributes(&annotated.attributes),
                     vec![[("foo", Some(vec!["one"]))], [("bar", None)]]
                 );
             }
@@ -565,7 +601,7 @@ mod tests {
             assert!(g_sig.is_some());
 
             assert_eq!(
-                attributes(&g_sig.unwrap().attribute_list),
+                attributes(&g_sig.unwrap().attributes),
                 vec![[("bar", Some(vec!["one", "two", "three"]))],]
             );
 
@@ -596,7 +632,7 @@ mod tests {
 
         // The ABI itself has no attributes.
         assert!(matches!(item.value, ItemKind::Abi(_)));
-        assert_eq!(item.attribute_list.len(), 0);
+        assert_eq!(item.attributes.len(), 0);
 
         if let ItemKind::Abi(item_abi) = item.value {
             let mut decls = item_abi.abi_items.get().iter();
@@ -605,7 +641,7 @@ mod tests {
             assert!(f_sig.is_some());
 
             assert_eq!(
-                attributes(&f_sig.unwrap().attribute_list),
+                attributes(&f_sig.unwrap().attributes),
                 vec![[("bar", Some(vec!["one", "two", "three"]))],]
             );
 
@@ -613,7 +649,7 @@ mod tests {
             assert!(g_sig.is_some());
 
             assert_eq!(
-                attributes(&g_sig.unwrap().attribute_list),
+                attributes(&g_sig.unwrap().attributes),
                 vec![[("foo", None)],]
             );
             assert!(decls.next().is_none());
@@ -625,7 +661,7 @@ mod tests {
             assert!(h_sig.is_some());
 
             assert_eq!(
-                attributes(&h_sig.unwrap().attribute_list),
+                attributes(&h_sig.unwrap().attributes),
                 vec![[("baz", Some(vec!["one"]))],]
             );
             assert!(defs.next().is_none());
@@ -648,7 +684,7 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
-            attributes(&item.attribute_list),
+            attributes(&item.attributes),
             vec![
                 [("doc-comment", Some(vec![" This is a doc comment."]))],
                 [("doc-comment", Some(vec![" This is another doc comment."]))]

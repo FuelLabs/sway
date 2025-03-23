@@ -163,6 +163,13 @@ impl From<&IdentUnique> for Ident {
     }
 }
 
+impl std::ops::Deref for IdentUnique {
+    type Target = Ident;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 impl Hash for IdentUnique {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.span().hash(state);

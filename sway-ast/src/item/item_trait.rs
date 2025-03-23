@@ -11,6 +11,19 @@ pub enum ItemTraitItem {
     Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
 }
 
+impl ItemTraitItem {
+    /// [ItemTraitItem]'s friendly name string used for various reportings.
+    pub fn friendly_name(&self) -> &'static str {
+        use ItemTraitItem::*;
+        match self {
+            Fn(..) => "function signature",
+            Const(..) => "associated constant",
+            Type(..) => "associated type",
+            Error(..) => "error",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct ItemTrait {
     pub visibility: Option<PubToken>,

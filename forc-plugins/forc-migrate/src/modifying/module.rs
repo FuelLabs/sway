@@ -50,7 +50,7 @@ impl Modifier<'_, Module> {
 
     pub(crate) fn append_function(&mut self, function: ItemFn) -> &mut Self {
         let function = Annotated {
-            attribute_list: vec![],
+            attributes: vec![],
             value: ItemKind::Fn(function),
         };
         self.append_annotated_item(function)

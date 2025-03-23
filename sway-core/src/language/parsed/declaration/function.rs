@@ -18,7 +18,7 @@ pub enum FunctionDeclarationKind {
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
     pub purity: Purity,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub name: Ident,
     pub visibility: Visibility,
     pub body: CodeBlock,
@@ -85,10 +85,8 @@ impl PartialEqWithEngines for FunctionParameter {
 }
 
 impl FunctionDeclaration {
-    /// Checks if this `FunctionDeclaration` is a test.
+    /// Checks if this [FunctionDeclaration] is a test.
     pub(crate) fn is_test(&self) -> bool {
-        self.attributes
-            .keys()
-            .any(|k| matches!(k, AttributeKind::Test))
+        self.attributes.has_any_of_kind(AttributeKind::Test)
     }
 }
