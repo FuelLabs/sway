@@ -1,7 +1,7 @@
 library;
 
 use ::primitives::*;
-use ::registers::flags;
+use ::registers::flags; <-- warning: unused import
 use ::flags::panic_on_overflow_enabled;
 
 const MAX_U32_U64: u64 = __transmute::<u32, u64>(u32::max());

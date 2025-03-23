@@ -1,10 +1,10 @@
 //! Helper functions to sign and send messages.
 library;
 
-use ::alloc::alloc_bytes;
+use ::alloc::alloc_bytes; <-- warning: unused import
 use ::bytes::Bytes;
-use ::outputs::{Output, output_count, output_type};
-use ::revert::revert;
+use ::outputs::{Output, output_count, output_type}; <-- warning: unused import
+use ::revert::revert; <-- warning: unused import
 use ::ops::*;
 
 /// Sends a message `msg_data` to `recipient` with a `coins` amount of the base asset.

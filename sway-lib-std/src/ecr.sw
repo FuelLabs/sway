@@ -4,7 +4,7 @@ library;
 use ::address::Address;
 use ::b512::B512;
 use ::bytes::Bytes;
-use ::registers::error;
+use ::registers::error; <-- warning: unused import
 use ::hash::*;
 use ::result::Result::{self, *};
 use ::codec::*;

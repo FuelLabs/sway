@@ -11,10 +11,10 @@ use ::inputs::{
     input_coin_owner,
     input_count,
     input_message_recipient,
-    input_message_sender,
+    input_message_sender, <-- warning: unused import
     input_type,
 };
-use ::revert::revert;
+use ::revert::revert; <-- warning: unused import
 use ::vec::Vec;
 use ::codec::*;
 

@@ -5,8 +5,8 @@ library;
 use ::codec::*;
 use ::assert::assert;
 use ::address::Address;
-use ::alias::SubId;
-use ::asset_id::AssetId;
+use ::alias::SubId; <-- warning: unused import
+use ::asset_id::AssetId; <-- warning: unused import
 use ::contract_id::ContractId;
 use ::hash::{Hash, Hasher};
 use ::option::Option::{self, *};

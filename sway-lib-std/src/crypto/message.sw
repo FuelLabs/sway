@@ -2,7 +2,7 @@ library;
 
 use ::b512::B512;
 use ::bytes::Bytes;
-use ::alloc::alloc_bytes;
+use ::alloc::alloc_bytes; <-- warning: unused import
 use ::convert::{From, TryFrom, TryInto};
 use ::option::Option::{self, *};
 use ::hash::*;

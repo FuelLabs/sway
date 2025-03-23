@@ -1,7 +1,7 @@
 //! A wrapper around the `b256` type to help enhance type-safety.
 library;
 
-use ::intrinsics::size_of_val;
+use ::intrinsics::size_of_val; <-- warning: unused import
 use ::convert::{From, Into, TryFrom};
 use ::hash::*;
 use ::ops::*;

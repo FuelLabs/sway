@@ -2,12 +2,12 @@
 library;
 
 use ::alloc::alloc_bytes;
-use ::assert::assert;
+use ::assert::assert; <-- warning: unused import
 use ::asset_id::AssetId;
 use ::bytes::Bytes;
 use ::contract_id::ContractId;
 use ::codec::*;
-use ::option::Option;
+use ::option::Option; <-- warning: unused import
 use ::revert::require;
 use ::vec::Vec;
 

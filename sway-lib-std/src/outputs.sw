@@ -4,7 +4,7 @@ library;
 
 use ::address::Address;
 use ::asset_id::AssetId;
-use ::contract_id::ContractId;
+use ::contract_id::ContractId; <-- warning: unused import
 use ::revert::revert;
 use ::tx::{
     GTF_CREATE_OUTPUT_AT_INDEX,

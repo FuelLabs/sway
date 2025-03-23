@@ -3,7 +3,7 @@ library;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::{assert, assert_eq};
-use ::intrinsics::size_of_val;
+use ::intrinsics::size_of_val; <-- warning: unused import
 use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
 use ::clone::Clone;

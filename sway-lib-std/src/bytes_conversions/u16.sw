@@ -2,8 +2,8 @@ library;
 
 use ::assert::assert;
 use ::bytes::Bytes;
-use ::alloc::alloc;
-use ::option::Option;
+use ::alloc::alloc; <-- warning: unused import
+use ::option::Option; <-- warning: unused import
 
 impl u16 {
     /// Converts the `u16` to a sequence of little-endian bytes.

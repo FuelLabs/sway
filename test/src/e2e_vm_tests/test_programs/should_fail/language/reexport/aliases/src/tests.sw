@@ -1,24 +1,24 @@
 library;
 
 // Reexported items from items_1.sw. All reexports aliased by lib_1
-use ::lib_1::Items1_Struct;
-use ::lib_1::Items1_Enum;
-use ::lib_1::Items1_X;
-use ::lib_1::Items1_Y;
-use ::lib_1::ITEMS_1_FUNCTION_RES;
-use ::lib_1::items_1_function;
-use ::lib_1::Items1Trait;
+use ::lib_1::Items1_Struct; <-- warning: unused import
+use ::lib_1::Items1_Enum; <-- warning: unused import
+use ::lib_1::Items1_X; <-- warning: unused import
+use ::lib_1::Items1_Y; <-- warning: unused import
+use ::lib_1::ITEMS_1_FUNCTION_RES; <-- warning: unused import
+use ::lib_1::items_1_function; <-- warning: unused import
+use ::lib_1::Items1Trait; <-- warning: unused import
 
 use ::items_1::Items1_Variants;
 
 // Reexported items from items_2.sw. All reexports aliased by lib_2
-use ::lib_2::Alias2_Struct;
-use ::lib_2::Alias2_Enum;
-use ::lib_2::Alias2_Z;
-use ::lib_2::Alias2_W;
-use ::lib_2::ALIAS_2_FUNCTION_RES;
-use ::lib_2::alias_2_function;
-use ::lib_2::Alias2Trait;
+use ::lib_2::Alias2_Struct; <-- warning: unused import
+use ::lib_2::Alias2_Enum; <-- warning: unused import
+use ::lib_2::Alias2_Z; <-- warning: unused import
+use ::lib_2::Alias2_W; <-- warning: unused import
+use ::lib_2::ALIAS_2_FUNCTION_RES; <-- warning: unused import
+use ::lib_2::alias_2_function; <-- warning: unused import
+use ::lib_2::Alias2Trait; <-- warning: unused import
 
 use ::items_2::Items2_Variants;
 
@@ -28,13 +28,13 @@ use ::lib_3::*;
 use ::items_3::Items3_Variants;
 
 // Reexported items from items_4.sw. All reexports aliased by lib_4_1 and realiased by lib_4_2
-use ::lib_4_2::Alias4_Struct;
-use ::lib_4_2::Alias4_Enum;
-use ::lib_4_2::Alias4_S;
-use ::lib_4_2::Alias4_T;
-use ::lib_4_2::ALIAS_4_FUNCTION_RES;
-use ::lib_4_2::alias_4_function;
-use ::lib_4_2::Alias4Trait;
+use ::lib_4_2::Alias4_Struct; <-- warning: unused import
+use ::lib_4_2::Alias4_Enum; <-- warning: unused import
+use ::lib_4_2::Alias4_S; <-- warning: unused import
+use ::lib_4_2::Alias4_T; <-- warning: unused import
+use ::lib_4_2::ALIAS_4_FUNCTION_RES; <-- warning: unused import
+use ::lib_4_2::alias_4_function; <-- warning: unused import
+use ::lib_4_2::Alias4Trait; <-- warning: unused import
 
 // Reexported trait from items_5.sw. Aliased both by lib_5_1 and by lib_5_2
 use ::lib_5_1::*;

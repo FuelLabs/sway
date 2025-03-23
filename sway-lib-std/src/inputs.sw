@@ -4,10 +4,10 @@ library;
 
 use ::address::Address;
 use ::alloc::alloc_bytes;
-use ::assert::assert;
+use ::assert::assert; <-- warning: unused import
 use ::asset_id::AssetId;
 use ::bytes::Bytes;
-use ::contract_id::ContractId;
+use ::contract_id::ContractId; <-- warning: unused import
 use ::option::Option::{self, *};
 use ::tx::{
     GTF_CREATE_INPUT_AT_INDEX,

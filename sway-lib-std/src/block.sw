@@ -1,9 +1,9 @@
 //! Functionality for accessing block-related data.
 library;
 
-use ::assert::assert;
+use ::assert::assert; <-- warning: unused import
 use ::result::Result::{self, *};
-use ::logging::log;
+use ::logging::log; <-- warning: unused import
 use ::primitives::*;
 use ::ops::*;
 use ::codec::*;

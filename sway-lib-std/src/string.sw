@@ -5,7 +5,7 @@ use ::assert::assert;
 use ::bytes::*;
 use ::convert::*;
 use ::hash::{Hash, Hasher};
-use ::option::Option;
+use ::option::Option; <-- warning: unused import
 use ::codec::*;
 use ::ops::*;
 use ::raw_slice::AsRawSlice;

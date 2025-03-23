@@ -2,10 +2,10 @@ library;
 
 use ::assert::assert;
 use ::bytes::*;
-use ::alloc::alloc;
-use ::option::Option;
+use ::alloc::alloc; <-- warning: unused import
+use ::option::Option; <-- warning: unused import
 use ::bytes_conversions::u64::*;
-use ::convert::From;
+use ::convert::From; <-- warning: unused import
 
 impl b256 {
     /// Converts the `b256` to a sequence of little-endian bytes.

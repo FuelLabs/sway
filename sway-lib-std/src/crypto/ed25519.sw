@@ -1,6 +1,6 @@
 library;
 
-use ::alloc::alloc_bytes;
+use ::alloc::alloc_bytes; <-- warning: unused import
 use ::b512::B512;
 use ::bytes::Bytes;
 use ::convert::{From, Into, TryFrom};

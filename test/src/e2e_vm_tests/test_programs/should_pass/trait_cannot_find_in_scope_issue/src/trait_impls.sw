@@ -1,6 +1,6 @@
 library;
 
-use std::hash::Hash;
+use std::hash::Hash; <-- warning: unused import
 use ::lib::{A, FirstTrait, SecondTrait, GenericTrait};
 
 impl FirstTrait for A {}

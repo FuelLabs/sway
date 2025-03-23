@@ -2,8 +2,8 @@ library;
 
 use ::assert::assert;
 use ::bytes::Bytes;
-use ::alloc::alloc;
-use ::option::Option;
+use ::alloc::alloc; <-- warning: unused import
+use ::option::Option; <-- warning: unused import
 
 impl u64 {
     /// Converts the `u64` to a sequence of little-endian bytes.
