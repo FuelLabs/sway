@@ -285,6 +285,8 @@ pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
     pub minify: MinifyOpts,
+    /// If set, generates a JSON file containing the hex-encoded script binary.
+    pub generate_hex: bool,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,
     /// If set, outputs debug info to the provided file.
@@ -427,6 +429,30 @@ impl BuiltPackage {
         Ok(())
     }
 
+    pub fn write_hexcode(&self, path: &Path) -> Result<()> {
+        let hex_file = serde_json::json!({
+            "hex": self.hexlify(&self.bytecode.bytes),
+        });
+
+        fs::write(path, hex_file.to_string())?;
+        Ok(())
+    }
+
+    pub fn hexlify(&self, data: &[u8]) -> String {
+        const HEX_CHARS: &[u8; 16] = b"0123456789abcdef";
+
+        // "0x" + 2 hex chars per byte
+        let mut result = String::with_capacity(2 + data.len() * 2);
+        result.push_str("0x");
+
+        for &byte in data {
+            result.push(HEX_CHARS[(byte >> 4) as usize] as char); // high nibble
+            result.push(HEX_CHARS[(byte & 0x0f) as usize] as char); // low nibble
+        }
+
+        result
+    }
+
     /// Writes debug_info (source_map) of the BuiltPackage to the given `out_file`.
     pub fn write_debug_info(&self, out_file: &Path) -> Result<()> {
         if matches!(out_file.extension(), Some(ext) if ext == "json") {
@@ -485,6 +511,7 @@ impl BuiltPackage {
     pub fn write_output(
         &self,
         minify: &MinifyOpts,
+        generate_hex: &bool,
         pkg_name: &str,
         output_dir: &Path,
     ) -> Result<()> {
@@ -499,6 +526,12 @@ impl BuiltPackage {
         let program_abi_stem = format!("{pkg_name}-abi");
         let json_abi_path = output_dir.join(program_abi_stem).with_extension("json");
         self.write_json_abi(&json_abi_path, minify)?;
+
+        if *generate_hex {
+            let program_hex_stem = format!("{pkg_name}-hex");
+            let hex_path = output_dir.join(program_hex_stem).with_extension("json");
+            self.write_hexcode(&hex_path)?;
+        }
 
         debug!(
             "      Bytecode size: {} bytes ({})",
@@ -2150,6 +2183,7 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
 /// Builds a project with given BuildOptions.
 pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
     let BuildOpts {
+        generate_hex,
         minify,
         binary_outfile,
         debug_outfile,
@@ -2242,7 +2276,12 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
                 .unwrap_or_else(|| output_dir.join("debug_symbols.obj"));
             built_package.write_debug_info(&debug_path)?;
         }
-        built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
+        built_package.write_output(
+            minify,
+            generate_hex,
+            &pkg_manifest.project.name,
+            &output_dir,
+        )?;
         built_workspace.push(Arc::new(built_package));
     }
 

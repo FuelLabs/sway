@@ -41,6 +41,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         error_on_warnings: cmd.build.profile.error_on_warnings,
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
+        generate_hex: cmd.build.output.generate_hex,
         build_target: cmd.build.build_target,
         tests: cmd.tests,
         member_filter: MemberFilter::default(),
