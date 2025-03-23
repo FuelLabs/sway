@@ -869,12 +869,15 @@ fn handle_impl_contract(
 ) -> Result<Vec<AstNodeContent>, ErrorEmitted> {
     let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
 
+    // Only handle if this is an impl Contract block
     if let TypeInfo::Contract = &*engines.te().get(implementing_for.type_id) {
+        // Generate unique name for anonymous ABI
         let anon_abi_name = Ident::new_with_override(
             format!("__AnonymousAbi_{}", context.next_anon_suffix()),
             span.clone(),
         );
 
+        // Convert the methods to ABI interface
         let mut interface_surface = Vec::new();
         for item in &item_impl.contents.inner {
             match &item.value {
@@ -892,6 +895,7 @@ fn handle_impl_contract(
             }
         }
 
+        // Create ABI declaration
         let abi_decl = AbiDeclaration {
             name: anon_abi_name.clone(),
             attributes: AttributesMap::default(),
@@ -901,8 +905,10 @@ fn handle_impl_contract(
             span: span.clone(),
         };
 
+        // Insert ABI declaration
         let abi_decl_id = engines.pe().insert(abi_decl);
 
+        // Convert original impl items to ImplItems
         let items = item_impl
             .contents
             .inner
@@ -920,6 +926,7 @@ fn handle_impl_contract(
             })
             .collect();
 
+        // Convert impl Contract to impl trait
         let impl_trait = ImplSelfOrTrait {
             is_self: false,
             impl_type_parameters: vec![],
@@ -938,12 +945,14 @@ fn handle_impl_contract(
 
         let impl_trait_id = engines.pe().insert(impl_trait);
 
+        // Return both declarations as AST nodes
         return Ok(vec![
             AstNodeContent::Declaration(Declaration::AbiDeclaration(abi_decl_id)),
             AstNodeContent::Declaration(Declaration::ImplSelfOrTrait(impl_trait_id)),
         ]);
     }
 
+    // Not a Contract impl, return None
     Ok(vec![])
 }
 
