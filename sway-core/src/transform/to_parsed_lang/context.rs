@@ -37,6 +37,7 @@ pub struct Context {
     /// Keeps track of the implementing type as we convert the tree.
     pub(crate) implementing_type: Option<Declaration>,
 
+    /// Unique suffix used to generate unique names for anonymous ABIs
     anon_abi_suffix: usize,
 }
 
@@ -62,6 +63,7 @@ impl Context {
         }
     }
 
+    /// Returns a unique suffix used to generate a unique name for an anonymous ABI
     pub fn next_anon_suffix(&mut self) -> usize {
         self.anon_abi_suffix += 1;
         self.anon_abi_suffix
