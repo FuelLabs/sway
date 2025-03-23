@@ -1,10 +1,6 @@
 contract;
 
-abi MyContract {
-    fn test_function() -> bool;
-}
-
-impl MyContract for Contract {
+impl Contract {
     fn test_function() -> bool {
         true
     }
