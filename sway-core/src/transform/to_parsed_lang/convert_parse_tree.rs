@@ -175,9 +175,13 @@ pub fn item_to_ast_nodes(
             decl(trait_decl)
         }
         ItemKind::Impl(item_impl) => {
-            let impl_decl = item_impl_to_declaration(context, handler, engines, item_impl)?;
-            context.implementing_type = Some(impl_decl.clone());
-            decl(impl_decl)
+            match handle_impl_contract(context, handler, engines, item_impl.clone(), span.clone()) {
+                Ok(contents) if !contents.is_empty() => contents,
+                _ => {
+                    let impl_decl = item_impl_to_declaration(context, handler, engines, item_impl)?;
+                    decl(impl_decl)
+                }
+            }
         }
         ItemKind::Abi(item_abi) => {
             let abi_decl = Declaration::AbiDeclaration(item_abi_to_abi_declaration(
@@ -875,6 +879,93 @@ pub fn item_impl_to_declaration(
             }
         },
     }
+}
+
+fn handle_impl_contract(
+    context: &mut Context,
+    handler: &Handler,
+    engines: &Engines,
+    item_impl: ItemImpl,
+    span: Span,
+) -> Result<Vec<AstNodeContent>, ErrorEmitted> {
+    let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
+
+    if let TypeInfo::Contract = &*engines.te().get(implementing_for.type_id) {
+        let anon_abi_name = Ident::new_with_override(
+            format!("__AnonymousAbi_{}", context.next_anon_suffix()),
+            span.clone(),
+        );
+
+        let mut interface_surface = Vec::new();
+        for item in &item_impl.contents.inner {
+            match &item.value {
+                sway_ast::ItemImplItem::Fn(fn_item) => {
+                    let fn_decl = fn_signature_to_trait_fn(
+                        context,
+                        handler,
+                        engines,
+                        fn_item.fn_signature.clone(),
+                        AttributesMap::default(),
+                    )?;
+                    interface_surface.push(TraitItem::TraitFn(fn_decl));
+                }
+                _ => continue,
+            }
+        }
+
+        let abi_decl = AbiDeclaration {
+            name: anon_abi_name.clone(),
+            attributes: AttributesMap::default(),
+            interface_surface: interface_surface.clone(),
+            methods: vec![],
+            supertraits: vec![],
+            span: span.clone(),
+        };
+
+        let abi_decl_id = engines.pe().insert(abi_decl);
+
+        let items = item_impl
+            .contents
+            .inner
+            .into_iter()
+            .filter_map(|item| {
+                let attributes = item_attrs_to_map(context, handler, &item.attribute_list).ok()?;
+                match item.value {
+                    sway_ast::ItemImplItem::Fn(fn_item) => item_fn_to_function_declaration(
+                        context, handler, engines, fn_item, attributes, None, None, None,
+                    )
+                    .ok()
+                    .map(ImplItem::Fn),
+                    _ => None,
+                }
+            })
+            .collect();
+
+        let impl_trait = ImplSelfOrTrait {
+            is_self: false,
+            impl_type_parameters: vec![],
+            impl_const_generics_parameters: vec![],
+            trait_name: CallPath {
+                prefixes: vec![],
+                suffix: anon_abi_name,
+                callpath_type: CallPathType::Ambiguous,
+            },
+            trait_type_arguments: vec![],
+            trait_decl_ref: Some(crate::decl_engine::ParsedInterfaceDeclId::Abi(abi_decl_id)),
+            implementing_for,
+            items,
+            block_span: span.clone(),
+        };
+
+        let impl_trait_id = engines.pe().insert(impl_trait);
+
+        return Ok(vec![
+            AstNodeContent::Declaration(Declaration::AbiDeclaration(abi_decl_id)),
+            AstNodeContent::Declaration(Declaration::ImplSelfOrTrait(impl_trait_id)),
+        ]);
+    }
+
+    Ok(vec![])
 }
 
 fn path_type_to_call_path_and_type_arguments(

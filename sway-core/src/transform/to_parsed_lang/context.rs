@@ -36,6 +36,8 @@ pub struct Context {
 
     /// Keeps track of the implementing type as we convert the tree.
     pub(crate) implementing_type: Option<Declaration>,
+
+    anon_abi_suffix: usize,
 }
 
 impl Context {
@@ -56,7 +58,13 @@ impl Context {
             for_unique_suffix: std::default::Default::default(),
             program_type: std::default::Default::default(),
             implementing_type: None,
+            anon_abi_suffix: 0,
         }
+    }
+
+    pub fn next_anon_suffix(&mut self) -> usize {
+        self.anon_abi_suffix += 1;
+        self.anon_abi_suffix
     }
 
     /// Updates the value of `module_has_configurable_block`.
