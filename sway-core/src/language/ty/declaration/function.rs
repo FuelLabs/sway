@@ -21,10 +21,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{
-    constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME},
-    Ident, Named, Span, Spanned,
-};
+use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyFunctionDeclKind {
@@ -43,7 +40,7 @@ pub struct TyFunctionDecl {
     pub implementing_for_typeid: Option<TypeId>,
     pub span: Span,
     pub call_path: CallPath,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub type_parameters: Vec<TypeParameter>,
     pub const_generic_parameters: Vec<ConstGenericParameter>,
     pub return_type: TypeArgument,
@@ -530,28 +527,15 @@ impl TyFunctionDecl {
     /// Whether or not this function is a unit test, i.e. decorated with `#[test]`.
     pub fn is_test(&self) -> bool {
         //TODO match kind to Test
-        self.attributes
-            .contains_key(&transform::AttributeKind::Test)
+        self.attributes.has_any_of_kind(AttributeKind::Test)
     }
 
     pub fn inline(&self) -> Option<Inline> {
-        match self
-            .attributes
-            .get(&transform::AttributeKind::Inline)?
-            .last()?
-            .args
-            .first()?
-            .name
-            .as_str()
-        {
-            INLINE_NEVER_NAME => Some(Inline::Never),
-            INLINE_ALWAYS_NAME => Some(Inline::Always),
-            _ => None,
-        }
+        self.attributes.inline()
     }
 
     pub fn is_fallback(&self) -> bool {
-        self.attributes.contains_key(&AttributeKind::Fallback)
+        self.attributes.has_any_of_kind(AttributeKind::Fallback)
     }
 
     /// Whether or not this function is a constructor for the type given by `type_id`.

@@ -10,10 +10,10 @@ use crate::{
 use std::fmt::Write;
 use sway_ast::{
     attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind},
-    keywords::{HashToken, Token},
+    keywords::{HashBangToken, HashToken, Token},
     CommaToken,
 };
-use sway_types::{ast::Delimiter, constants::DOC_COMMENT_ATTRIBUTE_NAME, Spanned};
+use sway_types::{ast::Delimiter, Spanned};
 
 impl<T: Format + Spanned + std::fmt::Debug> Format for Annotated<T> {
     fn format(
@@ -23,7 +23,7 @@ impl<T: Format + Spanned + std::fmt::Debug> Format for Annotated<T> {
     ) -> Result<(), FormatterError> {
         // format each `Attribute`
         let mut start = None;
-        for attr in &self.attribute_list {
+        for attr in &self.attributes {
             if let Some(start) = start {
                 // Write any comments that may have been defined in between the
                 // attributes and the value
@@ -88,7 +88,7 @@ impl Format for AttributeDecl {
             .attribute
             .get()
             .into_iter()
-            .partition(|a| a.name.as_str() == DOC_COMMENT_ATTRIBUTE_NAME);
+            .partition(|a| a.is_doc_comment());
 
         // invariant: doc comment attributes are singleton lists
         if let Some(attr) = doc_comment_attrs.into_iter().next() {
@@ -116,7 +116,9 @@ impl Format for AttributeDecl {
         // invariant: attribute lists cannot be empty
         // `#`
         match &self.hash_kind {
-            AttributeHashKind::Inner(_) => return Err(FormatterError::HashBangAttributeError),
+            AttributeHashKind::Inner(_hash_bang_token) => {
+                write!(formatted_code, "{}", HashBangToken::AS_STR)?;
+            }
             AttributeHashKind::Outer(_hash_token) => {
                 write!(formatted_code, "{}", HashToken::AS_STR)?;
             }
