@@ -79,14 +79,24 @@ impl Namespace {
 
     pub fn current_module(&self) -> &Module {
         self.module_in_current_package(&self.current_mod_path)
-            .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Could not retrieve submodule for mod_path: {:?}",
+                    self.current_mod_path
+                );
+            })
     }
 
     pub fn current_module_mut(&mut self) -> &mut Module {
         let package_relative_path = Package::package_relative_path(&self.current_mod_path);
         self.current_package_root_module_mut()
             .submodule_mut(&package_relative_path)
-            .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Could not retrieve submodule for mod_path: {:?}",
+                    package_relative_path
+                );
+            })
     }
 
     pub(crate) fn current_module_has_submodule(&self, submod_name: &Ident) -> bool {

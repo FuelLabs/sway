@@ -1075,6 +1075,8 @@ pub enum CompileError {
         enum_name: IdentUnique,
         enum_variant_name: IdentUnique,
     },
+    #[error("Incoherent impl was found due to breaking orphan rule check.")]
+    IncoherentImplDueToOrphanRule { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1305,6 +1307,7 @@ impl Spanned for CompileError {
             ErrorAttributeInNonErrorEnum {
                 enum_variant_name, ..
             } => enum_variant_name.span(),
+            IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
         }
     }
 }
