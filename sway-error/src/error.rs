@@ -1062,6 +1062,8 @@ pub enum CompileError {
     },
     #[error("Multiple contracts methods with the same name.")]
     MultipleContractsMethodsWithTheSameName { spans: Vec<Span> },
+    #[error("Incoherent impl was found due to breaking orphan rule check.")]
+    IncoherentImplDueToOrphanRule { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1288,6 +1290,7 @@ impl Spanned for CompileError {
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
             MultipleImplsSatisfyingTraitForType { span, .. } => span.clone(),
             MultipleContractsMethodsWithTheSameName { spans } => spans[0].clone(),
+            IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
         }
     }
 }

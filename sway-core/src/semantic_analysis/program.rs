@@ -82,19 +82,21 @@ impl TyProgram {
         })?;
 
         let experimental = ctx.experimental;
-        let (kind, declarations, configurables) = Self::validate_root(
-            handler,
-            engines,
-            &root,
-            ctx.namespace_mut(),
-            *kind,
-            package_name,
-            experimental,
-        )
-        .map_err(|error| TypeCheckFailed {
-            error,
-            root_module: Some(root.clone()),
-            namespace: ctx.namespace.current_package_ref().clone(),
+        let (kind, declarations, configurables) =
+            Self::validate_root(handler, engines, &root, *kind, package_name, experimental)
+                .map_err(|error| TypeCheckFailed {
+                    error,
+                    root_module: Some(root.clone()),
+                    namespace: ctx.namespace.current_package_ref().clone(),
+                })?;
+
+        let mut namespace = ctx.namespace().clone();
+        Self::validate_coherence(handler, engines, &root, &mut namespace).map_err(|error| {
+            TypeCheckFailed {
+                error,
+                root_module: Some(root.clone()),
+                namespace: ctx.namespace.current_package_ref().clone(),
+            }
         })?;
 
         let program = TyProgram {
