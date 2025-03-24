@@ -367,7 +367,6 @@ where
     }
 }
 
-
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 10]
 where
@@ -388,9 +387,9 @@ where
 }
 
 #[cfg(experimental_const_generics = true)]
-impl<T, const N: u64> Hash for [T; N] 
+impl<T, const N:u64> Hash for [T; N]
 where
-    T: Hash
+    T: Hash,
 {
     fn hash(self, ref mut state: Hasher) {
         let mut i = 0;
@@ -497,5 +496,7 @@ fn ok_array_hash() {
     let a = sha256([1, 2, 3]);
     let b = sha256((1, 2, 3));
 
-    if a != b { __revert(0); }
+    if a != b {
+        __revert(0);
+    }
 }

@@ -38,9 +38,9 @@ impl Clone for u256 {
 }
 
 #[cfg(experimental_const_generics = true)]
-impl<T, const N: u64> Clone for [T; N] 
+impl<T, const N:u64> Clone for [T; N]
 where
-    T: Clone
+    T: Clone,
 {
     fn clone(self) -> Self {
         let first: T = *__elem_at(&self, 0);
@@ -65,5 +65,7 @@ fn ok_array_clone() {
     let a = [1, 2, 3];
     let b = a.clone();
 
-    if !a.eq(b) { __revert(5); }
+    if !a.eq(b) {
+        __revert(5);
+    }
 }
