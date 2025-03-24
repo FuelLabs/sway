@@ -99,11 +99,11 @@ fuels-core = "0.71"
 fuels-accounts = "0.71"
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.59.1"
-fuel-crypto = "0.59.1"
-fuel-types = "0.59.1"
-fuel-tx = "0.59.1"
-fuel-vm = "0.59.1"
+fuel-asm = "0.59"
+fuel-crypto = "0.59"
+fuel-types = "0.59"
+fuel-tx = "0.59"
+fuel-vm = "0.59"
 
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.12"
