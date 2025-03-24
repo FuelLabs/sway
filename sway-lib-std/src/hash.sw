@@ -241,6 +241,7 @@ where
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 1]
 where
     T: Hash,
@@ -250,6 +251,7 @@ where
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 2]
 where
     T: Hash,
@@ -260,6 +262,7 @@ where
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 3]
 where
     T: Hash,
@@ -271,6 +274,7 @@ where
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 4]
 where
     T: Hash,
@@ -283,6 +287,7 @@ where
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 5]
 where
     T: Hash,
@@ -296,6 +301,7 @@ where
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 6]
 where
     T: Hash,
@@ -310,6 +316,7 @@ where
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 7]
 where
     T: Hash,
@@ -325,6 +332,7 @@ where
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 8]
 where
     T: Hash,
@@ -341,6 +349,7 @@ where
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 9]
 where
     T: Hash,
@@ -358,6 +367,8 @@ where
     }
 }
 
+
+#[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 10]
 where
     T: Hash,
@@ -373,6 +384,21 @@ where
         self[7].hash(state);
         self[8].hash(state);
         self[9].hash(state);
+    }
+}
+
+#[cfg(experimental_const_generics = true)]
+impl<T, const N: u64> Hash for [T; N] 
+where
+    T: Hash
+{
+    fn hash(self, ref mut state: Hasher) {
+        let mut i = 0;
+        while __lt(i, N) {
+            let item: T = *__elem_at(&self, i);
+            item.hash(state);
+            i = __add(i, 1);
+        }
     }
 }
 
@@ -461,4 +487,15 @@ where
     let mut hasher = Hasher::new();
     s.hash(hasher);
     hasher.keccak256()
+}
+
+#[cfg(experimental_const_generics = true)]
+#[test]
+fn ok_array_hash() {
+    use ::ops::*;
+
+    let a = sha256([1, 2, 3]);
+    let b = sha256((1, 2, 3));
+
+    if a != b { __revert(0); }
 }
