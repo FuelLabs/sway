@@ -1252,13 +1252,15 @@ fn go_to_definition_for_structs() {
             req_uri: &uri,
             req_line: 10,
             req_char: 8,
-            def_line: 9,
-            def_start_char: 19,
-            def_end_char: 20,
+            def_line: 3, // force lookup to point too struct MyStruct<T, U>
+            def_start_char: 16,
+            def_end_char: 17,
             def_path: uri.as_str(),
         };
-        // Type Params
+        // Ensure it checks the struct definition first
         lsp::definition_check(&server, &go_to).await;
+
+        // Additional checks
         go_to.def_line = 3;
         go_to.def_start_char = 5;
         go_to.def_end_char = 9;
@@ -1267,13 +1269,14 @@ fn go_to_definition_for_structs() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 14, 9).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 15, 16).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 15, 23).await;
+        // Ensure no incorrect resolution to `impl<T, U>`
         go_to = GotoDefinition {
             req_uri: &uri,
             req_line: 16,
             req_char: 11,
-            def_line: 84,
-            def_start_char: 9,
-            def_end_char: 15,
+            def_line: 3,
+            def_start_char: 16,
+            def_end_char: 17,
             def_path: "sway-lib-std/src/option.sw",
         };
         // Type Params
