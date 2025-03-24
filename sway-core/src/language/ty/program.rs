@@ -3,7 +3,8 @@ use std::sync::Arc;
 use crate::{
     decl_engine::*,
     fuel_prelude::fuel_tx::StorageSlot,
-    language::{parsed, ty::*, Purity},
+    language::{parsed, ty::*, Purity, Visibility},
+    namespace::{check_impls_for_overlap, check_orphan_rules_for_impls},
     semantic_analysis::namespace,
     transform::AllowDeprecatedState,
     type_system::*,
@@ -77,7 +78,16 @@ impl TyProgram {
 
         // Validate all submodules
         let mut configurables = vec![];
-        for (_, submodule) in &root.submodules {
+        for (submod_name, submodule) in &root.submodules {
+            root_namespace.push_submodule(
+                handler,
+                engines,
+                submod_name.clone(),
+                Visibility::Public,
+                submodule.mod_name_span.clone(),
+                false,
+            )?;
+
             let _ = Self::validate_root(
                 handler,
                 engines,
@@ -87,6 +97,8 @@ impl TyProgram {
                 package_name,
                 experimental,
             );
+
+            root_namespace.pop_submodule();
         }
 
         let mut entries = Vec::new();
@@ -420,6 +432,46 @@ impl TyProgram {
             if let Some(error) = e {
                 handler.emit_err(error);
             }
+        }
+
+        // check orphan rules for all traits
+        check_orphan_rules_for_impls(handler, engines, root_namespace.current_package_ref())?;
+
+        // check trait overlap
+        let mut unified_trait_map = root_namespace
+            .current_package_ref()
+            .root_module()
+            .root_lexical_scope()
+            .items
+            .implemented_traits
+            .clone();
+
+        let other_trait_map = unified_trait_map.clone();
+        check_impls_for_overlap(&mut unified_trait_map, handler, other_trait_map, engines)?;
+
+        for (submod_name, submodule) in root.submodules.iter() {
+            root_namespace.push_submodule(
+                handler,
+                engines,
+                submod_name.clone(),
+                Visibility::Public,
+                submodule.mod_name_span.clone(),
+                false,
+            )?;
+
+            check_impls_for_overlap(
+                &mut unified_trait_map,
+                handler,
+                root_namespace
+                    .current_module()
+                    .root_lexical_scope()
+                    .items
+                    .implemented_traits
+                    .clone(),
+                engines,
+            )?;
+
+            root_namespace.pop_submodule();
         }
 
         Ok((typed_program_kind, declarations, configurables))

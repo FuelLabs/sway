@@ -81,12 +81,13 @@ impl TyProgram {
             namespace: ctx.namespace.current_package_ref().clone(),
         })?;
 
+        let mut namespace = ctx.namespace().clone();
         let experimental = ctx.experimental;
         let (kind, declarations, configurables) = Self::validate_root(
             handler,
             engines,
             &root,
-            ctx.namespace_mut(),
+            &mut namespace,
             *kind,
             package_name,
             experimental,
