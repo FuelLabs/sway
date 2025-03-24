@@ -401,7 +401,9 @@ impl MaterializeConstGenerics for TyExpression {
                 }
                 Ok(())
             }
-            TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind { arguments, ..}) => {
+            TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+                arguments, ..
+            }) => {
                 for expr in arguments {
                     expr.materialize_const_generics(engines, handler, name, value)?;
                 }
@@ -410,7 +412,11 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::Return(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
             }
-            TyExpressionVariant::IfExp { condition, then, r#else } => {
+            TyExpressionVariant::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
                 condition.materialize_const_generics(engines, handler, name, value)?;
                 then.materialize_const_generics(engines, handler, name, value)?;
                 if let Some(e) = r#else.as_mut() {
@@ -447,14 +453,11 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::Deref(r) => {
                 r.materialize_const_generics(engines, handler, name, value)
             }
-            x => {
-                todo!("{x:?}");
-                Err(handler.emit_err(
+            _ => Err(handler.emit_err(
                 sway_error::error::CompileError::ConstGenericNotSupportedHere {
                     span: self.span.clone(),
                 },
-            ))
-        },
+            )),
         }
     }
 }
