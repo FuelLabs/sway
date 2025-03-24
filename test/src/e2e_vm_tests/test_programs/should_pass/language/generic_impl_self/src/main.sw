@@ -127,15 +127,19 @@ impl<T> MyOption<T> {
     }
 }
 
-impl<T, E> Result<T, E> {
-    fn dummy(t: T) -> Result<T, bool> {
-        Ok(t)
+pub struct MyResult2<T, E> {
+    res: Result<T, E>
+}
+
+impl<T, E> MyResult2<T, E> {
+    fn dummy(t: T) -> MyResult2<T, bool> {
+        MyResult2 { res: Ok(t) }
     }
 }
 
 fn result_impl_test() {
     let res = U128::from((0, 13)).as_u64();
-    assert(!Result::dummy(false).unwrap());
+    assert(!MyResult2::dummy(false).res.unwrap());
     assert(res.unwrap_or(5) == 13);
 }
 
@@ -214,11 +218,16 @@ fn generic_impl_self_test() {
 
 use std::vec::*;
 
-impl<T> Vec<T> {
-    pub fn with(self, with_value: T) -> Self {
-        let mut inside_vec = self;
-        inside_vec.push(with_value);
-        inside_vec
+struct MyVec<T> {
+    vec: Vec<T>
+}
+
+impl<T> MyVec<T> {
+    pub fn new() -> Self { MyVec{ vec: Vec::new() } }
+
+    pub fn with(ref mut self, with_value: T) -> Self {
+        self.vec.push(with_value);
+        self
     }
 }
 
@@ -227,8 +236,8 @@ fn main() -> u32 {
     result_impl_test();
 
     // data must be Vec<u256>
-    let data = Vec::new().with(0x333u256).with(0x222u256);
-    assert(data.len() == 2);
+    let data = MyVec::new().with(0x333u256).with(0x222u256);
+    assert(data.vec.len() == 2);
 
     10u32
 }

@@ -146,13 +146,6 @@ impl New for Enum {
     }
 }
 
-impl PartialEq for (u8, u32) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-impl Eq for (u8, u32) {}
-
 impl New for (u8, u32) {
     fn new() -> Self {
         (123, 12345)
@@ -191,25 +184,11 @@ impl New for raw_slice {
     }
 }
 
-impl PartialEq for raw_slice {
-    fn eq(self, other: Self) -> bool {
-        self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    }
-}
-impl Eq for raw_slice {}
-
 impl New for () {
     fn new() -> Self {
         ()
     }
 }
-
-impl PartialEq for () {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-impl Eq for () {}
 
 impl New for [u64; 0] {
     fn new() -> Self {
