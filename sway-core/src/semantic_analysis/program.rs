@@ -81,13 +81,15 @@ impl TyProgram {
             namespace: ctx.namespace.current_package_ref().clone(),
         })?;
 
+        let experimental = ctx.experimental;
         let (kind, declarations, configurables) = Self::validate_root(
             handler,
             engines,
             &root,
+            ctx.namespace_mut(),
             *kind,
             package_name,
-            ctx.experimental,
+            experimental,
         )
         .map_err(|error| TypeCheckFailed {
             error,
