@@ -305,6 +305,7 @@ impl Namespace {
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
+        check_implicits: bool,
     ) -> Result<(), ErrorEmitted> {
         let mut import_implicits = false;
 
@@ -313,6 +314,7 @@ impl Namespace {
             .current_module()
             .submodules()
             .contains_key(&mod_name.to_string())
+            && check_implicits
         {
             // Entering a new module. Add a new one.
             self.current_module_mut()
@@ -339,8 +341,16 @@ impl Namespace {
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
+        check_implicits: bool,
     ) -> Result<(), ErrorEmitted> {
-        match self.enter_submodule(handler, engines, mod_name, visibility, module_span) {
+        match self.enter_submodule(
+            handler,
+            engines,
+            mod_name,
+            visibility,
+            module_span,
+            check_implicits,
+        ) {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
