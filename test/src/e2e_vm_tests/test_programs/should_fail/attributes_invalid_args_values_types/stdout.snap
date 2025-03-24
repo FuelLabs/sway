@@ -1,0 +1,60 @@
+---
+source: test/tests/tests.rs
+assertion_line: 115
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types
+   Compiling library attributes_invalid_args_values_types (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types)
+warning: Function is deprecated
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types/src/deprecated_attr.sw:7:5
+  |
+...
+7 |     not_ok();
+  |     ------ Function "not_ok" is deprecated.
+  |
+____
+
+error: Attribute argument value has a wrong type
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types/src/cfg_attr_experimental.sw:3:35
+  |
+...
+3 | #[cfg(experimental_new_encoding = "true")]
+  |                                   ^^^^^^ "experimental_new_encoding" argument must have a value of type "bool".
+  |                                   ------ help: This value has type "str".
+  |
+____
+
+error: Attribute argument value has a wrong type
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types/src/cfg_attr_program_type.sw:3:22
+  |
+...
+3 | #[cfg(program_type = true)]
+  |                      ^^^^ "program_type" argument must have a value of type "str".
+  |                      ---- help: This value has type "bool".
+  |
+____
+
+error: Attribute argument value has a wrong type
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types/src/cfg_attr_target.sw:3:16
+  |
+...
+3 | #[cfg(target = 42)]
+  |                ^^ "target" argument must have a value of type "str".
+  |                -- help: This value has type "numeric".
+  |
+____
+
+error: Attribute argument value has a wrong type
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types/src/deprecated_attr.sw:3:21
+  |
+...
+3 | #[deprecated(note = true)]
+  |                     ^^^^ "note" argument must have a value of type "str".
+  |                     ---- help: This value has type "bool".
+  |
+____
+
+  Aborting due to 4 errors.
+error: Failed to compile attributes_invalid_args_values_types

@@ -20,7 +20,7 @@ pub struct TyConstantDecl {
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
     pub visibility: Visibility,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub return_type: TypeId,
     pub type_ascription: TypeArgument,
     pub span: Span,

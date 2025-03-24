@@ -451,7 +451,7 @@ fn print_migration_finished_action(num_of_postponed_steps: usize) {
             "Finished",
             &format!(
                 "Run `forc migrate` at a later point to resolve {} postponed migration step{}",
-                number_to_str(num_of_postponed_steps),
+                num_to_str(num_of_postponed_steps),
                 plural_s(num_of_postponed_steps),
             ),
         )

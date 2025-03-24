@@ -204,7 +204,7 @@ impl TyAstNode {
             } => {
                 let fn_decl = decl_engine.get_function(decl_id);
                 let TyFunctionDecl { attributes, .. } = &*fn_decl;
-                attributes.contains_key(&AttributeKind::Test)
+                attributes.has_any_of_kind(AttributeKind::Test)
             }
             _ => false,
         }

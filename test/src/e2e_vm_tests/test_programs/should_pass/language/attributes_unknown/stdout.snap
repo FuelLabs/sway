@@ -1,0 +1,104 @@
+---
+source: test/tests/tests.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown --release
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling library attributes_unknown (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown)
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/src/main.sw:3:3
+  |
+...
+3 | #[alow]
+  |   ---- "alow" attribute is unknown.
+  |   ---- help: Did you mean "allow"?
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/src/main.sw:4:3
+  |
+...
+4 | #[alow()]
+  |   ---- "alow" attribute is unknown.
+  |   ---- help: Did you mean "allow"?
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/src/main.sw:5:3
+  |
+...
+5 | #[alow(arg)]
+  |   ---- "alow" attribute is unknown.
+  |   ---- help: Did you mean "allow"?
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/src/main.sw:6:3
+  |
+...
+6 | #[alow(arg = 0)]
+  |   ---- "alow" attribute is unknown.
+  |   ---- help: Did you mean "allow"?
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/src/main.sw:7:3
+  |
+...
+7 | #[depricated(note = "note")]
+  |   ---------- "depricated" attribute is unknown.
+  |   ---------- help: Did you mean "deprecated"?
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/src/main.sw:8:3
+  |
+...
+8 | #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
+  |   --------- "unknown_0" attribute is unknown.
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/src/main.sw:8:14
+  |
+...
+8 | #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
+  |              --------- "unknown_1" attribute is unknown.
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/src/main.sw:8:30
+  |
+...
+8 | #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
+  |                              --------- "unknown_2" attribute is unknown.
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+  Compiled library "attributes_unknown" with 8 warnings.
+    Finished release [optimized + fuel] target(s) [32 B] in ???

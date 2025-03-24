@@ -3,7 +3,7 @@
 //! for which `use` is not required.
 library;
 
-// (Previously) core
+// This was previously the `core` library.
 pub use ::primitives::*;
 pub use ::slice::*;
 pub use ::ops::*;

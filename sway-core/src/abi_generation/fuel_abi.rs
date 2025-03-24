@@ -8,7 +8,7 @@ use sway_types::Span;
 
 use crate::{
     language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
-    transform::AttributesMap,
+    transform::Attributes,
     Engines, TypeId, TypeInfo, TypeParameter,
 };
 
@@ -1192,23 +1192,21 @@ impl TyFunctionDecl {
                 self.return_type.initial_type_id,
                 self.return_type.type_id,
             )?,
-            attributes: generate_attributes_map(&self.attributes),
+            attributes: generate_attributes(&self.attributes),
         })
     }
 }
 
-fn generate_attributes_map(attr_map: &AttributesMap) -> Option<Vec<program_abi::Attribute>> {
-    if attr_map.is_empty() {
+fn generate_attributes(attributes: &Attributes) -> Option<Vec<program_abi::Attribute>> {
+    if attributes.is_empty() {
         None
     } else {
         Some(
-            attr_map
-                .iter()
-                .flat_map(|(_attr_kind, attrs)| {
-                    attrs.iter().map(|attr| program_abi::Attribute {
-                        name: attr.name.to_string(),
-                        arguments: attr.args.iter().map(|arg| arg.name.to_string()).collect(),
-                    })
+            attributes
+                .all()
+                .map(|attr| program_abi::Attribute {
+                    name: attr.name.to_string(),
+                    arguments: attr.args.iter().map(|arg| arg.name.to_string()).collect(),
                 })
                 .collect(),
         )

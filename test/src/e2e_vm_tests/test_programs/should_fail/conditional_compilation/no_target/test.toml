@@ -1,5 +1,0 @@
-category = "fail"
-supported_targets = ["fuel"]
-
-# check: $()#[cfg(target)]
-# nextln: $()Expected a value for the target argument

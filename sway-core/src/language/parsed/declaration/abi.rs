@@ -20,7 +20,7 @@ pub struct AbiDeclaration {
     /// The methods provided to a contract "for free" upon opting in to this interface
     pub methods: Vec<ParsedDeclId<FunctionDeclaration>>,
     pub(crate) span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl EqWithEngines for AbiDeclaration {}

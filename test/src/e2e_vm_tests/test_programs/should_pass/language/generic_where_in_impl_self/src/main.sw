@@ -3,13 +3,12 @@ script;
 use std::assert::*;
 
 trait Trait {
-    #[inline(never)]
     fn method(self) -> u64;
 }
 
 impl Trait for u64 {
     #[inline(never)]
-    fn method(self) -> u64{
+    fn method(self) -> u64 {
         42
     }
 }
