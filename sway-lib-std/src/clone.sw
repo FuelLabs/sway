@@ -38,7 +38,7 @@ impl Clone for u256 {
 }
 
 #[cfg(experimental_const_generics = true)]
-impl<T, const N:u64> Clone for [T; N]
+impl<T, const N: u64> Clone for [T; N]
 where
     T: Clone,
 {
@@ -46,13 +46,14 @@ where
         let first: T = *__elem_at(&self, 0);
         let mut new_array = [first.clone(); N];
 
-        let mut i = 0;
+        let mut i = 1;
         while __lt(i, N) {
             let item: T = *__elem_at(&self, i);
             let new_item: &mut T = __elem_at(&mut new_array, i);
             *new_item = item.clone();
             i = __add(i, 1);
         }
+
         new_array
     }
 }

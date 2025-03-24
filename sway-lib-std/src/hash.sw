@@ -387,7 +387,7 @@ where
 }
 
 #[cfg(experimental_const_generics = true)]
-impl<T, const N:u64> Hash for [T; N]
+impl<T, const N: u64> Hash for [T; N]
 where
     T: Hash,
 {

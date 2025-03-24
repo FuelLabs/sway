@@ -730,7 +730,7 @@ impl PartialEq for raw_ptr {
 impl Eq for raw_ptr {}
 
 #[cfg(experimental_const_generics = true)]
-impl<T, const N:u64> PartialEq for [T; N]
+impl<T, const N: u64> PartialEq for [T; N]
 where
     T: PartialEq,
 {
@@ -752,7 +752,7 @@ where
 }
 
 #[cfg(experimental_const_generics = true)]
-impl<T, const N:u64> Eq for [T; N]
+impl<T, const N: u64> Eq for [T; N]
 where
     T: Eq,
 {}
