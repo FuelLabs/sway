@@ -294,9 +294,7 @@ impl U128 {
         }
     }
 
-    // TODO: Rename to `try_as_u64` to be consistent with all other downcasts
-    /// Safely downcast to `u64` without loss of precision.
-    ///
+    
     /// # Additional Information
     ///
     /// If the `U128` is larger than `u64::max()`, an error is returned.
@@ -322,6 +320,7 @@ impl U128 {
     ///     assert(result.is_err()));
     /// }
     /// ```
+    #[deprecated(note = "Use `try_as_u64` instead")]
     pub fn as_u64(self) -> Result<u64, U128Error> {
         match self.upper {
             0 => Ok(self.lower),
@@ -329,6 +328,12 @@ impl U128 {
         }
     }
 
+     pub fn try_as_u64(self) -> Result<u64, U128Error> {
+        match self.upper {
+            0 => Ok(self.lower),
+            _ => Err(U128Error::LossOfPrecision),
+        }
+    }
     /// Upcasts a `U128` to a `u256`.
     ///
     /// # Returns
