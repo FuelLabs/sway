@@ -30,10 +30,17 @@ pub fn package_with_contract_id(
 ) -> Result<Package, vec1::Vec1<CompileError>> {
     let package = Package::new(package_name, None, program_id, true);
     let handler = <_>::default();
-    bind_contract_id_in_root_module(&handler, engines, contract_id_value, package, experimental, dbg_generation)
-        .map_err(|_| {
-            let (errors, warnings) = handler.consume();
-            assert!(warnings.is_empty());
+    bind_contract_id_in_root_module(
+        &handler,
+        engines,
+        contract_id_value,
+        package,
+        experimental,
+        dbg_generation,
+    )
+    .map_err(|_| {
+        let (errors, warnings) = handler.consume();
+        assert!(warnings.is_empty());
 
         // Invariant: `.value == None` => `!errors.is_empty()`.
         vec1::Vec1::try_from_vec(errors).unwrap()
