@@ -96,13 +96,6 @@ fn assign_struct_value_not_inlined() {
     assign_struct_value()
 }
 
-impl PartialEq for (bool, u64) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-impl Eq for (bool, u64) {}
-
 #[inline(always)]
 fn assign_tuple_value() {
     let mut x = (true, 111);
