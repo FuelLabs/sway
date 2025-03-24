@@ -65,6 +65,7 @@ impl TyProgram {
         handler: &Handler,
         engines: &Engines,
         root: &TyModule,
+        root_namespace: &mut namespace::Namespace,
         kind: parsed::TreeType,
         package_name: &str,
         experimental: ExperimentalFeatures,
@@ -77,17 +78,15 @@ impl TyProgram {
         // Validate all submodules
         let mut configurables = vec![];
         for (_, submodule) in &root.submodules {
-            match Self::validate_root(
+            let _ = Self::validate_root(
                 handler,
                 engines,
                 &submodule.module,
+                root_namespace,
                 parsed::TreeType::Library,
                 package_name,
                 experimental,
-            ) {
-                Ok(_) => {}
-                Err(_) => continue,
-            }
+            );
         }
 
         let mut entries = Vec::new();
