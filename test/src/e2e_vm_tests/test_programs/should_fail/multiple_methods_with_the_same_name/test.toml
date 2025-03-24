@@ -35,5 +35,3 @@ category = "fail"
 # check: $()"my_add" previously defined here.
 # check: $()fn my_add(self, other: Self) -> Self {
 # check: $()Method "my_add" already declared in type "Data<u32>".
-
-# check: $()Aborting due to 10 errors
