@@ -26,3 +26,6 @@ fn func() {
         x: 7
     };
 }
+
+trait A {}
+impl<T, U> A for MyStruct<T, U> { }
