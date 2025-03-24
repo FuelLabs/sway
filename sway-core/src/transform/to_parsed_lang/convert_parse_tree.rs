@@ -908,7 +908,7 @@ fn handle_impl_contract(
                         handler,
                         engines,
                         fn_item.fn_signature.clone(),
-                        AttributesMap::default(),
+                        Attributes::default(),
                     )?;
                     interface_surface.push(TraitItem::TraitFn(fn_decl));
                 }
@@ -919,7 +919,7 @@ fn handle_impl_contract(
         // Create ABI declaration
         let abi_decl = AbiDeclaration {
             name: anon_abi_name.clone(),
-            attributes: AttributesMap::default(),
+            attributes: Attributes::default(),
             interface_surface: interface_surface.clone(),
             methods: vec![],
             supertraits: vec![],
@@ -928,6 +928,7 @@ fn handle_impl_contract(
 
         // Insert ABI declaration
         let abi_decl_id = engines.pe().insert(abi_decl);
+        let impl_item_parent = (&*engines.te().get(implementing_for.type_id)).into();
 
         // Convert original impl items to ImplItems
         let items = item_impl
@@ -935,7 +936,11 @@ fn handle_impl_contract(
             .inner
             .into_iter()
             .filter_map(|item| {
-                let attributes = item_attrs_to_map(context, handler, &item.attribute_list).ok()?;
+                let (_, attributes) = attr_decls_to_attributes(
+                    &item.attributes,
+                    |attr| attr.can_annotate_impl_item(&item.value, impl_item_parent),
+                    item.value.friendly_name(impl_item_parent),
+                );
                 match item.value {
                     sway_ast::ItemImplItem::Fn(fn_item) => item_fn_to_function_declaration(
                         context, handler, engines, fn_item, attributes, None, None, None,
