@@ -370,11 +370,7 @@ mod test {
             root_module,
             canonical_manifest_dir,
             BuildTarget::default(),
-<<<<<<< HEAD
-            DbgGeneration::None,
-=======
             DbgGeneration::Full,
->>>>>>> c9a309002 (clippy and fmt issues)
         );
     }
 }
