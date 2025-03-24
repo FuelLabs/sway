@@ -90,7 +90,7 @@ fn bar() {}
 
 
 // ANCHOR: allow_deprecated_annotation
-#[deprecated(note = "this is deprecated")]
+#[deprecated(note = "This is deprecated.")]
 struct DeprecatedStruct {}
 
 #[allow(deprecated)]

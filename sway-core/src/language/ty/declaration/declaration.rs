@@ -780,7 +780,7 @@ impl TyDecl {
         }
     }
 
-    /// Friendly type name string used for various reporting,
+    /// Friendly type name string used for various reportings,
     /// which consists of the type name of the declaration AST node.
     ///
     /// Note that all friendly type names are lowercase.

@@ -36,7 +36,7 @@ use sway_core::{
         },
         CallPathTree, HasSubmodules, Literal,
     },
-    transform::{AttributeKind, AttributesMap},
+    transform::Attributes,
     type_system::{TypeArgument, TypeParameter},
     TraitConstraint, TypeInfo,
 };
@@ -87,11 +87,11 @@ impl<'a> ParsedTree<'a> {
     }
 }
 
-impl Parse for AttributesMap {
+impl Parse for Attributes {
     fn parse(&self, ctx: &ParseContext) {
-        self.par_iter()
-            .filter(|(kind, ..)| **kind != AttributeKind::DocComment)
-            .flat_map(|(.., attrs)| attrs)
+        self.all_as_slice()
+            .par_iter()
+            .filter(|attribute| !attribute.is_doc_comment())
             .for_each_with(ctx, |ctx, attribute| {
                 ctx.tokens.insert(
                     ctx.ident(&attribute.name),

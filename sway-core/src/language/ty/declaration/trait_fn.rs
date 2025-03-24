@@ -21,7 +21,7 @@ pub struct TyTraitFn {
     pub(crate) purity: Purity,
     pub parameters: Vec<TyFunctionParameter>,
     pub return_type: TypeArgument,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl TyDeclParsedType for TyTraitFn {

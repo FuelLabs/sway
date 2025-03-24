@@ -1,0 +1,1958 @@
+---
+source: test/tests/tests.rs
+assertion_line: 115
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items
+   Compiling attributes_invalid_target_items (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items)
+warning: Attribute argument is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/use_lib.sw:8:9
+  |
+...
+8 | #[allow(invalid)]
+  |         ------- "invalid" is an unknown argument for attribute "allow".
+  |         ------- help: Known arguments are "dead_code" and "deprecated".
+  |
+  = help: Unknown attribute arguments are allowed for some attributes like "allow".
+  = help: They can be used by third-party tools, but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:10:3
+   |
+...
+10 | #[unknown(invalid)]
+   |   ------- "unknown" attribute is unknown.
+   |
+   = help: Unknown attributes are allowed and can be used by third-party tools,
+   = help: but the compiler ignores them.
+____
+
+error: Attribute cannot annotate item
+--> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_kind.sw:0:3
+ |
+0 | #[storage(invalid)]
+ |   ^^^^^^^ "storage" attribute cannot annotate a module kind (library).
+ |
+ = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_kind.sw:1:3
+  |
+0 | #[storage(invalid)]
+1 | #[inline(invalid)]
+  |   ^^^^^^ "inline" attribute cannot annotate a module kind (library).
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_kind.sw:3:3
+  |
+...
+3 | #[test(invalid)]
+  |   ^^^^ "test" attribute cannot annotate a module kind (library).
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Outer doc comment (`///`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_kind.sw:4:1
+  |
+...
+4 | /// Invalid outer comment.
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Outer doc comment (`///`) cannot document a module kind (library).
+  |
+  = help: To document modules, use inner doc comments (`//!`). E.g.:
+  = help: //! This doc comment documents a module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_kind.sw:5:3
+  |
+...
+5 | #[payable(invalid)]
+  |   ^^^^^^^ "payable" attribute cannot annotate a module kind (library).
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_kind.sw:6:3
+  |
+...
+6 | #[allow(invalid)]
+  |   ^^^^^ "allow" attribute cannot annotate a module kind (library).
+  |
+  = help: Annotating module kinds (contract, script, predicate, or library) is currently not implemented.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_kind.sw:7:3
+  |
+...
+7 | #[cfg(invalid)]
+  |   ^^^ "cfg" attribute cannot annotate a module kind (library).
+  |
+  = help: Annotating module kinds (contract, script, predicate, or library) is currently not implemented.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_kind.sw:8:3
+  |
+...
+8 | #[deprecated(invalid)]
+  |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a module kind (library).
+  |
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_kind.sw:9:3
+  |
+...
+9 | #[fallback(invalid)]
+  |   ^^^^^^^^ "fallback" attribute cannot annotate a module kind (library).
+  |
+  = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/type_alias_decl.sw:3:3
+  |
+...
+3 | #[storage(invalid)]
+  |   ^^^^^^^ "storage" attribute cannot annotate a type alias declaration.
+  |
+  = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/type_alias_decl.sw:4:3
+  |
+...
+4 | #[inline(invalid)]
+  |   ^^^^^^ "inline" attribute cannot annotate a type alias declaration.
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/type_alias_decl.sw:5:1
+  |
+...
+5 | //! Invalid inner comment.
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a type alias declaration.
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/type_alias_decl.sw:6:3
+  |
+...
+6 | #[test(invalid)]
+  |   ^^^^ "test" attribute cannot annotate a type alias declaration.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/type_alias_decl.sw:7:3
+  |
+...
+7 | #[payable(invalid)]
+  |   ^^^^^^^ "payable" attribute cannot annotate a type alias declaration.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/type_alias_decl.sw:8:3
+  |
+...
+8 | #[deprecated(invalid)]
+  |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a type alias declaration.
+  |
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/type_alias_decl.sw:9:3
+  |
+...
+9 | #[fallback(invalid)]
+  |   ^^^^^^^^ "fallback" attribute cannot annotate a type alias declaration.
+  |
+  = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:3:3
+  |
+...
+3 | #[storage(invalid)]
+  |   ^^^^^^^ "storage" attribute cannot annotate a struct declaration.
+  |
+  = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:4:3
+  |
+...
+4 | #[inline(invalid)]
+  |   ^^^^^^ "inline" attribute cannot annotate a struct declaration.
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:5:1
+  |
+...
+5 | //! Invalid inner comment.
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a struct declaration.
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:6:3
+  |
+...
+6 | #[test(invalid)]
+  |   ^^^^ "test" attribute cannot annotate a struct declaration.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:7:3
+  |
+...
+7 | #[payable(invalid)]
+  |   ^^^^^^^ "payable" attribute cannot annotate a struct declaration.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:8:3
+  |
+...
+8 | #[fallback(invalid)]
+  |   ^^^^^^^^ "fallback" attribute cannot annotate a struct declaration.
+  |
+  = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:10:7
+   |
+...
+10 |     #[storage(invalid)]
+   |       ^^^^^^^ "storage" attribute cannot annotate a struct field.
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:11:7
+   |
+...
+11 |     #[inline(invalid)]
+   |       ^^^^^^ "inline" attribute cannot annotate a struct field.
+   |
+   = help: "inline" attribute can only annotate functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:12:5
+   |
+...
+12 |     //! Invalid inner comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a struct field.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:13:7
+   |
+...
+13 |     #[test(invalid)]
+   |       ^^^^ "test" attribute cannot annotate a struct field.
+   |
+   = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:14:7
+   |
+...
+14 |     #[payable(invalid)]
+   |       ^^^^^^^ "payable" attribute cannot annotate a struct field.
+   |
+   = help: "payable" attribute can only annotate:
+   = help:   - ABI function signatures and their implementations in contracts,
+   = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:15:7
+   |
+...
+15 |     #[fallback(invalid)]
+   |       ^^^^^^^^ "fallback" attribute cannot annotate a struct field.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:7:3
+  |
+...
+7 | #[storage(invalid)]
+  |   ^^^^^^^ "storage" attribute cannot annotate an inherent implementation.
+  |
+  = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:8:3
+  |
+...
+8 | #[inline(invalid)]
+  |   ^^^^^^ "inline" attribute cannot annotate an inherent implementation.
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:9:3
+  |
+...
+9 | #[test(invalid)]
+  |   ^^^^ "test" attribute cannot annotate an inherent implementation.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:10:1
+   |
+...
+10 | //! Invalid inner comment.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an inherent implementation.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:11:3
+   |
+...
+11 | #[payable(invalid)]
+   |   ^^^^^^^ "payable" attribute cannot annotate an inherent implementation.
+   |
+   = help: "payable" attribute can only annotate:
+   = help:   - ABI function signatures and their implementations in contracts,
+   = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:12:3
+   |
+...
+12 | #[deprecated(invalid)]
+   |   ^^^^^^^^^^ "deprecated" attribute cannot annotate an inherent implementation.
+   |
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:13:3
+   |
+...
+13 | #[fallback(invalid)]
+   |   ^^^^^^^^ "fallback" attribute cannot annotate an inherent implementation.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:15:7
+   |
+...
+15 |     #[storage(invalid)]
+   |       ^^^^^^^ "storage" attribute cannot annotate an associated constant.
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:16:7
+   |
+...
+16 |     #[inline(invalid)]
+   |       ^^^^^^ "inline" attribute cannot annotate an associated constant.
+   |
+   = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:17:7
+   |
+...
+17 |     #[test(invalid)]
+   |       ^^^^ "test" attribute cannot annotate an associated constant.
+   |
+   = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:18:5
+   |
+...
+18 |     //! Invalid inner comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an associated constant.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:19:7
+   |
+...
+19 |     #[payable(invalid)]
+   |       ^^^^^^^ "payable" attribute cannot annotate an associated constant.
+   |
+   = help: "payable" attribute can only annotate:
+   = help:   - ABI function signatures and their implementations in contracts,
+   = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_const.sw:20:7
+   |
+...
+20 |     #[fallback(invalid)]
+   |       ^^^^^^^^ "fallback" attribute cannot annotate an associated constant.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_fn.sw:8:7
+  |
+...
+8 |     #[test(invalid)]
+  |       ^^^^ "test" attribute cannot annotate an associated function.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_fn.sw:9:7
+  |
+...
+9 |     #[payable(invalid)]
+  |       ^^^^^^^ "payable" attribute cannot annotate an associated function.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_fn.sw:10:5
+   |
+...
+10 |     //! Invalid inner comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an associated function.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_assoc_fn.sw:11:7
+   |
+...
+11 |     #[fallback(invalid)]
+   |       ^^^^^^^^ "fallback" attribute cannot annotate an associated function.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_method.sw:8:7
+  |
+...
+8 |     #[test(invalid)]
+  |       ^^^^ "test" attribute cannot annotate a method.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_method.sw:9:7
+  |
+...
+9 |     #[payable(invalid)]
+  |       ^^^^^^^ "payable" attribute cannot annotate a method.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_method.sw:10:5
+   |
+...
+10 |     //! Invalid inner comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a method.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_impl_method.sw:11:7
+   |
+...
+11 |     #[fallback(invalid)]
+   |       ^^^^^^^^ "fallback" attribute cannot annotate a method.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:3:3
+  |
+...
+3 | #[storage(invalid)]
+  |   ^^^^^^^ "storage" attribute cannot annotate an enum declaration.
+  |
+  = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:4:3
+  |
+...
+4 | #[inline(invalid)]
+  |   ^^^^^^ "inline" attribute cannot annotate an enum declaration.
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:5:3
+  |
+...
+5 | #[test(invalid)]
+  |   ^^^^ "test" attribute cannot annotate an enum declaration.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:6:1
+  |
+...
+6 | //! Invalid inner comment.
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an enum declaration.
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:7:3
+  |
+...
+7 | #[payable(invalid)]
+  |   ^^^^^^^ "payable" attribute cannot annotate an enum declaration.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:8:3
+  |
+...
+8 | #[fallback(invalid)]
+  |   ^^^^^^^^ "fallback" attribute cannot annotate an enum declaration.
+  |
+  = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:10:7
+   |
+...
+10 |     #[storage(invalid)]
+   |       ^^^^^^^ "storage" attribute cannot annotate an enum variant.
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:11:7
+   |
+...
+11 |     #[inline(invalid)]
+   |       ^^^^^^ "inline" attribute cannot annotate an enum variant.
+   |
+   = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:12:7
+   |
+...
+12 |     #[test(invalid)]
+   |       ^^^^ "test" attribute cannot annotate an enum variant.
+   |
+   = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:13:5
+   |
+...
+13 |     //! Invalid inner comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an enum variant.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:14:7
+   |
+...
+14 |     #[payable(invalid)]
+   |       ^^^^^^^ "payable" attribute cannot annotate an enum variant.
+   |
+   = help: "payable" attribute can only annotate:
+   = help:   - ABI function signatures and their implementations in contracts,
+   = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_decl.sw:15:7
+   |
+...
+15 |     #[fallback(invalid)]
+   |       ^^^^^^^^ "fallback" attribute cannot annotate an enum variant.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_assoc_fn.sw:8:7
+  |
+...
+8 |     #[test(invalid)]
+  |       ^^^^ "test" attribute cannot annotate an associated function.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_assoc_fn.sw:9:7
+  |
+...
+9 |     #[payable(invalid)]
+  |       ^^^^^^^ "payable" attribute cannot annotate an associated function.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_assoc_fn.sw:10:5
+   |
+...
+10 |     //! Invalid inner comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an associated function.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_assoc_fn.sw:11:7
+   |
+...
+11 |     #[fallback(invalid)]
+   |       ^^^^^^^^ "fallback" attribute cannot annotate an associated function.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_method.sw:8:7
+  |
+...
+8 |     #[test(invalid)]
+  |       ^^^^ "test" attribute cannot annotate a method.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_method.sw:9:7
+  |
+...
+9 |     #[payable(invalid)]
+  |       ^^^^^^^ "payable" attribute cannot annotate a method.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_method.sw:10:5
+   |
+...
+10 |     //! Invalid inner comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a method.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/enum_impl_method.sw:11:7
+   |
+...
+11 |     #[fallback(invalid)]
+   |       ^^^^^^^^ "fallback" attribute cannot annotate a method.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:3:3
+  |
+...
+3 | #[storage(invalid)]
+  |   ^^^^^^^ "storage" attribute cannot annotate a trait declaration.
+  |
+  = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:4:3
+  |
+...
+4 | #[inline(invalid)]
+  |   ^^^^^^ "inline" attribute cannot annotate a trait declaration.
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:5:3
+  |
+...
+5 | #[test(invalid)]
+  |   ^^^^ "test" attribute cannot annotate a trait declaration.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:6:1
+  |
+...
+6 | //! Invalid inner comment.
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a trait declaration.
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:7:3
+  |
+...
+7 | #[payable(invalid)]
+  |   ^^^^^^^ "payable" attribute cannot annotate a trait declaration.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:8:3
+  |
+...
+8 | #[deprecated(invalid)]
+  |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a trait declaration.
+  |
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:9:3
+  |
+...
+9 | #[fallback(invalid)]
+  |   ^^^^^^^^ "fallback" attribute cannot annotate a trait declaration.
+  |
+  = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:11:7
+   |
+...
+11 |     #[storage(invalid)]
+   |       ^^^^^^^ "storage" attribute cannot annotate an associated constant.
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:12:7
+   |
+...
+12 |     #[inline(invalid)]
+   |       ^^^^^^ "inline" attribute cannot annotate an associated constant.
+   |
+   = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:13:7
+   |
+...
+13 |     #[test(invalid)]
+   |       ^^^^ "test" attribute cannot annotate an associated constant.
+   |
+   = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:14:5
+   |
+...
+14 |     //! Invalid inner comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an associated constant.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:15:7
+   |
+...
+15 |     #[payable(invalid)]
+   |       ^^^^^^^ "payable" attribute cannot annotate an associated constant.
+   |
+   = help: "payable" attribute can only annotate:
+   = help:   - ABI function signatures and their implementations in contracts,
+   = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:16:7
+   |
+...
+16 |     #[deprecated(invalid)]
+   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate an associated constant.
+   |
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_const.sw:17:7
+   |
+...
+17 |     #[fallback(invalid)]
+   |       ^^^^^^^^ "fallback" attribute cannot annotate an associated constant.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_fn.sw:4:7
+  |
+...
+4 |     #[inline(invalid)]
+  |       ^^^^^^ "inline" attribute cannot annotate a function signature.
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_fn.sw:5:7
+  |
+...
+5 |     #[test(invalid)]
+  |       ^^^^ "test" attribute cannot annotate a function signature.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_fn.sw:6:7
+  |
+...
+6 |     #[payable(invalid)]
+  |       ^^^^^^^ "payable" attribute cannot annotate a function signature.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_fn.sw:7:5
+  |
+...
+7 |     //! Invalid inner comment.
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a function signature.
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_fn.sw:8:7
+  |
+...
+8 |     #[deprecated(invalid)]
+  |       ^^^^^^^^^^ "deprecated" attribute cannot annotate a function signature.
+  |
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_fn.sw:9:7
+  |
+...
+9 |     #[fallback(invalid)]
+  |       ^^^^^^^^ "fallback" attribute cannot annotate a function signature.
+  |
+  = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_type.sw:4:7
+  |
+...
+4 |     #[storage(invalid)]
+  |       ^^^^^^^ "storage" attribute cannot annotate an associated type.
+  |
+  = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_type.sw:5:7
+  |
+...
+5 |     #[inline(invalid)]
+  |       ^^^^^^ "inline" attribute cannot annotate an associated type.
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_type.sw:6:7
+  |
+...
+6 |     #[test(invalid)]
+  |       ^^^^ "test" attribute cannot annotate an associated type.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_type.sw:7:5
+  |
+...
+7 |     //! Invalid inner comment.
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an associated type.
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_type.sw:8:7
+  |
+...
+8 |     #[payable(invalid)]
+  |       ^^^^^^^ "payable" attribute cannot annotate an associated type.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_type.sw:9:7
+  |
+...
+9 |     #[deprecated(invalid)]
+  |       ^^^^^^^^^^ "deprecated" attribute cannot annotate an associated type.
+  |
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_assoc_type.sw:10:7
+   |
+...
+10 |     #[fallback(invalid)]
+   |       ^^^^^^^^ "fallback" attribute cannot annotate an associated type.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_method.sw:4:7
+  |
+...
+4 |     #[inline(invalid)]
+  |       ^^^^^^ "inline" attribute cannot annotate a function signature.
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_method.sw:5:7
+  |
+...
+5 |     #[test(invalid)]
+  |       ^^^^ "test" attribute cannot annotate a function signature.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_method.sw:6:5
+  |
+...
+6 |     //! Invalid inner comment.
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a function signature.
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_method.sw:7:7
+  |
+...
+7 |     #[payable(invalid)]
+  |       ^^^^^^^ "payable" attribute cannot annotate a function signature.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_method.sw:8:7
+  |
+...
+8 |     #[deprecated(invalid)]
+  |       ^^^^^^^^^^ "deprecated" attribute cannot annotate a function signature.
+  |
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_method.sw:9:7
+  |
+...
+9 |     #[fallback(invalid)]
+  |       ^^^^^^^^ "fallback" attribute cannot annotate a function signature.
+  |
+  = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_assoc_fn.sw:5:7
+  |
+...
+5 |     #[test(invalid)]
+  |       ^^^^ "test" attribute cannot annotate a provided trait function.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_assoc_fn.sw:6:7
+  |
+...
+6 |     #[payable(invalid)]
+  |       ^^^^^^^ "payable" attribute cannot annotate a provided trait function.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_assoc_fn.sw:7:5
+  |
+...
+7 |     //! Invalid inner comment.
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a provided trait function.
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_assoc_fn.sw:8:7
+  |
+...
+8 |     #[fallback(invalid)]
+  |       ^^^^^^^^ "fallback" attribute cannot annotate a provided trait function.
+  |
+  = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_method.sw:5:7
+  |
+...
+5 |     #[test(invalid)]
+  |       ^^^^ "test" attribute cannot annotate a provided trait function.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_method.sw:6:7
+  |
+...
+6 |     #[payable(invalid)]
+  |       ^^^^^^^ "payable" attribute cannot annotate a provided trait function.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_method.sw:7:5
+  |
+...
+7 |     //! Invalid inner comment.
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a provided trait function.
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_method.sw:8:7
+  |
+...
+8 |     #[fallback(invalid)]
+  |       ^^^^^^^^ "fallback" attribute cannot annotate a provided trait function.
+  |
+  = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:11:3
+   |
+...
+11 | #[storage(invalid)]
+   |   ^^^^^^^ "storage" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:12:3
+   |
+...
+12 | #[inline(invalid)]
+   |   ^^^^^^ "inline" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:13:3
+   |
+...
+13 | #[test(invalid)]
+   |   ^^^^ "test" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:14:1
+   |
+...
+14 | //! Invalid inner comment.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an ABI or trait implementation.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:15:3
+   |
+...
+15 | #[payable(invalid)]
+   |   ^^^^^^^ "payable" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "payable" attribute can only annotate:
+   = help:   - ABI function signatures and their implementations in contracts,
+   = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:16:3
+   |
+...
+16 | #[deprecated(invalid)]
+   |   ^^^^^^^^^^ "deprecated" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:17:3
+   |
+...
+17 | #[fallback(invalid)]
+   |   ^^^^^^^^ "fallback" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:19:7
+   |
+...
+19 |     #[storage(invalid)]
+   |       ^^^^^^^ "storage" attribute cannot annotate an associated type.
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:20:7
+   |
+...
+20 |     #[inline(invalid)]
+   |       ^^^^^^ "inline" attribute cannot annotate an associated type.
+   |
+   = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:21:7
+   |
+...
+21 |     #[test(invalid)]
+   |       ^^^^ "test" attribute cannot annotate an associated type.
+   |
+   = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:22:5
+   |
+...
+22 |     //! Invalid inner comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an associated type.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:23:7
+   |
+...
+23 |     #[payable(invalid)]
+   |       ^^^^^^^ "payable" attribute cannot annotate an associated type.
+   |
+   = help: "payable" attribute can only annotate:
+   = help:   - ABI function signatures and their implementations in contracts,
+   = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:24:7
+   |
+...
+24 |     #[fallback(invalid)]
+   |       ^^^^^^^^ "fallback" attribute cannot annotate an associated type.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:11:3
+   |
+...
+11 | #[storage(invalid)]
+   |   ^^^^^^^ "storage" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:12:3
+   |
+...
+12 | #[inline(invalid)]
+   |   ^^^^^^ "inline" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:13:3
+   |
+...
+13 | #[test(invalid)]
+   |   ^^^^ "test" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:14:1
+   |
+...
+14 | //! Invalid inner comment.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an ABI or trait implementation.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:15:3
+   |
+...
+15 | #[payable(invalid)]
+   |   ^^^^^^^ "payable" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "payable" attribute can only annotate:
+   = help:   - ABI function signatures and their implementations in contracts,
+   = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:16:3
+   |
+...
+16 | #[deprecated(invalid)]
+   |   ^^^^^^^^^^ "deprecated" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:17:3
+   |
+...
+17 | #[fallback(invalid)]
+   |   ^^^^^^^^ "fallback" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:19:7
+   |
+...
+19 |     #[storage(invalid)]
+   |       ^^^^^^^ "storage" attribute cannot annotate an associated type.
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:20:7
+   |
+...
+20 |     #[inline(invalid)]
+   |       ^^^^^^ "inline" attribute cannot annotate an associated type.
+   |
+   = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:21:7
+   |
+...
+21 |     #[test(invalid)]
+   |       ^^^^ "test" attribute cannot annotate an associated type.
+   |
+   = help: "test" attribute can only annotate module functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:22:5
+   |
+...
+22 |     //! Invalid inner comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an associated type.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:23:7
+   |
+...
+23 |     #[payable(invalid)]
+   |       ^^^^^^^ "payable" attribute cannot annotate an associated type.
+   |
+   = help: "payable" attribute can only annotate:
+   = help:   - ABI function signatures and their implementations in contracts,
+   = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:24:7
+   |
+...
+24 |     #[deprecated(invalid)]
+   |       ^^^^^^^^^^ "deprecated" attribute cannot annotate an associated type.
+   |
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:25:7
+   |
+...
+25 |     #[fallback(invalid)]
+   |       ^^^^^^^^ "fallback" attribute cannot annotate an associated type.
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/use_lib.sw:3:3
+  |
+...
+3 | #[storage(invalid)]
+  |   ^^^^^^^ "storage" attribute cannot annotate an import (`use`).
+  |
+  = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/use_lib.sw:4:3
+  |
+...
+4 | #[inline(invalid)]
+  |   ^^^^^^ "inline" attribute cannot annotate an import (`use`).
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/use_lib.sw:5:1
+  |
+...
+5 | //! Invalid inner comment.
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document an import (`use`).
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/use_lib.sw:6:3
+  |
+...
+6 | #[test(invalid)]
+  |   ^^^^ "test" attribute cannot annotate an import (`use`).
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/use_lib.sw:7:3
+  |
+...
+7 | #[payable(invalid)]
+  |   ^^^^^^^ "payable" attribute cannot annotate an import (`use`).
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/use_lib.sw:9:3
+  |
+...
+9 | #[deprecated(invalid)]
+  |   ^^^^^^^^^^ "deprecated" attribute cannot annotate an import (`use`).
+  |
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/use_lib.sw:10:3
+   |
+...
+10 | #[fallback(invalid)]
+   |   ^^^^^^^^ "fallback" attribute cannot annotate an import (`use`).
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_const.sw:3:3
+  |
+...
+3 | #[storage(invalid)]
+  |   ^^^^^^^ "storage" attribute cannot annotate a constant declaration.
+  |
+  = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_const.sw:4:3
+  |
+...
+4 | #[inline(invalid)]
+  |   ^^^^^^ "inline" attribute cannot annotate a constant declaration.
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_const.sw:5:1
+  |
+...
+5 | //! Invalid inner comment.
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a constant declaration.
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_const.sw:6:3
+  |
+...
+6 | #[test(invalid)]
+  |   ^^^^ "test" attribute cannot annotate a constant declaration.
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_const.sw:7:3
+  |
+...
+7 | #[payable(invalid)]
+  |   ^^^^^^^ "payable" attribute cannot annotate a constant declaration.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_const.sw:8:3
+  |
+...
+8 | #[fallback(invalid)]
+  |   ^^^^^^^^ "fallback" attribute cannot annotate a constant declaration.
+  |
+  = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_fn.sw:3:3
+  |
+...
+3 | #[payable(invalid)]
+  |   ^^^^^^^ "payable" attribute cannot annotate a function declaration.
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/module_fn.sw:4:1
+  |
+...
+4 | //! Invalid inner comment.
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a function declaration.
+  |
+  = help: Inner doc comments (`//!`) can only document modules and must be
+  = help: at the beginning of the module file, before the module kind.
+____
+
+error: Outer doc comment (`///`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/comments.sw:1:1
+  |
+... |
+6 | | /// Invalid outer comment #5.
+  | |_^ Outer doc comment (`///`) cannot document a module kind (library).
+  |
+  = help: To document modules, use inner doc comments (`//!`). E.g.:
+  = help: //! This doc comment documents a module.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/comments.sw:1:1
+   |
+...  |
+12 | | //! Invalid inner comment A #3.
+   | |_^ Inner doc comment (`//!`) cannot document a function declaration.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/comments.sw:1:1
+   |
+...  |
+16 | | //! Invalid inner comment B #2.
+   | |_^ Inner doc comment (`//!`) cannot document a function declaration.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/comments.sw:17:3
+   |
+...
+17 | #[payable(invalid)]
+   |   ^^^^^^^ "payable" attribute cannot annotate a function declaration.
+   |
+   = help: "payable" attribute can only annotate:
+   = help:   - ABI function signatures and their implementations in contracts,
+   = help:   - provided ABI functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/comments.sw:19:1
+   |
+...
+19 | //! Invalid inner comment C.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a function declaration.
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+--> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:0:3
+ |
+0 | #[storage(invalid)]
+ |   ^^^^^^^ "storage" attribute cannot annotate a module kind (library).
+ |
+ = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:1:3
+  |
+0 | #[storage(invalid)]
+1 | #[inline(invalid)]
+  |   ^^^^^^ "inline" attribute cannot annotate a module kind (library).
+  |
+  = help: "inline" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:3:3
+  |
+...
+3 | #[test(invalid)]
+  |   ^^^^ "test" attribute cannot annotate a module kind (library).
+  |
+  = help: "test" attribute can only annotate module functions.
+____
+
+error: Outer doc comment (`///`) cannot document item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:4:1
+  |
+...
+4 | /// Invalid outer comment.
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Outer doc comment (`///`) cannot document a module kind (library).
+  |
+  = help: To document modules, use inner doc comments (`//!`). E.g.:
+  = help: //! This doc comment documents a module.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:5:3
+  |
+...
+5 | #[payable(invalid)]
+  |   ^^^^^^^ "payable" attribute cannot annotate a module kind (library).
+  |
+  = help: "payable" attribute can only annotate:
+  = help:   - ABI function signatures and their implementations in contracts,
+  = help:   - provided ABI functions.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:6:3
+  |
+...
+6 | #[allow(invalid)]
+  |   ^^^^^ "allow" attribute cannot annotate a module kind (library).
+  |
+  = help: Annotating module kinds (contract, script, predicate, or library) is currently not implemented.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:7:3
+  |
+...
+7 | #[cfg(invalid)]
+  |   ^^^ "cfg" attribute cannot annotate a module kind (library).
+  |
+  = help: Annotating module kinds (contract, script, predicate, or library) is currently not implemented.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:8:3
+  |
+...
+8 | #[deprecated(invalid)]
+  |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a module kind (library).
+  |
+  = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:9:3
+  |
+...
+9 | #[fallback(invalid)]
+  |   ^^^^^^^^ "fallback" attribute cannot annotate a module kind (library).
+  |
+  = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:10:3
+   |
+...
+10 | #[unknown(invalid)]
+   |   ^^^^^^^ "unknown" attribute cannot annotate a module kind (library).
+   |
+   = help: Annotating module kinds (contract, script, predicate, or library) is currently not implemented.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:1:1
+   |
+...  |
+17 | | //! Invalid inner comment.
+   | |_^ Inner doc comment (`//!`) cannot document a submodule (`mod`).
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Outer doc comment (`///`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:1:1
+   |
+...  |
+20 | | /// Invalid outer comment.
+   | |_^ Outer doc comment (`///`) cannot document a submodule (`mod`).
+   |
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:21:3
+   |
+...
+21 | #[storage(invalid)]
+   |   ^^^^^^^ "storage" attribute cannot annotate a submodule (`mod`).
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:22:3
+   |
+...
+22 | #[inline(invalid)]
+   |   ^^^^^^ "inline" attribute cannot annotate a submodule (`mod`).
+   |
+   = help: "inline" attribute can only annotate functions.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:23:1
+   |
+...
+23 | //! Invalid inner comment.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a submodule (`mod`).
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:24:3
+   |
+...
+24 | #[test(invalid)]
+   |   ^^^^ "test" attribute cannot annotate a submodule (`mod`).
+   |
+   = help: "test" attribute can only annotate module functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:25:3
+   |
+...
+25 | #[payable(invalid)]
+   |   ^^^^^^^ "payable" attribute cannot annotate a submodule (`mod`).
+   |
+   = help: "payable" attribute can only annotate:
+   = help:   - ABI function signatures and their implementations in contracts,
+   = help:   - provided ABI functions.
+____
+
+error: Outer doc comment (`///`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:26:1
+   |
+...
+26 | /// Invalid outer comment.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Outer doc comment (`///`) cannot document a submodule (`mod`).
+   |
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:1:1
+   |
+...  |
+29 | | //! Invalid inner comment.
+   | |_^ Inner doc comment (`//!`) cannot document a submodule (`mod`).
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Outer doc comment (`///`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:30:1
+   |
+...
+30 | /// Invalid outer comment.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Outer doc comment (`///`) cannot document a submodule (`mod`).
+   |
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:31:3
+   |
+...
+31 | #[allow(invalid)]
+   |   ^^^^^ "allow" attribute cannot annotate a submodule (`mod`).
+   |
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:32:3
+   |
+...
+32 | #[cfg(invalid)]
+   |   ^^^ "cfg" attribute cannot annotate a submodule (`mod`).
+   |
+____
+
+error: Outer doc comment (`///`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:33:1
+   |
+...
+33 | /// Invalid outer comment.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Outer doc comment (`///`) cannot document a submodule (`mod`).
+   |
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:34:3
+   |
+...
+34 | #[deprecated(invalid)]
+   |   ^^^^^^^^^^ "deprecated" attribute cannot annotate a submodule (`mod`).
+   |
+   = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:35:3
+   |
+...
+35 | #[fallback(invalid)]
+   |   ^^^^^^^^ "fallback" attribute cannot annotate a submodule (`mod`).
+   |
+   = help: "fallback" attribute can only annotate module functions in a contract module.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:36:1
+   |
+...
+36 | //! Invalid inner comment.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a submodule (`mod`).
+   |
+   = help: Inner doc comments (`//!`) can only document modules and must be
+   = help: at the beginning of the module file, before the module kind.
+____
+
+error: Outer doc comment (`///`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:37:1
+   |
+...
+37 | /// Invalid outer comment.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Outer doc comment (`///`) cannot document a submodule (`mod`).
+   |
+____
+
+  Aborting due to 184 errors.
+error: Failed to compile attributes_invalid_target_items

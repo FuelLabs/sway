@@ -1,0 +1,39 @@
+---
+source: test/tests/tests.rs
+assertion_line: 115
+snapshot_kind: text
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_unimplemented_inner_attributes
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_unimplemented_inner_attributes
+   Compiling library attributes_unimplemented_inner_attributes (test/src/e2e_vm_tests/test_programs/should_fail/attributes_unimplemented_inner_attributes)
+error: Used feature is currently not implemented
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_unimplemented_inner_attributes/src/main.sw:6:1
+  |
+...
+6 | #![storage(invalid)]
+  | ^^ Using inner attributes (`#!`) is currently not implemented.
+  |
+____
+
+error: Used feature is currently not implemented
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_unimplemented_inner_attributes/src/main.sw:7:1
+  |
+...
+7 | #![unknown]
+  | ^^ Using inner attributes (`#!`) is currently not implemented.
+  |
+____
+
+error: Used feature is currently not implemented
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_unimplemented_inner_attributes/src/main.sw:8:1
+  |
+...
+8 | #![allow(dead_code, deprecated), unknown, storage(invalid)]
+  | ^^ Using inner attributes (`#!`) is currently not implemented.
+  |
+____
+
+  Aborting due to 3 errors.
+error: Failed to compile attributes_unimplemented_inner_attributes

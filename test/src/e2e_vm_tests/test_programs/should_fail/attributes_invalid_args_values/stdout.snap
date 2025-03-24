@@ -1,0 +1,36 @@
+---
+source: test/tests/tests.rs
+assertion_line: 115
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values
+   Compiling library attributes_invalid_args_values (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values)
+error: Attribute argument value is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/cfg_attr_program_type.sw:3:22
+  |
+...
+3 | #[cfg(program_type = "pedicate")]
+  |                      ^^^^^^^^^^ ""pedicate"" is an invalid value for argument "program_type".
+  |                      ---------- help: Did you mean "predicate"?
+  |                      ---------- help: Valid argument values are:
+  |                      ---------- help:   - contract
+  |                      ---------- help:   - library
+  |                      ---------- help:   - predicate
+  |                      ---------- help:   - script
+  |
+____
+
+error: Attribute argument value is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values/src/cfg_attr_target.sw:3:16
+  |
+...
+3 | #[cfg(target = "efm")]
+  |                ^^^^^ ""efm"" is an invalid value for argument "target".
+  |                ----- help: Valid argument values are "evm" and "fuel".
+  |
+____
+
+  Aborting due to 2 errors.
+error: Failed to compile attributes_invalid_args_values
