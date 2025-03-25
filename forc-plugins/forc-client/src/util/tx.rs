@@ -63,14 +63,17 @@ async fn collect_user_accounts(
     node_url: &str,
 ) -> Result<BTreeMap<usize, fuel_tx::Address>> {
     let verification = AccountVerification::Yes(password.to_string());
-    let node_url = reqwest::Url::parse(node_url).map_err(|e| anyhow::anyhow!("Failed to parse node URL: {}", e))?;
-    let accounts = collect_accounts_with_verification(wallet_path, verification, &node_url).await.map_err(|e| {
-        if e.to_string().contains("Mac Mismatch") {
-            anyhow::anyhow!("Failed to access forc-wallet vault. Please check your password")
-        } else {
-            e
-        }
-    })?;
+    let node_url = reqwest::Url::parse(node_url)
+        .map_err(|e| anyhow::anyhow!("Failed to parse node URL: {}", e))?;
+    let accounts = collect_accounts_with_verification(wallet_path, verification, &node_url)
+        .await
+        .map_err(|e| {
+            if e.to_string().contains("Mac Mismatch") {
+                anyhow::anyhow!("Failed to access forc-wallet vault. Please check your password")
+            } else {
+                e
+            }
+        })?;
     Ok(accounts)
 }
 
@@ -92,7 +95,10 @@ pub(crate) async fn check_and_create_wallet_at_default_path(wallet_path: &Path) 
             &["Create new wallet", "Import existing wallet"],
             0,
         )?;
-        let ctx = forc_wallet::CliContext { wallet_path: wallet_path.to_path_buf(), node_url: forc_wallet::network::DEFAULT.parse().unwrap() };
+        let ctx = forc_wallet::CliContext {
+            wallet_path: wallet_path.to_path_buf(),
+            node_url: forc_wallet::network::DEFAULT.parse().unwrap(),
+        };
         match wallet_options {
             0 => {
                 new_wallet_cli(&ctx, New { force: false, cache_accounts: None }).await?;
