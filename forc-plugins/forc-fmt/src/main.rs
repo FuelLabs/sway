@@ -228,11 +228,8 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
 fn format_manifest(app: &App, manifest_file: PathBuf) -> Result<bool> {
     if let Ok(manifest_content) = fs::read_to_string(&manifest_file) {
         let mut edited = false;
-        let taplo_alphabetize = taplo_fmt::Options {
-            reorder_keys: true,
-            ..Default::default()
-        };
-        let formatted_content = taplo_fmt::format(&manifest_content, taplo_alphabetize);
+        // TODO: Alphabetize tables excluding the project table when https://github.com/tamasfe/taplo/issues/763 is supported
+        let formatted_content = taplo_fmt::format(&manifest_content, taplo_fmt::Options::default());
         if !app.check {
             write_file_formatted(&manifest_file, &formatted_content)?;
         } else if formatted_content != manifest_content {
@@ -342,7 +339,6 @@ name = "Fuel example project"
 
 
 [dependencies]
-core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
 std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 "#;
         let taplo_alphabetize = taplo_fmt::Options {
@@ -359,7 +355,6 @@ std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 
 
     [dependencies]
-        core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
                     std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 "#;
         let formatted_content =
@@ -373,7 +368,6 @@ name = "Fuel example project"
 
 
 [dependencies]
-core = {git="https://github.com/FuelLabs/sway-lib-core",version="v0.0.1"}
 std         =     {   git     =  "https://github.com/FuelLabs/sway-lib-std"  , version = "v0.0.1"           }
 "#;
         let formatted_content = taplo_fmt::format(whitespace_forc_manifest, taplo_alphabetize);
@@ -390,7 +384,6 @@ name = "Fuel example project"
 
 
 [dependencies]
-core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
 std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
 "#;
         let taplo_alphabetize = taplo_fmt::Options {
@@ -408,7 +401,6 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 
 [dependencies]
 std = { git = "https://github.com/FuelLabs/sway-lib-std", version = "v0.0.1" }
-core = { git = "https://github.com/FuelLabs/sway-lib-core", version = "v0.0.1" }
     "#;
         let formatted_content = taplo_fmt::format(disordered_forc_manifest, taplo_alphabetize);
         assert_eq!(formatted_content, correct_forc_manifest);

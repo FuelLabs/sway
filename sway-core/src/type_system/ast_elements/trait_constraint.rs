@@ -12,6 +12,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
+    collections::BTreeMap,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -220,6 +221,7 @@ impl TraitConstraint {
                     handler,
                     &mut trait_decl,
                     &mut type_arguments,
+                    BTreeMap::new(),
                     EnforceTypeArguments::Yes,
                     &trait_name.span(),
                 )?;

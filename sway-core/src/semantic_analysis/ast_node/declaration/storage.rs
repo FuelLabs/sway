@@ -71,9 +71,6 @@ impl ty::TyStorageDecl {
                                                 .key_expression
                                                 .is_none(),
                                             key: format!("0x{:x}", s.key()),
-                                            experimental_storage_domains: context
-                                                .experimental
-                                                .storage_domains,
                                         },
                                 })
                             }

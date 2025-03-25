@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::MaterializeConstGenerics,
     engine_threading::*,
     has_changes,
     language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
@@ -21,7 +22,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 pub struct TyEnumDecl {
     pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub variants: Vec<TyEnumVariant>,
     pub span: Span,
     pub visibility: Visibility,
@@ -103,6 +104,18 @@ impl MonomorphizeHelper for TyEnumDecl {
     }
 }
 
+impl MaterializeConstGenerics for TyEnumDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &Engines,
+        _handler: &Handler,
+        _name: &str,
+        _value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+}
+
 impl TyEnumDecl {
     pub(crate) fn expect_variant_from_name(
         &self,
@@ -136,7 +149,7 @@ pub struct TyEnumVariant {
     pub type_argument: TypeArgument,
     pub(crate) tag: usize,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl HashWithEngines for TyEnumVariant {

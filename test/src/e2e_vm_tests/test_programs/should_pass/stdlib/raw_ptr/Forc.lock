@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-31A3D7F7F014D285'
+name = "raw_ptr"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'raw_ptr'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-31A3D7F7F014D285'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-31A3D7F7F014D285"

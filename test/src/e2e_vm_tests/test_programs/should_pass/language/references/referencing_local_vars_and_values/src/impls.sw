@@ -1,7 +1,5 @@
 library;
 
-use core::ops::Eq;
-
 pub trait New {
     fn new() -> Self;
 }
@@ -57,25 +55,6 @@ impl New for str {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for str[6] {
-    fn eq(self, other: Self) -> bool {
-        let mut i = 0;
-        while i < 6 {
-            let ptr_self = __addr_of(self).add::<u8>(i);
-            let ptr_other = __addr_of(other).add::<u8>(i);
-
-            if ptr_self.read::<u8>() != ptr_other.read::<u8>() {
-                return false;
-            }
-
-            i = i + 1;
-        };
-
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for str[6] {
     fn eq(self, other: Self) -> bool {
         let mut i = 0;
@@ -93,7 +72,6 @@ impl PartialEq for str[6] {
         true
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for str[6] {}
 
 impl New for str[6] {
@@ -102,19 +80,11 @@ impl New for str[6] {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for [u64; 2] {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1]
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for [u64; 2] {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1]
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for [u64; 2] {}
 
 impl New for [u64; 2] {
@@ -127,19 +97,11 @@ pub struct Struct {
     x: u64,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Struct {
-    fn eq(self, other: Self) -> bool {
-        self.x == other.x
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Struct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Struct {}
 
 impl New for Struct {
@@ -150,19 +112,11 @@ impl New for Struct {
 
 pub struct EmptyStruct {}
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for EmptyStruct {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for EmptyStruct {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for EmptyStruct {}
 
 impl New for EmptyStruct {
@@ -177,15 +131,6 @@ pub enum Enum {
     A: u64,
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Enum {
-    fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (Enum::A(l), Enum::A(r)) => l == r,
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Enum {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -193,7 +138,6 @@ impl PartialEq for Enum {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Enum {}
 
 impl New for Enum {
@@ -202,19 +146,11 @@ impl New for Enum {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for (u8, u32) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for (u8, u32) {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for (u8, u32) {}
 
 impl New for (u8, u32) {
@@ -251,23 +187,15 @@ impl New for raw_slice {
             zero: raw_ptr
         };
 
-        std::raw_slice::from_parts::<u64>(null_ptr, 42)
+        raw_slice::from_parts::<u64>(null_ptr, 42)
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for raw_slice {
-    fn eq(self, other: Self) -> bool {
-        self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for raw_slice {
     fn eq(self, other: Self) -> bool {
         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for raw_slice {}
 
 impl New for () {
@@ -276,19 +204,11 @@ impl New for () {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for () {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for () {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for () {}
 
 impl New for [u64; 0] {
@@ -297,19 +217,11 @@ impl New for [u64; 0] {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for [u64; 0] {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for [u64; 0] {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for [u64; 0] {}
 
 impl ZeroSize for [u64; 0] {}

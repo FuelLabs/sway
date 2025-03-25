@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
-source = "path+from-root-F9B47834260273EA"
-
-[[package]]
 name = "smo"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-F9B47834260273EA"

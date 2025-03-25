@@ -397,7 +397,10 @@ pub fn traverse(
         }
 
         let (root_module, root) = match &typed {
-            Ok(p) => (p.root_module.clone(), p.namespace.root_ref().clone()),
+            Ok(p) => (
+                p.root_module.clone(),
+                p.namespace.current_package_ref().clone(),
+            ),
             Err(e) => {
                 if let Some(root) = &e.root_module {
                     (root.deref().clone(), e.namespace.clone())
@@ -477,7 +480,7 @@ pub fn parse_project(
     // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
     // If we don't return an error here, then we will likely crash when trying to access the Engines
     // during traversal or when creating runnables.
-    if results.last().map_or(true, |(value, _)| value.is_none()) {
+    if results.last().is_none_or(|(value, _)| value.is_none()) {
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
@@ -634,7 +637,7 @@ fn create_runnables(
         let span = decl
             .attributes
             .first()
-            .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
+            .map_or_else(|| decl.name.span(), |attr| attr.span.clone());
         if let Some(source_id) = span.source_id() {
             let path = source_engine.get_path(source_id);
             let runnable = Box::new(RunnableTestFn {
@@ -711,7 +714,7 @@ impl BuildPlanCache {
                 .as_ref()
                 .and_then(|path| path.metadata().ok()?.modified().ok())
                 .map_or(cache.is_none(), |time| {
-                    cache.as_ref().map_or(true, |&(_, last)| time > last)
+                    cache.as_ref().is_none_or(|&(_, last)| time > last)
                 })
         };
 

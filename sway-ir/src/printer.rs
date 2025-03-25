@@ -218,6 +218,36 @@ fn module_to_doc<'a>(
         4,
         Doc::list_sep(
             module
+                .global_variables
+                .iter()
+                .map(|(name, var)| {
+                    let var_content = &context.global_vars[var.0];
+                    let init_doc = match &var_content.initializer {
+                        Some(const_val) => Doc::text(format!(
+                            " = const {}",
+                            const_val.get_content(context).as_lit_string(context)
+                        )),
+                        None => Doc::Empty,
+                    };
+                    let mut_string = if var_content.mutable { "mut " } else { "" };
+                    Doc::line(
+                        Doc::text(format!(
+                            "{}global {} : {}",
+                            mut_string,
+                            name.join("::"),
+                            var.get_inner_type(context).as_string(context),
+                        ))
+                        .append(init_doc),
+                    )
+                })
+                .collect(),
+            Doc::line(Doc::Empty),
+        ),
+    ))
+    .append(Doc::indent(
+        4,
+        Doc::list_sep(
+            module
                 .functions
                 .iter()
                 .map(|function| {
@@ -955,6 +985,21 @@ fn instruction_to_doc<'a>(
                         "{} = get_local {}, {name}",
                         namer.name(context, ins_value),
                         local_var.get_type(context).as_string(context),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                )
+            }
+            InstOp::GetGlobal(global_var) => {
+                let name = block
+                    .get_function(context)
+                    .get_module(context)
+                    .lookup_global_variable_name(context, global_var)
+                    .unwrap();
+                Doc::line(
+                    Doc::text(format!(
+                        "{} = get_global {}, {name}",
+                        namer.name(context, ins_value),
+                        global_var.get_type(context).as_string(context),
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )

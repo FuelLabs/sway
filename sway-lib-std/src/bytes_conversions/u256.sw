@@ -146,7 +146,7 @@ impl u256 {
     /// ```
     pub fn from_be_bytes(bytes: Bytes) -> Self {
         assert(bytes.len() == 32);
-        let b: b256 = bytes.into();
+        let b: b256 = bytes.try_into().unwrap();
         asm(r1: b) {
             r1: u256
         }

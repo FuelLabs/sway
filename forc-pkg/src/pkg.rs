@@ -28,7 +28,8 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
-use sway_core::namespace::Root;
+use sway_core::namespace::Package;
+use sway_core::transform::AttributeArg;
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -44,13 +45,11 @@ use sway_core::{
     language::parsed::TreeType,
     semantic_analysis::namespace,
     source_map::SourceMap,
-    transform::AttributeKind,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
-use sway_types::constants::{CORE, STD};
 use sway_types::{Ident, ProgramId, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{debug, info};
@@ -182,7 +181,7 @@ pub struct CompiledPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
-    pub root_module: namespace::Root,
+    pub namespace: namespace::Package,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
 }
@@ -1574,7 +1573,7 @@ pub fn sway_build_config(
 ///
 /// This function is designed to be called for each node in order of compilation.
 ///
-/// This function ensures that if `core` exists in the graph (the vastly common case) it is also
+/// This function ensures that if `std` exists in the graph (the vastly common case) it is also
 /// present within the namespace. This is a necessity for operators to work for example.
 ///
 /// This function also ensures that if `std` exists in the graph,
@@ -1584,7 +1583,7 @@ pub fn sway_build_config(
 /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
 #[allow(clippy::too_many_arguments)]
 pub fn dependency_namespace(
-    lib_namespace_map: &HashMap<NodeIx, namespace::Root>,
+    lib_namespace_map: &HashMap<NodeIx, namespace::Package>,
     compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
@@ -1592,12 +1591,12 @@ pub fn dependency_namespace(
     contract_id_value: Option<ContractIdConst>,
     program_id: ProgramId,
     experimental: ExperimentalFeatures,
-) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
+) -> Result<namespace::Package, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Ident::new_no_span(node_idx.name.clone());
-    let mut root_namespace = if let Some(contract_id_value) = contract_id_value {
-        namespace::namespace_with_contract_id(
+    let mut namespace = if let Some(contract_id_value) = contract_id_value {
+        namespace::package_with_contract_id(
             engines,
             name.clone(),
             program_id,
@@ -1605,11 +1604,10 @@ pub fn dependency_namespace(
             experimental,
         )?
     } else {
-        Root::new(name.clone(), None, program_id, false)
+        Package::new(name.clone(), None, program_id, false)
     };
 
     // Add direct dependencies.
-    let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_node = edge.target();
         let dep_name = kebab_to_snake_case(&edge.weight().name);
@@ -1630,7 +1628,7 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Ident::new_no_span(node_idx.name.clone());
-                namespace::namespace_with_contract_id(
+                namespace::package_with_contract_id(
                     engines,
                     name.clone(),
                     program_id,
@@ -1639,58 +1637,10 @@ pub fn dependency_namespace(
                 )?
             }
         };
-        root_namespace.add_external(dep_name, dep_namespace);
-        let dep = &graph[dep_node];
-        if dep.name == CORE {
-            core_added = true;
-        }
+        namespace.add_external(dep_name, dep_namespace);
     }
 
-    // Add `core` if not already added.
-    if !core_added {
-        if let Some(core_node) = find_core_dep(graph, node) {
-            let core_namespace = &lib_namespace_map[&core_node];
-            root_namespace.add_external(CORE.to_string(), core_namespace.clone());
-        }
-    }
-
-    Ok(root_namespace)
-}
-
-/// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
-fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
-    // If we are `core`, do nothing.
-    let pkg = &graph[node];
-    if pkg.name == CORE {
-        return None;
-    }
-
-    // If we have `core` as a direct dep, use it.
-    let mut maybe_std = None;
-    for edge in graph.edges_directed(node, Direction::Outgoing) {
-        let dep_node = edge.target();
-        let dep = &graph[dep_node];
-        match &dep.name[..] {
-            CORE => return Some(dep_node),
-            STD => maybe_std = Some(dep_node),
-            _ => {}
-        }
-    }
-
-    // If we have `std`, select `core` via `std`.
-    if let Some(std) = maybe_std {
-        return find_core_dep(graph, std);
-    }
-
-    // Otherwise, search from this node.
-    for dep_node in Dfs::new(graph, node).iter(graph) {
-        let dep = &graph[dep_node];
-        if dep.name == CORE {
-            return Some(dep_node);
-        }
-    }
-
-    None
+    Ok(namespace)
 }
 
 /// Compiles the given package.
@@ -1715,7 +1665,7 @@ pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
     engines: &Engines,
-    namespace: namespace::Root,
+    namespace: namespace::Package,
     source_map: &mut SourceMap,
     experimental: ExperimentalFeatures,
 ) -> Result<CompiledPackage> {
@@ -1938,7 +1888,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        root_module: typed_program.namespace.root_ref().clone(),
+        namespace: typed_program.namespace.current_package_ref().clone(),
         warnings,
         metrics,
     };
@@ -2053,49 +2003,55 @@ impl PkgEntryKind {
 
 impl PkgTestEntry {
     fn from_decl(decl_ref: &DeclRefFunction, engines: &Engines) -> Result<Self> {
+        fn get_invalid_revert_code_error_msg(
+            test_function_name: &Ident,
+            should_revert_arg: &AttributeArg,
+        ) -> String {
+            format!("Invalid revert code for test \"{}\".\nA revert code must be a string containing a \"u64\", e.g.: \"42\".\nThe invalid revert code was: {}.",
+                test_function_name,
+                should_revert_arg.value.as_ref().expect("`get_string_opt` returned either a value or an error, which means that the invalid value must exist").span().as_str(),
+            )
+        }
+
         let span = decl_ref.span();
         let test_function_decl = engines.de().get_function(decl_ref);
 
-        const FAILING_TEST_KEYWORD: &str = "should_revert";
+        let Some(test_attr) = test_function_decl.attributes.test() else {
+            unreachable!("`test_function_decl` is guaranteed to be a test function and it must have a `#[test]` attribute");
+        };
 
-        let test_args: HashMap<String, Option<String>> = test_function_decl
-            .attributes
-            .get(&AttributeKind::Test)
-            .expect("test declaration is missing test attribute")
+        let pass_condition = match test_attr
+            .args
             .iter()
-            .flat_map(|attr| attr.args.iter())
-            .map(|arg| {
-                (
-                    arg.name.to_string(),
-                    arg.value
-                        .as_ref()
-                        .map(|val| val.span().as_str().to_string()),
-                )
-            })
-            .collect();
+            // Last "should_revert" argument wins ;-)
+            .rfind(|arg| arg.is_test_should_revert())
+        {
+            Some(should_revert_arg) => {
+                match should_revert_arg.get_string_opt(&Handler::default()) {
+                    Ok(should_revert_arg_value) => TestPassCondition::ShouldRevert(
+                        should_revert_arg_value
+                            .map(|val| val.parse::<u64>())
+                            .transpose()
+                            .map_err(|_| {
+                                anyhow!(get_invalid_revert_code_error_msg(
+                                    &test_function_decl.name,
+                                    should_revert_arg
+                                ))
+                            })?,
+                    ),
+                    Err(_) => bail!(get_invalid_revert_code_error_msg(
+                        &test_function_decl.name,
+                        should_revert_arg
+                    )),
+                }
+            }
+            None => TestPassCondition::ShouldNotRevert,
+        };
 
-        let pass_condition = if test_args.is_empty() {
-            anyhow::Ok(TestPassCondition::ShouldNotRevert)
-        } else if let Some(args) = test_args.get(FAILING_TEST_KEYWORD) {
-            let expected_revert_code = args
-                .as_ref()
-                .map(|arg| {
-                    let arg_str = arg.replace('"', "");
-                    arg_str.parse::<u64>()
-                })
-                .transpose()?;
-            anyhow::Ok(TestPassCondition::ShouldRevert(expected_revert_code))
-        } else {
-            let test_name = &test_function_decl.name;
-            bail!("Invalid test argument(s) for test: {test_name}.")
-        }?;
-
-        let file_path = Arc::new(
-            engines.se().get_path(
-                span.source_id()
-                    .ok_or_else(|| anyhow::anyhow!("Missing span for test function"))?,
-            ),
-        );
+        let file_path =
+            Arc::new(engines.se().get_path(span.source_id().ok_or_else(|| {
+                anyhow!("Missing span for test \"{}\".", test_function_decl.name)
+            })?));
         Ok(Self {
             pass_condition,
             span,
@@ -2565,7 +2521,7 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            lib_namespace_map.insert(node, compiled.root_module);
+            lib_namespace_map.insert(node, compiled.namespace);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
 
@@ -2620,17 +2576,22 @@ pub fn check(
         )
         .map_err(|err| anyhow!("{err}"))?;
 
-        // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
-        // compiler's namespace. Although we only know the contract id during building, we are
-        // inserting a dummy value here to avoid false error signals being reported in LSP.
-        // We only do this for the last node in the compilation order because previous nodes
-        // are dependencies.
-        //
-        // See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
-        const DUMMY_CONTRACT_ID: &str =
-            "0x0000000000000000000000000000000000000000000000000000000000000000";
-        let contract_id_value =
-            (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
+        // Only inject a dummy CONTRACT_ID in LSP mode, not when check() is called from tests or other non-LSP contexts,
+        // to avoid polluting namespaces unnecessarily.
+        let contract_id_value = if lsp_mode.is_some() && (idx == plan.compilation_order.len() - 1) {
+            // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
+            // compiler's namespace. Although we only know the contract id during building, we are
+            // inserting a dummy value here to avoid false error signals being reported in LSP.
+            // We only do this for the last node in the compilation order because previous nodes
+            // are dependencies.
+            //
+            // See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
+            const DUMMY_CONTRACT_ID: &str =
+                "0x0000000000000000000000000000000000000000000000000000000000000000";
+            Some(DUMMY_CONTRACT_ID.to_string())
+        } else {
+            None
+        };
 
         let program_id = engines
             .se()
@@ -2692,8 +2653,8 @@ pub fn check(
 
         if let Ok(typed_program) = programs.typed.as_ref() {
             if let TreeType::Library = typed_program.kind.tree_type() {
-                let mut lib_root = typed_program.namespace.root_ref().clone();
-                lib_root.current_package_root_module_mut().set_span(
+                let mut lib_namespace = typed_program.namespace.current_package_ref().clone();
+                lib_namespace.root_module_mut().set_span(
                     Span::new(
                         manifest.entry_string()?,
                         0,
@@ -2702,7 +2663,7 @@ pub fn check(
                     )
                     .unwrap(),
                 );
-                lib_namespace_map.insert(node, lib_root);
+                lib_namespace_map.insert(node, lib_namespace);
             }
             source_map.insert_dependency(manifest.dir());
         } else {
@@ -2796,7 +2757,7 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(Some("some-prefix::".to_string()));
         let re = Regex::new(r#"digraph \{
-    0 \[ label = "core" shape = box URL = "some-prefix::[[:ascii:]]+/sway-lib-core/Forc.toml"\]
+    0 \[ label = "std" shape = box URL = "some-prefix::[[:ascii:]]+/sway-lib-std/Forc.toml"\]
     1 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
     2 \[ label = "test_lib" shape = box URL = "some-prefix::/[[:ascii:]]+/test_lib/Forc.toml"\]
     3 \[ label = "test_script" shape = box URL = "some-prefix::/[[:ascii:]]+/test_script/Forc.toml"\]
@@ -2816,7 +2777,7 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(None);
         let expected = r#"digraph {
-    0 [ label = "core" shape = box ]
+    0 [ label = "std" shape = box ]
     1 [ label = "test_contract" shape = box ]
     2 [ label = "test_lib" shape = box ]
     3 [ label = "test_script" shape = box ]

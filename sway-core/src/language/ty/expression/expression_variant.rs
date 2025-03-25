@@ -49,6 +49,11 @@ pub enum TyExpressionVariant {
         decl: Box<TyConfigurableDecl>,
         call_path: Option<CallPath>,
     },
+    ConstGenericExpression {
+        span: Span,
+        decl: Box<TyConstGenericDecl>,
+        call_path: CallPath,
+    },
     VariableExpression {
         name: Ident,
         span: Span,
@@ -485,6 +490,13 @@ impl HashWithEngines for TyExpressionVariant {
             } => {
                 const_decl.hash(state, engines);
             }
+            Self::ConstGenericExpression {
+                decl: const_generic_decl,
+                span: _,
+                call_path: _,
+            } => {
+                const_generic_decl.name().hash(state);
+            }
             Self::VariableExpression {
                 name,
                 mutability,
@@ -688,6 +700,7 @@ impl SubstTypes for TyExpressionVariant {
             },
             ConstantExpression { decl, .. } => decl.subst(ctx),
             ConfigurableExpression { decl, .. } => decl.subst(ctx),
+            ConstGenericExpression { decl, .. } => decl.subst(ctx),
             VariableExpression { .. } => HasChanges::No,
             Tuple { fields } => fields.subst(ctx),
             ArrayExplicit {
@@ -888,6 +901,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 ConfigurableExpression { decl, .. } => {
                     decl.replace_decls(decl_mapping, handler, ctx)
                 }
+                ConstGenericExpression { .. } => Ok(false),
                 VariableExpression { .. } => Ok(false),
                 Tuple { fields } => {
                     let mut has_changes = false;
@@ -1079,6 +1093,9 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::ConfigurableExpression { decl, .. } => {
                 decl.type_check_analyze(handler, ctx)?
             }
+            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                decl.type_check_analyze(handler, ctx)?
+            }
             TyExpressionVariant::VariableExpression { .. } => {}
             TyExpressionVariant::Tuple { fields } => {
                 for field in fields.iter() {
@@ -1179,6 +1196,9 @@ impl TypeCheckFinalization for TyExpressionVariant {
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
             match self {
+                TyExpressionVariant::ConstGenericExpression { .. } => {
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                }
                 TyExpressionVariant::Literal(_) => {}
                 TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for (_, arg) in arguments.iter_mut() {
@@ -1259,7 +1279,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     address.type_check_finalize(handler, ctx)?;
                 }
                 TyExpressionVariant::StorageAccess(_) => {
-                    todo!();
+                    todo!("")
                 }
                 TyExpressionVariant::IntrinsicFunction(kind) => {
                     for expr in kind.arguments.iter_mut() {
@@ -1267,7 +1287,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     }
                 }
                 TyExpressionVariant::AbiName(_) => {
-                    todo!();
+                    todo!("")
                 }
                 TyExpressionVariant::EnumTag { exp } => {
                     exp.type_check_finalize(handler, ctx)?;
@@ -1319,6 +1339,7 @@ impl UpdateConstantExpression for TyExpressionVariant {
             ConfigurableExpression { .. } => {
                 unreachable!()
             }
+            ConstGenericExpression { .. } => {}
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
@@ -1440,7 +1461,7 @@ fn find_const_decl_from_impl(
         }
         TyDecl::AbiDecl(AbiDecl {
             decl_id: _decl_id, ..
-        }) => todo!(),
+        }) => todo!(""),
         _ => unreachable!(),
     }
 }
@@ -1455,6 +1476,9 @@ impl DisplayWithEngines for TyExpressionVariant {
 impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         let s = match self {
+            TyExpressionVariant::ConstGenericExpression { .. } => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {
                 call_path: name, ..
@@ -1562,7 +1586,28 @@ impl DebugWithEngines for TyExpressionVariant {
             TyExpressionVariant::Continue => "continue".to_string(),
             TyExpressionVariant::Reassignment(reassignment) => {
                 let target = match &reassignment.lhs {
-                    TyReassignmentTarget::Deref(exp) => format!("{:?}", engines.help_out(exp)),
+                    TyReassignmentTarget::DerefAccess { exp, indices } => {
+                        let mut target = format!("{:?}", engines.help_out(exp));
+                        for index in indices {
+                            match index {
+                                ProjectionKind::StructField {
+                                    name,
+                                    field_to_access: _,
+                                } => {
+                                    target.push('.');
+                                    target.push_str(name.as_str());
+                                }
+                                ProjectionKind::TupleField { index, .. } => {
+                                    target.push('.');
+                                    target.push_str(index.to_string().as_str());
+                                }
+                                ProjectionKind::ArrayIndex { index, .. } => {
+                                    write!(&mut target, "[{:?}]", engines.help_out(index)).unwrap();
+                                }
+                            }
+                        }
+                        target
+                    }
                     TyReassignmentTarget::ElementAccess {
                         base_name,
                         base_type: _,
@@ -1571,7 +1616,10 @@ impl DebugWithEngines for TyExpressionVariant {
                         let mut target = base_name.to_string();
                         for index in indices {
                             match index {
-                                ProjectionKind::StructField { name } => {
+                                ProjectionKind::StructField {
+                                    name,
+                                    field_to_access: _,
+                                } => {
                                     target.push('.');
                                     target.push_str(name.as_str());
                                 }

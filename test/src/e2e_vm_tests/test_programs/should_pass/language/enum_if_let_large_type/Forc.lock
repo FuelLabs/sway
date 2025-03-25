@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-D69404CFF5CF10E1'
+name = "enum_if_let_large_type"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'enum_if_let_large_type'
-source = 'member'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-D69404CFF5CF10E1"

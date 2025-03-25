@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::{
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef,
@@ -324,6 +326,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                     handler,
                     &mut new_copy,
                     self.type_arguments.to_vec_mut(),
+                    BTreeMap::new(),
                     EnforceTypeArguments::No,
                     &self.span,
                 )?;
@@ -398,6 +401,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
             handler,
             &mut new_copy,
             self.type_arguments.to_vec_mut(),
+            BTreeMap::new(),
             EnforceTypeArguments::No,
             &self.span,
         )?;
@@ -447,6 +451,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             handler,
             &mut new_copy,
             self.type_arguments.to_vec_mut(),
+            BTreeMap::new(),
             EnforceTypeArguments::No,
             &self.span,
         )?;

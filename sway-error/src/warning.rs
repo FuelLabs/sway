@@ -1,6 +1,6 @@
 use crate::{
     diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic},
-    formatting::Indent,
+    formatting::{did_you_mean_help, sequence_to_list, sequence_to_str, Enclosing, Indent},
 };
 
 use core::fmt;
@@ -107,28 +107,24 @@ pub enum Warning {
         is_last_arm: bool,
         is_catch_all_arm: bool,
     },
-    UnrecognizedAttribute {
-        attrib_name: Ident,
+    UnknownAttribute {
+        attribute: IdentUnique,
+        known_attributes: &'static [&'static str],
     },
-    AttributeExpectedNumberOfArguments {
-        attrib_name: Ident,
-        received_args: usize,
-        expected_min_len: usize,
-        expected_max_len: Option<usize>,
-    },
-    UnexpectedAttributeArgumentValue {
-        attrib_name: Ident,
-        received_value: String,
-        expected_values: Vec<String>,
+    UnknownAttributeArg {
+        attribute: Ident,
+        arg: IdentUnique,
+        expected_args: Vec<&'static str>,
     },
     EffectAfterInteraction {
         effect: String,
         effect_in_suggestion: String,
         block_name: Ident,
     },
-    ModulePrivacyDisabled,
     UsingDeprecated {
-        message: String,
+        deprecated_element: DeprecatedElement,
+        deprecated_element_name: String,
+        help: Option<String>,
     },
     DuplicatedStorageKey {
         first_field: IdentUnique,
@@ -138,9 +134,33 @@ pub enum Warning {
         second_field_full_name: String,
         second_field_key_is_compiler_generated: bool,
         key: String,
-        // True if the experimental feature `storage_domains` is used.
-        experimental_storage_domains: bool,
     },
+}
+
+/// Elements that can be deprecated.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DeprecatedElement {
+    Struct,
+    StructField,
+    Enum,
+    EnumVariant,
+    Function,
+    Const,
+    Configurable,
+}
+
+impl fmt::Display for DeprecatedElement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Struct => write!(f, "Struct"),
+            Self::StructField => write!(f, "Struct field"),
+            Self::Enum => write!(f, "Enum"),
+            Self::EnumVariant => write!(f, "Enum variant"),
+            Self::Function => write!(f, "Function"),
+            Self::Const => write!(f, "Constant"),
+            Self::Configurable => write!(f, "Configurable"),
+        }
+    }
 }
 
 impl fmt::Display for Warning {
@@ -262,32 +282,16 @@ impl fmt::Display for Warning {
                  actual storage access pattern: '{unneeded_attrib}' attribute(s) can be removed."
             ),
             MatchExpressionUnreachableArm { .. } => write!(f, "This match arm is unreachable."),
-            UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
-            AttributeExpectedNumberOfArguments {attrib_name, received_args, expected_min_len, expected_max_len } => write!(
+            UnknownAttribute { attribute, .. } => write!(f, "Unknown attribute \"{attribute}\"."),
+            UnknownAttributeArg { attribute, arg, expected_args } => write!(
                 f,
-                "Attribute: \"{attrib_name}\" expected {} argument(s) received {received_args}.",
-                if let Some(expected_max_len) = expected_max_len {
-                    if expected_min_len == expected_max_len {
-                        format!("exactly {expected_min_len}")
-                    } else {
-                        format!("between {expected_min_len} and {expected_max_len}")
-                    }
-                } else {
-                    format!("at least {expected_min_len}")
-                }
-            ),
-            UnexpectedAttributeArgumentValue {attrib_name, received_value, expected_values } => write!(
-                f,
-                "Unexpected attribute value: \"{received_value}\" for attribute: \"{attrib_name}\" expected value {}",
-                expected_values.iter().map(|v| format!("\"{v}\"")).collect::<Vec<_>>().join(" or ")
+                "\"{arg}\" is an unknown argument for attribute \"{attribute}\". Known arguments are: {}.", sequence_to_str(expected_args, Enclosing::DoubleQuote, usize::MAX)
             ),
             EffectAfterInteraction {effect, effect_in_suggestion, block_name} =>
                 write!(f, "{effect} after external contract interaction in function or method \"{block_name}\". \
                           Consider {effect_in_suggestion} before calling another contract"),
-            ModulePrivacyDisabled => write!(f, "Module privacy rules will soon change to make modules private by default.
-                                            You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
-                                            More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
-            UsingDeprecated { message } => write!(f, "{}", message),
+            UsingDeprecated { deprecated_element_name, deprecated_element, help } =>
+                write!(f, "{deprecated_element} \"{deprecated_element_name}\" is deprecated. {}", help.as_ref().unwrap_or(&"".into())),
             DuplicatedStorageKey { first_field_full_name, second_field_full_name, key, .. } =>
                 write!(f, "Two storage fields have the same storage key.\nFirst field: {first_field_full_name}\nSecond field: {second_field_full_name}\nKey: {key}"),
         }
@@ -422,7 +426,7 @@ impl ToDiagnostic for CompileWarning {
                     "Consider adding assembly instructions or a return register to the ASM block, or removing the block altogether.".to_string(),
                 ],
             },
-            DuplicatedStorageKey { first_field, first_field_full_name, first_field_key_is_compiler_generated, second_field, second_field_full_name, second_field_key_is_compiler_generated, key, experimental_storage_domains } => Diagnostic {
+            DuplicatedStorageKey { first_field, first_field_full_name, first_field_key_is_compiler_generated, second_field, second_field_full_name, second_field_key_is_compiler_generated, key } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Two storage fields have the same storage key".to_string())),
                 issue: Issue::warning(
                     source_engine,
@@ -449,33 +453,76 @@ impl ToDiagnostic for CompileWarning {
                         "Both keys are explicitly defined by using the `in` keyword.".to_string()
                     },
                     if *first_field_key_is_compiler_generated || *second_field_key_is_compiler_generated {
-                        if *experimental_storage_domains {
-                            format!("{}sha256((0u8, \"{}\"))",
-                                Indent::Single,
-                                if *first_field_key_is_compiler_generated {
-                                    first_field_full_name
-                                } else {
-                                    second_field_full_name
-                                }
-                            )
-                        } else {
-                            format!("{}sha256(\"{}\")",
-                                Indent::Single,
-                                if *first_field_key_is_compiler_generated {
-                                    first_field_full_name
-                                } else {
-                                    second_field_full_name
-                                }
-                            )
-                        }
+                        format!("{}sha256((0u8, \"{}\"))",
+                            Indent::Single,
+                            if *first_field_key_is_compiler_generated {
+                                first_field_full_name
+                            } else {
+                                second_field_full_name
+                            }
+                        )
                     } else {
                         Diagnostic::help_none()
                     },
                     format!("The common key is: {key}.")
                 ],
             },
+            UnknownAttribute { attribute, known_attributes } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Attribute is unknown".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    attribute.span(),
+                    format!("\"{attribute}\" attribute is unknown.")
+                ),
+                hints: vec![did_you_mean_help(source_engine, attribute.span(), known_attributes.iter(), 2, Enclosing::DoubleQuote)],
+                help: vec![
+                    "Unknown attributes are allowed and can be used by third-party tools,".to_string(),
+                    "but the compiler ignores them.".to_string(),
+                ],
+            },
+            UnknownAttributeArg { attribute, arg, expected_args } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Attribute argument is unknown".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    arg.span(),
+                    format!("\"{arg}\" is an unknown argument for attribute \"{attribute}\".")
+                ),
+                hints: {
+                    let mut hints = vec![did_you_mean_help(source_engine, arg.span(), expected_args, 2, Enclosing::DoubleQuote)];
+                    if expected_args.len() == 1 {
+                        hints.push(Hint::help(source_engine, arg.span(), format!("The only known argument is \"{}\".", expected_args[0])));
+                    } else if expected_args.len() <= 3 {
+                        hints.push(Hint::help(source_engine, arg.span(), format!("Known arguments are {}.", sequence_to_str(expected_args, Enclosing::DoubleQuote, usize::MAX))));
+                    } else {
+                        hints.push(Hint::help(source_engine, arg.span(), "Known arguments are:".to_string()));
+                        hints.append(&mut Hint::multi_help(source_engine, &arg.span(), sequence_to_list(expected_args, Indent::Single, usize::MAX)))
+                    }
+                    hints
+                },
+                help: vec![
+                    format!("Unknown attribute arguments are allowed for some attributes like \"{attribute}\"."),
+                    "They can be used by third-party tools, but the compiler ignores them.".to_string(),
+                ],
+            },
+            UsingDeprecated { deprecated_element, deprecated_element_name, help } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("{deprecated_element} is deprecated"))),
+                issue: Issue::warning(
+                    source_engine,
+                    self.span(),
+                    format!("{deprecated_element} \"{deprecated_element_name}\" is deprecated."),
+                ),
+                hints: help.as_ref().map_or(vec![], |help| vec![
+                    Hint::help(
+                        source_engine,
+                        self.span(),
+                        help.clone(),
+                    ),
+                ]),
+                help: vec![],
+            },
+            // "\"{arg}\" is an unknown argument for attribute \"{attribute}\". Known arguments are: {}.", sequence_to_str(&expected_args, Enclosing::DoubleQuote, usize::MAX)
            _ => Diagnostic {
-                    // TODO: Temporary we use self here to achieve backward compatibility.
+                    // TODO: Temporarily we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
                     //       switch to our own #[error] macro. All the values for the formatting
                     //       of a diagnostic must come from the enum variant parameters.

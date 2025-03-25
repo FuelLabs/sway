@@ -9,7 +9,7 @@ use crate::{
         },
         CallPath, CallPathType, Visibility,
     },
-    transform::{self, AttributesMap},
+    transform::Attributes,
     type_system::TypeInfo,
     Engines, TypeArgument, TypeEngine, TypeId,
 };
@@ -21,11 +21,7 @@ use sway_error::{
     handler::Handler,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{
-    constants::{ALLOW_DEAD_CODE_NAME, STD},
-    span::Span,
-    Ident, Named, Spanned,
-};
+use sway_types::{constants::STD, span::Span, Ident, Named, Spanned};
 
 // Defines if this node is a root in the dca graph or not
 fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeType) -> bool {
@@ -140,7 +136,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(true, |count| count <= 1)
+                        .is_none_or(|count| count <= 1)
                 }
                 ControlFlowGraphNode::FunctionParameter { .. } => {
                     // Consider variables declarations dead when count is not greater than 1
@@ -148,7 +144,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(true, |count| count <= 1)
+                        .is_none_or(|count| count <= 1)
                 }
                 _ => false,
             }
@@ -192,7 +188,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         connections_count
                             .get(n)
                             .cloned()
-                            .map_or(true, |count| count > 1)
+                            .is_none_or(|count| count > 1)
                     }
                 }
                 ControlFlowGraphNode::ProgramNode {
@@ -602,6 +598,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             } else {
                 Ok(leaves.to_vec())
             }
+        }
+        ty::TyDecl::ConstGenericDecl(_) => {
+            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860");
         }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
@@ -1514,6 +1513,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             Ok(vec![node])
         }
+        ConstGenericExpression { decl, .. } => {
+            let Some(node) = graph.namespace.get_const_generic(decl).cloned() else {
+                return Ok(leaves.to_vec());
+            };
+
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+
+            Ok(vec![node])
+        }
         EnumInstantiation {
             enum_ref,
             variant_name,
@@ -2059,7 +2069,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                         }
                     }
                 }
-                ty::TyReassignmentTarget::Deref(exp) => {
+                ty::TyReassignmentTarget::DerefAccess { exp, indices } => {
                     connect_expression(
                         engines,
                         &exp.expression,
@@ -2071,6 +2081,22 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                         exp.span.clone(),
                         options,
                     )?;
+
+                    for projection in indices {
+                        if let ProjectionKind::ArrayIndex { index, index_span } = projection {
+                            connect_expression(
+                                engines,
+                                &index.expression,
+                                graph,
+                                leaves,
+                                exit_node,
+                                "variable reassignment LHS array index",
+                                tree_type,
+                                index_span.clone(),
+                                options,
+                            )?;
+                        }
+                    }
                 }
             };
 
@@ -2522,23 +2548,10 @@ fn connect_call_path_decl<'eng: 'cfg, 'cfg>(
     Ok(())
 }
 
-/// Checks [AttributesMap] for `#[allow(dead_code)]` usage, if so returns true
+/// Checks `attributes` for any `#[allow(dead_code)]` usage, if so returns true
 /// otherwise returns false.
-fn allow_dead_code(attributes: AttributesMap) -> bool {
-    fn allow_dead_code_helper(attributes: AttributesMap) -> Option<bool> {
-        Some(
-            attributes
-                .get(&transform::AttributeKind::Allow)?
-                .last()?
-                .args
-                .first()?
-                .name
-                .as_str()
-                == ALLOW_DEAD_CODE_NAME,
-        )
-    }
-
-    allow_dead_code_helper(attributes).unwrap_or_default()
+fn allow_dead_code(attributes: Attributes) -> bool {
+    attributes.has_allow_dead_code()
 }
 
 /// Returns true when the given `node` contains the attribute `#[allow(dead_code)]`
@@ -2551,6 +2564,9 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             }
             ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_configurable(decl_id).attributes.clone())
+            }
+            ty::TyDecl::ConstGenericDecl(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_type(decl_id).attributes.clone())

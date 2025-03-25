@@ -27,7 +27,7 @@ use sway_ir::{
     context::Context,
     module::Module,
     value::Value,
-    Constant, InstOp, Instruction, Type, TypeContent,
+    Constant, GlobalVar, InstOp, Instruction, Type, TypeContent,
 };
 use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Named, Span};
 use sway_utils::mapped_stack::MappedStack;
@@ -118,10 +118,15 @@ pub(crate) fn compile_const_decl(
     // Check if it's a processed global constant.
     match (
         env.module
-            .get_global_constant(env.context, &call_path.as_vec_string()),
+            .get_global_variable(env.context, &call_path.as_vec_string()),
         env.module_ns,
     ) {
-        (Some(const_val), _) => Ok(Some(const_val)),
+        (Some(global_var), _) => {
+            let constant = global_var
+                .get_initializer(env.context)
+                .expect("const decl without initializer, should've been detected way early");
+            Ok(Some(Value::new_constant(env.context, *constant)))
+        }
         (None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.root_items().check_symbol(&call_path.suffix);
@@ -161,10 +166,17 @@ pub(crate) fn compile_const_decl(
                         &value,
                     )?;
 
-                    env.module.add_global_constant(
+                    let const_val_c = *const_val
+                        .get_constant(env.context)
+                        .expect("Must have been compiled to a constant");
+
+                    let c_ty = const_val_c.get_content(env.context).ty;
+                    let const_global = GlobalVar::new(env.context, c_ty, Some(const_val_c), false);
+
+                    env.module.add_global_variable(
                         env.context,
                         call_path.as_vec_string().to_vec(),
-                        const_val,
+                        const_global,
                     );
 
                     Ok(Some(const_val))
@@ -296,6 +308,10 @@ fn const_eval_typed_expr(
     }
 
     Ok(match &expr.expression {
+        ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+            assert!(decl.value.is_some());
+            const_eval_typed_expr(lookup, known_consts, decl.value.as_ref().unwrap())?
+        }
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
             let implied_lit = match &*lookup.engines.te().get(expr.return_type) {
                 TypeInfo::UnsignedInteger(IntegerBits::Eight) => Literal::U8(*n as u8),
@@ -555,6 +571,7 @@ fn const_eval_typed_expr(
             }) => {
                 let field_kind = ty::ProjectionKind::StructField {
                     name: field_to_access.name.clone(),
+                    field_to_access: Some(Box::new(field_to_access.clone())),
                 };
                 get_struct_name_field_index_and_type(
                     lookup.engines.te(),
@@ -770,7 +787,7 @@ fn const_eval_typed_expr(
                         });
                     }
                 }
-                ty::TyReassignmentTarget::Deref(_) => {
+                ty::TyReassignmentTarget::DerefAccess { .. } => {
                     return Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: expr.span.clone(),
                     });
@@ -1689,7 +1706,7 @@ mod tests {
         let handler = Handler::default();
         let mut context = Context::new(engines.se(), ExperimentalFeatures::default());
         let mut md_mgr = MetadataManager::default();
-        let core_lib = namespace::Root::new(
+        let core_lib = namespace::Package::new(
             sway_types::Ident::new_no_span("assert_is_constant_test".to_string()),
             None,
             ProgramId::new(0),

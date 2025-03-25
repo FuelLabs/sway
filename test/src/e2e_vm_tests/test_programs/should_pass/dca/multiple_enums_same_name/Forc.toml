@@ -6,4 +6,4 @@ name = "multiple_enums_same_name"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }

@@ -15,7 +15,7 @@ pub struct ParseProgram {
 
 /// A Sway program can be either a contract, script, predicate, or a library.
 ///
-/// All submodules declared with `dep` should be `Library`s.
+/// A submodule declared with `mod` can be only a [TreeType::Library].
 #[derive(Copy, Clone, Debug, PartialEq, Eq, EnumString)]
 pub enum TreeType {
     #[strum(serialize = "predicate")]
@@ -26,6 +26,10 @@ pub enum TreeType {
     Contract,
     #[strum(serialize = "library")]
     Library,
+}
+
+impl TreeType {
+    pub const CFG: &'static [&'static str] = &["contract", "library", "predicate", "script"];
 }
 
 impl std::fmt::Display for TreeType {

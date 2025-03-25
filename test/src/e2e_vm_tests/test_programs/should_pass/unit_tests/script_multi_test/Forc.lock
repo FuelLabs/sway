@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-6BF9CEE717879469'
+name = "script_multi_test"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'script_multi_test'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-6BF9CEE717879469'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-6BF9CEE717879469"

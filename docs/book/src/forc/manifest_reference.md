@@ -12,6 +12,8 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
   * `homepage` — URL of the project homepage.
   * `repository` — URL of the project source repository.
   * `documentation` — URL of the project documentation.
+  * `categories` —  Categories of the project.
+  * `keywords` —  Keywords the project.
   * `entry` — The entry point for the compiler to start parsing from.
     * For the recommended way of selecting an entry point of large libraries please take a look at: [Libraries](./../sway-program-types/libraries.md)
   * `implicit-std` -  Controls whether provided `std` version (with the current `forc` version) will get added as a dependency _implicitly_. _Unless you know what you are doing, leave this as default._
@@ -39,6 +41,8 @@ An example `Forc.toml` is shown below. Under `[project]` the following fields ar
 * `homepage`
 * `repository`
 * `documentation`
+* `categories`
+* `keywords`
 
 Also for the following fields, a default value is provided so omitting them is allowed:
 
@@ -57,6 +61,8 @@ documentation = "https://example.com/"
 organization = "Fuel_Labs"
 license = "Apache-2.0"
 name = "wallet_contract"
+categories = ["example"]
+keywords = ["example"]
 
 [project.metadata]
 indexing = { namespace = "counter-contract", schema_path = "out/release/counter-contract-abi.json" }
@@ -232,7 +238,7 @@ In the example above, `std` is patched with the `test` branch from `std` repo. Y
 std = { path = "/path/to/local_std_version" }
 ```
 
-Just like `std` or `core` you can also patch dependencies you declared with a git repo.
+Just like `std` you can also patch dependencies you declared with a git repo.
 
 ```toml
 [project]

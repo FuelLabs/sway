@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: mod a_module;
+# nextln: $()Expected module at the beginning before any other items.

@@ -146,7 +146,6 @@ where
             engines,
             item,
             false,
-            None,
             Some(kind),
         )
         .unwrap();
@@ -221,7 +220,7 @@ where
 
         let item = Self::parse(engines, program_id, code);
         let nodes = crate::transform::to_parsed_lang::item_to_ast_nodes(
-            &mut ctx, &handler, engines, item, false, None, None,
+            &mut ctx, &handler, engines, item, false, None,
         )
         .unwrap();
 
@@ -267,6 +266,7 @@ where
                 impl_trait.trait_name.clone(),
                 impl_trait.trait_type_arguments.clone(),
                 impl_trait.implementing_for.type_id,
+                impl_trait.impl_type_parameters.clone(),
                 &impl_trait.items,
                 &impl_trait.span,
                 impl_trait

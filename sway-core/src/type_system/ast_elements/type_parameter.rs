@@ -91,14 +91,14 @@ impl OrdWithEngines for TypeParameter {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let TypeParameter {
             type_id: lti,
-            name: ln,
+            name: lname,
             trait_constraints: ltc,
             // these fields are not compared because they aren't relevant/a
             // reliable source of obj v. obj distinction
             trait_constraints_span: _,
             initial_type_id: _,
             is_from_parent: _,
-        } = self;
+        } = &self;
         let TypeParameter {
             type_id: rti,
             name: rn,
@@ -108,15 +108,13 @@ impl OrdWithEngines for TypeParameter {
             trait_constraints_span: _,
             initial_type_id: _,
             is_from_parent: _,
-        } = other;
-        ln.cmp(rn)
-            .then_with(|| {
-                ctx.engines()
-                    .te()
-                    .get(*lti)
-                    .cmp(&ctx.engines().te().get(*rti), ctx)
-            })
-            .then_with(|| ltc.cmp(rtc, ctx))
+        } = &other;
+        let type_engine = ctx.engines().te();
+        let ltype = type_engine.get(*lti);
+        let rtype = type_engine.get(*rti);
+        ltype
+            .cmp(&rtype, ctx)
+            .then_with(|| lname.cmp(rn).then_with(|| ltc.cmp(rtc, ctx)))
     }
 }
 
@@ -277,21 +275,23 @@ impl TypeParameter {
         match ctx.resolve_call_path(handler, &tc.trait_name).ok() {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
                 let trait_decl = ctx.engines.de().get_trait(&decl_id);
-                let mut result = trait_decl
-                    .supertraits
-                    .iter()
-                    .flat_map(|supertrait| {
-                        TypeParameter::expand_trait_constraints(
-                            handler,
-                            ctx,
-                            &TraitConstraint {
-                                trait_name: supertrait.name.clone(),
-                                type_arguments: tc.type_arguments.clone(),
-                            },
-                        )
-                    })
-                    .collect::<Vec<TraitConstraint>>();
-                result.push(tc.clone());
+                let mut result = vec![tc.clone()];
+                result.extend(
+                    trait_decl
+                        .supertraits
+                        .iter()
+                        .flat_map(|supertrait| {
+                            TypeParameter::expand_trait_constraints(
+                                handler,
+                                ctx,
+                                &TraitConstraint {
+                                    trait_name: supertrait.name.clone(),
+                                    type_arguments: tc.type_arguments.clone(),
+                                },
+                            )
+                        })
+                        .collect::<Vec<TraitConstraint>>(),
+                );
                 result
             }
             _ => vec![tc.clone()],
@@ -562,7 +562,8 @@ impl TypeParameter {
                                     trait_types_and_names: concrete_trait_type_ids.iter().map(|t| (engines.help_out(t.0).to_string(), t.1.clone())).collect::<Vec<_>>()
                                 }));
                             }
-                            Ordering::Less => {}
+                            Ordering::Less => {
+                            }
                         }
                     }
                     // Check to see if the trait constraints are satisfied.
@@ -574,8 +575,12 @@ impl TypeParameter {
                             access_span,
                             engines,
                         ) {
-                        Ok(res) => res,
-                        Err(_) => continue,
+                        Ok(res) => {
+                            res
+                        },
+                        Err(_) => {
+                            continue
+                        },
                     }
                 }
 
@@ -595,9 +600,14 @@ impl TypeParameter {
                             function_name,
                             access_span.clone(),
                         ) {
-                            Ok(res) => res,
-                            Err(_) => continue,
+                            Ok(res) => {
+                                res
+                            },
+                            Err(_) => {
+                                continue
+                            },
                         };
+
                     interface_item_refs.extend(trait_interface_item_refs);
                     item_refs.extend(trait_item_refs);
                     impld_item_refs.extend(trait_impld_item_refs);

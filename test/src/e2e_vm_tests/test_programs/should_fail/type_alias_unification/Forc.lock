@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-6E306998EEBF0DBD"
+
+[[package]]
+name = "type_alias_unification"
+source = "member"
+dependencies = ["std"]

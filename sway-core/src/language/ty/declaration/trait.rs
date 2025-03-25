@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::{
         DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
-        ReplaceFunctionImplementingType,
+        MaterializeConstGenerics, ReplaceFunctionImplementingType,
     },
     engine_threading::*,
     has_changes,
@@ -35,7 +35,7 @@ pub struct TyTraitDecl {
     pub items: Vec<TyTraitItem>,
     pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub call_path: CallPath,
     pub span: Span,
 }
@@ -163,6 +163,18 @@ impl HashWithEngines for TyTraitDecl {
         items.hash(state, engines);
         supertraits.hash(state, engines);
         visibility.hash(state);
+    }
+}
+
+impl MaterializeConstGenerics for TyTraitDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &Engines,
+        _handler: &Handler,
+        _name: &str,
+        _value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }
 

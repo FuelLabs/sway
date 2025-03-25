@@ -7,7 +7,7 @@ use sway_types::{Span, Spanned};
 use super::Modifier;
 
 #[allow(dead_code)]
-impl<'a> Modifier<'a, Module> {
+impl Modifier<'_, Module> {
     /// Removes an [Annotated<ItemKind>] from `self`.
     /// The item to remove is identified by its [Span], `annotated_item_span`.
     pub(crate) fn remove_annotated_item(&mut self, annotated_item_span: &Span) -> &mut Self {
@@ -50,7 +50,7 @@ impl<'a> Modifier<'a, Module> {
 
     pub(crate) fn append_function(&mut self, function: ItemFn) -> &mut Self {
         let function = Annotated {
-            attribute_list: vec![],
+            attributes: vec![],
             value: ItemKind::Fn(function),
         };
         self.append_annotated_item(function)

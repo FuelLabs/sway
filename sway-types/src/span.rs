@@ -129,6 +129,10 @@ impl Span {
         &self.src
     }
 
+    pub fn source_id(&self) -> Option<&SourceId> {
+        self.source_id.as_ref()
+    }
+
     pub fn start(&self) -> usize {
         self.start
     }
@@ -137,16 +141,22 @@ impl Span {
         self.end
     }
 
-    pub fn source_id(&self) -> Option<&SourceId> {
-        self.source_id.as_ref()
-    }
-
     pub fn start_pos(&self) -> Position {
         Position::new(&self.src, self.start).unwrap()
     }
 
     pub fn end_pos(&self) -> Position {
         Position::new(&self.src, self.end).unwrap()
+    }
+
+    /// Returns an empty [Span] that points to the start of `self`.
+    pub fn start_span(&self) -> Span {
+        Self::empty_at_start(self)
+    }
+
+    /// Returns an empty [Span] that points to the end of `self`.
+    pub fn end_span(&self) -> Span {
+        Self::empty_at_end(self)
     }
 
     pub fn split(&self) -> (Position, Position) {
@@ -232,6 +242,14 @@ impl Span {
 
     pub fn is_empty(&self) -> bool {
         self.start == self.end
+    }
+
+    /// Returns true if `self` contains `other`.
+    pub fn contains(&self, other: &Span) -> bool {
+        Arc::ptr_eq(&self.src, &other.src)
+            && self.source_id == other.source_id
+            && self.start <= other.start
+            && self.end >= other.end
     }
 }
 

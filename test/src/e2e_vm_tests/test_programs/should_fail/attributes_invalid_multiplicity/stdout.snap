@@ -1,0 +1,94 @@
+---
+source: test/tests/tests.rs
+assertion_line: 115
+snapshot_kind: text
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity
+   Compiling library attributes_invalid_multiplicity (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity)
+error: Attribute can be applied only once
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/storage_attr.sw:12:7
+   |
+...
+ 9 |     #[storage(read)]
+   |       ------- info: It is already applied here.
+10 |     #[storage(write)]
+   |       ------- info: And here.
+11 |     #[storage(read, write), storage(read)]
+   |       ------- info: And here.
+   |                             ------- info: And here.
+12 |     #[storage(write)]
+   |       ^^^^^^^ "storage" attribute can be applied only once, but is applied five times.
+   |
+____
+
+error: Attribute can be applied only once
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/inline_attr.sw:11:23
+   |
+...
+ 9 |     #[inline(never)]
+   |       ------ info: It is already applied here.
+10 |     #[inline(always)]
+   |       ------ info: And here.
+11 |     #[inline(always), inline(never)]
+   |                       ^^^^^^ "inline" attribute can be applied only once, but is applied four times.
+   |       ------ info: And here.
+   |
+____
+
+error: Attribute can be applied only once
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/test_attr.sw:8:3
+  |
+...
+6 | #[test]
+  |   ---- info: It is already applied here.
+7 | #[test(should_revert), test]
+  |   ---- info: And here.
+  |                        ---- info: And here.
+8 | #[test(should_revert)]
+  |   ^^^^ "test" attribute can be applied only once, but is applied four times.
+  |
+____
+
+error: Attribute can be applied only once
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/payable_attr.sw:9:7
+  |
+...
+7 |     #[payable]
+  |       ------- info: It is already applied here.
+8 |     #[payable, payable]
+  |       ------- info: And here.
+  |                ------- info: And here.
+9 |     #[payable]
+  |       ^^^^^^^ "payable" attribute can be applied only once, but is applied four times.
+  |
+____
+
+error: Attribute can be applied only once
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/deprecated_attr.sw:7:3
+  |
+...
+6 | #[deprecated]
+  |   ---------- info: It is already applied here.
+7 | #[deprecated(note = "note")]
+  |   ^^^^^^^^^^ "deprecated" attribute can be applied only once, but is applied two times.
+  |
+____
+
+error: Attribute can be applied only once
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/fallback_attr.sw:8:3
+  |
+...
+6 | #[fallback]
+  |   -------- info: It is already applied here.
+7 | #[fallback]
+  |   -------- info: And here.
+8 | #[fallback]
+  |   ^^^^^^^^ "fallback" attribute can be applied only once, but is applied three times.
+  |
+____
+
+  Aborting due to 6 errors.
+error: Failed to compile attributes_invalid_multiplicity

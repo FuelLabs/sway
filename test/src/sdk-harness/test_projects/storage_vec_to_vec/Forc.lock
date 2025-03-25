@@ -1,11 +1,6 @@
 [[package]]
-name = "core"
-source = "path+from-root-2B98DB2C67784422"
-
-[[package]]
 name = "std"
 source = "path+from-root-2B98DB2C67784422"
-dependencies = ["core"]
 
 [[package]]
 name = "storage_vec_to_vec"
