@@ -1,4 +1,4 @@
-use super::{module::Module, Ident, ModuleName};
+use super::{module::Module, Ident, ModuleName, PackageId};
 use crate::{language::Visibility, namespace::ModulePathBuf};
 use rustc_hash::FxHasher;
 use std::hash::BuildHasherDefault;
@@ -16,11 +16,16 @@ pub struct Package {
     program_id: ProgramId,
     // True if the current package is a contract, false otherwise.
     is_contract_package: bool,
-    // The external dependencies of the current package. Note that an external package is
-    // represented as a `Package` object. This is because external packages may have their own external
-    // dependencies which are needed for lookups, but which are not directly accessible to the
-    // current package.
-    pub external_packages: im::HashMap<ModuleName, Package, BuildHasherDefault<FxHasher>>,
+    // The external dependencies of the current package as specified in the package's Forc.toml.
+    //
+    // If the dependency is specified as
+    //
+    // name_of_dependency = { location_of_dependency }
+    //
+    // then the map key for that dependency will be name_of_dependency, and the map value will be a
+    // unique identifier that the package manager assigns to the package it finds at
+    // location_of_dependency.
+    external_packages: im::HashMap<Ident, PackageId, BuildHasherDefault<FxHasher>>,
 }
 
 impl Package {
@@ -46,14 +51,23 @@ impl Package {
         }
     }
 
-    // Add an external package to this package. The package name must be supplied, since the package
-    // may be referred to by a different name in the Forc.toml file than the actual name of the
-    // package.
-    pub fn add_external(&mut self, package_name: String, external_package: Package) {
+    // Add an external package to this package.
+    //
+    // If the Forc.toml file of the current `Package` contains the lines
+    //
+    // [dependencies]
+    // foo = { bar }
+    //
+    // then `package_name` should be "foo", and package_id should be the id of the package referred
+    // to by "bar"
+    pub fn add_external(&mut self, package_name: Ident, package_id: PackageId) {
         // This should be ensured by the package manager
         assert!(!self.external_packages.contains_key(&package_name));
-        self.external_packages
-            .insert(package_name, external_package);
+        self.external_packages.insert(package_name, package_id);
+    }
+
+    pub fn external_package_id(&self, package_name: &Ident) -> Option<&PackageId> {
+        self.external_packages.get(package_name)
     }
 
     pub fn root_module(&self) -> &Module {
@@ -72,7 +86,7 @@ impl Package {
         self.program_id
     }
 
-    pub(crate) fn check_path_is_in_package(&self, mod_path: &ModulePathBuf) -> bool {
+    pub(crate) fn is_path_in_package(&self, mod_path: &ModulePathBuf) -> bool {
         !mod_path.is_empty() && mod_path[0] == *self.root_module.name()
     }
 
@@ -84,19 +98,11 @@ impl Package {
         self.is_contract_package
     }
 
-    // Find module in the current environment. `mod_path` must be a fully qualified path
-    pub fn module_from_absolute_path(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
-        assert!(!mod_path.is_empty());
+    // Find a module in the current package. `mod_path` must be a full path, and the first
+    // identifier in the path must be the current package name
+    pub fn module_from_full_path(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
+        assert!(self.is_path_in_package(mod_path));
         let package_relative_path = Self::package_relative_path(mod_path);
-        if mod_path[0] == *self.root_module.name() {
-            self.root_module.submodule(&package_relative_path)
-        } else if let Some(external_package) = self.external_packages.get(&mod_path[0].to_string())
-        {
-            external_package
-                .root_module()
-                .submodule(&package_relative_path)
-        } else {
-            None
-        }
+        self.root_module.submodule(&package_relative_path)
     }
 }

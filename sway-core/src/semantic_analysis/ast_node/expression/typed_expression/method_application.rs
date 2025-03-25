@@ -865,7 +865,7 @@ pub(crate) fn resolve_method_name(
                 .prefixes
                 .clone();
             ctx.namespace()
-                .require_module_from_absolute_path(handler, &type_info_prefix)?;
+                .require_module_from_full_path(handler, &type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(

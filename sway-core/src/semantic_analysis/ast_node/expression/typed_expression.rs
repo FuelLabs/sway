@@ -1478,7 +1478,7 @@ impl ty::TyExpression {
             ctx.namespace()
                 .current_module()
                 .read(engines, |m| m.lookup_submodule(&h, &path).is_ok())
-                || (ctx.namespace().module_from_absolute_path(&path).is_some()
+                || (ctx.namespace().module_from_full_path(&path).is_some()
                     && ctx.namespace().module_is_external(&path))
         };
 
@@ -1604,7 +1604,7 @@ impl ty::TyExpression {
                         .is_some()
                 }) || ctx
                     .namespace()
-                    .module_from_absolute_path(&lookup_path)
+                    .module_from_full_path(&lookup_path)
                     .is_some()
             };
 
