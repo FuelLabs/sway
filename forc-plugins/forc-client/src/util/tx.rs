@@ -57,12 +57,14 @@ fn ask_user_with_options(question: &str, options: &[&str], default: usize) -> Re
     Ok(selection)
 }
 
-fn collect_user_accounts(
+async fn collect_user_accounts(
     wallet_path: &Path,
     password: &str,
+    node_url: &str,
 ) -> Result<BTreeMap<usize, fuel_tx::Address>> {
     let verification = AccountVerification::Yes(password.to_string());
-    let accounts = collect_accounts_with_verification(wallet_path, verification).map_err(|e| {
+    let node_url = reqwest::Url::parse(node_url).map_err(|e| anyhow::anyhow!("Failed to parse node URL: {}", e))?;
+    let accounts = collect_accounts_with_verification(wallet_path, verification, &node_url).await.map_err(|e| {
         if e.to_string().contains("Mac Mismatch") {
             anyhow::anyhow!("Failed to access forc-wallet vault. Please check your password")
         } else {
@@ -81,7 +83,7 @@ pub(crate) fn prompt_forc_wallet_password() -> Result<String> {
     Ok(password)
 }
 
-pub(crate) fn check_and_create_wallet_at_default_path(wallet_path: &Path) -> Result<()> {
+pub(crate) async fn check_and_create_wallet_at_default_path(wallet_path: &Path) -> Result<()> {
     if !wallet_path.exists() {
         let question =
             format!("Could not find a wallet at {wallet_path:?}, please select an option: ");
@@ -90,19 +92,20 @@ pub(crate) fn check_and_create_wallet_at_default_path(wallet_path: &Path) -> Res
             &["Create new wallet", "Import existing wallet"],
             0,
         )?;
+        let ctx = forc_wallet::CliContext { wallet_path: wallet_path.to_path_buf(), node_url: forc_wallet::network::DEFAULT.parse().unwrap() };
         match wallet_options {
             0 => {
-                new_wallet_cli(wallet_path, New { force: false, cache_accounts: None })?;
+                new_wallet_cli(&ctx, New { force: false, cache_accounts: None }).await?;
                 println!("Wallet created successfully.");
             }
             1 => {
-                import_wallet_cli(wallet_path, Import { force: false, cache_accounts: None })?;
+                import_wallet_cli(&ctx, Import { force: false, cache_accounts: None }).await?;
                 println!("Wallet imported successfully.");
             },
             _ => anyhow::bail!("Refused to create or import a new wallet. If you don't want to use forc-wallet, you can sign this transaction manually with --manual-signing flag."),
         }
         // Derive first account for the fresh wallet we created.
-        new_at_index_cli(wallet_path, 0)?;
+        new_at_index_cli(&ctx, 0).await?;
         println!("Account derived successfully.");
     }
     Ok(())
@@ -188,7 +191,7 @@ pub(crate) async fn select_account(
     match wallet_mode {
         SignerSelectionMode::ForcWallet(password) => {
             let wallet_path = default_wallet_path();
-            let accounts = collect_user_accounts(&wallet_path, password)?;
+            let accounts = collect_user_accounts(&wallet_path, password, provider.url()).await?;
             let account_balances = collect_account_balances(&accounts, provider).await?;
 
             let total_balance = account_balances
@@ -251,7 +254,7 @@ pub(crate) async fn select_local_wallet_account(
     provider: &Provider,
 ) -> Result<Wallet<Unlocked<PrivateKeySigner>>> {
     let wallet_path = default_wallet_path();
-    let accounts = collect_user_accounts(&wallet_path, password)?;
+    let accounts = collect_user_accounts(&wallet_path, password, provider.url()).await?;
     let account_balances = collect_account_balances(&accounts, provider).await?;
     let consensus_parameters = provider.consensus_parameters().await?;
     let base_asset_id = consensus_parameters.base_asset_id();
