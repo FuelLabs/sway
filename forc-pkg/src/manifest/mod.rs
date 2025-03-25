@@ -290,6 +290,7 @@ pub enum Dependency {
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
+    pub(crate) namespace: Option<String>,
     pub path: Option<String>,
     pub(crate) git: Option<String>,
     pub(crate) branch: Option<String>,
@@ -322,6 +323,9 @@ impl DependencyDetails {
             branch,
             tag,
             rev,
+            version,
+            ipfs,
+            namespace,
             ..
         } = self;
 
@@ -329,6 +333,17 @@ impl DependencyDetails {
             bail!("Details reserved for git sources used without a git field");
         }
 
+        if version.is_some() && git.is_some() {
+            bail!("Both version and git details provided for dependency");
+        }
+
+        if version.is_some() && ipfs.is_some() {
+            bail!("Both version and ipfs details provided for dependency");
+        }
+
+        if version.is_none() && namespace.is_some() {
+            bail!("Namespace can only be specified for sources with version");
+        }
         Ok(())
     }
 }
@@ -1167,6 +1182,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
 
         let dependency_details_branch = DependencyDetails {
@@ -1189,6 +1205,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
 
         let dependency_details_tag = DependencyDetails {
@@ -1211,6 +1228,7 @@ mod tests {
             package: None,
             ipfs: None,
             rev: Some("9f35b8e".to_string()),
+            namespace: None,
         };
 
         let dependency_details_rev = DependencyDetails {
@@ -1335,6 +1353,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
 
         let git_source_string = "https://github.com/FuelLabs/sway".to_string();
@@ -1347,6 +1366,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
         let dependency_details_git_branch = DependencyDetails {
             version: None,
@@ -1357,6 +1377,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
         let dependency_details_git_rev = DependencyDetails {
             version: None,
@@ -1367,6 +1388,7 @@ mod tests {
             package: None,
             rev: Some("9f35b8e".to_string()),
             ipfs: None,
+            namespace: None,
         };
 
         let dependency_details_ipfs = DependencyDetails {
@@ -1378,6 +1400,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: Some("QmVxgEbiDDdHpG9AesCpZAqNvHYp1P3tWLFdrpUBWPMBcc".to_string()),
+            namespace: None,
         };
 
         assert!(dependency_details_path.validate().is_ok());

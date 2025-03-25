@@ -11,7 +11,7 @@ pub mod git;
 pub(crate) mod ipfs;
 mod member;
 pub mod path;
-mod reg;
+pub mod reg;
 
 use self::git::Url;
 use crate::manifest::GenericManifestFile;
@@ -145,37 +145,65 @@ pub struct DisplayCompiling<'a, T> {
 pub struct PinnedParseError;
 
 impl Source {
+    /// Construct a source from path information collected from manifest file.
+    fn with_path_dependency(
+        relative_path: &Path,
+        manifest_dir: &Path,
+        member_manifests: &MemberManifestFiles,
+    ) -> Result<Self> {
+        let path = manifest_dir.join(relative_path);
+        let canonical_path = path
+            .canonicalize()
+            .map_err(|e| anyhow!("Failed to canonicalize dependency path {:?}: {}", path, e))?;
+        // Check if path is a member of a workspace.
+        if member_manifests
+            .values()
+            .any(|pkg_manifest| pkg_manifest.dir() == canonical_path)
+        {
+            Ok(Source::Member(member::Source(canonical_path)))
+        } else {
+            Ok(Source::Path(canonical_path))
+        }
+    }
+
+    /// Construct a source from version information collected from manifest file.
+    fn with_version_dependency(
+        pkg_name: &str,
+        version: &str,
+        namespace: &reg::file_location::Namespace,
+    ) -> Result<Self> {
+        // TODO: semver parsing does not work for versions like: 0.1 or ^0.1.
+        let semver = semver::Version::parse(version)?;
+        let source = reg::Source {
+            version: semver,
+            namespace: namespace.clone(),
+            name: pkg_name.to_string(),
+        };
+        Ok(Source::Registry(source))
+    }
+
     /// Convert the given manifest `Dependency` declaration to a `Source`.
     pub fn from_manifest_dep(
         manifest_dir: &Path,
+        dep_name: &str,
         dep: &manifest::Dependency,
         member_manifests: &MemberManifestFiles,
     ) -> Result<Self> {
         let source = match dep {
-            manifest::Dependency::Simple(ref ver_str) => {
-                bail!(
-                    "Unsupported dependency declaration in \"{}\": `{}` - \
-                    currently only `git` and `path` dependencies are supported",
-                    manifest_dir.display(),
-                    ver_str
-                )
-            }
+            manifest::Dependency::Simple(ref ver_str) => Source::with_version_dependency(
+                dep_name,
+                ver_str,
+                &reg::file_location::Namespace::Flat,
+            )?,
             manifest::Dependency::Detailed(ref det) => {
                 match (&det.path, &det.version, &det.git, &det.ipfs) {
                     (Some(relative_path), _, _, _) => {
-                        let path = manifest_dir.join(relative_path);
-                        let canonical_path = path.canonicalize().map_err(|e| {
-                            anyhow!("Failed to canonicalize dependency path {:?}: {}", path, e)
-                        })?;
-                        // Check if path is a member of a workspace.
-                        if member_manifests
-                            .values()
-                            .any(|pkg_manifest| pkg_manifest.dir() == canonical_path)
-                        {
-                            Source::Member(member::Source(canonical_path))
-                        } else {
-                            Source::Path(canonical_path)
-                        }
+                        let relative_path = PathBuf::from_str(relative_path)?;
+                        Source::with_path_dependency(
+                            &relative_path,
+                            manifest_dir,
+                            member_manifests,
+                        )?
                     }
                     (_, _, Some(repo), _) => {
                         let reference = match (&det.branch, &det.tag, &det.rev) {
@@ -197,6 +225,13 @@ impl Source {
                         let source = ipfs::Source(cid);
                         Source::Ipfs(source)
                     }
+                    (None, Some(version), _, _) => {
+                        let namespace = det.namespace.as_ref().map_or_else(
+                            || reg::file_location::Namespace::Flat,
+                            |ns| reg::file_location::Namespace::Domain(ns.to_string()),
+                        );
+                        Source::with_version_dependency(dep_name, &version, &namespace)?
+                    }
                     _ => {
                         bail!("unsupported set of fields for dependency: {:?}", dep);
                     }
@@ -215,7 +250,7 @@ impl Source {
         dep: &manifest::Dependency,
         members: &MemberManifestFiles,
     ) -> Result<Self> {
-        let unpatched = Self::from_manifest_dep(manifest.dir(), dep, members)?;
+        let unpatched = Self::from_manifest_dep(manifest.dir(), dep_name, dep, members)?;
         unpatched.apply_patch(dep_name, manifest, members)
     }
 
@@ -247,7 +282,7 @@ impl Source {
         members: &MemberManifestFiles,
     ) -> Result<Self> {
         match self.dep_patch(dep_name, manifest)? {
-            Some(patch) => Self::from_manifest_dep(manifest.dir(), &patch, members),
+            Some(patch) => Self::from_manifest_dep(manifest.dir(), dep_name, &patch, members),
             None => Ok(self.clone()),
         }
     }
@@ -356,7 +391,7 @@ impl fmt::Display for Pinned {
             Self::Path(src) => src.fmt(f),
             Self::Git(src) => src.fmt(f),
             Self::Ipfs(src) => src.fmt(f),
-            Self::Registry(_reg) => todo!("pkg registries not yet implemented"),
+            Self::Registry(src) => src.fmt(f),
         }
     }
 }
@@ -368,7 +403,7 @@ impl fmt::Display for DisplayCompiling<'_, Pinned> {
             Pinned::Path(_src) => self.manifest_dir.display().fmt(f),
             Pinned::Git(src) => src.fmt(f),
             Pinned::Ipfs(src) => src.fmt(f),
-            Pinned::Registry(_src) => todo!("registry dependencies not yet implemented"),
+            Pinned::Registry(src) => src.fmt(f),
         }
     }
 }
@@ -386,8 +421,9 @@ impl FromStr for Pinned {
             Self::Git(src)
         } else if let Ok(src) = ipfs::Pinned::from_str(s) {
             Self::Ipfs(src)
+        } else if let Ok(src) = reg::Pinned::from_str(s) {
+            Self::Registry(src)
         } else {
-            // TODO: Try parse registry source.
             return Err(PinnedParseError);
         };
         Ok(source)

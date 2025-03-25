@@ -18,7 +18,7 @@ use std::{
 use tar::Archive;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Cid(cid::Cid);
+pub struct Cid(pub(crate) cid::Cid);
 
 /// A client that can interact with local ipfs daemon.
 pub type IpfsClient = ipfs_api::IpfsClient;
@@ -144,7 +144,11 @@ impl Cid {
         Ok(())
     }
     /// Using local node, fetches the content described by this cid.
-    async fn fetch_with_client(&self, ipfs_client: &IpfsClient, dst: &Path) -> Result<()> {
+    pub(crate) async fn fetch_with_client(
+        &self,
+        ipfs_client: &IpfsClient,
+        dst: &Path,
+    ) -> Result<()> {
         let cid_path = format!("/ipfs/{}", self.0);
         // Since we are fetching packages as a folder, they are returned as a tar archive.
         let bytes = ipfs_client
@@ -158,7 +162,7 @@ impl Cid {
     }
 
     /// Using the provided gateway url, fetches the content described by this cid.
-    async fn fetch_with_gateway_url(&self, gateway_url: &str, dst: &Path) -> Result<()> {
+    pub(crate) async fn fetch_with_gateway_url(&self, gateway_url: &str, dst: &Path) -> Result<()> {
         let client = reqwest::Client::new();
         // We request the content to be served to us in tar format by the public gateway.
         let fetch_url = format!(
@@ -233,7 +237,7 @@ fn pkg_cache_dir(cid: &Cid) -> PathBuf {
 }
 
 /// Returns a `IpfsClient` instance ready to be used to make requests to local ipfs node.
-fn ipfs_client() -> IpfsClient {
+pub(crate) fn ipfs_client() -> IpfsClient {
     IpfsClient::default()
 }
 #[cfg(test)]
