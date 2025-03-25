@@ -13,6 +13,7 @@ use crate::{
 };
 use either::Either;
 use itertools::Itertools;
+use num_bigint::BigUint;
 use sway_ast::{
     assignable::ElementAccess,
     expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
@@ -3528,12 +3529,27 @@ fn literal_to_literal(
             } = lit_int;
             match ty_opt {
                 None => {
-                    let orig_str = span.as_str();
-                    if let Some(hex_digits) = orig_str.strip_prefix("0x") {
-                        let num_digits = hex_digits.chars().filter(|c| *c != '_').count();
+                    let mut stripped_str = span.as_str();
+                    if let Some(stripped) = stripped_str.strip_suffix("b256") {
+                        for (prefix, required_digits) in [("0x", 64), ("0b", 256)] {
+                            if let Some(digits) = stripped.strip_prefix(prefix) {
+                                let num_digits = digits.chars().filter(|c| *c != '_').count();
+                                if num_digits == required_digits {
+                                    stripped_str = stripped;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if let Some(hex_digits) = stripped_str.strip_prefix("0x") {
+                        let hex_digits_filtered = hex_digits.replace("_", "");
+                        let num_digits = hex_digits_filtered.len();
                         match num_digits {
                             1..=16 => Literal::Numeric(u64::try_from(parsed).unwrap()),
                             64 => {
+                                let parsed =
+                                    BigUint::parse_bytes(hex_digits_filtered.as_bytes(), 16)
+                                        .unwrap();
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
                                 full_bytes[(32 - bytes.len())..].copy_from_slice(&bytes);
@@ -3544,11 +3560,15 @@ fn literal_to_literal(
                                 return Err(handler.emit_err(error.into()));
                             }
                         }
-                    } else if let Some(bin_digits) = orig_str.strip_prefix("0b") {
-                        let num_digits = bin_digits.chars().filter(|c| *c != '_').count();
+                    } else if let Some(bin_digits) = stripped_str.strip_prefix("0b") {
+                        let bin_digits_filtered = bin_digits.replace("_", "");
+                        let num_digits = bin_digits_filtered.len();
                         match num_digits {
                             1..=64 => Literal::Numeric(u64::try_from(parsed).unwrap()),
                             256 => {
+                                let parsed =
+                                    BigUint::parse_bytes(bin_digits_filtered.as_bytes(), 2)
+                                        .unwrap();
                                 let bytes = parsed.to_bytes_be();
                                 let mut full_bytes = [0u8; 32];
                                 full_bytes[(32 - bytes.len())..].copy_from_slice(&bytes);
