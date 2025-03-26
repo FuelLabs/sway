@@ -698,7 +698,7 @@ impl AbiEncode for raw_slice {
 }
 
 #[cfg(experimental_const_generics = true)]
-impl<T, const N:u64> AbiEncode for [T; N]
+impl<T, const N: u64> AbiEncode for [T; N]
 where
     T: AbiEncode,
 {
@@ -3219,7 +3219,7 @@ impl AbiDecode for str[64] {
 // END STRARRAY_DECODE
 
 #[cfg(experimental_const_generics = true)]
-impl<T, const N:u64> AbiDecode for [T; N]
+impl<T, const N: u64> AbiDecode for [T; N]
 where
     T: AbiDecode,
 {
