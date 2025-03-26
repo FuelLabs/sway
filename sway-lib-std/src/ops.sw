@@ -729,6 +729,34 @@ impl PartialEq for raw_ptr {
 
 impl Eq for raw_ptr {}
 
+#[cfg(experimental_const_generics = true)]
+impl<T, const N: u64> PartialEq for [T; N]
+where
+    T: PartialEq,
+{
+    fn eq(self, other: Self) -> bool {
+        let mut i = 0;
+        while __lt(i, N) {
+            let a: T = *__elem_at(&self, i);
+            let b: T = *__elem_at(&other, i);
+
+            if !a.eq(b) {
+                return false;
+            }
+
+            i = __add(i, 1);
+        };
+
+        true
+    }
+}
+
+#[cfg(experimental_const_generics = true)]
+impl<T, const N: u64> Eq for [T; N]
+where
+    T: Eq,
+{}
+
 /// Trait to evaluate if one value is greater or less than another of the same type.
 pub trait Ord {
     /// Evaluates if one value of the same type is greater than another.
@@ -1609,5 +1637,31 @@ fn u8_as_u64(val: u8) -> u64 {
 fn u64_as_u8(val: u64) -> u8 {
     asm(input: val) {
         input: u8
+    }
+}
+
+#[cfg(experimental_const_generics = true)]
+#[test]
+fn ok_array_eq() {
+    let a = [1, 2, 3];
+    let b = [1, 2, 3];
+    let c = [1, 1, 1];
+
+    if !a.eq(a) {
+        __revert(0);
+    }
+
+    if !a.eq(b) {
+        __revert(0);
+    }
+    if !b.eq(a) {
+        __revert(0);
+    }
+
+    if a.eq(c) {
+        __revert(0);
+    }
+    if c.eq(a) {
+        __revert(0);
     }
 }

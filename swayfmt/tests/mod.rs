@@ -1267,7 +1267,7 @@ fn impl_spacing() {
             fn is_baz_true(self) -> bool;
         }
 
-        impl<A ,     B>    Qux<A, B> for
+        impl<A ,     B ,  const  N   :     u64>    Qux<A, B> for
         Foo
         where
             A    : Qux,
@@ -1287,7 +1287,7 @@ fn impl_spacing() {
             fn is_baz_true(self) -> bool;
         }
 
-        impl<A, B> Qux<A, B> for Foo
+        impl<A, B, const N: u64> Qux<A, B> for Foo
         where
             A: Qux,
             B: Qux,
