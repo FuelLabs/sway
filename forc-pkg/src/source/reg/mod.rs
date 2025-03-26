@@ -62,7 +62,7 @@ pub struct GithubRegistryResolver {
     /// will be ".../fo/ob/ar/foobar".
     chunk_size: usize,
     /// Type of the namespacing is needed to determine whether to add domain at
-    /// the beginnig of the file location.
+    /// the beginning of the file location.
     namespace: Namespace,
     /// Branch name of the registry repo, the resolver is going to be using.
     branch_name: String,
@@ -199,9 +199,9 @@ impl FromStr for Pinned {
         let pkg_version =
             semver::Version::from_str(pkg_version).map_err(|_| PinnedParseError::PackageVersion)?;
 
-        // Parse the CID and namepsace.
-        let cid_and_namspace = s_iter.next().ok_or(PinnedParseError::Cid)?;
-        let mut s_iter = cid_and_namspace.split('!');
+        // Parse the CID and namespace.
+        let cid_and_namespace = s_iter.next().ok_or(PinnedParseError::Cid)?;
+        let mut s_iter = cid_and_namespace.split('!');
 
         let cid = s_iter.next().ok_or(PinnedParseError::Cid)?;
         if !validate_cid(cid) {
@@ -313,7 +313,7 @@ impl source::Pin for Source {
             with_tmp_fetch_index(ctx.fetch_id(), pkg_name, self, |index_file| async move {
                 let version = &self.version;
                 let pkg_entry = index_file
-                    .get(&version)
+                    .get(version)
                     .ok_or_else(|| anyhow!("No {} found for {}", version, pkg_name))?;
                 let cid = Cid::from_str(&pkg_entry.source_cid);
                 Ok(cid)

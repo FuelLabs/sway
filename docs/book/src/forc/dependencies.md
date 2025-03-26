@@ -43,9 +43,10 @@ The following example adds a dependency with an `registry` source.
 [dependencies]
 custom_lib = "0.0.1"
 ```
+
 In the example above the package `custom_lib v0.0.1` will be fetched from `forc.pub` using IPFS.
 
-We do not currently support `offline` mode of operation for project that uses `registry` sources. Also wildcard declarations (ex: `custom_lib = *`) to get the latest version available for that package or caret declartions (ex: `custom_lib = ^0.1`) to get `SemVer` compatible latest available option for a given dependency is not supported yet.
+We do not currently support `offline` mode of operation for project that uses `registry` sources. Also wildcard declarations (ex: `custom_lib = *`) to get the latest version available for that package or caret declarations (ex: `custom_lib = ^0.1`) to get `SemVer` compatible latest available option for a given dependency is not supported yet.
 
 Once the package is added, running `forc build` will automatically download added dependencies.
 
