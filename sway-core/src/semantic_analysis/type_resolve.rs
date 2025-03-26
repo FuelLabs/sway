@@ -334,58 +334,39 @@ pub(super) fn resolve_symbol_and_mod_path(
     self_type: Option<TypeId>,
 ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
     assert!(!mod_path.is_empty());
-    if mod_path[0] == *namespace.current_package_name() {
+    if let Some(package) = namespace.get_package(&mod_path[0]) {
         resolve_symbol_and_mod_path_inner(
             handler,
             engines,
-            namespace.current_package_root_module(),
+            package,
             mod_path,
             symbol,
             self_type,
         )
     } else {
-        match namespace.get_external_package(&mod_path[0].to_string()) {
-            Some(ext_package) => {
-                // The path must be resolved in an external package.
-                // The root module in that package may have a different name than the name we
-                // use to refer to the package, so replace it.
-                let mut new_mod_path = vec![ext_package.name().clone()];
-                for id in mod_path.iter().skip(1) {
-                    new_mod_path.push(id.clone());
-                }
-                resolve_symbol_and_mod_path_inner(
-                    handler,
-                    engines,
-                    ext_package.root_module(),
-                    &new_mod_path,
-                    symbol,
-                    self_type,
-                )
-            }
-            None => Err(handler.emit_err(crate::namespace::module_not_found(
-                mod_path,
-                mod_path[0] == *namespace.current_package_name(),
-            ))),
-        }
+        Err(handler.emit_err(crate::namespace::module_not_found(
+            mod_path,
+            mod_path[0] == *namespace.current_package_name(),
+        ))),
     }
 }
 
 fn resolve_symbol_and_mod_path_inner(
     handler: &Handler,
     engines: &Engines,
-    root_module: &Module,
+    package: &Package,
     mod_path: &ModulePath,
     symbol: &Ident,
     self_type: Option<TypeId>,
 ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
     assert!(!mod_path.is_empty());
-    assert!(root_module.mod_path().len() == 1);
-    assert!(mod_path[0] == root_module.mod_path()[0]);
 
     // This block tries to resolve associated types
-    let mut current_module = root_module;
+    let mut current_module = package.root_module;
     let mut current_mod_path = vec![mod_path[0].clone()];
     let mut decl_opt = None;
+    // package may be external, and if so the current package's Forc.toml may have renamed it. We
+    // therefore skip the first identifier of mod_path when resolving the path.
     for ident in mod_path.iter().skip(1) {
         if let Some(decl) = decl_opt {
             decl_opt = Some(resolve_associated_type_or_item(

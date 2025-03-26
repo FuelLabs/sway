@@ -33,7 +33,7 @@ impl Project {
     // If `name` is the name of the current package, then the result is the current Package.
     // If not, then look up the PackageId in the current package, and then look up the corresponding
     // package in `external_packages`.
-    fn package_from_ident(&self, name: &Ident) -> Option<&Package> {
+    pub(crate) fn package_from_ident(&self, name: &Ident) -> Option<&Package> {
         if name == self.current_package.name() {
             Some(&self.current_package)
         } else if let Some(package_id) = self.current_package.external_package_id(name) {
@@ -47,6 +47,7 @@ impl Project {
     pub fn module_from_full_path(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
         assert!(!mod_path.is_empty());
         if let Some(package) = self.package_from_ident(&mod_path[0]) {
+            TODO: if package != current_package change mod_path[0] to the package's own name
             package.module_from_full_path(mod_path)
         } else {
             None

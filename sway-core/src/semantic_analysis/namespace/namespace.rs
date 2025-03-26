@@ -155,25 +155,22 @@ impl Namespace {
         self.project.current_package.root_module_mut()
     }
 
-    // TODO: Rethink these two functions.
+    // TODO: Rethink this function.
     // external_packages is used by ir_generation to traverse the transitive dependencies of the
     // current package. This traversal needs to be implemented as a proper dag traversal now.
-    // get_external_package is used by type_resolve to determine which external package to look up a
-    // path in. That dispatch should probably happen in Namespace instead.
-    // exists_as_external is used by import_implicit, and could be eliminated.
     //    pub fn external_packages(
     //        &self,
     //    ) -> &im::HashMap<ModuleName, Package, BuildHasherDefault<FxHasher>> {
     //        &self.current_package.external_packages
     //    }
-    //
-    //    pub(crate) fn get_external_package(&self, package_name: &String) -> Option<&Package> {
-    //        self.current_package.external_packages.get(package_name)
-    //    }
-    //
-    //    fn exists_as_external(&self, package_name: &String) -> bool {
-    //        self.get_external_package(package_name).is_some()
-    //    }
+
+    pub(crate) fn get_package(&self, package_name: &Ident) -> Option<&Package> {
+        self.project.package_from_ident(package_name)
+    }
+
+    fn exists_as_external(&self, name: &Ident) -> bool {
+        self.project.package_from_ident(name).is_some()
+    }
 
     pub fn package_exists(&self, name: &Ident) -> bool {
         name == self.current_package_name() || self.exists_as_external(name)
@@ -272,19 +269,19 @@ impl Namespace {
     ) -> Result<(), ErrorEmitted> {
         // Import preludes
         let package_name = self.current_package_name().to_string();
-        let prelude_ident = Ident::new_no_span(PRELUDE.to_string());
 
         if package_name == STD {
             // Do nothing
         } else {
             // Import std::prelude::*
-            let std_string = STD.to_string();
+            let std_ident = Ident::new_no_span(STD.to_string());
+            let prelude_ident = Ident::new_no_span(PRELUDE.to_string());
             // Only import std::prelude::* if std exists as a dependency
-            assert!(self.exists_as_external(&std_string));
+            assert!(self.exists_as_external(&std_ident));
             self.prelude_import(
                 handler,
                 engines,
-                &[Ident::new_no_span(std_string), prelude_ident],
+                &[std_ident, prelude_ident],
             )?
         }
 
