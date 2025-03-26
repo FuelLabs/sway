@@ -741,7 +741,7 @@ impl<'a> TypeCheckContext<'a> {
         // grab the local module
         let local_module = self
             .namespace()
-            .require_module_from_absolute_path(handler, &self.namespace().current_mod_path)?;
+            .require_module_from_full_path(handler, &self.namespace().current_mod_path)?;
 
         // grab the local items from the local module
         let local_items = local_module.get_items_for_type(self.engines, type_id);
@@ -751,7 +751,7 @@ impl<'a> TypeCheckContext<'a> {
             // grab the module where the type itself is declared
             let type_module = self
                 .namespace()
-                .require_module_from_absolute_path(handler, &item_prefix.to_vec())?;
+                .require_module_from_full_path(handler, &item_prefix.to_vec())?;
 
             // grab the items from where the type is declared
             let mut type_items = type_module.get_items_for_type(self.engines, type_id);
@@ -1225,7 +1225,7 @@ impl<'a> TypeCheckContext<'a> {
 
         let Some(src_mod) = &self
             .namespace()
-            .module_from_absolute_path(&decl_call_path.prefixes)
+            .module_from_full_path(&decl_call_path.prefixes)
         else {
             return;
         };

@@ -6,8 +6,8 @@ use crate::{
 };
 
 use super::{
-    module::Module, package::Package, trait_map::TraitMap, ModuleName, ModulePath, ModulePathBuf,
-    ResolvedDeclaration,
+    module::Module, package::Package, project::Project, trait_map::TraitMap, ModulePath,
+    ModulePathBuf, ResolvedDeclaration,
 };
 
 use rustc_hash::FxHasher;
@@ -27,16 +27,19 @@ use sway_utils::iter_prefixes;
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug)]
 pub struct Namespace {
-    /// The current package, containing all the bindings found so far during compilation.
+    /// The current project, containing
+    /// - all bindings found so far during compilation of the current package.
+    /// - all bindings in the (transitive) fully compiled dependencies of the current package.
     ///
-    /// The `Package` object should be supplied to `new` in order to be properly initialized. Note
-    /// also the existence of `contract_helpers::package_with_contract_id`.
-    pub(crate) current_package: Package,
+    /// The `Project` object should be supplied to `new` in order to be properly initialized. Note
+    /// also the existence of `contract_helpers::package_with_contract_id`, which creates a contract
+    /// package.
+    pub(crate) project: Project,
     /// An absolute path to the current module within the current package.
     ///
-    /// The path of the root module in a package is `[package_name]`. If a module `X` is a submodule
-    /// of module `Y` which is a submodule of the root module in the package `P`, then the path is
-    /// `[P, Y, X]`.
+    /// The path of the root module in a package is `[name]`, where `name` is defined in the
+    /// package's Forc.toml name attribute. If a module `X` is a submodule of module `Y` which is a
+    /// submodule of the root module in the package `P`, then the path is `[P, Y, X]`.
     pub(crate) current_mod_path: ModulePathBuf,
 }
 
@@ -49,12 +52,12 @@ impl Namespace {
     pub fn new(
         handler: &Handler,
         engines: &Engines,
-        package: Package,
+        project: Project,
         import_std_prelude_into_root: bool,
     ) -> Result<Self, ErrorEmitted> {
-        let name = package.name().clone();
+        let name = project.current_package.name().clone();
         let mut res = Self {
-            current_package: package,
+            project,
             current_mod_path: vec![name],
         };
 
@@ -65,16 +68,16 @@ impl Namespace {
     }
 
     pub fn current_package(self) -> Package {
-        self.current_package
+        self.project.current_package
     }
 
     pub fn current_package_ref(&self) -> &Package {
-        &self.current_package
+        &self.project.current_package
     }
 
     fn module_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
-        assert!(self.current_package.check_path_is_in_package(mod_path));
-        self.current_package.module_from_absolute_path(mod_path)
+        assert!(self.project.current_package.is_path_in_package(mod_path));
+        self.project.current_package.module_from_full_path(mod_path)
     }
 
     pub fn current_module(&self) -> &Module {
@@ -96,7 +99,7 @@ impl Namespace {
     }
 
     pub fn current_package_name(&self) -> &Ident {
-        self.current_package.name()
+        self.project.current_package.name()
     }
 
     /// A reference to the path of the module currently being processed.
@@ -145,33 +148,40 @@ impl Namespace {
     }
 
     pub fn current_package_root_module(&self) -> &Module {
-        self.current_package.root_module()
+        self.project.current_package.root_module()
     }
 
     fn current_package_root_module_mut(&mut self) -> &mut Module {
-        self.current_package.root_module_mut()
+        self.project.current_package.root_module_mut()
     }
 
-    pub fn external_packages(
-        &self,
-    ) -> &im::HashMap<ModuleName, Package, BuildHasherDefault<FxHasher>> {
-        &self.current_package.external_packages
+    // TODO: Rethink this function.
+    // external_packages is used by ir_generation to traverse the transitive dependencies of the
+    // current package. This traversal needs to be implemented as a proper dag traversal now.
+    //    pub fn external_packages(
+    //        &self,
+    //    ) -> &im::HashMap<ModuleName, Package, BuildHasherDefault<FxHasher>> {
+    //        &self.current_package.external_packages
+    //    }
+
+    pub(crate) fn get_package(&self, package_name: &Ident) -> Option<&Package> {
+        self.project.package_from_ident(package_name)
     }
 
-    pub(crate) fn get_external_package(&self, package_name: &String) -> Option<&Package> {
-        self.current_package.external_packages.get(package_name)
+    fn exists_as_external(&self, name: &Ident) -> bool {
+        self.project.package_from_ident(name).is_some()
     }
 
-    pub(super) fn exists_as_external(&self, package_name: &String) -> bool {
-        self.get_external_package(package_name).is_some()
+    pub fn package_exists(&self, name: &Ident) -> bool {
+        name == self.current_package_name() || self.exists_as_external(name)
     }
 
-    pub fn module_from_absolute_path(&self, path: &ModulePathBuf) -> Option<&Module> {
-        self.current_package.module_from_absolute_path(path)
+    pub fn module_from_full_path(&self, path: &ModulePathBuf) -> Option<&Module> {
+        self.project.module_from_full_path(path)
     }
 
     // Like module_from_absolute_path, but throws an error if the module is not found
-    pub fn require_module_from_absolute_path(
+    pub fn require_module_from_full_path(
         &self,
         handler: &Handler,
         path: &ModulePathBuf,
@@ -182,8 +192,8 @@ impl Namespace {
                 Span::dummy(),
             )));
         }
-        let is_in_current_package = self.current_package.check_path_is_in_package(path);
-        match self.module_from_absolute_path(path) {
+        let is_in_current_package = self.project.current_package.is_path_in_package(path);
+        match self.module_from_full_path(path) {
             Some(module) => Ok(module),
             None => Err(handler.emit_err(crate::namespace::module::module_not_found(
                 path,
@@ -235,11 +245,6 @@ impl Namespace {
         self.current_package_name() != &absolute_module_path[0]
     }
 
-    pub fn package_exists(&self, name: &Ident) -> bool {
-        self.module_from_absolute_path(&vec![name.clone()])
-            .is_some()
-    }
-
     pub(crate) fn module_has_binding(
         &self,
         engines: &Engines,
@@ -247,7 +252,7 @@ impl Namespace {
         symbol: &Ident,
     ) -> bool {
         let dummy_handler = Handler::default();
-        if let Some(module) = self.module_from_absolute_path(mod_path) {
+        if let Some(module) = self.module_from_full_path(mod_path) {
             module
                 .resolve_symbol(&dummy_handler, engines, symbol)
                 .is_ok()
@@ -264,26 +269,25 @@ impl Namespace {
     ) -> Result<(), ErrorEmitted> {
         // Import preludes
         let package_name = self.current_package_name().to_string();
-        let prelude_ident = Ident::new_no_span(PRELUDE.to_string());
 
         if package_name == STD {
             // Do nothing
         } else {
             // Import std::prelude::*
-            let std_string = STD.to_string();
+            let std_ident = Ident::new_no_span(STD.to_string());
+            let prelude_ident = Ident::new_no_span(PRELUDE.to_string());
             // Only import std::prelude::* if std exists as a dependency
-            if self.exists_as_external(&std_string) {
-                self.prelude_import(
-                    handler,
-                    engines,
-                    &[Ident::new_no_span(std_string), prelude_ident],
-                )?
-            }
+            assert!(self.exists_as_external(&std_ident));
+            self.prelude_import(
+                handler,
+                engines,
+                &[std_ident, prelude_ident],
+            )?
         }
 
         // Import contract id. CONTRACT_ID is declared in the root module, so only import it into
         // non-root modules
-        if self.current_package.is_contract_package() && self.current_mod_path.len() > 1 {
+        if self.project.current_package.is_contract_package() && self.current_mod_path.len() > 1 {
             // import ::CONTRACT_ID
             self.item_import_to_current_module(
                 handler,
@@ -359,14 +363,14 @@ impl Namespace {
     /// This is used when a new module is created in order to pupulate the module with implicit
     /// imports from the standard library preludes.
     ///
-    /// `src` is assumed to be absolute.
+    /// `src` is assumed to be a full path.
     fn prelude_import(
         &mut self,
         handler: &Handler,
         engines: &Engines,
         src: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        let src_mod = self.require_module_from_absolute_path(handler, &src.to_vec())?;
+        let src_mod = self.require_module_from_full_path(handler, &src.to_vec())?;
 
         let mut imports = vec![];
 
@@ -430,7 +434,7 @@ impl Namespace {
     ///
     /// This is used when an import path contains an asterisk.
     ///
-    /// `src` is assumed to be absolute.
+    /// `src` is assumed to be a full path.
     pub(crate) fn star_import_to_current_module(
         &mut self,
         handler: &Handler,
@@ -440,7 +444,7 @@ impl Namespace {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_visibility(handler, src)?;
 
-        let src_mod = self.require_module_from_absolute_path(handler, &src.to_vec())?;
+        let src_mod = self.require_module_from_full_path(handler, &src.to_vec())?;
 
         let mut decls_and_item_imports = vec![];
 
@@ -526,7 +530,7 @@ impl Namespace {
 
     /// Pull all variants from the enum `enum_name` from the given `src` module and import them all into the `dst` module.
     ///
-    /// Paths are assumed to be absolute.
+    /// Paths are assumed to be a full path.
     pub(crate) fn variant_star_import_to_current_module(
         &mut self,
         handler: &Handler,
@@ -624,7 +628,7 @@ impl Namespace {
 
     /// Pull a single `item` from the given `src` module and import it into the current module.
     ///
-    /// `src` is assumed to be absolute.
+    /// `src` is assumed to be a full path.
     pub(crate) fn item_import_to_current_module(
         &mut self,
         handler: &Handler,
@@ -636,7 +640,7 @@ impl Namespace {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_visibility(handler, src)?;
 
-        let src_mod = self.require_module_from_absolute_path(handler, &src.to_vec())?;
+        let src_mod = self.require_module_from_full_path(handler, &src.to_vec())?;
 
         let (decl, path) = self.item_lookup(handler, engines, item, src, false)?;
 
@@ -706,7 +710,7 @@ impl Namespace {
     /// Pull a single variant `variant` from the enum `enum_name` from the given `src` module and
     /// import it into the current module.
     ///
-    /// `src` is assumed to be absolute.
+    /// `src` is assumed to be a full path.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn variant_import_to_current_module(
         &mut self,
@@ -881,7 +885,7 @@ impl Namespace {
         src: &ModulePath,
         ignore_visibility: bool,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
-        let src_mod = self.require_module_from_absolute_path(handler, &src.to_vec())?;
+        let src_mod = self.require_module_from_full_path(handler, &src.to_vec())?;
         let src_items = src_mod.root_items();
 
         let (decl, path, src_visibility) = if let Some(decl) = src_items.symbols.get(item) {
@@ -979,7 +983,7 @@ impl Namespace {
 
         // Check visibility of remaining submodules in the source path
         for prefix in iter_prefixes(src).skip(ignored_prefixes) {
-            if let Some(module) = self.module_from_absolute_path(&prefix.to_vec()) {
+            if let Some(module) = self.module_from_full_path(&prefix.to_vec()) {
                 if module.visibility().is_private() {
                     let prefix_last = prefix[prefix.len() - 1].clone();
                     handler.emit_err(CompileError::ImportPrivateModule {

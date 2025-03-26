@@ -497,7 +497,7 @@ impl<T: Clone> CallPath<T> {
         namespace: &Namespace,
         mod_path: &Vec<Ident>,
     ) -> CallPath<T> {
-        let mod_path_module = namespace.module_from_absolute_path(mod_path);
+        let mod_path_module = namespace.module_from_full_path(mod_path);
 
         match self.callpath_type {
             CallPathType::Full => self.clone(),
@@ -578,7 +578,7 @@ impl CallPath {
         // Generate a full path to a module where the suffix can be resolved
         let full_path = self.to_fullpath(engines, namespace);
 
-        match namespace.module_from_absolute_path(&full_path.prefixes) {
+        match namespace.module_from_full_path(&full_path.prefixes) {
             Some(module) => {
                 // Resolve the path suffix in the found module
                 match module.resolve_symbol(&Handler::default(), engines, &full_path.suffix) {
