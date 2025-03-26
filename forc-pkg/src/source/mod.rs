@@ -230,7 +230,7 @@ impl Source {
                             || reg::file_location::Namespace::Flat,
                             |ns| reg::file_location::Namespace::Domain(ns.to_string()),
                         );
-                        Source::with_version_dependency(dep_name, &version, &namespace)?
+                        Source::with_version_dependency(dep_name, version, &namespace)?
                     }
                     _ => {
                         bail!("unsupported set of fields for dependency: {:?}", dep);

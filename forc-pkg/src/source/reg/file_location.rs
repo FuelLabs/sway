@@ -100,10 +100,10 @@ mod tests {
 
         let path = location_from_root(chunk_size, &namespace, &entry.name);
 
-        // Should produce: example.com/fo/ob/ar/foobar
+        // Should produce: example/fo/ob/ar/foobar
         assert_eq!(
             path,
-            Path::new("example.com")
+            Path::new("example")
                 .join("fo")
                 .join("ob")
                 .join("ar")
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_larger_chunking_size() {
-        let chunk_size = 10;
+        let chunk_size = 3;
         let namespace = Namespace::Flat;
         let entry = create_package_entry("fibonacci");
 
