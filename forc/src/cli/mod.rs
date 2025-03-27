@@ -1,6 +1,8 @@
 use self::commands::{
     addr2line, build, check, clean, completions, contract_id, init, new, parse_bytecode, plugins,
-    predicate_root, template, test, update,
+    predicate_root, template, 
+    // test,
+     update,
 };
 use addr2line::Command as Addr2LineCommand;
 use anyhow::anyhow;
@@ -19,7 +21,7 @@ pub use plugins::Command as PluginsCommand;
 pub(crate) use predicate_root::Command as PredicateRootCommand;
 use std::str::FromStr;
 pub use template::Command as TemplateCommand;
-pub use test::Command as TestCommand;
+// pub use test::Command as TestCommand;
 use tracing::metadata::LevelFilter;
 pub use update::Command as UpdateCommand;
 
@@ -30,9 +32,9 @@ pub mod shared;
 fn help() -> &'static str {
     Box::leak(
         format!(
-            "Examples:\n{}{}{}{}",
+            "Examples:\n{}{}{}",
             plugins::examples(),
-            test::examples(),
+            // test::examples(),
             build::examples(),
             check::examples(),
         )
@@ -74,8 +76,8 @@ enum Forc {
     New(NewCommand),
     Init(InitCommand),
     ParseBytecode(ParseBytecodeCommand),
-    #[clap(visible_alias = "t")]
-    Test(TestCommand),
+    // #[clap(visible_alias = "t")]
+    // Test(TestCommand),
     Update(UpdateCommand),
     Plugins(PluginsCommand),
     Template(TemplateCommand),
@@ -136,7 +138,7 @@ pub async fn run_cli() -> ForcResult<()> {
         Forc::New(command) => new::exec(command),
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
         Forc::Plugins(command) => plugins::exec(command),
-        Forc::Test(command) => test::exec(command),
+        // Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command),
         Forc::Template(command) => template::exec(command),
         Forc::ContractId(command) => contract_id::exec(command),

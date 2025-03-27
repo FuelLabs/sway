@@ -155,6 +155,7 @@ fn ra(instruction: Instruction) -> Option<String> {
         Instruction::BAL(op) => Some(op.ra()),
         Instruction::JMP(op) => Some(op.ra()),
         Instruction::JNE(op) => Some(op.ra()),
+        Instruction::JAL(op) => Some(op.ra()),
         Instruction::SMO(op) => Some(op.ra()),
         Instruction::ADDI(op) => Some(op.ra()),
         Instruction::ANDI(op) => Some(op.ra()),

@@ -10,5 +10,5 @@ pub mod parse_bytecode;
 pub mod plugins;
 pub mod predicate_root;
 pub mod template;
-pub mod test;
+// pub mod test;
 pub mod update;

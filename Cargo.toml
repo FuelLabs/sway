@@ -3,17 +3,17 @@ resolver = "2"
 members = [
     "forc",
     "forc-pkg",
-    "forc-plugins/forc-client",
-    "forc-plugins/forc-crypto",
-    "forc-plugins/forc-debug",
-    "forc-plugins/forc-doc",
-    "forc-plugins/forc-fmt",
-    "forc-plugins/forc-lsp",
-    "forc-plugins/forc-node",
-    "forc-plugins/forc-migrate",
-    "forc-plugins/forc-publish",
-    "forc-plugins/forc-tx",
-    "forc-test",
+    # "forc-plugins/forc-client",
+    # "forc-plugins/forc-crypto",
+    # "forc-plugins/forc-debug",
+    # "forc-plugins/forc-doc",
+    # "forc-plugins/forc-fmt",
+    # "forc-plugins/forc-lsp",
+    # "forc-plugins/forc-node",
+    # "forc-plugins/forc-migrate",
+    # "forc-plugins/forc-publish",
+    # "forc-plugins/forc-tx",
+    # "forc-test",
     "forc-tracing",
     "forc-util",
     "scripts/mdbook-forc-documenter",
@@ -28,7 +28,7 @@ members = [
     "sway-types",
     "sway-utils",
     "swayfmt",
-    "test",
+    # "test",
 ]
 exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
@@ -47,21 +47,21 @@ repository = "https://github.com/FuelLabs/sway"
 
 forc = { path = "forc/", version = "0.67.0" }
 forc-pkg = { path = "forc-pkg/", version = "0.67.0" }
-forc-test = { path = "forc-test/", version = "0.67.0" }
+# forc-test = { path = "forc-test/", version = "0.67.0" }
 forc-tracing = { path = "forc-tracing/", version = "0.67.0" }
 forc-util = { path = "forc-util/", version = "0.67.0" }
 
 # Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.67.0" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.67.0" }
-forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.67.0" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.67.0" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.67.0" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.67.0" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.67.0" }
-forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.67.0" }
-forc-publish = { path = "forc-plugins/forc-publish/", version = "0.67.0" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.67.0" }
+# forc-plugins = { path = "forc-plugins/", version = "0.67.0" }
+# forc-client = { path = "forc-plugins/forc-client/", version = "0.67.0" }
+# forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.67.0" }
+# forc-debug = { path = "forc-plugins/forc-debug/", version = "0.67.0" }
+# forc-doc = { path = "forc-plugins/forc-doc/", version = "0.67.0" }
+# forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.67.0" }
+# forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.67.0" }
+# forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.67.0" }
+# forc-publish = { path = "forc-plugins/forc-publish/", version = "0.67.0" }
+# forc-tx = { path = "forc-plugins/forc-tx/", version = "0.67.0" }
 
 sway-ast = { path = "sway-ast/", version = "0.67.0" }
 sway-core = { path = "sway-core/", version = "0.67.0" }
@@ -89,24 +89,24 @@ fuel-abi-types = "0.8"
 # Although ALL verions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball
-fuel-core-client = { version = "0.41.4", default-features = false }
-fuel-core-types = { version = "0.41", default-features = false }
+fuel-core-client = { version = "0.42", default-features = false }
+fuel-core-types = { version = "0.42", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.70"
-fuels-core = "0.70"
-fuels-accounts = "0.70"
+fuels = "0.71"
+fuels-core = "0.71"
+fuels-accounts = "0.71"
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.59"
-fuel-crypto = "0.59"
-fuel-types = "0.59"
-fuel-tx = "0.59"
-fuel-vm = "0.59"
+fuel-asm = "0.60"
+fuel-crypto = "0.60"
+fuel-types = "0.60"
+fuel-tx = "0.60"
+fuel-vm = "0.60"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.12"
+forc-wallet = "0.13"
 
 #
 # External dependencies
@@ -255,3 +255,19 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+[patch.crates-io]
+fuel-asm = { path = "../fuel-vm/fuel-asm" }
+fuel-crypto = { path = "../fuel-vm/fuel-crypto" }
+fuel-tx = { path = "../fuel-vm/fuel-tx" }
+fuel-vm = { path = "../fuel-vm/fuel-vm" }
+fuel-types = { path = "../fuel-vm/fuel-types" }
+fuel-core-storage = { path = "../fuel-core/crates/storage" }
+fuel-core-poa = { path = "../fuel-core/crates/services/consensus_module/poa" }
+fuel-core-client = { path = "../fuel-core/crates/client" }
+fuel-core-types = { path = "../fuel-core/crates/types" }
+# fuel-core = { path = "../fuel-core" }
+fuels = { path = "../fuels-rs/packages/fuels" }
+fuels-core = { path = "../fuels-rs/packages/fuels-core" }
+fuels-test-helpers = { path = "../fuels-rs/packages/fuels-test-helpers" }
+fuels-accounts = { path = "../fuels-rs/packages/fuels-accounts" }
