@@ -655,7 +655,7 @@ fn lex_int_lit(
         let end_opt = parse_digits(&mut big_uint, l, 10);
         (big_uint, end_opt)
     };
-    let (radix, (big_uint, end_opt)) = if digit == 0 {
+    let (big_uint, end_opt) = if digit == 0 {
         let prefixed_int_lit = |l: &mut Lexer<'_>, radix| {
             let _ = l.stream.next();
             let d = l.stream.next();
@@ -679,31 +679,18 @@ fn lex_int_lit(
         };
 
         match l.stream.peek() {
-            Some((_, 'x')) => (16, prefixed_int_lit(l, 16)?),
-            Some((_, 'o')) => (8, prefixed_int_lit(l, 8)?),
-            Some((_, 'b')) => (2, prefixed_int_lit(l, 2)?),
-            Some((_, '_' | '0'..='9')) => (10, decimal_int_lit(l, 0)),
-            Some(&(next_index, _)) => (10, (BigUint::from(0u32), Some(next_index))),
-            None => (10, (BigUint::from(0u32), None)),
+            Some((_, 'x')) => prefixed_int_lit(l, 16)?,
+            Some((_, 'o')) => prefixed_int_lit(l, 8)?,
+            Some((_, 'b')) => prefixed_int_lit(l, 2)?,
+            Some((_, '_' | '0'..='9')) => decimal_int_lit(l, 0),
+            Some(&(next_index, _)) => (BigUint::from(0u32), Some(next_index)),
+            None => (BigUint::from(0u32), None),
         }
     } else {
-        (10, decimal_int_lit(l, digit))
+        decimal_int_lit(l, digit)
     };
 
     let ty_opt = lex_int_ty_opt(l)?;
-
-    // Only accepts u256 literals in hex form
-    if let Some((LitIntType::U256, span)) = &ty_opt {
-        if radix != 16 {
-            return Err(error(
-                l.handler,
-                LexError {
-                    kind: LexErrorKind::U256NotInHex,
-                    span: span.clone(),
-                },
-            ));
-        }
-    }
 
     let literal = Literal::Int(LitInt {
         span: span(l, index, end_opt.unwrap_or(l.src.len())),

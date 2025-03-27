@@ -1,8 +1,23 @@
 library; 
 
 // returns 3
-fn literals() -> u256 {
+fn hex_literals() -> u256 {
     0x0000000000000000000000000000000000000000000000000000000000000001u256 + 0x0000000000000000000000000000000000000000000000000000000000000002u256
+}
+
+// returns 3
+fn oct_literals() -> u256 {
+    0o1u256 + 0o2u256
+}
+
+// returns 3
+fn bin_literals() -> u256 {
+    0b1u256 + 0b10u256
+}
+
+// returns 3
+fn literals() -> u256 {
+    1u256 + 2u256
 }
 
 // returns 1
@@ -118,6 +133,9 @@ fn comparison_operators() -> u256 {
 #[test]
 fn should_be_able_to_use_literals() {
     let result = 0x0000000000000000000000000000000000000000000000000000000000000003u256;
+    assert_eq(hex_literals(), result);
+    assert_eq(oct_literals(), result);
+    assert_eq(bin_literals(), result);
     assert_eq(literals(), result);
 }
 
