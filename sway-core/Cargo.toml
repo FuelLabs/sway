@@ -25,7 +25,6 @@ im.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 itertools.workspace = true
 lazy_static.workspace = true
-num-bigint.workspace = true
 object = { workspace = true, features = ["write"] }
 parking_lot.workspace = true
 paste.workspace = true

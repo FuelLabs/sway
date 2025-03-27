@@ -7926,7 +7926,6 @@ dependencies = [
  "indexmap 2.7.1",
  "itertools 0.13.0",
  "lazy_static",
- "num-bigint",
  "object",
  "parking_lot",
  "paste",
