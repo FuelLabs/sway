@@ -15,7 +15,7 @@ pub struct TyModule {
     pub span: Span,
     pub submodules: Vec<(ModName, TySubmodule)>,
     pub all_nodes: Vec<TyAstNode>,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl TyModule {

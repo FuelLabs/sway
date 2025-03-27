@@ -1,0 +1,11 @@
+library;
+
+#[storage(invalid)]
+#[inline(invalid)]
+//! Invalid inner comment.
+#[test(invalid)]
+#[payable(invalid)]
+#[allow(invalid)]
+#[deprecated(invalid)]
+#[fallback(invalid)]
+use ::ok_lib::*;
