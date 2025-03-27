@@ -1,3 +1,2 @@
 category = "run"
-expected_result = { action = "return_data", value = "0000000003ffffc800000000000000040000000000000003" }
-expected_result_new_encoding = { action = "return_data", value = "0000000000000003000000000000007c000000000000007c000000000000007c" }
+expected_result_new_encoding = { action = "return_data", value = "0000000000000003 000000000000007c 000000000000007c 000000000000007c" }

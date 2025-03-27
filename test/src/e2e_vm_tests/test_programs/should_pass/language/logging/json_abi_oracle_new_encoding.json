@@ -2,7 +2,7 @@
   "concreteTypes": [
     {
       "concreteTypeId": "469b6a3ae1aee813b2c73788d36a1e8dd84089a16afa4d87d726f87eea55a219",
-      "metadataTypeId": 1,
+      "metadataTypeId": 2,
       "type": "enum E"
     },
     {
@@ -62,6 +62,10 @@
       "type": "()"
     },
     {
+      "metadataTypeId": 1,
+      "type": "__ref mut __slice u64"
+    },
+    {
       "components": [
         {
           "name": "A",
@@ -78,16 +82,12 @@
           "typeId": 0
         }
       ],
-      "metadataTypeId": 1,
+      "metadataTypeId": 2,
       "type": "enum E"
     },
     {
-      "metadataTypeId": 2,
-      "type": "generic T"
-    },
-    {
       "metadataTypeId": 3,
-      "type": "raw untyped ptr"
+      "type": "generic T"
     },
     {
       "metadataTypeId": 4,
@@ -101,15 +101,15 @@
         },
         {
           "name": "b",
-          "typeId": 11
+          "typeId": 10
         },
         {
           "name": "c",
-          "typeId": 9
+          "typeId": 8
         },
         {
           "name": "d",
-          "typeId": 12
+          "typeId": 11
         },
         {
           "name": "e",
@@ -119,7 +119,7 @@
               "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
             }
           ],
-          "typeId": 8
+          "typeId": 7
         },
         {
           "name": "f",
@@ -127,7 +127,7 @@
         },
         {
           "name": "g",
-          "typeId": 10
+          "typeId": 9
         }
       ],
       "metadataTypeId": 5,
@@ -137,69 +137,46 @@
       "components": [
         {
           "name": "ss",
-          "typeId": 2
+          "typeId": 3
         }
       ],
       "metadataTypeId": 6,
       "type": "struct SS",
       "typeParameters": [
-        2
-      ]
-    },
-    {
-      "components": [
-        {
-          "name": "ptr",
-          "typeId": 3
-        },
-        {
-          "name": "cap",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        }
-      ],
-      "metadataTypeId": 7,
-      "type": "struct std::vec::RawVec",
-      "typeParameters": [
-        2
+        3
       ]
     },
     {
       "components": [
         {
           "name": "buf",
-          "typeArguments": [
-            {
-              "name": "",
-              "typeId": 2
-            }
-          ],
-          "typeId": 7
+          "typeId": 1
         },
         {
           "name": "len",
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
-      "metadataTypeId": 8,
+      "metadataTypeId": 7,
       "type": "struct std::vec::Vec",
       "typeParameters": [
-        2
+        3
       ]
     },
     {
-      "metadataTypeId": 9,
+      "metadataTypeId": 8,
       "type": "u16"
     },
     {
-      "metadataTypeId": 10,
+      "metadataTypeId": 9,
       "type": "u256"
     },
     {
-      "metadataTypeId": 11,
+      "metadataTypeId": 10,
       "type": "u32"
     },
     {
-      "metadataTypeId": 12,
+      "metadataTypeId": 11,
       "type": "u8"
     }
   ],
