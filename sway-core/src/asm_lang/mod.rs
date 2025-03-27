@@ -209,20 +209,6 @@ impl Op {
         }
     }
 
-    /// Move an address at a label into a register.
-    pub(crate) fn save_ret_addr(
-        reg: VirtualRegister,
-        label: Label,
-        comment: impl Into<String>,
-        owning_span: Option<Span>,
-    ) -> Self {
-        Op {
-            opcode: Either::Right(OrganizationalOp::SaveRetAddr(reg, label)),
-            comment: comment.into(),
-            owning_span,
-        }
-    }
-
     /// Moves the register in the second argument into the register in the first argument
     pub(crate) fn register_move(
         r1: VirtualRegister,
@@ -280,19 +266,6 @@ impl Op {
             opcode: Either::Right(OrganizationalOp::JumpIfNotZero(reg0, label)),
             comment: comment.into(),
             owning_span: None,
-        }
-    }
-
-    /// Dynamically jumps to a register value.
-    pub(crate) fn jump_to_register(
-        reg: VirtualRegister,
-        comment: impl Into<String>,
-        owning_span: Option<Span>,
-    ) -> Self {
-        Op {
-            opcode: Either::Left(VirtualOp::JMP(reg)),
-            comment: comment.into(),
-            owning_span,
         }
     }
 
@@ -1275,6 +1248,14 @@ impl fmt::Display for AllocatedAbstractOp {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum LoadLabelType {
+    /// Relative jumps (JMPF, JNZF, etc.)
+    Relative,
+    /// JAL used for function calls
+    JAL,
+}
+
 // Convenience opcodes for the compiler -- will be optimized out or removed
 // these do not reflect actual ops in the VM and will be compiled to bytecode
 #[derive(Debug, Clone)]
@@ -1287,16 +1268,15 @@ pub(crate) enum ControlFlowOp<Reg> {
     Jump(Label),
     // Jumps to a label if the register is not equal to zero
     JumpIfNotZero(Reg, Label),
-    // Jumps to a label, similarly to Jump, though semantically expecting to return.
+    // Jumps to a label, storing return address `CallReturnAddress` constant register.
+    // Semantically expects the function to return to that instruction after the call.
     Call(Label),
-    // Save a return label address in a register.
-    SaveRetAddr(Reg, Label),
     // Placeholder for the offset into the configurables section.
     ConfigurablesOffsetPlaceholder,
     // placeholder for the DataSection offset
     DataSectionOffsetPlaceholder,
     // Placeholder for loading an address from the data section.
-    LoadLabel(Reg, Label),
+    LoadLabel(Reg, Label, LoadLabelType),
     // Save all currently live general purpose registers, using a label as a handle.
     PushAll(Label),
     // Restore all previously saved general purpose registers.
@@ -1317,12 +1297,11 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                 Comment => "".into(),
                 JumpIfNotZero(r1, lab) => format!("jnzi {r1} {lab}"),
                 Call(lab) => format!("fncall {lab}"),
-                SaveRetAddr(r1, lab) => format!("mova {r1} {lab}"),
                 DataSectionOffsetPlaceholder =>
                     "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
                 ConfigurablesOffsetPlaceholder =>
                     "CONFIGURABLES_OFFSET[0..32]\nCONFIGURABLES_OFFSET[32..64]".into(),
-                LoadLabel(r1, lab) => format!("lwlab {r1} {lab}"),
+                LoadLabel(r1, lab, _) => format!("lwlab {r1} {lab}"),
                 PushAll(lab) => format!("pusha {lab}"),
                 PopAll(lab) => format!("popa {lab}"),
             }
@@ -1337,13 +1316,13 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             Label(_)
             | Comment
             | Jump(_)
-            | Call(_)
+            | Call { .. }
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
 
-            JumpIfNotZero(r1, _) | SaveRetAddr(r1, _) | LoadLabel(r1, _) => vec![r1],
+            JumpIfNotZero(r1, _)  | LoadLabel(r1, _, _) => vec![r1],
         })
         .into_iter()
         .collect()
@@ -1355,8 +1334,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             Label(_)
             | Comment
             | Jump(_)
-            | Call(_)
-            | SaveRetAddr(..)
+            | Call { .. }
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
             | LoadLabel(..)
@@ -1372,13 +1350,13 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
     pub(crate) fn def_registers(&self) -> BTreeSet<&Reg> {
         use ControlFlowOp::*;
         (match self {
-            SaveRetAddr(reg, _) | LoadLabel(reg, _) => vec![reg],
+            LoadLabel(reg, _, _) => vec![reg],
 
             Label(_)
             | Comment
             | Jump(_)
+            | Call { .. }
             | JumpIfNotZero(..)
-            | Call(_)
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
@@ -1400,15 +1378,14 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             Comment
             | Label(_)
             | Jump(_)
-            | Call(_)
+            | Call { .. }
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => self.clone(),
 
             JumpIfNotZero(r1, label) => Self::JumpIfNotZero(update_reg(r1), *label),
-            SaveRetAddr(r1, label) => Self::SaveRetAddr(update_reg(r1), *label),
-            LoadLabel(r1, label) => Self::LoadLabel(update_reg(r1), *label),
+            LoadLabel(r1, label, t) => Self::LoadLabel(update_reg(r1), *label, *t),
         }
     }
 
@@ -1429,8 +1406,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         match self {
             Label(_)
             | Comment
-            | Call(_)
-            | SaveRetAddr(..)
+            | Call { .. }
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
             | LoadLabel(..)
@@ -1494,8 +1470,7 @@ impl ControlFlowOp<VirtualRegister> {
             PopAll(label) => PopAll(*label),
 
             JumpIfNotZero(r1, label) => JumpIfNotZero(map_reg(r1), *label),
-            SaveRetAddr(r1, label) => SaveRetAddr(map_reg(r1), *label),
-            LoadLabel(r1, label) => LoadLabel(map_reg(r1), *label),
+            LoadLabel(r1, label, t) => LoadLabel(map_reg(r1), *label, *t),
         }
     }
 }

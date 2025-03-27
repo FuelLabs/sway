@@ -216,7 +216,6 @@ impl AbstractInstructionSet {
                         }
                     }
                 }
-                either::Either::Right(ControlFlowOp::SaveRetAddr(..)) => {}
                 either::Either::Right(_) => {
                     clear_state = true;
                 }

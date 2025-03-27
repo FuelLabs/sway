@@ -1,9 +1,7 @@
 use crate::{
     asm_generation::fuel::data_section::EntryName,
     asm_lang::{
-        allocated_ops::{AllocatedOpcode, AllocatedRegister},
-        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, RealizedOp,
-        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+        allocated_ops::{AllocatedOpcode, AllocatedRegister}, AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, LoadLabelType, RealizedOp, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24
     },
 };
 
@@ -221,7 +219,7 @@ impl AllocatedAbstractInstructionSet {
                     comment,
                 }),
                 Either::Right(org_op) => match org_op {
-                    ControlFlowOp::Jump(ref lab) | ControlFlowOp::Call(ref lab) => {
+                    ControlFlowOp::Jump(ref lab) => {
                         let imm = || {
                             VirtualImmediate18::new_unchecked(
                                 // JMP(B/F) adds a 1
@@ -314,33 +312,17 @@ impl AllocatedAbstractInstructionSet {
                             }
                         }
                     }
-                    ControlFlowOp::SaveRetAddr(r1, ref lab) => {
-                        let imm = VirtualImmediate12::new_unchecked(
-                            rel_offset(curr_offset, lab),
-                            "Programs with more than 2^12 relative offset are unsupported right now",
-                        );
-                        assert!(curr_offset < label_offsets.get(lab).unwrap().offs);
+                    ControlFlowOp::Call(ref lab) => {
+                        // rewrite_far_jumps guarantees our label can be jumped to using a single jal
+                        let offs = label_offsets.get(lab).unwrap().offs;
+                        assert!(offs > curr_offset);
+                        assert!(offs - curr_offset <= consts::TWELVE_BITS, "{curr_offset} - {offs}");
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::SUB(
-                                r1.clone(),
+                            opcode: AllocatedOpcode::JAL(
+                                AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
                                 AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
-                                AllocatedRegister::Constant(ConstantRegister::InstructionStart),
+                                VirtualImmediate12::new_unchecked(offs - curr_offset, "rewrite_far_jumps makes this unreachable"),
                             ),
-                            owning_span: owning_span.clone(),
-                            comment: "get current instruction offset from instructions start ($is)"
-                                .into(),
-                        });
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::SRLI(
-                                r1.clone(),
-                                r1.clone(),
-                                VirtualImmediate12::new_unchecked(2, "two must fit in 12 bits"),
-                            ),
-                            owning_span: owning_span.clone(),
-                            comment: "get current instruction offset in 32-bit words".into(),
-                        });
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::ADDI(r1.clone(), r1, imm),
                             owning_span,
                             comment,
                         });
@@ -359,31 +341,58 @@ impl AllocatedAbstractInstructionSet {
                             comment: String::new(),
                         });
                     }
-                    ControlFlowOp::LoadLabel(r1, ref lab) => {
-                        // LoadLabel ops are inserted by `rewrite_far_jumps`.
-                        // So the next instruction must be a relative jump.
-                        assert!(matches!(
-                            self.ops[op_idx + 1].opcode,
-                            Either::Left(
-                                AllocatedOpcode::JMPB(..)
-                                    | AllocatedOpcode::JNZB(..)
-                                    | AllocatedOpcode::JMPF(..)
-                                    | AllocatedOpcode::JNZF(..)
-                            )
-                        ));
-                        // We compute the relative offset w.r.t the actual jump.
-                        // Sub 1 because the relative jumps add a 1.
-                        let offset = rel_offset(curr_offset + 1, lab) - 1;
-                        let data_id = data_section.insert_data_value(Entry::new_word(
-                            offset,
-                            EntryName::NonConfigurable,
-                            None,
-                        ));
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::LoadDataId(r1, data_id),
-                            owning_span,
-                            comment,
-                        });
+                    ControlFlowOp::LoadLabel(r1, ref lab, type_) => {
+                        // LoadLabel ops are inserted by `rewrite_far_jumps`,
+                        // So the next instruction must be a jump.
+                        match type_ {
+                            LoadLabelType::Relative => {
+                                assert!(matches!(
+                                    self.ops[op_idx + 1].opcode,
+                                    Either::Left(
+                                        AllocatedOpcode::JMPB(..)
+                                            | AllocatedOpcode::JNZB(..)
+                                            | AllocatedOpcode::JMPF(..)
+                                            | AllocatedOpcode::JNZF(..)
+                                    )
+                                ));
+
+                                // Sub 1 because the relative jumps add a 1.
+                                let offset = rel_offset(curr_offset + 1, lab) - 1;
+                                let data_id = data_section.insert_data_value(Entry::new_word(
+                                    offset,
+                                    EntryName::NonConfigurable,
+                                    None,
+                                ));
+                                realized_ops.push(RealizedOp {
+                                    opcode: AllocatedOpcode::LoadDataId(r1, data_id),
+                                    owning_span,
+                                    comment,
+                                });
+                            },
+                            LoadLabelType::JAL => {
+                                // Note that we assume a forward jump here.
+                                // When inserting this, backwards jumps insert SUB instruction to get the negative value.
+                                assert!(matches!(
+                                    self.ops[op_idx + 1].opcode,
+                                    Either::Left(
+                                        AllocatedOpcode::JAL(..)
+                                        // SUB used for backwards jumps
+                                        | AllocatedOpcode::SUB(..)
+                                    )
+                                ));
+                                let offset = rel_offset(curr_offset, lab);
+                                let data_id = data_section.insert_data_value(Entry::new_word(
+                                    offset,
+                                    EntryName::NonConfigurable,
+                                    None,
+                                ));
+                                realized_ops.push(RealizedOp {
+                                    opcode: AllocatedOpcode::LoadDataId(r1, data_id),
+                                    owning_span,
+                                    comment,
+                                });
+                            }
+                        };
                     }
                     ControlFlowOp::Comment => continue,
                     ControlFlowOp::Label(..) => continue,
@@ -478,14 +487,8 @@ impl AllocatedAbstractInstructionSet {
             Either::Left(AllocatedOpcode::BLOB(ref count)) => count.value() as u64,
 
             // These ops will end up being exactly one op, so the cur_offset goes up one.
-            Either::Right(Jump(..) | JumpIfNotZero(..) | Call(..) | LoadLabel(..))
+            Either::Right(Jump(..) | JumpIfNotZero(..) | Call { .. } | LoadLabel(..))
             | Either::Left(_) => 1,
-
-            // We use three instructions to save the absolute address for return.
-            // SUB r1 $pc $is
-            // SRLI r1 r1 2 / DIVI r1 r1 4
-            // ADDI $r1 $r1 offset
-            Either::Right(SaveRetAddr(..)) => 3,
 
             Either::Right(Comment) => 0,
 
@@ -512,9 +515,11 @@ impl AllocatedAbstractInstructionSet {
         // We decide here whether remapping jumps are necessary.
         // 1. JMPB and JMPF offsets are more than 18 bits
         // 2. JNZF and JNZB offsets are more than 12 bits
+        // 3. JAL offset is more than 12 bits or negative
 
         let mut jnz_labels = HashSet::new();
         let mut jmp_labels = HashSet::new();
+        let mut jal_labels = HashSet::new();
 
         use ControlFlowOp::*;
 
@@ -532,12 +537,16 @@ impl AllocatedAbstractInstructionSet {
                 cur_basic_block = Some((cur_lab, op_idx, cur_offset));
             }
 
-            if let Either::Right(Jump(lab) | Call(lab)) = op.opcode {
+            if let Either::Right(Jump(lab)) = op.opcode {
                 jmp_labels.insert((cur_offset, lab));
             }
 
             if let Either::Right(JumpIfNotZero(_, lab)) = op.opcode {
                 jnz_labels.insert((cur_offset, lab));
+            }
+
+            if let Either::Right(Call(lab)) = op.opcode {
+                jal_labels.insert((cur_offset, lab));
             }
 
             // Update the offset.
@@ -549,18 +558,25 @@ impl AllocatedAbstractInstructionSet {
             labelled_blocks.insert(lab, BasicBlock { offs });
         }
 
-        let needs_remap = |offset, lab, limit| {
+        let rel_needs_remap = |offset, lab, limit| {
             let rel_offset = labelled_blocks.get(lab).unwrap().offs.abs_diff(offset);
             // Self jumps need a NOOP inserted before it so that we can jump to the NOOP.
             // if rel_offset exceeds limit, we'll need to insert LoadLabels.
             rel_offset == 0 || rel_offset > limit
         };
+        let jal_needs_remap = |offset, lab| {
+            let offs = labelled_blocks.get(lab).unwrap().offs;
+            offs < offset || (offs - offset) > consts::TWELVE_BITS
+        };
         let need_to_remap_jumps = jmp_labels
             .iter()
-            .any(|(offset, lab)| needs_remap(*offset, lab, consts::EIGHTEEN_BITS))
+            .any(|(offset, lab)| rel_needs_remap(*offset, lab, consts::EIGHTEEN_BITS))
             || jnz_labels
                 .iter()
-                .any(|(offset, lab)| needs_remap(*offset, lab, consts::TWELVE_BITS));
+                .any(|(offset, lab)| rel_needs_remap(*offset, lab, consts::TWELVE_BITS))
+            || jal_labels
+                .iter()
+                .any(|(offset, lab)| jal_needs_remap(*offset, lab));
 
         (need_to_remap_jumps, labelled_blocks)
     }
@@ -584,8 +600,7 @@ impl AllocatedAbstractInstructionSet {
                 let op_size = Self::instruction_size(&op, data_section);
                 let rel_offset = |lab| label_offsets.get(lab).unwrap().offs.abs_diff(curr_offset);
                 match &op.opcode {
-                    Either::Right(ControlFlowOp::Jump(ref lab))
-                    | Either::Right(ControlFlowOp::Call(ref lab)) => {
+                    Either::Right(ControlFlowOp::Jump(ref lab)) => {
                         if rel_offset(lab) == 0 {
                             new_ops.push(AllocatedAbstractOp {
                                 opcode: Either::Left(AllocatedOpcode::NOOP),
@@ -602,6 +617,7 @@ impl AllocatedAbstractInstructionSet {
                                 opcode: Either::Right(ControlFlowOp::LoadLabel(
                                     AllocatedRegister::Constant(ConstantRegister::Scratch),
                                     *lab,
+                                    LoadLabelType::Relative,
                                 )),
                                 comment: String::new(),
                                 owning_span: None,
@@ -645,6 +661,7 @@ impl AllocatedAbstractInstructionSet {
                                 opcode: Either::Right(ControlFlowOp::LoadLabel(
                                     AllocatedRegister::Constant(ConstantRegister::Scratch),
                                     *lab,
+                                    LoadLabelType::Relative,
                                 )),
                                 comment: String::new(),
                                 owning_span: None,
@@ -673,11 +690,79 @@ impl AllocatedAbstractInstructionSet {
                             modified = true;
                         }
                     }
-                    Either::Right(ControlFlowOp::SaveRetAddr(_r1, ref lab)) => {
-                        if rel_offset(lab) <= consts::TWELVE_BITS {
-                            new_ops.push(op)
+                    Either::Right(ControlFlowOp::Call(ref lab)) => {
+                        let lab_offs = label_offsets.get(lab).unwrap().offs;
+                        if lab_offs < curr_offset {
+                            // We use `JAL` instruciton to do calls. It doesn't support backwards offsets.
+                            new_ops.push(AllocatedAbstractOp {
+                                opcode: Either::Right(ControlFlowOp::LoadLabel(
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    *lab,
+                                    LoadLabelType::JAL,
+                                )),
+                                comment: String::new(),
+                                owning_span: None,
+                            });
+                            new_ops.push(AllocatedAbstractOp {
+                                opcode: Either::Left(AllocatedOpcode::SUB(
+                                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                                )),
+                                comment: String::new(),
+                                owning_span: None,
+                            });
+                            new_ops.push(AllocatedAbstractOp {
+                                opcode: Either::Left(AllocatedOpcode::JAL (
+                                    AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
+                                )),
+                                ..op
+                            });
+                            modified = true;
+                        } else if lab_offs > consts::EIGHTEEN_BITS {
+                            // Offset cannot fit into MOVI, do full load.
+                            new_ops.push(AllocatedAbstractOp {
+                                opcode: Either::Right(ControlFlowOp::LoadLabel(
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    *lab,
+                                    LoadLabelType::JAL,
+                                )),
+                                comment: String::new(),
+                                owning_span: None,
+                            });
+                            new_ops.push(AllocatedAbstractOp {
+                                opcode: Either::Left(AllocatedOpcode::JAL (
+                                    AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
+                                )),
+                                ..op
+                            });
+                            modified = true;
+                        } else if lab_offs > consts::TWELVE_BITS {
+                            // We can use MOVI for this
+                            new_ops.push(AllocatedAbstractOp {
+                                opcode: Either::Left(AllocatedOpcode::MOVI(
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    VirtualImmediate18::new_unchecked(lab_offs, "label offset must fit in 12 bits"),
+                                )),
+                                comment: String::new(),
+                                owning_span: None,
+                            });
+                            new_ops.push(AllocatedAbstractOp {
+                                opcode: Either::Left(AllocatedOpcode::JAL (
+                                    AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
+                                )),
+                                ..op
+                            });
+                            modified = true;
                         } else {
-                            panic!("Return to address must be right after the call for which we saved this address.");
+                            // This fits as-is
+                            new_ops.push(op);
                         }
                     }
 
