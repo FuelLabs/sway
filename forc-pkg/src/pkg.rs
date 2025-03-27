@@ -285,6 +285,8 @@ pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
     pub minify: MinifyOpts,
+    /// If set, generates a JSON file containing the hex-encoded script binary.
+    pub hex_file: Option<String>,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,
     /// If set, outputs debug info to the provided file.
@@ -427,6 +429,15 @@ impl BuiltPackage {
         Ok(())
     }
 
+    pub fn write_hexcode(&self, path: &Path) -> Result<()> {
+        let hex_file = serde_json::json!({
+            "hex": format!("0x{}", hex::encode(&self.bytecode.bytes)),
+        });
+
+        fs::write(path, hex_file.to_string())?;
+        Ok(())
+    }
+
     /// Writes debug_info (source_map) of the BuiltPackage to the given `out_file`.
     pub fn write_debug_info(&self, out_file: &Path) -> Result<()> {
         if matches!(out_file.extension(), Some(ext) if ext == "json") {
@@ -505,6 +516,7 @@ impl BuiltPackage {
             self.bytecode.bytes.len(),
             format_bytecode_size(self.bytecode.bytes.len())
         );
+
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -2156,6 +2168,7 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
 /// Builds a project with given BuildOptions.
 pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
     let BuildOpts {
+        hex_file,
         minify,
         binary_outfile,
         debug_outfile,
@@ -2248,6 +2261,11 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
                 .unwrap_or_else(|| output_dir.join("debug_symbols.obj"));
             built_package.write_debug_info(&debug_path)?;
         }
+
+        if let Some(hexfile) = &hex_file {
+            built_package.write_hexcode(hexfile.as_ref())?;
+        }
+
         built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
         built_workspace.push(Arc::new(built_package));
     }
