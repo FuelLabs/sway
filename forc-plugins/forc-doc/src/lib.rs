@@ -109,6 +109,7 @@ pub fn compile_html(
         None,
         &build_instructions.experimental.experimental,
         &build_instructions.experimental.no_experimental,
+        sway_core::DbgGeneration::Full,
     )?;
 
     let raw_docs = if build_instructions.no_deps {
