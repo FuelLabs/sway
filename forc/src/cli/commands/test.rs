@@ -257,7 +257,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         error_on_warnings: cmd.build.profile.error_on_warnings,
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
-        generate_hex: cmd.build.output.generate_hex,
+        hex_file: cmd.build.output.hex_file,
         build_target: cmd.build.build_target,
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,

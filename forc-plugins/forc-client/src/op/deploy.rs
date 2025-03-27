@@ -827,7 +827,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
         error_on_warnings: false,
         binary_outfile: cmd.build_output.bin_file.clone(),
         debug_outfile: cmd.build_output.debug_file.clone(),
-        generate_hex: cmd.build_output.generate_hex.clone(),
+        hex_file: cmd.build_output.hex_file.clone(),
         build_target: BuildTarget::default(),
         tests: false,
         member_filter,
