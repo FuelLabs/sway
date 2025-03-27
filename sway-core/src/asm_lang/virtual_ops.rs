@@ -106,6 +106,7 @@ pub(crate) enum VirtualOp {
     JNE(VirtualRegister, VirtualRegister, VirtualRegister),
     JNEI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     JNZI(VirtualRegister, VirtualImmediate18),
+    JAL(VirtualRegister, VirtualRegister, VirtualImmediate12),
     RET(VirtualRegister),
 
     /* Memory Instructions */
@@ -305,6 +306,7 @@ impl VirtualOp {
             JNE(r1, r2, r3) => vec![r1, r2, r3],
             JNEI(r1, r2, _i) => vec![r1, r2],
             JNZI(r1, _i) => vec![r1],
+            JAL(r1, r2, _i) => vec![r1, r2],
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
@@ -446,6 +448,7 @@ impl VirtualOp {
             | JNE(_, _, _)
             | JNEI(_, _, _)
             | JNZI(_, _)
+            | JAL(_, _, _)
             | RET(_)
             | ALOC(..)
             | CFEI(..)
@@ -557,6 +560,7 @@ impl VirtualOp {
             | JNE(_, _, _)
             | JNEI(_, _, _)
             | JNZI(_, _)
+            | JAL(_, _, _)
             | RET(_)
             | LB(_, _, _)
             | LW(_, _, _)
@@ -663,6 +667,7 @@ impl VirtualOp {
             JNE(r1, r2, r3) => vec![r1, r2, r3],
             JNEI(r1, r2, _i) => vec![r1, r2],
             JNZI(r1, _i) => vec![r1],
+            JAL(r1, r2, _i) => vec![r1, r2],
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
@@ -788,6 +793,7 @@ impl VirtualOp {
             JNE(_r1, _r2, _r3) => vec![],
             JNEI(_r1, _r2, _i) => vec![],
             JNZI(_r1, _i) => vec![],
+            JAL(r1, _r2, _i) => vec![r1],
             RET(_r1) => vec![],
 
             /* Memory Instructions */
@@ -1091,6 +1097,7 @@ impl VirtualOp {
                 i.clone(),
             ),
             JNZI(r1, i) => Self::JNZI(update_reg(reg_to_reg_map, r1), i.clone()),
+            JAL(r1, r2, i) => Self::JAL(update_reg(reg_to_reg_map, r1), update_reg(reg_to_reg_map, r2), i.clone()),
             RET(r1) => Self::RET(update_reg(reg_to_reg_map, r1)),
 
             /* Memory Instructions */
@@ -1599,6 +1606,7 @@ impl VirtualOp {
                 imm.clone(),
             ),
             JNZI(reg1, imm) => AllocatedOpcode::JNZI(map_reg(&mapping, reg1), imm.clone()),
+            JAL(reg1, reg2, imm) => AllocatedOpcode::JAL(map_reg(&mapping, reg1), map_reg(&mapping, reg2), imm.clone()),
             RET(reg) => AllocatedOpcode::RET(map_reg(&mapping, reg)),
 
             /* Memory Instructions */

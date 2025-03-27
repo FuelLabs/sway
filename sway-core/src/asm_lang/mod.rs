@@ -476,6 +476,10 @@ impl Op {
                 let (r1, imm) = single_reg_imm_18(handler, args, immediate, whole_op_span)?;
                 VirtualOp::JNZI(r1, imm)
             }
+            "jal" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JAL(r1, r2, imm)
+            }
             "ret" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
                 VirtualOp::RET(r1)
@@ -1192,6 +1196,7 @@ impl fmt::Display for VirtualOp {
             JNE(a, b, c) => write!(fmtr, "jne {a} {b} {c}"),
             JNEI(a, b, c) => write!(fmtr, "jnei {a} {b} {c}"),
             JNZI(a, b) => write!(fmtr, "jnzi {a} {b}"),
+            JAL(a, b, c) => write!(fmtr, "jal {a} {b} {c}"),
             RET(a) => write!(fmtr, "ret {a}"),
 
             /* Memory Instructions */

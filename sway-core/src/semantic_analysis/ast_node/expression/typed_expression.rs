@@ -3052,6 +3052,7 @@ fn check_asm_block_validity(
                 | VirtualOp::JNZI(..)
                 | VirtualOp::RET(_)
                 | VirtualOp::RETD(..)
+                | VirtualOp::JAL(..)
                 | VirtualOp::RVRT(..)
         ) {
             Some(CompileError::DisallowedControlFlowInstruction {

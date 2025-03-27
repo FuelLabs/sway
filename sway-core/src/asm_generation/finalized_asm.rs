@@ -544,6 +544,7 @@ fn print_instruction(op: &Instruction) {
         Instruction::BAL(x) => f("BAL", x.unpack()),
         Instruction::JMP(x) => f("JMP", x.unpack()),
         Instruction::JNE(x) => f("JNE", x.unpack()),
+        Instruction::JAL(x) => f("JAL", x.unpack()),
         Instruction::SMO(x) => f("SMO", x.unpack()),
         Instruction::ADDI(x) => f("ADDI", x.unpack()),
         Instruction::ANDI(x) => f("ANDI", x.unpack()),
