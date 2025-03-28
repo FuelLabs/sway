@@ -1093,7 +1093,7 @@ impl Parse for TypeParameter {
                     ),
                 );
             }
-            TypeParameter::Const(_) => todo!(),
+            TypeParameter::Const(_) => {}
         }
     }
 }
