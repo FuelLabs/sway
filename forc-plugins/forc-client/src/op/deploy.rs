@@ -205,6 +205,7 @@ async fn deploy_chunked(
         fuels::programs::contract::Contract::loader_from_blobs(blobs, salt, storage_slots)?
             .deploy(account, tx_policies)
             .await?
+            .contract_id
             .into();
 
     println_action_green(
@@ -249,6 +250,7 @@ async fn deploy_new_proxy(
     )?
     .deploy(account, tx_policies)
     .await?
+    .contract_id
     .into();
 
     let chain_info = provider.chain_info().await?;
@@ -915,7 +917,7 @@ async fn setup_deployment_account(
         // If there is one we will ask for the password
         // If not we will ask the user to either create a new one or import one
         let wallet_path = default_wallet_path();
-        check_and_create_wallet_at_default_path(&wallet_path)?;
+        check_and_create_wallet_at_default_path(&wallet_path).await?;
         println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
         let password = prompt_forc_wallet_password()?;
         SignerSelectionMode::ForcWallet(password)
