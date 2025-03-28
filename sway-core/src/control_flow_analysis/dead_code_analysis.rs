@@ -925,9 +925,12 @@ fn get_struct_type_info_from_type_id(
     match type_info {
         TypeInfo::Enum(decl_ref) => {
             let decl = decl_engine.get_enum(&decl_ref);
-            for param in decl.type_parameters.iter() {
+            for p in decl.type_parameters.iter() {
+                let p = p
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
                 if let Ok(Some(type_info)) =
-                    get_struct_type_info_from_type_id(type_engine, decl_engine, param.type_id)
+                    get_struct_type_info_from_type_id(type_engine, decl_engine, p.type_id)
                 {
                     return Ok(Some(type_info));
                 }
@@ -2501,8 +2504,11 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(enum_idx) = enum_idx.cloned() {
                 graph.add_edge(entry_node, enum_idx, "".into());
             }
-            for type_param in &decl.type_parameters {
-                connect_type_id(engines, type_param.type_id, graph, entry_node)?;
+            for p in &decl.type_parameters {
+                let p = p
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
+                connect_type_id(engines, p.type_id, graph, entry_node)?;
             }
         }
         TypeInfo::Struct(decl_ref) => {
@@ -2511,8 +2517,11 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(struct_idx) = struct_idx.cloned() {
                 graph.add_edge(entry_node, struct_idx, "".into());
             }
-            for type_param in &decl.type_parameters {
-                connect_type_id(engines, type_param.type_id, graph, entry_node)?;
+            for p in &decl.type_parameters {
+                let p = p
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
+                connect_type_id(engines, p.type_id, graph, entry_node)?;
             }
         }
         TypeInfo::Alias { name, .. } => {

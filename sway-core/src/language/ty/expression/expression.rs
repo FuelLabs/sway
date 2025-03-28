@@ -169,13 +169,17 @@ impl CollectTypesMetadata for TyExpression {
                 let function_decl = decl_engine.get_function(fn_ref);
 
                 ctx.call_site_push();
-                for (idx, type_parameter) in function_decl.type_parameters.iter().enumerate() {
-                    ctx.call_site_insert(type_parameter.type_id, call_path.span());
+                for (idx, p) in function_decl
+                    .type_parameters
+                    .iter()
+                    .filter_map(|x| x.as_type_parameter())
+                    .enumerate()
+                {
+                    ctx.call_site_insert(p.type_id, call_path.span());
 
                     // Verify type arguments are concrete
                     res.extend(
-                        type_parameter
-                            .type_id
+                        p.type_id
                             .collect_types_metadata(handler, ctx)?
                             .into_iter()
                             // try to use the caller span for better error messages
@@ -219,13 +223,19 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 let struct_decl = decl_engine.get_struct(struct_id);
-                for type_parameter in &struct_decl.type_parameters {
-                    ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
+                for p in &struct_decl.type_parameters {
+                    let p = p
+                        .as_type_parameter()
+                        .expect("only works for type parameters");
+                    ctx.call_site_insert(p.type_id, instantiation_span.clone());
                 }
                 if let TypeInfo::Struct(decl_ref) = &*ctx.engines.te().get(self.return_type) {
                     let decl = decl_engine.get_struct(decl_ref);
-                    for type_parameter in &decl.type_parameters {
-                        ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
+                    for p in &decl.type_parameters {
+                        let p = p
+                            .as_type_parameter()
+                            .expect("only works for type parameters");
+                        ctx.call_site_insert(p.type_id, instantiation_span.clone());
                     }
                 }
                 for field in fields.iter() {
@@ -298,8 +308,11 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
-                for type_param in enum_decl.type_parameters.iter() {
-                    ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
+                for p in enum_decl.type_parameters.iter() {
+                    let p = p
+                        .as_type_parameter()
+                        .expect("only works for type parameters");
+                    ctx.call_site_insert(p.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
                     res.append(&mut contents.collect_types_metadata(handler, ctx)?);
@@ -312,8 +325,11 @@ impl CollectTypesMetadata for TyExpression {
                             .collect_types_metadata(handler, ctx)?,
                     );
                 }
-                for type_param in enum_decl.type_parameters.iter() {
-                    res.append(&mut type_param.type_id.collect_types_metadata(handler, ctx)?);
+                for p in enum_decl.type_parameters.iter() {
+                    let p = p
+                        .as_type_parameter()
+                        .expect("only works for type parameters");
+                    res.append(&mut p.type_id.collect_types_metadata(handler, ctx)?);
                 }
             }
             AbiCast { address, .. } => {

@@ -55,6 +55,7 @@ impl<'a> HoverLinkContents<'a> {
                 );
                 decl.type_parameters
                     .iter()
+                    .filter_map(|x| x.as_type_parameter())
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
             }
             TypeInfo::Struct(decl_id) => {
@@ -66,6 +67,7 @@ impl<'a> HoverLinkContents<'a> {
                 );
                 decl.type_parameters
                     .iter()
+                    .filter_map(|x| x.as_type_parameter())
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
             }
             _ => {}

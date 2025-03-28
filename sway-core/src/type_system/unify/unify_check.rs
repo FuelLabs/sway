@@ -794,13 +794,23 @@ impl<'a> UnifyCheck<'a> {
         let l_types = left
             .type_parameters
             .iter()
-            .map(|x| x.type_id)
+            .map(|x| {
+                let x = x
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
+                x.type_id
+            })
             .collect::<Vec<_>>();
 
         let r_types = right
             .type_parameters
             .iter()
-            .map(|x| x.type_id)
+            .map(|x| {
+                let x = x
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
+                x.type_id
+            })
             .collect::<Vec<_>>();
 
         self.check_multiple(&l_types, &r_types)
@@ -855,13 +865,23 @@ impl<'a> UnifyCheck<'a> {
         let l_types = left
             .type_parameters
             .iter()
-            .map(|x| x.type_id)
+            .map(|x| {
+                let x = x
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
+                x.type_id
+            })
             .collect::<Vec<_>>();
 
         let r_types = right
             .type_parameters
             .iter()
-            .map(|x| x.type_id)
+            .map(|x| {
+                let x = x
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
+                x.type_id
+            })
             .collect::<Vec<_>>();
 
         self.check_multiple(&l_types, &r_types)

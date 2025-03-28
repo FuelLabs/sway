@@ -5,7 +5,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{BaseIdent, Span};
+use sway_types::{BaseIdent, Named, Span};
 
 use crate::{
     decl_engine::{DeclEngineGet, MaterializeConstGenerics},
@@ -82,7 +82,7 @@ impl CollectTypesMetadata for TypeId {
                 }
                 TypeInfo::Placeholder(type_param) => {
                     res.push(TypeMetadata::UnresolvedType(
-                        type_param.name.clone(),
+                        type_param.name().clone(),
                         ctx.call_site_get(self),
                     ));
                 }
@@ -273,6 +273,12 @@ impl TypeId {
                     .iter()
                     .zip(orig_enum_decl.type_parameters.iter())
                 {
+                    let orig_type_param = orig_type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
+                    let type_param = type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
                     type_param.type_id.extract_type_parameters(
                         engines,
@@ -294,6 +300,12 @@ impl TypeId {
                     .iter()
                     .zip(orig_struct_decl.type_parameters.iter())
                 {
+                    let orig_type_param = orig_type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
+                    let type_param = type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
                     type_param.type_id.extract_type_parameters(
                         engines,
@@ -315,6 +327,12 @@ impl TypeId {
                     .iter()
                     .zip(orig_enum_decl.type_parameters.iter())
                 {
+                    let orig_type_param = orig_type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
+                    let type_param = type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
                     type_param.type_id.extract_type_parameters(
                         engines,
@@ -336,6 +354,12 @@ impl TypeId {
                     .iter()
                     .zip(orig_struct_decl.type_parameters.iter())
                 {
+                    let orig_type_param = orig_type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
+                    let type_param = type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
                     type_param.type_id.extract_type_parameters(
                         engines,
@@ -513,6 +537,9 @@ impl TypeId {
             TypeInfo::UntypedEnum(decl_id) => {
                 let enum_decl = engines.pe().get_enum(decl_id);
                 for type_param in &enum_decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
                     extend(
                         &mut found,
                         type_param.type_id.extract_any_including_self(
@@ -538,6 +565,9 @@ impl TypeId {
             TypeInfo::UntypedStruct(decl_id) => {
                 let struct_decl = engines.pe().get_struct(decl_id);
                 for type_param in &struct_decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
                     extend(
                         &mut found,
                         type_param.type_id.extract_any_including_self(
@@ -563,6 +593,9 @@ impl TypeId {
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in &enum_decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
                     extend(
                         &mut found,
                         type_param.type_id.extract_any_including_self(
@@ -588,6 +621,9 @@ impl TypeId {
             TypeInfo::Struct(struct_id) => {
                 let struct_decl = decl_engine.get_struct(struct_id);
                 for type_param in &struct_decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
                     extend(
                         &mut found,
                         type_param.type_id.extract_any_including_self(
@@ -840,8 +876,11 @@ impl TypeId {
         let mut structure_generics = self.extract_inner_types_with_trait_constraints(engines);
 
         if let Some(type_param) = type_param {
-            if !type_param.trait_constraints.is_empty() {
-                structure_generics.insert(self, type_param.trait_constraints);
+            match type_param {
+                TypeParameter::Type(p) => {
+                    structure_generics.insert(self, p.trait_constraints);
+                }
+                TypeParameter::Const(_) => todo!(),
             }
         }
 

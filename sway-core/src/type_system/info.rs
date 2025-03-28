@@ -23,7 +23,7 @@ use sway_error::{
     error::{CompileError, InvalidImplementingForType},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{integer_bits::IntegerBits, span::Span};
+use sway_types::{integer_bits::IntegerBits, span::Span, Named};
 
 use super::ast_elements::length::NumericLength;
 
@@ -544,8 +544,8 @@ impl DisplayWithEngines for TypeInfo {
             Unknown => "{unknown}".into(),
             Never => "!".into(),
             UnknownGeneric { name, .. } => name.to_string(),
-            Placeholder(type_param) => type_param.name.to_string(),
-            TypeParam(param) => format!("{}", param.name),
+            Placeholder(type_param) => type_param.name().to_string(),
+            TypeParam(param) => format!("{}", param.name()),
             StringSlice => "str".into(),
             StringArray(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
@@ -577,7 +577,12 @@ impl DisplayWithEngines for TypeInfo {
                 print_inner_types(
                     engines,
                     decl.name.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    }),
                 )
             }
             UntypedStruct(decl_id) => {
@@ -585,7 +590,12 @@ impl DisplayWithEngines for TypeInfo {
                 print_inner_types(
                     engines,
                     decl.name.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    }),
                 )
             }
             Enum(decl_ref) => {
@@ -593,7 +603,12 @@ impl DisplayWithEngines for TypeInfo {
                 print_inner_types(
                     engines,
                     decl.call_path.suffix.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    }),
                 )
             }
             Struct(decl_ref) => {
@@ -601,7 +616,12 @@ impl DisplayWithEngines for TypeInfo {
                 print_inner_types(
                     engines,
                     decl.call_path.suffix.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    }),
                 )
             }
             ContractCaller { abi_name, .. } => format!("ContractCaller<{abi_name}>"),
@@ -663,7 +683,7 @@ impl DebugWithEngines for TypeInfo {
                 }
             }
             Placeholder(t) => format!("placeholder({:?})", engines.help_out(t)),
-            TypeParam(param) => format!("typeparam({})", param.name),
+            TypeParam(param) => format!("typeparam({})", param.name()),
             StringSlice => "str".into(),
             StringArray(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
@@ -711,7 +731,12 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.name.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameter");
+                        x.type_id
+                    }),
                 )
             }
             UntypedStruct(decl_id) => {
@@ -719,7 +744,12 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.name.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameter");
+                        x.type_id
+                    }),
                 )
             }
             Enum(decl_ref) => {
@@ -727,7 +757,12 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.call_path.suffix.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameter");
+                        x.type_id
+                    }),
                 )
             }
             Struct(decl_ref) => {
@@ -735,7 +770,12 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.call_path.suffix.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameter");
+                        x.type_id
+                    }),
                 )
             }
             ContractCaller { abi_name, address } => {
@@ -946,6 +986,9 @@ impl TypeInfo {
                         .type_parameters
                         .iter()
                         .map(|ty| {
+                            let ty = ty
+                                .as_type_parameter()
+                                .expect("only works with type parameters");
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
@@ -997,6 +1040,9 @@ impl TypeInfo {
                         .type_parameters
                         .iter()
                         .map(|ty| {
+                            let ty = ty
+                                .as_type_parameter()
+                                .expect("only works with type parameters");
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
@@ -1651,7 +1697,7 @@ impl TypeInfo {
             Never => "never".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
-            TypeParam(param) => format!("typeparam({})", param.name),
+            TypeParam(param) => format!("typeparam({})", param.name()),
             StringSlice => "str".into(),
             StringArray(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
@@ -1687,7 +1733,12 @@ impl TypeInfo {
                         "<{}>",
                         decl.type_parameters
                             .iter()
-                            .map(|p| p.type_id.get_type_str(engines))
+                            .map(|p| {
+                                let p = p
+                                    .as_type_parameter()
+                                    .expect("only works with type parameters");
+                                p.type_id.get_type_str(engines)
+                            })
                             .collect::<Vec<_>>()
                             .join(",")
                     )
@@ -1703,7 +1754,12 @@ impl TypeInfo {
                         "<{}>",
                         decl.type_parameters
                             .iter()
-                            .map(|p| p.type_id.get_type_str(engines))
+                            .map(|p| {
+                                let p = p
+                                    .as_type_parameter()
+                                    .expect("only works with type parameters");
+                                p.type_id.get_type_str(engines)
+                            })
                             .collect::<Vec<_>>()
                             .join(",")
                     )
@@ -1719,7 +1775,12 @@ impl TypeInfo {
                         "<{}>",
                         decl.type_parameters
                             .iter()
-                            .map(|p| p.type_id.get_type_str(engines))
+                            .map(|p| {
+                                let p = p
+                                    .as_type_parameter()
+                                    .expect("only works with type parameters");
+                                p.type_id.get_type_str(engines)
+                            })
                             .collect::<Vec<_>>()
                             .join(",")
                     )
@@ -1735,7 +1796,12 @@ impl TypeInfo {
                         "<{}>",
                         decl.type_parameters
                             .iter()
-                            .map(|p| p.type_id.get_type_str(engines))
+                            .map(|p| {
+                                let p = p
+                                    .as_type_parameter()
+                                    .expect("will only work with type parameters");
+                                p.type_id.get_type_str(engines)
+                            })
                             .collect::<Vec<_>>()
                             .join(",")
                     )

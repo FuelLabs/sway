@@ -144,12 +144,15 @@ impl DebugWithEngines for TypeArgument {
 }
 
 impl From<&TypeParameter> for TypeArgument {
-    fn from(type_param: &TypeParameter) -> Self {
-        TypeArgument {
-            type_id: type_param.type_id,
-            initial_type_id: type_param.initial_type_id,
-            span: type_param.name.span(),
-            call_path_tree: None,
+    fn from(p: &TypeParameter) -> Self {
+        match p {
+            TypeParameter::Type(p) => TypeArgument {
+                type_id: p.type_id,
+                initial_type_id: p.initial_type_id,
+                span: p.name.span(),
+                call_path_tree: None,
+            },
+            TypeParameter::Const(_) => todo!(),
         }
     }
 }

@@ -5,6 +5,7 @@ use crate::{
     type_system::*,
     Engines,
 };
+use ast_elements::type_parameter::GenericTypeParameter;
 use sway_error::handler::{ErrorEmitted, Handler};
 use symbol_collection_context::SymbolCollectionContext;
 
@@ -44,7 +45,7 @@ impl ty::TyEnumDecl {
         // create a namespace for the decl, used to create a scope for generics
         ctx.scoped(handler, Some(span.clone()), |ctx| {
             // Type check the type parameters.
-            let new_type_parameters = TypeParameter::type_check_type_params(
+            let new_type_parameters = GenericTypeParameter::type_check_type_params(
                 handler,
                 ctx.by_ref(),
                 type_parameters,

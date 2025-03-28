@@ -22,7 +22,9 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     type_error::TypeError,
 };
-use sway_types::{integer_bits::IntegerBits, span::Span, Ident, ProgramId, SourceId, Spanned};
+use sway_types::{
+    integer_bits::IntegerBits, span::Span, Ident, Named, ProgramId, SourceId, Spanned,
+};
 
 use super::{ast_elements::length::NumericLength, unify::unifier::UnifyKind};
 
@@ -1193,7 +1195,7 @@ impl TypeEngine {
             //
             // In that case, the two equal `decl`s obtained via two monomorphizations above,
             // would be differently annotated, and thus, distinguishable by annotations.
-            // 
+            //
             // The answer is *no*. The monomorphization changes only the `TypeId`s of the
             // `TypeParameter`s and `TypeArgument`s but leaves the original spans untouched.
             // Therefore, we can never end up in a situation that an annotation differs from
@@ -1248,8 +1250,10 @@ impl TypeEngine {
 
             // The above reasoning for `TypeArgument`s applies also for the `TypeParameter`s.
             // We only need to check if the `tp` is annotated.
-            TypeInfo::Placeholder(tp) => tp.is_annotated(),
-            TypeInfo::TypeParam(tp) => tp.is_annotated(),
+            TypeInfo::TypeParam(tp) | TypeInfo::Placeholder(tp) => {
+                let tp = tp.as_type_parameter().expect("only works with type parameters");
+                tp.is_annotated()
+            },
 
             // TODO: Improve handling of `TypeInfo::Custom` and `TypeInfo::TraitType`` within the `TypeEngine`:
             //       https://github.com/FuelLabs/sway/issues/6601
@@ -1329,9 +1333,12 @@ impl TypeEngine {
         if type_parameters.is_empty() {
             false
         } else {
-            type_parameters
-                .iter()
-                .any(|tp| self.is_type_id_of_changeable_type(engines, tp.type_id))
+            type_parameters.iter().any(|tp| {
+                let tp = tp
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
+                self.is_type_id_of_changeable_type(engines, tp.type_id)
+            })
         }
     }
 
@@ -1455,6 +1462,9 @@ impl TypeEngine {
         module_source_id: Option<&SourceId>,
         type_parameter: &TypeParameter,
     ) -> bool {
+        let type_parameter = type_parameter
+            .as_type_parameter()
+            .expect("only works with type parameters");
         self.module_might_outlive_type(engines, module_source_id, type_parameter.type_id)
             || self.module_might_outlive_type(
                 engines,
@@ -1713,11 +1723,10 @@ impl TypeEngine {
     fn get_source_id_from_type_parameter(&self, tp: &TypeParameter) -> Option<SourceId> {
         // If the `tp` is span-annotated, take the source id from its `span`,
         // otherwise, take the source id of the type it represents.
-        tp.name
-            .span()
-            .source_id()
-            .copied()
-            .or_else(|| self.get_type_source_id(tp.type_id))
+        tp.name().span().source_id().copied().or_else(|| match tp {
+            TypeParameter::Type(p) => self.get_type_source_id(p.type_id),
+            TypeParameter::Const(_) => None,
+        })
     }
 
     fn get_placeholder_fallback_source_id(&self, placeholder: &TypeInfo) -> Option<SourceId> {

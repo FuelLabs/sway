@@ -1083,13 +1083,18 @@ impl Parse for EnumVariant {
 
 impl Parse for TypeParameter {
     fn parse(&self, ctx: &ParseContext) {
-        ctx.tokens.insert(
-            ctx.ident(&self.name),
-            Token::from_parsed(
-                ParsedAstToken::TypeParameter(self.clone()),
-                SymbolKind::TypeParameter,
-            ),
-        );
+        match self {
+            TypeParameter::Type(p) => {
+                ctx.tokens.insert(
+                    ctx.ident(&p.name),
+                    Token::from_parsed(
+                        ParsedAstToken::TypeParameter(self.clone()),
+                        SymbolKind::TypeParameter,
+                    ),
+                );
+            }
+            TypeParameter::Const(_) => {}
+        }
     }
 }
 

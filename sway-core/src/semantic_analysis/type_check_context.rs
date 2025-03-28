@@ -1303,11 +1303,13 @@ impl<'a> TypeCheckContext<'a> {
 
         // Use trait name with full path, improves consistency between
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
-        impl_type_parameters.iter_mut().for_each(|tp| {
-            tp.trait_constraints.iter_mut().for_each(|tc| {
-                tc.trait_name = tc.trait_name.to_fullpath(self.engines(), self.namespace())
-            })
-        });
+        for tc in impl_type_parameters
+            .iter_mut()
+            .filter_map(|x| x.as_type_parameter_mut())
+            .flat_map(|x| x.trait_constraints.iter_mut())
+        {
+            tc.trait_name = tc.trait_name.to_fullpath(self.engines(), self.namespace())
+        }
 
         let impl_type_parameters_ids = impl_type_parameters
             .iter()

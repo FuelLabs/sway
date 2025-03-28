@@ -1,4 +1,4 @@
-use sway_types::integer_bits::IntegerBits;
+use sway_types::{integer_bits::IntegerBits, Named};
 
 use crate::{language::CallPath, Engines, TypeArgument, TypeId, TypeInfo};
 
@@ -87,13 +87,12 @@ impl TypeInfo {
     pub fn abi_str(&self, ctx: &AbiStrContext, engines: &Engines, is_root: bool) -> String {
         use TypeInfo::*;
         let decl_engine = engines.de();
-        let type_engine = engines.te();
         match self {
             Unknown => "unknown".into(),
             Never => "never".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
-            TypeParam(param) => format!("typeparam({})", param.name),
+            TypeParam(param) => format!("typeparam({})", param.name()),
             StringSlice => "str".into(),
             StringArray(length) => format!("str[{}]", length.val()),
             UnsignedInteger(x) => match x {
@@ -139,7 +138,7 @@ impl TypeInfo {
                         "<{}>",
                         decl.type_parameters
                             .iter()
-                            .map(|p| type_engine.get(p.type_id).abi_str(ctx, engines, false))
+                            .map(|p| p.abi_str(engines, ctx, false))
                             .collect::<Vec<_>>()
                             .join(",")
                     )
@@ -161,7 +160,7 @@ impl TypeInfo {
                         "<{}>",
                         decl.type_parameters
                             .iter()
-                            .map(|p| type_engine.get(p.type_id).abi_str(ctx, engines, false))
+                            .map(|p| p.abi_str(engines, ctx, false))
                             .collect::<Vec<_>>()
                             .join(",")
                     )

@@ -9,6 +9,7 @@ use sway_types::{style::is_screaming_snake_case, Spanned};
 use symbol_collection_context::SymbolCollectionContext;
 
 use crate::{
+    ast_elements::type_parameter::GenericTypeParameter,
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, ReplaceDecls,
     },
@@ -136,7 +137,7 @@ impl ty::TyConfigurableDecl {
 
             let decode_fn_id = *decode_fn_ref.id();
             let mut decode_fn_decl = (*engines.de().get_function(&decode_fn_id)).clone();
-            let decl_mapping = crate::TypeParameter::gather_decl_mapping_from_trait_constraints(
+            let decl_mapping = GenericTypeParameter::gather_decl_mapping_from_trait_constraints(
                 handler,
                 ctx.by_ref(),
                 &decode_fn_decl.type_parameters,
