@@ -894,7 +894,7 @@ fn handle_impl_contract(
     if let TypeInfo::Contract = &*engines.te().get(implementing_for.type_id) {
         // Generate unique name for anonymous ABI
         let anon_abi_name = Ident::new_with_override(
-            format!("__AnonymousAbi_{}", context.next_anon_suffix()),
+            format!("_AnonymousAbi_{}", context.next_anon_suffix()),
             span.clone(),
         );
 
