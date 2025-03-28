@@ -734,7 +734,7 @@ pub(crate) fn type_check_method_application(
                 // This will subst inner method_application placeholders with the already resolved
                 // current method application type parameter
                 for p in method.type_parameters.clone() {
-                    if names_type_ids.contains_key(&p.name()) {
+                    if names_type_ids.contains_key(p.name()) {
                         let type_id = p
                             .as_type_parameter()
                             .expect("only works with type parameters")

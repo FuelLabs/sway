@@ -215,7 +215,7 @@ impl ty::TyFunctionDecl {
                 for p in type_parameters.iter().filter_map(|x| x.as_type_parameter()) {
                     p.insert_into_namespace_self(handler, ctx.by_ref())?;
                 }
-                for p in type_parameters.into_iter().filter_map(|x| x.as_type_parameter()) {
+                for p in type_parameters.iter().filter_map(|x| x.as_type_parameter()) {
                     p.insert_into_namespace_constraints(handler, ctx.by_ref())?;
                 }
 
@@ -340,7 +340,6 @@ fn test_function_selector_behavior() {
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],
-        const_generic_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
         where_clause: vec![],
@@ -392,7 +391,6 @@ fn test_function_selector_behavior() {
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],
-        const_generic_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
         where_clause: vec![],

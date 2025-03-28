@@ -174,7 +174,7 @@ impl TyImplSelfOrTrait {
                             return_type: const_generic_decl.ty,
                             value: None,
                         },
-                        Some(&const_generic_decl_id),
+                        Some(const_generic_decl_id),
                     );
 
                     ctx.insert_symbol(

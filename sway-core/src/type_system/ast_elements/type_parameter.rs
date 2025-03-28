@@ -94,14 +94,14 @@ impl DebugWithEngines for TypeParameter {
 }
 
 impl TypeParameter {
-    pub(crate) fn as_type_parameter(&self) -> Option<&GenericTypeParameter> {
+    pub fn as_type_parameter(&self) -> Option<&GenericTypeParameter> {
         match self {
             TypeParameter::Type(p) => Some(p),
             TypeParameter::Const(_) => None,
         }
     }
 
-    pub(crate) fn as_type_parameter_mut(&mut self) -> Option<&mut GenericTypeParameter> {
+    pub fn as_type_parameter_mut(&mut self) -> Option<&mut GenericTypeParameter> {
         match self {
             TypeParameter::Type(p) => Some(p),
             TypeParameter::Const(_) => None,
@@ -115,7 +115,7 @@ impl TypeParameter {
         }
     }
 
-    pub(crate) fn as_const_parameter(&self) -> Option<&ConstGenericParameter> {
+    pub fn as_const_parameter(&self) -> Option<&ConstGenericParameter> {
         match self {
             TypeParameter::Type(_) => None,
             TypeParameter::Const(p) => Some(p),

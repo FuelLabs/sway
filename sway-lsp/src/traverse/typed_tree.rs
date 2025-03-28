@@ -703,12 +703,14 @@ impl Parse for ty::FunctionDecl {
         adaptive_iter(&func_decl.body.contents, |node| node.parse(ctx));
         adaptive_iter(&func_decl.parameters, |param| param.parse(ctx));
         adaptive_iter(&func_decl.type_parameters, |type_param| {
-            collect_type_id(
-                ctx,
-                type_param.type_id,
-                &typed_token,
-                type_param.name.span(),
-            );
+            if let Some(type_param) = type_param.as_type_parameter() {
+                collect_type_id(
+                    ctx,
+                    type_param.type_id,
+                    &typed_token,
+                    type_param.name.span(),
+                );
+            }
         });
         collect_type_argument(ctx, &func_decl.return_type);
         adaptive_iter(&func_decl.where_clause, |(ident, trait_constraints)| {
@@ -720,6 +722,7 @@ impl Parse for ty::FunctionDecl {
                 if let Some(param_decl_ident) = func_decl
                     .type_parameters
                     .par_iter()
+                    .filter_map(|x| x.as_type_parameter())
                     .find_any(|type_param| type_param.name.as_str() == ident.as_str())
                     .map(|type_param| type_param.name.clone())
                 {
@@ -778,13 +781,15 @@ impl Parse for ty::StructDecl {
             field.parse(ctx);
         });
         adaptive_iter(&struct_decl.type_parameters, |type_param| {
-            if let Some(mut token) = ctx
-                .tokens
-                .try_get_mut_with_retry(&ctx.ident(&type_param.name))
-            {
-                token.ast_node =
-                    TokenAstNode::Typed(TypedAstToken::TypedParameter(type_param.clone()));
-                token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
+            if let Some(type_id) = type_param.as_type_parameter().map(|x| x.type_id) {
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut_with_retry(&ctx.ident(type_param.name()))
+                {
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedParameter(type_param.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(type_id));
+                }
             }
         });
     }
@@ -803,12 +808,14 @@ impl Parse for ty::ImplSelfOrTrait {
             ..
         } = &*impl_trait_decl;
         adaptive_iter(impl_type_parameters, |param| {
-            collect_type_id(
-                ctx,
-                param.type_id,
-                &TypedAstToken::TypedParameter(param.clone()),
-                param.name.span(),
-            );
+            if let Some(type_id) = param.as_type_parameter().map(|x| x.type_id) {
+                collect_type_id(
+                    ctx,
+                    type_id,
+                    &TypedAstToken::TypedParameter(param.clone()),
+                    param.name().span(),
+                );
+            }
         });
         adaptive_iter(&trait_name.prefixes, |ident| {
             if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(ident)) {
@@ -1002,12 +1009,14 @@ impl Parse for ty::TyFunctionDecl {
         adaptive_iter(&self.body.contents, |node| node.parse(ctx));
         adaptive_iter(&self.parameters, |param| param.parse(ctx));
         adaptive_iter(&self.type_parameters, |type_param| {
-            collect_type_id(
-                ctx,
-                type_param.type_id,
-                &typed_token,
-                type_param.name.span(),
-            );
+            if let Some(type_param) = type_param.as_type_parameter() {
+                collect_type_id(
+                    ctx,
+                    type_param.type_id,
+                    &typed_token,
+                    type_param.name.span(),
+                );
+            }
         });
         collect_type_argument(ctx, &self.return_type);
         adaptive_iter(&self.where_clause, |(ident, trait_constraints)| {
@@ -1019,6 +1028,7 @@ impl Parse for ty::TyFunctionDecl {
                 if let Some(param_decl_ident) = self
                     .type_parameters
                     .par_iter()
+                    .filter_map(|x| x.as_type_parameter())
                     .find_any(|type_param| type_param.name.as_str() == ident.as_str())
                     .map(|type_param| type_param.name.clone())
                 {
@@ -1438,12 +1448,14 @@ fn collect_type_id(
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
             }
             adaptive_iter(&decl.type_parameters, |param| {
-                collect_type_id(
-                    ctx,
-                    param.type_id,
-                    &TypedAstToken::TypedParameter(param.clone()),
-                    param.name.span(),
-                );
+                if let Some(type_id) = param.as_type_parameter().map(|x| x.type_id) {
+                    collect_type_id(
+                        ctx,
+                        type_id,
+                        &TypedAstToken::TypedParameter(param.clone()),
+                        param.name().span(),
+                    );
+                }
             });
             adaptive_iter(&decl.variants, |variant| {
                 variant.parse(ctx);
@@ -1458,12 +1470,14 @@ fn collect_type_id(
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
             }
             adaptive_iter(&decl.type_parameters, |param| {
-                collect_type_id(
-                    ctx,
-                    param.type_id,
-                    &TypedAstToken::TypedParameter(param.clone()),
-                    param.name.span(),
-                );
+                if let Some(type_id) = param.as_type_parameter().map(|x| x.type_id) {
+                    collect_type_id(
+                        ctx,
+                        type_id,
+                        &TypedAstToken::TypedParameter(param.clone()),
+                        param.name().span(),
+                    );
+                }
             });
             adaptive_iter(&decl.fields, |field| {
                 field.parse(ctx);
@@ -1571,10 +1585,12 @@ fn collect_enum(ctx: &ParseContext, decl_id: &DeclId<ty::TyEnumDecl>, declaratio
     adaptive_iter(&enum_decl.type_parameters, |type_param| {
         if let Some(mut token) = ctx
             .tokens
-            .try_get_mut_with_retry(&ctx.ident(&type_param.name))
+            .try_get_mut_with_retry(&ctx.ident(type_param.name()))
         {
             token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedParameter(type_param.clone()));
-            token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
+            if let Some(type_param) = type_param.as_type_parameter() {
+                token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
+            }
         }
     });
     adaptive_iter(&enum_decl.variants, |variant| {
