@@ -86,14 +86,15 @@ impl TypeSubstMap {
         let type_engine = engines.te();
         let mapping = type_parameters
             .iter()
-            .filter(|type_param| {
-                let type_info = type_engine.get(type_param.type_id);
+            .filter_map(|p| p.as_type_parameter())
+            .filter(|p| {
+                let type_info = type_engine.get(p.type_id);
                 !matches!(*type_info, TypeInfo::Placeholder(_))
             })
-            .map(|type_param| {
+            .map(|p| {
                 (
-                    type_param.type_id,
-                    type_engine.new_placeholder(type_param.clone()),
+                    p.type_id,
+                    type_engine.new_placeholder(TypeParameter::Type(p.clone())),
                 )
             })
             .collect();
@@ -194,12 +195,22 @@ impl TypeSubstMap {
                 let type_parameters = decl_params
                     .type_parameters
                     .iter()
-                    .map(|x| x.type_id)
+                    .map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("will only work with type parameters");
+                        x.type_id
+                    })
                     .collect::<Vec<_>>();
                 let type_arguments = decl_args
                     .type_parameters
                     .iter()
-                    .map(|x| x.type_id)
+                    .map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("will only work with type parameters");
+                        x.type_id
+                    })
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     engines,
@@ -214,12 +225,22 @@ impl TypeSubstMap {
                 let type_parameters = decl_params
                     .type_parameters
                     .iter()
-                    .map(|x| x.type_id)
+                    .map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    })
                     .collect::<Vec<_>>();
                 let type_arguments = decl_args
                     .type_parameters
                     .iter()
-                    .map(|x| x.type_id)
+                    .map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    })
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     engines,
@@ -377,6 +398,9 @@ impl TypeSubstMap {
                 }
 
                 for type_param in &mut decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter_mut()
+                        .expect("only works with type parameters");
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -404,6 +428,9 @@ impl TypeSubstMap {
                     }
                 }
                 for type_param in &mut decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter_mut()
+                        .expect("only works with type parameters");
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -431,6 +458,9 @@ impl TypeSubstMap {
                     }
                 }
                 for type_param in &mut decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter_mut()
+                        .expect("only works with type parameters");
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -456,6 +486,9 @@ impl TypeSubstMap {
                 }
 
                 for type_param in &mut decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter_mut()
+                        .expect("only works with type parameters");
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -550,6 +583,12 @@ fn iter_for_match(
             TypeInfo::Placeholder(current_type_param),
         ) = ((*source_type_info).clone(), type_info)
         {
+            let source_type_param = source_type_param
+                .as_type_parameter()
+                .expect("only works with type parameters");
+            let current_type_param = current_type_param
+                .as_type_parameter()
+                .expect("only works with type parameters");
             if source_type_param.name.as_str() == current_type_param.name.as_str()
                 && current_type_param
                     .trait_constraints

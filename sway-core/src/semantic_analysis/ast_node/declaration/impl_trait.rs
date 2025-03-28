@@ -5,6 +5,7 @@ use std::{
     vec,
 };
 
+use ast_elements::type_parameter::GenericTypeParameter;
 use sway_error::{
     error::{CompileError, InterfaceName},
     handler::{ErrorEmitted, Handler},
@@ -54,7 +55,13 @@ impl TyImplSelfOrTrait {
             impl_trait.block_span.clone(),
             Some(decl),
             |scoped_ctx| {
-                for const_generic_parameter in &impl_trait.impl_const_generics_parameters {
+                let const_generic_parameters = impl_trait
+                    .impl_type_parameters
+                    .iter()
+                    .filter_map(|x| x.as_const_parameter())
+                    .filter_map(|x| x.id.as_ref());
+
+                for const_generic_parameter in const_generic_parameters {
                     let const_generic_decl = engines.pe().get(const_generic_parameter);
                     scoped_ctx.insert_parsed_symbol(
                         handler,
@@ -121,7 +128,6 @@ impl TyImplSelfOrTrait {
 
         let ImplSelfOrTrait {
             impl_type_parameters,
-            impl_const_generics_parameters,
             trait_name,
             mut trait_type_arguments,
             trait_decl_ref: _,
@@ -141,7 +147,7 @@ impl TyImplSelfOrTrait {
         // the code in the source file in which the self type is used in the implementation.
         let self_type_use_site_span = block_span.clone();
         let self_type_param =
-            TypeParameter::new_self_type(engines, self_type_use_site_span.clone());
+            GenericTypeParameter::new_self_type(engines, self_type_use_site_span.clone());
         let self_type_id = self_type_param.type_id;
 
         // create a namespace for the impl
@@ -150,8 +156,12 @@ impl TyImplSelfOrTrait {
             .with_self_type(Some(self_type_id))
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |ctx| {
-                for const_generic_decl_id in impl_const_generics_parameters {
-                    let const_generic_decl = engines.pe().get(&const_generic_decl_id);
+                let const_generic_parameters = impl_type_parameters
+                    .iter()
+                    .filter_map(|x| x.as_const_parameter())
+                    .filter_map(|x| x.id.as_ref());
+                for const_generic_decl_id in const_generic_parameters {
+                    let const_generic_decl = engines.pe().get(const_generic_decl_id);
 
                     let decl_ref = engines.de().insert(
                         TyConstGenericDecl {
@@ -177,7 +187,7 @@ impl TyImplSelfOrTrait {
                 }
 
                 // Type check the type parameters
-                let new_impl_type_parameters = TypeParameter::type_check_type_params(
+                let new_impl_type_parameters = GenericTypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
                     impl_type_parameters,
@@ -329,7 +339,7 @@ impl TyImplSelfOrTrait {
                         }
 
                         let self_type_param =
-                            TypeParameter::new_self_type(engines, self_type_use_site_span);
+                            GenericTypeParameter::new_self_type(engines, self_type_use_site_span);
                         // Unify the "self" type param from the abi declaration with
                         // the type that we are implementing for.
                         handler.scope(|h| {
@@ -439,7 +449,7 @@ impl TyImplSelfOrTrait {
                 let self_type_param =
                     // Same as with impl trait or ABI, we take the `block_span` as the `use_site_span`
                     // of the self type.
-                    TypeParameter::new_self_type(engines, block_span.clone());
+                    GenericTypeParameter::new_self_type(engines, block_span.clone());
                 let self_type_id = self_type_param.type_id;
 
                 // create the trait name
@@ -452,7 +462,7 @@ impl TyImplSelfOrTrait {
                 };
                 let trait_name = CallPath::ident_to_fullpath(suffix, ctx.namespace());
                 // Type check the type parameters.
-                let new_impl_type_parameters = TypeParameter::type_check_type_params(
+                let new_impl_type_parameters = GenericTypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
                     impl_type_parameters,
@@ -1076,7 +1086,12 @@ fn type_check_trait_implementation(
     let mut type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
         trait_type_parameters
             .iter()
-            .map(|type_param| type_param.type_id)
+            .map(|p| {
+                let p = p
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
+                p.type_id
+            })
             .collect(),
         trait_type_arguments
             .iter()
@@ -1112,10 +1127,7 @@ fn type_check_trait_implementation(
                     &mut impl_type_parameters
                         .iter()
                         .cloned()
-                        .map(|mut t| {
-                            t.is_from_parent = true;
-                            t
-                        })
+                        .map(|t| t.with_is_from_parent(true))
                         .collect::<Vec<_>>(),
                 );
 
@@ -1442,10 +1454,7 @@ fn type_check_impl_method(
             &mut impl_type_parameters
                 .iter()
                 .cloned()
-                .map(|mut t| {
-                    t.is_from_parent = true;
-                    t
-                })
+                .map(|t| t.with_is_from_parent(true))
                 .collect::<Vec<_>>(),
         );
 
@@ -1511,7 +1520,7 @@ fn type_check_const_decl(
     let engines = ctx.engines();
 
     // Create a new type parameter for the "self type".
-    let self_type_param = TypeParameter::new_self_type(engines, const_decl.span.clone());
+    let self_type_param = GenericTypeParameter::new_self_type(engines, const_decl.span.clone());
     let self_type_id = self_type_param.type_id;
 
     let mut ctx = ctx
@@ -1699,7 +1708,8 @@ fn check_for_unconstrained_type_parameters(
     let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
-            .map(|x| ((*engines.te().get(x.type_id)).clone(), x.span()))
+            .filter_map(|x| x.as_type_parameter())
+            .map(|p| ((*engines.te().get(p.type_id)).clone(), p.span()))
             .map(|(thing, sp)| (WithEngines::new(thing, engines), sp)),
     );
 

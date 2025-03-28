@@ -396,6 +396,12 @@ impl<'a> Unifier<'a> {
         let (en, etps) = e;
         if rn == en && rtps.len() == etps.len() {
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
+                let rtp = rtp
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
+                let etp = etp
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
                 self.unify(handler, rtp.type_id, etp.type_id, span, false);
             });
         } else {
@@ -425,6 +431,12 @@ impl<'a> Unifier<'a> {
         let (en, etps) = e;
         if rn == en && rtps.len() == etps.len() {
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
+                let rtp = rtp
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
+                let etp = etp
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
                 self.unify(handler, rtp.type_id, etp.type_id, span, false);
             });
         } else {

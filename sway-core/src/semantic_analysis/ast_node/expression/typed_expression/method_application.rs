@@ -11,6 +11,7 @@ use crate::{
     semantic_analysis::*,
     type_system::*,
 };
+use ast_elements::type_parameter::GenericTypeParameter;
 use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
 use itertools::izip;
@@ -19,7 +20,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{constants, BaseIdent, IdentUnique};
+use sway_types::{constants, BaseIdent, IdentUnique, Named};
 use sway_types::{constants::CONTRACT_CALL_COINS_PARAMETER_NAME, Spanned};
 use sway_types::{Ident, Span};
 
@@ -111,7 +112,11 @@ pub(crate) fn type_check_method_application(
     let mut const_generics = BTreeMap::new();
 
     let original_decl = engines.de().get(original_decl_ref.id());
-    if !original_decl.const_generic_parameters.is_empty() {
+    let has_const_generic_parameters = original_decl
+        .type_parameters
+        .iter()
+        .any(|x| matches!(x, TypeParameter::Const(_)));
+    if has_const_generic_parameters {
         let a = engines.te().get(
             engines.de().get(original_decl_ref.id()).parameters[0]
                 .type_argument
@@ -647,12 +652,18 @@ pub(crate) fn type_check_method_application(
                     implementing_for_typeid.get_type_parameters(engines);
                 if let Some(implementing_type_parameters) = implementing_type_parameters {
                     for p in method.type_parameters.clone() {
+                        let p = p
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
                         if p.is_from_parent {
                             if let Some(impl_type_param) =
                                 names_index.get(&p.name).and_then(|type_param_index| {
                                     implementing_type_parameters.get(*type_param_index)
                                 })
                             {
+                                let impl_type_param = impl_type_param
+                                    .as_type_parameter()
+                                    .expect("only works with type parameters");
                                 handler.scope(|handler| {
                                     type_engine.unify_with_generic(
                                         handler,
@@ -713,7 +724,7 @@ pub(crate) fn type_check_method_application(
 
                 // This handles the case of substituting the generic blanket type by call_path_typeid.
                 for p in method.type_parameters.clone() {
-                    if p.name.as_str() == qualified_call_path.call_path.suffix.as_str() {
+                    if p.name().as_str() == qualified_call_path.call_path.suffix.as_str() {
                         subst_type_parameters.push(t.initial_type_id);
                         subst_type_arguments.push(call_path_typeid);
                         break;
@@ -723,10 +734,13 @@ pub(crate) fn type_check_method_application(
                 // This will subst inner method_application placeholders with the already resolved
                 // current method application type parameter
                 for p in method.type_parameters.clone() {
-                    if names_type_ids.contains_key(&p.name) {
-                        let type_parameter_type_id = p.type_id;
+                    if names_type_ids.contains_key(&p.name()) {
+                        let type_id = p
+                            .as_type_parameter()
+                            .expect("only works with type parameters")
+                            .type_id;
                         subst_type_parameters.push(engines.te().new_placeholder(p));
-                        subst_type_arguments.push(type_parameter_type_id);
+                        subst_type_arguments.push(type_id);
                     }
                 }
 
@@ -747,7 +761,7 @@ pub(crate) fn type_check_method_application(
             // Handle the trait constraints. This includes checking to see if the trait
             // constraints are satisfied and replacing old decl ids based on the
             // constraint with new decl ids based on the new type.
-            let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+            let decl_mapping = GenericTypeParameter::gather_decl_mapping_from_trait_constraints(
                 handler,
                 ctx.by_ref(),
                 &method.type_parameters,
