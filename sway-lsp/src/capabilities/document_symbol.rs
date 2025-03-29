@@ -407,7 +407,7 @@ fn fn_decl_detail(parameters: &[TyFunctionParameter], return_type: &TypeArgument
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// let impl_example = "impl<T> Setter<T> for FooBarData<T> {\n    fn set(self, new_value: T) -> Self {\n        FooBarData {\n            value: new_value,\n        }\n    }\n}";
 /// let result = extract_header(impl_example);
 /// assert_eq!(result, "impl<T> Setter<T> for FooBarData<T>");

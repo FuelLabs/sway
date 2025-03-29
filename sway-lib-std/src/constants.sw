@@ -18,7 +18,7 @@ use ::primitives::*;
 ///     assert(ZERO_B256 == msg_asset_id().bits());
 /// }
 /// ```
-#[deprecated(note = "Please use `b256::zero()`")]
+#[deprecated(note = "Please use `b256::zero()`.")]
 pub const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 /// A u256 of zero value.
@@ -36,7 +36,7 @@ pub const ZERO_B256 = 0x00000000000000000000000000000000000000000000000000000000
 ///     assert(ZERO_U256 == u256::from(0_u64));
 /// }
 /// ```
-#[deprecated(note = "Please use `u256::zero()`")]
+#[deprecated(note = "Please use `u256::zero()`.")]
 pub const ZERO_U256 = 0x00u256;
 
 /// The default Sub Id for assets.

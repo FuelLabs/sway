@@ -9,7 +9,7 @@ use sway_types::{ident::Ident, span::Span, Named, Spanned};
 #[derive(Debug, Clone)]
 pub struct EnumDeclaration {
     pub name: Ident,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub type_parameters: Vec<TypeParameter>,
     pub variants: Vec<EnumVariant>,
     pub(crate) span: Span,
@@ -43,7 +43,7 @@ impl Spanned for EnumDeclaration {
 #[derive(Debug, Clone)]
 pub struct EnumVariant {
     pub name: Ident,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub type_argument: TypeArgument,
     pub(crate) tag: usize,
     pub(crate) span: Span,

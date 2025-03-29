@@ -15,8 +15,6 @@ fn foo() {
     let _ = baz();
 }
 
-// Although annotated, with no args is pure.
-#[storage()]
 fn bar() {
     let _ = baz();
 }
