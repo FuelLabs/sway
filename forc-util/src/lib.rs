@@ -29,6 +29,7 @@ pub mod restricted;
 
 #[macro_use]
 pub mod cli;
+pub mod debug;
 
 pub use ansiterm;
 pub use paste;
