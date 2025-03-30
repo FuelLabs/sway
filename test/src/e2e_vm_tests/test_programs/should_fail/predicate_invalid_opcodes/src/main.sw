@@ -75,6 +75,9 @@ fn main() -> bool {
     smo r1 r2 r3 r4;
   }
 
+  // cannot test rvrt op code because control flow instructions
+  // are not allowed in assembly blocks
+
   // cannot test storage opcodes due to needing to annotate main
   // with #[storage(read, write)] which is not allowed for predicates
   /*
