@@ -17,12 +17,6 @@ impl PartialEq for Array {
 impl Eq for Array {}
 
 pub type Tuple = (SubId, SubId);
-impl PartialEq for Tuple {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-impl Eq for Tuple {}
 
 pub type StringTy = str[9];
 impl PartialEq for StringTy {
