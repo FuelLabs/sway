@@ -110,7 +110,7 @@ impl Parse for TypeField {
             let error = parser.emit_error_with_span(
                 ParseErrorKind::MissingColonInEnumTypeField {
                     variant_name: name,
-                    tuple_contents,
+                    tuple_contents: Some(tuple_contents),
                 },
                 error_span,
             );
@@ -123,15 +123,28 @@ impl Parse for TypeField {
         let colon_token = if parser.peek::<ColonToken>().is_some() {
             parser.parse()?
         } else {
-            // No colon and no parentheses - must be a unit variant
-            let name_span = name.span();
-            return Err(parser.emit_error_with_span(
-                ParseErrorKind::MissingColonInEnumTypeField {
-                    variant_name: name,
-                    tuple_contents: Span::dummy(),
-                },
-                name_span,
-            ));
+            // Check if this is a unit variant (comma follows or at end of tokens)
+            if parser.is_empty() || parser.peek::<sway_ast::CommaToken>().is_some() {
+                // Unit variant - missing colon
+                let name_span = name.span();
+                return Err(parser.emit_error_with_span(
+                    ParseErrorKind::MissingColonInEnumTypeField {
+                        variant_name: name,
+                        tuple_contents: Some(Span::dummy()),
+                    },
+                    name_span,
+                ));
+            } else {
+                // No colon but not a unit variant - something else follows
+                let name_span = name.span();
+                return Err(parser.emit_error_with_span(
+                    ParseErrorKind::MissingColonInEnumTypeField {
+                        variant_name: name,
+                        tuple_contents: None,
+                    },
+                    name_span,
+                ));
+            }
         };
 
         Ok(TypeField {

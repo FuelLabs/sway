@@ -2698,11 +2698,15 @@ impl ToDiagnostic for CompileError {
                             format!("`{}` is not a valid enum variant declaration.", error.span.as_str()),
                         ),
                         hints: vec![
-                            Hint::help(
-                                source_engine,
-                                error.span.clone(),
-                                format!("Did you mean `{}: ({})`?", variant_name, tuple_contents.as_str())
-                            )
+                            if let Some(tuple_contents) = tuple_contents {
+                                Hint::help(
+                                    source_engine,
+                                    error.span.clone(),
+                                    format!("Did you mean `{}: ({})`?", variant_name, tuple_contents.as_str())
+                                )
+                            } else {
+                                Hint::none()
+                            }
                         ],
                         help: vec![
                             "In Sway, enum variants are in the form `Variant: ()`, `Variant: <type>`, or `Variant: (<type1>, ..., <typeN>)`.".to_string(),
