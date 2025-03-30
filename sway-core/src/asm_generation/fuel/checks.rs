@@ -116,6 +116,7 @@ pub(crate) fn check_predicate_opcodes(
                 TIME(..) => invalid_opcode("TIME"),
                 TR(..) => invalid_opcode("TR"),
                 TRO(..) => invalid_opcode("TRO"),
+                RVRT(..) => invalid_opcode("RVRT"),
                 _ => (),
             };
         }
