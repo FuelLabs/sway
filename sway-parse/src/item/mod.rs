@@ -10,6 +10,8 @@ use sway_ast::{
     ItemTypeAlias, ItemUse, Submodule, TraitType, TypeField,
 };
 use sway_error::parser_error::ParseErrorKind;
+use sway_types::ast::Delimiter;
+use sway_types::{Ident, Span, Spanned};
 
 mod item_abi;
 mod item_configurable;
@@ -95,14 +97,47 @@ impl Parse for ItemKind {
 impl Parse for TypeField {
     fn parse(parser: &mut Parser) -> ParseResult<TypeField> {
         let visibility = parser.take();
+        let name: Ident = parser.parse()?;
+
+        // Check if we have a tuple variant by looking for opening parenthesis
+        if let Some((inner_parser, tuple_span)) = parser.enter_delimited(Delimiter::Parenthesis) {
+            // We found a tuple variant without a colon
+            let tuple_contents = inner_parser.full_span().clone();
+            let name_span = name.span();
+            let error_span = Span::join(name_span, &tuple_span);
+
+            // Emit error with helpful suggestion
+            let error = parser.emit_error_with_span(
+                ParseErrorKind::MissingColonInEnumTypeField {
+                    variant_name: name,
+                    tuple_contents,
+                },
+                error_span,
+            );
+
+            // Try to continue parsing after error
+            return Err(error);
+        }
+
+        // Handle the colon token
+        let colon_token = if parser.peek::<ColonToken>().is_some() {
+            parser.parse()?
+        } else {
+            // No colon and no parentheses - must be a unit variant
+            let name_span = name.span();
+            return Err(parser.emit_error_with_span(
+                ParseErrorKind::MissingColonInEnumTypeField {
+                    variant_name: name,
+                    tuple_contents: Span::dummy(),
+                },
+                name_span,
+            ));
+        };
+
         Ok(TypeField {
             visibility,
-            name: parser.parse()?,
-            colon_token: if parser.peek::<ColonToken>().is_some() {
-                parser.parse()
-            } else {
-                Err(parser.emit_error(ParseErrorKind::MissingColonInEnumTypeField))
-            }?,
+            name,
+            colon_token,
             ty: parser.parse()?,
         })
     }
