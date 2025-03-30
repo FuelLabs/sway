@@ -886,3 +886,22 @@ impl<T> Clone for Vec<T> {
         Self { buf, len }
     }
 }
+
+impl<T> PartialEq for Vec<T>
+where
+    T: Eq,
+{
+    fn eq(self, other: Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        let mut i = 0;
+        while i < self.len() {
+            if self.get(i).unwrap() != other.get(i).unwrap() {
+                return false;
+            }
+            i += 1;
+        }
+        true
+    }
+}

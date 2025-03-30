@@ -10,12 +10,6 @@ pub trait MyTrait2 {
     }
 }
 
-impl MyTrait for MyStruct {
-    fn trait_method(self) -> bool {
-        true
-    }
-}
-
 impl MyTrait2 for MyStruct {
     fn trait_method2(self) -> bool {
         true
