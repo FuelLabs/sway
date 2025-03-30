@@ -1,5 +1,7 @@
 library;
 
+use ::ops::*;
+use ::raw_ptr::*;
 use ::raw_slice::*;
 
 pub struct Buffer {
@@ -217,6 +219,17 @@ impl AbiEncode for u8 {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
         }
+    }
+}
+
+// Encode str slice for raw ptr
+
+impl AbiEncode for raw_ptr {
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        let v = asm(p: self) {
+            p: u64
+        };
+        v.abi_encode(buffer)
     }
 }
 
