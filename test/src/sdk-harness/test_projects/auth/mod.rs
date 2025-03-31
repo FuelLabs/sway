@@ -14,6 +14,7 @@ use fuels::{
     },
 };
 use std::str::FromStr;
+use crate::new_random_wallet;
 
 abigen!(
     Contract(
@@ -74,8 +75,8 @@ async fn msg_sender_from_contract() {
 #[tokio::test]
 async fn input_message_msg_sender_from_contract() {
     // Wallet
-    let mut wallet = Wallet::new_random(None);
-    let mut deployer_wallet = Wallet::new_random(None);
+    let mut wallet = new_random_wallet(None);
+    let mut deployer_wallet = new_random_wallet(None);
 
     // Setup coins and messages
     let coins = setup_single_asset_coins(wallet.address(), AssetId::BASE, 100, 1000);
@@ -107,7 +108,8 @@ async fn input_message_msg_sender_from_contract() {
     .unwrap()
     .deploy(&deployer_wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = AuthContract::new(id.clone(), wallet.clone());
 
     // Start building transactions
@@ -142,10 +144,10 @@ async fn input_message_msg_sender_from_contract() {
 
 #[tokio::test]
 async fn caller_addresses_from_messages() {
-    let mut wallet1 = Wallet::new_random(None);
-    let mut wallet2 = Wallet::new_random(None);
-    let mut wallet3 = Wallet::new_random(None);
-    let mut wallet4 = Wallet::new_random(None);
+    let mut wallet1 = new_random_wallet(None);
+    let mut wallet2 = new_random_wallet(None);
+    let mut wallet3 = new_random_wallet(None);
+    let mut wallet4 = new_random_wallet(None);
 
     // Setup message
     let message_amount = 10;
@@ -211,7 +213,8 @@ async fn caller_addresses_from_messages() {
     .unwrap()
     .deploy(&wallet4, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let auth_instance = AuthContract::new(id_1.clone(), wallet4.clone());
 
@@ -283,10 +286,10 @@ async fn caller_addresses_from_messages() {
 
 #[tokio::test]
 async fn caller_addresses_from_coins() {
-    let mut wallet1 = Wallet::new_random(None);
-    let mut wallet2 = Wallet::new_random(None);
-    let mut wallet3 = Wallet::new_random(None);
-    let mut wallet4 = Wallet::new_random(None);
+    let mut wallet1 = new_random_wallet(None);
+    let mut wallet2 = new_random_wallet(None);
+    let mut wallet3 = new_random_wallet(None);
+    let mut wallet4 = new_random_wallet(None);
 
     // Setup Coin
     let coin_amount = 10;
@@ -348,7 +351,8 @@ async fn caller_addresses_from_coins() {
     .unwrap()
     .deploy(&wallet4, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let auth_instance = AuthContract::new(id_1.clone(), wallet4.clone());
 
@@ -423,10 +427,10 @@ async fn caller_addresses_from_coins() {
 
 #[tokio::test]
 async fn caller_addresses_from_coins_and_messages() {
-    let mut wallet1 = Wallet::new_random(None);
-    let mut wallet2 = Wallet::new_random(None);
-    let mut wallet3 = Wallet::new_random(None);
-    let mut wallet4 = Wallet::new_random(None);
+    let mut wallet1 = new_random_wallet(None);
+    let mut wallet2 = new_random_wallet(None);
+    let mut wallet3 = new_random_wallet(None);
+    let mut wallet4 = new_random_wallet(None);
 
     let message_amount = 10;
     let message1 = Message {
@@ -490,7 +494,8 @@ async fn caller_addresses_from_coins_and_messages() {
     .unwrap()
     .deploy(&wallet4, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let auth_instance = AuthContract::new(id_1.clone(), wallet4.clone());
 
@@ -578,7 +583,8 @@ async fn get_contracts() -> (
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let id_2 = Contract::load_from(
         "test_artifacts/auth_caller_contract/out/release/auth_caller_contract.bin",
@@ -587,7 +593,8 @@ async fn get_contracts() -> (
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let instance_1 = AuthContract::new(id_1.clone(), wallet.clone());
     let instance_2 = AuthCallerContract::new(id_2.clone(), wallet.clone());
@@ -781,7 +788,7 @@ async fn can_get_predicate_address_in_message() {
     let mut coin_vec: Vec<Coin> = Vec::new();
     coin_vec.push(coin);
 
-    let mut wallet = Wallet::new_random(None);
+    let mut wallet = new_random_wallet(None);
     let mut node_config = NodeConfig::default();
     node_config.starting_gas_price = 0;
     let provider = setup_test_provider(coin_vec, message_vec, Some(node_config), None)

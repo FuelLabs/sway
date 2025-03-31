@@ -14,8 +14,9 @@ async fn get_generics_in_abi_instance() -> (GenericsInAbiTestContract<Wallet>, C
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
-    let instance = GenericsInAbiTestContract::new(id.clone(), wallet);
+    .unwrap()
+    .contract_id;
+    let instance = GenericsInAbiTestContract::new(id.clone().into(), wallet);
 
     (instance, id.into())
 }

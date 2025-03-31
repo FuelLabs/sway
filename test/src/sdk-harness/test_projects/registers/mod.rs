@@ -19,7 +19,8 @@ async fn deploy_test_registers_instance() -> TestRegistersContract<Wallet> {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestRegistersContract::new(id.clone(), wallet)
 }

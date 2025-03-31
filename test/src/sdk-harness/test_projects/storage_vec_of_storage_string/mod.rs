@@ -16,7 +16,8 @@ async fn test_storage_vec_of_storage_string_instance(
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestStorageVecOfStorageStringContract::new(id.clone(), wallet)
 }

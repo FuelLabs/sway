@@ -18,7 +18,8 @@ async fn get_type_aliases_instance() -> (TypeAliasesTestContract<Wallet>, Contra
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = TypeAliasesTestContract::new(id.clone(), wallet);
 
     (instance, id.into())

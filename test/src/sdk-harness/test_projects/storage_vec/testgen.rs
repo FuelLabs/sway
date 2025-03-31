@@ -52,7 +52,8 @@ macro_rules! testgen {
                     .unwrap()
                     .deploy(&wallet, TxPolicies::default())
                     .await
-                    .unwrap();
+                    .unwrap()
+                    .contract_id;
 
                     MyContract::new(id.clone(), wallet)
                 }

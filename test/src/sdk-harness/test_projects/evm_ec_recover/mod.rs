@@ -50,7 +50,7 @@ async fn setup_env() -> Result<(
     let msg = Message::from_bytes(*msg_bytes);
     let sig = Signature::sign(&private_key, &msg);
     let sig_bytes: Bytes64 = Bytes64::from(sig);
-    let mut wallet = Wallet::new_from_private_key(private_key, None);
+    let signer = PrivateKeySigner::new(private_key);
 
     let num_assets = 1;
     let coins_per_asset = 10;
@@ -64,7 +64,8 @@ async fn setup_env() -> Result<(
     let provider = setup_test_provider(coins.clone(), vec![], None, None)
         .await
         .unwrap();
-    wallet.set_provider(provider);
+
+    let mut wallet = Wallet::new(signer, provider);
 
     let contract_id = Contract::load_from(
         "test_projects/evm_ec_recover/out/release/evm_ec_recover.bin",
@@ -73,7 +74,8 @@ async fn setup_env() -> Result<(
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let contract_instance = EvmEcRecoverContract::new(contract_id, wallet.clone());
 

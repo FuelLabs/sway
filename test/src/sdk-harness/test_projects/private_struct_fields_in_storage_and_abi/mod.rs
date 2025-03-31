@@ -15,7 +15,8 @@ async fn test_storage_private_struct_fields_instance(
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestPrivateStructFieldsInStorageAndAbi::new(id.clone(), wallet)
 }

@@ -21,7 +21,8 @@ async fn setup() -> MyContract<Wallet> {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     MyContract::new(id.clone(), wallet)
 }

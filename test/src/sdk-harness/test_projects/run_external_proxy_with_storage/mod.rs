@@ -20,7 +20,8 @@ async fn run_external_can_proxy_call() {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let configurables = RunExternalProxyContractConfigurables::default()
         .with_TARGET(target_id.clone().into())
@@ -32,8 +33,9 @@ async fn run_external_can_proxy_call() {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
-    let instance = RunExternalProxyContract::new(id.clone(), wallet);
+    .unwrap()
+    .contract_id;
+    let instance = RunExternalProxyContract::new(id, wallet);
     // Call "large_value"
     // Will call run_external_proxy::large_value
     // that will call run_external_target::large_value

@@ -447,6 +447,7 @@ async fn can_send_message_output_with_data() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -488,6 +489,7 @@ async fn can_send_message_output_without_data() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))

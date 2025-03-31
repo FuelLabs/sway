@@ -15,7 +15,8 @@ async fn get_option_in_abi_instance() -> (OptionInAbiTestContract<Wallet>, Contr
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = OptionInAbiTestContract::new(id.clone(), wallet);
 
     (instance, id.into())

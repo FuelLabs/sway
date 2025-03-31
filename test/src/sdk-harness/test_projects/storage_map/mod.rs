@@ -20,7 +20,8 @@ async fn test_storage_map_instance() -> TestStorageMapContract<Wallet> {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestStorageMapContract::new(id.clone(), wallet)
 }

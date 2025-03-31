@@ -15,7 +15,8 @@ async fn test_storage_vec_to_vec_instance() -> TestStorageVecToVecContract<Walle
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestStorageVecToVecContract::new(id.clone(), wallet)
 }

@@ -16,7 +16,8 @@ async fn setup() -> TestStorageBytesContract<Wallet> {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestStorageBytesContract::new(id, wallet)
 }

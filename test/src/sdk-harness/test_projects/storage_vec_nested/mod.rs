@@ -15,7 +15,8 @@ async fn test_storage_vec_nested_instance() -> TestStorageVecNestedContract<Wall
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestStorageVecNestedContract::new(id.clone(), wallet)
 }

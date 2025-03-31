@@ -6,7 +6,7 @@ Compile all the Sway programs in the workspace as follows:
 
 ```sh
 # from project root
-cargo run --bin=forc build --path test/src/sdk-harness
+cargo run --bin=forc build --path test/src/sdk-harness --release
 ```
 
 This will build all contracts and scripts under the `sway/test/src/sdk-harness` directory.

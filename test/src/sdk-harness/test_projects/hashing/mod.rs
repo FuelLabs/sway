@@ -152,8 +152,9 @@ async fn get_hashing_instance() -> (HashingTestContract<Wallet>, ContractId) {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
-    let instance = HashingTestContract::new(id.clone(), wallet);
+    .unwrap()
+    .contract_id;
+    let instance = HashingTestContract::new(id.clone().into(), wallet);
 
     (instance, id.into())
 }

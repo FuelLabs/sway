@@ -38,9 +38,10 @@ async fn get_test_contract_instance(
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
-    let instance = ContractBytecodeTest::new(id.clone(), wallet);
+    let instance = ContractBytecodeTest::new(id.clone().into(), wallet);
 
     (instance, id)
 }

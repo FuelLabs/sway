@@ -4,6 +4,7 @@ use fuels::{
     prelude::*,
     types::B512,
 };
+use crate::new_random_wallet;
 
 abigen!(
     Predicate(
@@ -31,15 +32,16 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
             .parse()
             .unwrap();
 
-    let mut wallet = Wallet::new_from_private_key(secret_key1, None);
-    let mut wallet2 = Wallet::new_from_private_key(secret_key2, None);
-    let mut wallet3 = Wallet::new_from_private_key(secret_key3, None);
-    let mut receiver = Wallet::new_random(None);
+    let mut receiver = new_random_wallet(None);
 
-    let all_coins = [&wallet, &wallet2, &wallet3]
+    let signer = PrivateKeySigner::new(secret_key1);
+    let signer2 = PrivateKeySigner::new(secret_key2);
+    let signer3 = PrivateKeySigner::new(secret_key3);
+
+    let all_coins = [&signer, &signer2, &signer3]
         .iter()
-        .flat_map(|wallet| {
-            setup_single_asset_coins(wallet.address(), AssetId::default(), 10, 1_000_000)
+        .flat_map(|signer| {
+            setup_single_asset_coins(signer.address(), AssetId::default(), 10, 1_000_000)
         })
         .collect::<Vec<_>>();
 
@@ -49,11 +51,9 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
         .await
         .unwrap();
 
-    [&mut wallet, &mut wallet2, &mut wallet3, &mut receiver]
-        .iter_mut()
-        .for_each(|wallet| {
-            wallet.set_provider(provider.clone());
-        });
+    let mut wallet = Wallet::new(signer, provider.clone());
+    let mut wallet2 = Wallet::new(signer2, provider.clone());
+    let mut wallet3 = Wallet::new(signer3, provider.clone());
 
     let data_to_sign = Message::new([0; 32]);
     let signature1: B512 = wallet.sign(data_to_sign).await?.as_ref().try_into()?;

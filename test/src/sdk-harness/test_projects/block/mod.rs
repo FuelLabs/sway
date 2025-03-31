@@ -9,7 +9,7 @@ abigen!(Contract(
 
 async fn get_block_instance() -> (BlockTestContract<Wallet>, ContractId, Provider) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
-    let provider = wallet.provider().unwrap();
+    let provider = wallet.provider();
     let id = Contract::load_from(
         "test_projects/block/out/release/block.bin",
         LoadConfiguration::default(),

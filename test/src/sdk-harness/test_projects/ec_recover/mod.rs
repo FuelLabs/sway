@@ -26,21 +26,21 @@ async fn setup_env() -> Result<(
     let msg = Message::from_bytes(*msg_bytes);
     let sig = Signature::sign(&private_key, &msg);
     let sig_bytes: Bytes64 = Bytes64::from(sig);
-    let mut wallet = Wallet::new_from_private_key(private_key, None);
 
+    let signer = PrivateKeySigner::new(private_key);
     let num_assets = 1;
     let coins_per_asset = 10;
     let amount_per_coin = 15;
     let (coins, _asset_ids) = setup_multiple_assets_coins(
-        wallet.address(),
+        signer.address(),
         num_assets,
         coins_per_asset,
         amount_per_coin,
     );
     let provider = setup_test_provider(coins.clone(), vec![], None, None)
-        .await
-        .unwrap();
-    wallet.set_provider(provider);
+    .await
+    .unwrap();
+    let wallet = Wallet::new(signer, provider.clone());
 
     let contract_id = Contract::load_from(
         "test_projects/ec_recover/out/release/ec_recover.bin",
@@ -49,7 +49,8 @@ async fn setup_env() -> Result<(
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let contract_instance = EcRecoverContract::new(contract_id, wallet.clone());
 

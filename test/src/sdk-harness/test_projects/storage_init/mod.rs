@@ -21,7 +21,8 @@ async fn test_storage_init_instance() -> TestStorageInitContract<Wallet> {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestStorageInitContract::new(id.clone(), wallet)
 }

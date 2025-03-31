@@ -18,8 +18,9 @@ async fn get_evm_test_instance() -> (EvmTestContract<Wallet>, ContractId) {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
-    let instance = EvmTestContract::new(id.clone(), wallet);
+    .unwrap()
+    .contract_id;
+    let instance = EvmTestContract::new(id.clone().into(), wallet);
 
     (instance, id.into())
 }

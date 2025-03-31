@@ -14,7 +14,8 @@ async fn setup() -> (ExpectTestingContract<Wallet>, ContractId) {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = ExpectTestingContract::new(id.clone(), wallet);
 
     (instance, id.into())

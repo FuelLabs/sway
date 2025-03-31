@@ -97,9 +97,10 @@ async fn get_contract_instance() -> (TestContract<Wallet>, ContractId, Wallet) {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
-    let instance = TestContract::new(id.clone(), wallet.clone());
+    let instance = TestContract::new(id.clone().into(), wallet.clone());
 
     (instance, id.into(), wallet)
 }

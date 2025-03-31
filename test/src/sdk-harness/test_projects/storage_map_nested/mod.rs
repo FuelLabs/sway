@@ -14,7 +14,8 @@ async fn test_storage_map_nested_instance() -> TestStorageMapNestedContract<Wall
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestStorageMapNestedContract::new(id.clone(), wallet)
 }

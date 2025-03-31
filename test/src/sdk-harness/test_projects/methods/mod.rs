@@ -33,7 +33,8 @@ async fn get_methods_instance(wallet: Wallet) -> MethodsContract<Wallet> {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     MethodsContract::new(id.clone(), wallet)
 }

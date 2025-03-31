@@ -17,7 +17,8 @@ async fn get_vec_in_abi_instance() -> (VecInAbiTestContract<Wallet>, ContractId)
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = VecInAbiTestContract::new(id.clone(), wallet);
 
     (instance, id.into())

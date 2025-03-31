@@ -14,7 +14,8 @@ async fn test_storage_access_instance() -> TestStorageAccessContract<Wallet> {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestStorageAccessContract::new(id.clone(), wallet)
 }

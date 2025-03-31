@@ -18,7 +18,8 @@ async fn get_parsing_logs_instance() -> (ParsingLogsTestContract<Wallet>, Contra
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = ParsingLogsTestContract::new(id.clone(), wallet);
 
     (instance, id.into())

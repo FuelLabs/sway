@@ -30,7 +30,8 @@ async fn get_messages_contract_instance() -> (
     .unwrap()
     .deploy(&wallets[0], TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     // Send assets to the contract to be able withdraw via `smo`.
     wallets[0]
@@ -68,6 +69,7 @@ async fn can_send_bool_message() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -95,6 +97,7 @@ async fn can_send_u8_message() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -122,6 +125,7 @@ async fn can_send_u16_message() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -152,6 +156,7 @@ async fn can_send_u32_message() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -182,6 +187,7 @@ async fn can_send_u64_message() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -212,6 +218,7 @@ async fn can_send_b256_message() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -242,6 +249,7 @@ async fn can_send_struct_message() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -275,6 +283,7 @@ async fn can_send_enum_message() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -311,6 +320,7 @@ async fn can_send_array_message() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -349,6 +359,7 @@ async fn can_send_string_message() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
