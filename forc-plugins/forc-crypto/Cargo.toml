@@ -14,6 +14,8 @@ async-trait.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 forc-tracing.workspace = true
 forc-util.workspace = true
+forc-wallet.workspace = true
+fuels.workspace = true
 fuel-core-types.workspace = true
 fuel-crypto = { workspace = true, features = ["random"] }
 fuels-accounts.workspace = true

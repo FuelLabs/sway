@@ -31,12 +31,8 @@ pub async fn get_missing_contracts(
 
         let tb = call
             .transaction_builder(*tx_policies, *variable_output_policy, account)
-            .await
-            .expect("Failed to initialize transaction builder");
-        let tx = call
-            .build_tx(tb, account)
-            .await
-            .expect("Failed to build transaction");
+            .await?;
+        let tx = call.build_tx(tb, account).await?;
 
         match provider
             .dry_run(tx)

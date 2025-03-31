@@ -190,8 +190,7 @@ pub async fn call(cmd: cmd::Call) -> anyhow::Result<CallResponse> {
         .clone()
         .with_external_contracts(external_contracts)
         .transaction_builder(tx_policies, variable_output_policy, &wallet)
-        .await
-        .expect("Failed to initialize transaction builder");
+        .await?;
     let (tx_status, tx_hash) = match mode {
         cmd::call::ExecutionMode::DryRun => {
             let tx = call
