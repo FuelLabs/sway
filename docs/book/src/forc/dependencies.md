@@ -33,7 +33,7 @@ The following example adds a dependency with an `ipfs` source.
 custom_lib = { ipfs = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG" }
 ```
 
-For `registry` sources, `forc` will first resolve the source declared by its name and version. This is done using the forc.pub-index repo (located at `https://github.com/FuelLabs/forc.pub-index`). The package name and version is used to convert the declaration to an IPFS CID. The resolved IPFS CID is then used by either a local IPFS node or an ipfs gateway that fuel operates (`https://ipfs.forc.pub/`) to actually fetch the package.
+For `registry` sources, `forc` will first resolve the source declared by its name and version. This is done using the forc.pub-index repo (located at `https://github.com/FuelLabs/forc.pub-index`). The package name and version is used to convert the declaration to an IPFS CID. The resolved IPFS CID is then used by either a local IPFS node or an IPFS gateway that fuel operates (`https://ipfs.forc.pub/`) to actually fetch the package.
 
 Available packages can be found at `https://forc.pub`.
 
