@@ -433,9 +433,9 @@ where
     }
 
     // Add a guard to ensure cleanup happens if we got out of scope whether by
-    // returning or panicing.
+    // returning or panicking.
     let _cleanup_guard = scopeguard::guard(&repo_dir, |dir| {
-        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(dir);
     });
 
     let config = git2::Config::open_default().unwrap();
