@@ -26,16 +26,18 @@ impl Display for Namespace {
 /// Calculates the exact file location from the root of the namespace repo.
 /// If the configuration includes a namespace, it will be the first part of
 /// the path followed by chunks.
-pub fn location_from_root(chunk_size: usize, namespace: &Namespace, name: &str) -> PathBuf {
+pub fn location_from_root(chunk_size: usize, namespace: &Namespace, package_name: &str) -> PathBuf {
     let mut path = PathBuf::new();
 
-    // Add domain to path if namespace is 'Domain'
+    // Add domain to path if namespace is 'Domain' and it is not empty
     // otherwise skip.
-    if let Namespace::Domain(domain) = namespace {
-        path.push(domain);
+    match namespace {
+        Namespace::Domain(domain) if !domain.is_empty() => {
+            path.push(domain);
+        }
+        _ => {}
     }
 
-    let package_name = &name;
     // If chunking is disabled we do not have any folder in the index.
     if chunk_size == 0 {
         path.push(package_name);

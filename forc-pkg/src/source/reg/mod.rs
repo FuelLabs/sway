@@ -186,13 +186,16 @@ impl FromStr for Pinned {
             return Err(PinnedParseError::Prefix);
         }
 
-        let s = &s[prefix_plus.len()..];
+        let without_prefix = &s[prefix_plus.len()..];
 
         // Parse the package name.
-        let pkg_name = s.split('?').next().ok_or(PinnedParseError::PackageName)?;
+        let pkg_name = without_prefix
+            .split('?')
+            .next()
+            .ok_or(PinnedParseError::PackageName)?;
 
-        let s = &s[pkg_name.len() + "?".len()..];
-        let mut s_iter = s.split('#');
+        let without_package_name = &s[pkg_name.len() + "?".len()..];
+        let mut s_iter = without_package_name.split('#');
 
         // Parse the package version
         let pkg_version = s_iter.next().ok_or(PinnedParseError::PackageVersion)?;
@@ -441,7 +444,6 @@ where
         let _ = std::fs::remove_dir_all(&tmp_dir);
     }
 
-    // TODO: remove the clone
     let github_resolver = GithubRegistryResolver::with_default_github(source.namespace.clone());
 
     let path = format!(
