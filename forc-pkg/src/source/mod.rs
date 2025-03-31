@@ -48,7 +48,7 @@ trait DepPath {
 
 type FetchId = u64;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IPFSNode {
     Local,
     WithUrl(String),
