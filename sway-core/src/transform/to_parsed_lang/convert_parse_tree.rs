@@ -971,7 +971,6 @@ fn handle_impl_contract(
                 let impl_trait = ImplSelfOrTrait {
                     is_self: false,
                     impl_type_parameters: vec![],
-                    impl_const_generics_parameters: vec![],
                     trait_name: CallPath {
                         prefixes: vec![],
                         suffix: anon_abi_name,
