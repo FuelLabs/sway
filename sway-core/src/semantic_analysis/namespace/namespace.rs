@@ -114,6 +114,11 @@ impl Namespace {
         &self.current_mod_path
     }
 
+    /// A reference to the path of the module currently being processed.
+    pub fn clear_current_mod_path(&mut self) {
+        self.current_mod_path = vec![];
+    }
+
     /// Prepends the module path into the prefixes.
     pub fn prepend_module_path<'a>(
         &'a self,

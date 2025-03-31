@@ -2387,7 +2387,7 @@ fn run_garbage_collection_tests_from_projects_dir(projects_dir: PathBuf) -> Resu
 /// 2. Panics in one test don't affect others
 /// 3. Resource cleanup happens automatically on process exit
 #[tokio::test]
-#[ignore = "This test is meant to be run only indirectly through the tests that run GC in parallel."]
+// #[ignore = "This test is meant to be run only indirectly through the tests that run GC in parallel."]
 async fn test_single_garbage_collection_project() {
     if let Ok(test_file) = std::env::var("TEST_FILE") {
         let path = PathBuf::from(test_file);

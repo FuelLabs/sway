@@ -91,6 +91,19 @@ impl TyProgram {
                 })?;
 
         let mut namespace = ctx.namespace().clone();
+        // namespace.clear_current_mod_path()
+        eprintln!(
+            "current mod path: {:?} {:?}",
+            namespace.current_mod_path(),
+            namespace
+                .current_module()
+                .submodules()
+                .iter()
+                .map(|s| s.0.clone())
+                .collect::<Vec<_>>()
+        );
+        // println!("Custom backtrace: {}", std::backtrace::Backtrace::capture());
+
         Self::validate_coherence(handler, engines, &root, &mut namespace).map_err(|error| {
             TypeCheckFailed {
                 error,

@@ -1,0 +1,6 @@
+The bug happens when running the new coherence checks under LSP.
+
+For some reason the namespace structure is different when engines are re-used.
+
+export TEST_FILE=/home/joao/dev/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/generic_impl_self_where/src/main.sw
+RUST_BACKTRACE=1 cargo test --package sway-lsp --test lib -- --test test_single_garbage_collection_project --exact --show-output --nocapture

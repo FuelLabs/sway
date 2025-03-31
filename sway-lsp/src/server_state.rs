@@ -27,7 +27,7 @@ use std::{
         Arc,
     },
 };
-use sway_core::LspConfig;
+use sway_core::{Engines, LspConfig};
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -133,20 +133,25 @@ impl ServerState {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = session.engines.read().clone();
+                        // Note: uncommenting following line fixes the issue
+                        //let mut engines_clone = Engines::default();
 
+                        eprintln!("compiling {:?}", ctx.uri);
+
+                        // NOTE: GC makes no difference, uncommented just to reduce bug surface
                         // Perform garbage collection if enabled to manage memory usage.
-                        if ctx.gc_options.gc_enabled {
-                            // Call this on the engines clone so we don't clear types that are still in use
-                            // and might be needed in the case cancel compilation was triggered.
-                            if let Err(err) =
-                                session.garbage_collect_module(&mut engines_clone, &uri)
-                            {
-                                tracing::error!(
-                                    "Unable to perform garbage collection: {}",
-                                    err.to_string()
-                                );
-                            }
-                        }
+                        // if ctx.gc_options.gc_enabled {
+                        //     // Call this on the engines clone so we don't clear types that are still in use
+                        //     // and might be needed in the case cancel compilation was triggered.
+                        //     if let Err(err) =
+                        //         session.garbage_collect_module(&mut engines_clone, &uri)
+                        //     {
+                        //         tracing::error!(
+                        //             "Unable to perform garbage collection: {}",
+                        //             err.to_string()
+                        //         );
+                        //     }
+                        // }
                         let lsp_mode = Some(LspConfig {
                             optimized_build: ctx.optimized_build,
                             file_versions: ctx.file_versions,
