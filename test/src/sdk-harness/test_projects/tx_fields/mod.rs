@@ -1,3 +1,4 @@
+use crate::test_utils::{new_random_signer, new_random_wallet};
 use fuel_vm::fuel_crypto::Hasher;
 use fuel_vm::fuel_tx::{ContractId, Input as TxInput};
 use fuels::core::codec::EncoderConfig;
@@ -9,7 +10,6 @@ use fuels::{
     types::{input::Input as SdkInput, output::Output as SdkOutput, Bits256},
 };
 use std::fs;
-use crate::test_utils::{new_random_wallet, new_random_signer};
 
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
 const TX_CONTRACT_BYTECODE_PATH: &str = "test_artifacts/tx_contract/out/release/tx_contract.bin";
@@ -67,14 +67,7 @@ abigen!(
     )
 );
 
-async fn get_contracts(
-    msg_has_data: bool,
-) -> (
-    TxContractTest<Wallet>,
-    ContractId,
-    Wallet,
-    Wallet,
-) {
+async fn get_contracts(msg_has_data: bool) -> (TxContractTest<Wallet>, ContractId, Wallet, Wallet) {
     let signer = new_random_signer();
     let deployment_signer = new_random_signer();
 
@@ -123,10 +116,7 @@ async fn get_contracts(
     (instance, contract_id.into(), wallet, deployment_wallet)
 }
 
-async fn generate_predicate_inputs(
-    amount: u64,
-    wallet: &Wallet,
-) -> (Vec<u8>, SdkInput, TxInput) {
+async fn generate_predicate_inputs(amount: u64, wallet: &Wallet) -> (Vec<u8>, SdkInput, TxInput) {
     let provider = wallet.provider();
     let predicate = Predicate::load_from(TX_FIELDS_PREDICATE_BYTECODE_PATH)
         .unwrap()
@@ -570,13 +560,13 @@ mod tx {
 
             // Outputs for predicate
             let predicate_output =
-                wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+                wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
-            builder.inputs.push(predicate_input.get(0).unwrap().clone());
+            builder.inputs.push(predicate_input.first().unwrap().clone());
             builder
                 .outputs
-                .push(predicate_output.get(0).unwrap().clone());
+                .push(*predicate_output.first().unwrap());
 
             wallet.add_witnesses(&mut builder).unwrap();
             wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
@@ -668,13 +658,13 @@ mod tx {
 
             // Outputs for predicate
             let predicate_output =
-                wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+                wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
-            builder.inputs.push(predicate_input.get(0).unwrap().clone());
+            builder.inputs.push(predicate_input.first().unwrap().clone());
             builder
                 .outputs
-                .push(predicate_output.get(0).unwrap().clone());
+                .push(*predicate_output.first().unwrap());
 
             wallet.add_witnesses(&mut builder).unwrap();
             wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
@@ -754,15 +744,15 @@ mod tx {
 
         // Outputs for predicate
         let predicate_output =
-            wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+            wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
         let mut builder = BlobTransactionBuilder::default().with_blob(blob);
 
         // Append the predicate to the transaction
-        builder.inputs.push(predicate_input.get(0).unwrap().clone());
+        builder.inputs.push(predicate_input.first().unwrap().clone());
         builder
             .outputs
-            .push(predicate_output.get(0).unwrap().clone());
+            .push(*predicate_output.first().unwrap());
 
         wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
         wallet.add_witnesses(&mut builder).unwrap();
@@ -855,13 +845,13 @@ mod tx {
 
         // Outputs for predicate
         let predicate_output =
-            wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+            wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
         // Append the predicate to the transaction
-        builder.inputs.push(predicate_input.get(0).unwrap().clone());
+        builder.inputs.push(predicate_input.first().unwrap().clone());
         builder
             .outputs
-            .push(predicate_output.get(0).unwrap().clone());
+            .push(*predicate_output.first().unwrap());
 
         wallet.add_witnesses(&mut builder).unwrap();
         wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
@@ -995,7 +985,7 @@ mod inputs {
                 .await
                 .unwrap();
 
-            assert_eq!(result.value, false);
+            assert!(!result.value);
         }
 
         #[tokio::test]
@@ -1067,13 +1057,13 @@ mod inputs {
 
                 // Outputs for predicate
                 let predicate_output =
-                    wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+                    wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
                 // Append the predicate to the transaction
-                builder.inputs.push(predicate_input.get(0).unwrap().clone());
+                builder.inputs.push(predicate_input.first().unwrap().clone());
                 builder
                     .outputs
-                    .push(predicate_output.get(0).unwrap().clone());
+                    .push(*predicate_output.first().unwrap());
 
                 wallet.add_witnesses(&mut builder).unwrap();
                 wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
@@ -1155,13 +1145,13 @@ mod inputs {
 
             // Outputs for predicate
             let predicate_output =
-                wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+                wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
-            builder.inputs.push(predicate_input.get(0).unwrap().clone());
+            builder.inputs.push(predicate_input.first().unwrap().clone());
             builder
                 .outputs
-                .push(predicate_output.get(0).unwrap().clone());
+                .push(*predicate_output.first().unwrap());
 
             wallet.add_witnesses(&mut builder).unwrap();
             wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
@@ -1198,7 +1188,7 @@ mod inputs {
                 });
 
                 let signer = wallet.signer().clone();
-        builder.add_signer(signer).unwrap();
+                builder.add_signer(signer).unwrap();
 
                 let tx = builder.enable_burn(true).build(provider).await.unwrap();
 
@@ -1239,7 +1229,7 @@ mod inputs {
                 });
                 // This message will pay for the tx fee - hence no need to use adjust_for_fee
                 let signer = wallet.signer().clone();
-        builder.add_signer(signer).unwrap();
+                builder.add_signer(signer).unwrap();
 
                 let tx = builder.enable_burn(true).build(provider).await.unwrap();
 
@@ -1279,7 +1269,7 @@ mod inputs {
                 });
 
                 let signer = wallet.signer().clone();
-        builder.add_signer(signer).unwrap();
+                builder.add_signer(signer).unwrap();
 
                 let tx = builder.enable_burn(true).build(provider).await.unwrap();
 
@@ -1346,7 +1336,7 @@ mod inputs {
                     .unwrap();
 
                 let signer = wallet.signer().clone();
-        builder.add_signer(signer).unwrap();
+                builder.add_signer(signer).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -1385,7 +1375,7 @@ mod inputs {
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
                 let signer = wallet.signer().clone();
-        builder.add_signer(signer).unwrap();
+                builder.add_signer(signer).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -1429,7 +1419,7 @@ mod inputs {
                 builder.inputs_mut().push(message);
 
                 let signer = wallet.signer().clone();
-        builder.add_signer(signer).unwrap();
+                builder.add_signer(signer).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -1482,7 +1472,7 @@ mod inputs {
                     .unwrap();
 
                 let signer = wallet.signer().clone();
-        builder.add_signer(signer).unwrap();
+                builder.add_signer(signer).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -1503,7 +1493,7 @@ mod inputs {
                     .await
                     .unwrap();
 
-                assert_eq!(none_result.value, false);
+                assert!(!none_result.value);
             }
 
             #[tokio::test]
@@ -1529,7 +1519,7 @@ mod inputs {
                     .unwrap();
 
                 let signer = wallet.signer().clone();
-        builder.add_signer(signer).unwrap();
+                builder.add_signer(signer).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -1566,7 +1556,7 @@ mod inputs {
                 });
 
                 let signer = wallet.signer().clone();
-        builder.add_signer(signer).unwrap();
+                builder.add_signer(signer).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -1601,7 +1591,7 @@ mod inputs {
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
 
                 let signer = wallet.signer().clone();
-        builder.add_signer(signer).unwrap();
+                builder.add_signer(signer).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -1623,7 +1613,7 @@ mod inputs {
                     .await
                     .unwrap();
 
-                assert_eq!(none_result.value, false);
+                assert!(!none_result.value);
             }
         }
     }
@@ -1729,7 +1719,7 @@ mod outputs {
 
             // Outputs
             let mut outputs = wallet.get_asset_outputs_for_amount(
-                &wallet.address(),
+                wallet.address(),
                 *base_asset_id,
                 predicate_coin_amount,
             );
@@ -1869,7 +1859,7 @@ mod outputs {
                     .unwrap();
 
                 // Append the predicate to the transaction
-                builder.inputs.push(predicate_input.get(0).unwrap().clone());
+                builder.inputs.push(predicate_input.first().unwrap().clone());
                 builder.outputs.push(SdkOutput::change(
                     wallet.address().into(),
                     0,
@@ -1898,8 +1888,8 @@ mod outputs {
                 DEFAULT_COIN_AMOUNT,
             );
             let provider = setup_test_provider(coins, vec![], None, None)
-            .await
-            .unwrap();
+                .await
+                .unwrap();
             let consensus_params = provider.consensus_parameters().await.unwrap();
             let base_asset_id = consensus_params.base_asset_id();
             let wallet = Wallet::new(signer.clone(), provider.clone());
@@ -1953,7 +1943,7 @@ mod outputs {
             let mut builder = BlobTransactionBuilder::default().with_blob(blob);
 
             // Append the predicate to the transaction
-            builder.inputs.push(predicate_input.get(0).unwrap().clone());
+            builder.inputs.push(predicate_input.first().unwrap().clone());
             builder.outputs.push(SdkOutput::change(
                 wallet.address().into(),
                 0,

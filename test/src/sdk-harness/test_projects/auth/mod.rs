@@ -758,7 +758,7 @@ async fn when_incorrect_predicate_address_passed() {
 }
 
 #[tokio::test]
-async fn can_get_predicate_address_in_message() {    
+async fn can_get_predicate_address_in_message() {
     // Setup predicate address.
     let hex_predicate_address: &str =
         "0x599331f8a4696d67739a28360222f1a671e349ad51ccd0682be19a683b058d84";

@@ -502,9 +502,7 @@ async fn can_send_message_output_without_data() {
     assert_eq!(Vec::<u8>::new(), message_receipt.data().unwrap());
 }
 
-async fn get_fuelcoin_instance(
-    wallet: Wallet,
-) -> (TestFuelCoinContract<Wallet>, ContractId) {
+async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract<Wallet>, ContractId) {
     let fuelcontract_id = Contract::load_from(
         "test_projects/asset_ops/out/release/asset_ops.bin",
         LoadConfiguration::default(),

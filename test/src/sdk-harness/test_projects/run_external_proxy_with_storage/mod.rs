@@ -43,23 +43,20 @@ async fn run_external_can_proxy_call() {
     let result = instance
         .methods()
         .large_value()
-        .with_contract_ids(&[target_id.clone().into()])
+        .with_contract_ids(&[target_id.clone()])
         .call()
         .await
         .unwrap();
     for r in result.tx_status.receipts.iter() {
-        match r {
-            Receipt::LogData { data, .. } => {
-                if let Some(data) = data {
-                    if data.len() > 8 {
-                        if let Ok(s) = std::str::from_utf8(&data[8..]) {
-                            print!("{:?} ", s);
-                        }
+        if let Receipt::LogData { data, .. } = r {
+            if let Some(data) = data {
+                if data.len() > 8 {
+                    if let Ok(s) = std::str::from_utf8(&data[8..]) {
+                        print!("{:?} ", s);
                     }
-                    println!("{:?}", data);
                 }
+                println!("{:?}", data);
             }
-            _ => {}
         }
     }
     let expected_large =
@@ -73,23 +70,20 @@ async fn run_external_can_proxy_call() {
     let result = instance
         .methods()
         .double_value(42)
-        .with_contract_ids(&[target_id.clone().into()])
+        .with_contract_ids(&[target_id.clone()])
         .call()
         .await
         .unwrap();
     for r in result.tx_status.receipts.iter() {
-        match r {
-            Receipt::LogData { data, .. } => {
-                if let Some(data) = data {
-                    if data.len() > 8 {
-                        if let Ok(s) = std::str::from_utf8(&data[8..]) {
-                            print!("{:?} ", s);
-                        }
+        if let Receipt::LogData { data, .. } = r {
+            if let Some(data) = data {
+                if data.len() > 8 {
+                    if let Ok(s) = std::str::from_utf8(&data[8..]) {
+                        print!("{:?} ", s);
                     }
-                    println!("{:?}", data);
                 }
+                println!("{:?}", data);
             }
-            _ => {}
         }
     }
     assert_eq!(result.value, 84);
@@ -100,7 +94,7 @@ async fn run_external_can_proxy_call() {
     let result = instance
         .methods()
         .does_not_exist_in_the_target(42)
-        .with_contract_ids(&[target_id.into()])
+        .with_contract_ids(&[target_id])
         .call()
         .await
         .unwrap();

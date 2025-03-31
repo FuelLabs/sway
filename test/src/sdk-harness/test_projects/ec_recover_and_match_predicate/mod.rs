@@ -1,11 +1,11 @@
+use crate::test_utils::new_random_wallet;
 use fuels::{
+    accounts::signers::private_key::PrivateKeySigner,
     accounts::{predicate::Predicate, wallet::Wallet, Account},
     crypto::Message,
     prelude::*,
     types::B512,
-    accounts::signers::private_key::PrivateKeySigner,
 };
-use crate::test_utils::new_random_wallet;
 
 abigen!(
     Predicate(
@@ -57,9 +57,24 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
     let wallet3 = Wallet::new(signer3, provider.clone());
 
     let data_to_sign = Message::new([0; 32]);
-    let signature1: B512 = wallet.signer().sign(data_to_sign).await?.as_ref().try_into()?;
-    let signature2: B512 = wallet2.signer().sign(data_to_sign).await?.as_ref().try_into()?;
-    let signature3: B512 = wallet3.signer().sign(data_to_sign).await?.as_ref().try_into()?;
+    let signature1: B512 = wallet
+        .signer()
+        .sign(data_to_sign)
+        .await?
+        .as_ref()
+        .try_into()?;
+    let signature2: B512 = wallet2
+        .signer()
+        .sign(data_to_sign)
+        .await?
+        .as_ref()
+        .try_into()?;
+    let signature3: B512 = wallet3
+        .signer()
+        .sign(data_to_sign)
+        .await?
+        .as_ref()
+        .try_into()?;
 
     let signatures = [signature1, signature2, signature3];
 

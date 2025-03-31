@@ -1,5 +1,5 @@
-use fuels::prelude::*;
 use fuels::accounts::wallet::Wallet;
+use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestStorageBytesContract",
@@ -126,7 +126,7 @@ async fn stores_string_as_bytes() {
 
     assert_eq!(
         instance.methods().len().call().await.unwrap().value,
-        input.clone().as_bytes().len() as u64
+        input.clone().len() as u64
     );
 
     instance
@@ -159,7 +159,7 @@ async fn stores_long_string_as_bytes() {
 
     assert_eq!(
         instance.methods().len().call().await.unwrap().value,
-        input.clone().as_bytes().len() as u64
+        input.clone().len() as u64
     );
 
     instance
@@ -186,7 +186,7 @@ async fn stores_string_twice() {
 
     assert_eq!(
         instance.methods().len().call().await.unwrap().value,
-        input1.clone().as_bytes().len() as u64
+        input1.clone().len() as u64
     );
 
     instance
@@ -205,7 +205,7 @@ async fn stores_string_twice() {
 
     assert_eq!(
         instance.methods().len().call().await.unwrap().value,
-        input2.clone().as_bytes().len() as u64
+        input2.clone().len() as u64
     );
 
     instance
@@ -231,7 +231,7 @@ async fn clears_bytes() {
 
     assert_eq!(
         instance.methods().len().call().await.unwrap().value,
-        input.as_bytes().len() as u64
+        input.len() as u64
     );
 
     assert!(

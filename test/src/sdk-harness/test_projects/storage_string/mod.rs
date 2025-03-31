@@ -1,5 +1,5 @@
-use fuels::prelude::*;
 use fuels::accounts::wallet::Wallet;
+use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestStorageStringContract",
@@ -50,7 +50,7 @@ async fn stores_string() {
 
     assert_eq!(
         instance.methods().stored_len().call().await.unwrap().value,
-        input.as_bytes().len() as u64
+        input.len() as u64
     );
 
     assert_eq!(
@@ -86,7 +86,7 @@ async fn stores_long_string() {
 
     assert_eq!(
         instance.methods().stored_len().call().await.unwrap().value,
-        input.as_bytes().len() as u64
+        input.len() as u64
     );
 
     assert_eq!(
@@ -111,7 +111,7 @@ async fn stores_string_twice() {
 
     assert_eq!(
         instance.methods().stored_len().call().await.unwrap().value,
-        input1.as_bytes().len() as u64
+        input1.len() as u64
     );
 
     assert_eq!(
@@ -128,7 +128,7 @@ async fn stores_string_twice() {
 
     assert_eq!(
         instance.methods().stored_len().call().await.unwrap().value,
-        input2.as_bytes().len() as u64
+        input2.len() as u64
     );
 
     assert_eq!(
@@ -152,7 +152,7 @@ async fn clears_bytes() {
 
     assert_eq!(
         instance.methods().stored_len().call().await.unwrap().value,
-        input.as_bytes().len() as u64
+        input.len() as u64
     );
 
     assert!(
@@ -191,6 +191,6 @@ async fn get_string_length() {
 
     assert_eq!(
         instance.methods().stored_len().call().await.unwrap().value,
-        input.as_bytes().len() as u64
+        input.len() as u64
     );
 }

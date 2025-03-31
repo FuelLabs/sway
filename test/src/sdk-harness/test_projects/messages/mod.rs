@@ -5,11 +5,7 @@ abigen!(Contract(
     abi = "test_projects/messages/out/release/messages-abi.json"
 ));
 
-async fn get_messages_contract_instance() -> (
-    TestMessagesContract<Wallet>,
-    ContractId,
-    Wallet,
-) {
+async fn get_messages_contract_instance() -> (TestMessagesContract<Wallet>, ContractId, Wallet) {
     let num_wallets = 1;
     let coins_per_wallet = 1;
     let amount_per_coin = 1_000_000;

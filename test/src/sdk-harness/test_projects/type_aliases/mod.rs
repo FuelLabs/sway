@@ -37,7 +37,7 @@ async fn test_foo() -> Result<()> {
         Identity::ContractId(ContractId::new([1u8; 32])),
     ];
 
-    let z = IdentityAliasWrapper { i: y[0].clone() };
+    let z = IdentityAliasWrapper { i: y[0] };
 
     let w = Generic { f: z.clone() };
 
@@ -46,7 +46,7 @@ async fn test_foo() -> Result<()> {
     let s = SizedAsciiString::try_from("fuelfuel0").unwrap();
 
     let (x_result, y_result, z_result, w_result, u_result, s_result) = contract_methods
-        .foo(x, y.clone(), z.clone(), w.clone(), u, s.clone())
+        .foo(x, y, z.clone(), w.clone(), u, s.clone())
         .call()
         .await
         .unwrap()
