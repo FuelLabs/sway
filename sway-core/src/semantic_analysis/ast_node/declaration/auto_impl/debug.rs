@@ -21,20 +21,16 @@ where
         decl: &ty::TyDecl,
     ) -> Option<TyAstNode> {
         match decl {
-            TyDecl::StructDecl(_) => self.debug_auto_impl_struct(engines, decl).unwrap_or(None),
-            TyDecl::EnumDecl(_) => self.debug_auto_impl_enum(engines, decl).unwrap_or(None),
+            TyDecl::StructDecl(_) => self.debug_auto_impl_struct(engines, decl),
+            TyDecl::EnumDecl(_) => self.debug_auto_impl_enum(engines, decl),
             _ => None,
         }
     }
 
     // Auto implements Debug for structs and returns their `AstNode`s.
-    fn debug_auto_impl_struct(
-        &mut self,
-        engines: &Engines,
-        decl: &TyDecl,
-    ) -> Option<Option<TyAstNode>> {
+    fn debug_auto_impl_struct(&mut self, engines: &Engines, decl: &TyDecl) -> Option<TyAstNode> {
         if self.ctx.namespace.current_package_name().as_str() == "core" {
-            return Some(None);
+            return None;
         }
 
         let implementing_for_decl_id = decl.to_struct_decl(&Handler::default(), engines).unwrap();
@@ -49,7 +45,7 @@ where
             crate::build_config::DbgGeneration::None,
         );
 
-        Some(node.ok())
+        node.ok()
     }
 
     fn generate_fmt_code(
@@ -90,13 +86,9 @@ where
     }
 
     // Auto implements Debug for enums and returns their `AstNode`s.
-    fn debug_auto_impl_enum(
-        &mut self,
-        engines: &Engines,
-        decl: &TyDecl,
-    ) -> Option<Option<TyAstNode>> {
+    fn debug_auto_impl_enum(&mut self, engines: &Engines, decl: &TyDecl) -> Option<TyAstNode> {
         if self.ctx.namespace.current_package_name().as_str() == "core" {
-            return Some(None);
+            return None;
         }
 
         let enum_decl_id = decl.to_enum_id(&Handler::default(), engines).unwrap();
@@ -111,7 +103,7 @@ where
             crate::build_config::DbgGeneration::None,
         );
 
-        Some(node.ok())
+        node.ok()
     }
 
     fn generate_fmt_enum_body(&self, engines: &Engines, decl: &TyEnumDecl) -> String {
