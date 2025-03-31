@@ -37,7 +37,7 @@ For `registry` sources, `forc` will first resolve the source declared by its nam
 
 Available packages can be found at `https://forc.pub`.
 
-The following example adds a dependency with an `registry` source.
+The following example adds a dependency with a `registry` source.
 
 ```toml
 [dependencies]
