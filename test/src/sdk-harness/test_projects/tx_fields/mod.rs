@@ -1,4 +1,4 @@
-use crate::test_utils::{new_random_signer, new_random_wallet};
+use crate::test_utils::new_random_signer;
 use fuel_vm::fuel_crypto::Hasher;
 use fuel_vm::fuel_tx::{ContractId, Input as TxInput};
 use fuels::core::codec::EncoderConfig;
@@ -563,10 +563,10 @@ mod tx {
                 wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
-            builder.inputs.push(predicate_input.first().unwrap().clone());
             builder
-                .outputs
-                .push(*predicate_output.first().unwrap());
+                .inputs
+                .push(predicate_input.first().unwrap().clone());
+            builder.outputs.push(*predicate_output.first().unwrap());
 
             wallet.add_witnesses(&mut builder).unwrap();
             wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
@@ -661,10 +661,10 @@ mod tx {
                 wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
-            builder.inputs.push(predicate_input.first().unwrap().clone());
             builder
-                .outputs
-                .push(*predicate_output.first().unwrap());
+                .inputs
+                .push(predicate_input.first().unwrap().clone());
+            builder.outputs.push(*predicate_output.first().unwrap());
 
             wallet.add_witnesses(&mut builder).unwrap();
             wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
@@ -750,10 +750,10 @@ mod tx {
         let mut builder = BlobTransactionBuilder::default().with_blob(blob);
 
         // Append the predicate to the transaction
-        builder.inputs.push(predicate_input.first().unwrap().clone());
         builder
-            .outputs
-            .push(*predicate_output.first().unwrap());
+            .inputs
+            .push(predicate_input.first().unwrap().clone());
+        builder.outputs.push(*predicate_output.first().unwrap());
 
         wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
         wallet.add_witnesses(&mut builder).unwrap();
@@ -850,10 +850,10 @@ mod tx {
             wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
         // Append the predicate to the transaction
-        builder.inputs.push(predicate_input.first().unwrap().clone());
         builder
-            .outputs
-            .push(*predicate_output.first().unwrap());
+            .inputs
+            .push(predicate_input.first().unwrap().clone());
+        builder.outputs.push(*predicate_output.first().unwrap());
 
         wallet.add_witnesses(&mut builder).unwrap();
         wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
@@ -1062,10 +1062,10 @@ mod inputs {
                     wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
                 // Append the predicate to the transaction
-                builder.inputs.push(predicate_input.first().unwrap().clone());
                 builder
-                    .outputs
-                    .push(*predicate_output.first().unwrap());
+                    .inputs
+                    .push(predicate_input.first().unwrap().clone());
+                builder.outputs.push(*predicate_output.first().unwrap());
 
                 wallet.add_witnesses(&mut builder).unwrap();
                 wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
@@ -1150,10 +1150,10 @@ mod inputs {
                 wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
-            builder.inputs.push(predicate_input.first().unwrap().clone());
             builder
-                .outputs
-                .push(*predicate_output.first().unwrap());
+                .inputs
+                .push(predicate_input.first().unwrap().clone());
+            builder.outputs.push(*predicate_output.first().unwrap());
 
             wallet.add_witnesses(&mut builder).unwrap();
             wallet.adjust_for_fee(&mut builder, 0).await.unwrap();
@@ -1861,7 +1861,9 @@ mod outputs {
                     .unwrap();
 
                 // Append the predicate to the transaction
-                builder.inputs.push(predicate_input.first().unwrap().clone());
+                builder
+                    .inputs
+                    .push(predicate_input.first().unwrap().clone());
                 builder.outputs.push(SdkOutput::change(
                     wallet.address().into(),
                     0,
@@ -1945,7 +1947,9 @@ mod outputs {
             let mut builder = BlobTransactionBuilder::default().with_blob(blob);
 
             // Append the predicate to the transaction
-            builder.inputs.push(predicate_input.first().unwrap().clone());
+            builder
+                .inputs
+                .push(predicate_input.first().unwrap().clone());
             builder.outputs.push(SdkOutput::change(
                 wallet.address().into(),
                 0,

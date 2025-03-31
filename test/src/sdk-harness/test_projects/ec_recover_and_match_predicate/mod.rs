@@ -52,9 +52,7 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
         .await
         .unwrap();
 
-    let wallet = Wallet::new(signer, provider.clone());
-    let wallet2 = Wallet::new(signer2, provider.clone());
-    let wallet3 = Wallet::new(signer3, provider.clone());
+    let wallet = Wallet::new(signer.clone(), provider.clone());
 
     let data_to_sign = Message::new([0; 32]);
     let signature1: B512 = signer.sign(data_to_sign).await?.as_ref().try_into()?;
