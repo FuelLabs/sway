@@ -94,9 +94,9 @@ fuel-core-types = { version = "0.41", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.70"
-fuels-core = "0.70"
-fuels-accounts = "0.70"
+fuels = "0.71"
+fuels-core = "0.71"
+fuels-accounts = "0.71"
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.59"
@@ -106,7 +106,7 @@ fuel-tx = "0.59"
 fuel-vm = "0.59"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.12"
+forc-wallet = "0.13"
 
 #
 # External dependencies

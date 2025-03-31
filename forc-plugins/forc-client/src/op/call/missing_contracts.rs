@@ -1,7 +1,11 @@
 use anyhow::{bail, Result};
 use fuel_tx::{PanicReason, Receipt};
 use fuels::programs::calls::{traits::TransactionTuner, ContractCall};
-use fuels_accounts::{provider::Provider, wallet::WalletUnlocked};
+use fuels_accounts::{
+    provider::Provider,
+    signers::private_key::PrivateKeySigner,
+    wallet::{Unlocked, Wallet},
+};
 use fuels_core::types::{
     bech32::Bech32ContractId, transaction::TxPolicies, transaction_builders::VariableOutputPolicy,
 };
@@ -14,7 +18,7 @@ pub async fn get_missing_contracts(
     tx_policies: &TxPolicies,
     variable_output_policy: &VariableOutputPolicy,
     log_decoder: &fuels_core::codec::LogDecoder,
-    account: &WalletUnlocked,
+    account: &Wallet<Unlocked<PrivateKeySigner>>,
     max_attempts: Option<u64>,
 ) -> Result<Vec<Bech32ContractId>> {
     let max_attempts = max_attempts.unwrap_or(10);
@@ -25,9 +29,14 @@ pub async fn get_missing_contracts(
             attempt
         ));
 
+        let tb = call
+            .transaction_builder(*tx_policies, *variable_output_policy, account)
+            .await
+            .expect("Failed to initialize transaction builder");
         let tx = call
-            .build_tx(*tx_policies, *variable_output_policy, account)
-            .await?;
+            .build_tx(tb, account)
+            .await
+            .expect("Failed to build transaction");
 
         match provider
             .dry_run(tx)
