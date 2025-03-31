@@ -682,10 +682,10 @@ mod tx {
     #[tokio::test]
     async fn can_get_tx_blob() {
         // Prepare wallet and provider
-        let wallet = new_random_wallet(None).await;
+        let signer = new_random_signer();
         let num_coins = 100;
         let coins = setup_single_asset_coins(
-            wallet.address(),
+            signer.address(),
             AssetId::zeroed(),
             num_coins,
             DEFAULT_COIN_AMOUNT,
@@ -694,6 +694,7 @@ mod tx {
         let provider = setup_test_provider(coins, vec![], None, None)
             .await
             .unwrap();
+        let wallet = Wallet::new(signer, provider.clone());
         let consensus_params = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_params.base_asset_id();
 
@@ -773,10 +774,10 @@ mod tx {
     #[tokio::test]
     async fn can_get_witness_in_tx_blob() {
         // Prepare wallet and provider
-        let wallet = new_random_wallet(None).await;
+        let signer = new_random_signer();
         let num_coins = 100;
         let coins = setup_single_asset_coins(
-            wallet.address(),
+            signer.address(),
             AssetId::zeroed(),
             num_coins,
             DEFAULT_COIN_AMOUNT,
@@ -785,6 +786,7 @@ mod tx {
         let provider = setup_test_provider(coins, vec![], None, None)
             .await
             .unwrap();
+        let wallet = Wallet::new(signer, provider.clone());
         let consensus_params = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_params.base_asset_id();
 

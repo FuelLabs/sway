@@ -57,24 +57,9 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
     let wallet3 = Wallet::new(signer3, provider.clone());
 
     let data_to_sign = Message::new([0; 32]);
-    let signature1: B512 = wallet
-        .signer()
-        .sign(data_to_sign)
-        .await?
-        .as_ref()
-        .try_into()?;
-    let signature2: B512 = wallet2
-        .signer()
-        .sign(data_to_sign)
-        .await?
-        .as_ref()
-        .try_into()?;
-    let signature3: B512 = wallet3
-        .signer()
-        .sign(data_to_sign)
-        .await?
-        .as_ref()
-        .try_into()?;
+    let signature1: B512 = signer.sign(data_to_sign).await?.as_ref().try_into()?;
+    let signature2: B512 = signer2.sign(data_to_sign).await?.as_ref().try_into()?;
+    let signature3: B512 = signer3.sign(data_to_sign).await?.as_ref().try_into()?;
 
     let signatures = [signature1, signature2, signature3];
 
