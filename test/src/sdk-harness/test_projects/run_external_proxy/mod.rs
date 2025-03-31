@@ -42,7 +42,7 @@ async fn run_external_can_proxy_call() {
         .call()
         .await
         .unwrap();
-    for r in result.tx_status.receipts.iter() {
+    for r in result.receipts.iter() {
         match r {
             Receipt::LogData { data, .. } => {
                 if let Some(data) = data {
@@ -72,7 +72,7 @@ async fn run_external_can_proxy_call() {
         .call()
         .await
         .unwrap();
-    for r in result.tx_status.receipts.iter() {
+    for r in result.receipts.iter() {
         match r {
             Receipt::LogData { data, .. } => {
                 if let Some(data) = data {
