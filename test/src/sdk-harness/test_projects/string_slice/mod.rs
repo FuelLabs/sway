@@ -3,7 +3,7 @@ use fuel_vm::fuel_tx;
 use fuel_vm::fuel_tx::{Address, AssetId, Output};
 use fuels::types::StaticStringToken;
 use fuels::{
-    accounts::wallet::{Wallet, Wallet},
+    accounts::wallet::Wallet,
     core::codec::{ABIEncoder, EncoderConfig},
     prelude::*,
     types::{input::Input, transaction_builders::ScriptTransactionBuilder, Token},

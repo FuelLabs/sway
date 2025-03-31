@@ -3,7 +3,7 @@ use fuel_vm::{
     fuel_types::Bytes64,
 };
 use fuels::{
-    accounts::wallet::Wallet,
+    accounts::{signers::private_key::PrivateKeySigner, wallet::Wallet},
     prelude::*,
     types::{Bits256, Bytes32, EvmAddress},
 };
@@ -56,7 +56,7 @@ async fn setup_env() -> Result<(
     let coins_per_asset = 10;
     let amount_per_coin = 15;
     let (coins, _asset_ids) = setup_multiple_assets_coins(
-        wallet.address(),
+        signer.address(),
         num_assets,
         coins_per_asset,
         amount_per_coin,
@@ -65,7 +65,7 @@ async fn setup_env() -> Result<(
         .await
         .unwrap();
 
-    let mut wallet = Wallet::new(signer, provider);
+    let wallet = Wallet::new(signer, provider);
 
     let contract_id = Contract::load_from(
         "test_projects/evm_ec_recover/out/release/evm_ec_recover.bin",

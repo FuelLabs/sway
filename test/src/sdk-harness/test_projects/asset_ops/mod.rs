@@ -512,7 +512,8 @@ async fn get_fuelcoin_instance(
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     wallet
         .force_transfer_to_contract(&fuelcontract_id, 1000, AssetId::BASE, TxPolicies::default())
@@ -531,7 +532,8 @@ async fn get_balance_contract_id(wallet: Wallet) -> ContractId {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     balance_id.into()
 }

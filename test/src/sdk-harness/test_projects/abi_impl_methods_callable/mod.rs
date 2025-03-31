@@ -15,8 +15,9 @@ async fn get_abi_impl_methods_callable_instance() -> AbiImplMethodsCallable<Wall
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
-    AbiImplMethodsCallable::new(id.clone(), wallet)
+    .unwrap()
+    .contract_id;
+    AbiImplMethodsCallable::new(id, wallet)
 }
 
 #[tokio::test]

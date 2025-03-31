@@ -2,7 +2,7 @@ use fuel_vm::fuel_asm::{op, RegId};
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_tx::{Address, AssetId, Output};
 use fuels::{
-    accounts::wallet::{Wallet, Wallet},
+    accounts::wallet::Wallet,
     core::codec::{ABIEncoder, EncoderConfig},
     prelude::*,
     types::{input::Input, transaction_builders::ScriptTransactionBuilder, Token},
@@ -52,7 +52,7 @@ async fn create_predicate(
     let provider = wallet.provider();
     let output_coin = Output::coin(predicate_address, amount_to_predicate, asset_id);
     let output_change = Output::change(wallet.address().into(), 0, asset_id);
-    let mut tx = ScriptTransactionBuilder::prepare_transfer(
+    let tx = ScriptTransactionBuilder::prepare_transfer(
         wallet_coins,
         vec![output_coin, output_change],
         Default::default(),

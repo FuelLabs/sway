@@ -154,7 +154,7 @@ async fn get_hashing_instance() -> (HashingTestContract<Wallet>, ContractId) {
     .await
     .unwrap()
     .contract_id;
-    let instance = HashingTestContract::new(id.clone().into(), wallet);
+    let instance = HashingTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }

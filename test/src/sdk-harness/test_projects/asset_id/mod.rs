@@ -31,7 +31,8 @@ async fn get_instance(wallet: Wallet) -> (TestAssetId<Wallet>, ContractId) {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     wallet
         .force_transfer_to_contract(&fuelcontract_id, 1000, AssetId::BASE, TxPolicies::default())

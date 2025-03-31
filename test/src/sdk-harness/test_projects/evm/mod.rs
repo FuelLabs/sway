@@ -20,7 +20,7 @@ async fn get_evm_test_instance() -> (EvmTestContract<Wallet>, ContractId) {
     .await
     .unwrap()
     .contract_id;
-    let instance = EvmTestContract::new(id.clone().into(), wallet);
+    let instance = EvmTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }

@@ -1,5 +1,5 @@
 // Add test modules here:
-
+mod test_utils;
 mod abi_impl_methods_callable;
 mod asset_id;
 mod asset_ops;

@@ -9,7 +9,7 @@ use fuels::{
     types::{input::Input as SdkInput, output::Output as SdkOutput, Bits256},
 };
 use std::fs;
-use crate::new_random_wallet;
+use crate::test_utils::{new_random_wallet, new_random_signer};
 
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
 const TX_CONTRACT_BYTECODE_PATH: &str = "test_artifacts/tx_contract/out/release/tx_contract.bin";
@@ -75,17 +75,17 @@ async fn get_contracts(
     Wallet,
     Wallet,
 ) {
-    let mut wallet = new_random_wallet(None);
-    let mut deployment_wallet = new_random_wallet(None);
+    let signer = new_random_signer();
+    let deployment_signer = new_random_signer();
 
     let mut deployment_coins = setup_single_asset_coins(
-        deployment_wallet.address(),
+        deployment_signer.address(),
         AssetId::BASE,
         120,
         DEFAULT_COIN_AMOUNT,
     );
 
-    let mut coins = setup_single_asset_coins(wallet.address(), AssetId::BASE, 100, 1000);
+    let mut coins = setup_single_asset_coins(signer.address(), AssetId::BASE, 100, 1000);
 
     coins.append(&mut deployment_coins);
 
@@ -94,7 +94,7 @@ async fn get_contracts(
             hrp: "".to_string(),
             hash: Default::default(),
         },
-        wallet.address(),
+        signer.address(),
         DEFAULT_COIN_AMOUNT,
         69.into(),
         if msg_has_data {
@@ -108,8 +108,8 @@ async fn get_contracts(
         .await
         .unwrap();
 
-    wallet.set_provider(provider.clone());
-    deployment_wallet.set_provider(provider);
+    let wallet = Wallet::new(signer, provider.clone());
+    let deployment_wallet = Wallet::new(deployment_signer, provider.clone());
 
     let contract_id = Contract::load_from(TX_CONTRACT_BYTECODE_PATH, LoadConfiguration::default())
         .unwrap()
@@ -501,10 +501,10 @@ mod tx {
     #[tokio::test]
     async fn can_get_tx_upload() {
         // Prepare wallet and provider
-        let mut wallet = new_random_wallet(None);
+        let signer = new_random_signer();
         let num_coins = 100;
         let coins = setup_single_asset_coins(
-            wallet.address(),
+            signer.address(),
             AssetId::zeroed(),
             num_coins,
             DEFAULT_COIN_AMOUNT,
@@ -512,7 +512,7 @@ mod tx {
         let provider = setup_test_provider(coins, vec![], None, None)
             .await
             .unwrap();
-        wallet.set_provider(provider.clone());
+        let wallet = Wallet::new(signer, provider.clone());
         let consensus_params = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_params.base_asset_id();
 
@@ -594,10 +594,10 @@ mod tx {
     #[tokio::test]
     async fn can_get_witness_in_tx_upload() {
         // Prepare wallet and provider
-        let mut wallet = new_random_wallet(None);
+        let signer = new_random_signer();
         let num_coins = 100;
         let coins = setup_single_asset_coins(
-            wallet.address(),
+            signer.address(),
             AssetId::zeroed(),
             num_coins,
             DEFAULT_COIN_AMOUNT,
@@ -605,7 +605,7 @@ mod tx {
         let provider = setup_test_provider(coins, vec![], None, None)
             .await
             .unwrap();
-        wallet.set_provider(provider.clone());
+        let wallet = Wallet::new(signer, provider.clone());
         let consensus_params = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_params.base_asset_id();
 
@@ -692,7 +692,7 @@ mod tx {
     #[tokio::test]
     async fn can_get_tx_blob() {
         // Prepare wallet and provider
-        let mut wallet = new_random_wallet(None);
+        let wallet = new_random_wallet(None).await;
         let num_coins = 100;
         let coins = setup_single_asset_coins(
             wallet.address(),
@@ -704,7 +704,6 @@ mod tx {
         let provider = setup_test_provider(coins, vec![], None, None)
             .await
             .unwrap();
-        wallet.set_provider(provider.clone());
         let consensus_params = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_params.base_asset_id();
 
@@ -784,7 +783,7 @@ mod tx {
     #[tokio::test]
     async fn can_get_witness_in_tx_blob() {
         // Prepare wallet and provider
-        let mut wallet = new_random_wallet(None);
+        let wallet = new_random_wallet(None).await;
         let num_coins = 100;
         let coins = setup_single_asset_coins(
             wallet.address(),
@@ -796,7 +795,6 @@ mod tx {
         let provider = setup_test_provider(coins, vec![], None, None)
             .await
             .unwrap();
-        wallet.set_provider(provider.clone());
         let consensus_params = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_params.base_asset_id();
 
@@ -1003,10 +1001,10 @@ mod inputs {
         #[tokio::test]
         async fn can_get_input_count_in_tx_upload() {
             // Prepare wallet and provider
-            let mut wallet = new_random_wallet(None);
+            let signer = new_random_signer();
             let num_coins = 100;
             let coins = setup_single_asset_coins(
-                wallet.address(),
+                signer.address(),
                 AssetId::zeroed(),
                 num_coins,
                 DEFAULT_COIN_AMOUNT,
@@ -1014,7 +1012,7 @@ mod inputs {
             let provider = setup_test_provider(coins, vec![], None, None)
                 .await
                 .unwrap();
-            wallet.set_provider(provider.clone());
+            let wallet = Wallet::new(signer, provider.clone());
             let consensus_params = provider.consensus_parameters().await.unwrap();
             let base_asset_id = consensus_params.base_asset_id();
 
@@ -1093,10 +1091,10 @@ mod inputs {
         #[tokio::test]
         async fn can_get_input_count_in_tx_blob() {
             // Prepare wallet and provider
-            let mut wallet = new_random_wallet(None);
+            let signer = new_random_signer();
             let num_coins = 100;
             let coins = setup_single_asset_coins(
-                wallet.address(),
+                signer.address(),
                 AssetId::zeroed(),
                 num_coins,
                 DEFAULT_COIN_AMOUNT,
@@ -1104,7 +1102,7 @@ mod inputs {
             let provider = setup_test_provider(coins, vec![], None, None)
                 .await
                 .unwrap();
-            wallet.set_provider(provider.clone());
+            let wallet = Wallet::new(signer, provider.clone());
             let consensus_params = provider.consensus_parameters().await.unwrap();
             let base_asset_id = consensus_params.base_asset_id();
 
@@ -1806,10 +1804,10 @@ mod outputs {
         #[tokio::test]
         async fn can_get_output_count_in_tx_upload() {
             // Prepare wallet and provider
-            let mut wallet = new_random_wallet(None);
+            let signer = new_random_signer();
             let num_coins = 100;
             let coins = setup_single_asset_coins(
-                wallet.address(),
+                signer.address(),
                 AssetId::zeroed(),
                 num_coins,
                 DEFAULT_COIN_AMOUNT,
@@ -1817,7 +1815,7 @@ mod outputs {
             let provider = setup_test_provider(coins, vec![], None, None)
                 .await
                 .unwrap();
-            wallet.set_provider(provider.clone());
+            let wallet = Wallet::new(signer, provider.clone());
             let consensus_params = provider.consensus_parameters().await.unwrap();
             let base_asset_id = consensus_params.base_asset_id();
 
@@ -1891,20 +1889,20 @@ mod outputs {
         #[tokio::test]
         async fn can_get_output_count_in_tx_blob() {
             // Prepare wallet and provider
-            let mut wallet = new_random_wallet(None);
+            let signer = new_random_signer();
             let num_coins = 100;
             let coins = setup_single_asset_coins(
-                wallet.address(),
+                signer.address(),
                 AssetId::zeroed(),
                 num_coins,
                 DEFAULT_COIN_AMOUNT,
             );
             let provider = setup_test_provider(coins, vec![], None, None)
-                .await
-                .unwrap();
-            wallet.set_provider(provider.clone());
+            .await
+            .unwrap();
             let consensus_params = provider.consensus_parameters().await.unwrap();
             let base_asset_id = consensus_params.base_asset_id();
+            let wallet = Wallet::new(signer.clone(), provider.clone());
 
             // Prepare blobs
             let max_words_per_blob = 10_000;

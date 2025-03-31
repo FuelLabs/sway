@@ -3,8 +3,9 @@ use fuels::{
     crypto::Message,
     prelude::*,
     types::B512,
+    accounts::signers::private_key::PrivateKeySigner,
 };
-use crate::new_random_wallet;
+use crate::test_utils::new_random_wallet;
 
 abigen!(
     Predicate(
@@ -32,7 +33,7 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
             .parse()
             .unwrap();
 
-    let mut receiver = new_random_wallet(None);
+    let receiver = new_random_wallet(None).await;
 
     let signer = PrivateKeySigner::new(secret_key1);
     let signer2 = PrivateKeySigner::new(secret_key2);
@@ -51,14 +52,14 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
         .await
         .unwrap();
 
-    let mut wallet = Wallet::new(signer, provider.clone());
-    let mut wallet2 = Wallet::new(signer2, provider.clone());
-    let mut wallet3 = Wallet::new(signer3, provider.clone());
+    let wallet = Wallet::new(signer, provider.clone());
+    let wallet2 = Wallet::new(signer2, provider.clone());
+    let wallet3 = Wallet::new(signer3, provider.clone());
 
     let data_to_sign = Message::new([0; 32]);
-    let signature1: B512 = wallet.sign(data_to_sign).await?.as_ref().try_into()?;
-    let signature2: B512 = wallet2.sign(data_to_sign).await?.as_ref().try_into()?;
-    let signature3: B512 = wallet3.sign(data_to_sign).await?.as_ref().try_into()?;
+    let signature1: B512 = wallet.signer().sign(data_to_sign).await?.as_ref().try_into()?;
+    let signature2: B512 = wallet2.signer().sign(data_to_sign).await?.as_ref().try_into()?;
+    let signature3: B512 = wallet3.signer().sign(data_to_sign).await?.as_ref().try_into()?;
 
     let signatures = [signature1, signature2, signature3];
 

@@ -2,7 +2,7 @@ use fuel_vm::fuel_asm::{op, RegId};
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_tx::{Address, AssetId, Output};
 use fuels::{
-    accounts::wallet::{Wallet, Wallet},
+    accounts::wallet::Wallet,
     core::codec::{ABIEncoder, EncoderConfig},
     prelude::*,
     types::{input::Input, transaction_builders::ScriptTransactionBuilder, Token},
@@ -60,7 +60,8 @@ async fn create_predicate(
     )
     .with_script(op::ret(RegId::ONE).to_bytes().to_vec());
 
-    tx.add_signer(wallet.signer()).unwrap();
+    let signer = wallet.signer().clone();
+    tx.add_signer(signer).unwrap();
     let tx = tx.build(provider).await.unwrap();
 
     provider.send_transaction(tx).await.unwrap();
@@ -114,11 +115,7 @@ async fn submit_to_predicate(
     .await
     .unwrap();
 
-    wallet
-        .provider()
-        .send_transaction(new_tx)
-        .await
-        .map(|_| ())
+    wallet.provider().send_transaction(new_tx).await.map(|_| ())
 }
 
 async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {

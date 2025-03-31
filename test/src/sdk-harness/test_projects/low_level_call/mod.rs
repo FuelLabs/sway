@@ -100,9 +100,9 @@ async fn get_contract_instance() -> (TestContract<Wallet>, ContractId, Wallet) {
     .unwrap()
     .contract_id;
 
-    let instance = TestContract::new(id.clone().into(), wallet.clone());
+    let instance = TestContract::new(id.clone(), wallet.clone());
 
-    (instance, id.into(), wallet)
+    (instance, id.clone().into(), wallet)
 }
 
 #[tokio::test]

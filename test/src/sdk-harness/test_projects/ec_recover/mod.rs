@@ -3,7 +3,10 @@ use fuel_vm::{
     fuel_tx::Bytes64,
     fuel_types::Bytes32,
 };
-use fuels::{accounts::wallet::Wallet, prelude::*, types::Bits256};
+use fuels::{
+    accounts::signers::private_key::PrivateKeySigner, accounts::wallet::Wallet, prelude::*,
+    types::Bits256,
+};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 abigen!(Contract(
@@ -38,8 +41,8 @@ async fn setup_env() -> Result<(
         amount_per_coin,
     );
     let provider = setup_test_provider(coins.clone(), vec![], None, None)
-    .await
-    .unwrap();
+        .await
+        .unwrap();
     let wallet = Wallet::new(signer, provider.clone());
 
     let contract_id = Contract::load_from(

@@ -13,7 +13,7 @@ async fn get_call_frames_instance() -> (CallFramesTestContract<Wallet>, Contract
     )
     .unwrap();
 
-    let id = id.deploy(&wallet, TxPolicies::default()).await.unwrap();
+    let id = id.deploy(&wallet, TxPolicies::default()).await.unwrap().contract_id;
     let instance = CallFramesTestContract::new(id.clone(), wallet);
 
     (instance, id.into())

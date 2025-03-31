@@ -35,7 +35,8 @@ async fn get_contracts() -> (
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let id_2 = Contract::load_from(
         "test_artifacts/context_caller_contract/out/release/context_caller_contract.bin",
         LoadConfiguration::default(),
@@ -43,7 +44,8 @@ async fn get_contracts() -> (
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let instance_2 = TestContextCallerContract::new(id_2.clone(), wallet.clone());
     let instance_1 = TestContextContract::new(id_1.clone(), wallet.clone());

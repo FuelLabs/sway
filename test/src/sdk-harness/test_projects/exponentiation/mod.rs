@@ -117,7 +117,8 @@ async fn get_pow_test_instance(
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let pow_instance = TestPowContract::new(pow_id.clone(), wallet);
 
