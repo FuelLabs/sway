@@ -1,5 +1,5 @@
 use fuels::{
-    accounts::wallet::WalletUnlocked,
+    accounts::wallet::Wallet,
     prelude::*,
     types::ContractId,
     types::{Bits256, SizedAsciiString},
@@ -142,7 +142,7 @@ fn hash_struct(arr: [u8; 55], algorithm: Hash) -> [u8; 32] {
     }
 }
 
-async fn get_hashing_instance() -> (HashingTestContract<WalletUnlocked>, ContractId) {
+async fn get_hashing_instance() -> (HashingTestContract<Wallet>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let id = Contract::load_from(

@@ -1,12 +1,12 @@
-use fuels::accounts::wallet::WalletUnlocked;
 use fuels::prelude::*;
+use fuels::accounts::wallet::Wallet;
 
 abigen!(Contract(
     name = "TestStorageBytesContract",
     abi = "test_projects/storage_bytes/out/release/storage_bytes-abi.json",
 ));
 
-async fn setup() -> TestStorageBytesContract<WalletUnlocked> {
+async fn setup() -> TestStorageBytesContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let id = Contract::load_from(

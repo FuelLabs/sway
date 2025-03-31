@@ -1,5 +1,5 @@
 use fuels::{
-    accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
+    accounts::{predicate::Predicate, wallet::Wallet, Account},
     crypto::Message,
     prelude::*,
     types::B512,
@@ -31,10 +31,10 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
             .parse()
             .unwrap();
 
-    let mut wallet = WalletUnlocked::new_from_private_key(secret_key1, None);
-    let mut wallet2 = WalletUnlocked::new_from_private_key(secret_key2, None);
-    let mut wallet3 = WalletUnlocked::new_from_private_key(secret_key3, None);
-    let mut receiver = WalletUnlocked::new_random(None);
+    let mut wallet = Wallet::new_from_private_key(secret_key1, None);
+    let mut wallet2 = Wallet::new_from_private_key(secret_key2, None);
+    let mut wallet3 = Wallet::new_from_private_key(secret_key3, None);
+    let mut receiver = Wallet::new_random(None);
 
     let all_coins = [&wallet, &wallet2, &wallet3]
         .iter()

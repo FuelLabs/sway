@@ -1,7 +1,7 @@
 use fuels::{
     accounts::{
         predicate::Predicate,
-        wallet::{Wallet, WalletUnlocked},
+        wallet::{Wallet, Wallet},
     },
     prelude::*,
     tx::UtxoId,
@@ -74,8 +74,8 @@ async fn msg_sender_from_contract() {
 #[tokio::test]
 async fn input_message_msg_sender_from_contract() {
     // Wallet
-    let mut wallet = WalletUnlocked::new_random(None);
-    let mut deployer_wallet = WalletUnlocked::new_random(None);
+    let mut wallet = Wallet::new_random(None);
+    let mut deployer_wallet = Wallet::new_random(None);
 
     // Setup coins and messages
     let coins = setup_single_asset_coins(wallet.address(), AssetId::BASE, 100, 1000);
@@ -142,10 +142,10 @@ async fn input_message_msg_sender_from_contract() {
 
 #[tokio::test]
 async fn caller_addresses_from_messages() {
-    let mut wallet1 = WalletUnlocked::new_random(None);
-    let mut wallet2 = WalletUnlocked::new_random(None);
-    let mut wallet3 = WalletUnlocked::new_random(None);
-    let mut wallet4 = WalletUnlocked::new_random(None);
+    let mut wallet1 = Wallet::new_random(None);
+    let mut wallet2 = Wallet::new_random(None);
+    let mut wallet3 = Wallet::new_random(None);
+    let mut wallet4 = Wallet::new_random(None);
 
     // Setup message
     let message_amount = 10;
@@ -283,10 +283,10 @@ async fn caller_addresses_from_messages() {
 
 #[tokio::test]
 async fn caller_addresses_from_coins() {
-    let mut wallet1 = WalletUnlocked::new_random(None);
-    let mut wallet2 = WalletUnlocked::new_random(None);
-    let mut wallet3 = WalletUnlocked::new_random(None);
-    let mut wallet4 = WalletUnlocked::new_random(None);
+    let mut wallet1 = Wallet::new_random(None);
+    let mut wallet2 = Wallet::new_random(None);
+    let mut wallet3 = Wallet::new_random(None);
+    let mut wallet4 = Wallet::new_random(None);
 
     // Setup Coin
     let coin_amount = 10;
@@ -423,10 +423,10 @@ async fn caller_addresses_from_coins() {
 
 #[tokio::test]
 async fn caller_addresses_from_coins_and_messages() {
-    let mut wallet1 = WalletUnlocked::new_random(None);
-    let mut wallet2 = WalletUnlocked::new_random(None);
-    let mut wallet3 = WalletUnlocked::new_random(None);
-    let mut wallet4 = WalletUnlocked::new_random(None);
+    let mut wallet1 = Wallet::new_random(None);
+    let mut wallet2 = Wallet::new_random(None);
+    let mut wallet3 = Wallet::new_random(None);
+    let mut wallet4 = Wallet::new_random(None);
 
     let message_amount = 10;
     let message1 = Message {
@@ -563,9 +563,9 @@ async fn caller_addresses_from_coins_and_messages() {
 }
 
 async fn get_contracts() -> (
-    AuthContract<WalletUnlocked>,
+    AuthContract<Wallet>,
     ContractId,
-    AuthCallerContract<WalletUnlocked>,
+    AuthCallerContract<Wallet>,
     ContractId,
     Wallet,
 ) {
@@ -781,7 +781,7 @@ async fn can_get_predicate_address_in_message() {
     let mut coin_vec: Vec<Coin> = Vec::new();
     coin_vec.push(coin);
 
-    let mut wallet = WalletUnlocked::new_random(None);
+    let mut wallet = Wallet::new_random(None);
     let mut node_config = NodeConfig::default();
     node_config.starting_gas_price = 0;
     let provider = setup_test_provider(coin_vec, message_vec, Some(node_config), None)

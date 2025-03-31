@@ -1,4 +1,4 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
+use fuels::{accounts::wallet::Wallet, prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "TestMessagesContract",
@@ -6,9 +6,9 @@ abigen!(Contract(
 ));
 
 async fn get_messages_contract_instance() -> (
-    TestMessagesContract<WalletUnlocked>,
+    TestMessagesContract<Wallet>,
     ContractId,
-    WalletUnlocked,
+    Wallet,
 ) {
     let num_wallets = 1;
     let coins_per_wallet = 1;

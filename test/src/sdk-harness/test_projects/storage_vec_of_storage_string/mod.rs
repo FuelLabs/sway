@@ -1,4 +1,4 @@
-use fuels::accounts::wallet::WalletUnlocked;
+use fuels::accounts::wallet::Wallet;
 use fuels::prelude::*;
 
 abigen!(Contract(
@@ -7,7 +7,7 @@ abigen!(Contract(
 ));
 
 async fn test_storage_vec_of_storage_string_instance(
-) -> TestStorageVecOfStorageStringContract<WalletUnlocked> {
+) -> TestStorageVecOfStorageStringContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/storage_vec_of_storage_string/out/release/storage_vec_of_storage_string.bin",

@@ -1,7 +1,7 @@
 use fuel_core::types::fuel_tx::ContractIdExt;
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{
-    accounts::wallet::WalletUnlocked,
+    accounts::wallet::Wallet,
     prelude::*,
     types::{Bits256, Bytes32, ContractId},
 };
@@ -22,9 +22,9 @@ abigen!(
 );
 
 async fn get_contracts() -> (
-    TestContextContract<WalletUnlocked>,
+    TestContextContract<Wallet>,
     ContractId,
-    TestContextCallerContract<WalletUnlocked>,
+    TestContextCallerContract<Wallet>,
     ContractId,
 ) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();

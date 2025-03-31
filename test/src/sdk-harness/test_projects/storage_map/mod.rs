@@ -1,5 +1,5 @@
 use fuels::{
-    accounts::wallet::WalletUnlocked,
+    accounts::wallet::Wallet,
     prelude::*,
     types::{Bits256, SizedAsciiString},
 };
@@ -11,7 +11,7 @@ abigen!(Contract(
     abi = "test_projects/storage_map/out/release/storage_map-abi.json",
 ));
 
-async fn test_storage_map_instance() -> TestStorageMapContract<WalletUnlocked> {
+async fn test_storage_map_instance() -> TestStorageMapContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/storage_map/out/release/storage_map.bin",

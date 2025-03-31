@@ -1,12 +1,12 @@
-use fuels::accounts::wallet::WalletUnlocked;
 use fuels::prelude::*;
+use fuels::accounts::wallet::Wallet;
 
 abigen!(Contract(
     name = "TestStorageStringContract",
     abi = "test_projects/storage_string/out/release/storage_string-abi.json",
 ));
 
-async fn setup() -> TestStorageStringContract<WalletUnlocked> {
+async fn setup() -> TestStorageStringContract<Wallet> {
     let mut node_config = NodeConfig::default();
     node_config.starting_gas_price = 0;
     let mut wallets = launch_custom_provider_and_get_wallets(

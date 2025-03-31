@@ -1,4 +1,4 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
+use fuels::{accounts::wallet::Wallet, prelude::*};
 
 abigen!(Contract(
     name = "MyContract",
@@ -11,7 +11,7 @@ async fn default_is_none() {
     assert!(instance.methods().is_none().call().await.unwrap().value);
 }
 
-async fn setup() -> MyContract<WalletUnlocked> {
+async fn setup() -> MyContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let id = Contract::load_from(

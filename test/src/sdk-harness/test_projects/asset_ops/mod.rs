@@ -1,5 +1,5 @@
 use fuels::{
-    accounts::wallet::WalletUnlocked,
+    accounts::wallet::Wallet,
     prelude::*,
     types::AssetId,
     types::{Bits256, Bytes32, Identity},
@@ -501,8 +501,8 @@ async fn can_send_message_output_without_data() {
 }
 
 async fn get_fuelcoin_instance(
-    wallet: WalletUnlocked,
-) -> (TestFuelCoinContract<WalletUnlocked>, ContractId) {
+    wallet: Wallet,
+) -> (TestFuelCoinContract<Wallet>, ContractId) {
     let fuelcontract_id = Contract::load_from(
         "test_projects/asset_ops/out/release/asset_ops.bin",
         LoadConfiguration::default(),
@@ -521,7 +521,7 @@ async fn get_fuelcoin_instance(
     (fuelcontract_instance, fuelcontract_id.into())
 }
 
-async fn get_balance_contract_id(wallet: WalletUnlocked) -> ContractId {
+async fn get_balance_contract_id(wallet: Wallet) -> ContractId {
     let balance_id = Contract::load_from(
         "test_artifacts/balance_contract/out/release/balance_contract.bin",
         LoadConfiguration::default(),

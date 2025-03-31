@@ -3,7 +3,7 @@ use fuel_vm::{
     fuel_tx::Bytes64,
     fuel_types::Bytes32,
 };
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
+use fuels::{accounts::wallet::Wallet, prelude::*, types::Bits256};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 abigen!(Contract(
@@ -12,10 +12,10 @@ abigen!(Contract(
 ));
 
 async fn setup_env() -> Result<(
-    EcRecoverContract<WalletUnlocked>,
+    EcRecoverContract<Wallet>,
     SecretKey,
     PublicKey,
-    WalletUnlocked,
+    Wallet,
     Message,
     Bytes64,
 )> {
@@ -26,7 +26,7 @@ async fn setup_env() -> Result<(
     let msg = Message::from_bytes(*msg_bytes);
     let sig = Signature::sign(&private_key, &msg);
     let sig_bytes: Bytes64 = Bytes64::from(sig);
-    let mut wallet = WalletUnlocked::new_from_private_key(private_key, None);
+    let mut wallet = Wallet::new_from_private_key(private_key, None);
 
     let num_assets = 1;
     let coins_per_asset = 10;

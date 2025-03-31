@@ -1,4 +1,4 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::AssetId};
+use fuels::{accounts::wallet::Wallet, prelude::*, types::AssetId};
 
 abigen!(Contract(
     name = "TestAssetId",
@@ -23,7 +23,7 @@ async fn can_get_base_asset_id() {
     assert_eq!(asset_id, *base_asset_id);
 }
 
-async fn get_instance(wallet: WalletUnlocked) -> (TestAssetId<WalletUnlocked>, ContractId) {
+async fn get_instance(wallet: Wallet) -> (TestAssetId<Wallet>, ContractId) {
     let fuelcontract_id = Contract::load_from(
         "test_projects/asset_id/out/release/asset_id.bin",
         LoadConfiguration::default(),

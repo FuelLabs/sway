@@ -3,7 +3,7 @@ use fuel_vm::fuel_tx::{ContractId, Input as TxInput};
 use fuels::core::codec::EncoderConfig;
 use fuels::types::transaction_builders::TransactionBuilder;
 use fuels::{
-    accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
+    accounts::{predicate::Predicate, wallet::Wallet, Account},
     prelude::*,
     tx::StorageSlot,
     types::{input::Input as SdkInput, output::Output as SdkOutput, Bits256},
@@ -69,13 +69,13 @@ abigen!(
 async fn get_contracts(
     msg_has_data: bool,
 ) -> (
-    TxContractTest<WalletUnlocked>,
+    TxContractTest<Wallet>,
     ContractId,
-    WalletUnlocked,
-    WalletUnlocked,
+    Wallet,
+    Wallet,
 ) {
-    let mut wallet = WalletUnlocked::new_random(None);
-    let mut deployment_wallet = WalletUnlocked::new_random(None);
+    let mut wallet = Wallet::new_random(None);
+    let mut deployment_wallet = Wallet::new_random(None);
 
     let mut deployment_coins = setup_single_asset_coins(
         deployment_wallet.address(),
@@ -123,7 +123,7 @@ async fn get_contracts(
 
 async fn generate_predicate_inputs(
     amount: u64,
-    wallet: &WalletUnlocked,
+    wallet: &Wallet,
 ) -> (Vec<u8>, SdkInput, TxInput) {
     let provider = wallet.provider().unwrap();
     let predicate = Predicate::load_from(TX_FIELDS_PREDICATE_BYTECODE_PATH)
@@ -175,7 +175,7 @@ async fn generate_predicate_inputs(
 async fn setup_output_predicate(
     index: u64,
     expected_output_type: SwayOutput,
-) -> (WalletUnlocked, WalletUnlocked, Predicate, AssetId, AssetId) {
+) -> (Wallet, Wallet, Predicate, AssetId, AssetId) {
     let asset_id1 = AssetId::default();
     let asset_id2 = AssetId::new([2u8; 32]);
     let wallets_config = WalletsConfig::new_multiple_assets(
@@ -498,7 +498,7 @@ mod tx {
     #[tokio::test]
     async fn can_get_tx_upload() {
         // Prepare wallet and provider
-        let mut wallet = WalletUnlocked::new_random(None);
+        let mut wallet = Wallet::new_random(None);
         let num_coins = 100;
         let coins = setup_single_asset_coins(
             wallet.address(),
@@ -591,7 +591,7 @@ mod tx {
     #[tokio::test]
     async fn can_get_witness_in_tx_upload() {
         // Prepare wallet and provider
-        let mut wallet = WalletUnlocked::new_random(None);
+        let mut wallet = Wallet::new_random(None);
         let num_coins = 100;
         let coins = setup_single_asset_coins(
             wallet.address(),
@@ -689,7 +689,7 @@ mod tx {
     #[tokio::test]
     async fn can_get_tx_blob() {
         // Prepare wallet and provider
-        let mut wallet = WalletUnlocked::new_random(None);
+        let mut wallet = Wallet::new_random(None);
         let num_coins = 100;
         let coins = setup_single_asset_coins(
             wallet.address(),
@@ -781,7 +781,7 @@ mod tx {
     #[tokio::test]
     async fn can_get_witness_in_tx_blob() {
         // Prepare wallet and provider
-        let mut wallet = WalletUnlocked::new_random(None);
+        let mut wallet = Wallet::new_random(None);
         let num_coins = 100;
         let coins = setup_single_asset_coins(
             wallet.address(),
@@ -1001,7 +1001,7 @@ mod inputs {
         #[tokio::test]
         async fn can_get_input_count_in_tx_upload() {
             // Prepare wallet and provider
-            let mut wallet = WalletUnlocked::new_random(None);
+            let mut wallet = Wallet::new_random(None);
             let num_coins = 100;
             let coins = setup_single_asset_coins(
                 wallet.address(),
@@ -1091,7 +1091,7 @@ mod inputs {
         #[tokio::test]
         async fn can_get_input_count_in_tx_blob() {
             // Prepare wallet and provider
-            let mut wallet = WalletUnlocked::new_random(None);
+            let mut wallet = Wallet::new_random(None);
             let num_coins = 100;
             let coins = setup_single_asset_coins(
                 wallet.address(),
@@ -1801,7 +1801,7 @@ mod outputs {
         #[tokio::test]
         async fn can_get_output_count_in_tx_upload() {
             // Prepare wallet and provider
-            let mut wallet = WalletUnlocked::new_random(None);
+            let mut wallet = Wallet::new_random(None);
             let num_coins = 100;
             let coins = setup_single_asset_coins(
                 wallet.address(),
@@ -1886,7 +1886,7 @@ mod outputs {
         #[tokio::test]
         async fn can_get_output_count_in_tx_blob() {
             // Prepare wallet and provider
-            let mut wallet = WalletUnlocked::new_random(None);
+            let mut wallet = Wallet::new_random(None);
             let num_coins = 100;
             let coins = setup_single_asset_coins(
                 wallet.address(),
@@ -1983,7 +1983,8 @@ mod outputs {
             .unwrap()
             .deploy(&wallet, TxPolicies::default())
             .await
-            .unwrap();
+            .unwrap()
+            .contract_id;
 
             let instance = TxOutputContract::new(contract_id.clone(), wallet.clone());
             // Send tokens to the contract
@@ -2041,7 +2042,8 @@ mod outputs {
             .unwrap()
             .deploy(&wallet, TxPolicies::default())
             .await
-            .unwrap();
+            .unwrap()
+            .contract_id;
 
             let instance = TxOutputContract::new(contract_id.clone(), wallet.clone());
 

@@ -1,5 +1,5 @@
 use fuels::{
-    accounts::wallet::WalletUnlocked,
+    accounts::wallet::Wallet,
     prelude::*,
     types::{Bits256, ContractId, EvmAddress},
 };
@@ -9,7 +9,7 @@ abigen!(Contract(
     abi = "test_projects/evm/out/release/evm-abi.json"
 ));
 
-async fn get_evm_test_instance() -> (EvmTestContract<WalletUnlocked>, ContractId) {
+async fn get_evm_test_instance() -> (EvmTestContract<Wallet>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/evm/out/release/evm.bin",

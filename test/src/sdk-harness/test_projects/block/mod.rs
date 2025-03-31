@@ -1,4 +1,4 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
+use fuels::{accounts::wallet::Wallet, prelude::*, types::Bits256};
 use tai64::Tai64;
 use tokio::time::{sleep, Duration};
 
@@ -7,7 +7,7 @@ abigen!(Contract(
     abi = "test_projects/block/out/release/block-abi.json"
 ));
 
-async fn get_block_instance() -> (BlockTestContract<WalletUnlocked>, ContractId, Provider) {
+async fn get_block_instance() -> (BlockTestContract<Wallet>, ContractId, Provider) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let provider = wallet.provider().unwrap();
     let id = Contract::load_from(
