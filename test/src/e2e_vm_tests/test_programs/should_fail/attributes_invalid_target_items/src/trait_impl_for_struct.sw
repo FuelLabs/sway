@@ -15,6 +15,8 @@ struct S {
 #[payable(invalid)]
 #[deprecated(invalid)]
 #[fallback(invalid)]
+#[error_type(invalid)]
+#[error(invalid)]
 impl T for S {
     #[storage(invalid)]
     #[inline(invalid)]
@@ -23,5 +25,7 @@ impl T for S {
     #[payable(invalid)]
     #[deprecated(invalid)]
     #[fallback(invalid)]
+    #[error_type(invalid)]
+    #[error(invalid)]
     type Type = u8;
 }

@@ -5,6 +5,8 @@
 //! by the compiler and cannot be explicitly implemented in code.
 library;
 
+use ::codec::AbiEncode;
+
 /// A marker for error types.
 ///
 /// Error types are types whose instances can be arguments to the `panic` instruction.
@@ -13,7 +15,7 @@ library;
 /// - string slices,
 /// - and enums annotated with the `#[error_type]` attribute.
 #[cfg(experimental_error_type = true)]
-pub trait Error {
+pub trait Error: AbiEncode {
 }
 
 /// A marker for enum types.
@@ -27,3 +29,7 @@ pub trait Enum {
 
 #[cfg(experimental_error_type = true)]
 impl Error for str {}
+
+#[cfg(experimental_error_type = true)]
+impl Error for () {}
+
