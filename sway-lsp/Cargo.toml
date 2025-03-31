@@ -78,6 +78,3 @@ bench = false
 
 [lints.clippy]
 iter_over_hash_type = "deny"
-
-[package.metadata.cargo-udeps.ignore]
-development = ["criterion"]

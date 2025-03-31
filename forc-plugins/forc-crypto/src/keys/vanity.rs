@@ -1,6 +1,5 @@
-use forc_wallet::utils::DEFAULT_DERIVATION_PATH_PREFIX;
 use fuel_crypto::{fuel_types::Address, PublicKey, SecretKey};
-use fuels::accounts::signers::private_key::generate_mnemonic_phrase;
+use fuels_accounts::wallet::{generate_mnemonic_phrase, DEFAULT_DERIVATION_PATH_PREFIX};
 use fuels_core::types::{
     bech32::{Bech32Address, FUEL_BECH32_HRP},
     checksum_address::checksum_encode,
