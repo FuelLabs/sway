@@ -316,6 +316,7 @@ impl<'a> TypeCheckContext<'a> {
             mod_name.clone(),
             visibility,
             module_span.clone(),
+            true,
         )?;
 
         self.collection_ctx.enter_submodule(
