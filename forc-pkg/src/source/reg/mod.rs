@@ -194,7 +194,7 @@ impl FromStr for Pinned {
             .next()
             .ok_or(PinnedParseError::PackageName)?;
 
-        let without_package_name = &s[pkg_name.len() + "?".len()..];
+        let without_package_name = &without_prefix[pkg_name.len() + "?".len()..];
         let mut s_iter = without_package_name.split('#');
 
         // Parse the package version
@@ -353,7 +353,14 @@ impl source::Fetch for Pinned {
                     ),
                 );
                 futures::executor::block_on(async {
-                    fetch(ctx.fetch_id(), self, ctx.ipfs_node()).await
+                    // If the user is trying to use public IPFS node with
+                    // registry sources. Use fuel operated ipfs node
+                    // instead.
+                    let node = match ctx.ipfs_node() {
+                        node if node == &IPFSNode::public() => &IPFSNode::fuel(),
+                        node => node,
+                    };
+                    fetch(ctx.fetch_id(), self, node).await
                 })?;
             }
         }

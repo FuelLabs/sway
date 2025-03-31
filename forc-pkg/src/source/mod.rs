@@ -28,7 +28,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-use sway_utils::DEFAULT_IPFS_GATEWAY_URL;
+use sway_utils::{DEFAULT_IPFS_GATEWAY_URL, DEFAULT_REGISTRY_IPFS_GATEWAY_URL};
 
 /// Pin this source at a specific "version", return the local directory to fetch into.
 trait Pin {
@@ -60,6 +60,16 @@ impl Default for IPFSNode {
     }
 }
 
+impl IPFSNode {
+    pub fn fuel() -> Self {
+        Self::WithUrl(DEFAULT_REGISTRY_IPFS_GATEWAY_URL.to_string())
+    }
+
+    pub fn public() -> Self {
+        Self::WithUrl(DEFAULT_IPFS_GATEWAY_URL.to_string())
+    }
+}
+
 impl FromStr for IPFSNode {
     type Err = anyhow::Error;
 
@@ -67,6 +77,10 @@ impl FromStr for IPFSNode {
         match value {
             "PUBLIC" => {
                 let url = sway_utils::constants::DEFAULT_IPFS_GATEWAY_URL;
+                Ok(IPFSNode::WithUrl(url.to_string()))
+            }
+            "FUEL" => {
+                let url = sway_utils::constants::DEFAULT_REGISTRY_IPFS_GATEWAY_URL;
                 Ok(IPFSNode::WithUrl(url.to_string()))
             }
             "LOCAL" => Ok(IPFSNode::Local),

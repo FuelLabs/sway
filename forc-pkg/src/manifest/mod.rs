@@ -334,11 +334,11 @@ impl DependencyDetails {
         }
 
         if version.is_some() && git.is_some() {
-            bail!("Both version and git details provided for dependency");
+            bail!("Both version and git details provided for same dependency");
         }
 
         if version.is_some() && ipfs.is_some() {
-            bail!("Both version and ipfs details provided for dependency");
+            bail!("Both version and ipfs details provided for same dependency");
         }
 
         if version.is_none() && namespace.is_some() {
@@ -1306,6 +1306,23 @@ mod tests {
                 .map(|e| e.to_string()),
             Some(expected_mismatch_error.to_string())
         );
+    }
+    #[test]
+    #[should_panic(expected = "Namespace can only be specified for sources with version")]
+    fn test_error_namespace_without_version() {
+        PackageManifest::from_dir("./tests/invalid/namespace_without_version").unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Both version and git details provided for same dependency")]
+    fn test_error_version_with_git_for_same_dep() {
+        PackageManifest::from_dir("./tests/invalid/version_and_git_same_dep").unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Both version and ipfs details provided for same dependency")]
+    fn test_error_version_with_ipfs_for_same_dep() {
+        PackageManifest::from_dir("./tests/invalid/version_and_ipfs_same_dep").unwrap();
     }
 
     #[test]
