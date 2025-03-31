@@ -9,6 +9,7 @@ use crate::{
     },
     type_system::*,
 };
+use ast_elements::type_parameter::GenericTypeParameter;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -875,7 +876,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
                     let mut inner_decl_mapping =
-                        TypeParameter::gather_decl_mapping_from_trait_constraints(
+                        GenericTypeParameter::gather_decl_mapping_from_trait_constraints(
                             handler,
                             ctx.by_ref(),
                             &method.type_parameters,
