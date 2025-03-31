@@ -3026,6 +3026,7 @@ dependencies = [
  "petgraph",
  "regex",
  "reqwest",
+ "scopeguard",
  "semver 1.0.26",
  "serde",
  "serde_ignored",
