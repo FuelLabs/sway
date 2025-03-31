@@ -8,6 +8,7 @@ use crate::{
     },
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
+use ast_elements::type_parameter::GenericTypeParameter;
 use indexmap::IndexMap;
 use sway_error::error::CompileError;
 use sway_types::{IdentUnique, Spanned};
@@ -88,7 +89,7 @@ pub(crate) fn instantiate_function_application(
             // Handle the trait constraints. This includes checking to see if the trait
             // constraints are satisfied and replacing old decl ids based on the
             // constraint with new decl ids based on the new type.
-            let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+            let decl_mapping = GenericTypeParameter::gather_decl_mapping_from_trait_constraints(
                 handler,
                 ctx.by_ref(),
                 &function_decl.type_parameters,
