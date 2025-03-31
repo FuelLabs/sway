@@ -44,11 +44,17 @@ impl Syscall {
 ///
 /// Supported syscalls:
 /// 1000 - write(fd: u64, buf: raw_ptr, count: u64) -> u64
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct EcalSyscallHandler {
     pub apply: bool,
     pub capture: bool,
     pub captured: Vec<Syscall>,
+}
+
+impl Default for EcalSyscallHandler {
+    fn default() -> Self {
+        Self::only_capturing()
+    }
 }
 
 impl EcalSyscallHandler {
@@ -114,4 +120,42 @@ impl EcalHandler for EcalSyscallHandler {
 
         Ok(())
     }
+}
+
+#[test]
+fn ok_capture_ecals() {
+    use fuel_vm::fuel_asm::op::*;
+    use fuel_vm::prelude::*;
+    let vm: Interpreter<MemoryInstance, MemoryStorage, Script, EcalSyscallHandler> = <_>::default();
+
+    let test_input = "Hello, WriteSyscall!";
+    let script_data: Vec<u8> = test_input.bytes().collect();
+    let script = vec![
+        movi(0x20, WRITE_SYSCALL as u32),
+        gtf_args(0x10, 0x00, GTFArgs::ScriptData),
+        movi(0x21, script_data.len().try_into().unwrap()),
+        ecal(0x20, 0x1, 0x10, 0x21),
+        ret(RegId::ONE),
+    ]
+    .into_iter()
+    .collect();
+
+    // Execute transaction
+    let mut client = MemoryClient::from_txtor(vm.into());
+    let tx = TransactionBuilder::script(script, script_data)
+        .script_gas_limit(1_000_000)
+        .add_fee_input()
+        .finalize()
+        .into_checked(Default::default(), &ConsensusParameters::standard())
+        .expect("failed to generate a checked tx");
+    let _ = client.transact(tx);
+
+    // Verify
+    let t: Transactor<MemoryInstance, MemoryStorage, Script, EcalSyscallHandler> = client.into();
+    let syscalls = t.interpreter().ecal_state().captured.clone();
+
+    assert_eq!(syscalls.len(), 1);
+    assert!(
+        matches!(&syscalls[0], Syscall::Write { fd: 1, bytes } if std::str::from_utf8(bytes).unwrap() == test_input)
+    );
 }
