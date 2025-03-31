@@ -277,7 +277,7 @@ impl Debug for str {
 }
 
 #[cfg(experimental_const_generics = true)]
-impl<T, const N:u64> Debug for [T; N]
+impl<T, const N: u64> Debug for [T; N]
 where
     T: Debug,
 {
