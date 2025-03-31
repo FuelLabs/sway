@@ -99,7 +99,12 @@ where
             let non_parent_type_params = value
                 .type_parameters()
                 .iter()
-                .filter(|x| !x.is_from_parent)
+                .filter(|x| {
+                    let x = x
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
+                    !x.is_from_parent
+                })
                 .count()
                 - adjust_for_trait_decl;
 
@@ -139,7 +144,12 @@ where
                 value
                     .type_parameters()
                     .iter()
-                    .map(|type_param| type_param.type_id)
+                    .map(|type_param| {
+                        let type_param = type_param
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        type_param.type_id
+                    })
                     .collect(),
                 type_arguments
                     .iter()

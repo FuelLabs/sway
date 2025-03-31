@@ -4,6 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
+    ast_elements::type_parameter::GenericTypeParameter,
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclEngineInsertArc,
         DeclId,
@@ -14,7 +15,7 @@ use crate::{
         symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
         TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
-    Engines, TypeParameter,
+    Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -77,7 +78,7 @@ impl ty::TyAbiDecl {
 
         // The span of the `abi_decl` `name` points to the file (use site) in which
         // the ABI is getting declared, so we can use it as the `use_site_span`.
-        let self_type_param = TypeParameter::new_self_type(ctx.engines, name.span());
+        let self_type_param = GenericTypeParameter::new_self_type(ctx.engines, name.span());
         let self_type_id = self_type_param.type_id;
 
         let mod_path = ctx.namespace().current_mod_path().clone();
