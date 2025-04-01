@@ -7,6 +7,7 @@ use sway_core::{
     language::ty::{TyAstNodeContent, TyDecl, TyFunctionDecl, TyFunctionParameter},
     Engines, Namespace, TypeId, TypeInfo,
 };
+use sway_types::Spanned;
 
 pub(crate) fn to_completion_items(
     namespace: &Namespace,

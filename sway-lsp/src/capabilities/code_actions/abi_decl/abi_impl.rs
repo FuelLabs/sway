@@ -1,13 +1,13 @@
+use crate::capabilities::code_actions::{
+    common::generate_impl::{GenerateImplCodeAction, CONTRACT},
+    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE,
+};
 use lsp_types::{Range, Url};
 use sway_core::{
     language::ty::{self, TyAbiDecl, TyFunctionParameter, TyTraitFn},
     Engines,
 };
-
-use crate::capabilities::code_actions::{
-    common::generate_impl::{GenerateImplCodeAction, CONTRACT},
-    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE,
-};
+use sway_types::Spanned;
 
 pub(crate) struct AbiImplCodeAction<'a> {
     engines: &'a Engines,

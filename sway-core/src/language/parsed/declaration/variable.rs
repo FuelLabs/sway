@@ -3,7 +3,7 @@ use sway_types::{Named, Spanned};
 use crate::{
     engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::parsed::Expression,
-    Ident, GenericArgument,
+    GenericArgument, Ident,
 };
 
 #[derive(Debug, Clone)]

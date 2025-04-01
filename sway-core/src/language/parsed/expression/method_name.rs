@@ -1,7 +1,7 @@
 use crate::engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext};
 use crate::language::CallPath;
 use crate::type_system::TypeBinding;
-use crate::{Ident, GenericArgument, TypeId, TypeInfo};
+use crate::{GenericArgument, Ident, TypeId, TypeInfo};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]

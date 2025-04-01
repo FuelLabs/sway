@@ -4,7 +4,7 @@ use crate::{
         OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     parsed::QualifiedPathType,
-    Engines, Ident, Namespace, GenericArgument,
+    Engines, GenericArgument, Ident, Namespace,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -434,7 +434,11 @@ impl CallPath {
     /// - `some::module::SomeGenericType<T, u64>`
     ///
     /// Note that the trailing arguments are never separated by `::` from the suffix.
-    pub(crate) fn to_string_with_args(&self, engines: &Engines, args: &[GenericArgument]) -> String {
+    pub(crate) fn to_string_with_args(
+        &self,
+        engines: &Engines,
+        args: &[GenericArgument],
+    ) -> String {
         let args = args
             .iter()
             .map(|type_arg| engines.help_out(type_arg).to_string())
