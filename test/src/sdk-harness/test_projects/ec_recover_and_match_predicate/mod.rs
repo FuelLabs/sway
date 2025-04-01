@@ -1,5 +1,5 @@
 use fuels::{
-    accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
+    accounts::{predicate::Predicate, signers::private_key::PrivateKeySigner},
     crypto::Message,
     prelude::*,
     types::B512,
@@ -31,16 +31,13 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
             .parse()
             .unwrap();
 
-    let mut wallet = WalletUnlocked::new_from_private_key(secret_key1, None);
-    let mut wallet2 = WalletUnlocked::new_from_private_key(secret_key2, None);
-    let mut wallet3 = WalletUnlocked::new_from_private_key(secret_key3, None);
-    let mut receiver = WalletUnlocked::new_random(None);
+    let signer_1 = PrivateKeySigner::new(secret_key1);
+    let signer_2 = PrivateKeySigner::new(secret_key2);
+    let signer_3 = PrivateKeySigner::new(secret_key3);
 
-    let all_coins = [&wallet, &wallet2, &wallet3]
+    let all_coins = [signer_1.address(), signer_2.address(), signer_3.address()]
         .iter()
-        .flat_map(|wallet| {
-            setup_single_asset_coins(wallet.address(), AssetId::default(), 10, 1_000_000)
-        })
+        .flat_map(|wallet| setup_single_asset_coins(wallet, AssetId::default(), 10, 1_000_000))
         .collect::<Vec<_>>();
 
     let mut node_config = NodeConfig::default();
@@ -48,17 +45,32 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
     let provider = setup_test_provider(all_coins, vec![], Some(node_config), None)
         .await
         .unwrap();
+    let wallet_1 = Wallet::new(signer_1, provider.clone());
+    let wallet_2 = Wallet::new(signer_2, provider.clone());
+    let wallet_3 = Wallet::new(signer_3, provider.clone());
 
-    [&mut wallet, &mut wallet2, &mut wallet3, &mut receiver]
-        .iter_mut()
-        .for_each(|wallet| {
-            wallet.set_provider(provider.clone());
-        });
+    let random_secret_key = SecretKey::random(&mut rand::thread_rng());
+    let receiver = Wallet::new(PrivateKeySigner::new(random_secret_key), provider.clone());
 
     let data_to_sign = Message::new([0; 32]);
-    let signature1: B512 = wallet.sign(data_to_sign).await?.as_ref().try_into()?;
-    let signature2: B512 = wallet2.sign(data_to_sign).await?.as_ref().try_into()?;
-    let signature3: B512 = wallet3.sign(data_to_sign).await?.as_ref().try_into()?;
+    let signature1: B512 = wallet_1
+        .signer()
+        .sign(data_to_sign)
+        .await?
+        .as_ref()
+        .try_into()?;
+    let signature2: B512 = wallet_2
+        .signer()
+        .sign(data_to_sign)
+        .await?
+        .as_ref()
+        .try_into()?;
+    let signature3: B512 = wallet_3
+        .signer()
+        .sign(data_to_sign)
+        .await?
+        .as_ref()
+        .try_into()?;
 
     let signatures = [signature1, signature2, signature3];
 
@@ -73,7 +85,7 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
     let amount_to_predicate = 1000;
     let asset_id = AssetId::default();
 
-    wallet
+    wallet_1
         .transfer(
             predicate.address(),
             amount_to_predicate,
