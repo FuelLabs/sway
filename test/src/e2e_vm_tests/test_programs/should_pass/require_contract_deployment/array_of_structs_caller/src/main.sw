@@ -4,9 +4,9 @@ use array_of_structs_abi::{Id, TestContract, Wrapper};
 use std::hash::*;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0x14ed3cd06c2947248f69d54bfa681fe40d26267be84df7e19e253622b7921bbe;
+const CONTRACT_ID: b256 = 0x14ed3cd06c2947248f69d54bfa681fe40d26267be84df7e19e253622b7921bbe;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x878d6215fe8d406e08cb18053c97ee8bb25ba651e17e7cfe4964fc653b2f6808; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
+const CONTRACT_ID: b256 = 0x878d6215fe8d406e08cb18053c97ee8bb25ba651e17e7cfe4964fc653b2f6808; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
 
 fn get_address() -> Option<std::address::Address> {
     Some(CONTRACT_ID.into())

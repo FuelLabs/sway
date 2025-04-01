@@ -1,7 +1,7 @@
 category = "fail"
 
 # check: $()error
-# check: $()const INVALID_CONST = contract_1.foo();
+# check: $()const INVALID_CONST: b256 = contract_1.foo();
 # nextln: $()Could not evaluate initializer to a const declaration.
 
 # check: $()Aborting due to 1 error

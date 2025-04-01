@@ -17,7 +17,7 @@ enum Items3_Variants {
     H: u64,
 }
 
-const ITEMS_3_FUNCTION_RES = 4321;
+const ITEMS_3_FUNCTION_RES: u64 = 4321;
 
 fn items_3_function() -> u64 {
     ITEMS_3_FUNCTION_RES

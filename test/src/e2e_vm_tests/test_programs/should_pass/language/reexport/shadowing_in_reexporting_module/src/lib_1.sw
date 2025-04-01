@@ -11,7 +11,7 @@ pub enum Items1_Enum {
     B: u64,
 }
 
-pub const ITEMS_1_FUNCTION_RES = 654;
+pub const ITEMS_1_FUNCTION_RES: u64 = 654;
 
 pub fn items_1_function() -> u64 {
     ITEMS_1_FUNCTION_RES

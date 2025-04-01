@@ -1,6 +1,6 @@
 contract;
 
-const KEY = 0x0000000000000000000000000000000000000000000000000000000000000000;
+const KEY: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 abi Incrementor {
     #[storage(write)]
@@ -50,13 +50,13 @@ impl Incrementor for Contract {
 // check: fn initialize<557ac400>(initial_value $MD: u64) -> u64, $(init_md=$MD) {
 
 // unordered: $(write_md=$MD) = purity "writes"
-// unordered: $(write_fn_name_md=$MD) = fn_name_span $MD 359 369
+// unordered: $(write_fn_name_md=$MD) = fn_name_span $MD 365 375
 
 // unordered: $(readwrite_md=$MD) = purity "readswrites"
-// unordered: $(readwrite_fn_name_md=$MD) = fn_name_span $MD 553 562
+// unordered: $(readwrite_fn_name_md=$MD) = fn_name_span $MD 559 568
 
 // unordered: $(read_md=$MD) = purity "reads"
-// unordered: $(read_fn_name_md=$MD) = fn_name_span $MD 833 836
+// unordered: $(read_fn_name_md=$MD) = fn_name_span $MD 839 842
 
 // The span idx is first, then the storage attribute, then the function name attribute.
 

@@ -30,12 +30,9 @@ impl Format for ItemConst {
         // Add name of the const
         self.name.format(formatted_code, formatter)?;
 
-        // Check if ty exists
-        if let Some((_colon_token, ty)) = &self.ty_opt {
-            // Add colon
-            write!(formatted_code, "{} ", ColonToken::AS_STR)?;
-            ty.format(formatted_code, formatter)?;
-        }
+        // Add colon
+        write!(formatted_code, "{} ", ColonToken::AS_STR)?;
+        self.ty.format(formatted_code, formatter)?;
 
         // Check if ` = ` exists
         if self.eq_token_opt.is_some() {
@@ -68,9 +65,7 @@ impl LeafSpans for ItemConst {
         }
         collected_spans.push(ByteSpan::from(self.const_token.span()));
         collected_spans.push(ByteSpan::from(self.name.span()));
-        if let Some(ty) = &self.ty_opt {
-            collected_spans.append(&mut ty.leaf_spans());
-        }
+        collected_spans.append(&mut self.ty.leaf_spans());
         if let Some(eq_token) = &self.eq_token_opt {
             collected_spans.push(ByteSpan::from(eq_token.span()));
         }

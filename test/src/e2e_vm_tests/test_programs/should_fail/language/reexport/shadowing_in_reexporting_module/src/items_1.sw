@@ -9,7 +9,7 @@ pub enum Items1_Enum {
     B: bool,
 }
 
-pub const ITEMS_1_FUNCTION_RES = 456;
+pub const ITEMS_1_FUNCTION_RES: u64 = 456;
 
 pub fn items_1_function() -> bool {
     ITEMS_1_FUNCTION_RES == 456

@@ -9,70 +9,70 @@ category = "fail"
 #sameln: $()Constant of the same name already exists
 #check: $()use lib::L_X;
 #nextln: $()Constant "L_X" is already declared here.
-#check: $()const L_X = 1;
+#check: $()const L_X: u64 = 1;
 #nextln: $()Constant "L_X" has the same name as an already declared constant.
 
 #check: $()error
 #sameln: $()Constant of the same name already exists
-#check: $()const M_X = 2;
+#check: $()const M_X: u64 = 2;
 #nextln: $()Constant "M_X" is already declared here.
-#nextln: $()const M_X = 3;
+#nextln: $()const M_X: u64 = 3;
 #nextln: $()Constant "M_X" has the same name as an already declared constant.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const M_Y = 4;
+#check: $()const M_Y: u64 = 4;
 #nextln: $()Shadowed constant "M_Y" is declared here.
-#check: $()const M_Y = 5;
+#check: $()const M_Y: u64 = 5;
 #nextln: $()Constant "M_Y" shadows constant of the same name.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const M_Y = 5;
+#check: $()const M_Y: u64 = 5;
 #nextln: $()Shadowed constant "M_Y" is declared here.
-#check: $()const M_Y = 55;
+#check: $()const M_Y: u64 = 55;
 #nextln: $()Constant "M_Y" shadows constant of the same name.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const M_Y = 4;
+#check: $()const M_Y: u64 = 4;
 #nextln: $()Shadowed constant "M_Y" is declared here.
-#check: $()const M_Y = 55;
+#check: $()const M_Y: u64 = 55;
 #nextln: $()Constant "M_Y" shadows constant of the same name.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
 #check: $()use lib::L_Y;
 #nextln: $()Shadowed constant "L_Y" gets imported here.
-#check: $()const L_Y = 6;
+#check: $()const L_Y: u64 = 6;
 #nextln: $()Constant "L_Y" shadows imported constant of the same name.
-#check: $()pub const L_Y = 5;
+#check: $()pub const L_Y: u64 = 5;
 #nextln: $()This is the original declaration of the imported constant "L_Y".
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const F_X = 7;
+#check: $()const F_X: u64 = 7;
 #nextln: $()Shadowed constant "F_X" is declared here.
-#nextln: $()const F_X = 8;
+#nextln: $()const F_X: u64 = 8;
 #nextln: $()Constant "F_X" shadows constant of the same name.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const F_X = 7;
+#check: $()const F_X: u64 = 7;
 #nextln: $()Shadowed constant "F_X" is declared here.
-#check: $()const F_X = 81;
+#check: $()const F_X: u64 = 81;
 #nextln: $()Constant "F_X" shadows constant of the same name.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const F_Y = 9;
+#check: $()const F_Y: u64 = 9;
 #nextln: $()Shadowed constant "F_Y" is declared here.
-#check: $()const F_Y = 10;
+#check: $()const F_Y: u64 = 10;
 #nextln: $()Constant "F_Y" shadows constant of the same name.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const L_X = 1;
+#check: $()const L_X: u64 = 1;
 #nextln: $()Shadowed constant "L_X" is declared here.
 #check: $()let L_X = 100;
 #nextln: $()Variable "L_X" shadows constant of the same name.
@@ -83,12 +83,12 @@ category = "fail"
 #nextln: $()Shadowed constant "L_X" gets imported here.
 #check: $()let L_X = 100;
 #nextln: $()Variable "L_X" shadows imported constant of the same name.
-#check: $()pub const L_X = 5;
+#check: $()pub const L_X: u64 = 5;
 #nextln: $()This is the original declaration of the imported constant "L_X".
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const L_X = 1;
+#check: $()const L_X: u64 = 1;
 #nextln: $()Shadowed constant "L_X" is declared here.
 #check: $()let L_X = 101;
 #nextln: $()Variable "L_X" shadows constant of the same name.
@@ -99,12 +99,12 @@ category = "fail"
 #nextln: $()Shadowed constant "L_X" gets imported here.
 #check: $()let L_X = 101;
 #nextln: $()Variable "L_X" shadows imported constant of the same name.
-#check: $()pub const L_X = 5;
+#check: $()pub const L_X: u64 = 5;
 #nextln: $()This is the original declaration of the imported constant "L_X".
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const F_Z = 11;
+#check: $()const F_Z: u64 = 11;
 #nextln: $()Shadowed constant "F_Z" is declared here.
 #nextln: $()let F_Z = 102;
 #nextln: $()Variable "F_Z" shadows constant of the same name.
@@ -113,26 +113,26 @@ category = "fail"
 #sameln: $()Constants cannot shadow variables
 #check: $()let F_A = 103;
 #nextln: $()This is the shadowed variable "F_A".
-#nextln: $()const F_A = 12;
+#nextln: $()const F_A: u64 = 12;
 #nextln: $()Constant "F_A" shadows variable of the same name.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const M_Y = 5;
+#check: $()const M_Y: u64 = 5;
 #nextln: $()Shadowed constant "M_Y" is declared here.
 #check: $()let M_Y = 106;
 #nextln: $()Variable "M_Y" shadows constant of the same name.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const M_Y = 4;
+#check: $()const M_Y: u64 = 4;
 #nextln: $()Shadowed constant "M_Y" is declared here.
 #check: $()let M_Y = 106;
 #nextln: $()Variable "M_Y" shadows constant of the same name.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const M_Z = 41;
+#check: $()const M_Z: u64 = 41;
 #nextln: $()Shadowed constant "M_Z" is declared here.
 #check: $()let M_Z = 107;
 #nextln: $()Variable "M_Z" shadows constant of the same name.
@@ -141,12 +141,12 @@ category = "fail"
 #sameln: $()Constants cannot shadow variables
 #check: $()let B = 108;
 #nextln: $()This is the shadowed variable "B".
-#check: $()const B = 13;
+#check: $()const B: u64 = 13;
 #nextln: $()Constant "B" shadows variable of the same name.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const F_K = 14;
+#check: $()const F_K: u64 = 14;
 #nextln: $()Shadowed constant "F_K" is declared here.
 #check: $()let F_K = 109;
 #nextln: $()Variable "F_K" shadows constant of the same name.
@@ -157,7 +157,7 @@ category = "fail"
 #nextln: $()Shadowed constant "L_Z" gets imported here.
 #check: $()let L_Z = 110;
 #nextln: $()Variable "L_Z" shadows imported constant of the same name.
-#check: $()pub const L_Z = 5;
+#check: $()pub const L_Z: u64 = 5;
 #nextln: $()This is the original declaration of the imported constant "L_Z".
 
 #check: $()error
@@ -166,21 +166,21 @@ category = "fail"
 #nextln: $()Shadowed constant "L_K" gets imported here.
 #check: $()let L_K = 111;
 #nextln: $()Variable "L_K" shadows imported constant of the same name.
-#check: $()pub const L_K = 5;
+#check: $()pub const L_K: u64 = 5;
 #nextln: $()This is the original declaration of the imported constant "L_K".
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
 #check: $()use lib::L_M;
 #nextln: $()Shadowed constant "L_M" gets imported here.
-#check: $()const L_M = 15;
+#check: $()const L_M: u64 = 15;
 #nextln: $()Constant "L_M" shadows imported constant of the same name.
-#check: $()pub const L_M = 5;
+#check: $()pub const L_M: u64 = 5;
 #nextln: $()This is the original declaration of the imported constant "L_M".
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const M_X = 2;
+#check: $()const M_X: u64 = 2;
 #nextln: $()Shadowed constant "M_X" is declared here.
 #check: $()StructWithConstNames { M_X, L_Y, L_Z_ALIAS } => {
 #nextln: $()Variable "M_X" shadows constant of the same name.
@@ -191,7 +191,7 @@ category = "fail"
 #nextln: $()Shadowed constant "L_Y" gets imported here.
 #check: $()StructWithConstNames { M_X, L_Y, L_Z_ALIAS } => {
 #nextln: $()Variable "L_Y" shadows imported constant of the same name.
-#check: $()pub const L_Y = 5;
+#check: $()pub const L_Y: u64 = 5;
 #nextln: $()This is the original declaration of the imported constant "L_Y".
 
 #check: $()error
@@ -200,61 +200,61 @@ category = "fail"
 #nextln: $()Shadowed constant "L_Z_ALIAS" gets imported here as alias.
 #check: $()StructWithConstNames { M_X, L_Y, L_Z_ALIAS } => {
 #nextln: $()Variable "L_Z_ALIAS" shadows imported constant of the same name.
-#check: $()pub const L_Z = 5;
+#check: $()pub const L_Z: u64 = 5;
 #nextln: $()This is the original declaration of the imported constant "L_Z_ALIAS".
 
 #check: $()error
 #sameln: $()Constant of the same name already exists
-#check: $()const S_X = 200;
+#check: $()const S_X: u64 = 200;
 #nextln: $()Constant "S_X" is already declared here.
-#check: $()const S_X = 201;
+#check: $()const S_X: u64 = 201;
 #nextln: $()Constant "S_X" has the same name as an already declared constant.
 
 #check: $()error
 #sameln: $()Constant of the same name already exists
 #check: $()use lib::L_N;
 #nextln: $()Constant "L_N" is already declared here.
-#check: $()const L_N = 202;
+#check: $()const L_N: u64 = 202;
 #nextln: $()Constant "L_N" has the same name as an already declared constant.
 
 #check: $()error
 #sameln: $()Constant of the same name already exists
-#check: $()const M_M = 16;
+#check: $()const M_M: u64 = 16;
 #nextln: $()Constant "M_M" is already declared here.
-#check: $()const M_M = 203;
+#check: $()const M_M: u64 = 203;
 #nextln: $()Constant "M_M" has the same name as an already declared constant.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const S_Y = 204;
+#check: $()const S_Y: u64 = 204;
 #nextln: $()Shadowed constant "S_Y" is declared here.
-#check: $()const S_Y = 205;
+#check: $()const S_Y: u64 = 205;
 #nextln: $()Constant "S_Y" shadows constant of the same name.
 
 #check: $()error
 #sameln: $()Constant of the same name already exists
-#check: $()const E_X = 300;
+#check: $()const E_X: u64 = 300;
 #nextln: $()Constant "E_X" is already declared here.
-#check: $()const E_X = 301;
+#check: $()const E_X: u64 = 301;
 #nextln: $()Constant "E_X" has the same name as an already declared constant.
 
 #check: $()error
 #sameln: $()Constant of the same name already exists
 #check: $()use lib::L_N;
 #nextln: $()Constant "L_N" is already declared here.
-#check: $()const L_N = 302;
+#check: $()const L_N: u64 = 302;
 #nextln: $()Constant "L_N" has the same name as an already declared constant.
 
 #check: $()error
 #sameln: $()Constant of the same name already exists
-#check: $()const M_M = 16;
+#check: $()const M_M: u64 = 16;
 #nextln: $()Constant "M_M" is already declared here.
-#check: $()const M_M = 303;
+#check: $()const M_M: u64 = 303;
 #nextln: $()Constant "M_M" has the same name as an already declared constant.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
-#check: $()const E_Y = 304;
+#check: $()const E_Y: u64 = 304;
 #nextln: $()Shadowed constant "E_Y" is declared here.
-#check: $()const E_Y = 305;
+#check: $()const E_Y: u64 = 305;
 #nextln: $()Constant "E_Y" shadows constant of the same name.

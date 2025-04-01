@@ -1,4 +1,4 @@
 category = "compile"
 
-# not: $()const COND = false;
+# not: $()const COND: bool = false;
 # not: $()This declaration is never used.

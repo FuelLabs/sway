@@ -2,8 +2,8 @@
 
 script;
 
-const SOME_TX_FIELD = 0x42;
-const SOME_OTHER_TX_FIELD = 0x77;
+const SOME_TX_FIELD: u64 = 0x42;
+const SOME_OTHER_TX_FIELD: u64 = 0x77;
 
 fn main() -> (u64, b256) {
     let field1 = __gtf::<u64>(1, SOME_TX_FIELD);

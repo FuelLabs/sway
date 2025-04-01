@@ -1033,23 +1033,9 @@ pub(crate) fn item_const_to_constant_declaration(
         }
     };
 
-    let type_ascription = match item_const.ty_opt {
-        Some((_colon_token, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
-        None => {
-            if expr.is_none() {
-                let err =
-                    ConvertParseTreeError::ConstantRequiresTypeAscription { span: span.clone() };
-                if let Some(errors) = emit_all(handler, vec![err]) {
-                    return Err(errors);
-                }
-            }
-            engines.te().new_unknown().into()
-        }
-    };
-
     let const_decl = ConstantDeclaration {
         name: item_const.name,
-        type_ascription,
+        type_ascription: ty_to_type_argument(context, handler, engines, item_const.ty)?,
         value: expr,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
         attributes,

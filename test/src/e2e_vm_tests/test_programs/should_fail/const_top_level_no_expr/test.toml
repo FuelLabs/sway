@@ -1,6 +1,6 @@
 category = "fail"
 
-# check: $()const X;
+# check: $()const X: u64;
 # nextln: $()Constant requires expression.
 
 # check: $()1 error.

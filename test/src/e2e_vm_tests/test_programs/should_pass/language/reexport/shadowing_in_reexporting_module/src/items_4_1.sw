@@ -14,7 +14,7 @@ pub enum Items4_Variants {
     L: bool,
 }
 
-pub const ITEMS_4_FUNCTION_RES = 5678;
+pub const ITEMS_4_FUNCTION_RES: u64 = 5678;
 
 pub fn items_4_function() -> bool {
     ITEMS_4_FUNCTION_RES == 5678

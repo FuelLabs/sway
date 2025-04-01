@@ -1,3 +1,3 @@
 library;
 
-pub const MAN = 5;
+pub const MAN: u64 = 5;

@@ -2,9 +2,9 @@ contract;
 use std::{hash::*, storage::storage_api::{read, write}};
 use basic_storage_abi::*;
 
-const C1 = 1;
-const NS1_NS2_C1 = 2;
-const S5 = __to_str_array("aaaaa");
+const C1: u8 = 1;
+const NS1_NS2_C1: u64 = 2;
+const S5: str[5] = __to_str_array("aaaaa");
 
 const C1KEY: b256 = 0x933a534d4af4c376b0b569e8d8a2c62e635e26f403e124cb91d9c42e83d54373;
 

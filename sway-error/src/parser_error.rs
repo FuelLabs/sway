@@ -121,6 +121,8 @@ pub enum ParseErrorKind {
     MissingColonInEnumTypeField,
     #[error("Expected storage key of type U256.")]
     ExpectedStorageKeyU256,
+    #[error("Expected type annotation for constants.")]
+    ExpectedTypeAnnotationForConstants,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Hash)]

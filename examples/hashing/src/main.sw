@@ -35,7 +35,7 @@ impl Hash for Person {
     }
 }
 
-const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
+const VALUE_A: b256 = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
 
 enum Location {
     Earth: (),

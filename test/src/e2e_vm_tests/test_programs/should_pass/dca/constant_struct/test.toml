@@ -1,4 +1,4 @@
 category = "compile"
 
-# not: $()const B : A = foo(32);
+# not: $()const B: A = foo(32);
 # not: $()This declaration is never used.

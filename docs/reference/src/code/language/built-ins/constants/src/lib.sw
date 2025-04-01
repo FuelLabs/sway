@@ -3,7 +3,7 @@ library;
 struct S {}
 
 impl S {
-    const ID = 0;
+    const ID: u64 = 0;
 }
 
 // ANCHOR: id

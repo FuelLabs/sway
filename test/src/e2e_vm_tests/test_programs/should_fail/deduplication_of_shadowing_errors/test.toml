@@ -17,12 +17,12 @@ category = "fail"
 
 #check: $()Constants cannot shadow variables
 #nextln: $()main.sw:18
-#check: $()const y = 4;
+#check: $()const y: u64 = 4;
 #nextln: $()Constant "y" shadows variable of the same name.
 
 #check: $()Constants cannot shadow variables
 #nextln: $()main.sw:22
-#check: $()const y = 6;
+#check: $()const y: u64 = 6;
 #nextln: $()Constant "y" shadows variable of the same name.
 
 #check: $()Constants cannot be shadowed
