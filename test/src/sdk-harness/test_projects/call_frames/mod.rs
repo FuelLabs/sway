@@ -1,19 +1,22 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::ContractId};
+use fuels::{prelude::*, types::ContractId};
 
 abigen!(Contract(
     name = "CallFramesTestContract",
     abi = "test_projects/call_frames/out/release/call_frames-abi.json"
 ));
 
-async fn get_call_frames_instance() -> (CallFramesTestContract<WalletUnlocked>, ContractId) {
+async fn get_call_frames_instance() -> (CallFramesTestContract<Wallet>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/call_frames/out/release/call_frames.bin",
         LoadConfiguration::default(),
     )
-    .unwrap();
+    .unwrap()
+    .deploy(&wallet, TxPolicies::default())
+    .await
+    .unwrap()
+    .contract_id;
 
-    let id = id.deploy(&wallet, TxPolicies::default()).await.unwrap();
     let instance = CallFramesTestContract::new(id.clone(), wallet);
 
     (instance, id.into())

@@ -1,4 +1,3 @@
-use fuels::accounts::wallet::WalletUnlocked;
 use fuels::prelude::*;
 
 abigen!(Contract(
@@ -6,7 +5,7 @@ abigen!(Contract(
     abi = "test_projects/superabi_supertrait/out/release/superabi_supertrait-abi.json"
 ));
 
-async fn get_superabi_supertrait_instance() -> SuperAbiSuperTraitTestContract<WalletUnlocked> {
+async fn get_superabi_supertrait_instance() -> SuperAbiSuperTraitTestContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/superabi_supertrait/out/release/superabi_supertrait.bin",
@@ -15,7 +14,8 @@ async fn get_superabi_supertrait_instance() -> SuperAbiSuperTraitTestContract<Wa
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     SuperAbiSuperTraitTestContract::new(id.clone(), wallet)
 }
 
