@@ -11,7 +11,7 @@ use crate::{
     type_system::*,
     BuildTarget, Engines,
 };
-use either::Either;
+use ast_elements::type_parameter::GenericTypeParameter;
 use itertools::Itertools;
 use sway_ast::{
     assignable::ElementAccess,
@@ -417,7 +417,7 @@ fn item_struct_to_struct_declaration(
         Ok(())
     })?;
 
-    let (type_parameters, _) = generic_params_opt_to_type_parameters(
+    let generic_parameters = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
@@ -428,7 +428,7 @@ fn item_struct_to_struct_declaration(
         name: item_struct.name,
         attributes,
         fields,
-        type_parameters,
+        type_parameters: generic_parameters,
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
         span,
     });
@@ -500,7 +500,7 @@ fn item_enum_to_enum_declaration(
         Ok(())
     })?;
 
-    let (type_parameters, _) = generic_params_opt_to_type_parameters(
+    let type_parameters = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
@@ -552,16 +552,15 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
-    let (type_parameters, const_generic_parameters) =
-        generic_params_opt_to_type_parameters_with_parent(
-            context,
-            handler,
-            engines,
-            item_fn.fn_signature.generics,
-            parent_generic_params_opt,
-            item_fn.fn_signature.where_clause_opt.clone(),
-            parent_where_clause_opt,
-        )?;
+    let generic_parameters = generic_params_opt_to_type_parameters_with_parent(
+        context,
+        handler,
+        engines,
+        item_fn.fn_signature.generics,
+        parent_generic_params_opt,
+        item_fn.fn_signature.where_clause_opt.clone(),
+        parent_where_clause_opt,
+    )?;
 
     let fn_decl = FunctionDeclaration {
         purity: attributes.purity(),
@@ -577,8 +576,7 @@ pub fn item_fn_to_function_declaration(
         )?,
         span,
         return_type,
-        type_parameters,
-        const_generic_parameters,
+        type_parameters: generic_parameters,
         where_clause: item_fn
             .fn_signature
             .where_clause_opt
@@ -620,7 +618,7 @@ fn item_trait_to_trait_declaration(
     attributes: Attributes,
 ) -> Result<ParsedDeclId<TraitDeclaration>, ErrorEmitted> {
     let span = item_trait.span();
-    let (type_parameters, _) = generic_params_opt_to_type_parameters(
+    let type_parameters = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
@@ -782,25 +780,26 @@ pub fn item_impl_to_declaration(
         .filter_map_ok(|item| item)
         .collect::<Result<_, _>>()?;
 
-    let (impl_type_parameters, impl_const_generics_parameters) =
-        generic_params_opt_to_type_parameters(
-            context,
-            handler,
-            engines,
-            item_impl.generic_params_opt,
-            item_impl.where_clause_opt,
-        )?;
+    let mut impl_type_parameters = generic_params_opt_to_type_parameters(
+        context,
+        handler,
+        engines,
+        item_impl.generic_params_opt,
+        item_impl.where_clause_opt,
+    )?;
 
-    let impl_const_generics_parameters = impl_const_generics_parameters
-        .iter()
-        .map(|param| {
-            engines.pe().insert(ConstGenericDeclaration {
-                name: param.name.clone(),
-                ty: param.ty,
-                span: param.span.clone(),
-            })
-        })
-        .collect::<Vec<_>>();
+    for p in impl_type_parameters.iter_mut() {
+        match p {
+            TypeParameter::Type(_) => {}
+            TypeParameter::Const(p) => {
+                p.id = Some(engines.pe().insert(ConstGenericDeclaration {
+                    name: p.name.clone(),
+                    ty: p.ty,
+                    span: p.span.clone(),
+                }));
+            }
+        }
+    }
 
     match item_impl.trait_opt {
         Some((path_type, _)) => {
@@ -809,7 +808,6 @@ pub fn item_impl_to_declaration(
             let impl_trait = ImplSelfOrTrait {
                 is_self: false,
                 impl_type_parameters,
-                impl_const_generics_parameters,
                 trait_name: trait_name.to_call_path(handler)?,
                 trait_type_arguments,
                 trait_decl_ref: None,
@@ -835,7 +833,6 @@ pub fn item_impl_to_declaration(
                     trait_type_arguments: vec![],
                     implementing_for,
                     impl_type_parameters,
-                    impl_const_generics_parameters,
                     items,
                     block_span,
                 };
@@ -1283,7 +1280,7 @@ fn generic_params_opt_to_type_parameters(
     engines: &Engines,
     generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
-) -> Result<(Vec<TypeParameter>, Vec<ConstGenericParameter>), ErrorEmitted> {
+) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     generic_params_opt_to_type_parameters_with_parent(
         context,
         handler,
@@ -1303,7 +1300,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
     parent_generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
     parent_where_clause_opt: Option<WhereClause>,
-) -> Result<(Vec<TypeParameter>, Vec<ConstGenericParameter>), ErrorEmitted> {
+) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     let type_engine = engines.te();
 
     let trait_constraints = match where_clause_opt {
@@ -1330,11 +1327,11 @@ fn generic_params_opt_to_type_parameters_with_parent(
             .parameters
             .into_inner()
             .into_iter()
-            .partition_map(|param| {
+            .map(|param| {
                 match param {
                     GenericParam::Trait { ident } => {
                         let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
-                        Either::Left(TypeParameter {
+                        TypeParameter::Type(GenericTypeParameter {
                             type_id: custom_type,
                             initial_type_id: custom_type,
                             name: ident,
@@ -1353,41 +1350,50 @@ fn generic_params_opt_to_type_parameters_with_parent(
                                     .error_because_is_disabled(&ident.span()),
                             );
                         }
-                        Either::Right(ConstGenericParameter {
+                        TypeParameter::Const(ConstGenericParameter {
                             span: ident.span().clone(),
                             name: ident,
                             ty: type_engine.id_of_u64(),
                             is_from_parent,
+                            id: None,
                         })
                     }
                 }
-            }),
-        None => (vec![], vec![]),
+            })
+            .collect(),
+        None => vec![],
     };
 
-    let (mut trait_params, mut const_generic_params) =
-        generics_to_params(generic_params_opt, false);
-    let (trait_parent_params, mut const_generic_parent_params) =
-        generics_to_params(parent_generic_params_opt, true);
-
-    const_generic_params.append(&mut const_generic_parent_params);
+    let mut params = generics_to_params(generic_params_opt, false);
+    let parent_params = generics_to_params(parent_generic_params_opt, true);
+    params.extend(
+        parent_params
+            .iter()
+            .filter(|x| x.as_const_parameter().is_some())
+            .cloned(),
+    );
 
     let mut errors = Vec::new();
     for (ty_name, bounds) in trait_constraints
         .into_iter()
         .chain(parent_trait_constraints)
     {
-        let param_to_edit = if let Some(o) = trait_params
+        let param_to_edit = if let Some(o) = params
             .iter_mut()
-            .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
+            .filter_map(|x| x.as_type_parameter_mut())
+            .find(|GenericTypeParameter { name, .. }| name.as_str() == ty_name.as_str())
         {
             o
-        } else if let Some(o2) = trait_parent_params
-            .iter()
-            .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
-        {
-            trait_params.push(o2.clone());
-            trait_params.last_mut().unwrap()
+        } else if let Some(o2) = parent_params.iter().find(|t| match t {
+            TypeParameter::Type(p) => p.name.as_str() == ty_name.as_str(),
+            TypeParameter::Const(_) => false,
+        }) {
+            params.push(o2.clone());
+            params
+                .last_mut()
+                .unwrap()
+                .as_type_parameter_mut()
+                .expect("must be type parameter")
         } else {
             errors.push(ConvertParseTreeError::ConstrainedNonExistentType {
                 ty_name: ty_name.clone(),
@@ -1397,7 +1403,6 @@ fn generic_params_opt_to_type_parameters_with_parent(
         };
 
         param_to_edit.trait_constraints_span = Span::join(ty_name.span(), &bounds.span());
-
         param_to_edit
             .trait_constraints
             .extend(traits_to_trait_constraints(
@@ -1408,7 +1413,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
         return Err(errors);
     }
 
-    Ok((trait_params, const_generic_params))
+    Ok(params)
 }
 
 fn pub_token_opt_to_visibility(pub_token_opt: Option<PubToken>) -> Visibility {
@@ -4116,9 +4121,11 @@ fn statement_let_to_ast_nodes_unfold(
                             // The first `pat.span()` will point to "a", while the second one will indeed point to "_".
                             // However, their `pat.span()`s will always be in the source file in which the placeholder
                             // is logically situated.
-                            engines.te().new_placeholder(TypeParameter::new_placeholder(
-                                engines.te().new_unknown(),
-                                pat.span(),
+                            engines.te().new_placeholder(TypeParameter::Type(
+                                GenericTypeParameter::new_placeholder(
+                                    engines.te().new_unknown(),
+                                    pat.span(),
+                                ),
                             ))
                         })
                         .collect(),
@@ -4447,14 +4454,14 @@ fn ty_to_type_parameter(
         Ty::Path(path_type) => path_type_to_ident(context, handler, path_type)?,
         Ty::Infer { underscore_token } => {
             let unknown_type = type_engine.new_unknown();
-            return Ok(TypeParameter {
+            return Ok(TypeParameter::Type(GenericTypeParameter {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
                 name: underscore_token.into(),
                 trait_constraints: Vec::default(),
                 trait_constraints_span: Span::dummy(),
                 is_from_parent: false,
-            });
+            }));
         }
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
@@ -4466,14 +4473,14 @@ fn ty_to_type_parameter(
         Ty::Never { .. } => panic!("never types are not allowed in this position"),
     };
     let custom_type = type_engine.new_custom_from_name(engines, name.clone());
-    Ok(TypeParameter {
+    Ok(TypeParameter::Type(GenericTypeParameter {
         type_id: custom_type,
         initial_type_id: custom_type,
         name,
         trait_constraints: Vec::new(),
         trait_constraints_span: Span::dummy(),
         is_from_parent: false,
-    })
+    }))
 }
 
 fn path_type_to_ident(

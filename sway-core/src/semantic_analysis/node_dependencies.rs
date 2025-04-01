@@ -763,11 +763,12 @@ impl Dependencies {
     }
 
     fn gather_from_type_parameters(self, type_parameters: &[TypeParameter]) -> Self {
-        self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
-            deps.gather_from_iter(
-                type_parameter.trait_constraints.iter(),
-                |deps, constraint| deps.gather_from_call_path(&constraint.trait_name, false, false),
-            )
+        self.gather_from_iter(type_parameters.iter(), |deps, p| match p {
+            TypeParameter::Type(p) => deps
+                .gather_from_iter(p.trait_constraints.iter(), |deps, constraint| {
+                    deps.gather_from_call_path(&constraint.trait_name, false, false)
+                }),
+            TypeParameter::Const(_) => deps,
         })
     }
 
