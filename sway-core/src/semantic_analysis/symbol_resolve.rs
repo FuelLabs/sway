@@ -402,9 +402,13 @@ impl ResolveSymbols for TypeArgument {
 
 impl ResolveSymbols for TypeParameter {
     fn resolve_symbols(&mut self, handler: &Handler, mut ctx: SymbolResolveContext) {
-        self.trait_constraints
-            .iter_mut()
-            .for_each(|tc| tc.resolve_symbols(handler, ctx.by_ref()));
+        match self {
+            TypeParameter::Type(p) => p
+                .trait_constraints
+                .iter_mut()
+                .for_each(|tc| tc.resolve_symbols(handler, ctx.by_ref())),
+            TypeParameter::Const(_) => todo!(),
+        }
     }
 }
 

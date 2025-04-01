@@ -1,6 +1,4 @@
-use super::{
-    ConstGenericDeclaration, ConstantDeclaration, FunctionDeclaration, TraitTypeDeclaration,
-};
+use super::{ConstantDeclaration, FunctionDeclaration, TraitTypeDeclaration};
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, ParsedInterfaceDeclId},
     engine_threading::{
@@ -69,7 +67,6 @@ impl DebugWithEngines for ImplItem {
 pub struct ImplSelfOrTrait {
     pub is_self: bool,
     pub impl_type_parameters: Vec<TypeParameter>,
-    pub impl_const_generics_parameters: Vec<ParsedDeclId<ConstGenericDeclaration>>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
     pub trait_decl_ref: Option<ParsedInterfaceDeclId>,
