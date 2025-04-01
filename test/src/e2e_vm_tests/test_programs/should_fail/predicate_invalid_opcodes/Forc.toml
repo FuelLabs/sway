@@ -6,4 +6,4 @@ entry = "main.sw"
 
 [dependencies]
 std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
-
+assert = { path = "../../../reduced_std_libs/sway-lib-std-assert", package = "std" }

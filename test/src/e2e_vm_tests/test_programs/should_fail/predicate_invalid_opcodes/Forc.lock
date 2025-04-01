@@ -1,7 +1,10 @@
 [[package]]
 name = "predicate_invalid_opcodes"
 source = "member"
-dependencies = ["std"]
+dependencies = [
+    "(assert) std path+from-root-F08197B3E2311E95",
+    "std path+from-root-F08197B3E2311E95",
+]
 
 [[package]]
 name = "std"

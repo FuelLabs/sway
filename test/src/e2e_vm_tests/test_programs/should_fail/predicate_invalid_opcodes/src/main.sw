@@ -111,5 +111,11 @@ fn main() -> bool {
     tro r1 r2 r3 r4;
   }
 
+  let valid_condition = false;
+
+  if !valid_condition {
+        revert(1);
+  };
+
   bal == 0 && bhei == 0 && csiz == 0 && is_ext_caller && pred_index == 0 && caller_id != 0 && time != 0
 }
