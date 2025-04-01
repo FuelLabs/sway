@@ -3,7 +3,7 @@ use crate::{
     language::Visibility,
     transform,
     type_system::TypeParameter,
-    TypeArgument,
+    GenericArgument,
 };
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
@@ -48,7 +48,7 @@ pub struct StructField {
     pub name: Ident,
     pub attributes: transform::Attributes,
     pub(crate) span: Span,
-    pub type_argument: TypeArgument,
+    pub type_argument: GenericArgument,
 }
 
 impl EqWithEngines for StructField {}

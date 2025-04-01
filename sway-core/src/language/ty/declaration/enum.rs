@@ -146,7 +146,7 @@ impl Spanned for TyEnumVariant {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyEnumVariant {
     pub name: Ident,
-    pub type_argument: TypeArgument,
+    pub type_argument: GenericArgument,
     pub(crate) tag: usize,
     pub span: Span,
     pub attributes: transform::Attributes,

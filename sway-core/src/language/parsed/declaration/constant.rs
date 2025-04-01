@@ -3,7 +3,7 @@ use crate::{
         DebugWithEngines, EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     language::{parsed::Expression, Visibility},
-    transform, Engines, TypeArgument,
+    transform, Engines, GenericArgument,
 };
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -11,7 +11,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 pub struct ConstantDeclaration {
     pub name: Ident,
     pub attributes: transform::Attributes,
-    pub type_ascription: TypeArgument,
+    pub type_ascription: GenericArgument,
     pub value: Option<Expression>,
     pub visibility: Visibility,
     pub span: Span,

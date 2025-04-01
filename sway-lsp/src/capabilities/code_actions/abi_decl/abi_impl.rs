@@ -59,10 +59,13 @@ impl AbiImplCodeAction<'_> {
     fn return_type_string(&self, function_decl: &TyTraitFn) -> String {
         let type_engine = self.engines.te();
         // Unit is the implicit return type for ABI functions.
-        if type_engine.get(function_decl.return_type.type_id).is_unit() {
+        if type_engine
+            .get(function_decl.return_type.type_id())
+            .is_unit()
+        {
             String::new()
         } else {
-            format!(" -> {}", function_decl.return_type.span.as_str())
+            format!(" -> {}", function_decl.return_type.span().as_str())
         }
     }
 
@@ -98,7 +101,7 @@ impl AbiImplCodeAction<'_> {
 fn params_string(params: &[TyFunctionParameter]) -> String {
     params
         .iter()
-        .map(|param| format!("{}: {}", param.name, param.type_argument.span.as_str()))
+        .map(|param| format!("{}: {}", param.name, param.type_argument.span().as_str()))
         .collect::<Vec<String>>()
         .join(", ")
 }

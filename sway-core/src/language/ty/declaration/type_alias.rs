@@ -13,7 +13,7 @@ pub struct TyTypeAliasDecl {
     pub name: Ident,
     pub call_path: CallPath,
     pub attributes: transform::Attributes,
-    pub ty: TypeArgument,
+    pub ty: GenericArgument,
     pub visibility: Visibility,
     pub span: Span,
 }
