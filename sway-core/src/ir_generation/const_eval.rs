@@ -1175,8 +1175,8 @@ fn const_eval_intrinsic(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                targ.type_id,
-                &targ.span,
+                targ.type_id(),
+                &targ.span(),
             )
             .map_err(|_| ConstEvalError::CompileError)?;
             let c = ConstantContent {
@@ -1209,8 +1209,8 @@ fn const_eval_intrinsic(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                targ.type_id,
-                &targ.span,
+                targ.type_id(),
+                &targ.span(),
             )
             .map_err(|_| ConstEvalError::CompileError)?;
             let c = ConstantContent {
@@ -1227,8 +1227,8 @@ fn const_eval_intrinsic(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                targ.type_id,
-                &targ.span,
+                targ.type_id(),
+                &targ.span(),
             )
             .map_err(|_| ConstEvalError::CompileError)?;
             match ir_type.get_content(lookup.context) {
@@ -1545,8 +1545,8 @@ fn const_eval_intrinsic(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                src_type.type_id,
-                &src_type.span,
+                src_type.type_id(),
+                &src_type.span(),
             )
             .unwrap();
 
@@ -1555,8 +1555,8 @@ fn const_eval_intrinsic(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                dst_type.type_id,
-                &dst_type.span,
+                dst_type.type_id(),
+                &dst_type.span(),
             )
             .unwrap();
 

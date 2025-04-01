@@ -16,7 +16,7 @@ pub(crate) use super::{
 
 pub use super::{
     ast_elements::{
-        length::Length, trait_constraint::TraitConstraint, type_argument::TypeArgument,
+        length::Length, trait_constraint::TraitConstraint, type_argument::GenericArgument,
         type_parameter::TypeParameter,
     },
     engine::IsConcrete,
