@@ -13,7 +13,7 @@ use crate::{
 };
 use sway_error::handler::Handler;
 use sway_parse::Parse;
-use sway_types::{ProgramId, Spanned};
+use sway_types::{Named, ProgramId, Spanned};
 
 /// Contains all information needed to auto-implement code for a certain feature.
 pub struct AutoImplContext<'a, 'b, I>
@@ -86,7 +86,7 @@ where
         } else {
             format!(
                 "<{}>",
-                itertools::intersperse(type_parameters.iter().map(|x| { x.name.as_str() }), ", ")
+                itertools::intersperse(type_parameters.iter().map(|p| { p.name().as_str() }), ", ")
                     .collect::<String>()
             )
         }
@@ -100,13 +100,16 @@ where
     ) -> String {
         let mut code = String::new();
 
-        for t in type_parameters.iter() {
+        for p in type_parameters.iter() {
+            let p = p
+                .as_type_parameter()
+                .expect("only works with type parameters");
             code.push_str(&format!(
                 "{}: {},\n",
-                t.name.as_str(),
+                p.name.as_str(),
                 itertools::intersperse(
                     [extra_constraint].into_iter().chain(
-                        t.trait_constraints
+                        p.trait_constraints
                             .iter()
                             .map(|x| x.trait_name.suffix.as_str())
                     ),
