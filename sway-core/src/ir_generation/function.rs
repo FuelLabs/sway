@@ -3193,10 +3193,12 @@ impl<'eng> FnCompiler<'eng> {
         let mut args = Vec::with_capacity(ast_args.len());
         for ((_, expr), param) in ast_args.iter().zip(callee.parameters.iter()) {
             self.current_fn_param = Some(param.clone());
+
             let arg = return_on_termination_or_extract!(
                 self.compile_expression_to_register(context, md_mgr, expr)?
             )
             .unwrap_register();
+
             self.current_fn_param = None;
             args.push(arg);
         }
@@ -4640,35 +4642,12 @@ impl<'eng> FnCompiler<'eng> {
                 } => {
                     // Take the optional initialiser, map it to an Option<Result<TerminatorValue>>,
                     // transpose that to Result<Option<TerminatorValue>> and map that to an AsmArg.
-                    //
-                    // Here we need to compile based on the Sway 'copy-type' vs 'ref-type' since
-                    // ASM args aren't explicitly typed, and if we send in a temporary it might
-                    // be mutated and then discarded.  It *must* be a ptr to *the* ref-type value,
-                    // *or* the value of the copy-type value.
                     let init_expr = initializer.as_ref().unwrap();
                     // I'm not sure if a register declaration can diverge, but check just to be safe
                     let initializer_val = return_on_termination_or_extract!(
-                        self.compile_expression(context, md_mgr, init_expr)?
-                    );
-                    let init_type = self.engines.te().get_unaliased(init_expr.return_type);
-                    match initializer_val {
-                        CompiledValue::InMemory(memory_val) => {
-                            // It's a pointer to a copy type, or a reference behind a pointer. We need to dereference it.
-                            // We can get a reference behind a pointer if a reference variable is passed to the ASM block.
-                            // By "reference" we mean th `u64` value that represents the memory address of the referenced
-                            // value.
-                            (
-                                Some(self.current_block.append(context).load(memory_val)),
-                                name,
-                            )
-                        }
-                        CompiledValue::InRegister(register_val) => {
-                            // If we have a direct value (not behind a pointer), we just passe it as the initial value.
-                            // Note that if the `init_val` is a reference (`u64` representing the memory address) it
-                            // behaves the same as any other value, we just passe it as the initial value to the register.
-                            (Some(register_val), name)
-                        }
-                    }
+                        self.compile_expression_to_register(context, md_mgr, init_expr)?
+                    ).unwrap_register();
+                    (Some(initializer_val), name)
                 }
             };
             compiled_registers.push(AsmArg {
