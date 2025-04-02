@@ -14,6 +14,7 @@ mod cfg_attr_no_args;
 mod cfg_attr_two_args;
 mod deprecated_attr;
 mod fallback_attr;
+mod abi_name_attr;
 
 /// Outer doc comment supports multiple.
 /// Outer doc comment supports multiple.

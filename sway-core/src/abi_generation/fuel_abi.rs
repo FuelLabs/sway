@@ -41,6 +41,7 @@ impl TypeId {
         resolved_type_id: TypeId,
     ) -> Result<(String, ConcreteTypeId), ErrorEmitted> {
         let type_str = self.get_abi_type_str(
+            handler,
             &AbiStrContext {
                 program_name: ctx.program.namespace.current_package_name().to_string(),
                 abi_with_callpaths: true,
@@ -49,7 +50,7 @@ impl TypeId {
             },
             engines,
             resolved_type_id,
-        );
+        )?;
         let mut hasher = Sha256::new();
         hasher.update(type_str.clone());
         let result = hasher.finalize();
@@ -372,7 +373,12 @@ fn generate_concrete_type_declaration(
     let mut new_metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
-        type_field: type_id.get_abi_type_str(&ctx.to_str_context(), engines, resolved_type_id),
+        type_field: type_id.get_abi_type_str(
+            handler,
+            &ctx.to_str_context(),
+            engines,
+            resolved_type_id,
+        )?,
         components: type_id.get_abi_type_components(
             handler,
             ctx,
@@ -462,7 +468,12 @@ fn generate_type_metadata_declaration(
     )?;
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
-        type_field: type_id.get_abi_type_str(&ctx.to_str_context(), engines, resolved_type_id),
+        type_field: type_id.get_abi_type_str(
+            handler,
+            &ctx.to_str_context(),
+            engines,
+            resolved_type_id,
+        )?,
         components,
         type_parameters,
     };
@@ -1263,10 +1274,11 @@ impl GenericTypeParameter {
         let type_parameter = program_abi::TypeMetadataDeclaration {
             metadata_type_id: type_id.clone(),
             type_field: self.initial_type_id.get_abi_type_str(
+                handler,
                 &ctx.to_str_context(),
                 engines,
                 self.type_id,
-            ),
+            )?,
             components: self.initial_type_id.get_abi_type_components(
                 handler,
                 ctx,

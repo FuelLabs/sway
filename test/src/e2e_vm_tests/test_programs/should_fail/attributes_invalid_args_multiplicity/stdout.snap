@@ -1,6 +1,5 @@
 ---
-source: test/tests/tests.rs
-assertion_line: 115
+source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity
 exit status: 1
@@ -203,5 +202,14 @@ error: Number of attribute arguments is invalid
   |
 ____
 
-  Aborting due to 16 errors.
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/abi_name_attr.sw:6:12
+  |
+...
+6 | #[abi_name(name = "name", name = "other name")]
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "abi_name" attribute must have exactly one argument, but has two.
+  |
+____
+
+  Aborting due to 17 errors.
 error: Failed to compile attributes_invalid_args_multiplicity

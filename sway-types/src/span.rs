@@ -188,6 +188,27 @@ impl Span {
         }
     }
 
+    pub fn trim_quotes(self) -> Span {
+        let s = self.as_str();
+        let mut start_delta = 0;
+        let mut end_delta = 0;
+
+        if s.starts_with('"') {
+            start_delta += 1;
+        }
+
+        if s.ends_with('"') && s.len() > start_delta {
+            end_delta += 1;
+        }
+
+        Span {
+            src: self.src,
+            start: self.start + start_delta,
+            end: self.end - end_delta,
+            source_id: self.source_id,
+        }
+    }
+
     /// Creates a new span that points to very next char of the current span.
     ///
     /// ```ignore
