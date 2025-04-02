@@ -137,6 +137,8 @@ pub struct TestOpts {
     /// If the argument provided ends with .json, a JSON is emitted,
     /// otherwise, an ELF file containing DWARF is emitted.
     pub debug_outfile: Option<String>,
+    /// If set, generates a JSON file containing the hex-encoded script binary.
+    pub hex_outfile: Option<String>,
     /// Build target to use.
     pub build_target: BuildTarget,
     /// Name of the build profile to use.
@@ -447,6 +449,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             minify: val.minify,
             binary_outfile: val.binary_outfile,
             debug_outfile: val.debug_outfile,
+            hex_outfile: val.hex_outfile,
             build_target: val.build_target,
             build_profile: val.build_profile,
             release: val.release,
@@ -471,6 +474,7 @@ impl TestOpts {
             minify: self.minify,
             binary_outfile: self.binary_outfile,
             debug_outfile: self.debug_outfile,
+            hex_outfile: self.hex_outfile,
             build_target: self.build_target,
             build_profile: self.build_profile,
             release: self.release,

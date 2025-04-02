@@ -34,6 +34,10 @@ pub struct BuildOutput {
     /// If the file extension is .json, JSON format is used. Otherwise, an .elf file containing DWARF format is emitted.
     #[clap(long = "output-debug", short = 'g')]
     pub debug_file: Option<String>,
+
+    /// Generates a JSON file containing the hex-encoded script binary.
+    #[clap(long = "output-hexfile")]
+    pub hex_file: Option<String>,
 }
 
 /// Build profile options.
