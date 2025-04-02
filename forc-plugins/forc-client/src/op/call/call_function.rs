@@ -244,7 +244,7 @@ pub async fn call_function(
     };
 
     // Process and return the final output
-    let program_abi = sway_core::asm_generation::ProgramABI::Fuel(parsed_abi.clone());
+    let program_abi = sway_core::asm_generation::ProgramABI::Fuel(parsed_abi);
     super::process_transaction_output(
         &receipts,
         &tx_hash.to_string(),
