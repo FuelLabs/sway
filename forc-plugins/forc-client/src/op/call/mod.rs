@@ -8,9 +8,7 @@ use crate::{
     cmd,
     constants::DEFAULT_PRIVATE_KEY,
     op::call::{
-        call_function::call_function,
-        list_functions::list_contract_functions,
-        transfer::transfer,
+        call_function::call_function, list_functions::list_contract_functions, transfer::transfer,
     },
     util::tx::{prompt_forc_wallet_password, select_local_wallet_account},
 };
@@ -87,14 +85,7 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
             function_args,
         } => {
             // Call the function with required parameters
-            let result = call_function(
-                contract_id,
-                abi,
-                function,
-                function_args,
-                cmd,
-            )
-            .await?;
+            let result = call_function(contract_id, abi, function, function_args, cmd).await?;
             Ok(result)
         }
     }
