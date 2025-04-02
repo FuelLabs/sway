@@ -282,7 +282,7 @@ impl Command {
 
         // Case 2: Direct transfer with amount
         if self.function.is_none() && self.call_parameters.amount > 0 {
-            if !matches!(self.mode, ExecutionMode::Live) {
+            if self.mode != ExecutionMode::Live {
                 return Err("Direct transfers are only supported in live mode".to_string());
             }
             return Ok(Operation::DirectTransfer {
