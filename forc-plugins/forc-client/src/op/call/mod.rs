@@ -185,18 +185,15 @@ pub(crate) fn process_transaction_output(
     // decode logs
     let logs = receipts
         .iter()
-        .filter_map(|receipt| {
-            if let Receipt::LogData {
+        .filter_map(|receipt| match receipt {
+            Receipt::LogData {
                 rb,
                 data: Some(data),
                 ..
-            } = receipt
-            {
-                return forc_util::tx_utils::decode_log_data(&rb.to_string(), data, program_abi)
-                    .ok()
-                    .map(|decoded| decoded.value);
-            }
-            None
+            } => forc_util::tx_utils::decode_log_data(&rb.to_string(), data, program_abi)
+                .ok()
+                .map(|decoded| decoded.value),
+            _ => None,
         })
         .collect::<Vec<_>>();
 
