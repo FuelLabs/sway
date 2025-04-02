@@ -2262,12 +2262,8 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
             built_package.write_debug_info(&debug_path)?;
         }
 
-        if hex_outfile.is_some() {
-            let hexfile_path = hex_outfile
-                .as_ref()
-                .map(|p| output_dir.join(p))
-                .unwrap_or_else(|| output_dir.join("hex_file.json"));
-
+        if let Some(hex_path) = hex_outfile {
+            let hexfile_path = output_dir.join(hex_path);
             built_package.write_hexcode(&hexfile_path)?;
         }
 
