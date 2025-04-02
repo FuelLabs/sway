@@ -36,7 +36,7 @@ pub struct BuildOutput {
     pub debug_file: Option<String>,
 
     /// Generates a JSON file containing the hex-encoded script binary.
-    #[clap(long = "generate-hexfile")]
+    #[clap(long = "output-hexfile")]
     pub hex_file: Option<String>,
 }
 

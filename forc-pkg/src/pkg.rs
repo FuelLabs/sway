@@ -2262,8 +2262,13 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
             built_package.write_debug_info(&debug_path)?;
         }
 
-        if let Some(hexfile) = &hex_outfile {
-            built_package.write_hexcode(hexfile.as_ref())?;
+        if hex_outfile.is_some() {
+            let hexfile_path = hex_outfile
+                .as_ref()
+                .map(|p| output_dir.join(p))
+                .unwrap_or_else(|| output_dir.join("hex_file.json"));
+
+            built_package.write_hexcode(&hexfile_path)?;
         }
 
         built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
