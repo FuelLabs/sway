@@ -114,7 +114,7 @@ where
             .iter()
             .map(|variant| {
                 let variant_name = variant.name.as_str();
-                if engines.te().get(variant.type_argument.type_id).is_unit() {
+                if engines.te().get(variant.type_argument.type_id()).is_unit() {
                     format!(
                         "{enum_name}::{variant_name} => {{
                         _f.print_str(\"{variant_name}\");
