@@ -13,6 +13,11 @@ enum Enum2 {
   G(u32, u32),   // Also illegal, but shadowed by previous error
 }
 
+enum Enum3 {
+  Complex(bool, u32, str[4]),  // Illegal
+  Another(u64, bool),          // Also illegal, but shadowed by previous error
+}
+
 fn main() {
 }
 
