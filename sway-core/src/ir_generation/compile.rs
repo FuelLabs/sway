@@ -342,8 +342,8 @@ pub(crate) fn compile_configurables(
                 engines.te(),
                 engines.de(),
                 context,
-                decl.type_ascription.type_id,
-                &decl.type_ascription.span,
+                decl.type_ascription.type_id(),
+                &decl.type_ascription.span(),
             )
             .unwrap();
             let ptr_ty = Type::new_ptr(context, ty);
@@ -367,7 +367,7 @@ pub(crate) fn compile_configurables(
                     _ => unreachable!(),
                 };
 
-                let config_type_info = engines.te().get(decl.type_ascription.type_id);
+                let config_type_info = engines.te().get(decl.type_ascription.type_id());
                 let buffer_size = match config_type_info.abi_encode_size_hint(engines) {
                     crate::AbiEncodeSizeHint::Exact(len) => len,
                     crate::AbiEncodeSizeHint::Range(_, len) => len,
@@ -584,8 +584,8 @@ fn compile_fn(
                 type_engine,
                 decl_engine,
                 context,
-                param.type_argument.type_id,
-                &param.type_argument.span,
+                param.type_argument.type_id(),
+                &param.type_argument.span(),
             )
             .map(|ty| {
                 (
@@ -608,8 +608,8 @@ fn compile_fn(
         type_engine,
         decl_engine,
         context,
-        return_type.type_id,
-        &return_type.span,
+        return_type.type_id(),
+        &return_type.span(),
     )
     .map_err(|err| vec![err])?;
 

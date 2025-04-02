@@ -74,12 +74,12 @@ pub fn resolve_type(
             )?
         }
         TypeInfo::Array(mut elem_ty, length) => {
-            elem_ty.type_id = resolve_type(
+            *elem_ty.type_id_mut() = resolve_type(
                 handler,
                 engines,
                 namespace,
                 mod_path,
-                elem_ty.type_id,
+                elem_ty.type_id(),
                 span,
                 enforce_type_arguments,
                 None,
@@ -92,12 +92,12 @@ pub fn resolve_type(
             engines.te().insert_array(engines, elem_ty, length)
         }
         TypeInfo::Slice(mut elem_ty) => {
-            elem_ty.type_id = resolve_type(
+            *elem_ty.type_id_mut() = resolve_type(
                 handler,
                 engines,
                 namespace,
                 mod_path,
-                elem_ty.type_id,
+                elem_ty.type_id(),
                 span,
                 enforce_type_arguments,
                 None,
@@ -111,12 +111,12 @@ pub fn resolve_type(
         }
         TypeInfo::Tuple(mut type_arguments) => {
             for type_argument in type_arguments.iter_mut() {
-                type_argument.type_id = resolve_type(
+                *type_argument.type_id_mut() = resolve_type(
                     handler,
                     engines,
                     namespace,
                     mod_path,
-                    type_argument.type_id,
+                    type_argument.type_id(),
                     span,
                     enforce_type_arguments,
                     None,
@@ -145,7 +145,7 @@ pub fn resolve_type(
             if let ResolvedTraitImplItem::Typed(TyTraitItem::Type(type_ref)) = trait_item_ref {
                 let type_decl = engines.de().get_type(type_ref.id());
                 if let Some(ty) = &type_decl.ty {
-                    ty.type_id
+                    ty.type_id()
                 } else {
                     type_id
                 }
@@ -160,12 +160,12 @@ pub fn resolve_type(
             referenced_type: mut ty,
             to_mutable_value,
         } => {
-            ty.type_id = resolve_type(
+            *ty.type_id_mut() = resolve_type(
                 handler,
                 engines,
                 namespace,
                 mod_path,
-                ty.type_id,
+                ty.type_id(),
                 span,
                 enforce_type_arguments,
                 None,
@@ -199,7 +199,7 @@ pub fn resolve_qualified_call_path(
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
     let type_engine = engines.te();
     if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
-        let root_type_id = match &&*type_engine.get(qualified_path_root.ty.type_id) {
+        let root_type_id = match &&*type_engine.get(qualified_path_root.ty.type_id()) {
             TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments,
@@ -228,7 +228,7 @@ pub fn resolve_qualified_call_path(
                     subst_ctx,
                 )?
             }
-            _ => qualified_path_root.ty.type_id,
+            _ => qualified_path_root.ty.type_id(),
         };
 
         let as_trait_opt = match &&*type_engine.get(qualified_path_root.as_trait) {
@@ -450,7 +450,7 @@ fn decl_to_type_info(
                         symbol.span(),
                     )));
                 }
-                (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
+                (*engines.te().get(type_decl.ty.clone().unwrap().type_id())).clone()
             }
             ty::TyDecl::GenericTypeForFunctionScope(decl) => {
                 (*engines.te().get(decl.type_id)).clone()

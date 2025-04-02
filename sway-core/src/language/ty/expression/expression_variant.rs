@@ -862,7 +862,7 @@ impl ReplaceDecls for TyExpressionVariant {
                                 implementing_for_typeid,
                                 &[ctx.namespace().current_package_name().clone()],
                                 &call_path.suffix,
-                                method.return_type.type_id,
+                                method.return_type.type_id(),
                                 &arguments
                                     .iter()
                                     .map(|a| a.1.return_type)
@@ -1078,7 +1078,7 @@ impl TypeCheckAnalysis for TyExpressionVariant {
                     unifier.unify(
                         handler,
                         arg.1.return_type,
-                        decl_param.type_argument.type_id,
+                        decl_param.type_argument.type_id(),
                         &Span::dummy(),
                         false,
                     );

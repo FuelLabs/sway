@@ -373,7 +373,7 @@ impl DisplayWithEngines for TyDecl {
                     builder.push_str(": ");
                     builder.push_str(
                         &engines
-                            .help_out(&*type_engine.get(type_ascription.type_id))
+                            .help_out(&*type_engine.get(type_ascription.type_id()))
                             .to_string(),
                     );
                     builder.push_str(" = ");
@@ -423,7 +423,7 @@ impl CollectTypesMetadata for TyDecl {
                 body.append(
                     &mut decl
                         .type_ascription
-                        .type_id
+                        .type_id()
                         .collect_types_metadata(handler, ctx)?,
                 );
                 body
@@ -555,7 +555,7 @@ impl TyDecl {
                 let TyTypeAliasDecl { ty, span, .. } = &*alias_decl;
                 engines
                     .te()
-                    .get(ty.type_id)
+                    .get(ty.type_id())
                     .expect_enum(handler, engines, "", span)
             }
             // `Self` type parameter might resolve to an Enum
@@ -591,7 +591,7 @@ impl TyDecl {
                 let TyTypeAliasDecl { ty, span, .. } = &*alias_decl;
                 engines
                     .te()
-                    .get(ty.type_id)
+                    .get(ty.type_id())
                     .expect_struct(handler, engines, span)
             }
             TyDecl::ErrorRecovery(_, err) => Err(*err),
@@ -765,7 +765,7 @@ impl TyDecl {
         match self {
             TyDecl::ImplSelfOrTrait(ImplSelfOrTrait { decl_id, .. }) => {
                 let decl = decl_engine.get_impl_self_or_trait(decl_id);
-                let implementing_for_type_id_arc = type_engine.get(decl.implementing_for.type_id);
+                let implementing_for_type_id_arc = type_engine.get(decl.implementing_for.type_id());
                 let implementing_for_type_id = &*implementing_for_type_id_arc;
                 format!(
                     "{} for {:?}",
@@ -828,7 +828,7 @@ impl TyDecl {
             TyDecl::VariableDecl(decl) => decl.return_type,
             TyDecl::FunctionDecl(FunctionDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_function(decl_id);
-                decl.return_type.type_id
+                decl.return_type.type_id()
             }
             TyDecl::StructDecl(StructDecl { decl_id }) => {
                 type_engine.insert_struct(engines, *decl_id)

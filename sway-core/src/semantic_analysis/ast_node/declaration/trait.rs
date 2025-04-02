@@ -339,7 +339,7 @@ impl TyTraitDecl {
         ctx: &TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
-        type_arguments: &[TypeArgument],
+        type_arguments: &[GenericArgument],
     ) -> (InterfaceItemMap, ItemMap, ItemMap) {
         let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
         let mut item_refs: ItemMap = BTreeMap::new();
@@ -399,7 +399,7 @@ impl TyTraitDecl {
                     t.type_id
                 })
                 .collect(),
-            type_arguments.iter().map(|t| t.type_id).collect(),
+            type_arguments.iter().map(|t| t.type_id()).collect(),
         );
 
         for item in ctx
@@ -483,7 +483,7 @@ impl TyTraitDecl {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         trait_name: &CallPath,
-        type_arguments: &[TypeArgument],
+        type_arguments: &[GenericArgument],
         type_id: TypeId,
     ) {
         let decl_engine = ctx.engines.de();
@@ -511,7 +511,7 @@ impl TyTraitDecl {
                     t.type_id
                 })
                 .collect(),
-            type_arguments.iter().map(|t| t.type_id).collect(),
+            type_arguments.iter().map(|t| t.type_id()).collect(),
         );
 
         let mut const_symbols = HashMap::<Ident, ty::TyDecl>::new();

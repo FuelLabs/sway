@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ast_elements::type_parameter::GenericTypeParameter;
+use ast_elements::{type_argument::GenericTypeArgument, type_parameter::GenericTypeParameter};
 use itertools::Itertools;
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
@@ -560,11 +560,13 @@ fn type_check_tuple(
         engines,
         typed_elems
             .iter()
-            .map(|elem| TypeArgument {
-                type_id: elem.type_id,
-                initial_type_id: elem.type_id,
-                span: elem.span.clone(),
-                call_path_tree: None,
+            .map(|elem| {
+                GenericArgument::Type(GenericTypeArgument {
+                    type_id: elem.type_id,
+                    initial_type_id: elem.type_id,
+                    span: elem.span.clone(),
+                    call_path_tree: None,
+                })
             })
             .collect(),
     );
