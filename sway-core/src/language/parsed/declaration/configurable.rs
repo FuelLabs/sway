@@ -1,7 +1,7 @@
 use crate::{
     engine_threading::DebugWithEngines,
     language::{parsed::Expression, Visibility},
-    transform, Engines, TypeArgument,
+    transform, Engines, GenericArgument,
 };
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -9,7 +9,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 pub struct ConfigurableDeclaration {
     pub name: Ident,
     pub attributes: transform::Attributes,
-    pub type_ascription: TypeArgument,
+    pub type_ascription: GenericArgument,
     pub value: Option<Expression>,
     pub visibility: Visibility,
     pub span: Span,

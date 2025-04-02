@@ -5,7 +5,7 @@ use crate::{
         DebugWithEngines, EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     language::CallPath,
-    type_system::TypeArgument,
+    type_system::GenericArgument,
     Engines, TypeParameter,
 };
 
@@ -68,9 +68,9 @@ pub struct ImplSelfOrTrait {
     pub is_self: bool,
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
-    pub trait_type_arguments: Vec<TypeArgument>,
+    pub trait_type_arguments: Vec<GenericArgument>,
     pub trait_decl_ref: Option<ParsedInterfaceDeclId>,
-    pub implementing_for: TypeArgument,
+    pub implementing_for: GenericArgument,
     pub items: Vec<ImplItem>,
     /// The [Span] of the whole impl trait and block.
     pub(crate) block_span: Span,

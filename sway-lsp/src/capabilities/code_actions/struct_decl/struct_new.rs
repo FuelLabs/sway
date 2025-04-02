@@ -143,7 +143,7 @@ impl StructNewCodeAction<'_> {
     fn params_string(params: &[TyStructField]) -> String {
         params
             .iter()
-            .map(|field| format!("{}: {}", field.name, field.type_argument.span.as_str()))
+            .map(|field| format!("{}: {}", field.name, field.type_argument.span().as_str()))
             .collect::<Vec<String>>()
             .join(", ")
     }
