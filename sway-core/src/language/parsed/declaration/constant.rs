@@ -3,15 +3,15 @@ use crate::{
         DebugWithEngines, EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     language::{parsed::Expression, Visibility},
-    transform, Engines, TypeArgument,
+    transform, Engines, GenericArgument,
 };
 use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration {
     pub name: Ident,
-    pub attributes: transform::AttributesMap,
-    pub type_ascription: TypeArgument,
+    pub attributes: transform::Attributes,
+    pub type_ascription: GenericArgument,
     pub value: Option<Expression>,
     pub visibility: Visibility,
     pub span: Span,

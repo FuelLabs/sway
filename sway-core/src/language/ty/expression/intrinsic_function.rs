@@ -16,7 +16,7 @@ use sway_types::Span;
 pub struct TyIntrinsicFunctionKind {
     pub kind: Intrinsic,
     pub arguments: Vec<TyExpression>,
-    pub type_arguments: Vec<TypeArgument>,
+    pub type_arguments: Vec<GenericArgument>,
     pub span: Span,
 }
 
@@ -86,7 +86,7 @@ impl DebugWithEngines for TyIntrinsicFunctionKind {
         let targs = self
             .type_arguments
             .iter()
-            .map(|targ| format!("{:?}", engines.help_out(targ.type_id)))
+            .map(|targ| format!("{:?}", engines.help_out(targ.type_id())))
             .join(", ");
         let args = self
             .arguments
@@ -106,7 +106,7 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut types_metadata = vec![];
         for type_arg in self.type_arguments.iter() {
-            types_metadata.append(&mut type_arg.type_id.collect_types_metadata(handler, ctx)?);
+            types_metadata.append(&mut type_arg.type_id().collect_types_metadata(handler, ctx)?);
         }
         for arg in self.arguments.iter() {
             types_metadata.append(&mut arg.collect_types_metadata(handler, ctx)?);

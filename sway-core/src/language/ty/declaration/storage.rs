@@ -19,7 +19,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 pub struct TyStorageDecl {
     pub fields: Vec<TyStorageField>,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub storage_keyword: Ident,
 }
 
@@ -109,7 +109,7 @@ impl TyStorageDecl {
                     key_expression,
                     name,
                     ..
-                }) => (type_argument.type_id, key_expression, name),
+                }) => (type_argument.type_id(), key_expression, name),
                 None => {
                     return Err(handler.emit_err(CompileError::StorageFieldDoesNotExist {
                         field_name: first_field.into(),
@@ -165,7 +165,7 @@ impl TyStorageDecl {
 
                             // Everything is fine. Push the storage access descriptor and move to the next field.
 
-                            let current_field_type_id = struct_field.type_argument.type_id;
+                            let current_field_type_id = struct_field.type_argument.type_id();
 
                             access_descriptors.push(TyStorageAccessDescriptor {
                                 name: field.clone(),
@@ -247,10 +247,10 @@ pub struct TyStorageField {
     pub name: Ident,
     pub namespace_names: Vec<Ident>,
     pub key_expression: Option<TyExpression>,
-    pub type_argument: TypeArgument,
+    pub type_argument: GenericArgument,
     pub initializer: TyExpression,
     pub(crate) span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl TyStorageField {

@@ -763,27 +763,28 @@ impl Dependencies {
     }
 
     fn gather_from_type_parameters(self, type_parameters: &[TypeParameter]) -> Self {
-        self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
-            deps.gather_from_iter(
-                type_parameter.trait_constraints.iter(),
-                |deps, constraint| deps.gather_from_call_path(&constraint.trait_name, false, false),
-            )
+        self.gather_from_iter(type_parameters.iter(), |deps, p| match p {
+            TypeParameter::Type(p) => deps
+                .gather_from_iter(p.trait_constraints.iter(), |deps, constraint| {
+                    deps.gather_from_call_path(&constraint.trait_name, false, false)
+                }),
+            TypeParameter::Const(_) => deps,
         })
     }
 
     fn gather_from_type_arguments(
         self,
         engines: &Engines,
-        type_arguments: &[TypeArgument],
+        type_arguments: &[GenericArgument],
     ) -> Self {
         self.gather_from_iter(type_arguments.iter(), |deps, type_argument| {
             deps.gather_from_type_argument(engines, type_argument)
         })
     }
 
-    fn gather_from_type_argument(self, engines: &Engines, type_argument: &TypeArgument) -> Self {
+    fn gather_from_type_argument(self, engines: &Engines, type_argument: &GenericArgument) -> Self {
         let type_engine = engines.te();
-        self.gather_from_typeinfo(engines, &type_engine.get(type_argument.type_id))
+        self.gather_from_typeinfo(engines, &type_engine.get(type_argument.type_id()))
     }
 
     fn gather_from_typeinfo(mut self, engines: &Engines, type_info: &TypeInfo) -> Self {
@@ -943,7 +944,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                     Ident::new_with_override("self".into(), decl.implementing_for.span());
                 impl_sym(
                     trait_name,
-                    &type_engine.get(decl.implementing_for.type_id),
+                    &type_engine.get(decl.implementing_for.type_id()),
                     decl.items
                         .iter()
                         .map(|item| match item {
@@ -966,7 +967,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
             } else if decl.trait_name.prefixes.is_empty() {
                 impl_sym(
                     decl.trait_name.suffix.clone(),
-                    &type_engine.get(decl.implementing_for.type_id),
+                    &type_engine.get(decl.implementing_for.type_id()),
                     decl.items
                         .iter()
                         .map(|item| match item {

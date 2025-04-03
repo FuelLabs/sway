@@ -308,8 +308,9 @@ fn const_eval_typed_expr(
     }
 
     Ok(match &expr.expression {
-        ty::TyExpressionVariant::ConstGenericExpression { .. } => {
-            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+        ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+            assert!(decl.value.is_some());
+            const_eval_typed_expr(lookup, known_consts, decl.value.as_ref().unwrap())?
         }
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
             let implied_lit = match &*lookup.engines.te().get(expr.return_type) {
@@ -570,6 +571,7 @@ fn const_eval_typed_expr(
             }) => {
                 let field_kind = ty::ProjectionKind::StructField {
                     name: field_to_access.name.clone(),
+                    field_to_access: Some(Box::new(field_to_access.clone())),
                 };
                 get_struct_name_field_index_and_type(
                     lookup.engines.te(),
@@ -785,7 +787,7 @@ fn const_eval_typed_expr(
                         });
                     }
                 }
-                ty::TyReassignmentTarget::Deref(_) => {
+                ty::TyReassignmentTarget::DerefAccess { .. } => {
                     return Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: expr.span.clone(),
                     });
@@ -1173,8 +1175,8 @@ fn const_eval_intrinsic(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                targ.type_id,
-                &targ.span,
+                targ.type_id(),
+                &targ.span(),
             )
             .map_err(|_| ConstEvalError::CompileError)?;
             let c = ConstantContent {
@@ -1207,8 +1209,8 @@ fn const_eval_intrinsic(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                targ.type_id,
-                &targ.span,
+                targ.type_id(),
+                &targ.span(),
             )
             .map_err(|_| ConstEvalError::CompileError)?;
             let c = ConstantContent {
@@ -1225,8 +1227,8 @@ fn const_eval_intrinsic(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                targ.type_id,
-                &targ.span,
+                targ.type_id(),
+                &targ.span(),
             )
             .map_err(|_| ConstEvalError::CompileError)?;
             match ir_type.get_content(lookup.context) {
@@ -1543,8 +1545,8 @@ fn const_eval_intrinsic(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                src_type.type_id,
-                &src_type.span,
+                src_type.type_id(),
+                &src_type.span(),
             )
             .unwrap();
 
@@ -1553,8 +1555,8 @@ fn const_eval_intrinsic(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                dst_type.type_id,
-                &dst_type.span,
+                dst_type.type_id(),
+                &dst_type.span(),
             )
             .unwrap();
 
@@ -1704,7 +1706,7 @@ mod tests {
         let handler = Handler::default();
         let mut context = Context::new(engines.se(), ExperimentalFeatures::default());
         let mut md_mgr = MetadataManager::default();
-        let core_lib = namespace::Root::new(
+        let core_lib = namespace::Package::new(
             sway_types::Ident::new_no_span("assert_is_constant_test".to_string()),
             None,
             ProgramId::new(0),

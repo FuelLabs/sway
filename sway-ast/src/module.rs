@@ -45,6 +45,19 @@ pub enum ModuleKind {
     Library { library_token: LibraryToken },
 }
 
+impl ModuleKind {
+    /// [ModuleKind]'s friendly name string used for various reportings.
+    pub fn friendly_name(&self) -> &'static str {
+        use ModuleKind::*;
+        match self {
+            Script { .. } => "module kind (script)",
+            Contract { .. } => "module kind (contract)",
+            Predicate { .. } => "module kind (predicate)",
+            Library { .. } => "module kind (library)",
+        }
+    }
+}
+
 impl Spanned for ModuleKind {
     fn span(&self) -> Span {
         match self {

@@ -39,15 +39,15 @@ where
         let name = name.as_str();
 
         if body.is_empty() {
-            format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-                #[allow(dead_code)]
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     buffer
                 }}
             }}")
         } else {
-            format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-                #[allow(dead_code)]
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     {body}
                     buffer
@@ -70,15 +70,15 @@ where
         let name = name.as_str();
 
         if body == "Self {  }" {
-            format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-                #[allow(dead_code)]
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut _buffer: BufferReader) -> Self {{
                     {body}
                 }}
             }}")
         } else {
-            format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-                #[allow(dead_code)]
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut buffer: BufferReader) -> Self {{
                     {body}
                 }}
@@ -125,7 +125,7 @@ where
         let arms = decl.variants.iter()
             .map(|x| {
                 let name = x.name.as_str();
-                Some(match &*engines.te().get(x.type_argument.type_id) {
+                Some(match &*engines.te().get(x.type_argument.type_id()) {
                     // unit
                     TypeInfo::Tuple(fields) if fields.is_empty() => {
                         format!("{} => {}::{}, \n", x.tag, enum_name, name)
@@ -162,7 +162,7 @@ where
             .iter()
             .map(|x| {
                 let name = x.name.as_str();
-                if engines.te().get(x.type_argument.type_id).is_unit() {
+                if engines.te().get(x.type_argument.type_id()).is_unit() {
                     format!(
                         "{enum_name}::{variant_name} => {{
                         {tag_value}u64.abi_encode(buffer)

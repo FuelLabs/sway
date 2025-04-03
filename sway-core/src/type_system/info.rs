@@ -18,13 +18,14 @@ use std::{
     fmt,
     hash::{Hash, Hasher},
 };
+use sway_ast::ImplItemParent;
 use sway_error::{
     error::{CompileError, InvalidImplementingForType},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{integer_bits::IntegerBits, span::Span};
+use sway_types::{integer_bits::IntegerBits, span::Span, Named};
 
-use super::ast_elements::length::NumericLength;
+use super::ast_elements::{length::NumericLength, type_argument::GenericTypeArgument};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum AbiName {
@@ -116,7 +117,7 @@ pub enum TypeInfo {
     Enum(DeclId<TyEnumDecl>),
     Struct(DeclId<TyStructDecl>),
     Boolean,
-    Tuple(Vec<TypeArgument>),
+    Tuple(Vec<GenericArgument>),
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
@@ -130,7 +131,7 @@ pub enum TypeInfo {
     /// until the semantic analysis stage.
     Custom {
         qualified_call_path: QualifiedCallPath,
-        type_arguments: Option<Vec<TypeArgument>>,
+        type_arguments: Option<Vec<GenericArgument>>,
     },
     B256,
     /// This means that specific type of a number is not yet known. It will be
@@ -140,7 +141,7 @@ pub enum TypeInfo {
     // used for recovering from errors in the ast
     ErrorRecovery(ErrorEmitted),
     // Static, constant size arrays.
-    Array(TypeArgument, Length),
+    Array(GenericArgument, Length),
     /// Pointers.
     /// These are represented in memory as u64 but are a different type since pointers only make
     /// sense in the context they were created in. Users can obtain pointers via standard library
@@ -149,8 +150,8 @@ pub enum TypeInfo {
     /// gtf instruction, or manipulating u64s.
     RawUntypedPtr,
     RawUntypedSlice,
-    Ptr(TypeArgument),
-    Slice(TypeArgument),
+    Ptr(GenericArgument),
+    Slice(GenericArgument),
     /// Type aliases.
     /// This type and the type `ty` it encapsulates always coerce. They are effectively
     /// interchangeable.
@@ -159,7 +160,7 @@ pub enum TypeInfo {
     //       in the `TypeEngine` accordingly, e.g., the `is_type_changeable`.
     Alias {
         name: Ident,
-        ty: TypeArgument,
+        ty: GenericArgument,
     },
     TraitType {
         name: Ident,
@@ -167,7 +168,7 @@ pub enum TypeInfo {
     },
     Ref {
         to_mutable_value: bool,
-        referenced_type: TypeArgument,
+        referenced_type: GenericArgument,
     },
 }
 
@@ -347,10 +348,10 @@ impl PartialEqWithEngines for TypeInfo {
                 l_abi_name == r_abi_name && l_address_span == r_address_span
             }
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
-                ((l0.type_id == r0.type_id)
+                ((l0.type_id() == r0.type_id())
                     || type_engine
-                        .get(l0.type_id)
-                        .eq(&type_engine.get(r0.type_id), ctx))
+                        .get(l0.type_id())
+                        .eq(&type_engine.get(r0.type_id()), ctx))
                     && l1 == r1
             }
             (
@@ -364,10 +365,10 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => {
                 l_name == r_name
-                    && ((l_ty.type_id == r_ty.type_id)
+                    && ((l_ty.type_id() == r_ty.type_id())
                         || type_engine
-                            .get(l_ty.type_id)
-                            .eq(&type_engine.get(r_ty.type_id), ctx))
+                            .get(l_ty.type_id())
+                            .eq(&type_engine.get(r_ty.type_id()), ctx))
             }
             (
                 Self::TraitType {
@@ -396,10 +397,10 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => {
                 (l_to_mut == r_to_mut)
-                    && ((l_ty.type_id == r_ty.type_id)
+                    && ((l_ty.type_id() == r_ty.type_id())
                         || type_engine
-                            .get(l_ty.type_id)
-                            .eq(&type_engine.get(r_ty.type_id), ctx))
+                            .get(l_ty.type_id())
+                            .eq(&type_engine.get(r_ty.type_id()), ctx))
             }
 
             (l, r) => l.discriminant_value() == r.discriminant_value(),
@@ -483,8 +484,8 @@ impl OrdWithEngines for TypeInfo {
                 l_abi_name.cmp(r_abi_name)
             }
             (Self::Array(l0, l1), Self::Array(r0, r1)) => type_engine
-                .get(l0.type_id)
-                .cmp(&type_engine.get(r0.type_id), ctx)
+                .get(l0.type_id())
+                .cmp(&type_engine.get(r0.type_id()), ctx)
                 .then_with(|| {
                     if let Some(ord) = l1.partial_cmp(r1) {
                         ord
@@ -502,8 +503,8 @@ impl OrdWithEngines for TypeInfo {
                     ty: r_ty,
                 },
             ) => type_engine
-                .get(l_ty.type_id)
-                .cmp(&type_engine.get(r_ty.type_id), ctx)
+                .get(l_ty.type_id())
+                .cmp(&type_engine.get(r_ty.type_id()), ctx)
                 .then_with(|| l_name.cmp(r_name)),
             (
                 Self::TraitType {
@@ -528,8 +529,8 @@ impl OrdWithEngines for TypeInfo {
                 },
             ) => l_to_mut.cmp(r_to_mut).then_with(|| {
                 type_engine
-                    .get(l_ty.type_id)
-                    .cmp(&type_engine.get(r_ty.type_id), ctx)
+                    .get(l_ty.type_id())
+                    .cmp(&type_engine.get(r_ty.type_id()), ctx)
             }),
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
@@ -543,8 +544,8 @@ impl DisplayWithEngines for TypeInfo {
             Unknown => "{unknown}".into(),
             Never => "!".into(),
             UnknownGeneric { name, .. } => name.to_string(),
-            Placeholder(type_param) => type_param.name.to_string(),
-            TypeParam(param) => format!("{}", param.name),
+            Placeholder(type_param) => type_param.name().to_string(),
+            TypeParam(param) => format!("{}", param.name()),
             StringSlice => "str".into(),
             StringArray(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
@@ -576,7 +577,12 @@ impl DisplayWithEngines for TypeInfo {
                 print_inner_types(
                     engines,
                     decl.name.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    }),
                 )
             }
             UntypedStruct(decl_id) => {
@@ -584,7 +590,12 @@ impl DisplayWithEngines for TypeInfo {
                 print_inner_types(
                     engines,
                     decl.name.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    }),
                 )
             }
             Enum(decl_ref) => {
@@ -592,7 +603,12 @@ impl DisplayWithEngines for TypeInfo {
                 print_inner_types(
                     engines,
                     decl.call_path.suffix.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    }),
                 )
             }
             Struct(decl_ref) => {
@@ -600,7 +616,12 @@ impl DisplayWithEngines for TypeInfo {
                 print_inner_types(
                     engines,
                     decl.call_path.suffix.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    }),
                 )
             }
             ContractCaller { abi_name, .. } => format!("ContractCaller<{abi_name}>"),
@@ -662,7 +683,7 @@ impl DebugWithEngines for TypeInfo {
                 }
             }
             Placeholder(t) => format!("placeholder({:?})", engines.help_out(t)),
-            TypeParam(param) => format!("typeparam({})", param.name),
+            TypeParam(param) => format!("typeparam({})", param.name()),
             StringSlice => "str".into(),
             StringArray(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
@@ -710,7 +731,12 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.name.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameter");
+                        x.type_id
+                    }),
                 )
             }
             UntypedStruct(decl_id) => {
@@ -718,7 +744,12 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.name.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameter");
+                        x.type_id
+                    }),
                 )
             }
             Enum(decl_ref) => {
@@ -726,7 +757,12 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.call_path.suffix.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameter");
+                        x.type_id
+                    }),
                 )
             }
             Struct(decl_ref) => {
@@ -734,7 +770,12 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.call_path.suffix.as_str(),
-                    decl.type_parameters.iter().map(|x| x.type_id),
+                    decl.type_parameters.iter().map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameter");
+                        x.type_id
+                    }),
                 )
             }
             ContractCaller { abi_name, address } => {
@@ -899,7 +940,7 @@ impl TypeInfo {
                         .iter()
                         .map(|field_type| {
                             type_engine
-                                .to_typeinfo(field_type.type_id, error_msg_span)
+                                .to_typeinfo(field_type.type_id(), error_msg_span)
                                 .expect("unreachable?")
                                 .to_selector_name(handler, engines, error_msg_span)
                         })
@@ -922,7 +963,7 @@ impl TypeInfo {
                         .iter()
                         .map(|ty| {
                             let ty = match type_engine
-                                .to_typeinfo(ty.type_argument.type_id, error_msg_span)
+                                .to_typeinfo(ty.type_argument.type_id(), error_msg_span)
                             {
                                 Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
@@ -945,6 +986,9 @@ impl TypeInfo {
                         .type_parameters
                         .iter()
                         .map(|ty| {
+                            let ty = ty
+                                .as_type_parameter()
+                                .expect("only works with type parameters");
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
@@ -976,7 +1020,7 @@ impl TypeInfo {
                         .iter()
                         .map(|ty| {
                             let ty = match type_engine
-                                .to_typeinfo(ty.type_argument.type_id, error_msg_span)
+                                .to_typeinfo(ty.type_argument.type_id(), error_msg_span)
                             {
                                 Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
@@ -996,6 +1040,9 @@ impl TypeInfo {
                         .type_parameters
                         .iter()
                         .map(|ty| {
+                            let ty = ty
+                                .as_type_parameter()
+                                .expect("only works with type parameters");
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
@@ -1024,7 +1071,7 @@ impl TypeInfo {
                 let len = length
                     .as_literal_val()
                     .expect("unexpected non literal length");
-                let name = type_engine.get(elem_ty.type_id).to_selector_name(
+                let name = type_engine.get(elem_ty.type_id()).to_selector_name(
                     handler,
                     engines,
                     error_msg_span,
@@ -1035,10 +1082,11 @@ impl TypeInfo {
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
             Alias { ty, .. } => {
-                let name =
-                    type_engine
-                        .get(ty.type_id)
-                        .to_selector_name(handler, engines, error_msg_span);
+                let name = type_engine.get(ty.type_id()).to_selector_name(
+                    handler,
+                    engines,
+                    error_msg_span,
+                );
                 name?
             }
             // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
@@ -1061,23 +1109,23 @@ impl TypeInfo {
                 .get_enum(decl_ref)
                 .variants
                 .iter()
-                .all(|variant_type| id_uninhabited(variant_type.type_argument.type_id)),
+                .all(|variant_type| id_uninhabited(variant_type.type_argument.type_id())),
             TypeInfo::Struct(decl_ref) => decl_engine
                 .get_struct(decl_ref)
                 .fields
                 .iter()
-                .any(|field| id_uninhabited(field.type_argument.type_id)),
+                .any(|field| id_uninhabited(field.type_argument.type_id())),
             TypeInfo::Tuple(fields) => fields
                 .iter()
-                .any(|field_type| id_uninhabited(field_type.type_id)),
-            TypeInfo::Array(elem_ty, _) => id_uninhabited(elem_ty.type_id),
-            TypeInfo::Ptr(ty) => id_uninhabited(ty.type_id),
-            TypeInfo::Alias { name: _, ty } => id_uninhabited(ty.type_id),
-            TypeInfo::Slice(ty) => id_uninhabited(ty.type_id),
+                .any(|field_type| id_uninhabited(field_type.type_id())),
+            TypeInfo::Array(elem_ty, _) => id_uninhabited(elem_ty.type_id()),
+            TypeInfo::Ptr(ty) => id_uninhabited(ty.type_id()),
+            TypeInfo::Alias { name: _, ty } => id_uninhabited(ty.type_id()),
+            TypeInfo::Slice(ty) => id_uninhabited(ty.type_id()),
             TypeInfo::Ref {
                 to_mutable_value: _,
                 referenced_type,
-            } => id_uninhabited(referenced_type.type_id),
+            } => id_uninhabited(referenced_type.type_id()),
             _ => false,
         }
     }
@@ -1088,7 +1136,7 @@ impl TypeInfo {
                 let decl = decl_engine.get_enum(decl_ref);
                 let mut found_unit_variant = false;
                 for variant_type in &decl.variants {
-                    let type_info = type_engine.get(variant_type.type_argument.type_id);
+                    let type_info = type_engine.get(variant_type.type_argument.type_id());
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         continue;
                     }
@@ -1104,7 +1152,7 @@ impl TypeInfo {
                 let decl = decl_engine.get_struct(decl_ref);
                 let mut all_zero_sized = true;
                 for field in &decl.fields {
-                    let type_info = type_engine.get(field.type_argument.type_id);
+                    let type_info = type_engine.get(field.type_argument.type_id());
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         return true;
                     }
@@ -1117,7 +1165,7 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => {
                 let mut all_zero_sized = true;
                 for field in fields {
-                    let field_type = type_engine.get(field.type_id);
+                    let field_type = type_engine.get(field.type_id());
                     if field_type.is_uninhabited(type_engine, decl_engine) {
                         return true;
                     }
@@ -1134,7 +1182,7 @@ impl TypeInfo {
                     .expect("unexpected non literal length");
                 len == 0
                     || type_engine
-                        .get(elem_ty.type_id)
+                        .get(elem_ty.type_id())
                         .is_zero_sized(type_engine, decl_engine)
             }
             _ => false,
@@ -1148,7 +1196,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Tuple(fields) => fields.iter().all(|type_argument| {
                 type_engine
-                    .get(type_argument.type_id)
+                    .get(type_argument.type_id())
                     .can_safely_ignore(type_engine, decl_engine)
             }),
             TypeInfo::Array(elem_ty, length) if length.as_literal_val().is_some() => {
@@ -1158,7 +1206,7 @@ impl TypeInfo {
                     .expect("unexpected non literal length");
                 len == 0
                     || type_engine
-                        .get(elem_ty.type_id)
+                        .get(elem_ty.type_id())
                         .can_safely_ignore(type_engine, decl_engine)
             }
             TypeInfo::ErrorRecovery(_) => true,
@@ -1204,7 +1252,7 @@ impl TypeInfo {
         matches!(self, TypeInfo::Ref { .. })
     }
 
-    pub fn as_reference(&self) -> Option<(&bool, &TypeArgument)> {
+    pub fn as_reference(&self) -> Option<(&bool, &GenericArgument)> {
         match self {
             TypeInfo::Ref {
                 to_mutable_value,
@@ -1234,7 +1282,7 @@ impl TypeInfo {
         matches!(self, TypeInfo::Slice(_))
     }
 
-    pub fn as_slice(&self) -> Option<&TypeArgument> {
+    pub fn as_slice(&self) -> Option<&GenericArgument> {
         if let TypeInfo::Slice(t) = self {
             Some(t)
         } else {
@@ -1245,7 +1293,7 @@ impl TypeInfo {
     pub(crate) fn apply_type_arguments(
         self,
         handler: &Handler,
-        type_arguments: Vec<TypeArgument>,
+        type_arguments: Vec<GenericArgument>,
         span: &Span,
     ) -> Result<TypeInfo, ErrorEmitted> {
         if type_arguments.is_empty() {
@@ -1336,7 +1384,7 @@ impl TypeInfo {
             | TypeInfo::Never
             | TypeInfo::StringSlice => Ok(()),
             TypeInfo::Alias { ty, .. } => {
-                let ty = engines.te().get(ty.type_id);
+                let ty = engines.te().get(ty.type_id());
                 ty.expect_is_supported_in_match_expressions(handler, engines, span)
             }
             TypeInfo::RawUntypedPtr
@@ -1483,7 +1531,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum(decl_ref) => Ok(*decl_ref),
             TypeInfo::Alias {
-                ty: TypeArgument { type_id, .. },
+                ty: GenericArgument::Type(GenericTypeArgument { type_id, .. }),
                 ..
             } => engines
                 .te()
@@ -1524,7 +1572,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Struct(decl_id) => Ok(*decl_id),
             TypeInfo::Alias {
-                ty: TypeArgument { type_id, .. },
+                ty: GenericArgument::Type(GenericTypeArgument { type_id, .. }),
                 ..
             } => engines
                 .te()
@@ -1571,12 +1619,12 @@ impl TypeInfo {
             TypeInfo::Ptr(_) => AbiEncodeSizeHint::PotentiallyInfinite,
 
             TypeInfo::Alias { ty, .. } => {
-                let elem_type = engines.te().get(ty.type_id);
+                let elem_type = engines.te().get(ty.type_id());
                 elem_type.abi_encode_size_hint(engines)
             }
 
             TypeInfo::Array(elem, len) => {
-                let elem_type = engines.te().get(elem.type_id);
+                let elem_type = engines.te().get(elem.type_id());
                 let size_hint = elem_type.abi_encode_size_hint(engines);
                 match &len {
                     Length::Literal { val, .. } => size_hint * *val,
@@ -1592,7 +1640,7 @@ impl TypeInfo {
                 items
                     .iter()
                     .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, t| {
-                        let field_type = engines.te().get(t.type_id);
+                        let field_type = engines.te().get(t.type_id());
                         let field_size_hint = field_type.abi_encode_size_hint(engines);
                         old_size_hint + field_size_hint
                     })
@@ -1603,7 +1651,7 @@ impl TypeInfo {
                 decl.fields
                     .iter()
                     .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, f| {
-                        let field_type = engines.te().get(f.type_argument.type_id);
+                        let field_type = engines.te().get(f.type_argument.type_id());
                         let field_size_hint = field_type.abi_encode_size_hint(engines);
                         old_size_hint + field_size_hint
                     })
@@ -1615,7 +1663,7 @@ impl TypeInfo {
                     .variants
                     .iter()
                     .fold(None, |old_size_hint: Option<AbiEncodeSizeHint>, v| {
-                        let variant_type = engines.te().get(v.type_argument.type_id);
+                        let variant_type = engines.te().get(v.type_argument.type_id());
                         let current_size_hint = variant_type.abi_encode_size_hint(engines);
                         match old_size_hint {
                             Some(old_size_hint) => Some(old_size_hint.min(current_size_hint)),
@@ -1628,7 +1676,7 @@ impl TypeInfo {
                     decl.variants
                         .iter()
                         .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, v| {
-                            let variant_type = engines.te().get(v.type_argument.type_id);
+                            let variant_type = engines.te().get(v.type_argument.type_id());
                             let current_size_hint = variant_type.abi_encode_size_hint(engines);
                             old_size_hint.max(current_size_hint)
                         });
@@ -1650,7 +1698,7 @@ impl TypeInfo {
             Never => "never".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
-            TypeParam(param) => format!("typeparam({})", param.name),
+            TypeParam(param) => format!("typeparam({})", param.name()),
             StringSlice => "str".into(),
             StringArray(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
@@ -1669,7 +1717,7 @@ impl TypeInfo {
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.type_id.get_type_str(engines))
+                    .map(|field| field.type_id().get_type_str(engines))
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -1686,7 +1734,12 @@ impl TypeInfo {
                         "<{}>",
                         decl.type_parameters
                             .iter()
-                            .map(|p| p.type_id.get_type_str(engines))
+                            .map(|p| {
+                                let p = p
+                                    .as_type_parameter()
+                                    .expect("only works with type parameters");
+                                p.type_id.get_type_str(engines)
+                            })
                             .collect::<Vec<_>>()
                             .join(",")
                     )
@@ -1702,7 +1755,12 @@ impl TypeInfo {
                         "<{}>",
                         decl.type_parameters
                             .iter()
-                            .map(|p| p.type_id.get_type_str(engines))
+                            .map(|p| {
+                                let p = p
+                                    .as_type_parameter()
+                                    .expect("only works with type parameters");
+                                p.type_id.get_type_str(engines)
+                            })
                             .collect::<Vec<_>>()
                             .join(",")
                     )
@@ -1718,7 +1776,12 @@ impl TypeInfo {
                         "<{}>",
                         decl.type_parameters
                             .iter()
-                            .map(|p| p.type_id.get_type_str(engines))
+                            .map(|p| {
+                                let p = p
+                                    .as_type_parameter()
+                                    .expect("only works with type parameters");
+                                p.type_id.get_type_str(engines)
+                            })
                             .collect::<Vec<_>>()
                             .join(",")
                     )
@@ -1734,7 +1797,12 @@ impl TypeInfo {
                         "<{}>",
                         decl.type_parameters
                             .iter()
-                            .map(|p| p.type_id.get_type_str(engines))
+                            .map(|p| {
+                                let p = p
+                                    .as_type_parameter()
+                                    .expect("will only work with type parameters");
+                                p.type_id.get_type_str(engines)
+                            })
                             .collect::<Vec<_>>()
                             .join(",")
                     )
@@ -1747,19 +1815,19 @@ impl TypeInfo {
             Array(elem_ty, length) => {
                 format!(
                     "[{}; {:?}]",
-                    elem_ty.type_id.get_type_str(engines),
+                    elem_ty.type_id().get_type_str(engines),
                     engines.help_out(length)
                 )
             }
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
             Ptr(ty) => {
-                format!("__ptr {}", ty.type_id.get_type_str(engines))
+                format!("__ptr {}", ty.type_id().get_type_str(engines))
             }
             Slice(ty) => {
-                format!("__slice {}", ty.type_id.get_type_str(engines))
+                format!("__slice {}", ty.type_id().get_type_str(engines))
             }
-            Alias { ty, .. } => ty.type_id.get_type_str(engines),
+            Alias { ty, .. } => ty.type_id().get_type_str(engines),
             TraitType {
                 name,
                 trait_type_id: _,
@@ -1771,9 +1839,18 @@ impl TypeInfo {
                 format!(
                     "__ref {}{}",
                     if *to_mutable_value { "mut " } else { "" },
-                    referenced_type.type_id.get_type_str(engines)
+                    referenced_type.type_id().get_type_str(engines)
                 )
             }
+        }
+    }
+}
+
+impl From<&TypeInfo> for ImplItemParent {
+    fn from(value: &TypeInfo) -> Self {
+        match value {
+            TypeInfo::Contract => Self::Contract,
+            _ => Self::Other,
         }
     }
 }

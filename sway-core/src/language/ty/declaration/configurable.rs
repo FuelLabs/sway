@@ -20,9 +20,9 @@ pub struct TyConfigurableDecl {
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
     pub visibility: Visibility,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub return_type: TypeId,
-    pub type_ascription: TypeArgument,
+    pub type_ascription: GenericArgument,
     pub span: Span,
     // Only encoding v1 has a decode_fn
     pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,

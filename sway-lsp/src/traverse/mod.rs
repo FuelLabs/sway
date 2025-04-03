@@ -1,6 +1,6 @@
 use crate::core::{token::TokenIdent, token_map::TokenMap};
 use rayon_cond::CondIterator;
-use sway_core::{namespace::Root, Engines};
+use sway_core::{namespace::Package, Engines};
 
 pub(crate) mod dependency;
 pub(crate) mod lexed_tree;
@@ -10,11 +10,11 @@ pub(crate) mod typed_tree;
 pub struct ParseContext<'a> {
     tokens: &'a TokenMap,
     pub engines: &'a Engines,
-    namespace: &'a Root,
+    namespace: &'a Package,
 }
 
 impl<'a> ParseContext<'a> {
-    pub fn new(tokens: &'a TokenMap, engines: &'a Engines, namespace: &'a Root) -> Self {
+    pub fn new(tokens: &'a TokenMap, engines: &'a Engines, namespace: &'a Package) -> Self {
         Self {
             tokens,
             engines,

@@ -1,0 +1,6 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "attributes_invalid_cfg_arg_with_invalid_item"
+entry = "main.sw"
+implicit-std = false

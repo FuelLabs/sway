@@ -108,27 +108,27 @@ pub struct TypeBinding<T> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TypeArgs {
     /// `Regular` variant indicates the type arguments are located after the suffix.
-    Regular(Vec<TypeArgument>),
+    Regular(Vec<GenericArgument>),
     /// `Prefix` variant indicates the type arguments are located between the last
     /// prefix and the suffix.
-    Prefix(Vec<TypeArgument>),
+    Prefix(Vec<GenericArgument>),
 }
 
 impl TypeArgs {
-    pub fn to_vec(&self) -> Vec<TypeArgument> {
+    pub fn to_vec(&self) -> Vec<GenericArgument> {
         match self {
             TypeArgs::Regular(vec) => vec.to_vec(),
             TypeArgs::Prefix(vec) => vec.to_vec(),
         }
     }
 
-    pub fn as_slice(&self) -> &[TypeArgument] {
+    pub fn as_slice(&self) -> &[GenericArgument] {
         match self {
             TypeArgs::Regular(vec) | TypeArgs::Prefix(vec) => vec,
         }
     }
 
-    pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<TypeArgument> {
+    pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<GenericArgument> {
         match self {
             TypeArgs::Regular(vec) => vec,
             TypeArgs::Prefix(vec) => vec,
@@ -336,8 +336,8 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                 for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
                     ctx.resolve_type(
                         handler,
-                        type_argument.type_id,
-                        &type_argument.span,
+                        type_argument.type_id(),
+                        &type_argument.span(),
                         EnforceTypeArguments::Yes,
                         None,
                     )

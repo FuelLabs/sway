@@ -42,13 +42,22 @@ pub enum TyReassignmentTarget {
         indices: Vec<ProjectionKind>,
     },
     /// An dereferencing [TyExpression] representing dereferencing
-    /// of an arbitrary reference expression.
+    /// of an arbitrary reference expression with optional indices.
     /// E.g.:
     ///  - *my_ref
     ///  - **if x > 0 { &mut &mut a } else { &mut &mut b }
+    ///  - (*my_ref)\[0\]
+    ///  - (**my_ref)\[0\]
     ///
     /// The [TyExpression] is guaranteed to be of [TyExpressionVariant::Deref].
-    Deref(Box<TyExpression>),
+    DerefAccess {
+        /// [TyExpression] of one or multiple nested [TyExpressionVariant::Deref].
+        exp: Box<TyExpression>,
+        /// Indices representing the path from the `base_name` to the
+        /// final part of an aggregate.
+        /// Empty if the LHS of the reassignment is a single variable.
+        indices: Vec<ProjectionKind>,
+    },
 }
 
 impl EqWithEngines for TyReassignmentTarget {}
@@ -56,7 +65,16 @@ impl PartialEqWithEngines for TyReassignmentTarget {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let type_engine = ctx.engines().te();
         match (self, other) {
-            (TyReassignmentTarget::Deref(l), TyReassignmentTarget::Deref(r)) => (*l).eq(r, ctx),
+            (
+                TyReassignmentTarget::DerefAccess {
+                    exp: l,
+                    indices: l_indices,
+                },
+                TyReassignmentTarget::DerefAccess {
+                    exp: r,
+                    indices: r_indices,
+                },
+            ) => (*l).eq(r, ctx) && l_indices.eq(r_indices, ctx),
             (
                 TyReassignmentTarget::ElementAccess {
                     base_name: l_name,
@@ -90,7 +108,10 @@ impl HashWithEngines for TyReassignmentTarget {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let type_engine = engines.te();
         match self {
-            TyReassignmentTarget::Deref(exp) => exp.hash(state, engines),
+            TyReassignmentTarget::DerefAccess { exp, indices } => {
+                exp.hash(state, engines);
+                indices.hash(state, engines);
+            }
             TyReassignmentTarget::ElementAccess {
                 base_name,
                 base_type,
@@ -117,7 +138,12 @@ impl SubstTypes for TyReassignmentTarget {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
             match self {
-                TyReassignmentTarget::Deref(exp) => exp.subst(ctx),
+                TyReassignmentTarget::DerefAccess{exp, indices} => {
+                    has_changes! {
+                        exp.subst(ctx);
+                        indices.subst(ctx);
+                    }
+                },
                 TyReassignmentTarget::ElementAccess { base_type, indices, .. } => {
                     has_changes! {
                         base_type.subst(ctx);
@@ -146,7 +172,16 @@ impl ReplaceDecls for TyReassignmentTarget {
         ctx: &mut TypeCheckContext,
     ) -> Result<bool, ErrorEmitted> {
         Ok(match self {
-            TyReassignmentTarget::Deref(exp) => exp.replace_decls(decl_mapping, handler, ctx)?,
+            TyReassignmentTarget::DerefAccess { exp, indices } => {
+                let mut changed = exp.replace_decls(decl_mapping, handler, ctx)?;
+                changed |= indices
+                    .iter_mut()
+                    .map(|i| i.replace_decls(decl_mapping, handler, ctx))
+                    .collect::<Result<Vec<bool>, _>>()?
+                    .iter()
+                    .any(|is_changed| *is_changed);
+                changed
+            }
             TyReassignmentTarget::ElementAccess { indices, .. } => indices
                 .iter_mut()
                 .map(|i| i.replace_decls(decl_mapping, handler, ctx))
@@ -178,7 +213,14 @@ impl TypeCheckAnalysis for TyReassignmentTarget {
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
         match self {
-            TyReassignmentTarget::Deref(exp) => exp.type_check_analyze(handler, ctx)?,
+            TyReassignmentTarget::DerefAccess { exp, indices } => {
+                exp.type_check_analyze(handler, ctx)?;
+                indices
+                    .iter()
+                    .map(|i| i.type_check_analyze(handler, ctx))
+                    .collect::<Result<Vec<()>, _>>()
+                    .map(|_| ())?
+            }
             TyReassignmentTarget::ElementAccess { indices, .. } => indices
                 .iter()
                 .map(|i| i.type_check_analyze(handler, ctx))
@@ -209,7 +251,14 @@ impl TypeCheckFinalization for TyReassignmentTarget {
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<(), ErrorEmitted> {
         match self {
-            TyReassignmentTarget::Deref(exp) => exp.type_check_finalize(handler, ctx)?,
+            TyReassignmentTarget::DerefAccess { exp, indices } => {
+                exp.type_check_finalize(handler, ctx)?;
+                indices
+                    .iter_mut()
+                    .map(|i| i.type_check_finalize(handler, ctx))
+                    .collect::<Result<Vec<()>, _>>()
+                    .map(|_| ())?;
+            }
             TyReassignmentTarget::ElementAccess { indices, .. } => indices
                 .iter_mut()
                 .map(|i| i.type_check_finalize(handler, ctx))
@@ -236,8 +285,11 @@ impl TypeCheckFinalization for TyReassignment {
 impl UpdateConstantExpression for TyReassignmentTarget {
     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
         match self {
-            TyReassignmentTarget::Deref(exp) => {
-                exp.update_constant_expression(engines, implementing_type)
+            TyReassignmentTarget::DerefAccess { exp, indices } => {
+                exp.update_constant_expression(engines, implementing_type);
+                indices
+                    .iter_mut()
+                    .for_each(|i| i.update_constant_expression(engines, implementing_type));
             }
             TyReassignmentTarget::ElementAccess { indices, .. } => {
                 indices
@@ -261,6 +313,7 @@ impl UpdateConstantExpression for TyReassignment {
 pub enum ProjectionKind {
     StructField {
         name: Ident,
+        field_to_access: Option<Box<TyStructField>>,
     },
     TupleField {
         index: usize,
@@ -277,8 +330,14 @@ impl PartialEqWithEngines for ProjectionKind {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
             (
-                ProjectionKind::StructField { name: l_name },
-                ProjectionKind::StructField { name: r_name },
+                ProjectionKind::StructField {
+                    name: l_name,
+                    field_to_access: _,
+                },
+                ProjectionKind::StructField {
+                    name: r_name,
+                    field_to_access: _,
+                },
             ) => l_name == r_name,
             (
                 ProjectionKind::TupleField {
@@ -310,7 +369,10 @@ impl HashWithEngines for ProjectionKind {
         use ProjectionKind::*;
         std::mem::discriminant(self).hash(state);
         match self {
-            StructField { name } => name.hash(state),
+            StructField {
+                name,
+                field_to_access: _,
+            } => name.hash(state),
             TupleField {
                 index,
                 // these fields are not hashed because they aren't relevant/a
@@ -399,7 +461,10 @@ impl UpdateConstantExpression for ProjectionKind {
 impl Spanned for ProjectionKind {
     fn span(&self) -> Span {
         match self {
-            ProjectionKind::StructField { name } => name.span(),
+            ProjectionKind::StructField {
+                name,
+                field_to_access: _,
+            } => name.span(),
             ProjectionKind::TupleField { index_span, .. } => index_span.clone(),
             ProjectionKind::ArrayIndex { index_span, .. } => index_span.clone(),
         }
@@ -409,7 +474,10 @@ impl Spanned for ProjectionKind {
 impl ProjectionKind {
     pub(crate) fn pretty_print(&self) -> Cow<str> {
         match self {
-            ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
+            ProjectionKind::StructField {
+                name,
+                field_to_access: _,
+            } => Cow::Borrowed(name.as_str()),
             ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
             ProjectionKind::ArrayIndex { index, .. } => Cow::Owned(format!("{index:#?}")),
         }

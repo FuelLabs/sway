@@ -17,17 +17,20 @@ pub type TyImplItem = TyTraitItem;
 pub struct TyImplSelfOrTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
-    pub trait_type_arguments: Vec<TypeArgument>,
+    pub trait_type_arguments: Vec<GenericArgument>,
     pub items: Vec<TyImplItem>,
     pub supertrait_items: Vec<TyImplItem>,
     pub trait_decl_ref: Option<DeclRefMixedInterface>,
-    pub implementing_for: TypeArgument,
+    pub implementing_for: GenericArgument,
     pub span: Span,
 }
 
 impl TyImplSelfOrTrait {
     pub fn is_impl_contract(&self, te: &TypeEngine) -> bool {
-        matches!(&*te.get(self.implementing_for.type_id), TypeInfo::Contract)
+        matches!(
+            &*te.get(self.implementing_for.type_id()),
+            TypeInfo::Contract
+        )
     }
 
     pub fn is_impl_self(&self) -> bool {

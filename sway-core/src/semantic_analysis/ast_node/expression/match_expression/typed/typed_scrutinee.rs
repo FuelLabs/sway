@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use ast_elements::{type_argument::GenericTypeArgument, type_parameter::GenericTypeParameter};
 use itertools::Itertools;
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
@@ -50,9 +51,11 @@ impl TyScrutinee {
                     // are heavily used in code generation, e.g., to generate code for contract
                     // function selection in the `__entry` and sometimes the span does not point
                     // to a "_". But it is always in the code in which the match expression is.
-                    type_id: type_engine.new_placeholder(TypeParameter::new_placeholder(
-                        type_engine.new_unknown(),
-                        span.clone(),
+                    type_id: type_engine.new_placeholder(TypeParameter::Type(
+                        GenericTypeParameter::new_placeholder(
+                            type_engine.new_unknown(),
+                            span.clone(),
+                        ),
                     )),
                     span,
                 };
@@ -557,11 +560,13 @@ fn type_check_tuple(
         engines,
         typed_elems
             .iter()
-            .map(|elem| TypeArgument {
-                type_id: elem.type_id,
-                initial_type_id: elem.type_id,
-                span: elem.span.clone(),
-                call_path_tree: None,
+            .map(|elem| {
+                GenericArgument::Type(GenericTypeArgument {
+                    type_id: elem.type_id,
+                    initial_type_id: elem.type_id,
+                    span: elem.span.clone(),
+                    call_path_tree: None,
+                })
             })
             .collect(),
     );

@@ -1,7 +1,4 @@
-contract;
-
-/
-/ Comments
+library;
 
 mod foo;
 mod bar;

@@ -26,7 +26,7 @@ pub struct TyStructDecl {
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl TyDeclParsedType for TyStructDecl {
@@ -135,7 +135,7 @@ impl TyStructDecl {
             .iter()
             .enumerate()
             .find(|(_, field)| field.name == *field_name)
-            .map(|(idx, field)| (idx as u64, field.type_argument.type_id))
+            .map(|(idx, field)| (idx as u64, field.type_argument.type_id()))
     }
 
     /// Returns true if the struct `self` has at least one private field.
@@ -200,8 +200,8 @@ pub struct TyStructField {
     pub visibility: Visibility,
     pub name: Ident,
     pub span: Span,
-    pub type_argument: TypeArgument,
-    pub attributes: transform::AttributesMap,
+    pub type_argument: GenericArgument,
+    pub attributes: transform::Attributes,
 }
 
 impl TyStructField {

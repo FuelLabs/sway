@@ -1,10 +1,8 @@
 use crate::{
-    //decl_engine::MaterializeConstGenerics,
     decl_engine::MaterializeConstGenerics,
     language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath},
     semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext},
-    SubstTypes,
-    TypeId,
+    SubstTypes, TypeId,
 };
 use serde::{Deserialize, Serialize};
 use sway_error::handler::{ErrorEmitted, Handler};
