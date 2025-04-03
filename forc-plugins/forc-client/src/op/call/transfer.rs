@@ -133,4 +133,59 @@ mod tests {
             "Balance should increase by transfer amount"
         );
     }
+
+    #[tokio::test]
+    async fn test_transfer_function_to_contract() {
+        let (_, id, wallet) = crate::op::call::tests::get_contract_instance().await;
+
+        let provider = wallet.provider().unwrap();
+        let consensus_parameters = provider.consensus_parameters().await.unwrap();
+        let base_asset_id = consensus_parameters.base_asset_id();
+
+        // Test helper to get contract balance
+        let get_contract_balance = |id: ContractId| async move {
+            provider
+                .get_contract_asset_balance(&Bech32ContractId::from(id), *base_asset_id)
+                .await
+                .unwrap()
+        };
+
+        // Verify initial contract balance
+        assert_eq!(get_contract_balance(id).await, 0, "Balance should be 0");
+
+        // Test parameters
+        let tx_policies = TxPolicies::default();
+        let amount = 100;
+        let node = NodeTarget {
+            node_url: Some(provider.url().to_string()),
+            ..Default::default()
+        };
+
+        // should successfully transfer funds)
+        let result = transfer(
+            &wallet,
+            Address::new(id.into()),
+            amount,
+            *base_asset_id,
+            tx_policies,
+            false, // show_receipts
+            &node,
+        )
+        .await
+        .unwrap();
+
+        // Verify response structure
+        assert!(
+            !result.tx_hash.is_empty(),
+            "Transaction hash should be returned"
+        );
+        assert_eq!(result.result, "", "Result should be empty string");
+
+        // Verify balance has increased by the transfer amount
+        assert_eq!(
+            get_contract_balance(id).await,
+            amount,
+            "Balance should increase by transfer amount"
+        );
+    }
 }
