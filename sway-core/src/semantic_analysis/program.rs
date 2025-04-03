@@ -95,6 +95,17 @@ impl TyProgram {
             namespace: ctx.namespace.current_package_ref().clone(),
         })?;
 
+        eprintln!(
+            "current mod path: {:?} {:?}",
+            namespace.current_mod_path(),
+            namespace
+                .current_module()
+                .submodules()
+                .iter()
+                .map(|s| s.0.clone())
+                .collect::<Vec<_>>()
+        );
+
         let program = TyProgram {
             kind,
             root_module: (*root).clone(),
