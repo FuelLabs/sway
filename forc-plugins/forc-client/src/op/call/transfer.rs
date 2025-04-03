@@ -1,6 +1,9 @@
 use anyhow::anyhow;
 use fuel_abi_types::abi::program::ProgramABI;
-use fuels::accounts::{wallet::WalletUnlocked, Account};
+use fuels::{
+    accounts::{wallet::WalletUnlocked, Account},
+    types::bech32::{Bech32Address, Bech32ContractId},
+};
 use fuels_core::types::{transaction::TxPolicies, Address, AssetId};
 use sway_core;
 
@@ -13,15 +16,34 @@ pub async fn transfer(
     show_receipts: bool,
     node: &crate::NodeTarget,
 ) -> anyhow::Result<super::CallResponse> {
-    println!(
-        "\nTransferring {} 0x{} to address 0x{}...\n",
-        amount, asset_id, recipient
-    );
+    let provider = wallet.provider().expect("Provider not found");
 
-    let (tx_hash, receipts) = wallet
-        .transfer(&recipient.into(), amount, asset_id, tx_policies)
-        .await
-        .map_err(|e| anyhow!("Failed to transfer funds: {}", e))?;
+    // check is recipient is a user
+    let (tx_hash, receipts) = if provider.is_user_account(*recipient).await? {
+        println!(
+            "\nTransferring {} 0x{} to recipient address 0x{}...\n",
+            amount, asset_id, recipient
+        );
+        let (tx_hash, receipts) = wallet
+            .transfer(&recipient.into(), amount, asset_id, tx_policies)
+            .await
+            .map_err(|e| anyhow!("Failed to transfer funds: {}", e))?;
+        (tx_hash.to_string(), receipts)
+    } else {
+        println!(
+            "\nTransferring {} 0x{} to contract address 0x{}...\n",
+            amount, asset_id, recipient
+        );
+        let address: Bech32Address = recipient.into();
+        let contract_id = Bech32ContractId {
+            hrp: address.hrp,
+            hash: address.hash,
+        };
+        wallet
+            .force_transfer_to_contract(&contract_id, amount, asset_id, tx_policies)
+            .await
+            .map_err(|e| anyhow!("Failed to transfer funds: {}", e))?
+    };
 
     // We don't need to load the ABI for a simple transfer
     let program_abi = sway_core::asm_generation::ProgramABI::Fuel(ProgramABI::default());
