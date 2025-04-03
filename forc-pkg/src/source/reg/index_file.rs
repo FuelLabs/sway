@@ -110,6 +110,14 @@ impl PackageEntry {
     }
 }
 
+impl PackageDependencyIdentifier {
+    pub fn new(package_name: String, version: String) -> Self {
+        Self {
+            package_name,
+            version,
+        }
+    }
+}
 impl IndexFile {
     pub fn get(&self, version: &semver::Version) -> Option<&PackageEntry> {
         self.versions.get(version)
