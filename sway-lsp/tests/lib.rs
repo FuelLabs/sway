@@ -2146,20 +2146,24 @@ fn test_url_to_session_existing_session() {
 
 async fn garbage_collection_runner(path: PathBuf) {
     setup_panic_hook();
+    eprintln!("starting garbage collection test");
     let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, path).await;
     let times = 20;
 
+    eprintln!("initialized");
     // Initialize cursor position
     let mut cursor_line = 1;
 
     for version in 1..times {
         //eprintln!("version: {}", version);
         let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
+        eprintln!("did change request");
         let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
         if version == 0 {
             service.inner().wait_for_parsing().await;
         }
+        eprintln!("did change request done");
         // wait for a random amount of time to simulate typing
         random_delay().await;
     }
