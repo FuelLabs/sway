@@ -125,7 +125,7 @@ where
         let arms = decl.variants.iter()
             .map(|x| {
                 let name = x.name.as_str();
-                Some(match &*engines.te().get(x.type_argument.type_id) {
+                Some(match &*engines.te().get(x.type_argument.type_id()) {
                     // unit
                     TypeInfo::Tuple(fields) if fields.is_empty() => {
                         format!("{} => {}::{}, \n", x.tag, enum_name, name)
@@ -162,7 +162,7 @@ where
             .iter()
             .map(|x| {
                 let name = x.name.as_str();
-                if engines.te().get(x.type_argument.type_id).is_unit() {
+                if engines.te().get(x.type_argument.type_id()).is_unit() {
                     format!(
                         "{enum_name}::{variant_name} => {{
                         {tag_value}u64.abi_encode(buffer)

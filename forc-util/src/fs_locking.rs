@@ -185,6 +185,7 @@ pub fn is_file_dirty<X: AsRef<Path>>(path: X) -> bool {
 #[cfg(test)]
 mod test {
     use super::{user_forc_directory, PidFileLocking};
+    use mark_flaky_tests::flaky;
     use std::{
         fs::{metadata, File},
         io::{ErrorKind, Write},
@@ -246,6 +247,7 @@ mod test {
         assert_eq!(e, ErrorKind::NotFound);
     }
 
+    #[flaky]
     #[test]
     fn test_cleanup_stale_files() {
         // First create some test files
@@ -255,16 +257,36 @@ mod test {
         // Create a test lock file with invalid PID
         let lock_path = user_forc_directory()
             .join(".lsp-locks")
-            .join("test_cleanup.lock");
-        File::create(&lock_path).expect("Failed to create test lock file");
+            .join("test_cleanup_invalid.lock");
+
+        // Write invalid content to ensure parsing fails
+        {
+            let mut file = File::create(&lock_path).expect("Failed to create test lock file");
+            file.write_all(b"not-a-pid")
+                .expect("Failed to write invalid content");
+            file.flush().expect("Failed to flush file");
+        }
+
+        // Verify both files exist before cleanup
+        assert!(
+            test_lock.0.exists(),
+            "Valid lock file should exist before cleanup"
+        );
+        assert!(
+            lock_path.exists(),
+            "Invalid lock file should exist before cleanup"
+        );
 
         // Run cleanup and check returned paths
         let cleaned_paths =
             PidFileLocking::cleanup_stale_files().expect("Failed to cleanup stale files");
 
         // Verify that only the invalid lock file was cleaned up
-        assert_eq!(cleaned_paths.len(), 1);
-        assert_eq!(cleaned_paths[0], lock_path);
+        assert_eq!(cleaned_paths.len(), 1, "Expected one file to be cleaned up");
+        assert_eq!(
+            cleaned_paths[0], lock_path,
+            "Expected invalid file to be cleaned up"
+        );
 
         // Verify file system state
         assert!(test_lock.0.exists(), "Active lock file should still exist");

@@ -23,7 +23,7 @@ use crate::{
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
-    IncludeSelf, SubstTypesContext, TraitConstraint, TypeArgument, TypeEngine, TypeInfo,
+    GenericArgument, IncludeSelf, SubstTypesContext, TraitConstraint, TypeEngine, TypeInfo,
     TypeSubstMap, UnifyCheck,
 };
 
@@ -56,7 +56,7 @@ impl From<bool> for CodeBlockFirstPass {
 #[derive(Clone, Debug)]
 pub(crate) struct TraitSuffix {
     pub(crate) name: Ident,
-    pub(crate) args: Vec<TypeArgument>,
+    pub(crate) args: Vec<GenericArgument>,
 }
 impl PartialEqWithEngines for TraitSuffix {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
@@ -80,7 +80,7 @@ impl DisplayWithEngines for TraitSuffix {
                 "<{}>",
                 self.args
                     .iter()
-                    .map(|i| engines.help_out(i.type_id).to_string())
+                    .map(|i| engines.help_out(i.type_id()).to_string())
                     .collect::<Vec<_>>()
                     .join(", ")
             )
@@ -230,7 +230,7 @@ impl TraitMap {
         &mut self,
         handler: &Handler,
         trait_name: CallPath,
-        trait_type_args: Vec<TypeArgument>,
+        trait_type_args: Vec<GenericArgument>,
         type_id: TypeId,
         impl_type_parameters: Vec<TypeId>,
         items: &[ResolvedTraitImplItem],
@@ -341,8 +341,8 @@ impl TraitMap {
                                     ..
                                 },
                             ) => {
-                                left = l_ty.type_id;
-                                right = r_ty.type_id;
+                                left = l_ty.type_id();
+                                right = r_ty.type_id();
                             }
                             _ => return true,
                         }
@@ -358,7 +358,7 @@ impl TraitMap {
                     for (map_arg_type, arg_type) in
                         map_trait_type_args.iter().zip(trait_type_args.iter())
                     {
-                        if !unify_checker.check(arg_type.type_id, map_arg_type.type_id) {
+                        if !unify_checker.check(arg_type.type_id(), map_arg_type.type_id()) {
                             traits_are_subset = false;
                         }
                     }
@@ -981,7 +981,7 @@ impl TraitMap {
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
-        trait_type_args: &[TypeArgument],
+        trait_type_args: &[GenericArgument],
     ) -> Vec<ResolvedTraitImplItem> {
         let type_id = engines.te().get_unaliased_type_id(type_id);
 
@@ -1008,7 +1008,7 @@ impl TraitMap {
                         && trait_type_args
                             .iter()
                             .zip(e.key.name.suffix.args.iter())
-                            .all(|(t1, t2)| unify_check.check(t1.type_id, t2.type_id))
+                            .all(|(t1, t2)| unify_check.check(t1.type_id(), t2.type_id()))
                     {
                         let type_mapping =
                             TypeSubstMap::from_superset_and_subset(engines, e.key.type_id, type_id);
@@ -1055,7 +1055,7 @@ impl TraitMap {
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
-        trait_type_args: &[TypeArgument],
+        trait_type_args: &[GenericArgument],
     ) -> Vec<ty::TyTraitItem> {
         TraitMap::get_items_for_type_and_trait_name_and_trait_type_arguments(
             module,
@@ -1073,7 +1073,7 @@ impl TraitMap {
         module: &Module,
         engines: &Engines,
         type_id: TypeId,
-    ) -> Vec<(CallPath, Vec<TypeArgument>)> {
+    ) -> Vec<(CallPath, Vec<GenericArgument>)> {
         let type_id = engines.te().get_unaliased_type_id(type_id);
 
         let type_engine = engines.te();
@@ -1434,7 +1434,9 @@ impl TraitMap {
                                 .args
                                 .iter()
                                 .zip(constraint.type_arguments.iter())
-                                .all(|(a1, a2)| unify_check_equality.check(a1.type_id, a2.type_id))
+                                .all(|(a1, a2)| {
+                                    unify_check_equality.check(a1.type_id(), a2.type_id())
+                                })
                             && unify_check.check(type_id, key.type_id)
                         {
                             let name_type_args = if !key.name.suffix.args.is_empty() {
@@ -1532,11 +1534,11 @@ impl TraitMap {
             RawUntypedSlice => TypeRootFilter::RawUntypedSlice,
             Ptr(_) => TypeRootFilter::Ptr,
             Slice(_) => TypeRootFilter::Slice,
-            Alias { ty, .. } => Self::get_type_root_filter(engines, ty.type_id),
+            Alias { ty, .. } => Self::get_type_root_filter(engines, ty.type_id()),
             TraitType { name, .. } => TypeRootFilter::TraitType(name.to_string()),
             Ref {
                 referenced_type, ..
-            } => Self::get_type_root_filter(engines, referenced_type.type_id),
+            } => Self::get_type_root_filter(engines, referenced_type.type_id()),
         }
     }
 }

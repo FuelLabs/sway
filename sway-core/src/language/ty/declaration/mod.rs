@@ -31,9 +31,9 @@ pub use trait_type::*;
 pub use type_alias::*;
 pub use variable::*;
 
-use crate::TypeArgument;
+use crate::GenericArgument;
 
 pub trait FunctionSignature {
     fn parameters(&self) -> &Vec<TyFunctionParameter>;
-    fn return_type(&self) -> &TypeArgument;
+    fn return_type(&self) -> &GenericArgument;
 }

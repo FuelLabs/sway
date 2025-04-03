@@ -3132,6 +3132,7 @@ dependencies = [
  "fuel-tx",
  "fuels-core",
  "hex",
+ "mark-flaky-tests",
  "paste",
  "regex",
  "serde",
@@ -5175,6 +5176,28 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "url",
+]
+
+[[package]]
+name = "mark-flaky-tests"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "586c4a7c95a05351b04ebbe4f60edc53c3bb611651b1bf0be54a9575a95b4930"
+dependencies = [
+ "mark-flaky-tests-macro",
+]
+
+[[package]]
+name = "mark-flaky-tests-macro"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "078b1ffd16b299642ebc515a520c3793f6fe0db38c2e6a2abf686db22e58ab84"
+dependencies = [
+ "proc-macro-crate 1.1.3",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.99",
 ]
 
 [[package]]

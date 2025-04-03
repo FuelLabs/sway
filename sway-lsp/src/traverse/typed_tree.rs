@@ -15,7 +15,7 @@ use sway_core::{
         ty::{self, GetDeclIdent, TyModule, TyReassignmentTarget, TySubmodule},
         CallPathTree, CallPathType,
     },
-    type_system::TypeArgument,
+    type_system::GenericArgument,
     TraitConstraint, TypeId, TypeInfo,
 };
 use sway_error::handler::Handler;
@@ -654,7 +654,7 @@ impl Parse for ty::TyVariableDecl {
             ));
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
-        if let Some(call_path_tree) = &self.type_ascription.call_path_tree {
+        if let Some(call_path_tree) = &self.type_ascription.call_path_tree() {
             collect_call_path_tree(ctx, call_path_tree, &self.type_ascription);
         }
         self.body.parse(ctx);
@@ -849,7 +849,7 @@ impl Parse for ty::ImplSelfOrTrait {
                 }
             } else {
                 typed_token.clone_from(&token.as_typed().cloned());
-                Some(TypeDefinition::TypeId(implementing_for.type_id))
+                Some(TypeDefinition::TypeId(implementing_for.type_id()))
             };
         }
         adaptive_iter(trait_type_arguments, |type_arg| {
@@ -875,11 +875,10 @@ impl Parse for ty::ImplSelfOrTrait {
         if let Some(typed_token) = typed_token {
             collect_type_id(
                 ctx,
-                implementing_for.type_id,
+                implementing_for.type_id(),
                 &typed_token,
                 implementing_for
-                    .call_path_tree
-                    .as_ref()
+                    .call_path_tree()
                     .map(|tree| tree.qualified_call_path.call_path.suffix.span())
                     .unwrap_or(implementing_for.span()),
             );
@@ -970,10 +969,10 @@ impl Parse for ty::TyTraitFn {
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
         adaptive_iter(&self.parameters, |param| param.parse(ctx));
-        let return_ident = Ident::new(self.return_type.span.clone());
+        let return_ident = Ident::new(self.return_type.span());
         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&return_ident)) {
             token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedTraitFn(self.clone()));
-            token.type_def = Some(TypeDefinition::TypeId(self.return_type.type_id));
+            token.type_def = Some(TypeDefinition::TypeId(self.return_type.type_id()));
         }
     }
 }
@@ -993,7 +992,7 @@ impl Parse for ty::TyEnumVariant {
         let typed_token = TypedAstToken::TypedEnumVariant(self.clone());
         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&self.name)) {
             token.ast_node = TokenAstNode::Typed(typed_token);
-            token.type_def = Some(TypeDefinition::TypeId(self.type_argument.type_id));
+            token.type_def = Some(TypeDefinition::TypeId(self.type_argument.type_id()));
         }
         collect_type_argument(ctx, &self.type_argument);
     }
@@ -1236,8 +1235,8 @@ fn assign_type_to_token(
     token.type_def = Some(TypeDefinition::TypeId(type_id));
 }
 
-fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &TypeArgument) {
-    let type_info = ctx.engines.te().get(type_arg.type_id);
+fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &GenericArgument) {
+    let type_info = ctx.engines.te().get(type_arg.type_id());
     collect_qualified_path_root(ctx, tree.qualified_call_path.qualified_path_root.clone());
     collect_call_path_prefixes(
         ctx,
@@ -1246,7 +1245,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
     );
     collect_type_id(
         ctx,
-        type_arg.type_id,
+        type_arg.type_id(),
         &TypedAstToken::TypedArgument(type_arg.clone()),
         tree.qualified_call_path.call_path.suffix.span(),
     );
@@ -1256,7 +1255,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
             let child_type_args: Vec<_> = decl
                 .type_parameters
                 .iter()
-                .map(TypeArgument::from)
+                .map(GenericArgument::from)
                 .collect();
             tree.children
                 .par_iter()
@@ -1270,7 +1269,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
             let child_type_args: Vec<_> = decl
                 .type_parameters
                 .iter()
-                .map(TypeArgument::from)
+                .map(GenericArgument::from)
                 .collect();
             tree.children
                 .par_iter()
@@ -1363,7 +1362,7 @@ fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, ident
             TokenAstNode::Typed(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));
         token.type_def = Some(TypeDefinition::Ident(const_decl.call_path.suffix.clone()));
     }
-    if let Some(call_path_tree) = &const_decl.type_ascription.call_path_tree {
+    if let Some(call_path_tree) = &const_decl.type_ascription.call_path_tree() {
         collect_call_path_tree(ctx, call_path_tree, &const_decl.type_ascription);
     }
     if let Some(value) = &const_decl.value {
@@ -1383,7 +1382,7 @@ fn collect_configurable_decl(
             TokenAstNode::Typed(TypedAstToken::TypedConfigurableDeclaration(decl.clone()));
         token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
     }
-    if let Some(call_path_tree) = &decl.type_ascription.call_path_tree {
+    if let Some(call_path_tree) = &decl.type_ascription.call_path_tree() {
         collect_call_path_tree(ctx, call_path_tree, &decl.type_ascription);
     }
     if let Some(value) = &decl.value {
@@ -1511,13 +1510,13 @@ fn collect_type_id(
     }
 }
 
-fn collect_type_argument(ctx: &ParseContext, type_arg: &TypeArgument) {
-    if let Some(call_path_tree) = &type_arg.call_path_tree {
+fn collect_type_argument(ctx: &ParseContext, type_arg: &GenericArgument) {
+    if let Some(call_path_tree) = type_arg.call_path_tree() {
         collect_call_path_tree(ctx, call_path_tree, type_arg);
     } else {
         collect_type_id(
             ctx,
-            type_arg.type_id,
+            type_arg.type_id(),
             &TypedAstToken::TypedArgument(type_arg.clone()),
             type_arg.span(),
         );
