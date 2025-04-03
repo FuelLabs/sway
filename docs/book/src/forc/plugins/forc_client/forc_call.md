@@ -50,7 +50,7 @@ forc call 0xe18de7c7c8c61a1c706dccb3533caa00ba5c11b5230da4428582abf1b6831b4d \
   add 1 2
 ```
 
-### Directly send funds to a recipient address
+### Directly send funds to an address
 
 ```bash
 forc call 0x2c7Fd852EF2BaE281e90ccaDf18510701989469f7fc4b042F779b58a39919Eec --amount 2 --mode=live
