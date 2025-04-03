@@ -62,13 +62,12 @@ mod tests {
     use std::path::Path;
 
     fn create_package_entry(name: &str) -> PackageEntry {
-        PackageEntry {
-            name: name.to_string(),
-            version: Version::new(1, 0, 0),
-            source_cid: "QmHash".to_string(),
-            abi_cid: None,
-            dependencies: vec![],
-        }
+        let name = name.to_string();
+        let version = Version::new(1, 0, 0);
+        let source_cid = "QmHash".to_string();
+        let abi_cid = None;
+        let dependencies = vec![];
+        PackageEntry::new(name, version, source_cid, abi_cid, dependencies)
     }
 
     #[test]
@@ -77,7 +76,7 @@ mod tests {
         let namespace = Namespace::Flat;
         let entry = create_package_entry("ab");
 
-        let path = location_from_root(chunk_size, &namespace, &entry.name);
+        let path = location_from_root(chunk_size, &namespace, entry.name());
 
         assert_eq!(path, Path::new("ab").join("ab"));
     }
@@ -88,7 +87,7 @@ mod tests {
         let namespace = Namespace::Flat;
         let entry = create_package_entry("foobar");
 
-        let path = location_from_root(chunk_size, &namespace, &entry.name);
+        let path = location_from_root(chunk_size, &namespace, entry.name());
 
         // Should produce: fo/ob/ar/foobar
         assert_eq!(path, Path::new("fo").join("ob").join("ar").join("foobar"));
@@ -100,7 +99,7 @@ mod tests {
         let namespace = Namespace::Domain("example".to_string());
         let entry = create_package_entry("foobar");
 
-        let path = location_from_root(chunk_size, &namespace, &entry.name);
+        let path = location_from_root(chunk_size, &namespace, entry.name());
 
         // Should produce: example/fo/ob/ar/foobar
         assert_eq!(
@@ -119,7 +118,7 @@ mod tests {
         let namespace = Namespace::Flat;
         let entry = create_package_entry("hello");
 
-        let path = location_from_root(chunk_size, &namespace, &entry.name);
+        let path = location_from_root(chunk_size, &namespace, entry.name());
 
         // Should produce: he/ll/o/hello
         assert_eq!(path, Path::new("he").join("ll").join("o").join("hello"));
@@ -131,7 +130,7 @@ mod tests {
         let namespace = Namespace::Flat;
         let entry = create_package_entry("fibonacci");
 
-        let path = location_from_root(chunk_size, &namespace, &entry.name);
+        let path = location_from_root(chunk_size, &namespace, entry.name());
 
         // Should produce: fib/ona/cci/fibonacci
         assert_eq!(
@@ -146,7 +145,7 @@ mod tests {
         let namespace = Namespace::Flat;
         let entry = create_package_entry("small");
 
-        let path = location_from_root(chunk_size, &namespace, &entry.name);
+        let path = location_from_root(chunk_size, &namespace, entry.name());
 
         // Should produce: small/small
         assert_eq!(path, Path::new("small").join("small"));
@@ -158,7 +157,7 @@ mod tests {
         let namespace = Namespace::Flat;
         let entry = create_package_entry("héllo");
 
-        let path = location_from_root(chunk_size, &namespace, &entry.name);
+        let path = location_from_root(chunk_size, &namespace, entry.name());
 
         // Should produce: hé/ll/o/héllo
         assert_eq!(path, Path::new("hé").join("ll").join("o").join("héllo"));
@@ -170,7 +169,7 @@ mod tests {
         let namespace = Namespace::Flat;
         let entry = create_package_entry("");
 
-        let path = location_from_root(chunk_size, &namespace, &entry.name);
+        let path = location_from_root(chunk_size, &namespace, entry.name());
 
         // Should just produce: ""
         assert_eq!(path, Path::new(""));
@@ -182,7 +181,7 @@ mod tests {
         let namespace = Namespace::Flat;
         let entry = create_package_entry("package");
 
-        let path = location_from_root(chunk_size, &namespace, &entry.name);
+        let path = location_from_root(chunk_size, &namespace, entry.name());
 
         // Should just produce: package
         assert_eq!(path, Path::new("package"));

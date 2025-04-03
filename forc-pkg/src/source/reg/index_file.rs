@@ -122,6 +122,11 @@ impl IndexFile {
     pub fn get(&self, version: &semver::Version) -> Option<&PackageEntry> {
         self.versions.get(version)
     }
+
+    pub fn insert(&mut self, package: PackageEntry) {
+        let pkg_version = package.version().clone();
+        self.versions.insert(pkg_version, package);
+    }
 }
 
 #[cfg(test)]
@@ -179,6 +184,82 @@ mod tests {
         assert_eq!(v012.source_cid, "QmExampleHash");
         assert_eq!(v012.abi_cid, Some("QmExampleAbiHash".to_string()));
         assert_eq!(v012.dependencies.len(), 0);
+    }
+
+    #[test]
+    fn test_add_new_package_entry_and_parse_back() {
+        let json = r#"{
+        "1.0.0": {
+            "name": "existing-package",
+            "version": "1.0.0",
+            "source_cid": "QmExistingHash",
+            "abi_cid": "QmExistingAbiHash",
+            "dependencies": [
+                {
+                    "package_name": "dep1",
+                    "version": "^0.5.0"
+                }
+            ]
+        }
+    }"#;
+
+        let mut index_file: IndexFile = serde_json::from_str(json).unwrap();
+
+        assert_eq!(index_file.versions.len(), 1);
+        assert!(index_file
+            .versions
+            .contains_key(&semver::Version::new(1, 0, 0)));
+
+        let dependencies = vec![
+            PackageDependencyIdentifier::new("new-dep1".to_string(), "^1.0.0".to_string()),
+            PackageDependencyIdentifier::new("new-dep2".to_string(), "=0.9.0".to_string()),
+        ];
+
+        let new_package = PackageEntry::new(
+            "new-package".to_string(),
+            semver::Version::new(2, 1, 0),
+            "QmNewPackageHash".to_string(),
+            Some("QmNewPackageAbiHash".to_string()),
+            dependencies,
+        );
+
+        index_file.insert(new_package);
+
+        assert_eq!(index_file.versions.len(), 2);
+        assert!(index_file
+            .versions
+            .contains_key(&semver::Version::new(1, 0, 0)));
+        assert!(index_file
+            .versions
+            .contains_key(&semver::Version::new(2, 1, 0)));
+
+        let updated_json = serde_json::to_string_pretty(&index_file).unwrap();
+        let reparsed_index: IndexFile = serde_json::from_str(&updated_json).unwrap();
+
+        assert_eq!(reparsed_index.versions.len(), 2);
+        assert!(reparsed_index
+            .versions
+            .contains_key(&semver::Version::new(1, 0, 0)));
+        assert!(reparsed_index
+            .versions
+            .contains_key(&semver::Version::new(2, 1, 0)));
+
+        let new_pkg = reparsed_index.get(&semver::Version::new(2, 1, 0)).unwrap();
+        assert_eq!(new_pkg.name(), "new-package");
+        assert_eq!(new_pkg.version(), &semver::Version::new(2, 1, 0));
+        assert_eq!(new_pkg.source_cid(), "QmNewPackageHash");
+        assert_eq!(new_pkg.abi_cid(), Some("QmNewPackageAbiHash"));
+
+        let deps: Vec<_> = new_pkg.dependencies().collect();
+        assert_eq!(deps.len(), 2);
+        assert_eq!(deps[0].package_name, "new-dep1");
+        assert_eq!(deps[0].version, "^1.0.0");
+        assert_eq!(deps[1].package_name, "new-dep2");
+        assert_eq!(deps[1].version, "=0.9.0");
+
+        let orig_pkg = reparsed_index.get(&semver::Version::new(1, 0, 0)).unwrap();
+        assert_eq!(orig_pkg.name(), "existing-package");
+        assert_eq!(orig_pkg.source_cid(), "QmExistingHash");
     }
 
     #[test]
