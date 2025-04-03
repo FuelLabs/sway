@@ -24,7 +24,10 @@ fn check_redundant_gitignore_files(all_tests_dir: &Path) -> Result<()> {
     return if gitignores.is_empty() {
         Ok(())
     } else {
-        let mut gitignores = gitignores.iter().map(|file| file.to_string_lossy().to_string()).collect::<Vec<_>>();
+        let mut gitignores = gitignores
+            .iter()
+            .map(|file| file.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
         gitignores.sort();
 
         Err(anyhow!("Redundant .gitignore files.\nTo fix the error, delete these redundant .gitignore files:\n{}", gitignores.join("\n")))
