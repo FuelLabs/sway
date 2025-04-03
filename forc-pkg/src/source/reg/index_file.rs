@@ -14,7 +14,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct IndexFile {
     /// Each published instance for this specific package, keyed by their
     /// versions. The reason we are doing this type of mapping is for use of
