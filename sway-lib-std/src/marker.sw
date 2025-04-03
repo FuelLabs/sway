@@ -12,6 +12,7 @@ use ::codec::AbiEncode;
 /// Error types are types whose instances can be arguments to the `panic` instruction.
 ///
 /// [Error] is automatically implemented for:
+/// - unit type `()`,
 /// - string slices,
 /// - and enums annotated with the `#[error_type]` attribute.
 #[cfg(experimental_error_type = true)]
@@ -32,4 +33,3 @@ impl Error for str {}
 
 #[cfg(experimental_error_type = true)]
 impl Error for () {}
-
