@@ -132,7 +132,7 @@ impl IndexFile {
 
     /// Inserts a package into this `IndexFile`
     /// NOTE: if there is a package with the same version in the index file
-    /// it will get overriden.
+    /// it will get overridden.
     pub fn insert(&mut self, package: PackageEntry) {
         let pkg_version = package.version().clone();
         self.versions.insert(pkg_version, package);

@@ -22,7 +22,7 @@ use std::{
     time::Duration,
 };
 
-/// Name of the folder containig fetched registry sources.
+/// Name of the folder containing fetched registry sources.
 pub const REG_DIR_NAME: &str = "registry";
 
 /// A package from the official registry.
