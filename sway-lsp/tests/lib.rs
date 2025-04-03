@@ -2145,6 +2145,7 @@ fn test_url_to_session_existing_session() {
 //------------------- GARBAGE COLLECTION TESTS -------------------//
 
 async fn garbage_collection_runner(path: PathBuf) {
+    eprintln!("stargin garbage collection test");
     setup_panic_hook();
     let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, path).await;
@@ -2387,7 +2388,7 @@ fn run_garbage_collection_tests_from_projects_dir(projects_dir: PathBuf) -> Resu
 /// 2. Panics in one test don't affect others
 /// 3. Resource cleanup happens automatically on process exit
 #[tokio::test]
-#[ignore = "This test is meant to be run only indirectly through the tests that run GC in parallel."]
+// #[ignore = "This test is meant to be run only indirectly through the tests that run GC in parallel."]
 async fn test_single_garbage_collection_project() {
     if let Ok(test_file) = std::env::var("TEST_FILE") {
         let path = PathBuf::from(test_file);
