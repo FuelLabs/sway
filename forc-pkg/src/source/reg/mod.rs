@@ -1,4 +1,4 @@
-pub(crate) mod file_location;
+pub mod file_location;
 pub mod index_file;
 
 use super::IPFSNode;
