@@ -1349,9 +1349,9 @@ impl<'eng> FnCompiler<'eng> {
                 )
                 .unwrap_register();
                 let val_ptr = return_on_termination_or_extract!(
-                    self.compile_expression_to_memory(context, md_mgr, &val_exp)?
+                    self.compile_expression_to_register(context, md_mgr, &val_exp)?
                 )
-                .unwrap_memory();
+                .unwrap_register();
                 let number_of_slots_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &number_of_slots_exp)?
                 )
@@ -1360,6 +1360,11 @@ impl<'eng> FnCompiler<'eng> {
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let b256_ty = Type::get_b256(context);
                 let b256_ptr_ty = Type::new_ptr(context, b256_ty);
+                let val_ptr = self
+                    .current_block
+                    .append(context)
+                    .int_to_ptr(val_ptr, b256_ptr_ty)
+                    .add_metadatum(context, span_md_idx);
                 match kind {
                     Intrinsic::StateLoadQuad => {
                         let val = self
