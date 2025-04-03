@@ -1,5 +1,5 @@
 [project]
-authors = ["vaivaswatha"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
 name = "referencing_function_parameters_simple"
