@@ -21,7 +21,7 @@ use std::{
     str::FromStr,
 };
 
-const REG_DIR_NAME: &str = "registry";
+pub const REG_DIR_NAME: &str = "registry";
 
 /// A package from the official registry.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]

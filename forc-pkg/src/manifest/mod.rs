@@ -1113,6 +1113,7 @@ impl std::ops::Deref for WorkspaceManifestFile {
 ///
 /// Returns the path to the package on success, or `None` in the case it could not be found.
 pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+    use crate::source::reg::REG_DIR_NAME;
     use sway_types::constants::STD;
     const SWAY_STD_FOLDER: &str = "sway-lib-std";
     walkdir::WalkDir::new(dir)
@@ -1126,11 +1127,13 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
             let path = entry.path();
             let manifest = PackageManifest::from_file(path).ok()?;
             // If the package is STD, make sure it is coming from correct folder.
+            // That is either sway-lib-std, by fetching the sway repo (for std added as git dependency)
+            // or from registry folder (for std added as a registry dependency).
             if (manifest.project.name == pkg_name && pkg_name != STD)
                 || (manifest.project.name == STD
-                    && path
-                        .components()
-                        .any(|comp| comp.as_os_str() == SWAY_STD_FOLDER))
+                    && path.components().any(|comp| {
+                        comp.as_os_str() == SWAY_STD_FOLDER || comp.as_os_str() == REG_DIR_NAME
+                    }))
             {
                 Some(path.to_path_buf())
             } else {
