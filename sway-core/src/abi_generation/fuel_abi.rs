@@ -560,8 +560,8 @@ fn generate_configurables(
                     engines,
                     metadata_types,
                     concrete_types,
-                    decl.type_ascription.type_id,
-                    decl.type_ascription.type_id,
+                    decl.type_ascription.type_id(),
+                    decl.type_ascription.type_id(),
                 )?,
                 offset: 0,
             })
@@ -641,8 +641,8 @@ impl TypeId {
                         engines,
                         metadata_types,
                         concrete_types,
-                        x.type_argument.initial_type_id,
-                        x.type_argument.type_id,
+                        x.type_argument.initial_type_id(),
+                        x.type_argument.type_id(),
                         &mut new_metadata_types_to_add,
                     )?;
                 }
@@ -656,18 +656,18 @@ impl TypeId {
                         Ok(program_abi::TypeApplication {
                             name: x.name.to_string(),
                             type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                x.type_argument.initial_type_id.index(),
+                                x.type_argument.initial_type_id().index(),
                             )),
                             type_arguments: x
                                 .type_argument
-                                .initial_type_id
+                                .initial_type_id()
                                 .get_abi_type_arguments(
                                     handler,
                                     ctx,
                                     engines,
                                     metadata_types,
                                     concrete_types,
-                                    x.type_argument.type_id,
+                                    x.type_argument.type_id(),
                                     &mut new_metadata_types_to_add,
                                 )?,
                         })
@@ -693,8 +693,8 @@ impl TypeId {
                         engines,
                         metadata_types,
                         concrete_types,
-                        x.type_argument.initial_type_id,
-                        x.type_argument.type_id,
+                        x.type_argument.initial_type_id(),
+                        x.type_argument.type_id(),
                         &mut new_metadata_types_to_add,
                     )?;
                 }
@@ -708,18 +708,18 @@ impl TypeId {
                         Ok(program_abi::TypeApplication {
                             name: x.name.to_string(),
                             type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                x.type_argument.initial_type_id.index(),
+                                x.type_argument.initial_type_id().index(),
                             )),
                             type_arguments: x
                                 .type_argument
-                                .initial_type_id
+                                .initial_type_id()
                                 .get_abi_type_arguments(
                                     handler,
                                     ctx,
                                     engines,
                                     metadata_types,
                                     concrete_types,
-                                    x.type_argument.type_id,
+                                    x.type_argument.type_id(),
                                     &mut new_metadata_types_to_add,
                                 )?,
                         })
@@ -741,8 +741,8 @@ impl TypeId {
                         engines,
                         metadata_types,
                         concrete_types,
-                        elem_ty.initial_type_id,
-                        elem_ty.type_id,
+                        elem_ty.initial_type_id(),
+                        elem_ty.type_id(),
                         metadata_types_to_add,
                     )?;
 
@@ -751,15 +751,15 @@ impl TypeId {
                     Some(vec![program_abi::TypeApplication {
                         name: "__array_element".to_string(),
                         type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                            elem_ty.initial_type_id.index(),
+                            elem_ty.initial_type_id().index(),
                         )),
-                        type_arguments: elem_ty.initial_type_id.get_abi_type_arguments(
+                        type_arguments: elem_ty.initial_type_id().get_abi_type_arguments(
                             handler,
                             ctx,
                             engines,
                             metadata_types,
                             concrete_types,
-                            elem_ty.type_id,
+                            elem_ty.type_id(),
                             metadata_types_to_add,
                         )?,
                     }])
@@ -775,8 +775,8 @@ impl TypeId {
                         engines,
                         metadata_types,
                         concrete_types,
-                        elem_ty.initial_type_id,
-                        elem_ty.type_id,
+                        elem_ty.initial_type_id(),
+                        elem_ty.type_id(),
                         metadata_types_to_add,
                     )?;
 
@@ -785,15 +785,15 @@ impl TypeId {
                     Some(vec![program_abi::TypeApplication {
                         name: "__slice_element".to_string(),
                         type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                            elem_ty.initial_type_id.index(),
+                            elem_ty.initial_type_id().index(),
                         )),
-                        type_arguments: elem_ty.initial_type_id.get_abi_type_arguments(
+                        type_arguments: elem_ty.initial_type_id().get_abi_type_arguments(
                             handler,
                             ctx,
                             engines,
                             metadata_types,
                             concrete_types,
-                            elem_ty.type_id,
+                            elem_ty.type_id(),
                             metadata_types_to_add,
                         )?,
                     }])
@@ -812,8 +812,8 @@ impl TypeId {
                             engines,
                             metadata_types,
                             concrete_types,
-                            x.initial_type_id,
-                            x.type_id,
+                            x.initial_type_id(),
+                            x.type_id(),
                             &mut new_metadata_types_to_add,
                         )?;
                     }
@@ -826,15 +826,15 @@ impl TypeId {
                             Ok(program_abi::TypeApplication {
                                 name: "__tuple_element".to_string(),
                                 type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                    x.initial_type_id.index(),
+                                    x.initial_type_id().index(),
                                 )),
-                                type_arguments: x.initial_type_id.get_abi_type_arguments(
+                                type_arguments: x.initial_type_id().get_abi_type_arguments(
                                     handler,
                                     ctx,
                                     engines,
                                     metadata_types,
                                     concrete_types,
-                                    x.type_id,
+                                    x.type_id(),
                                     metadata_types_to_add,
                                 )?,
                             })
@@ -867,7 +867,7 @@ impl TypeId {
                             engines,
                             metadata_types,
                             concrete_types,
-                            v.initial_type_id,
+                            v.initial_type_id(),
                             p.type_id,
                             metadata_types_to_add,
                         )?;
@@ -887,13 +887,13 @@ impl TypeId {
             }
             TypeInfo::Alias { .. } => {
                 if let TypeInfo::Alias { ty, .. } = &*type_engine.get(resolved_type_id) {
-                    ty.initial_type_id.get_abi_type_components(
+                    ty.initial_type_id().get_abi_type_components(
                         handler,
                         ctx,
                         engines,
                         metadata_types,
                         concrete_types,
-                        ty.type_id,
+                        ty.type_id(),
                         metadata_types_to_add,
                     )?
                 } else {
@@ -955,7 +955,7 @@ impl TypeId {
                         engines,
                         metadata_types,
                         concrete_types,
-                        v.type_id,
+                        v.type_id(),
                         p.type_id,
                         metadata_types_to_add,
                     )?;
@@ -971,9 +971,9 @@ impl TypeId {
                         Ok(program_abi::TypeApplication {
                             name: "".to_string(),
                             type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                arg.initial_type_id.index(),
+                                arg.initial_type_id().index(),
                             )),
-                            type_arguments: arg.initial_type_id.get_abi_type_arguments(
+                            type_arguments: arg.initial_type_id().get_abi_type_arguments(
                                 handler,
                                 ctx,
                                 engines,
@@ -1132,7 +1132,7 @@ impl TypeId {
                             engines,
                             metadata_types,
                             concrete_types,
-                            arg.initial_type_id,
+                            arg.initial_type_id(),
                             p.type_id,
                         )
                     })
@@ -1211,8 +1211,8 @@ impl TyFunctionDecl {
                             engines,
                             metadata_types,
                             concrete_types,
-                            x.type_argument.initial_type_id,
-                            x.type_argument.type_id,
+                            x.type_argument.initial_type_id(),
+                            x.type_argument.type_id(),
                         )?,
                     })
                 })
@@ -1223,8 +1223,8 @@ impl TyFunctionDecl {
                 engines,
                 metadata_types,
                 concrete_types,
-                self.return_type.initial_type_id,
-                self.return_type.type_id,
+                self.return_type.initial_type_id(),
+                self.return_type.type_id(),
             )?,
             attributes: generate_attributes(&self.attributes),
         })

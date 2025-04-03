@@ -1,13 +1,13 @@
+use crate::capabilities::code_actions::{
+    common::generate_impl::{GenerateImplCodeAction, CONTRACT},
+    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE,
+};
 use lsp_types::{Range, Url};
 use sway_core::{
     language::ty::{self, TyAbiDecl, TyFunctionParameter, TyTraitFn},
     Engines,
 };
-
-use crate::capabilities::code_actions::{
-    common::generate_impl::{GenerateImplCodeAction, CONTRACT},
-    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE,
-};
+use sway_types::Spanned;
 
 pub(crate) struct AbiImplCodeAction<'a> {
     engines: &'a Engines,
@@ -59,10 +59,13 @@ impl AbiImplCodeAction<'_> {
     fn return_type_string(&self, function_decl: &TyTraitFn) -> String {
         let type_engine = self.engines.te();
         // Unit is the implicit return type for ABI functions.
-        if type_engine.get(function_decl.return_type.type_id).is_unit() {
+        if type_engine
+            .get(function_decl.return_type.type_id())
+            .is_unit()
+        {
             String::new()
         } else {
-            format!(" -> {}", function_decl.return_type.span.as_str())
+            format!(" -> {}", function_decl.return_type.span().as_str())
         }
     }
 
@@ -98,7 +101,7 @@ impl AbiImplCodeAction<'_> {
 fn params_string(params: &[TyFunctionParameter]) -> String {
     params
         .iter()
-        .map(|param| format!("{}: {}", param.name, param.type_argument.span.as_str()))
+        .map(|param| format!("{}: {}", param.name, param.type_argument.span().as_str()))
         .collect::<Vec<String>>()
         .join(", ")
 }

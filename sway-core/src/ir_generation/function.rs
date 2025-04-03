@@ -960,8 +960,8 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    targ.type_id,
-                    &targ.span,
+                    targ.type_id(),
+                    &targ.span(),
                 )?;
                 let val = ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
                 Ok(TerminatorValue::new(val, context))
@@ -972,8 +972,8 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    targ.type_id,
-                    &targ.span,
+                    targ.type_id(),
+                    &targ.span(),
                 )?;
                 let val = ConstantContent::get_uint(
                     context,
@@ -984,14 +984,14 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
-                let is_val = !engines.te().get_unaliased(targ.type_id).is_copy_type();
+                let is_val = !engines.te().get_unaliased(targ.type_id()).is_copy_type();
                 let val = ConstantContent::get_bool(context, is_val);
                 Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::IsStrArray => {
                 let targ = type_arguments[0].clone();
                 let is_val = matches!(
-                    &*engines.te().get_unaliased(targ.type_id),
+                    &*engines.te().get_unaliased(targ.type_id()),
                     TypeInfo::StringArray(_) | TypeInfo::StringSlice
                 );
                 let val = ConstantContent::get_bool(context, is_val);
@@ -1003,17 +1003,15 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    targ.type_id,
-                    &targ.span,
+                    targ.type_id(),
+                    &targ.span(),
                 )?;
                 match ir_type.get_content(context) {
                     TypeContent::StringSlice | TypeContent::StringArray(_) => {
                         let val = ConstantContent::get_unit(context);
                         Ok(TerminatorValue::new(val, context))
                     }
-                    _ => Err(CompileError::NonStrGenericType {
-                        span: targ.span.clone(),
-                    }),
+                    _ => Err(CompileError::NonStrGenericType { span: targ.span() }),
                 }
             }
             Intrinsic::ToStrArray => match arguments[0].expression.extract_literal_value() {
@@ -1082,8 +1080,8 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    target_type.type_id,
-                    &target_type.span,
+                    target_type.type_id(),
+                    &target_type.span(),
                 )?;
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -1099,7 +1097,7 @@ impl<'eng> FnCompiler<'eng> {
                 // `T`. This requires an `int_to_ptr` instruction if `T` is a reference type.
                 if engines
                     .te()
-                    .get_unaliased(target_type.type_id)
+                    .get_unaliased(target_type.type_id())
                     .is_copy_type()
                 {
                     let val = self
@@ -1367,8 +1365,8 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    len.type_id,
-                    &len.span,
+                    len.type_id(),
+                    &len.span(),
                 )?;
                 let len_value =
                     ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
@@ -2300,9 +2298,9 @@ impl<'eng> FnCompiler<'eng> {
         match &*te.get(first_argument_expr.return_type) {
             TypeInfo::Ref {
                 referenced_type, ..
-            } => match &*te.get(referenced_type.type_id) {
+            } => match &*te.get(referenced_type.type_id()) {
                 TypeInfo::Array(elem_ty, _) | TypeInfo::Slice(elem_ty) => {
-                    Ok((ptr_to_first_element, elem_ty.type_id))
+                    Ok((ptr_to_first_element, elem_ty.type_id()))
                 }
                 _ => Err(err),
             },
@@ -2585,7 +2583,7 @@ impl<'eng> FnCompiler<'eng> {
             TypeInfo::Ref {
                 ref referenced_type,
                 ..
-            } => Ok(referenced_type.type_id),
+            } => Ok(referenced_type.type_id()),
             _ => Err(CompileError::Internal(
                 "Cannot dereference a non-reference expression.",
                 ast_expr.span.clone(),
@@ -3664,7 +3662,7 @@ impl<'eng> FnCompiler<'eng> {
                 referenced_type, ..
             } = &*self.engines.te().get_unaliased(cur_type_id)
             {
-                cur_type_id = referenced_type.type_id;
+                cur_type_id = referenced_type.type_id();
             }
             let cur_type_info_arc = self.engines.te().get_unaliased(cur_type_id);
             let cur_type_info = &*cur_type_info_arc;
@@ -3696,11 +3694,11 @@ impl<'eng> FnCompiler<'eng> {
                     }
                 }
                 (ProjectionKind::TupleField { index, .. }, TypeInfo::Tuple(field_tys)) => {
-                    cur_type_id = field_tys[*index].type_id;
+                    cur_type_id = field_tys[*index].type_id();
                     gep_indices.push(ConstantContent::get_uint(context, 64, *index as u64));
                 }
                 (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
-                    cur_type_id = elem_ty.type_id;
+                    cur_type_id = elem_ty.type_id();
                     let val = self.compile_expression_to_value(context, md_mgr, index)?;
                     if val.is_terminator {
                         return Ok((Some(val), vec![]));

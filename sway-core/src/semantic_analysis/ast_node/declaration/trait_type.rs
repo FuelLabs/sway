@@ -2,7 +2,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::parsed_id::ParsedDeclId,
@@ -49,11 +49,11 @@ impl ty::TyTraitType {
         let type_engine = engines.te();
 
         let ty = if let Some(mut ty) = ty_opt {
-            ty.type_id = ctx
+            *ty.type_id_mut() = ctx
                 .resolve_type(
                     handler,
-                    ty.type_id,
-                    &ty.span,
+                    ty.type_id(),
+                    &ty.span(),
                     EnforceTypeArguments::No,
                     None,
                 )
