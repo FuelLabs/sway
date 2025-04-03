@@ -79,9 +79,9 @@ pub enum PinnedParseError {
 
 impl GithubRegistryResolver {
     /// Default github organization name that holds the registry git repo.
-    pub const DEFAULT_GITHUB_ORG: &str = "FuelLabs";
+    pub const DEFAULT_GITHUB_ORG: &str = "kayagokalp";
     /// Default name of the repository that holds the registry git repo.
-    pub const DEFAULT_REPO_NAME: &str = "forc.pub-index";
+    pub const DEFAULT_REPO_NAME: &str = "dummy-forc.pub-index";
     /// Default chunking size of the repository that holds registry git repo.
     pub const DEFAULT_CHUNKING_SIZE: usize = 2;
     /// Default branch name for the repository repo.

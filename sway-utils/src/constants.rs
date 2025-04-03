@@ -15,5 +15,6 @@ pub const STRUCT_FIELD_SEPARATOR: &str = ".";
 pub const LIB_ENTRY: &str = "lib.sw";
 pub const MAIN_ENTRY: &str = "main.sw";
 pub const FORC_INIT_MANIFEST_AUTHOR: &str = "FORC_INIT_MANIFEST_AUTHOR";
-pub const DEFAULT_IPFS_GATEWAY_URL: &str = "https://ipfs.io/";
-pub const DEFAULT_REGISTRY_IPFS_GATEWAY_URL: &str = "https://ipfs.forc.pub/";
+pub const DEFAULT_IPFS_GATEWAY_URL: &str = "https://ipfs.io";
+pub const DEFAULT_REGISTRY_IPFS_GATEWAY_URL: &str =
+    "https://olive-average-sturgeon-259.mypinata.cloud";
