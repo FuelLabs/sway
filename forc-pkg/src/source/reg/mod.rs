@@ -317,7 +317,7 @@ impl source::Pin for Source {
                 let pkg_entry = index_file
                     .get(version)
                     .ok_or_else(|| anyhow!("No {} found for {}", version, pkg_name))?;
-                let cid = Cid::from_str(&pkg_entry.source_cid);
+                let cid = Cid::from_str(pkg_entry.source_cid());
                 Ok(cid)
             })
             .await
@@ -408,10 +408,12 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
                 )
             })?;
 
-            let cid = Cid::from_str(&package_entry.source_cid).with_context(|| {
+            let cid = Cid::from_str(package_entry.source_cid()).with_context(|| {
                 format!(
                     "Invalid CID {}v{}: `{}`",
-                    package_entry.name, package_entry.version, package_entry.source_cid
+                    package_entry.name(),
+                    package_entry.version(),
+                    package_entry.source_cid()
                 )
             })?;
             match ipfs_node {

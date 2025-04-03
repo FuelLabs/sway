@@ -41,23 +41,23 @@ pub struct PackageEntry {
     /// This is the actual package name needed in forc.toml file to fetch this
     /// package.
     #[serde(alias = "package_name")]
-    pub(crate) name: String,
+    name: String,
     /// Version of the package.
     /// This is the actual package version needed in forc.toml file to fetch
     /// this package.
-    pub(crate) version: semver::Version,
+    version: semver::Version,
     /// IPFS CID of this specific package's source code. This is pinned by
     /// forc.pub at the time of package publishing and thus will be
     /// available all the time.
-    pub(crate) source_cid: String,
+    source_cid: String,
     /// IPFS CID of this specific package's abi. This is pinned by
     /// forc.pub at the time of package publishing and thus will be
     /// available all the time if this exists in the first place, i.e the
     /// package is a contract.
-    pub(crate) abi_cid: Option<String>,
+    abi_cid: Option<String>,
     /// Dependencies of the current package entry. Can be consumed to enable
     /// parallel fetching by the consumers of this index, mainly forc.
-    pub(crate) dependencies: Vec<PackageDependencyIdentifier>,
+    dependencies: Vec<PackageDependencyIdentifier>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -87,6 +87,26 @@ impl PackageEntry {
             abi_cid,
             dependencies,
         }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn version(&self) -> &semver::Version {
+        &self.version
+    }
+
+    pub fn source_cid(&self) -> &str {
+        &self.source_cid
+    }
+
+    pub fn abi_cid(&self) -> Option<&str> {
+        self.abi_cid.as_deref()
+    }
+
+    pub fn dependencies(&self) -> impl Iterator<Item = &PackageDependencyIdentifier> {
+        self.dependencies.iter()
     }
 }
 
