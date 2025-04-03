@@ -89,22 +89,27 @@ impl PackageEntry {
         }
     }
 
+    /// Returns the name of this `PackageEntry`.
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// Returns the version of this `PackageEntry`.
     pub fn version(&self) -> &semver::Version {
         &self.version
     }
 
+    /// Returns the source cid of this `PackageEntry`.
     pub fn source_cid(&self) -> &str {
         &self.source_cid
     }
 
+    /// Returns the abi cid of this `PackageEntry`.
     pub fn abi_cid(&self) -> Option<&str> {
         self.abi_cid.as_deref()
     }
 
+    /// Returns an iterator over dependencies of this package.
     pub fn dependencies(&self) -> impl Iterator<Item = &PackageDependencyIdentifier> {
         self.dependencies.iter()
     }
@@ -119,10 +124,15 @@ impl PackageDependencyIdentifier {
     }
 }
 impl IndexFile {
+    /// Returns the package entry if the specified version exists.
+    /// Otherwise returns `None`.
     pub fn get(&self, version: &semver::Version) -> Option<&PackageEntry> {
         self.versions.get(version)
     }
 
+    /// Inserts a package into this `IndexFile`
+    /// NOTE: if there is a package with the same version in the index file
+    /// it will get overriden.
     pub fn insert(&mut self, package: PackageEntry) {
         let pkg_version = package.version().clone();
         self.versions.insert(pkg_version, package);

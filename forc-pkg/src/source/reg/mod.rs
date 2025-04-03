@@ -19,8 +19,10 @@ use std::{
     fs,
     path::{Path, PathBuf},
     str::FromStr,
+    time::Duration,
 };
 
+/// Name of the folder containig fetched registry sources.
 pub const REG_DIR_NAME: &str = "registry";
 
 /// A package from the official registry.
@@ -86,6 +88,9 @@ impl GithubRegistryResolver {
     pub const DEFAULT_CHUNKING_SIZE: usize = 2;
     /// Default branch name for the repository repo.
     const DEFAULT_BRANCH_NAME: &str = "master";
+    /// Default timeout for each github look-up request. If exceeded request is
+    /// dropped.
+    const DEFAULT_TIMEOUT_MS: u64 = 10000;
 
     pub fn new(
         repo_org: String,
@@ -454,10 +459,9 @@ where
 
     let github_resolver = GithubRegistryResolver::with_default_github(source.namespace.clone());
 
-    let path = format!(
-        "{}",
-        location_from_root(github_resolver.chunk_size, &source.namespace, pkg_name).display()
-    );
+    let path = location_from_root(github_resolver.chunk_size, &source.namespace, pkg_name)
+        .display()
+        .to_string();
     let index_repo_owner = github_resolver.repo_org();
     let index_repo_name = github_resolver.repo_name();
     let reference = format!("refs/heads/{}", github_resolver.branch_name());
@@ -465,9 +469,17 @@ where
         "https://raw.githubusercontent.com/{index_repo_owner}/{index_repo_name}/{reference}/{path}"
     );
     let client = reqwest::Client::new();
-    let index_response = client.get(github_endpoint).send().await.map_err(|e| {
-        anyhow!("Failed to send request to github to obtain package index file from registry {e}")
-    })?;
+    let timeout_duration = Duration::from_millis(GithubRegistryResolver::DEFAULT_TIMEOUT_MS);
+    let index_response = client
+        .get(github_endpoint)
+        .timeout(timeout_duration)
+        .send()
+        .await
+        .map_err(|e| {
+            anyhow!(
+                "Failed to send request to github to obtain package index file from registry {e}"
+            )
+        })?;
 
     let contents = index_response.text().await?;
     let index_file: IndexFile = serde_json::from_str(&contents).with_context(|| {

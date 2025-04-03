@@ -61,10 +61,12 @@ impl Default for IPFSNode {
 }
 
 impl IPFSNode {
+    /// Returns an IPFSNode configured to use the Fuel-operated IPFS gateway.
     pub fn fuel() -> Self {
         Self::WithUrl(DEFAULT_REGISTRY_IPFS_GATEWAY_URL.to_string())
     }
 
+    /// Returns an IPFSNode configured to use the public IPFS gateway.
     pub fn public() -> Self {
         Self::WithUrl(DEFAULT_IPFS_GATEWAY_URL.to_string())
     }
@@ -186,7 +188,8 @@ impl Source {
         version: &str,
         namespace: &reg::file_location::Namespace,
     ) -> Result<Self> {
-        // TODO: semver parsing does not work for versions like: 0.1 or ^0.1.
+        // TODO: update here once we are supporting non-exact versions (non `x.y.z` versions)
+        // see: https://github.com/FuelLabs/sway/issues/7060
         let semver = semver::Version::parse(version)?;
         let source = reg::Source {
             version: semver,
