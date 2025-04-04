@@ -17,7 +17,9 @@ use either::Either;
 use fuel_abi_types::abi::{program::ProgramABI, unified_program::UnifiedProgramABI};
 use fuel_tx::Receipt;
 use fuels::{
-    accounts::{provider::Provider, wallet::WalletUnlocked},
+    accounts::{
+        provider::Provider, signers::private_key::PrivateKeySigner, wallet::Wallet, ViewOnlyAccount,
+    },
     crypto::SecretKey,
 };
 use fuels_core::types::{transaction::TxPolicies, AssetId};
@@ -96,11 +98,11 @@ async fn setup_connection(
     node: &crate::NodeTarget,
     caller: cmd::call::Caller,
     gas: &Option<forc_tx::Gas>,
-) -> anyhow::Result<(WalletUnlocked, TxPolicies, AssetId)> {
+) -> anyhow::Result<(Wallet, TxPolicies, AssetId)> {
     let node_url = node.get_node_url(&None)?;
     let provider = Provider::connect(node_url).await?;
     let wallet = get_wallet(caller.signing_key, caller.wallet, provider).await?;
-    let provider = wallet.provider().unwrap();
+    let provider = wallet.provider();
     let tx_policies = gas.as_ref().map(Into::into).unwrap_or_default();
     let consensus_parameters = provider.consensus_parameters().await?;
     let base_asset_id = consensus_parameters.base_asset_id();
@@ -132,11 +134,12 @@ async fn get_wallet(
     signing_key: Option<SecretKey>,
     use_wallet: bool,
     provider: Provider,
-) -> Result<WalletUnlocked> {
+) -> Result<Wallet> {
     match (signing_key, use_wallet) {
         (None, false) => {
             let secret_key = SecretKey::from_str(DEFAULT_PRIVATE_KEY).unwrap();
-            let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+            let signer = PrivateKeySigner::new(secret_key);
+            let wallet = Wallet::new(signer, provider);
             forc_tracing::println_warning(&format!(
                 "No signing key or wallet flag provided. Using default signer: 0x{}",
                 wallet.address().hash()
@@ -144,7 +147,8 @@ async fn get_wallet(
             Ok(wallet)
         }
         (Some(secret_key), false) => {
-            let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+            let signer = PrivateKeySigner::new(secret_key);
+            let wallet = Wallet::new(signer, provider);
             forc_tracing::println_warning(&format!(
                 "Using account {} derived from signing key...",
                 wallet.address().hash()
@@ -160,7 +164,8 @@ async fn get_wallet(
             forc_tracing::println_warning(
                 "Signing key is provided while requesting to use forc-wallet. Using signing key...",
             );
-            let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+            let signer = PrivateKeySigner::new(secret_key);
+            let wallet = Wallet::new(signer, provider);
             Ok(wallet)
         }
     }
@@ -238,21 +243,17 @@ pub(crate) mod tests {
         abi = "forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json"
     ));
 
-    pub async fn get_contract_instance(
-    ) -> (TestContract<WalletUnlocked>, ContractId, WalletUnlocked) {
-        // Launch a local network and deploy the contract
-        let mut wallets = launch_custom_provider_and_get_wallets(
-            WalletsConfig::new(
-                Some(1),             /* Single wallet */
-                Some(1),             /* Single coin (UTXO) */
-                Some(1_000_000_000), /* Amount per coin */
-            ),
-            None,
-            None,
-        )
-        .await
-        .unwrap();
-        let wallet = wallets.pop().unwrap();
+    pub async fn get_contract_instance() -> (TestContract<Wallet>, ContractId, Provider, SecretKey)
+    {
+        let secret_key = SecretKey::from_str(DEFAULT_PRIVATE_KEY).unwrap();
+        let signer = PrivateKeySigner::new(secret_key);
+        let coins = setup_single_asset_coins(signer.address(), AssetId::zeroed(), 1, 1_000_000);
+        let provider = setup_test_provider(coins, vec![], None, None)
+            .await
+            .unwrap();
+        let wallet = get_wallet(Some(secret_key), false, provider.clone())
+            .await
+            .unwrap();
 
         let id = Contract::load_from(
             "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types.bin",
@@ -261,10 +262,11 @@ pub(crate) mod tests {
         .unwrap()
         .deploy(&wallet, TxPolicies::default())
         .await
-        .unwrap();
+        .unwrap()
+        .contract_id;
 
         let instance = TestContract::new(id.clone(), wallet.clone());
 
-        (instance, id.into(), wallet)
+        (instance, id.into(), provider, secret_key)
     }
 }

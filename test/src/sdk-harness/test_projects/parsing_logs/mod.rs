@@ -1,5 +1,4 @@
 use fuels::{
-    accounts::wallet::WalletUnlocked,
     prelude::*,
     types::{Bits256, SizedAsciiString},
 };
@@ -9,7 +8,7 @@ abigen!(Contract(
     abi = "test_projects/parsing_logs/out/release/parsing_logs-abi.json"
 ));
 
-async fn get_parsing_logs_instance() -> (ParsingLogsTestContract<WalletUnlocked>, ContractId) {
+async fn get_parsing_logs_instance() -> (ParsingLogsTestContract<Wallet>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/parsing_logs/out/release/parsing_logs.bin",
@@ -18,7 +17,8 @@ async fn get_parsing_logs_instance() -> (ParsingLogsTestContract<WalletUnlocked>
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = ParsingLogsTestContract::new(id.clone(), wallet);
 
     (instance, id.into())

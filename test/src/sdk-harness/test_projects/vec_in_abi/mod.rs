@@ -1,6 +1,4 @@
-use fuels::{
-    accounts::wallet::WalletUnlocked, prelude::*, programs::calls::ContractCall, types::Bits256,
-};
+use fuels::{prelude::*, programs::calls::ContractCall, types::Bits256};
 use std::str::FromStr;
 
 abigen!(Contract(
@@ -8,7 +6,7 @@ abigen!(Contract(
     abi = "test_projects/vec_in_abi/out/release/vec_in_abi-abi.json"
 ));
 
-async fn get_vec_in_abi_instance() -> (VecInAbiTestContract<WalletUnlocked>, ContractId) {
+async fn get_vec_in_abi_instance() -> (VecInAbiTestContract<Wallet>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/vec_in_abi/out/release/vec_in_abi.bin",
@@ -17,7 +15,8 @@ async fn get_vec_in_abi_instance() -> (VecInAbiTestContract<WalletUnlocked>, Con
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = VecInAbiTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
@@ -215,7 +214,7 @@ async fn test_vec_in_vec() -> Result<()> {
 }
 
 async fn test_echo<T>(
-    f: impl Fn(T) -> CallHandler<fuels::accounts::wallet::WalletUnlocked, ContractCall, T>,
+    f: impl Fn(T) -> CallHandler<fuels::accounts::wallet::Wallet, ContractCall, T>,
     input: T,
 ) where
     T: Eq
