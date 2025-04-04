@@ -377,7 +377,7 @@ impl Type {
         // Fetch the field type from the vector of Values.  If the value is a constant int then
         // unwrap it and try to fetch the field type (which will fail for arrays) otherwise (i.e.,
         // not a constant int or not a struct) fetch the array element type, which will fail for
-        // non-arrays.        
+        // non-arrays.
         indices.iter().try_fold(*self, |ty, idx_val| {
             idx_val
                 .get_constant(context)

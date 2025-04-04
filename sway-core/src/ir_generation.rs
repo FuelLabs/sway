@@ -297,6 +297,40 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                             }
                         }
                     }
+                    InstOp::Store {
+                        dst_val_ptr,
+                        stored_val,
+                    } => {
+                        let dst_ty = dst_val_ptr.get_type(ctx).unwrap();
+                        let stored_ty = stored_val.get_type(ctx).unwrap();
+                        if let Some(dst_pointee_ty) = dst_ty.get_pointee_type(ctx) {
+                            // The destination is a pointer type. We need to see if it's a double pointer.
+                            if let Some(dst_pointee_pointee_ty) =
+                                dst_pointee_ty.get_pointee_type(ctx)
+                            {
+                                // We have a double pointer. If just loading once solves our problem, we do that.
+                                if dst_pointee_pointee_ty == stored_ty {
+                                    instrs_to_fix.push(TypeCorrection {
+                                        actual_ty: dst_ty,
+                                        expected_ty: dst_pointee_ty,
+                                        use_instr: instr,
+                                        use_idx: 0,
+                                    });
+                                }
+                            }
+                        } else {
+                            // The destination is not a pointer type, but should've been.
+                            let pointer_to_dst = Type::new_ptr(ctx, dst_ty);
+                            if pointer_to_dst == stored_ty {
+                                instrs_to_fix.push(TypeCorrection {
+                                    actual_ty: dst_ty,
+                                    expected_ty: pointer_to_dst,
+                                    use_instr: instr,
+                                    use_idx: 0,
+                                });
+                            }
+                        }
+                    }
                     _ => (),
                 }
             }
@@ -318,8 +352,8 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
             // The expected type is a pointer to the actual type.
             // If the actual value was just loaded, then we go to the source of the load,
             // otherwise, we store it to a new local and pass the address of that local.
-            let actual_param = use_instr.get_instruction(ctx).unwrap().op.get_operands()[use_idx];
-            if let InstOp::Load(src_ptr) = actual_param.get_instruction(ctx).unwrap().op {
+            let actual_use = use_instr.get_instruction(ctx).unwrap().op.get_operands()[use_idx];
+            if let InstOp::Load(src_ptr) = actual_use.get_instruction(ctx).unwrap().op {
                 use_instr
                     .get_instruction_mut(ctx)
                     .unwrap()
@@ -341,7 +375,7 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                     parent_block,
                     InstOp::Store {
                         dst_val_ptr: new_local,
-                        stored_val: actual_param,
+                        stored_val: actual_use,
                     },
                 );
                 let mut inserter = InstructionInserter::new(
