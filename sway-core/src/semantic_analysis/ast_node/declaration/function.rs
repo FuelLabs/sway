@@ -1,5 +1,6 @@
 mod function_parameter;
 
+use ast_elements::type_parameter::GenericTypeParameter;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -28,15 +29,11 @@ impl ty::TyFunctionDecl {
         decl_id: &ParsedDeclId<FunctionDeclaration>,
     ) -> Result<(), ErrorEmitted> {
         let fn_decl = engines.pe().get_function(decl_id);
-        let _ = ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            fn_decl.name.clone(),
-            Declaration::FunctionDeclaration(*decl_id),
-        );
+        let decl = Declaration::FunctionDeclaration(*decl_id);
+        let _ = ctx.insert_parsed_symbol(handler, engines, fn_decl.name.clone(), decl.clone());
 
         // create a namespace for the function
-        let _ = ctx.scoped(engines, fn_decl.span.clone(), |scoped_ctx| {
+        let _ = ctx.scoped(engines, fn_decl.span.clone(), Some(decl), |scoped_ctx| {
             TyCodeBlock::collect(handler, engines, scoped_ctx, &fn_decl.body)
         });
         Ok(())
@@ -82,6 +79,7 @@ impl ty::TyFunctionDecl {
             kind,
             ..
         } = fn_decl;
+
         let mut return_type = fn_decl.return_type.clone();
 
         let type_engine = ctx.engines.te();
@@ -107,9 +105,9 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(handler, Some(span.clone()), |mut ctx| {
+            .scoped(handler, Some(span.clone()), |ctx| {
                 // Type check the type parameters.
-                let new_type_parameters = TypeParameter::type_check_type_params(
+                let new_type_parameters = GenericTypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
                     type_parameters.clone(),
@@ -137,11 +135,11 @@ impl ty::TyFunctionDecl {
                 })?;
 
                 // type check the return type
-                return_type.type_id = ctx
+                *return_type.type_id_mut() = ctx
                     .resolve_type(
                         handler,
-                        return_type.type_id,
-                        &return_type.span,
+                        return_type.type_id(),
+                        &return_type.span(),
                         EnforceTypeArguments::Yes,
                         None,
                     )
@@ -202,7 +200,7 @@ impl ty::TyFunctionDecl {
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(handler, Some(fn_decl.span.clone()), |mut ctx| {
+            .scoped(handler, Some(fn_decl.span.clone()), |ctx| {
                 let FunctionDeclaration { body, .. } = fn_decl;
 
                 let ty::TyFunctionDecl {
@@ -214,10 +212,10 @@ impl ty::TyFunctionDecl {
 
                 // Insert the previously type checked type parameters into the current namespace.
                 // We insert all type parameter before the constraints because some constraints may depend on the parameters.
-                for p in type_parameters.iter() {
+                for p in type_parameters.iter().filter_map(|x| x.as_type_parameter()) {
                     p.insert_into_namespace_self(handler, ctx.by_ref())?;
                 }
-                for p in type_parameters {
+                for p in type_parameters.iter().filter_map(|x| x.as_type_parameter()) {
                     p.insert_into_namespace_constraints(handler, ctx.by_ref())?;
                 }
 
@@ -236,8 +234,8 @@ impl ty::TyFunctionDecl {
                     .with_help_text(
                         "Function body's return type does not match up with its return type annotation.",
                     )
-                    .with_type_annotation(return_type.type_id)
-                    .with_function_type_annotation(return_type.type_id);
+                    .with_type_annotation(return_type.type_id())
+                    .with_function_type_annotation(return_type.type_id());
 
                 let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, true)
                     .unwrap_or_else(|_err| ty::TyCodeBlock::default());
@@ -245,10 +243,10 @@ impl ty::TyFunctionDecl {
                 ty_fn_decl.body = body;
                 ty_fn_decl.is_type_check_finalized = true;
 
-                return_type.type_id.check_type_parameter_bounds(
+                return_type.type_id().check_type_parameter_bounds(
                     handler,
                     ctx.by_ref(),
-                    &return_type.span,
+                    &return_type.span(),
                     None,
                 )?;
 
@@ -378,14 +376,16 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_argument: TypeArgument {
-                    type_id: engines.te().id_of_u32(),
-                    initial_type_id: engines
-                        .te()
-                        .insert_string_array_without_annotations(&engines, 5),
-                    span: Span::dummy(),
-                    call_path_tree: None,
-                },
+                type_argument: GenericArgument::Type(
+                    ast_elements::type_argument::GenericTypeArgument {
+                        type_id: engines.te().id_of_u32(),
+                        initial_type_id: engines
+                            .te()
+                            .insert_string_array_without_annotations(&engines, 5),
+                        span: Span::dummy(),
+                        call_path_tree: None,
+                    },
+                ),
             },
         ],
         span: Span::dummy(),

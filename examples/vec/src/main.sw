@@ -23,13 +23,35 @@ fn main() {
     let does_not_exist = v.get(100);
     // ...decide here how to handle an out-of-bounds access
     // ANCHOR_END: vec_get_oob
-    // ANCHOR: vec_iterate
+    // ANCHOR: vec_iterate_while
     let mut i = 0;
     while i < v.len() {
         log(v.get(i).unwrap());
         i += 1;
     }
-    // ANCHOR_END: vec_iterate
+    // ANCHOR_END: vec_iterate_while
+    // ANCHOR: vec_iterate_for
+    for elem in v.iter() {
+        log(elem);
+    }
+    // ANCHOR_END: vec_iterate_for
+    // ANCHOR: vec_iterate_for_undefined
+    for elem in v.iter() {
+        log(elem);
+        if elem == 3 {
+            v.push(6); // Modification causes undefined behavior!
+        }
+    }
+    // ANCHOR_END: vec_iterate_for_undefined
+    // ANCHOR: vec_iterate_custom
+    // Start from the end
+    let mut i = v.len() - 1;
+    while 0 <= i {
+        log(v.get(i).unwrap());
+        // Access every second element
+        i -= 2;
+    }
+    // ANCHOR_END: vec_iterate_custom
     // ANCHOR: vec_multiple_data_types
     enum TableCell {
         Int: u64,

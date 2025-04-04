@@ -40,8 +40,7 @@ fn can_read_and_write() -> u64 {
     102
 }
 
-#[storage(read)]
-#[storage(write)]
+#[storage(write, read)]
 fn can_also_read_and_write() -> u64 {
     can_read_and_write()
 }

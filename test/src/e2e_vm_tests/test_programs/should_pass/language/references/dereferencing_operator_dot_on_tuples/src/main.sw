@@ -2,27 +2,37 @@ script;
 
 mod impls;
 use impls::*;
-use core::ops::Eq;
 
-impl<T> Eq for & &T
-    where T: TestInstance + Eq
+impl<T> PartialEq for & &T
+where
+    T: TestInstance + PartialEq,
 {
     fn eq(self, other: Self) -> bool {
         **self == **other
     }
 }
+impl<T> Eq for & &T
+where
+    T: TestInstance + Eq,
+{}
 
-impl<T> Eq for & & &T
-    where T: TestInstance + Eq
+impl<T> PartialEq for & & &T
+where
+    T: TestInstance + PartialEq,
 {
     fn eq(self, other: Self) -> bool {
         ***self == ***other
     }
 }
+impl<T> Eq for & & &T
+where
+    T: TestInstance + Eq,
+{}
 
 #[inline(always)]
 fn dereference_tuple<T>()
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     let mut x = (T::new(), T::different());
 
@@ -88,14 +98,16 @@ fn dereference_tuple<T>()
 
 #[inline(never)]
 fn dereference_tuple_not_inlined<T>()
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     dereference_tuple::<T>()
 }
 
 #[inline(always)]
 fn dereference_tuple_of_refs<T>()
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     let mut x1 = (T::new(), T::different());
     let mut x2 = (T::new(), T::different());
@@ -190,7 +202,8 @@ fn dereference_tuple_of_refs<T>()
 
 #[inline(never)]
 fn dereference_tuple_of_refs_not_inlined<T>()
-    where T: TestInstance + Eq
+where
+    T: TestInstance + Eq,
 {
     dereference_tuple_of_refs::<T>()
 }
@@ -204,8 +217,8 @@ fn test_all_inlined() {
     dereference_tuple::<u32>();
     dereference_tuple::<u64>();
     dereference_tuple::<u256>();
-    dereference_tuple::<[u64;2]>();
-    dereference_tuple::<[u64;0]>();
+    dereference_tuple::<[u64; 2]>();
+    dereference_tuple::<[u64; 0]>();
     dereference_tuple::<Struct>();
     dereference_tuple::<EmptyStruct>();
     dereference_tuple::<str>();
@@ -215,7 +228,7 @@ fn test_all_inlined() {
     dereference_tuple::<b256>();
     dereference_tuple::<raw_ptr>();
     dereference_tuple::<raw_slice>();
-    
+
     dereference_tuple_of_refs::<()>();
     dereference_tuple_of_refs::<bool>();
     dereference_tuple_of_refs::<u8>();
@@ -223,8 +236,8 @@ fn test_all_inlined() {
     dereference_tuple_of_refs::<u32>();
     dereference_tuple_of_refs::<u64>();
     dereference_tuple_of_refs::<u256>();
-    dereference_tuple_of_refs::<[u64;2]>();
-    dereference_tuple_of_refs::<[u64;0]>();
+    dereference_tuple_of_refs::<[u64; 2]>();
+    dereference_tuple_of_refs::<[u64; 0]>();
     dereference_tuple_of_refs::<Struct>();
     dereference_tuple_of_refs::<EmptyStruct>();
     dereference_tuple_of_refs::<str>();
@@ -245,8 +258,8 @@ fn test_not_inlined() {
     dereference_tuple_not_inlined::<u32>();
     dereference_tuple_not_inlined::<u64>();
     dereference_tuple_not_inlined::<u256>();
-    dereference_tuple_not_inlined::<[u64;2]>();
-    dereference_tuple_not_inlined::<[u64;0]>();
+    dereference_tuple_not_inlined::<[u64; 2]>();
+    dereference_tuple_not_inlined::<[u64; 0]>();
     dereference_tuple_not_inlined::<Struct>();
     dereference_tuple_not_inlined::<EmptyStruct>();
     dereference_tuple_not_inlined::<str>();
@@ -256,7 +269,7 @@ fn test_not_inlined() {
     dereference_tuple_not_inlined::<b256>();
     dereference_tuple_not_inlined::<raw_ptr>();
     dereference_tuple_not_inlined::<raw_slice>();
-    
+
     dereference_tuple_of_refs_not_inlined::<()>();
     dereference_tuple_of_refs_not_inlined::<bool>();
     dereference_tuple_of_refs_not_inlined::<u8>();
@@ -264,8 +277,8 @@ fn test_not_inlined() {
     dereference_tuple_of_refs_not_inlined::<u32>();
     dereference_tuple_of_refs_not_inlined::<u64>();
     dereference_tuple_of_refs_not_inlined::<u256>();
-    dereference_tuple_of_refs_not_inlined::<[u64;2]>();
-    dereference_tuple_of_refs_not_inlined::<[u64;0]>();
+    dereference_tuple_of_refs_not_inlined::<[u64; 2]>();
+    dereference_tuple_of_refs_not_inlined::<[u64; 0]>();
     dereference_tuple_of_refs_not_inlined::<Struct>();
     dereference_tuple_of_refs_not_inlined::<EmptyStruct>();
     dereference_tuple_of_refs_not_inlined::<str>();

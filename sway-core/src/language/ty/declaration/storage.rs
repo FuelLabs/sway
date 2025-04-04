@@ -1,24 +1,25 @@
+use crate::{
+    engine_threading::*,
+    ir_generation::storage::get_storage_key_string,
+    language::parsed::StorageDeclaration,
+    transform::{self},
+    ty::*,
+    type_system::*,
+    Namespace,
+};
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
-
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{
-    engine_threading::*,
-    language::{parsed::StorageDeclaration, ty::*},
-    transform::{self},
-    type_system::*,
-    Namespace,
-};
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStorageDecl {
     pub fields: Vec<TyStorageField>,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub storage_keyword: Ident,
 }
 
@@ -108,7 +109,7 @@ impl TyStorageDecl {
                     key_expression,
                     name,
                     ..
-                }) => (type_argument.type_id, key_expression, name),
+                }) => (type_argument.type_id(), key_expression, name),
                 None => {
                     return Err(handler.emit_err(CompileError::StorageFieldDoesNotExist {
                         field_name: first_field.into(),
@@ -164,7 +165,7 @@ impl TyStorageDecl {
 
                             // Everything is fine. Push the storage access descriptor and move to the next field.
 
-                            let current_field_type_id = struct_field.type_argument.type_id;
+                            let current_field_type_id = struct_field.type_argument.type_id();
 
                             access_descriptors.push(TyStorageAccessDescriptor {
                                 name: field.clone(),
@@ -241,15 +242,31 @@ impl Spanned for TyStorageField {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStorageField {
     pub name: Ident,
     pub namespace_names: Vec<Ident>,
     pub key_expression: Option<TyExpression>,
-    pub type_argument: TypeArgument,
+    pub type_argument: GenericArgument,
     pub initializer: TyExpression,
     pub(crate) span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
+}
+
+impl TyStorageField {
+    /// Returns the full name of the [TyStorageField], consisting
+    /// of its name preceded by its full namespace path.
+    /// E.g., "storage::ns1::ns1.name".
+    pub fn full_name(&self) -> String {
+        get_storage_key_string(
+            &self
+                .namespace_names
+                .iter()
+                .map(|i| i.as_str().to_string())
+                .chain(vec![self.name.as_str().to_string()])
+                .collect::<Vec<_>>(),
+        )
+    }
 }
 
 impl EqWithEngines for TyStorageField {}

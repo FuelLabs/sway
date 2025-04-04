@@ -4,7 +4,10 @@ use crate::{
     render::{
         item::{components::*, context::DocImplTrait, documentable_type::DocumentableType},
         link::DocLink,
-        util::format::docstring::{create_preview, DocStrings},
+        util::{
+            format::docstring::{create_preview, DocStrings},
+            strip_generic_suffix,
+        },
     },
 };
 use anyhow::Result;
@@ -19,6 +22,7 @@ use sway_core::{
     Engines,
 };
 use sway_types::BaseIdent;
+use sway_types::Spanned;
 
 mod descriptor;
 pub mod module;
@@ -41,14 +45,14 @@ impl Documentation {
         Documentation::from_ty_module(
             engines.de(),
             &module_info,
-            &typed_program.root,
+            &typed_program.root_module,
             &mut docs,
             &mut impl_traits,
             document_private_items,
         )?;
 
         // this is the same process as before but for submodules
-        for (_, ref typed_submodule) in &typed_program.root.submodules {
+        for (_, ref typed_submodule) in &typed_program.root_module.submodules {
             let attributes = (!typed_submodule.module.attributes.is_empty())
                 .then(|| typed_submodule.module.attributes.to_html_string());
             let module_prefix =
@@ -74,7 +78,7 @@ impl Documentation {
 
         // Add one documentation page for each primitive type that has an implementation.
         for (impl_trait, module_info) in impl_traits.iter() {
-            let impl_for_type = engines.te().get(impl_trait.implementing_for.type_id);
+            let impl_for_type = engines.te().get(impl_trait.implementing_for.type_id());
             if let Ok(Descriptor::Documentable(doc)) =
                 Descriptor::from_type_info(impl_for_type.as_ref(), engines, module_info.clone())
             {
@@ -96,10 +100,12 @@ impl Documentation {
                 DocumentableType::Declared(TyDecl::StructDecl(_))
                 | DocumentableType::Declared(TyDecl::EnumDecl(_))
                 | DocumentableType::Primitive(_) => {
-                    let item_name = doc.item_header.item_name.as_str().to_string();
+                    let item_name = doc.item_header.item_name.clone();
                     for (impl_trait, _) in impl_traits.iter_mut() {
                         // Check if this implementation is for this struct/enum.
-                        if item_name.as_str() == impl_trait.implementing_for.span.as_str() {
+                        if item_name.as_str()
+                            == strip_generic_suffix(impl_trait.implementing_for.span().as_str())
+                        {
                             let module_info_override = if let Some(decl_module_info) =
                                 trait_decls.get(&impl_trait.trait_name.suffix)
                             {
@@ -107,7 +113,7 @@ impl Documentation {
                             } else {
                                 impl_trait.trait_name = impl_trait
                                     .trait_name
-                                    .to_fullpath(engines, &typed_program.root.namespace);
+                                    .to_canonical_path(engines, &typed_program.namespace);
                                 None
                             };
 

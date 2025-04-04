@@ -1,11 +1,3 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     decl_engine::{DeclMapping, ReplaceDecls},
     engine_threading::*,
@@ -15,15 +7,22 @@ use crate::{
     transform,
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyConstantDecl {
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
     pub visibility: Visibility,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub return_type: TypeId,
-    pub type_ascription: TypeArgument,
+    pub type_ascription: GenericArgument,
     pub span: Span,
 }
 

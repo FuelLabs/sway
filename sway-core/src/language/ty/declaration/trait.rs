@@ -1,21 +1,13 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-use monomorphization::MonomorphizeHelper;
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     decl_engine::{
         DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
-        ReplaceFunctionImplementingType,
+        MaterializeConstGenerics, ReplaceFunctionImplementingType,
     },
     engine_threading::*,
     has_changes,
     language::{
         parsed::{self, TraitDeclaration},
+        ty::{TyDecl, TyDeclParsedType},
         CallPath, Visibility,
     },
     semantic_analysis::{
@@ -25,10 +17,16 @@ use crate::{
     transform,
     type_system::*,
 };
+use monomorphization::MonomorphizeHelper;
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
 
-use super::{TyDecl, TyDeclParsedType};
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyTraitDecl {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
@@ -37,7 +35,7 @@ pub struct TyTraitDecl {
     pub items: Vec<TyTraitItem>,
     pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub call_path: CallPath,
     pub span: Span,
 }
@@ -46,7 +44,7 @@ impl TyDeclParsedType for TyTraitDecl {
     type ParsedType = TraitDeclaration;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyTraitInterfaceItem {
     TraitFn(DeclRefTraitFn),
     Constant(DeclRefConstant),
@@ -82,7 +80,7 @@ impl DebugWithEngines for TyTraitInterfaceItem {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyTraitItem {
     Fn(DeclRefFunction),
     Constant(DeclRefConstant),
@@ -165,6 +163,18 @@ impl HashWithEngines for TyTraitDecl {
         items.hash(state, engines);
         supertraits.hash(state, engines);
         visibility.hash(state);
+    }
+}
+
+impl MaterializeConstGenerics for TyTraitDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &Engines,
+        _handler: &Handler,
+        _name: &str,
+        _value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }
 

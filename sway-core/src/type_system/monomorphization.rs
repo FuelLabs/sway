@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -5,16 +7,16 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert},
+    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, MaterializeConstGenerics},
     language::{
-        ty::{self},
+        ty::{self, TyExpression},
         CallPath,
     },
     namespace::{ModulePath, ResolvedDeclaration},
-    semantic_analysis::type_resolve::resolve_type,
+    semantic_analysis::type_resolve::{resolve_type, VisibilityCheck},
     type_system::ast_elements::create_type_id::CreateTypeId,
-    EnforceTypeArguments, Engines, Namespace, SubstTypes, SubstTypesContext, TypeArgument, TypeId,
-    TypeParameter, TypeSubstMap,
+    EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes, SubstTypesContext,
+    TypeId, TypeParameter, TypeSubstMap,
 };
 
 pub(crate) trait MonomorphizeHelper {
@@ -32,7 +34,7 @@ pub(crate) fn prepare_type_subst_map_for_monomorphize<T>(
     engines: &Engines,
     namespace: &Namespace,
     value: &T,
-    type_arguments: &mut [TypeArgument],
+    type_arguments: &mut [GenericArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,
@@ -78,7 +80,7 @@ where
         (0, num_type_args) => {
             let type_arguments_span = type_arguments
                 .iter()
-                .map(|x| x.span.clone())
+                .map(|x| x.span().clone())
                 .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
                 .unwrap_or_else(|| value.name().span());
             Err(handler.emit_err(make_type_arity_mismatch_error(
@@ -97,7 +99,12 @@ where
             let non_parent_type_params = value
                 .type_parameters()
                 .iter()
-                .filter(|x| !x.is_from_parent)
+                .filter(|x| {
+                    let x = x
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
+                    !x.is_from_parent
+                })
                 .count()
                 - adjust_for_trait_decl;
 
@@ -105,7 +112,7 @@ where
             if non_parent_type_params != num_type_args {
                 let type_arguments_span = type_arguments
                     .iter()
-                    .map(|x| x.span.clone())
+                    .map(|x| x.span())
                     .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
                     .unwrap_or_else(|| value.name().span());
 
@@ -118,17 +125,18 @@ where
             }
 
             for type_argument in type_arguments.iter_mut() {
-                type_argument.type_id = resolve_type(
+                *type_argument.type_id_mut() = resolve_type(
                     handler,
                     engines,
                     namespace,
                     mod_path,
-                    type_argument.type_id,
-                    &type_argument.span,
+                    type_argument.type_id(),
+                    &type_argument.span(),
                     enforce_type_arguments,
                     None,
                     self_type,
                     subst_ctx,
+                    VisibilityCheck::Yes,
                 )
                 .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }
@@ -136,11 +144,16 @@ where
                 value
                     .type_parameters()
                     .iter()
-                    .map(|type_param| type_param.type_id)
+                    .map(|type_param| {
+                        let type_param = type_param
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        type_param.type_id
+                    })
                     .collect(),
                 type_arguments
                     .iter()
-                    .map(|type_arg| type_arg.type_id)
+                    .map(|type_arg| type_arg.type_id())
                     .collect(),
             );
             Ok(type_mapping)
@@ -184,7 +197,8 @@ pub(crate) fn monomorphize_with_modpath<T>(
     engines: &Engines,
     namespace: &Namespace,
     value: &mut T,
-    type_arguments: &mut [TypeArgument],
+    type_arguments: &mut [GenericArgument],
+    const_generics: BTreeMap<String, TyExpression>,
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,
@@ -192,7 +206,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
     subst_ctx: &SubstTypesContext,
 ) -> Result<(), ErrorEmitted>
 where
-    T: MonomorphizeHelper + SubstTypes,
+    T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
 {
     let type_mapping = prepare_type_subst_map_for_monomorphize(
         handler,
@@ -207,6 +221,11 @@ where
         subst_ctx,
     )?;
     value.subst(&SubstTypesContext::new(engines, &type_mapping, true));
+
+    for (name, expr) in const_generics.iter() {
+        let _ = value.materialize_const_generics(engines, handler, name, expr);
+    }
+
     Ok(())
 }
 
@@ -220,7 +239,7 @@ pub(crate) fn type_decl_opt_to_type_id(
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
     mod_path: &ModulePath,
-    type_arguments: Option<Vec<TypeArgument>>,
+    type_arguments: Option<Vec<GenericArgument>>,
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
 ) -> Result<TypeId, ErrorEmitted> {
@@ -241,6 +260,7 @@ pub(crate) fn type_decl_opt_to_type_id(
                 namespace,
                 &mut new_copy,
                 &mut type_arguments.unwrap_or_default(),
+                BTreeMap::new(),
                 enforce_type_arguments,
                 span,
                 mod_path,
@@ -271,6 +291,7 @@ pub(crate) fn type_decl_opt_to_type_id(
                 namespace,
                 &mut new_copy,
                 &mut type_arguments.unwrap_or_default(),
+                BTreeMap::new(),
                 enforce_type_arguments,
                 span,
                 mod_path,
@@ -307,7 +328,7 @@ pub(crate) fn type_decl_opt_to_type_id(
             let decl_type = decl_engine.get_type(&decl_id);
 
             if let Some(ty) = &decl_type.ty {
-                ty.type_id
+                ty.type_id()
             } else if let Some(implementing_type) = self_type {
                 type_engine.insert_trait_type(engines, decl_type.name.clone(), implementing_type)
             } else {

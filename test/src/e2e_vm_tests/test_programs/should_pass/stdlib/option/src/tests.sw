@@ -1,6 +1,6 @@
 library;
 
-use core::ops::*;
+use std::ops::*;
 use ::data_structures::*;
 use std::hash::*;
 

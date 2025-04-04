@@ -1,7 +1,4 @@
-use std::hash::{Hash, Hasher};
-
 use super::{ConstantDeclaration, FunctionDeclaration, FunctionParameter};
-
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, DeclRefTrait},
     engine_threading::*,
@@ -9,16 +6,18 @@ use crate::{
     transform,
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
 use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TraitItem {
     TraitFn(ParsedDeclId<TraitFn>),
     Constant(ParsedDeclId<ConstantDeclaration>),
     Type(ParsedDeclId<TraitTypeDeclaration>),
     // to handle parser recovery: Error represents an incomplete trait item
-    Error(Box<[Span]>, ErrorEmitted),
+    Error(Box<[Span]>, #[serde(skip)] ErrorEmitted),
 }
 
 impl EqWithEngines for TraitItem {}
@@ -42,7 +41,7 @@ impl PartialEqWithEngines for TraitItem {
 pub struct TraitDeclaration {
     pub name: Ident,
     pub(crate) type_parameters: Vec<TypeParameter>,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub interface_surface: Vec<TraitItem>,
     pub methods: Vec<ParsedDeclId<FunctionDeclaration>>,
     pub supertraits: Vec<Supertrait>,
@@ -75,7 +74,7 @@ impl Spanned for TraitDeclaration {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Supertrait {
     pub name: CallPath,
     pub decl_ref: Option<DeclRefTrait>,
@@ -114,10 +113,10 @@ impl HashWithEngines for Supertrait {
 pub struct TraitFn {
     pub name: Ident,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
-    pub return_type: TypeArgument,
+    pub return_type: GenericArgument,
 }
 
 impl Spanned for TraitFn {
@@ -129,8 +128,8 @@ impl Spanned for TraitFn {
 #[derive(Debug, Clone)]
 pub struct TraitTypeDeclaration {
     pub name: Ident,
-    pub attributes: transform::AttributesMap,
-    pub ty_opt: Option<TypeArgument>,
+    pub attributes: transform::Attributes,
+    pub ty_opt: Option<GenericArgument>,
     pub span: Span,
 }
 

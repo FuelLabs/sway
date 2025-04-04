@@ -1,12 +1,13 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
+use ast_elements::type_parameter::GenericTypeParameter;
 use parsed_id::ParsedDeclId;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_types::{style::is_upper_camel_case, Ident, Spanned};
+use sway_types::{style::is_upper_camel_case, Ident, Named, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -53,15 +54,11 @@ impl TyTraitDecl {
         decl_id: &ParsedDeclId<TraitDeclaration>,
     ) -> Result<(), ErrorEmitted> {
         let trait_decl = engines.pe().get_trait(decl_id);
-        ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            trait_decl.name.clone(),
-            Declaration::TraitDeclaration(*decl_id),
-        )?;
+        let decl = Declaration::TraitDeclaration(*decl_id);
+        ctx.insert_parsed_symbol(handler, engines, trait_decl.name.clone(), decl.clone())?;
 
         // A temporary namespace for checking within the trait's scope.
-        let _ = ctx.scoped(engines, trait_decl.span.clone(), |scoped_ctx| {
+        let _ = ctx.scoped(engines, trait_decl.span.clone(), Some(decl), |scoped_ctx| {
             trait_decl.interface_surface.iter().for_each(|item| {
                 let _ = TyTraitItem::collect(handler, engines, scoped_ctx, item);
             });
@@ -103,14 +100,14 @@ impl TyTraitDecl {
         // Create a new type parameter for the self type.
         // The span of the `trait_decl` `name` points to the file (use site) in which
         // the trait is getting declared, so we can use it as the `use_site_span`.
-        let self_type_param = TypeParameter::new_self_type(engines, name.span());
+        let self_type_param = GenericTypeParameter::new_self_type(engines, name.span());
         let self_type = self_type_param.type_id;
 
         // A temporary namespace for checking within the trait's scope.
         ctx.with_self_type(Some(self_type))
-            .scoped(handler, Some(span.clone()), |mut ctx| {
+            .scoped(handler, Some(span.clone()), |ctx| {
                 // Type check the type parameters.
-                let new_type_parameters = TypeParameter::type_check_type_params(
+                let new_type_parameters = GenericTypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
                     type_parameters,
@@ -171,6 +168,7 @@ impl TyTraitDecl {
                     CallPath::ident_to_fullpath(name.clone(), ctx.namespace),
                     new_type_parameters.iter().map(|x| x.into()).collect(),
                     self_type,
+                    vec![],
                     &dummy_interface_surface,
                     &span,
                     None,
@@ -239,6 +237,7 @@ impl TyTraitDecl {
                     CallPath::ident_to_fullpath(name.clone(), ctx.namespace()),
                     new_type_parameters.iter().map(|x| x.into()).collect(),
                     self_type,
+                    vec![],
                     &dummy_interface_surface,
                     &span,
                     None,
@@ -267,7 +266,7 @@ impl TyTraitDecl {
                 let typed_trait_decl = ty::TyTraitDecl {
                     name: name.clone(),
                     type_parameters: new_type_parameters,
-                    self_type: self_type_param,
+                    self_type: TypeParameter::Type(self_type_param),
                     interface_surface: new_interface_surface,
                     items: new_items,
                     supertraits,
@@ -340,7 +339,7 @@ impl TyTraitDecl {
         ctx: &TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
-        type_arguments: &[TypeArgument],
+        type_arguments: &[GenericArgument],
     ) -> (InterfaceItemMap, ItemMap, ItemMap) {
         let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
         let mut item_refs: ItemMap = BTreeMap::new();
@@ -393,13 +392,16 @@ impl TyTraitDecl {
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
             type_parameters
                 .iter()
-                .map(|type_param| type_param.type_id)
+                .map(|t| {
+                    let t = t
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
+                    t.type_id
+                })
                 .collect(),
-            type_arguments
-                .iter()
-                .map(|type_arg| type_arg.type_id)
-                .collect(),
+            type_arguments.iter().map(|t| t.type_id()).collect(),
         );
+
         for item in ctx
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
                 type_id,
@@ -481,7 +483,7 @@ impl TyTraitDecl {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         trait_name: &CallPath,
-        type_arguments: &[TypeArgument],
+        type_arguments: &[GenericArgument],
         type_id: TypeId,
     ) {
         let decl_engine = ctx.engines.de();
@@ -502,13 +504,17 @@ impl TyTraitDecl {
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
             type_parameters
                 .iter()
-                .map(|type_param| type_param.type_id)
+                .map(|t| {
+                    let t = t
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
+                    t.type_id
+                })
                 .collect(),
-            type_arguments
-                .iter()
-                .map(|type_arg| type_arg.type_id)
-                .collect(),
+            type_arguments.iter().map(|t| t.type_id()).collect(),
         );
+
+        let mut const_symbols = HashMap::<Ident, ty::TyDecl>::new();
 
         for item in interface_surface.iter() {
             match item {
@@ -527,11 +533,10 @@ impl TyTraitDecl {
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                     let const_decl = decl_engine.get_constant(decl_ref);
-                    let const_name = const_decl.call_path.suffix.clone();
                     all_items.push(TyImplItem::Constant(decl_ref.clone()));
-                    let _ = ctx.insert_symbol(
-                        handler,
-                        const_name.clone(),
+                    let const_name = const_decl.call_path.suffix.clone();
+                    const_symbols.insert(
+                        const_name,
                         ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                             decl_id: *decl_ref.id(),
                         }),
@@ -568,10 +573,24 @@ impl TyTraitDecl {
                         &type_mapping,
                         !ctx.code_block_first_pass(),
                     ));
-                    all_items.push(TyImplItem::Constant(decl_engine.insert(
+                    let const_name = const_decl.name().clone();
+                    let const_has_value = const_decl.value.is_some();
+                    let decl_id = decl_engine.insert(
                         const_decl,
                         decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                    )));
+                    );
+                    all_items.push(TyImplItem::Constant(decl_id.clone()));
+
+                    // If this non-interface item has a value, then we want to overwrite the
+                    // the previously inserted constant symbol from the interface surface.
+                    if const_has_value {
+                        const_symbols.insert(
+                            const_name,
+                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                                decl_id: *decl_id.id(),
+                            }),
+                        );
+                    }
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
                     let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
@@ -588,6 +607,11 @@ impl TyTraitDecl {
             }
         }
 
+        // Insert the constants into the namespace.
+        for (name, decl) in const_symbols.into_iter() {
+            let _ = ctx.insert_symbol(handler, name, decl);
+        }
+
         // Insert the methods of the trait into the namespace.
         // Specifically do not check for conflicting definitions because
         // this is just a temporary namespace for type checking and
@@ -597,6 +621,7 @@ impl TyTraitDecl {
             trait_name.clone(),
             type_arguments.to_vec(),
             type_id,
+            vec![],
             &all_items,
             &trait_name.span(),
             Some(self.span()),

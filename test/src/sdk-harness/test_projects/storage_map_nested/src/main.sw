@@ -7,11 +7,12 @@ struct M {
     v: u64,
 }
 
-impl core::ops::Eq for M {
+impl PartialEq for M {
     fn eq(self, other: Self) -> bool {
         self.u == other.u && self.v == other.v
     }
 }
+impl Eq for M {}
 
 impl Hash for M {
     fn hash(self, ref mut state: Hasher) {
@@ -25,7 +26,7 @@ pub enum E {
     B: b256,
 }
 
-impl core::ops::Eq for E {
+impl PartialEq for E {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (E::A(l), E::A(r)) => l == r,
@@ -34,6 +35,7 @@ impl core::ops::Eq for E {
         }
     }
 }
+impl Eq for E {}
 
 impl Hash for str[4] {
     fn hash(self, ref mut state: Hasher) {

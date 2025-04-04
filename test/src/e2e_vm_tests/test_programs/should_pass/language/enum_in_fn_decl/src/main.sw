@@ -1,4 +1,5 @@
 script;
+
 fn main() -> u64 {
     let a = 255;
 
@@ -6,7 +7,7 @@ fn main() -> u64 {
         Y: bool,
     }
 
-    impl core::ops::Eq for X {
+    impl PartialEq for X {
         fn eq(self, other: Self) -> bool {
             asm(r1: self, r2: other, r3) {
                 eq r3 r2 r1;
@@ -14,8 +15,9 @@ fn main() -> u64 {
             }
         }
     }
+    impl Eq for X {}
 
-    impl core::ops::Ord for X {
+    impl std::ops::Ord for X {
         fn lt(self, other: Self) -> bool {
             asm(r1: self, r2: other, r3) {
                 lt r3 r2 r1;

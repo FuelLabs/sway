@@ -1,6 +1,6 @@
 script;
 
-mod r#enum;
+pub mod r#enum;
 mod utils;
 
 fn main() {

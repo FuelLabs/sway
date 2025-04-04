@@ -1,5 +1,6 @@
 mod abi;
 mod configurable;
+mod const_generic;
 mod constant;
 #[allow(clippy::module_inception)]
 mod declaration;
@@ -16,6 +17,7 @@ mod variable;
 
 pub use abi::*;
 pub use configurable::*;
+pub use const_generic::*;
 pub use constant::*;
 pub use declaration::*;
 pub use function::*;
@@ -29,9 +31,9 @@ pub use trait_type::*;
 pub use type_alias::*;
 pub use variable::*;
 
-use crate::TypeArgument;
+use crate::GenericArgument;
 
 pub trait FunctionSignature {
     fn parameters(&self) -> &Vec<TyFunctionParameter>;
-    fn return_type(&self) -> &TypeArgument;
+    fn return_type(&self) -> &GenericArgument;
 }

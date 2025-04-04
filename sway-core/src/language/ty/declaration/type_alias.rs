@@ -1,22 +1,19 @@
-use std::hash::{Hash, Hasher};
-
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
     engine_threading::*,
-    language::{parsed::TypeAliasDeclaration, CallPath, Visibility},
+    language::{parsed::TypeAliasDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
     transform,
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use sway_types::{Ident, Named, Span, Spanned};
 
-use super::TyDeclParsedType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyTypeAliasDecl {
     pub name: Ident,
     pub call_path: CallPath,
-    pub attributes: transform::AttributesMap,
-    pub ty: TypeArgument,
+    pub attributes: transform::Attributes,
+    pub ty: GenericArgument,
     pub visibility: Visibility,
     pub span: Span,
 }

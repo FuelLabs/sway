@@ -60,7 +60,7 @@ impl<'a, T: Spanned + Named + FunctionSignature> CodeAction<'a, T>
     }
 }
 
-impl<'a, T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'a, T> {
+impl<T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'_, T> {
     /// Formats the return value of the function into a vector of strings.
     fn reverts_section(&self) -> Vec<String> {
         vec![
@@ -93,7 +93,7 @@ impl<'a, T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'a, T> {
             lines.push(self.formatted_list_item(
                 self.engines,
                 Some(param.name.to_string()),
-                param.type_argument.type_id,
+                param.type_argument.type_id(),
             ));
         });
         lines
@@ -104,7 +104,7 @@ impl<'a, T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'a, T> {
         if self
             .engines
             .te()
-            .get(self.decl.return_type().type_id)
+            .get(self.decl.return_type().type_id())
             .is_unit()
         {
             return vec![];
@@ -113,7 +113,7 @@ impl<'a, T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'a, T> {
             String::new(),
             "### Returns".to_string(),
             String::new(),
-            self.formatted_list_item(self.engines, None, self.decl.return_type().type_id),
+            self.formatted_list_item(self.engines, None, self.decl.return_type().type_id()),
         ]
     }
 

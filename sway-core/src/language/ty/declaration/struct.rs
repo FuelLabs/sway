@@ -1,31 +1,32 @@
-use std::{
-    cmp::Ordering,
-    hash::{Hash, Hasher},
-};
-
-use monomorphization::MonomorphizeHelper;
-use sway_types::{Ident, Named, Span, Spanned};
-
 use crate::{
+    decl_engine::MaterializeConstGenerics,
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
-    language::{parsed::StructDeclaration, CallPath, Visibility},
+    language::{
+        parsed::StructDeclaration, ty::TyDeclParsedType, CallPath, CallPathType, Visibility,
+    },
     transform,
     type_system::*,
     Namespace,
 };
+use monomorphization::MonomorphizeHelper;
+use serde::{Deserialize, Serialize};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Named, Span, Spanned};
 
-use super::TyDeclParsedType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStructDecl {
     pub call_path: CallPath,
     pub fields: Vec<TyStructField>,
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl TyDeclParsedType for TyStructDecl {
@@ -96,6 +97,18 @@ impl MonomorphizeHelper for TyStructDecl {
     }
 }
 
+impl MaterializeConstGenerics for TyStructDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &Engines,
+        _handler: &Handler,
+        _name: &str,
+        _value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+}
+
 impl TyStructDecl {
     /// Returns names of the [TyStructField]s of the struct `self` accessible in the given context.
     /// If `is_public_struct_access` is true, only the names of the public fields are returned, otherwise
@@ -122,7 +135,7 @@ impl TyStructDecl {
             .iter()
             .enumerate()
             .find(|(_, field)| field.name == *field_name)
-            .map(|(idx, field)| (idx as u64, field.type_argument.type_id))
+            .map(|(idx, field)| (idx as u64, field.type_argument.type_id()))
     }
 
     /// Returns true if the struct `self` has at least one private field.
@@ -155,14 +168,14 @@ pub struct StructAccessInfo {
 impl StructAccessInfo {
     pub fn get_info(engines: &Engines, struct_decl: &TyStructDecl, namespace: &Namespace) -> Self {
         assert!(
-            struct_decl.call_path.is_absolute,
-            "The call path of the struct declaration must always be absolute."
+            matches!(struct_decl.call_path.callpath_type, CallPathType::Full),
+            "The call path of the struct declaration must always be fully resolved."
         );
 
         let struct_can_be_changed =
             module_can_be_changed(engines, namespace, &struct_decl.call_path.prefixes);
         let is_public_struct_access =
-            !namespace.module_is_submodule_of(engines, &struct_decl.call_path.prefixes, true);
+            !namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
 
         Self {
             struct_can_be_changed,
@@ -182,13 +195,13 @@ impl From<StructAccessInfo> for (bool, bool) {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyStructField {
     pub visibility: Visibility,
     pub name: Ident,
     pub span: Span,
-    pub type_argument: TypeArgument,
-    pub attributes: transform::AttributesMap,
+    pub type_argument: GenericArgument,
+    pub attributes: transform::Attributes,
 }
 
 impl TyStructField {

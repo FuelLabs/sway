@@ -520,7 +520,6 @@ fn f() -> bool {
     // No value returned here. The return path analysis should report an error, even though the 
 }
 
-
 // Check that return path analysis is applied to local impl methods.
 fn g() -> bool {
 
@@ -528,7 +527,7 @@ fn g() -> bool {
         y: bool,
     }
 
-    impl core::ops::Eq for X {
+    impl PartialEq for X {
         fn eq(self, other: Self) -> bool {
 	    if true {
 		return true;

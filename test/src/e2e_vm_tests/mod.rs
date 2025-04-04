@@ -11,7 +11,7 @@ use colored::*;
 use core::fmt;
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::BuildProfile;
-use forc_test::decode_log_data;
+use forc_util::tx_utils::decode_log_data;
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_types::canonical::Input;
 use fuel_vm::prelude::*;
@@ -515,7 +515,7 @@ impl TestContext {
                 if validate_storage_slots {
                     for (name, built_pkg) in &compiled_pkgs {
                         let (result, out) = run_and_capture_output(|| async {
-                            harness::test_json_storage_slots(name, built_pkg)
+                            harness::test_json_storage_slots(name, built_pkg, &suffix)
                         })
                         .await;
                         result?;
@@ -602,7 +602,15 @@ impl TestContext {
                                 )));
                             }
                         }
-                        _ => todo!(),
+                        TestResult::ReturnData(_) => {
+                            todo!("Test result `ReturnData` is currently not implemented.")
+                        }
+                        TestResult::Return(_) => {
+                            todo!("Test result `Return` is currently not implemented.")
+                        }
+                        TestResult::Revert(_) => {
+                            todo!("Test result `Revert` is currently not implemented.")
+                        }
                     },
                     Receipt::ReturnData { data, .. } => match expected_result.unwrap() {
                         TestResult::ReturnData(v) => {
@@ -612,7 +620,15 @@ impl TestContext {
                                 )));
                             }
                         }
-                        _ => todo!(),
+                        TestResult::Result(_) => {
+                            todo!("Test result `Result` is currently not implemented.")
+                        }
+                        TestResult::Return(_) => {
+                            todo!("Test result `Return` is currently not implemented.")
+                        }
+                        TestResult::Revert(_) => {
+                            todo!("Test result `Revert` is currently not implemented.")
+                        }
                     },
                     _ => {}
                 };
@@ -736,9 +752,6 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         .map(|exclude| tests.retained(|t| !exclude.is_match(&t.name)))
         .unwrap_or_default();
 
-    if filter_config.exclude_core {
-        tests.retain(|t| exclude_tests_dependency(t, "core"));
-    }
     if filter_config.exclude_std {
         tests.retain(|t| exclude_tests_dependency(t, "std"));
     }

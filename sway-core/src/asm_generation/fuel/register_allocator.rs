@@ -555,7 +555,6 @@ pub(crate) fn color_interference_graph(
 /// list `self.ops`. The algorithm used is Chaitin's graph-coloring register allocation
 /// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
 /// the algorithm are thoroughly explained in register_allocator.rs.
-
 pub(crate) fn allocate_registers(
     ops: &[Op],
 ) -> Result<AllocatedAbstractInstructionSet, CompileError> {
@@ -715,11 +714,11 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
     let mut cfs_idx_opt = None;
     for (op_idx, op) in ops.iter().enumerate() {
         match &op.opcode {
-            Either::Left(VirtualOp::CFEI(_)) => {
+            Either::Left(VirtualOp::CFEI(..)) => {
                 assert!(cfe_idx_opt.is_none(), "Found more than one stack extension");
                 cfe_idx_opt = Some(op_idx);
             }
-            Either::Left(VirtualOp::CFSI(_)) => {
+            Either::Left(VirtualOp::CFSI(..)) => {
                 assert!(cfs_idx_opt.is_none(), "Found more than one stack shrink");
                 cfs_idx_opt = Some(op_idx);
             }
@@ -729,12 +728,14 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
 
     let cfe_idx = cfe_idx_opt.expect("Function does not have CFEI instruction for locals");
 
-    let Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
-        value: locals_size_bytes,
-    })) = ops[cfe_idx].opcode
+    let Either::Left(VirtualOp::CFEI(
+        VirtualRegister::Constant(ConstantRegister::StackPointer),
+        virt_imm_24,
+    )) = &ops[cfe_idx].opcode
     else {
         panic!("Unexpected opcode");
     };
+    let locals_size_bytes = virt_imm_24.value();
 
     // pad up the locals size in bytes to a word.
     let locals_size_bytes = size_bytes_round_up_to_word_alignment!(locals_size_bytes);
@@ -756,18 +757,26 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
         if op_idx == cfe_idx {
             // This is the CFE instruction, use the new stack size.
             spilled.push(Op {
-                opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
-                    value: new_locals_byte_size,
-                })),
+                opcode: Either::Left(VirtualOp::CFEI(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    VirtualImmediate24::new_unchecked(
+                        new_locals_byte_size.into(),
+                        "new_locals_byte_size must fit in 24 bits",
+                    ),
+                )),
                 comment: op.comment.clone() + &format!(" and {spills_size} bytes for spills"),
                 owning_span: op.owning_span.clone(),
             });
         } else if matches!(cfs_idx_opt, Some(cfs_idx) if cfs_idx == op_idx) {
             // This is the CFS instruction, use the new stack size.
             spilled.push(Op {
-                opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
-                    value: new_locals_byte_size,
-                })),
+                opcode: Either::Left(VirtualOp::CFSI(
+                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                    VirtualImmediate24::new_unchecked(
+                        new_locals_byte_size.into(),
+                        "new_locals_byte_size must fit in 24 bits",
+                    ),
+                )),
                 comment: op.comment.clone() + &format!(" and {spills_size} bytes for spills"),
                 owning_span: op.owning_span.clone(),
             });
@@ -788,9 +797,10 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                     let offset_mov_instr = Op {
                         opcode: Either::Left(VirtualOp::MOVI(
                             VirtualRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate18 {
-                                value: offset_bytes,
-                            },
+                            VirtualImmediate18::new_unchecked(
+                                offset_bytes.into(),
+                                "offset_bytes must fit in 18 bits",
+                            ),
                         )),
                         comment: "[spill/refill]: set offset".to_string(),
                         owning_span: None,
@@ -808,7 +818,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                     inst_list.push(offset_add_instr);
                     (
                         VirtualRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12 { value: 0 },
+                        VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
                     )
                 } else {
                     assert!(offset_bytes <= compiler_constants::TWENTY_FOUR_BITS as u32);
@@ -824,9 +834,10 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                     let offset_upper_mov_instr = Op {
                         opcode: Either::Left(VirtualOp::MOVI(
                             VirtualRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate18 {
-                                value: offset_upper_12,
-                            },
+                            VirtualImmediate18::new_unchecked(
+                                offset_upper_12.into(),
+                                "Upper part of offset must fit in 18 bits",
+                            ),
                         )),
                         comment: "[spill/refill]: compute offset".to_string(),
                         owning_span: None,
@@ -836,7 +847,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                         opcode: Either::Left(VirtualOp::SLLI(
                             VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate12 { value: 12 },
+                            VirtualImmediate12::new_unchecked(12, "twelve must fit in 12 bits"),
                         )),
                         comment: "[spill/refill]: compute offset".to_string(),
                         owning_span: None,
@@ -854,10 +865,11 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                     inst_list.push(offset_add_instr);
                     (
                         VirtualRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12 {
-                            // This will be multiplied by 8 by the VM
-                            value: (offset_lower_12 / 8) as u16,
-                        },
+                        // This will be multiplied by 8 by the VM
+                        VirtualImmediate12::new_unchecked(
+                            (offset_lower_12 / 8).into(),
+                            "Lower part of offset must fit in 12 bits",
+                        ),
                     )
                 }
             }
@@ -872,10 +884,11 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                         opcode: Either::Left(VirtualOp::LW(
                             spilled_use.clone(),
                             VirtualRegister::Constant(ConstantRegister::LocalsBase),
-                            VirtualImmediate12 {
-                                // This will be multiplied by 8 by the VM
-                                value: (offset_bytes / 8) as u16,
-                            },
+                            // This will be multiplied by 8 by the VM
+                            VirtualImmediate12::new_unchecked(
+                                (offset_bytes / 8).into(),
+                                "offset_bytes must fit in 12 bits",
+                            ),
                         )),
                         comment: "[spill/refill]: refill from spill".to_string(),
                         owning_span: None,
@@ -910,10 +923,11 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                         opcode: Either::Left(VirtualOp::SW(
                             VirtualRegister::Constant(ConstantRegister::LocalsBase),
                             spilled_def.clone(),
-                            VirtualImmediate12 {
-                                // This will be multiplied by 8 by the VM
-                                value: (offset_bytes / 8) as u16,
-                            },
+                            // This will be multiplied by 8 by the VM
+                            VirtualImmediate12::new_unchecked(
+                                (offset_bytes / 8).into(),
+                                "offset_bytes must fit in 12 bits",
+                            ),
                         )),
                         comment: "[spill/refill]: spill".to_string(),
                         owning_span: None,

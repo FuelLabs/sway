@@ -10,7 +10,7 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 /// A declaration of contract storage. Only valid within contract contexts.
 /// All values in this struct are mutable and persistent among executions of the same contract deployment.
 pub struct StorageDeclaration {
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub entries: Vec<StorageEntry>,
     pub span: Span,
     pub storage_keyword: Ident,
@@ -79,8 +79,8 @@ impl PartialEqWithEngines for StorageEntry {
 pub struct StorageField {
     pub name: Ident,
     pub key_expression: Option<Expression>,
-    pub attributes: transform::AttributesMap,
-    pub type_argument: TypeArgument,
+    pub attributes: transform::Attributes,
+    pub type_argument: GenericArgument,
     pub span: Span,
     pub initializer: Expression,
 }

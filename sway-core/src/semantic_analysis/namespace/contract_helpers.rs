@@ -4,66 +4,51 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_parse::{lex, Parser};
-use sway_types::{Ident, Spanned};
+use sway_types::{constants::CONTRACT_ID, ProgramId, Spanned};
 
 use crate::{
     language::{
         parsed::{AstNode, AstNodeContent, Declaration, ExpressionKind},
         ty::{TyAstNode, TyAstNodeContent},
-        Visibility,
     },
-    semantic_analysis::{symbol_collection_context::SymbolCollectionContext, TypeCheckContext},
+    semantic_analysis::{
+        namespace::Package, symbol_collection_context::SymbolCollectionContext, TypeCheckContext,
+    },
     transform::to_parsed_lang,
-    Engines, Namespace,
+    Engines, Ident, Namespace,
 };
 
-use super::{lexical_scope::SymbolMap, root::ResolvedDeclaration, Module, Root};
-
-/// `contract_id_value` is injected here via forc-pkg when producing the `dependency_namespace` for a contract which has tests enabled.
-/// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
-///
-/// This will eventually be refactored out of `sway-core` in favor of creating temporary package dependencies for providing these
-/// `CONTRACT_ID`-containing modules: https://github.com/FuelLabs/sway/issues/3077
-pub fn default_with_contract_id(
+/// Factory function for contracts
+pub fn package_with_contract_id(
     engines: &Engines,
-    name: Ident,
-    visibility: Visibility,
+    package_name: Ident,
+    program_id: ProgramId,
     contract_id_value: String,
     experimental: crate::ExperimentalFeatures,
-) -> Result<Module, vec1::Vec1<CompileError>> {
+) -> Result<Package, vec1::Vec1<CompileError>> {
+    let package = Package::new(package_name, None, program_id, true);
     let handler = <_>::default();
-    default_with_contract_id_inner(
-        &handler,
-        engines,
-        name,
-        visibility,
-        contract_id_value,
-        experimental,
-    )
-    .map_err(|_| {
-        let (errors, warnings) = handler.consume();
-        assert!(warnings.is_empty());
+    bind_contract_id_in_root_module(&handler, engines, contract_id_value, package, experimental)
+        .map_err(|_| {
+            let (errors, warnings) = handler.consume();
+            assert!(warnings.is_empty());
 
-        // Invariant: `.value == None` => `!errors.is_empty()`.
-        vec1::Vec1::try_from_vec(errors).unwrap()
-    })
+            // Invariant: `.value == None` => `!errors.is_empty()`.
+            vec1::Vec1::try_from_vec(errors).unwrap()
+        })
 }
 
-fn default_with_contract_id_inner(
+fn bind_contract_id_in_root_module(
     handler: &Handler,
     engines: &Engines,
-    ns_name: Ident,
-    visibility: Visibility,
     contract_id_value: String,
+    package: Package,
     experimental: crate::ExperimentalFeatures,
-) -> Result<Module, ErrorEmitted> {
-    // it would be nice to one day maintain a span from the manifest file, but
-    // we don't keep that around so we just use the span from the generated const decl instead.
-    let mut compiled_constants: SymbolMap = Default::default();
+) -> Result<Package, ErrorEmitted> {
     // this for loop performs a miniature compilation of each const item in the config
     // FIXME(Centril): Stop parsing. Construct AST directly instead!
     // parser config
-    let const_item = format!("pub const CONTRACT_ID: b256 = {contract_id_value};");
+    let const_item = format!("pub const {CONTRACT_ID}: b256 = {contract_id_value};");
     let const_item_len = const_item.len();
     let input_arc = std::sync::Arc::from(const_item);
     let token_stream = lex(handler, &input_arc, 0, const_item_len, None).unwrap();
@@ -73,7 +58,6 @@ fn default_with_contract_id_inner(
     let const_item_span = const_item.span();
 
     // perform the conversions from parser code to parse tree types
-    let name = const_item.name.clone();
     let attributes = Default::default();
     // convert to const decl
     let const_decl_id = to_parsed_lang::item_const_to_constant_declaration(
@@ -104,32 +88,19 @@ fn default_with_contract_id_inner(
         content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl_id)),
         span: const_item_span.clone(),
     };
-    let mut root = Root::from(Module::new(ns_name.clone(), Visibility::Public, None));
-    let mut ns = Namespace::init_root(&mut root);
-
-    let symbol_ctx_ns = Namespace::default();
-    let mut symbol_ctx = SymbolCollectionContext::new(symbol_ctx_ns);
     // This is pretty hacky but that's okay because of this code is being removed pretty soon
+    let mut namespace = Namespace::new(handler, engines, package, false)?;
+    let mut symbol_ctx = SymbolCollectionContext::new(namespace.clone());
     let type_check_ctx =
-        TypeCheckContext::from_namespace(&mut ns, &mut symbol_ctx, engines, experimental);
-    let typed_node = TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap();
-    // get the decl out of the typed node:
-    // we know as an invariant this must be a const decl, as we hardcoded a const decl in
-    // the above `format!`.  if it isn't we report an
-    // error that only constant items are allowed, defensive programming etc...
-    let typed_decl = match typed_node.content {
-        TyAstNodeContent::Declaration(decl) => decl,
-        _ => {
-            return Err(
-                handler.emit_err(CompileError::ContractIdConstantNotAConstDecl {
-                    span: const_item_span,
-                }),
-            );
-        }
-    };
-    compiled_constants.insert(name, ResolvedDeclaration::Typed(typed_decl));
-
-    let mut ret = Module::new(ns_name, visibility, None);
-    ret.current_lexical_scope_mut().items.symbols = compiled_constants;
-    Ok(ret)
+        TypeCheckContext::from_namespace(&mut namespace, &mut symbol_ctx, engines, experimental);
+    // Typecheck the const declaration. This will add the binding in the supplied namespace
+    let type_checked = TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap();
+    if let TyAstNodeContent::Declaration(_) = type_checked.content {
+        Ok(namespace.current_package())
+    } else {
+        Err(handler.emit_err(CompileError::Internal(
+            "Contract ID declaration did not typecheck to a declaration, which should be impossible",
+            const_item_span,
+        )))
+    }
 }

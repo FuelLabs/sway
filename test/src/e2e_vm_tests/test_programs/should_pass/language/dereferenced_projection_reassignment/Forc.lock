@@ -1,0 +1,8 @@
+[[package]]
+name = "dereferenced_projection_reassignment"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-47DFB90E2FE5286E"

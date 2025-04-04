@@ -21,8 +21,8 @@ use sway_core::{
         parsed::{
             AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
             ArrayIndexExpression, AstNode, AstNodeContent, ConfigurableDeclaration,
-            ConstantDeclaration, Declaration, DelineatedPathExpression, EnumDeclaration,
-            EnumVariant, Expression, ExpressionKind, ForLoopExpression,
+            ConstGenericDeclaration, ConstantDeclaration, Declaration, DelineatedPathExpression,
+            EnumDeclaration, EnumVariant, Expression, ExpressionKind, ForLoopExpression,
             FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
             ImplItem, ImplSelfOrTrait, ImportType, IncludeStatement, IntrinsicFunctionExpression,
             LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
@@ -36,8 +36,8 @@ use sway_core::{
         },
         CallPathTree, HasSubmodules, Literal,
     },
-    transform::{AttributeKind, AttributesMap},
-    type_system::{TypeArgument, TypeParameter},
+    transform::Attributes,
+    type_system::{GenericArgument, TypeParameter},
     TraitConstraint, TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
@@ -87,11 +87,11 @@ impl<'a> ParsedTree<'a> {
     }
 }
 
-impl Parse for AttributesMap {
+impl Parse for Attributes {
     fn parse(&self, ctx: &ParseContext) {
-        self.par_iter()
-            .filter(|(kind, ..)| **kind != AttributeKind::DocComment)
-            .flat_map(|(.., attrs)| attrs)
+        self.all_as_slice()
+            .par_iter()
+            .filter(|attribute| !attribute.is_doc_comment())
             .for_each_with(ctx, |ctx, attribute| {
                 ctx.tokens.insert(
                     ctx.ident(&attribute.name),
@@ -131,6 +131,7 @@ impl Parse for Declaration {
             Declaration::AbiDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ConstantDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ConfigurableDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::ConstGenericDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::StorageDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TypeAliasDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TraitTypeDeclaration(decl_id) => decl_id.parse(ctx),
@@ -656,16 +657,27 @@ impl Parse for StructExpressionField {
 
 impl Parse for ArrayExpression {
     fn parse(&self, ctx: &ParseContext) {
-        adaptive_iter(&self.contents, |exp| exp.parse(ctx));
-        if let Some(length_span) = &self.length_span {
-            let ident = Ident::new(length_span.clone());
-            ctx.tokens.insert(
-                ctx.ident(&ident),
-                Token::from_parsed(
-                    ParsedAstToken::Ident(ident.clone()),
-                    SymbolKind::NumericLiteral,
-                ),
-            );
+        match self {
+            ArrayExpression::Explicit {
+                contents,
+                length_span,
+            } => {
+                adaptive_iter(contents, |exp| exp.parse(ctx));
+                if let Some(length_span) = &length_span {
+                    let ident = Ident::new(length_span.clone());
+                    ctx.tokens.insert(
+                        ctx.ident(&ident),
+                        Token::from_parsed(
+                            ParsedAstToken::Ident(ident.clone()),
+                            SymbolKind::NumericLiteral,
+                        ),
+                    );
+                }
+            }
+            ArrayExpression::Repeat { value, length } => {
+                value.parse(ctx);
+                length.parse(ctx);
+            }
         }
     }
 }
@@ -831,7 +843,7 @@ impl Parse for ParsedDeclId<ImplSelfOrTrait> {
         } = &&*ctx
             .engines
             .te()
-            .get(impl_self_or_trait.implementing_for.type_id)
+            .get(impl_self_or_trait.implementing_for.type_id())
         {
             ctx.tokens.insert(
                 ctx.ident(&qualified_call_path.call_path.suffix),
@@ -912,6 +924,19 @@ impl Parse for ParsedDeclId<ConfigurableDeclaration> {
             value.parse(ctx);
         }
         const_decl.attributes.parse(ctx);
+    }
+}
+
+impl Parse for ParsedDeclId<ConstGenericDeclaration> {
+    fn parse(&self, ctx: &ParseContext) {
+        let const_decl = ctx.engines.pe().get_const_generic(self);
+        ctx.tokens.insert(
+            ctx.ident(&const_decl.name),
+            Token::from_parsed(
+                ParsedAstToken::Declaration(Declaration::ConstGenericDeclaration(*self)),
+                SymbolKind::Const,
+            ),
+        );
     }
 }
 
@@ -1058,19 +1083,24 @@ impl Parse for EnumVariant {
 
 impl Parse for TypeParameter {
     fn parse(&self, ctx: &ParseContext) {
-        ctx.tokens.insert(
-            ctx.ident(&self.name),
-            Token::from_parsed(
-                ParsedAstToken::TypeParameter(self.clone()),
-                SymbolKind::TypeParameter,
-            ),
-        );
+        match self {
+            TypeParameter::Type(p) => {
+                ctx.tokens.insert(
+                    ctx.ident(&p.name),
+                    Token::from_parsed(
+                        ParsedAstToken::TypeParameter(self.clone()),
+                        SymbolKind::TypeParameter,
+                    ),
+                );
+            }
+            TypeParameter::Const(_) => {}
+        }
     }
 }
 
-impl Parse for TypeArgument {
+impl Parse for GenericArgument {
     fn parse(&self, ctx: &ParseContext) {
-        let type_info = ctx.engines.te().get(self.type_id);
+        let type_info = ctx.engines.te().get(self.type_id());
         match &*type_info {
             TypeInfo::Array(type_arg, length) => {
                 let ident = Ident::new(length.span());
@@ -1091,7 +1121,7 @@ impl Parse for TypeArgument {
             }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, None);
-                if let Some(tree) = &self.call_path_tree {
+                if let Some(tree) = &self.call_path_tree() {
                     let token =
                         Token::from_parsed(ParsedAstToken::TypeArgument(self.clone()), symbol_kind);
                     collect_call_path_tree(ctx, tree, &token, ctx.tokens);

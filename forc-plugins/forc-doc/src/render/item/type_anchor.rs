@@ -23,19 +23,20 @@ pub(crate) fn render_type_anchor(
     match type_info {
         TypeInfo::Array(ty_arg, len) => {
             let inner = render_type_anchor(
-                (*render_plan.engines.te().get(ty_arg.type_id)).clone(),
+                (*render_plan.engines.te().get(ty_arg.type_id())).clone(),
                 render_plan,
                 current_module_info,
             )?;
+            let len_string = format!("{:?}", render_plan.engines.help_out(len));
             Ok(box_html! {
                 : "[";
                 : inner;
-                : format!("; {}]", len.val());
+                : format!("; {}]", len_string);
             })
         }
         TypeInfo::Slice(ty_arg) => {
             let inner = render_type_anchor(
-                (*render_plan.engines.te().get(ty_arg.type_id)).clone(),
+                (*render_plan.engines.te().get(ty_arg.type_id())).clone(),
                 render_plan,
                 current_module_info,
             )?;
@@ -49,7 +50,7 @@ pub(crate) fn render_type_anchor(
             let mut rendered_args: Vec<_> = Vec::new();
             for ty_arg in ty_args {
                 rendered_args.push(render_type_anchor(
-                    (*render_plan.engines.te().get(ty_arg.type_id)).clone(),
+                    (*render_plan.engines.te().get(ty_arg.type_id())).clone(),
                     render_plan,
                     current_module_info,
                 )?);

@@ -1,13 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-4CD3636B70CDF214'
+name = "recover_path_lib_import"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'recover_path_lib_import'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-4CD3636B70CDF214'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-4CD3636B70CDF214"

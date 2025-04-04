@@ -10,14 +10,11 @@ use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
-use fuels_core::codec::ABIDecoder;
-use fuels_core::types::param_types::ParamType;
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
-use sway_core::asm_generation::ProgramABI;
 use sway_core::BuildTarget;
 use sway_types::Span;
 use tx::consensus_parameters::ConsensusParametersV1;
@@ -151,6 +148,8 @@ pub struct TestOpts {
     pub error_on_warnings: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Profile the compilation process.
+    pub profile: bool,
     /// Output compilation metrics into file.
     pub metrics_outfile: Option<String>,
     /// Set of enabled experimental flags
@@ -228,7 +227,7 @@ impl PackageWithDeploymentToTest {
             .map(|(contract_id, tx)| {
                 // Transact the deployment transaction constructed for this contract dependency.
                 let tx = tx
-                    .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                    .into_ready(gas_price, params.gas_costs(), params.fee_params(), None)
                     .unwrap();
                 interpreter.transact(tx).map_err(anyhow::Error::msg)?;
                 Ok(contract_id)
@@ -245,7 +244,7 @@ impl PackageWithDeploymentToTest {
                 &params,
             );
             let root_contract_tx = root_contract_tx
-                .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                .into_ready(gas_price, params.gas_costs(), params.fee_params(), None)
                 .unwrap();
             // Deploy the root contract.
             interpreter
@@ -453,6 +452,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             release: val.release,
             error_on_warnings: val.error_on_warnings,
             time_phases: val.time_phases,
+            profile: val.profile,
             metrics_outfile: val.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
@@ -476,6 +476,7 @@ impl TestOpts {
             release: self.release,
             error_on_warnings: self.error_on_warnings,
             time_phases: self.time_phases,
+            profile: self.profile,
             metrics_outfile: self.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
@@ -543,7 +544,7 @@ pub struct TestCount {
     pub ignored: usize,
 }
 
-impl<'a> TestFilter<'a> {
+impl TestFilter<'_> {
     fn filter(&self, fn_name: &str) -> bool {
         if self.exact_match {
             fn_name == self.filter_phrase
@@ -667,44 +668,6 @@ fn deployment_transaction(
         .maturity(maturity)
         .finalize_checked(block_height);
     (contract_id, tx)
-}
-
-pub fn decode_log_data(
-    log_id: &str,
-    log_data: &[u8],
-    program_abi: &ProgramABI,
-) -> anyhow::Result<DecodedLog> {
-    let program_abi = match program_abi {
-        ProgramABI::Fuel(fuel_abi) => Some(
-            fuel_abi_types::abi::unified_program::UnifiedProgramABI::from_counterpart(fuel_abi)?,
-        ),
-        _ => None,
-    }
-    .ok_or_else(|| anyhow::anyhow!("only fuelvm is supported for log decoding"))?;
-    // Create type lookup (id, TypeDeclaration)
-    let type_lookup = program_abi
-        .types
-        .iter()
-        .map(|decl| (decl.type_id, decl.clone()))
-        .collect::<HashMap<_, _>>();
-
-    let logged_type_lookup: HashMap<_, _> = program_abi
-        .logged_types
-        .iter()
-        .flatten()
-        .map(|logged_type| (logged_type.log_id.as_str(), logged_type.application.clone()))
-        .collect();
-
-    let type_application = logged_type_lookup
-        .get(&log_id)
-        .ok_or_else(|| anyhow::anyhow!("log id is missing"))?;
-
-    let abi_decoder = ABIDecoder::default();
-    let param_type = ParamType::try_from_type_application(type_application, &type_lookup)?;
-    let decoded_str = abi_decoder.decode_as_debug_str(&param_type, log_data)?;
-    let decoded_log = DecodedLog { value: decoded_str };
-
-    Ok(decoded_log)
 }
 
 /// Build the given package and run its tests after applying the filter provided.

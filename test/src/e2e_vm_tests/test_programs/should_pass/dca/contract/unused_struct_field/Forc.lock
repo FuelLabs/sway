@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-20614473270972F5"
 
 [[package]]
 name = "unused_struct_field"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

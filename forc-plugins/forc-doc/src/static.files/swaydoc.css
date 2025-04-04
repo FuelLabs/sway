@@ -952,6 +952,7 @@ table,
 .search-results .type.trait {
   color: #B78CF2;
 }
+.search-results .type.module,
 .search-results .type.constant {
   color: #D2991D;
 }

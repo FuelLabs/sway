@@ -16,8 +16,10 @@ use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox, Template};
 use std::{collections::BTreeMap, fmt::Write};
 use sway_core::language::ty::{
-    TyEnumVariant, TyImplSelfOrTrait, TyStorageField, TyStructField, TyTraitFn, TyTraitItem,
+    TyConstantDecl, TyEnumVariant, TyFunctionDecl, TyImplSelfOrTrait, TyStorageField,
+    TyStructField, TyTraitFn, TyTraitItem, TyTraitType,
 };
+use sway_types::Spanned;
 
 /// The actual context of the item displayed by [ItemContext].
 /// This uses [ContextType] to determine how to represent the context of an item.
@@ -58,7 +60,7 @@ impl Renderable for Context {
                 for field in fields {
                     let struct_field_id = format!("structfield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        (*render_plan.engines.te().get(field.type_argument.type_id)).clone(),
+                        (*render_plan.engines.te().get(field.type_argument.type_id())).clone(),
                         &render_plan,
                         &self.module_info,
                     );
@@ -70,7 +72,7 @@ impl Renderable for Context {
                                 @ if let Ok(type_anchor) = type_anchor {
                                     : type_anchor;
                                 } else {
-                                    : field.type_argument.span.as_str();
+                                    : field.type_argument.span().as_str();
                                 }
                             }
                         }
@@ -86,7 +88,7 @@ impl Renderable for Context {
                 for field in fields {
                     let storage_field_id = format!("storagefield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        (*render_plan.engines.te().get(field.type_argument.type_id)).clone(),
+                        (*render_plan.engines.te().get(field.type_argument.type_id())).clone(),
                         &render_plan,
                         &self.module_info,
                     );
@@ -98,7 +100,7 @@ impl Renderable for Context {
                                 @ if let Ok(type_anchor) = type_anchor {
                                     : type_anchor;
                                 } else {
-                                    : field.type_argument.span.as_str();
+                                    : field.type_argument.span().as_str();
                                 }
                             }
                         }
@@ -114,7 +116,11 @@ impl Renderable for Context {
                 for variant in variants {
                     let enum_variant_id = format!("variant.{}", variant.name.as_str());
                     let type_anchor = render_type_anchor(
-                        (*render_plan.engines.te().get(variant.type_argument.type_id)).clone(),
+                        (*render_plan
+                            .engines
+                            .te()
+                            .get(variant.type_argument.type_id()))
+                        .clone(),
                         &render_plan,
                         &self.module_info,
                     );
@@ -126,7 +132,7 @@ impl Renderable for Context {
                                 @ if let Ok(type_anchor) = type_anchor {
                                     : type_anchor;
                                 } else {
-                                    : variant.type_argument.span.as_str();
+                                    : variant.type_argument.span().as_str();
                                 }
                             }
                         }
@@ -157,11 +163,11 @@ impl Renderable for Context {
                                 fn_sig,
                                 "{} {},",
                                 param.name.as_str(),
-                                param.type_argument.span.as_str()
+                                param.type_argument.span().as_str()
                             )?;
                         }
                     }
-                    write!(fn_sig, ") -> {}", method.return_type.span.as_str())?;
+                    write!(fn_sig, ") -> {}", method.return_type.span().as_str())?;
                     let multiline = fn_sig.chars().count() >= 60;
                     let fn_sig = format!("fn {}(", method.name);
                     let method_id = format!("tymethod.{}", method.name.as_str());
@@ -191,7 +197,7 @@ impl Renderable for Context {
                                         } else {
                                             : param.name.as_str();
                                             : ": ";
-                                            : param.type_argument.span.as_str();
+                                            : param.type_argument.span().as_str();
                                             : ","
                                         }
                                     }
@@ -210,7 +216,7 @@ impl Renderable for Context {
                                         } else {
                                             : param.name.as_str();
                                             : ": ";
-                                            : param.type_argument.span.as_str();
+                                            : param.type_argument.span().as_str();
                                         }
                                         @ if param.name.as_str()
                                             != method.parameters.last()
@@ -221,9 +227,9 @@ impl Renderable for Context {
                                     }
                                     : ")";
                                 }
-                                @ if !method.return_type.span.as_str().contains(&fn_sig) {
+                                @ if !method.return_type.span().as_str().contains(&fn_sig) {
                                     : " -> ";
-                                    : method.return_type.span.as_str();
+                                    : method.return_type.span().as_str();
                                 }
                             }
                         }
@@ -281,7 +287,7 @@ impl DocImplTrait {
         self.impl_trait
             .trait_type_arguments
             .iter()
-            .map(|arg| arg.span.as_str().to_string())
+            .map(|arg| arg.span().as_str().to_string())
             .collect()
     }
 
@@ -297,7 +303,7 @@ impl DocImplTrait {
     // If the trait name is the same as the declaration's name, it's an inherent implementation.
     // Otherwise, it's a trait implementation.
     pub fn is_inherent(&self) -> bool {
-        self.short_name() == self.impl_trait.implementing_for.span.as_str()
+        self.short_name() == self.impl_trait.implementing_for.span().as_str()
             || self.short_name() == "r#Self"
     }
 }
@@ -559,7 +565,7 @@ impl Renderable for DocImplTrait {
                         }
                         : " for ";
                     }
-                    : implementing_for.span.as_str();
+                    : implementing_for.span().as_str();
                 }
             }
         }
@@ -586,16 +592,29 @@ impl Renderable for DocImplTrait {
 }
 impl Renderable for TyTraitItem {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
-        let item = match self {
-            TyTraitItem::Fn(item_fn) => item_fn,
-            TyTraitItem::Constant(_) => unimplemented!("Constant Trait items not yet implemented"),
-            TyTraitItem::Type(_) => unimplemented!("Type Trait items not yet implemented"),
-        };
-        let method = render_plan.engines.de().get_function(item.id());
-        let attributes = method.attributes.to_html_string();
+        match self {
+            TyTraitItem::Fn(decl_ref) => {
+                let decl = render_plan.engines.de().get_function(decl_ref.id());
+                <TyFunctionDecl as Clone>::clone(&decl).render(render_plan)
+            }
+            TyTraitItem::Constant(ref decl_ref) => {
+                let decl = render_plan.engines.de().get_constant(decl_ref.id());
+                <TyConstantDecl as Clone>::clone(&decl).render(render_plan)
+            }
+            TyTraitItem::Type(ref decl_ref) => {
+                let decl = render_plan.engines.de().get_type(decl_ref.id());
+                <TyTraitType as Clone>::clone(&decl).render(render_plan)
+            }
+        }
+    }
+}
 
-        let mut fn_sig = format!("fn {}(", method.name.as_str());
-        for param in &method.parameters {
+impl Renderable for TyFunctionDecl {
+    fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let attributes = self.attributes.to_html_string();
+
+        let mut fn_sig = format!("fn {}(", self.name.as_str());
+        for param in &self.parameters {
             let mut param_str = String::new();
             if param.is_reference {
                 write!(param_str, "ref ")?;
@@ -610,26 +629,29 @@ impl Renderable for TyTraitItem {
                     fn_sig,
                     "{} {},",
                     param.name.as_str(),
-                    param.type_argument.span.as_str()
+                    param.type_argument.span().as_str()
                 )?;
             }
         }
-        write!(fn_sig, ") -> {}", method.return_type.span.as_str())?;
+        write!(fn_sig, ") -> {}", self.return_type.span().as_str())?;
         let multiline = fn_sig.chars().count() >= 60;
 
-        let method_id = format!("method.{}", method.name.as_str());
+        let method_id = format!("method.{}", self.name.as_str());
 
         let impl_list = box_html! {
-            div(id=format!("method.{}", item.name().as_str()), class="method trait-impl") {
-                        a(href=format!("{IDENTITY}method.{}", item.name().as_str()), class="anchor");
+            div(id=format!("{method_id}"), class="method trait-impl") {
+                        a(href=format!("{IDENTITY}{method_id}"), class="anchor");
                         h4(class="code-header") {
+                            @ if self.visibility.is_public() {
+                                : "pub ";
+                            }
                             : "fn ";
                             a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
-                                : method.name.as_str();
+                                : self.name.as_str();
                             }
                             : "(";
                             @ if multiline {
-                                @ for param in &method.parameters {
+                                @ for param in &self.parameters {
                                     br;
                                     : "    ";
                                     @ if param.is_reference {
@@ -643,14 +665,14 @@ impl Renderable for TyTraitItem {
                                     } else {
                                         : param.name.as_str();
                                         : ": ";
-                                        : param.type_argument.span.as_str();
+                                        : param.type_argument.span().as_str();
                                         : ","
                                     }
                                 }
                                 br;
                                 : ")";
                             } else {
-                                @ for param in &method.parameters {
+                                @ for param in &self.parameters {
                                     @ if param.is_reference {
                                         : "ref";
                                     }
@@ -662,10 +684,10 @@ impl Renderable for TyTraitItem {
                                     } else {
                                         : param.name.as_str();
                                         : ": ";
-                                        : param.type_argument.span.as_str();
+                                        : param.type_argument.span().as_str();
                                     }
                                     @ if param.name.as_str()
-                                        != method.parameters.last()
+                                        != self.parameters.last()
                                         .expect("no last element in trait method parameters list")
                                         .name.as_str() {
                                         : ", ";
@@ -673,13 +695,14 @@ impl Renderable for TyTraitItem {
                                 }
                                 : ")";
                             }
-                            @ if method.span.as_str().contains("->") {
+                            @ if self.span.as_str().contains("->") {
                                 : " -> ";
-                                : method.return_type.span.as_str();
+                                : self.return_type.span().as_str();
                             }
                         }
                     }
-        }.into_string()?;
+        }
+        .into_string()?;
 
         Ok(box_html! {
             @ if !attributes.is_empty() {
@@ -693,6 +716,68 @@ impl Renderable for TyTraitItem {
                 }
             } else {
                 : Raw(impl_list);
+            }
+        })
+    }
+}
+
+impl Renderable for TyTraitType {
+    fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let attributes = self.attributes.to_html_string();
+        let trait_type_id = format!("traittype.{}", self.name.as_str());
+        let contents = box_html! {
+            div(id=format!("{trait_type_id}"), class="type trait-impl") {
+                        a(href=format!("{IDENTITY}{trait_type_id}"), class="anchor");
+                        h4(class="code-header") {
+                            : self.span.as_str();
+                        }
+                    }
+        }
+        .into_string()?;
+
+        Ok(box_html! {
+            @ if !attributes.is_empty() {
+                details(class="swaydoc-toggle method-toggle", open) {
+                    summary {
+                        : Raw(contents);
+                    }
+                    div(class="docblock") {
+                        : Raw(attributes);
+                    }
+                }
+            } else {
+                : Raw(contents);
+            }
+        })
+    }
+}
+
+impl Renderable for TyConstantDecl {
+    fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let attributes = self.attributes.to_html_string();
+        let const_id = format!("const.{}", self.call_path.suffix.as_str());
+        let contents = box_html! {
+            div(id=format!("{const_id}"), class="const trait-impl") {
+                        a(href=format!("{IDENTITY}{const_id}"), class="anchor");
+                        h4(class="code-header") {
+                            : self.span.as_str();
+                        }
+                    }
+        }
+        .into_string()?;
+
+        Ok(box_html! {
+            @ if !attributes.is_empty() {
+                details(class="swaydoc-toggle method-toggle", open) {
+                    summary {
+                        : Raw(contents);
+                    }
+                    div(class="docblock") {
+                        : Raw(attributes);
+                    }
+                }
+            } else {
+                : Raw(contents);
             }
         })
     }

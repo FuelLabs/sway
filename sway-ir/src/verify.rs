@@ -11,12 +11,13 @@ use crate::{
     function::Function,
     instruction::{FuelVmInstruction, InstOp, Predicate},
     irtype::Type,
-    local_var::LocalVar,
     metadata::{MetadataIndex, Metadatum},
     printer,
     value::{Value, ValueDatum},
+    variable::LocalVar,
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
-    BranchToWithArgs, Doc, Module, Pass, PassMutability, ScopedPass, TypeOption, UnaryOpKind,
+    BranchToWithArgs, Doc, GlobalVar, Module, Pass, PassMutability, ScopedPass, TypeOption,
+    UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;
@@ -43,7 +44,7 @@ pub fn create_module_verifier_pass() -> Pass {
     }
 }
 
-impl<'eng> Context<'eng> {
+impl Context<'_> {
     /// Verify the contents of this [`Context`] is valid.
     pub fn verify(self) -> Result<Self, IrError> {
         for (module, _) in &self.modules {
@@ -56,6 +57,16 @@ impl<'eng> Context<'eng> {
     fn verify_module(&self, module: Module) -> Result<(), IrError> {
         for function in module.function_iter(self) {
             self.verify_function(module, function)?;
+        }
+
+        // Check that globals have initializers if they are not mutable.
+        for global in &self.modules[module.0].global_variables {
+            if !global.1.is_mutable(self) && global.1.get_initializer(self).is_none() {
+                let global_name = module.lookup_global_variable_name(self, global.1);
+                return Err(IrError::VerifyGlobalMissingInitializer(
+                    global_name.unwrap_or_else(|| "<unknown>".to_owned()),
+                ));
+            }
         }
         Ok(())
     }
@@ -90,6 +101,18 @@ impl<'eng> Context<'eng> {
                 return Err(IrError::VerifyBlockArgMalformed);
             }
         }
+
+        // Check that locals have initializers if they aren't mutable.
+        // TODO: This check is disabled because we incorrect create
+        //       immutable locals without initializers at many places.
+        // for local in &self.functions[function.0].local_storage {
+        //     if !local.1.is_mutable(self) && local.1.get_initializer(self).is_none() {
+        //         return Err(IrError::VerifyLocalMissingInitializer(
+        //             local.0.to_string(),
+        //             function.get_name(self).to_string(),
+        //         ));
+        //     }
+        // }
 
         for block in function.block_iter(self) {
             self.verify_block(cur_module, function, block)?;
@@ -223,7 +246,7 @@ struct InstructionVerifier<'a, 'eng> {
     cur_block: Block,
 }
 
-impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
+impl InstructionVerifier<'_, '_> {
     fn verify_instructions(&self) -> Result<(), IrError> {
         for ins in self.cur_block.instruction_iter(self.context) {
             let value_content = &self.context.values[ins.0];
@@ -327,6 +350,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                     indices,
                 } => self.verify_get_elem_ptr(&ins, base, elem_ptr_ty, indices)?,
                 InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
+                InstOp::GetGlobal(global_var) => self.verify_get_global(global_var)?,
                 InstOp::GetConfig(_, name) => self.verify_get_config(self.cur_module, name)?,
                 InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                 InstOp::Load(ptr) => self.verify_load(ptr)?,
@@ -362,8 +386,8 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         let val_ty = value
             .get_type(self.context)
             .ok_or(IrError::VerifyBitcastUnknownSourceType)?;
-        if self.type_bit_size(&val_ty).map_or(false, |sz| sz > 64)
-            || self.type_bit_size(ty).map_or(false, |sz| sz > 64)
+        if self.type_bit_size(&val_ty).is_some_and(|sz| sz > 64)
+            || self.type_bit_size(ty).is_some_and(|sz| sz > 64)
         {
             Err(IrError::VerifyBitcastBetweenInvalidTypes(
                 val_ty.as_string(self.context),
@@ -795,7 +819,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             idx_val
                 .get_constant(self.context)
                 .and_then(|const_ref| {
-                    if let ConstantValue::Uint(n) = const_ref.value {
+                    if let ConstantValue::Uint(n) = const_ref.get_content(self.context).value {
                         Some(n)
                     } else {
                         None
@@ -824,6 +848,18 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             .local_storage
             .values()
             .any(|var| var == local_var)
+        {
+            Err(IrError::VerifyGetNonExistentPointer)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn verify_get_global(&self, global_var: &GlobalVar) -> Result<(), IrError> {
+        if !self.context.modules[self.cur_module.0]
+            .global_variables
+            .values()
+            .any(|var| var == global_var)
         {
             Err(IrError::VerifyGetNonExistentPointer)
         } else {

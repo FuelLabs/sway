@@ -1,3 +1,6 @@
+use std::collections::BTreeMap;
+
+use ast_elements::{type_argument::GenericTypeArgument, type_parameter::GenericTypeParameter};
 use itertools::Itertools;
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
@@ -10,7 +13,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, StructAccessInfo, TyDecl, TyScrutinee, TyStructDecl, TyStructField},
-        CallPath,
+        CallPath, CallPathType,
     },
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
@@ -48,9 +51,11 @@ impl TyScrutinee {
                     // are heavily used in code generation, e.g., to generate code for contract
                     // function selection in the `__entry` and sometimes the span does not point
                     // to a "_". But it is always in the code in which the match expression is.
-                    type_id: type_engine.new_placeholder(TypeParameter::new_placeholder(
-                        type_engine.new_unknown(),
-                        span.clone(),
+                    type_id: type_engine.new_placeholder(TypeParameter::Type(
+                        GenericTypeParameter::new_placeholder(
+                            type_engine.new_unknown(),
+                            span.clone(),
+                        ),
                     )),
                     span,
                 };
@@ -82,7 +87,7 @@ impl TyScrutinee {
                     CallPath {
                         prefixes: vec![],
                         suffix: ident.clone(),
-                        is_absolute: false,
+                        callpath_type: CallPathType::Ambiguous,
                     },
                     Scrutinee::Tuple {
                         elems: vec![],
@@ -155,11 +160,7 @@ fn type_check_variable(
     let type_engine = engines.te();
     let decl_engine = engines.de();
 
-    let typed_scrutinee = match ctx
-        .namespace()
-        .resolve_symbol_typed(&Handler::default(), engines, &name, ctx.self_type())
-        .ok()
-    {
+    let typed_scrutinee = match ctx.resolve_symbol(&Handler::default(), &name).ok() {
         // If the name represents a constant, then we turn it into a [ty::TyScrutineeVariant::Constant].
         Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
             let constant_decl = (*decl_engine.get_constant(&decl_id)).clone();
@@ -219,9 +220,7 @@ fn type_check_struct(
     let decl_engine = engines.de();
 
     // find the struct definition from the name
-    let unknown_decl =
-        ctx.namespace()
-            .resolve_symbol_typed(handler, engines, &struct_name, ctx.self_type())?;
+    let unknown_decl = ctx.resolve_symbol(handler, &struct_name)?;
     let struct_id = unknown_decl.to_struct_decl(handler, ctx.engines())?;
     let mut struct_decl = (*decl_engine.get_struct(&struct_id)).clone();
 
@@ -230,6 +229,7 @@ fn type_check_struct(
         handler,
         &mut struct_decl,
         &mut [],
+        BTreeMap::new(),
         EnforceTypeArguments::No,
         &struct_name.span(),
     )?;
@@ -425,7 +425,7 @@ fn type_check_struct(
             instantiation_call_path: CallPath {
                 prefixes: vec![],
                 suffix: struct_name,
-                is_absolute: false,
+                callpath_type: CallPathType::Ambiguous,
             },
         },
     };
@@ -481,26 +481,16 @@ fn type_check_enum(
             let enum_callpath = CallPath {
                 suffix: enum_name,
                 prefixes,
-                is_absolute: call_path.is_absolute,
+                callpath_type: call_path.callpath_type,
             };
             // find the enum definition from the name
-            let unknown_decl = ctx.namespace().resolve_call_path_typed(
-                handler,
-                engines,
-                &enum_callpath,
-                ctx.self_type(),
-            )?;
+            let unknown_decl = ctx.resolve_call_path(handler, &enum_callpath)?;
             let enum_id = unknown_decl.to_enum_id(handler, ctx.engines())?;
             (enum_callpath.span(), enum_id, unknown_decl)
         }
         None => {
             // we may have an imported variant
-            let decl = ctx.namespace().resolve_call_path_typed(
-                handler,
-                engines,
-                &call_path,
-                ctx.self_type(),
-            )?;
+            let decl = ctx.resolve_call_path(handler, &call_path)?;
             if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
                 (call_path.suffix.span(), *enum_ref.id(), decl)
             } else {
@@ -519,6 +509,7 @@ fn type_check_enum(
         handler,
         &mut enum_decl,
         &mut [],
+        BTreeMap::new(),
         EnforceTypeArguments::No,
         &callsite_span,
     )?;
@@ -569,11 +560,13 @@ fn type_check_tuple(
         engines,
         typed_elems
             .iter()
-            .map(|elem| TypeArgument {
-                type_id: elem.type_id,
-                initial_type_id: elem.type_id,
-                span: elem.span.clone(),
-                call_path_tree: None,
+            .map(|elem| {
+                GenericArgument::Type(GenericTypeArgument {
+                    type_id: elem.type_id,
+                    initial_type_id: elem.type_id,
+                    span: elem.span.clone(),
+                    call_path_tree: None,
+                })
             })
             .collect(),
     );

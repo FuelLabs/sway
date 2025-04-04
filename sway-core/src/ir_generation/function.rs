@@ -60,8 +60,8 @@ use std::collections::HashMap;
 /// So in general the methods in [FnCompiler] will return a pointer if they can and will get it, be
 /// forced, into a value if that is desired. All the temporary values are manipulated with simple
 /// loads and stores, rather than anything more complicated like `mem_copy`s.
-
-// Wrapper around Value to enforce distinction between terminating and non-terminating values.
+///
+/// Wrapper around Value to enforce distinction between terminating and non-terminating values.
 struct TerminatorValue {
     value: Value,
     is_terminator: bool,
@@ -105,8 +105,9 @@ pub(crate) struct FnCompiler<'eng> {
 }
 
 fn to_constant(_s: &mut FnCompiler<'_>, context: &mut Context, value: u64) -> Value {
-    let needed_size = Constant::new_uint(context, 64, value);
-    Value::new_constant(context, needed_size)
+    let needed_size = ConstantContent::new_uint(context, 64, value);
+    let c = Constant::unique(context, needed_size);
+    Value::new_constant(context, c)
 }
 
 fn save_to_local_return_ptr(
@@ -210,7 +211,9 @@ impl<'eng> FnCompiler<'eng> {
             let v = loop {
                 let ast_node = match ast_nodes.next() {
                     Some(ast_node) => ast_node,
-                    None => break TerminatorValue::new(Constant::get_unit(context), context),
+                    None => {
+                        break TerminatorValue::new(ConstantContent::get_unit(context), context)
+                    }
                 };
                 match fn_compiler.compile_ast_node(context, md_mgr, ast_node) {
                     // 'Some' indicates an implicit return or a diverging expression, so break.
@@ -256,6 +259,9 @@ impl<'eng> FnCompiler<'eng> {
                 }
                 ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { .. }) => {
                     unreachable!()
+                }
+                ty::TyDecl::ConstGenericDecl(_) => {
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.engines.de().get_enum(decl_id);
@@ -329,7 +335,7 @@ impl<'eng> FnCompiler<'eng> {
                 if val
                     .value
                     .get_type(context)
-                    .map_or(false, |ty| ty.is_ptr(context))
+                    .is_some_and(|ty| ty.is_ptr(context))
                 {
                     let load_val = self.current_block.append(context).load(val.value);
                     TerminatorValue::new(load_val, context)
@@ -400,7 +406,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .ptr_to_int(string_data, int_ty)
             .add_metadatum(context, span_md_idx);
-        let len_val = Constant::get_uint(context, 64, string_len);
+        let len_val = ConstantContent::get_uint(context, 64, string_len);
 
         // a slice is a pointer and a length
         let field_types = vec![int_ty, int_ty];
@@ -477,7 +483,8 @@ impl<'eng> FnCompiler<'eng> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match &ast_expr.expression {
             ty::TyExpressionVariant::Literal(Literal::String(s)) => {
-                let string_data = Constant::get_string(context, s.as_str().as_bytes().to_vec());
+                let string_data =
+                    ConstantContent::get_string(context, s.as_str().as_bytes().to_vec());
                 let string_len = s.as_str().len() as u64;
                 self.compile_string_slice(context, span_md_idx, string_data, string_len)
             }
@@ -542,13 +549,31 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::ConfigurableExpression {
                 decl: const_decl, ..
             } => self.compile_config_expr(context, const_decl, span_md_idx),
+            ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                let value = decl.value.as_ref().unwrap();
+                self.compile_expression(context, md_mgr, value)
+            }
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..
             } => self.compile_var_expr(context, call_path, name, span_md_idx),
-            ty::TyExpressionVariant::Array {
+            ty::TyExpressionVariant::ArrayExplicit {
                 elem_type,
                 contents,
-            } => self.compile_array_expr(context, md_mgr, *elem_type, contents, span_md_idx),
+            } => {
+                self.compile_array_explicit_expr(context, md_mgr, *elem_type, contents, span_md_idx)
+            }
+            ty::TyExpressionVariant::ArrayRepeat {
+                elem_type,
+                value,
+                length,
+            } => self.compile_array_repeat_expr(
+                context,
+                md_mgr,
+                *elem_type,
+                value,
+                length,
+                span_md_idx,
+            ),
             ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
                 self.compile_array_index(context, md_mgr, prefix, index, span_md_idx)
             }
@@ -639,7 +664,7 @@ impl<'eng> FnCompiler<'eng> {
             ),
             ty::TyExpressionVariant::AbiCast { span, .. } => {
                 let span_md_idx = md_mgr.span_to_md(context, span);
-                let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
+                let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
                 Ok(TerminatorValue::new(val, context))
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
@@ -660,11 +685,17 @@ impl<'eng> FnCompiler<'eng> {
                     span_md_idx,
                 )
             }
-            ty::TyExpressionVariant::IntrinsicFunction(kind) => {
-                self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
-            }
+            ty::TyExpressionVariant::IntrinsicFunction(kind) => self.compile_intrinsic_function(
+                context,
+                md_mgr,
+                kind,
+                ast_expr.span.clone(),
+                ast_expr.return_type,
+            ),
             ty::TyExpressionVariant::AbiName(_) => {
-                let val = Value::new_constant(context, Constant::new_unit(context));
+                let c = ConstantContent::new_unit(context);
+                let c = Constant::unique(context, c);
+                let val = Value::new_constant(context, c);
                 Ok(TerminatorValue::new(val, context))
             }
             ty::TyExpressionVariant::UnsafeDowncast {
@@ -869,6 +900,7 @@ impl<'eng> FnCompiler<'eng> {
             span: _,
         }: &ty::TyIntrinsicFunctionKind,
         span: Span,
+        return_type: TypeId,
     ) -> Result<TerminatorValue, CompileError> {
         fn store_key_in_local_mem(
             compiler: &mut FnCompiler,
@@ -919,7 +951,7 @@ impl<'eng> FnCompiler<'eng> {
                     &exp.span,
                 )?;
                 self.compile_expression_to_value(context, md_mgr, exp)?;
-                let val = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
+                let val = ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
                 Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::SizeOfType => {
@@ -928,10 +960,10 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    targ.type_id,
-                    &targ.span,
+                    targ.type_id(),
+                    &targ.span(),
                 )?;
-                let val = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
+                let val = ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
                 Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::SizeOfStr => {
@@ -940,10 +972,10 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    targ.type_id,
-                    &targ.span,
+                    targ.type_id(),
+                    &targ.span(),
                 )?;
-                let val = Constant::get_uint(
+                let val = ConstantContent::get_uint(
                     context,
                     64,
                     ir_type.get_string_len(context).unwrap_or_default(),
@@ -952,17 +984,17 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
-                let is_val = !engines.te().get_unaliased(targ.type_id).is_copy_type();
-                let val = Constant::get_bool(context, is_val);
+                let is_val = !engines.te().get_unaliased(targ.type_id()).is_copy_type();
+                let val = ConstantContent::get_bool(context, is_val);
                 Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::IsStrArray => {
                 let targ = type_arguments[0].clone();
                 let is_val = matches!(
-                    &*engines.te().get_unaliased(targ.type_id),
+                    &*engines.te().get_unaliased(targ.type_id()),
                     TypeInfo::StringArray(_) | TypeInfo::StringSlice
                 );
-                let val = Constant::get_bool(context, is_val);
+                let val = ConstantContent::get_bool(context, is_val);
                 Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::AssertIsStrArray => {
@@ -971,22 +1003,21 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    targ.type_id,
-                    &targ.span,
+                    targ.type_id(),
+                    &targ.span(),
                 )?;
                 match ir_type.get_content(context) {
                     TypeContent::StringSlice | TypeContent::StringArray(_) => {
-                        let val = Constant::get_unit(context);
+                        let val = ConstantContent::get_unit(context);
                         Ok(TerminatorValue::new(val, context))
                     }
-                    _ => Err(CompileError::NonStrGenericType {
-                        span: targ.span.clone(),
-                    }),
+                    _ => Err(CompileError::NonStrGenericType { span: targ.span() }),
                 }
             }
             Intrinsic::ToStrArray => match arguments[0].expression.extract_literal_value() {
                 Some(Literal::String(span)) => {
-                    let val = Constant::get_string(context, span.as_str().as_bytes().to_vec());
+                    let val =
+                        ConstantContent::get_string(context, span.as_str().as_bytes().to_vec());
                     Ok(TerminatorValue::new(val, context))
                 }
                 _ => unreachable!(),
@@ -1022,6 +1053,7 @@ impl<'eng> FnCompiler<'eng> {
 
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
+
                 let tx_field_id_constant = compile_constant_expression_to_constant(
                     engines,
                     context,
@@ -1031,7 +1063,7 @@ impl<'eng> FnCompiler<'eng> {
                     None,
                     &arguments[1],
                 )?;
-                let tx_field_id = match tx_field_id_constant.value {
+                let tx_field_id = match tx_field_id_constant.get_content(context).value {
                     ConstantValue::Uint(n) => n,
                     _ => {
                         return Err(CompileError::Internal(
@@ -1048,8 +1080,8 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    target_type.type_id,
-                    &target_type.span,
+                    target_type.type_id(),
+                    &target_type.span(),
                 )?;
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -1065,7 +1097,7 @@ impl<'eng> FnCompiler<'eng> {
                 // `T`. This requires an `int_to_ptr` instruction if `T` is a reference type.
                 if engines
                     .te()
-                    .get_unaliased(target_type.type_id)
+                    .get_unaliased(target_type.type_id())
                     .is_copy_type()
                 {
                     let val = self
@@ -1333,10 +1365,11 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    len.type_id,
-                    &len.span,
+                    len.type_id(),
+                    &len.span(),
                 )?;
-                let len_value = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
+                let len_value =
+                    ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
 
                 let lhs = &arguments[0];
                 let count = &arguments[1];
@@ -1415,7 +1448,7 @@ impl<'eng> FnCompiler<'eng> {
                 let message_id_val = self
                     .messages_types_map
                     .get(&arguments[1].return_type)
-                    .map(|&msg_id| Constant::get_uint(context, 64, *msg_id as u64))
+                    .map(|&msg_id| ConstantContent::get_uint(context, 64, *msg_id as u64))
                     .ok_or_else(|| {
                         CompileError::Internal(
                             "Unable to determine ID for smo instance.",
@@ -1444,7 +1477,8 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx);
 
                 /* Third operand: the size of the message data */
-                let user_message_size_val = Constant::get_uint(context, 64, user_message_size);
+                let user_message_size_val =
+                    ConstantContent::get_uint(context, 64, user_message_size);
 
                 /* Fourth operand: the amount of coins to send */
                 let coins = return_on_termination_or_extract!(self.compile_expression_to_value(
@@ -1553,13 +1587,12 @@ impl<'eng> FnCompiler<'eng> {
                 let uint64 = Type::get_uint64(context);
 
                 // let cap = 1024;
-                let cap = Value::new_constant(
-                    context,
-                    Constant {
-                        ty: uint64,
-                        value: ConstantValue::Uint(1024),
-                    },
-                );
+                let c = ConstantContent {
+                    ty: uint64,
+                    value: ConstantValue::Uint(1024),
+                };
+                let c = Constant::unique(context, c);
+                let cap = Value::new_constant(context, c);
 
                 // let ptr = asm(cap: cap) {
                 //  aloc cap;
@@ -1585,8 +1618,9 @@ impl<'eng> FnCompiler<'eng> {
                 let ptr_u8 = Type::new_ptr(context, Type::get_uint8(context));
                 let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_u8);
 
-                let len = Constant::new_uint(context, 64, 0);
-                let len = Value::new_constant(context, len);
+                let len = ConstantContent::new_uint(context, 64, 0);
+                let len_c = Constant::unique(context, len);
+                let len = Value::new_constant(context, len_c);
                 let buffer = self.compile_to_encode_buffer(context, ptr, cap, len)?;
                 Ok(TerminatorValue::new(buffer, context))
             }
@@ -1617,13 +1651,12 @@ impl<'eng> FnCompiler<'eng> {
                     assert!(len.get_type(context).unwrap().is_uint64(context));
 
                     let uint64 = Type::get_uint64(context);
-                    let step = Value::new_constant(
-                        context,
-                        Constant {
-                            ty: uint64,
-                            value: ConstantValue::Uint(step),
-                        },
-                    );
+                    let step = ConstantContent {
+                        ty: uint64,
+                        value: ConstantValue::Uint(step),
+                    };
+                    let step = Constant::unique(context, step);
+                    let step = Value::new_constant(context, step);
                     current_block
                         .append(context)
                         .binary_op(BinaryOpKind::Add, len, step)
@@ -1647,13 +1680,12 @@ impl<'eng> FnCompiler<'eng> {
                     let _ = current_block.append(context).store(addr, item);
 
                     let uint64 = Type::get_uint64(context);
-                    let step = Value::new_constant(
-                        context,
-                        Constant {
-                            ty: uint64,
-                            value: ConstantValue::Uint(1),
-                        },
-                    );
+                    let step = ConstantContent {
+                        ty: uint64,
+                        value: ConstantValue::Uint(1),
+                    };
+                    let step = Constant::unique(context, step);
+                    let step = Value::new_constant(context, step);
                     current_block
                         .append(context)
                         .binary_op(BinaryOpKind::Add, len, step)
@@ -1679,13 +1711,12 @@ impl<'eng> FnCompiler<'eng> {
 
                     let _ = current_block.append(context).store(addr, item);
 
-                    let step = Value::new_constant(
-                        context,
-                        Constant {
-                            ty: uint64,
-                            value: ConstantValue::Uint(8),
-                        },
-                    );
+                    let step = ConstantContent {
+                        ty: uint64,
+                        value: ConstantValue::Uint(8),
+                    };
+                    let step = Constant::unique(context, step);
+                    let step = Value::new_constant(context, step);
                     current_block
                         .append(context)
                         .binary_op(BinaryOpKind::Add, len, step)
@@ -1702,7 +1733,8 @@ impl<'eng> FnCompiler<'eng> {
                     // save to local and offset
                     let item_ptr = save_to_local_return_ptr(s, context, item)?;
 
-                    let offset_value = Constant::new_uint(context, 64, offset);
+                    let offset_value = ConstantContent::new_uint(context, 64, offset);
+                    let offset_value = Constant::unique(context, offset_value);
                     let offset_value = Value::new_constant(context, offset_value);
                     let item_ptr = calc_addr_as_ptr(
                         &mut s.current_block,
@@ -1791,7 +1823,8 @@ impl<'eng> FnCompiler<'eng> {
                     let u8 = Type::get_uint8(context);
                     let ptr_u8 = Type::new_ptr(context, u8);
 
-                    let two = Constant::new_uint(context, 64, 2);
+                    let two = ConstantContent::new_uint(context, 64, 2);
+                    let two = Constant::unique(context, two);
                     let two = Value::new_constant(context, two);
                     let new_cap_part =
                         s.current_block
@@ -2174,7 +2207,59 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::Slice => self.compile_intrinsic_slice(arguments, context, md_mgr),
             Intrinsic::ElemAt => self.compile_intrinsic_elem_at(arguments, context, md_mgr),
+            Intrinsic::Transmute => {
+                self.compile_intrinsic_transmute(arguments, return_type, context, md_mgr, &span)
+            }
         }
+    }
+
+    fn compile_intrinsic_transmute(
+        &mut self,
+        arguments: &[ty::TyExpression],
+        return_type: TypeId,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        span: &Span,
+    ) -> Result<TerminatorValue, CompileError> {
+        assert!(arguments.len() == 1);
+
+        let te = self.engines.te();
+        let de = self.engines.de();
+
+        let return_type_ir_type = convert_resolved_type_id(te, de, context, return_type, span)?;
+        let return_type_ir_type_ptr = Type::new_ptr(context, return_type_ir_type);
+
+        let first_argument_expr = &arguments[0];
+        let first_argument_value = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
+        );
+        let first_argument_type = first_argument_value
+            .get_type(context)
+            .expect("transmute first argument type not found");
+        let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value)?;
+
+        // check IR sizes match
+        let first_arg_size = first_argument_type.size(context).in_bytes();
+        let return_type_size = return_type_ir_type.size(context).in_bytes();
+        if first_arg_size != return_type_size {
+            return Err(CompileError::Internal(
+                "Types size do not match",
+                span.clone(),
+            ));
+        }
+
+        let u64 = Type::get_uint64(context);
+        let first_argument_ptr = self
+            .current_block
+            .append(context)
+            .ptr_to_int(first_argument_ptr, u64);
+        let first_argument_ptr = self
+            .current_block
+            .append(context)
+            .int_to_ptr(first_argument_ptr, return_type_ir_type_ptr);
+
+        let final_value = self.current_block.append(context).load(first_argument_ptr);
+        Ok(TerminatorValue::new(final_value, context))
     }
 
     fn ptr_to_first_element(
@@ -2213,9 +2298,9 @@ impl<'eng> FnCompiler<'eng> {
         match &*te.get(first_argument_expr.return_type) {
             TypeInfo::Ref {
                 referenced_type, ..
-            } => match &*te.get(referenced_type.type_id) {
+            } => match &*te.get(referenced_type.type_id()) {
                 TypeInfo::Array(elem_ty, _) | TypeInfo::Slice(elem_ty) => {
-                    Ok((ptr_to_first_element, elem_ty.type_id))
+                    Ok((ptr_to_first_element, elem_ty.type_id()))
                 }
                 _ => Err(err),
             },
@@ -2482,7 +2567,7 @@ impl<'eng> FnCompiler<'eng> {
 
         let ptr_as_int = if ref_value
             .get_type(context)
-            .map_or(false, |ref_value_type| ref_value_type.is_ptr(context))
+            .is_some_and(|ref_value_type| ref_value_type.is_ptr(context))
         {
             // We are dereferencing a reference variable and we got a pointer to it.
             // To get the address the reference is pointing to we need to load the value.
@@ -2498,7 +2583,7 @@ impl<'eng> FnCompiler<'eng> {
             TypeInfo::Ref {
                 ref referenced_type,
                 ..
-            } => Ok(referenced_type.type_id),
+            } => Ok(referenced_type.type_id()),
             _ => Err(CompileError::Internal(
                 "Cannot dereference a non-reference expression.",
                 ast_expr.span.clone(),
@@ -2604,7 +2689,7 @@ impl<'eng> FnCompiler<'eng> {
         let u64_ty = Type::get_uint64(context);
 
         let user_args_val = match compiled_args.len() {
-            0 => Constant::get_uint(context, 64, 0),
+            0 => ConstantContent::get_uint(context, 64, 0),
             1 => {
                 // The single arg doesn't need to be put into a struct.
                 let arg0 = compiled_args[0];
@@ -2957,7 +3042,7 @@ impl<'eng> FnCompiler<'eng> {
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
         let false_value = match ast_else {
-            None => TerminatorValue::new(Constant::get_unit(context), context),
+            None => TerminatorValue::new(ConstantContent::get_unit(context), context),
             Some(expr) => self.compile_expression_to_value(context, md_mgr, expr)?,
         };
         let false_block_end = self.current_block;
@@ -3160,7 +3245,7 @@ impl<'eng> FnCompiler<'eng> {
         );
 
         self.current_block = final_block;
-        let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
+        let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
         Ok(TerminatorValue::new(val, context))
     }
 
@@ -3242,11 +3327,16 @@ impl<'eng> FnCompiler<'eng> {
             Ok(TerminatorValue::new(val, context))
         } else if let Some(val) = self.function.get_arg(context, name.as_str()) {
             Ok(TerminatorValue::new(val, context))
-        } else if let Some(const_val) = self
+        } else if let Some(global_val) = self
             .module
-            .get_global_constant(context, &call_path.as_vec_string())
+            .get_global_variable(context, &call_path.as_vec_string())
         {
-            Ok(TerminatorValue::new(const_val, context))
+            let val = self
+                .current_block
+                .append(context)
+                .get_global(global_val)
+                .add_metadatum(context, span_md_idx);
+            Ok(TerminatorValue::new(val, context))
         } else if self
             .module
             .get_config(context, &call_path.suffix.to_string())
@@ -3477,63 +3567,10 @@ impl<'eng> FnCompiler<'eng> {
                     // A non-aggregate; use a direct `store`.
                     lhs_val
                 } else {
-                    // Create a GEP by following the chain of LHS indices. We use a scan which is
-                    // essentially a map with context, which is the parent type id for the current field.
-                    let mut gep_indices = Vec::<Value>::new();
-                    let mut cur_type_id = *base_type;
-                    // TODO-IG: Add support for projections being references themselves.
-                    for idx_kind in indices.iter() {
-                        let cur_type_info_arc = self.engines.te().get_unaliased(cur_type_id);
-                        let cur_type_info = &*cur_type_info_arc;
-                        match (idx_kind, cur_type_info) {
-                            (
-                                ProjectionKind::StructField { name: idx_name },
-                                TypeInfo::Struct(decl_ref),
-                            ) => {
-                                let struct_decl = self.engines.de().get_struct(decl_ref);
-
-                                match struct_decl.get_field_index_and_type(idx_name) {
-                                    None => {
-                                        return Err(CompileError::InternalOwned(
-                                            format!(
-                                            "Unknown field name \"{idx_name}\" for struct \"{}\" \
-                                                    in reassignment.",
-                                            struct_decl.call_path.suffix.as_str(),
-                                        ),
-                                            idx_name.span(),
-                                        ))
-                                    }
-                                    Some((field_idx, field_type_id)) => {
-                                        cur_type_id = field_type_id;
-                                        gep_indices
-                                            .push(Constant::get_uint(context, 64, field_idx));
-                                    }
-                                }
-                            }
-                            (
-                                ProjectionKind::TupleField { index, .. },
-                                TypeInfo::Tuple(field_tys),
-                            ) => {
-                                cur_type_id = field_tys[*index].type_id;
-                                gep_indices.push(Constant::get_uint(context, 64, *index as u64));
-                            }
-                            (
-                                ProjectionKind::ArrayIndex { index, .. },
-                                TypeInfo::Array(elem_ty, _),
-                            ) => {
-                                cur_type_id = elem_ty.type_id;
-                                let val = return_on_termination_or_extract!(
-                                    self.compile_expression_to_value(context, md_mgr, index)?
-                                );
-                                gep_indices.push(val);
-                            }
-                            _ => {
-                                return Err(CompileError::Internal(
-                                    "Unknown field in reassignment.",
-                                    idx_kind.span(),
-                                ))
-                            }
-                        }
+                    let (terminator, gep_indices) =
+                        self.compile_indices(context, md_mgr, *base_type, indices)?;
+                    if let Some(terminator) = terminator {
+                        return Ok(terminator);
                     }
 
                     // Using the type of the RHS for the GEP, rather than the final inner type of the
@@ -3553,7 +3590,10 @@ impl<'eng> FnCompiler<'eng> {
                         .add_metadatum(context, span_md_idx)
                 }
             }
-            ty::TyReassignmentTarget::Deref(dereference_exp) => {
+            ty::TyReassignmentTarget::DerefAccess {
+                exp: dereference_exp,
+                indices,
+            } => {
                 let TyExpressionVariant::Deref(reference_exp) = &dereference_exp.expression else {
                     return Err(CompileError::Internal(
                         "Left-hand side of the reassignment must be dereferencing.",
@@ -3564,7 +3604,36 @@ impl<'eng> FnCompiler<'eng> {
                 let (ptr, _) =
                     self.compile_deref_up_to_ptr(context, md_mgr, reference_exp, span_md_idx)?;
 
-                return_on_termination_or_extract!(ptr)
+                if indices.is_empty() {
+                    // A non-aggregate;
+                    return_on_termination_or_extract!(ptr)
+                } else {
+                    let (terminator, gep_indices) = self.compile_indices(
+                        context,
+                        md_mgr,
+                        dereference_exp.return_type,
+                        indices,
+                    )?;
+                    if let Some(terminator) = terminator {
+                        return Ok(terminator);
+                    }
+
+                    // Using the type of the RHS for the GEP, rather than the final inner type of the
+                    // aggregate, but getting the latter is a bit of a pain, though the `scan` above knew it.
+                    // The program is type checked and the IR types on the LHS and RHS are the same.
+                    let field_type = rhs.get_type(context).ok_or_else(|| {
+                        CompileError::Internal(
+                            "Failed to determine type of reassignment.",
+                            dereference_exp.span.clone(),
+                        )
+                    })?;
+
+                    // Create the GEP.
+                    self.current_block
+                        .append(context)
+                        .get_elem_ptr(ptr.value, field_type, gep_indices)
+                        .add_metadatum(context, span_md_idx)
+                }
             }
         };
 
@@ -3573,11 +3642,152 @@ impl<'eng> FnCompiler<'eng> {
             .store(lhs_ptr, rhs)
             .add_metadatum(context, span_md_idx);
 
-        let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
+        let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
         Ok(TerminatorValue::new(val, context))
     }
 
-    fn compile_array_expr(
+    fn compile_indices(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        base_type: TypeId,
+        indices: &[ProjectionKind],
+    ) -> Result<(Option<TerminatorValue>, Vec<Value>), CompileError> {
+        // Create a GEP by following the chain of LHS indices. We use a scan which is
+        // essentially a map with context, which is the parent type id for the current field.
+        let mut gep_indices = Vec::<Value>::new();
+        let mut cur_type_id = base_type;
+        for idx_kind in indices.iter() {
+            while let TypeInfo::Ref {
+                referenced_type, ..
+            } = &*self.engines.te().get_unaliased(cur_type_id)
+            {
+                cur_type_id = referenced_type.type_id();
+            }
+            let cur_type_info_arc = self.engines.te().get_unaliased(cur_type_id);
+            let cur_type_info = &*cur_type_info_arc;
+            match (idx_kind, cur_type_info) {
+                (
+                    ProjectionKind::StructField {
+                        name: idx_name,
+                        field_to_access: _,
+                    },
+                    TypeInfo::Struct(decl_ref),
+                ) => {
+                    let struct_decl = self.engines.de().get_struct(decl_ref);
+
+                    match struct_decl.get_field_index_and_type(idx_name) {
+                        None => {
+                            return Err(CompileError::InternalOwned(
+                                format!(
+                                    "Unknown field name \"{idx_name}\" for struct \"{}\" \
+                                        in reassignment.",
+                                    struct_decl.call_path.suffix.as_str(),
+                                ),
+                                idx_name.span(),
+                            ))
+                        }
+                        Some((field_idx, field_type_id)) => {
+                            cur_type_id = field_type_id;
+                            gep_indices.push(ConstantContent::get_uint(context, 64, field_idx));
+                        }
+                    }
+                }
+                (ProjectionKind::TupleField { index, .. }, TypeInfo::Tuple(field_tys)) => {
+                    cur_type_id = field_tys[*index].type_id();
+                    gep_indices.push(ConstantContent::get_uint(context, 64, *index as u64));
+                }
+                (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
+                    cur_type_id = elem_ty.type_id();
+                    let val = self.compile_expression_to_value(context, md_mgr, index)?;
+                    if val.is_terminator {
+                        return Ok((Some(val), vec![]));
+                    }
+                    gep_indices.push(val.value);
+                }
+                _ => {
+                    return Err(CompileError::Internal(
+                        "Unknown field in reassignment.",
+                        idx_kind.span(),
+                    ))
+                }
+            }
+        }
+
+        Ok((None, gep_indices))
+    }
+
+    fn compile_array_repeat_expr(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        elem_type: TypeId,
+        value_expr: &ty::TyExpression,
+        length_expr: &ty::TyExpression,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<TerminatorValue, CompileError> {
+        let elem_type = convert_resolved_typeid_no_span(
+            self.engines.te(),
+            self.engines.de(),
+            context,
+            elem_type,
+        )?;
+
+        let length_as_u64 = compile_constant_expression_to_constant(
+            self.engines,
+            context,
+            md_mgr,
+            self.module,
+            None,
+            Some(self),
+            length_expr,
+        )?;
+        // SAFETY: Safe by the type-checking, that only allows u64 as the array length
+        let length_as_u64 = length_as_u64.get_content(context).as_uint().unwrap();
+        let array_type = Type::new_array(context, elem_type, length_as_u64);
+
+        let temp_name = self.lexical_map.insert_anon();
+        let array_local_var = self
+            .function
+            .new_local_var(context, temp_name, array_type, None, false)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let array_value = self
+            .current_block
+            .append(context)
+            .get_local(array_local_var)
+            .add_metadatum(context, span_md_idx);
+
+        let value_value = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, value_expr)?
+        );
+
+        if length_as_u64 > 5 {
+            self.compile_array_init_loop(
+                context,
+                array_value,
+                elem_type,
+                value_value,
+                length_as_u64,
+                span_md_idx,
+            );
+        } else {
+            for i in 0..length_as_u64 {
+                let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
+                    array_value,
+                    elem_type,
+                    i,
+                );
+                self.current_block
+                    .append(context)
+                    .store(gep_val, value_value)
+                    .add_metadatum(context, span_md_idx);
+            }
+        }
+
+        Ok(TerminatorValue::new(array_value, context))
+    }
+
+    fn compile_array_explicit_expr(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
@@ -3634,67 +3844,19 @@ impl<'eng> FnCompiler<'eng> {
                 compiled_elems_iter.all(|elem| {
                     elem.get_constant(context)
                         .expect("Constant expression must evaluate to a constant IR value")
-                        .eq(
-                            context,
-                            c.get_constant(context)
-                                .expect("Constant expression must evaluate to a constant IR value"),
-                        )
+                        == c.get_constant(context)
+                            .expect("Constant expression must evaluate to a constant IR value")
                 })
             });
             if let Some(const_initializer) = const_initialiser_opt {
-                // Create a loop to insert const_initializer to all array elements.
-                let loop_block = self
-                    .function
-                    .create_block(context, Some("array_init_loop".into()));
-                // The loop begins with 0.
-                let zero = Constant::new_uint(context, 64, 0);
-                let zero = Value::new_constant(context, zero);
-                // Branch to the loop block, passing the initial iteration value.
-                self.current_block
-                    .append(context)
-                    .branch(loop_block, vec![zero]);
-                // Add a block argument (for the IV) to the loop block.
-                let index_var_index = loop_block.new_arg(context, Type::get_uint64(context));
-                let index = loop_block.get_arg(context, index_var_index).unwrap();
-                // Create an exit block.
-                let exit_block = self
-                    .function
-                    .create_block(context, Some("array_init_exit".into()));
-                // Start building the loop block.
-                self.current_block = loop_block;
-                let gep_val = self.current_block.append(context).get_elem_ptr(
+                self.compile_array_init_loop(
+                    context,
                     array_value,
                     elem_type,
-                    vec![index],
+                    *const_initializer,
+                    contents.len() as u64,
+                    span_md_idx,
                 );
-                self.current_block
-                    .append(context)
-                    .store(gep_val, *const_initializer)
-                    .add_metadatum(context, span_md_idx);
-                // Increment index by one.
-                let one = Constant::new_uint(context, 64, 1);
-                let one = Value::new_constant(context, one);
-                let index_inc =
-                    self.current_block
-                        .append(context)
-                        .binary_op(BinaryOpKind::Add, index, one);
-                // continue = index_inc < contents.len()
-                let len = Constant::new_uint(context, 64, contents.len() as u64);
-                let len = Value::new_constant(context, len);
-                let r#continue =
-                    self.current_block
-                        .append(context)
-                        .cmp(Predicate::LessThan, index_inc, len);
-                // if continue then loop_block else exit_block.
-                self.current_block.append(context).conditional_branch(
-                    r#continue,
-                    loop_block,
-                    exit_block,
-                    vec![index_inc],
-                    vec![],
-                );
-                // Continue compilation in the exit block.
-                self.current_block = exit_block;
             } else {
                 // Insert each element separately.
                 for (idx, elem_value) in compiled_elems.iter().enumerate() {
@@ -3730,6 +3892,74 @@ impl<'eng> FnCompiler<'eng> {
         Ok(TerminatorValue::new(array_value, context))
     }
 
+    // initialize an array with all elements equals to "init_value",
+    // which should be "Copy", concept that sway still don´t have.
+    fn compile_array_init_loop(
+        &mut self,
+        context: &mut Context,
+        array_value: Value,
+        elem_type: Type,
+        init_value: Value,
+        length: u64,
+        span_md_idx: Option<MetadataIndex>,
+    ) {
+        // Create a loop to insert const_initializer to all array elements.
+        let loop_block = self
+            .function
+            .create_block(context, Some("array_init_loop".into()));
+        // The loop begins with 0.
+        let zero = ConstantContent::new_uint(context, 64, 0);
+        let zero = Constant::unique(context, zero);
+        let zero = Value::new_constant(context, zero);
+        // Branch to the loop block, passing the initial iteration value.
+        self.current_block
+            .append(context)
+            .branch(loop_block, vec![zero]);
+        // Add a block argument (for the IV) to the loop block.
+        let index_var_index = loop_block.new_arg(context, Type::get_uint64(context));
+        let index = loop_block.get_arg(context, index_var_index).unwrap();
+        // Create an exit block.
+        let exit_block = self
+            .function
+            .create_block(context, Some("array_init_exit".into()));
+        // Start building the loop block.
+        self.current_block = loop_block;
+        let gep_val =
+            self.current_block
+                .append(context)
+                .get_elem_ptr(array_value, elem_type, vec![index]);
+        self.current_block
+            .append(context)
+            .store(gep_val, init_value)
+            .add_metadatum(context, span_md_idx);
+        // Increment index by one.
+        let one = ConstantContent::new_uint(context, 64, 1);
+        let one = Constant::unique(context, one);
+        let one = Value::new_constant(context, one);
+        let index_inc = self
+            .current_block
+            .append(context)
+            .binary_op(BinaryOpKind::Add, index, one);
+        // continue = index_inc < contents.len()
+        let len = ConstantContent::new_uint(context, 64, length);
+        let len = Constant::unique(context, len);
+        let len = Value::new_constant(context, len);
+        let r#continue =
+            self.current_block
+                .append(context)
+                .cmp(Predicate::LessThan, index_inc, len);
+        // if continue then loop_block else exit_block.
+        self.current_block.append(context).conditional_branch(
+            r#continue,
+            loop_block,
+            exit_block,
+            vec![index_inc],
+            vec![],
+        );
+        // Continue compilation in the exit block.
+        self.current_block = exit_block;
+    }
+
     fn compile_array_index(
         &mut self,
         context: &mut Context,
@@ -3757,7 +3987,7 @@ impl<'eng> FnCompiler<'eng> {
         let index_expr_span = index_expr.span.clone();
 
         // Perform a bounds check if the array index is a constant int.
-        if let Ok(Constant {
+        if let Ok(ConstantContent {
             value: ConstantValue::Uint(constant_value),
             ..
         }) = compile_constant_expression_to_constant(
@@ -3768,11 +3998,13 @@ impl<'eng> FnCompiler<'eng> {
             None,
             Some(self),
             index_expr,
-        ) {
+        )
+        .map(|c| c.get_content(context))
+        {
             let count = array_type.get_array_len(context).unwrap();
-            if constant_value >= count {
+            if *constant_value >= count {
                 return Err(CompileError::ArrayOutOfBounds {
-                    index: constant_value,
+                    index: *constant_value,
                     count,
                     span: index_expr_span,
                 });
@@ -3944,7 +4176,7 @@ impl<'eng> FnCompiler<'eng> {
             &enum_decl.variants,
         )?;
         let tag_value =
-            Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
+            ConstantContent::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
 
         // Start with a temporary local struct and insert the tag.
         let temp_name = self.lexical_map.insert_anon();
@@ -4066,7 +4298,7 @@ impl<'eng> FnCompiler<'eng> {
         if fields.is_empty() {
             // This is a Unit.  We're still debating whether Unit should just be an empty tuple in
             // the IR or not... it is a special case for now.
-            let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
+            let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
             Ok(TerminatorValue::new(val, context))
         } else {
             let mut init_values = Vec::with_capacity(fields.len());
@@ -4121,12 +4353,10 @@ impl<'eng> FnCompiler<'eng> {
                     .get_elem_ptr_with_idx(tuple_value, field_type, idx as u64)
                     .add_metadatum(context, span_md_idx)
             })
-            .ok_or_else(|| {
-                CompileError::Internal(
-                    "Invalid (non-aggregate?) tuple type for TupleElemAccess.",
-                    span,
-                )
-            })?;
+            .ok_or(CompileError::Internal(
+                "Invalid (non-aggregate?) tuple type for TupleElemAccess.",
+                span,
+            ))?;
         Ok(TerminatorValue::new(val, context))
     }
 
@@ -4206,7 +4436,7 @@ impl<'eng> FnCompiler<'eng> {
                     let init_type = self.engines.te().get_unaliased(init_expr.return_type);
                     if initializer_val
                         .get_type(context)
-                        .map_or(false, |ty| ty.is_ptr(context))
+                        .is_some_and(|ty| ty.is_ptr(context))
                         && (init_type.is_copy_type() || init_type.is_reference())
                     {
                         // It's a pointer to a copy type, or a reference behind a pointer. We need to dereference it.
@@ -4281,6 +4511,10 @@ impl<'eng> FnCompiler<'eng> {
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
+        // Use the `struct_field_names` to get a field id that is unique even for zero-sized values that live in the same slot.
+        // We calculate the `unique_field_id` early, here, before the `storage_filed_names` get consumed by `get_storage_key` below.
+        let unique_field_id = get_storage_field_id(&storage_field_names, &struct_field_names);
+
         // Get the actual storage key as a `Bytes32` as well as the offset, in words,
         // within the slot. The offset depends on what field of the top level storage
         // variable is being accessed.
@@ -4313,10 +4547,7 @@ impl<'eng> FnCompiler<'eng> {
             // plus the offset, in number of slots, computed above. The offset within this
             // particular slot is the remaining offset, in words.
             (
-                add_to_b256(
-                    get_storage_key(storage_field_names.clone(), key.clone()),
-                    offset_in_slots,
-                ),
+                add_to_b256(get_storage_key(storage_field_names, key), offset_in_slots),
                 offset_remaining,
             )
         };
@@ -4360,7 +4591,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Store the offset as the second field in the `StorageKey` struct
-        let offset_within_slot_val = Constant::get_uint(context, 64, offset_within_slot);
+        let offset_within_slot_val = ConstantContent::get_uint(context, 64, offset_within_slot);
         let gep_1_val =
             self.current_block
                 .append(context)
@@ -4371,7 +4602,6 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Store the field identifier as the third field in the `StorageKey` struct
-        let unique_field_id = get_storage_field_id(storage_field_names, struct_field_names); // use the struct_field_names to get a field id that is unique even for zero-sized values that live in the same slot
         let field_id = convert_literal_to_value(context, &Literal::B256(unique_field_id.into()))
             .add_metadatum(context, span_md_idx);
         let gep_2_val =

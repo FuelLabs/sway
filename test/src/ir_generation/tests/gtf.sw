@@ -37,6 +37,4 @@ fn main() -> (u64, b256) {
 
 // check: movi $(two=$REG) i2
 // check: gtf  $(b256_ptr=$REG) $two i119
-// check: movi $(len_reg=$REG) i32
-// check: mcp  $REG $b256_ptr $len_reg
-
+// check: mcpi $REG $b256_ptr i32

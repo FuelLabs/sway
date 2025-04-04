@@ -1,5 +1,9 @@
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, IdentUnique, Span, Spanned};
 use thiserror::Error;
+
+use crate::formatting::{
+    a_or_an, num_to_str, num_to_str_or_none, plural_s, sequence_to_str, Enclosing,
+};
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConvertParseTreeError {
@@ -73,8 +77,6 @@ pub enum ConvertParseTreeError {
     ContractCallerOneGenericArg { span: Span },
     #[error("ContractCaller requires a named type for its generic argument")]
     ContractCallerNamedTypeGenericArg { span: Span },
-    #[error("invalid argument for '{attribute}' attribute")]
-    InvalidAttributeArgument { attribute: String, span: Span },
     #[error("cannot find type \"{ty_name}\" in this scope")]
     ConstrainedNonExistentType { ty_name: Ident, span: Span },
     #[error("__get_storage_key does not take arguments")]
@@ -95,32 +97,112 @@ pub enum ConvertParseTreeError {
     DuplicateParameterIdentifier { name: Ident, span: Span },
     #[error("self parameter is not allowed for {fn_kind}")]
     SelfParameterNotAllowedForFn { fn_kind: String, span: Span },
-    #[error("test functions are only allowed at module level")]
-    TestFnOnlyAllowedAtModuleLevel { span: Span },
     #[error("`impl Self` for contracts is not supported")]
     SelfImplForContract { span: Span },
-    #[error("Cannot attach a documentation comment to a dependency.")]
-    CannotDocCommentDependency { span: Span },
-    #[error("Cannot annotate a dependency.")]
-    CannotAnnotateDependency { span: Span },
-    #[error("Expected dependency at the beginning before any other items.")]
-    ExpectedDependencyAtBeginning { span: Span },
+    #[error("Expected module at the beginning before any other items.")]
+    ExpectedModuleAtBeginning { span: Span },
     #[error("Constant requires expression.")]
     ConstantRequiresExpression { span: Span },
     #[error("Constant requires type ascription.")]
     ConstantRequiresTypeAscription { span: Span },
-    #[error("Invalid value \"{value}\"")]
-    InvalidCfgTargetArgValue { span: Span, value: String },
-    #[error("Expected a value for the target argument")]
-    ExpectedCfgTargetArgValue { span: Span },
-    #[error("Invalid value \"{value}\"")]
-    InvalidCfgProgramTypeArgValue { span: Span, value: String },
-    #[error("Expected a value for the program_type argument")]
-    ExpectedCfgProgramTypeArgValue { span: Span },
-    #[error("Expected \"true\" or \"false\" for experimental conditional compilation")]
-    UnexpectedValueForCfgExperimental { span: Span },
-    #[error("Unexpected attribute value: \"{value}\" for attribute: \"cfg\"")]
-    InvalidCfgArg { span: Span, value: String },
+    #[error("Unknown type name \"self\". A self type with a similar name exists (notice the capitalization): `Self`")]
+    UnknownTypeNameSelf { span: Span },
+    #[error("{}", match get_attribute_type(attribute) {
+        AttributeType::InnerDocComment => format!("Inner doc comment (`//!`) cannot document {}{target_friendly_name}.", a_or_an(&target_friendly_name)),
+        AttributeType::OuterDocComment => format!("Outer doc comment (`///`) cannot document {}{target_friendly_name}.", a_or_an(&target_friendly_name)),
+        AttributeType::Attribute => format!("\"{attribute}\" attribute cannot annotate {}{target_friendly_name}.", a_or_an(&target_friendly_name)),
+    })]
+    InvalidAttributeTarget {
+        span: Span,
+        attribute: Ident,
+        target_friendly_name: &'static str,
+        can_only_annotate_help: Vec<&'static str>,
+    },
+    #[error("\"{last_occurrence}\" attribute can be applied only once, but is applied {} times.", num_to_str(previous_occurrences.len() + 1))]
+    InvalidAttributeMultiplicity {
+        last_occurrence: IdentUnique,
+        previous_occurrences: Vec<IdentUnique>,
+    },
+    #[error("\"{attribute}\" attribute must {}, but has {}.", get_expected_attributes_args_multiplicity_msg(args_multiplicity), num_to_str_or_none(*num_of_args))]
+    InvalidAttributeArgsMultiplicity {
+        span: Span,
+        attribute: Ident,
+        args_multiplicity: (usize, usize),
+        num_of_args: usize,
+    },
+    #[error(
+        "\"{arg}\" is an invalid argument for attribute \"{attribute}\". Valid arguments are: {}.",
+        sequence_to_str(expected_args, Enclosing::DoubleQuote, usize::MAX)
+    )]
+    InvalidAttributeArg {
+        attribute: Ident,
+        arg: IdentUnique,
+        expected_args: Vec<&'static str>,
+    },
+    #[error("\"{arg}\" argument of the attribute \"{attribute}\" must {}have a value.",
+        match value_span {
+            Some(_) => "not ",
+            None => "",
+        }
+    )]
+    InvalidAttributeArgExpectsValue {
+        attribute: Ident,
+        arg: IdentUnique,
+        value_span: Option<Span>,
+    },
+    #[error("\"{arg}\" argument must have a value of type \"{expected_type}\".")]
+    InvalidAttributeArgValueType {
+        span: Span,
+        arg: Ident,
+        expected_type: &'static str,
+        received_type: &'static str,
+    },
+    #[error("{} is an invalid value for argument \"{arg}\". Valid values are: {}.", span.as_str(), sequence_to_str(expected_values, Enclosing::DoubleQuote, usize::MAX))]
+    InvalidAttributeArgValue {
+        span: Span,
+        arg: Ident,
+        expected_values: Vec<&'static str>,
+    },
+}
+
+pub(crate) enum AttributeType {
+    /// `//!`.
+    InnerDocComment,
+    /// `///`.
+    OuterDocComment,
+    /// `#[attribute]` or `#![attribute]`.
+    Attribute,
+}
+
+pub(crate) fn get_attribute_type(attribute: &Ident) -> AttributeType {
+    // The doc-comment attribute name has the span that
+    // points to the actual comment line.
+    // Other attributes have spans that point to the actual
+    // attribute name.
+    let span = attribute.span();
+    let attribute = span.as_str();
+    if attribute.starts_with("//!") {
+        AttributeType::InnerDocComment
+    } else if attribute.starts_with("///") {
+        AttributeType::OuterDocComment
+    } else {
+        AttributeType::Attribute
+    }
+}
+
+pub(crate) fn get_expected_attributes_args_multiplicity_msg(
+    args_multiplicity: &(usize, usize),
+) -> String {
+    match *args_multiplicity {
+        (0, 0) => "not have any arguments".to_string(),
+        (min, max) if min == max => format!("have exactly {} argument{}", num_to_str(min), plural_s(min)),
+        (min, max) if min == max - 1 => format!("have {} or {} argument{}", num_to_str_or_none(min), num_to_str(max), plural_s(max)),
+        (0, max) if max != usize::MAX => format!("have at most {} argument{}", num_to_str(max), plural_s(max)), 
+        (min, usize::MAX) if min != usize::MIN => format!("have at least {} argument{}", num_to_str(min), plural_s(min)), 
+        (min, max) if max != usize::MAX => format!("have between {} and {} arguments", num_to_str(min), num_to_str(max)),
+        (0, usize::MAX) => unreachable!("if any number of arguments are accepted the `InvalidAttributeArgsMultiplicity` error cannot occur"),
+        _ => unreachable!("`min` is `always` less than or equal to `max` and all combinations are already covered"),
+    }
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -161,7 +243,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::FullySpecifiedTypesNotSupported { span } => span.clone(),
             ConvertParseTreeError::ContractCallerOneGenericArg { span } => span.clone(),
             ConvertParseTreeError::ContractCallerNamedTypeGenericArg { span } => span.clone(),
-            ConvertParseTreeError::InvalidAttributeArgument { span, .. } => span.clone(),
             ConvertParseTreeError::ConstrainedNonExistentType { span, .. } => span.clone(),
             ConvertParseTreeError::GetStorageKeyTooManyArgs { span, .. } => span.clone(),
             ConvertParseTreeError::RecursiveType { span } => span.clone(),
@@ -172,19 +253,21 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
             ConvertParseTreeError::SelfParameterNotAllowedForFn { span, .. } => span.clone(),
-            ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span } => span.clone(),
             ConvertParseTreeError::SelfImplForContract { span, .. } => span.clone(),
-            ConvertParseTreeError::CannotDocCommentDependency { span } => span.clone(),
-            ConvertParseTreeError::CannotAnnotateDependency { span } => span.clone(),
-            ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => span.clone(),
+            ConvertParseTreeError::ExpectedModuleAtBeginning { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),
-            ConvertParseTreeError::InvalidCfgTargetArgValue { span, .. } => span.clone(),
-            ConvertParseTreeError::ExpectedCfgTargetArgValue { span } => span.clone(),
-            ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => span.clone(),
-            ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
-            ConvertParseTreeError::UnexpectedValueForCfgExperimental { span } => span.clone(),
-            ConvertParseTreeError::InvalidCfgArg { span, .. } => span.clone(),
+            ConvertParseTreeError::UnknownTypeNameSelf { span } => span.clone(),
+            ConvertParseTreeError::InvalidAttributeTarget { span, .. } => span.clone(),
+            ConvertParseTreeError::InvalidAttributeMultiplicity {
+                last_occurrence: last_attribute,
+                ..
+            } => last_attribute.span(),
+            ConvertParseTreeError::InvalidAttributeArgsMultiplicity { span, .. } => span.clone(),
+            ConvertParseTreeError::InvalidAttributeArg { arg, .. } => arg.span(),
+            ConvertParseTreeError::InvalidAttributeArgExpectsValue { arg, .. } => arg.span(),
+            ConvertParseTreeError::InvalidAttributeArgValueType { span, .. } => span.clone(),
+            ConvertParseTreeError::InvalidAttributeArgValue { span, .. } => span.clone(),
         }
     }
 }

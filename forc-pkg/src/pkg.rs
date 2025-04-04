@@ -28,6 +28,8 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
+use sway_core::namespace::Package;
+use sway_core::transform::AttributeArg;
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -40,17 +42,15 @@ use sway_core::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    language::{parsed::TreeType, Visibility},
+    language::parsed::TreeType,
     semantic_analysis::namespace,
     source_map::SourceMap,
-    transform::AttributeKind,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
-use sway_core::{PrintAsm, PrintIr};
+use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
-use sway_types::constants::{CORE, PRELUDE, STD};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, ProgramId, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{debug, info};
 
@@ -181,7 +181,7 @@ pub struct CompiledPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
-    pub root_module: namespace::Module,
+    pub namespace: namespace::Package,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
 }
@@ -300,6 +300,8 @@ pub struct BuildOpts {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Profile the build process.
+    pub profile: bool,
     /// If set, outputs compilation metrics info in JSON format.
     pub metrics_outfile: Option<String>,
     /// Warnings must be treated as compiler errors.
@@ -549,7 +551,7 @@ impl Built {
     /// Returns an iterator yielding all member built packages.
     pub fn into_members<'a>(
         &'a self,
-    ) -> Box<dyn Iterator<Item = (&Pinned, Arc<BuiltPackage>)> + 'a> {
+    ) -> Box<dyn Iterator<Item = (&'a Pinned, Arc<BuiltPackage>)> + 'a> {
         // NOTE: Since pkg is a `Arc<_>`, pkg clones in this function are only reference
         // increments. `BuiltPackage` struct does not get copied.`
         match self {
@@ -1561,19 +1563,17 @@ pub fn sway_build_config(
     .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
+    .with_profile(build_profile.profile)
     .with_metrics(build_profile.metrics_outfile.clone())
     .with_optimization_level(build_profile.optimization_level);
     Ok(build_config)
 }
 
-/// The name of the constant holding the contract's id.
-pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
-
 /// Builds the dependency namespace for the package at the given node index within the graph.
 ///
 /// This function is designed to be called for each node in order of compilation.
 ///
-/// This function ensures that if `core` exists in the graph (the vastly common case) it is also
+/// This function ensures that if `std` exists in the graph (the vastly common case) it is also
 /// present within the namespace. This is a necessity for operators to work for example.
 ///
 /// This function also ensures that if `std` exists in the graph,
@@ -1581,42 +1581,43 @@ pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
 ///
 /// `contract_id_value` should only be Some when producing the `dependency_namespace` for a contract with tests enabled.
 /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
+#[allow(clippy::too_many_arguments)]
 pub fn dependency_namespace(
-    lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
+    lib_namespace_map: &HashMap<NodeIx, namespace::Package>,
     compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
     engines: &Engines,
     contract_id_value: Option<ContractIdConst>,
+    program_id: ProgramId,
     experimental: ExperimentalFeatures,
-) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
+) -> Result<namespace::Package, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Ident::new_no_span(node_idx.name.clone());
-    let mut root_module = if let Some(contract_id_value) = contract_id_value {
-        namespace::default_with_contract_id(
+    let mut namespace = if let Some(contract_id_value) = contract_id_value {
+        namespace::package_with_contract_id(
             engines,
             name.clone(),
-            Visibility::Public,
+            program_id,
             contract_id_value,
             experimental,
         )?
     } else {
-        namespace::Module::new(name, Visibility::Public, None)
+        Package::new(name.clone(), None, program_id, false)
     };
 
     // Add direct dependencies.
-    let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
         let dep_node = edge.target();
         let dep_name = kebab_to_snake_case(&edge.weight().name);
         let dep_edge = edge.weight();
-        let mut dep_namespace = match dep_edge.kind {
+        let dep_namespace = match dep_edge.kind {
             DepKind::Library => lib_namespace_map
                 .get(&dep_node)
                 .cloned()
-                .expect("no namespace module")
-                .read(engines, Clone::clone),
+                .expect("no root namespace module")
+                .clone(),
             DepKind::Contract { salt } => {
                 let dep_contract_id = compiled_contract_deps
                     .get(&dep_node)
@@ -1627,107 +1628,19 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Ident::new_no_span(node_idx.name.clone());
-                namespace::default_with_contract_id(
+                namespace::package_with_contract_id(
                     engines,
                     name.clone(),
-                    Visibility::Private,
+                    program_id,
                     contract_id_value,
                     experimental,
                 )?
             }
         };
-        dep_namespace.is_external = true;
-        root_module.insert_submodule(dep_name, dep_namespace);
-        let dep = &graph[dep_node];
-        if dep.name == CORE {
-            core_added = true;
-        }
+        namespace.add_external(dep_name, dep_namespace);
     }
 
-    // Add `core` if not already added.
-    if !core_added {
-        if let Some(core_node) = find_core_dep(graph, node) {
-            let core_namespace = &lib_namespace_map[&core_node];
-            root_module.insert_submodule(CORE.to_string(), core_namespace.clone());
-            core_added = true;
-        }
-    }
-
-    let mut root = namespace::Root::from(root_module);
-
-    if core_added {
-        let _ = root.star_import(
-            &Handler::default(),
-            engines,
-            &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
-            &[],
-            Visibility::Private,
-        );
-    }
-
-    if has_std_dep(graph, node) {
-        let _ = root.star_import(
-            &Handler::default(),
-            engines,
-            &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
-            &[],
-            Visibility::Private,
-        );
-    }
-
-    Ok(root)
-}
-
-/// Find the `std` dependency, if it is a direct one, of the given node.
-fn has_std_dep(graph: &Graph, node: NodeIx) -> bool {
-    // If we are `std`, do nothing.
-    let pkg = &graph[node];
-    if pkg.name == STD {
-        return false;
-    }
-
-    // If we have `std` as a direct dep, use it.
-    graph.edges_directed(node, Direction::Outgoing).any(|edge| {
-        let dep_node = edge.target();
-        let dep = &graph[dep_node];
-        matches!(&dep.name[..], STD)
-    })
-}
-
-/// Find the `core` dependency (whether direct or transitive) for the given node if it exists.
-fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
-    // If we are `core`, do nothing.
-    let pkg = &graph[node];
-    if pkg.name == CORE {
-        return None;
-    }
-
-    // If we have `core` as a direct dep, use it.
-    let mut maybe_std = None;
-    for edge in graph.edges_directed(node, Direction::Outgoing) {
-        let dep_node = edge.target();
-        let dep = &graph[dep_node];
-        match &dep.name[..] {
-            CORE => return Some(dep_node),
-            STD => maybe_std = Some(dep_node),
-            _ => {}
-        }
-    }
-
-    // If we have `std`, select `core` via `std`.
-    if let Some(std) = maybe_std {
-        return find_core_dep(graph, std);
-    }
-
-    // Otherwise, search from this node.
-    for dep_node in Dfs::new(graph, node).iter(graph) {
-        let dep = &graph[dep_node];
-        if dep.name == CORE {
-            return Some(dep_node);
-        }
-    }
-
-    None
+    Ok(namespace)
 }
 
 /// Compiles the given package.
@@ -1752,7 +1665,7 @@ pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
     engines: &Engines,
-    namespace: &mut namespace::Root,
+    namespace: namespace::Package,
     source_map: &mut SourceMap,
     experimental: ExperimentalFeatures,
 ) -> Result<CompiledPackage> {
@@ -1780,6 +1693,7 @@ pub fn compile(
 
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
+        pkg.name,
         "compile to ast",
         "compile_to_ast",
         sway_core::compile_to_ast(
@@ -1812,13 +1726,12 @@ pub fn compile(
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
 
-    let namespace = typed_program.root.namespace.clone();
-
     if handler.has_errors() {
         return fail(handler);
     }
 
     let asm_res = time_expr!(
+        pkg.name,
         "compile ast to asm",
         "compile_ast_to_asm",
         sway_core::ast_to_asm(
@@ -1839,6 +1752,7 @@ pub fn compile(
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
             let program_abi_res = time_expr!(
+                pkg.name,
                 "generate JSON ABI program",
                 "generate_json_abi",
                 fuel_abi::generate_program_abi(
@@ -1877,6 +1791,7 @@ pub fn compile(
             };
 
             let abi = time_expr!(
+                pkg.name,
                 "generate JSON ABI program",
                 "generate_json_abi",
                 evm_abi::generate_abi_program(typed_program, engines),
@@ -1899,22 +1814,29 @@ pub fn compile(
         .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, engines))
         .collect::<anyhow::Result<_>>()?;
 
-    let asm = match asm_res {
+    let mut asm = match asm_res {
         Err(_) => return fail(handler),
         Ok(asm) => asm,
     };
 
     let bc_res = time_expr!(
+        pkg.name,
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
-        sway_core::asm_to_bytecode(&handler, asm, source_map, engines.se(), &sway_build_config),
+        sway_core::asm_to_bytecode(
+            &handler,
+            &mut asm,
+            source_map,
+            engines.se(),
+            &sway_build_config
+        ),
         Some(sway_build_config.clone()),
         metrics
     );
 
     let errored = handler.has_errors() || (handler.has_warnings() && profile.error_on_warnings);
 
-    let compiled = match bc_res {
+    let mut compiled = match bc_res {
         Ok(compiled) if !errored => compiled,
         _ => return fail(handler),
     };
@@ -1923,9 +1845,12 @@ pub fn compile(
 
     print_warnings(engines.se(), terse_mode, &pkg.name, &warnings, &tree_type);
 
+    // Metadata to be placed into the binary.
+    let mut md = [0u8, 0, 0, 0, 0, 0, 0, 0];
     // TODO: This should probably be in `fuel_abi_json::generate_json_abi_program`?
     // If ABI requires knowing config offsets, they should be inputs to ABI gen.
     if let ProgramABI::Fuel(ref mut program_abi) = program_abi {
+        let mut configurables_offset = compiled.bytecode.len() as u64;
         if let Some(ref mut configurables) = program_abi.configurables {
             // Filter out all dead configurables (i.e. ones without offsets in the bytecode)
             configurables.retain(|c| {
@@ -1934,12 +1859,22 @@ pub fn compile(
                     .contains_key(&c.name)
             });
             // Set the actual offsets in the JSON object
-            for (config, offset) in compiled.named_data_section_entries_offsets {
-                if let Some(idx) = configurables.iter().position(|c| c.name == config) {
-                    configurables[idx].offset = offset;
+            for (config, offset) in &compiled.named_data_section_entries_offsets {
+                if *offset < configurables_offset {
+                    configurables_offset = *offset;
+                }
+                if let Some(idx) = configurables.iter().position(|c| &c.name == config) {
+                    configurables[idx].offset = *offset;
                 }
             }
         }
+
+        md = configurables_offset.to_be_bytes();
+    }
+
+    // We know to set the metadata only for fuelvm right now.
+    if let BuildTarget::Fuel = pkg.target {
+        set_bytecode_configurables_offset(&mut compiled, &md);
     }
 
     metrics.bytecode_size = compiled.bytecode.len();
@@ -1953,11 +1888,85 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        root_module: namespace.root_module().clone(),
+        namespace: typed_program.namespace.current_package_ref().clone(),
         warnings,
         metrics,
     };
+    if sway_build_config.profile {
+        report_assembly_information(&asm, &compiled_package);
+    }
+
     Ok(compiled_package)
+}
+
+/// Reports assembly information for a compiled package to an external `dyno` process through `stdout`.
+fn report_assembly_information(
+    compiled_asm: &sway_core::CompiledAsm,
+    compiled_package: &CompiledPackage,
+) {
+    // Get the bytes of the compiled package.
+    let mut bytes = compiled_package.bytecode.bytes.clone();
+
+    // Attempt to get the data section offset out of the compiled package bytes.
+    let data_offset = u64::from_be_bytes(
+        bytes
+            .iter()
+            .skip(8)
+            .take(8)
+            .cloned()
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
+    );
+    let data_section_size = bytes.len() as u64 - data_offset;
+
+    // Remove the data section from the compiled package bytes.
+    bytes.truncate(data_offset as usize);
+
+    // Calculate the unpadded size of each data section section.
+    // Implementation based directly on `sway_core::asm_generation::Entry::to_bytes`, referenced here:
+    // https://github.com/FuelLabs/sway/blob/afd6a6709e7cb11c676059a5004012cc466e653b/sway-core/src/asm_generation/fuel/data_section.rs#L147
+    fn calculate_entry_size(entry: &sway_core::asm_generation::Entry) -> u64 {
+        match &entry.value {
+            sway_core::asm_generation::Datum::Byte(value) => std::mem::size_of_val(value) as u64,
+
+            sway_core::asm_generation::Datum::Word(value) => std::mem::size_of_val(value) as u64,
+
+            sway_core::asm_generation::Datum::ByteArray(bytes)
+            | sway_core::asm_generation::Datum::Slice(bytes) => {
+                if bytes.len() % 8 == 0 {
+                    bytes.len() as u64
+                } else {
+                    ((bytes.len() + 7) & 0xfffffff8_usize) as u64
+                }
+            }
+
+            sway_core::asm_generation::Datum::Collection(items) => {
+                items.iter().map(calculate_entry_size).sum()
+            }
+        }
+    }
+
+    // Compute the assembly information to be reported.
+    let asm_information = sway_core::asm_generation::AsmInformation {
+        bytecode_size: bytes.len() as _,
+        data_section: sway_core::asm_generation::DataSectionInformation {
+            size: data_section_size,
+            used: compiled_asm
+                .0
+                .data_section
+                .iter_all_entries()
+                .map(|entry| calculate_entry_size(&entry))
+                .sum(),
+            value_pairs: compiled_asm.0.data_section.iter_all_entries().collect(),
+        },
+    };
+
+    // Report the assembly information to the `dyno` process through `stdout`.
+    println!(
+        "/dyno info {}",
+        serde_json::to_string(&asm_information).unwrap()
+    );
 }
 
 impl PkgEntry {
@@ -1994,49 +2003,55 @@ impl PkgEntryKind {
 
 impl PkgTestEntry {
     fn from_decl(decl_ref: &DeclRefFunction, engines: &Engines) -> Result<Self> {
+        fn get_invalid_revert_code_error_msg(
+            test_function_name: &Ident,
+            should_revert_arg: &AttributeArg,
+        ) -> String {
+            format!("Invalid revert code for test \"{}\".\nA revert code must be a string containing a \"u64\", e.g.: \"42\".\nThe invalid revert code was: {}.",
+                test_function_name,
+                should_revert_arg.value.as_ref().expect("`get_string_opt` returned either a value or an error, which means that the invalid value must exist").span().as_str(),
+            )
+        }
+
         let span = decl_ref.span();
         let test_function_decl = engines.de().get_function(decl_ref);
 
-        const FAILING_TEST_KEYWORD: &str = "should_revert";
+        let Some(test_attr) = test_function_decl.attributes.test() else {
+            unreachable!("`test_function_decl` is guaranteed to be a test function and it must have a `#[test]` attribute");
+        };
 
-        let test_args: HashMap<String, Option<String>> = test_function_decl
-            .attributes
-            .get(&AttributeKind::Test)
-            .expect("test declaration is missing test attribute")
+        let pass_condition = match test_attr
+            .args
             .iter()
-            .flat_map(|attr| attr.args.iter())
-            .map(|arg| {
-                (
-                    arg.name.to_string(),
-                    arg.value
-                        .as_ref()
-                        .map(|val| val.span().as_str().to_string()),
-                )
-            })
-            .collect();
+            // Last "should_revert" argument wins ;-)
+            .rfind(|arg| arg.is_test_should_revert())
+        {
+            Some(should_revert_arg) => {
+                match should_revert_arg.get_string_opt(&Handler::default()) {
+                    Ok(should_revert_arg_value) => TestPassCondition::ShouldRevert(
+                        should_revert_arg_value
+                            .map(|val| val.parse::<u64>())
+                            .transpose()
+                            .map_err(|_| {
+                                anyhow!(get_invalid_revert_code_error_msg(
+                                    &test_function_decl.name,
+                                    should_revert_arg
+                                ))
+                            })?,
+                    ),
+                    Err(_) => bail!(get_invalid_revert_code_error_msg(
+                        &test_function_decl.name,
+                        should_revert_arg
+                    )),
+                }
+            }
+            None => TestPassCondition::ShouldNotRevert,
+        };
 
-        let pass_condition = if test_args.is_empty() {
-            anyhow::Ok(TestPassCondition::ShouldNotRevert)
-        } else if let Some(args) = test_args.get(FAILING_TEST_KEYWORD) {
-            let expected_revert_code = args
-                .as_ref()
-                .map(|arg| {
-                    let arg_str = arg.replace('"', "");
-                    arg_str.parse::<u64>()
-                })
-                .transpose()?;
-            anyhow::Ok(TestPassCondition::ShouldRevert(expected_revert_code))
-        } else {
-            let test_name = &test_function_decl.name;
-            bail!("Invalid test argument(s) for test: {test_name}.")
-        }?;
-
-        let file_path = Arc::new(
-            engines.se().get_path(
-                span.source_id()
-                    .ok_or_else(|| anyhow::anyhow!("Missing span for test function"))?,
-            ),
-        );
+        let file_path =
+            Arc::new(engines.se().get_path(span.source_id().ok_or_else(|| {
+                anyhow!("Missing span for test \"{}\".", test_function_decl.name)
+            })?));
         Ok(Self {
             pass_condition,
             span,
@@ -2062,6 +2077,7 @@ fn build_profile_from_opts(
         pkg,
         print,
         time_phases,
+        profile: profile_opt,
         build_profile,
         release,
         metrics_outfile,
@@ -2102,6 +2118,7 @@ fn build_profile_from_opts(
     profile.print_bytecode_spans |= print.bytecode_spans;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
+    profile.profile |= profile_opt;
     if profile.metrics_outfile.is_none() {
         profile.metrics_outfile.clone_from(metrics_outfile);
     }
@@ -2223,8 +2240,13 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         if let Some(outfile) = &binary_outfile {
             built_package.write_bytecode(outfile.as_ref())?;
         }
-        if let Some(outfile) = &debug_outfile {
-            built_package.write_debug_info(outfile.as_ref())?;
+        // Generate debug symbols if explicitly requested via -g flag or if in debug build
+        if debug_outfile.is_some() || build_profile.name == BuildProfile::DEBUG {
+            let debug_path = debug_outfile
+                .as_ref()
+                .map(|p| output_dir.join(p))
+                .unwrap_or_else(|| output_dir.join("debug_symbols.obj"));
+            built_package.write_debug_info(&debug_path)?;
         }
         built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
         built_workspace.push(Arc::new(built_package));
@@ -2383,15 +2405,20 @@ pub fn build(
                 ..profile.clone()
             };
 
+            let program_id = engines
+                .se()
+                .get_or_create_program_id_from_manifest_path(&manifest.entry_path());
+
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
-            let mut dep_namespace = match dependency_namespace(
+            let dep_namespace = match dependency_namespace(
                 &lib_namespace_map,
                 &compiled_contract_deps,
                 plan.graph(),
                 node,
                 &engines,
                 None,
+                program_id,
                 experimental,
             ) {
                 Ok(o) => o,
@@ -2402,7 +2429,7 @@ pub fn build(
                 &descriptor,
                 &profile,
                 &engines,
-                &mut dep_namespace,
+                dep_namespace,
                 &mut source_map,
                 experimental,
             )?;
@@ -2449,14 +2476,19 @@ pub fn build(
             profile.clone()
         };
 
+        let program_id = engines
+            .se()
+            .get_or_create_program_id_from_manifest_path(&manifest.entry_path());
+
         // Note that the contract ID value here is only Some if tests are enabled.
-        let mut dep_namespace = match dependency_namespace(
+        let dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             plan.graph(),
             node,
             &engines,
             contract_id_value.clone(),
+            program_id,
             experimental,
         ) {
             Ok(o) => o,
@@ -2476,7 +2508,7 @@ pub fn build(
             &descriptor,
             &profile,
             &engines,
-            &mut dep_namespace,
+            dep_namespace,
             &mut source_map,
             experimental,
         )?;
@@ -2489,7 +2521,7 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            lib_namespace_map.insert(node, compiled.root_module);
+            lib_namespace_map.insert(node, compiled.namespace);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
 
@@ -2544,25 +2576,35 @@ pub fn check(
         )
         .map_err(|err| anyhow!("{err}"))?;
 
-        // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
-        // compiler's namespace. Although we only know the contract id during building, we are
-        // inserting a dummy value here to avoid false error signals being reported in LSP.
-        // We only do this for the last node in the compilation order because previous nodes
-        // are dependencies.
-        //
-        // See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
-        const DUMMY_CONTRACT_ID: &str =
-            "0x0000000000000000000000000000000000000000000000000000000000000000";
-        let contract_id_value =
-            (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
+        // Only inject a dummy CONTRACT_ID in LSP mode, not when check() is called from tests or other non-LSP contexts,
+        // to avoid polluting namespaces unnecessarily.
+        let contract_id_value = if lsp_mode.is_some() && (idx == plan.compilation_order.len() - 1) {
+            // This is necessary because `CONTRACT_ID` is a special constant that's injected into the
+            // compiler's namespace. Although we only know the contract id during building, we are
+            // inserting a dummy value here to avoid false error signals being reported in LSP.
+            // We only do this for the last node in the compilation order because previous nodes
+            // are dependencies.
+            //
+            // See this github issue for more context: https://github.com/FuelLabs/sway-vscode-plugin/issues/154
+            const DUMMY_CONTRACT_ID: &str =
+                "0x0000000000000000000000000000000000000000000000000000000000000000";
+            Some(DUMMY_CONTRACT_ID.to_string())
+        } else {
+            None
+        };
 
-        let mut dep_namespace = dependency_namespace(
+        let program_id = engines
+            .se()
+            .get_or_create_program_id_from_manifest_path(&manifest.entry_path());
+
+        let dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
             node,
             engines,
             contract_id_value,
+            program_id,
             experimental,
         )
         .expect("failed to create dependency namespace");
@@ -2587,7 +2629,7 @@ pub fn check(
             &handler,
             engines,
             input,
-            &mut dep_namespace,
+            dep_namespace,
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),
@@ -2611,12 +2653,8 @@ pub fn check(
 
         if let Ok(typed_program) = programs.typed.as_ref() {
             if let TreeType::Library = typed_program.kind.tree_type() {
-                let mut module = typed_program
-                    .root
-                    .namespace
-                    .program_id(engines)
-                    .read(engines, |m| m.clone());
-                module.set_span(
+                let mut lib_namespace = typed_program.namespace.current_package_ref().clone();
+                lib_namespace.root_module_mut().set_span(
                     Span::new(
                         manifest.entry_string()?,
                         0,
@@ -2625,7 +2663,7 @@ pub fn check(
                     )
                     .unwrap(),
                 );
-                lib_namespace_map.insert(node, module);
+                lib_namespace_map.insert(node, lib_namespace);
             }
             source_map.insert_dependency(manifest.dir());
         } else {
@@ -2719,7 +2757,7 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(Some("some-prefix::".to_string()));
         let re = Regex::new(r#"digraph \{
-    0 \[ label = "core" shape = box URL = "some-prefix::[[:ascii:]]+/sway-lib-core/Forc.toml"\]
+    0 \[ label = "std" shape = box URL = "some-prefix::[[:ascii:]]+/sway-lib-std/Forc.toml"\]
     1 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
     2 \[ label = "test_lib" shape = box URL = "some-prefix::/[[:ascii:]]+/test_lib/Forc.toml"\]
     3 \[ label = "test_script" shape = box URL = "some-prefix::/[[:ascii:]]+/test_script/Forc.toml"\]
@@ -2739,7 +2777,7 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(None);
         let expected = r#"digraph {
-    0 [ label = "core" shape = box ]
+    0 [ label = "std" shape = box ]
     1 [ label = "test_contract" shape = box ]
     2 [ label = "test_lib" shape = box ]
     3 [ label = "test_script" shape = box ]

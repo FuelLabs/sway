@@ -19,7 +19,7 @@ use std::{
     collections::BTreeMap,
     ops::{Deref, DerefMut},
 };
-use sway_core::{language::ty::TyProgramKind, transform::AttributesMap};
+use sway_core::{language::ty::TyProgramKind, transform::Attributes};
 use sway_types::BaseIdent;
 
 pub mod constant;
@@ -71,7 +71,7 @@ impl RenderedDocumentation {
     pub fn from_raw_docs(
         raw_docs: Documentation,
         render_plan: RenderPlan,
-        root_attributes: Option<AttributesMap>,
+        root_attributes: Option<Attributes>,
         program_kind: &TyProgramKind,
         forc_version: Option<String>,
     ) -> Result<RenderedDocumentation> {

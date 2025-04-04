@@ -1,6 +1,6 @@
 script;
 
-use core::ops::*;
+use std::ops::*;
 
 // 0b0000_1111 = 15
 // 0b0101_0101 = 85

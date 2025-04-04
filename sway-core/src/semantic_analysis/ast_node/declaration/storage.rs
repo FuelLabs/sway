@@ -4,8 +4,7 @@ use crate::{
     decl_engine::parsed_id::ParsedDeclId,
     fuel_prelude::fuel_tx::StorageSlot,
     ir_generation::{
-        const_eval::compile_constant_expression_to_constant,
-        storage::{get_storage_key_string, serialize_to_storage_slots},
+        const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
     },
     language::{
         parsed::StorageDeclaration,
@@ -54,32 +53,24 @@ impl ty::TyStorageDecl {
                     let slots = f.get_initialized_storage_slots(engines, context, md_mgr, module);
 
                     // Check if slot with same key was already used and throw warning.
-                    if let Ok(slots) = slots.clone() {
-                        for s in slots.into_iter() {
+                    if let Ok(slots) = &slots {
+                        for s in slots.iter() {
                             if let Some(old_field) = slot_fields.insert(*s.key(), f.clone()) {
                                 handler.emit_warn(CompileWarning {
                                     span: f.span(),
                                     warning_content:
                                         sway_error::warning::Warning::DuplicatedStorageKey {
-                                            key: format!("{:X} ", s.key()),
-                                            field1: get_storage_key_string(
-                                                old_field
-                                                    .namespace_names
-                                                    .iter()
-                                                    .map(|i| i.as_str().to_string())
-                                                    .chain(vec![old_field
-                                                        .name
-                                                        .as_str()
-                                                        .to_string()])
-                                                    .collect::<Vec<_>>(),
-                                            ),
-                                            field2: get_storage_key_string(
-                                                f.namespace_names
-                                                    .iter()
-                                                    .map(|i| i.as_str().to_string())
-                                                    .chain(vec![f.name.as_str().to_string()])
-                                                    .collect::<Vec<_>>(),
-                                            ),
+                                            first_field: (&old_field.name).into(),
+                                            first_field_full_name: old_field.full_name(),
+                                            first_field_key_is_compiler_generated: old_field
+                                                .key_expression
+                                                .is_none(),
+                                            second_field: (&f.name).into(),
+                                            second_field_full_name: f.full_name(),
+                                            second_field_key_is_compiler_generated: f
+                                                .key_expression
+                                                .is_none(),
+                                            key: format!("0x{:x}", s.key()),
                                         },
                                 })
                             }
@@ -125,7 +116,7 @@ impl ty::TyStorageField {
                     .chain(vec![self.name.as_str().to_string()])
                     .collect(),
                 key,
-                &constant.ty,
+                &constant.get_content(context).ty,
             )
         })
     }
@@ -147,11 +138,11 @@ impl ty::TyStorageField {
                 None,
                 key_expression,
             )?;
-            if let ConstantValue::B256(key) = const_key.value {
+            if let ConstantValue::B256(key) = const_key.get_content(context).value.clone() {
                 Ok(Some(key))
             } else {
                 Err(CompileError::Internal(
-                    "Expected B256 key",
+                    "Storage keys must have type \"b256\".",
                     key_expression.span.clone(),
                 ))
             }

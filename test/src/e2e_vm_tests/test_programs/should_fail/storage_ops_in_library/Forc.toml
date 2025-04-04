@@ -6,5 +6,6 @@ name = "storage_ops_in_library"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../sway-lib-core" }
+std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
+
 

@@ -1,13 +1,12 @@
-use super::AdapterError;
-use crate::types::Breakpoints;
-use crate::types::Instruction;
-use crate::types::SourceMap;
+use crate::{
+    error::AdapterError,
+    types::{Breakpoints, Instruction},
+};
 use dap::types::StartDebuggingRequestKind;
 use forc_pkg::BuiltPackage;
-use forc_test::execute::TestExecutor;
-use forc_test::setup::TestSetup;
-use forc_test::TestResult;
+use forc_test::{execute::TestExecutor, setup::TestSetup, TestResult};
 use std::path::PathBuf;
+use sway_core::source_map::SourceMap;
 
 #[derive(Default, Debug, Clone)]
 /// The state of the DAP server.
@@ -60,25 +59,55 @@ impl ServerState {
     pub fn vm_pc_to_source_location(
         &self,
         pc: Instruction,
-    ) -> Result<(&PathBuf, i64), AdapterError> {
-        // Try to find the source location by looking for the program counter in the source map.
-        self.source_map
-            .iter()
-            .find_map(|(source_path, source_map)| {
-                for (&line, instructions) in source_map.iter() {
-                    // Divide by 4 to get the opcode offset rather than the program counter offset.
-                    let instruction_offset = pc / 4;
-                    if instructions
-                        .iter()
-                        .any(|instruction| instruction_offset == *instruction)
-                    {
-                        return Some((source_path, line));
-                    }
-                }
+    ) -> Result<(PathBuf, i64), AdapterError> {
+        // Convert PC to instruction index (divide by 4 for byte offset)
+        let instruction_idx = (pc / 4) as usize;
+        if let Some((path, range)) = self.source_map.addr_to_span(instruction_idx) {
+            Ok((path, range.start.line as i64))
+        } else {
+            Err(AdapterError::MissingSourceMap { pc })
+        }
+    }
 
-                None
-            })
-            .ok_or(AdapterError::MissingSourceMap { pc })
+    /// Updates the breakpoints in the VM for all remaining [TestExecutor]s.
+    pub(crate) fn update_vm_breakpoints(&mut self) {
+        if !self.breakpoints_need_update {
+            return;
+        }
+
+        // Convert breakpoints to instruction offsets using the source map
+        let opcode_indexes = self
+            .breakpoints
+            .iter()
+            .flat_map(|(source_path, breakpoints)| {
+                breakpoints
+                    .iter()
+                    .filter_map(|bp| {
+                        bp.line.and_then(|line| {
+                            // Find any instruction that maps to this line in the source map
+                            self.source_map.map.iter().find_map(|(pc, _)| {
+                                self.source_map
+                                    .addr_to_span(*pc)
+                                    .filter(|(path, range)| {
+                                        path == source_path && range.start.line as i64 == line
+                                    })
+                                    .map(|_| pc)
+                            })
+                        })
+                    })
+                    .collect::<Vec<_>>()
+            });
+
+        // Set breakpoints in the VM
+        self.executors.iter_mut().for_each(|executor| {
+            let bps: Vec<_> = opcode_indexes
+                .clone()
+                .map(|opcode_index| fuel_vm::state::Breakpoint::script(*opcode_index as u64))
+                .collect();
+            executor.interpreter.overwrite_breakpoints(&bps);
+        });
+
+        self.breakpoints_need_update = false;
     }
 
     /// Finds the breakpoint matching a VM program counter.
@@ -88,7 +117,7 @@ impl ServerState {
         // Find the breakpoint ID matching the source location.
         let source_bps = self
             .breakpoints
-            .get(source_path)
+            .get(&source_path)
             .ok_or(AdapterError::UnknownBreakpoint { pc })?;
         let breakpoint_id = source_bps
             .iter()
@@ -102,41 +131,6 @@ impl ServerState {
             .ok_or(AdapterError::UnknownBreakpoint { pc })?;
 
         Ok(breakpoint_id)
-    }
-
-    /// Updates the breakpoints in the VM for all remaining [TestExecutor]s.
-    pub(crate) fn update_vm_breakpoints(&mut self) {
-        if !self.breakpoints_need_update {
-            return;
-        }
-        let opcode_indexes = self
-            .breakpoints
-            .iter()
-            .flat_map(|(source_path, breakpoints)| {
-                if let Some(source_map) = self.source_map.get(&PathBuf::from(source_path)) {
-                    breakpoints
-                        .iter()
-                        .filter_map(|bp| {
-                            bp.line.and_then(|line| {
-                                source_map
-                                    .get(&line)
-                                    .and_then(|instructions| instructions.first())
-                            })
-                        })
-                        .collect::<Vec<_>>()
-                } else {
-                    vec![]
-                }
-            });
-
-        self.executors.iter_mut().for_each(|executor| {
-            // TODO: use `overwrite_breakpoints` when released
-            opcode_indexes.clone().for_each(|opcode_index| {
-                let bp: fuel_vm::prelude::Breakpoint =
-                    fuel_vm::state::Breakpoint::script(*opcode_index);
-                executor.interpreter.set_breakpoint(bp);
-            });
-        });
     }
 
     pub(crate) fn test_complete(&mut self, result: TestResult) {

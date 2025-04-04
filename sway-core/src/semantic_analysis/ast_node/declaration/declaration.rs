@@ -1,3 +1,4 @@
+use ast_elements::type_argument::GenericTypeArgument;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Spanned};
 
@@ -12,7 +13,7 @@ use crate::{
         },
         CallPath,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, Items},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, ConstShadowingMode,
         GenericShadowingMode, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
@@ -70,6 +71,9 @@ impl TyDecl {
             parsed::Declaration::TypeAliasDeclaration(decl_id) => {
                 TyTypeAliasDecl::collect(handler, engines, ctx, decl_id)?
             }
+            parsed::Declaration::ConstGenericDeclaration(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         };
 
         Ok(())
@@ -77,7 +81,7 @@ impl TyDecl {
 
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: &mut TypeCheckContext,
         decl: parsed::Declaration,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let type_engine = ctx.engines.te();
@@ -157,7 +161,7 @@ impl TyDecl {
                 let fn_decl = engines.pe().get_function(&decl_id);
                 let span = fn_decl.span.clone();
 
-                let mut ctx = ctx.with_type_annotation(type_engine.new_unknown());
+                let mut ctx = ctx.by_ref().with_type_annotation(type_engine.new_unknown());
                 let fn_decl = match ty::TyFunctionDecl::type_check(
                     handler,
                     ctx.by_ref(),
@@ -187,26 +191,20 @@ impl TyDecl {
 
                 // save decl_refs for the LSP
                 for supertrait in trait_decl.supertraits.iter_mut() {
-                    let _ = ctx
-                        .namespace()
-                        .resolve_call_path_typed(
-                            handler,
-                            engines,
-                            &supertrait.name,
-                            ctx.self_type(),
-                        )
-                        .map(|supertrait_decl| {
-                            if let ty::TyDecl::TraitDecl(ty::TraitDecl {
-                                decl_id: supertrait_decl_id,
-                            }) = supertrait_decl
-                            {
-                                supertrait.decl_ref = Some(DeclRef::new(
-                                    engines.de().get(&supertrait_decl_id).name.clone(),
-                                    supertrait_decl_id,
-                                    engines.de().get(&supertrait_decl_id).span.clone(),
-                                ));
-                            }
-                        });
+                    let _ =
+                        ctx.resolve_call_path(handler, &supertrait.name)
+                            .map(|supertrait_decl| {
+                                if let ty::TyDecl::TraitDecl(ty::TraitDecl {
+                                    decl_id: supertrait_decl_id,
+                                }) = supertrait_decl
+                                {
+                                    supertrait.decl_ref = Some(DeclRef::new(
+                                        engines.de().get(&supertrait_decl_id).name.clone(),
+                                        supertrait_decl_id,
+                                        engines.de().get(&supertrait_decl_id).span.clone(),
+                                    ));
+                                }
+                            });
                 }
 
                 let decl: ty::TyDecl = decl_engine
@@ -248,7 +246,8 @@ impl TyDecl {
                         handler,
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
-                        impl_trait.implementing_for.type_id,
+                        impl_trait.implementing_for.type_id(),
+                        impl_trait.impl_type_parameters.clone(),
                         &impl_trait.items,
                         &impl_trait.span,
                         impl_trait
@@ -274,17 +273,18 @@ impl TyDecl {
                 // Insert prefixed symbols when implementing_for is Contract
                 let is_contract = engines
                     .te()
-                    .get(impl_trait.implementing_for.type_id)
+                    .get(impl_trait.implementing_for.type_id())
                     .is_contract();
                 if is_contract {
                     for i in &impl_trait.items {
                         if let ty::TyTraitItem::Fn(f) = i {
                             let decl = engines.de().get(f.id());
                             let collecting_unifications = ctx.collecting_unifications();
-                            let _ = ctx.namespace.module_mut(ctx.engines()).write(engines, |m| {
-                                m.current_items_mut().insert_typed_symbol(
+                            let _ = ctx.namespace.current_module_mut().write(engines, |m| {
+                                Items::insert_typed_symbol(
                                     handler,
                                     engines,
+                                    m,
                                     Ident::new_no_span(format!(
                                         "__contract_entry_{}",
                                         decl.name.clone()
@@ -301,12 +301,7 @@ impl TyDecl {
 
                 // Choose which items are going to be visible depending if this is an abi impl
                 // or trait impl
-                let t = ctx.namespace().resolve_call_path_typed(
-                    &Handler::default(),
-                    engines,
-                    &impl_trait.trait_name,
-                    ctx.self_type(),
-                );
+                let t = ctx.resolve_call_path(&Handler::default(), &impl_trait.trait_name);
 
                 let empty_vec = vec![];
                 let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) = t {
@@ -319,7 +314,8 @@ impl TyDecl {
                     handler,
                     impl_trait.trait_name.clone(),
                     impl_trait.trait_type_arguments.clone(),
-                    impl_trait.implementing_for.type_id,
+                    impl_trait.implementing_for.type_id(),
+                    impl_trait.impl_type_parameters.clone(),
                     impl_trait_items,
                     &impl_trait.span,
                     impl_trait
@@ -369,26 +365,20 @@ impl TyDecl {
 
                 // save decl_refs for the LSP
                 for supertrait in abi_decl.supertraits.iter_mut() {
-                    let _ = ctx
-                        .namespace()
-                        .resolve_call_path_typed(
-                            handler,
-                            engines,
-                            &supertrait.name,
-                            ctx.self_type(),
-                        )
-                        .map(|supertrait_decl| {
-                            if let ty::TyDecl::TraitDecl(ty::TraitDecl {
-                                decl_id: supertrait_decl_id,
-                            }) = supertrait_decl
-                            {
-                                supertrait.decl_ref = Some(DeclRef::new(
-                                    engines.de().get(&supertrait_decl_id).name.clone(),
-                                    supertrait_decl_id,
-                                    engines.de().get(&supertrait_decl_id).span.clone(),
-                                ));
-                            }
-                        });
+                    let _ =
+                        ctx.resolve_call_path(handler, &supertrait.name)
+                            .map(|supertrait_decl| {
+                                if let ty::TyDecl::TraitDecl(ty::TraitDecl {
+                                    decl_id: supertrait_decl_id,
+                                }) = supertrait_decl
+                                {
+                                    supertrait.decl_ref = Some(DeclRef::new(
+                                        engines.de().get(&supertrait_decl_id).name.clone(),
+                                        supertrait_decl_id,
+                                        engines.de().get(&supertrait_decl_id).span.clone(),
+                                    ));
+                                }
+                            });
                 }
 
                 let decl: ty::TyDecl = decl_engine.insert(abi_decl.clone(), Some(&decl_id)).into();
@@ -426,9 +416,9 @@ impl TyDecl {
                             ..
                         }) = entry
                         {
-                            type_argument.type_id = ctx.by_ref().resolve_type(
+                            *type_argument.type_id_mut() = ctx.by_ref().resolve_type(
                                 handler,
-                                type_argument.type_id,
+                                type_argument.type_id(),
                                 &name.span(),
                                 EnforceTypeArguments::Yes,
                                 None,
@@ -436,27 +426,37 @@ impl TyDecl {
 
                             let mut ctx = ctx
                                 .by_ref()
-                                .with_type_annotation(type_argument.type_id)
+                                .with_type_annotation(type_argument.type_id())
                                 .with_storage_declaration();
                             let initializer =
                                 ty::TyExpression::type_check(handler, ctx.by_ref(), &initializer)?;
 
-                            let mut key_ty_expression = None;
-                            if let Some(key_expression) = key_expression {
-                                let mut key_ctx =
-                                    ctx.with_type_annotation(engines.te().id_of_b256());
+                            let key_expression = match key_expression {
+                                Some(key_expression) => {
+                                    let key_ctx = ctx
+                                        .with_type_annotation(engines.te().id_of_b256())
+                                        .with_help_text("Storage keys must have type \"b256\".");
 
-                                key_ty_expression = Some(ty::TyExpression::type_check(
-                                    handler,
-                                    key_ctx.by_ref(),
-                                    &key_expression,
-                                )?);
-                            }
+                                    // TODO: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
+                                    //       We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
+                                    //       not treated as an error in the `type_check()`'s result.
+                                    let typed_expr = handler.scope(|handler| {
+                                        ty::TyExpression::type_check(
+                                            handler,
+                                            key_ctx,
+                                            &key_expression,
+                                        )
+                                    })?;
+
+                                    Some(typed_expr)
+                                }
+                                None => None,
+                            };
 
                             fields_buf.push(ty::TyStorageField {
                                 name,
                                 namespace_names: namespace_names.clone(),
-                                key_expression: key_ty_expression,
+                                key_expression,
                                 type_argument,
                                 initializer,
                                 span: field_span,
@@ -502,7 +502,7 @@ impl TyDecl {
 
                 // declarations are not allowed
                 ctx.namespace_mut()
-                    .module_mut(engines)
+                    .current_module_mut()
                     .write(engines, |m| {
                         m.current_items_mut()
                             .set_storage_declaration(handler, decl_ref.clone())
@@ -517,7 +517,13 @@ impl TyDecl {
 
                 // Resolve the type that the type alias replaces
                 let new_ty = ctx
-                    .resolve_type(handler, ty.type_id, &span, EnforceTypeArguments::Yes, None)
+                    .resolve_type(
+                        handler,
+                        ty.type_id(),
+                        &span,
+                        EnforceTypeArguments::Yes,
+                        None,
+                    )
                     .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
                 // create the type alias decl using the resolved type above
@@ -525,12 +531,12 @@ impl TyDecl {
                     name: name.clone(),
                     call_path: CallPath::from(name.clone()).to_fullpath(engines, ctx.namespace()),
                     attributes: decl.attributes.clone(),
-                    ty: TypeArgument {
-                        initial_type_id: ty.initial_type_id,
+                    ty: GenericArgument::Type(GenericTypeArgument {
+                        initial_type_id: ty.initial_type_id(),
                         type_id: new_ty,
-                        call_path_tree: ty.call_path_tree.clone(),
-                        span: ty.span.clone(),
-                    },
+                        call_path_tree: ty.call_path_tree().cloned(),
+                        span: ty.span(),
+                    }),
                     visibility: decl.visibility,
                     span,
                 };
@@ -543,6 +549,9 @@ impl TyDecl {
             }
             parsed::Declaration::TraitFnDeclaration(_decl_id) => {
                 unreachable!();
+            }
+            parsed::Declaration::ConstGenericDeclaration(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
         };
 
@@ -567,6 +576,9 @@ impl TypeCheckAnalysis for TyDecl {
             TyDecl::ConfigurableDecl(node) => {
                 let const_decl = ctx.engines.de().get_configurable(&node.decl_id);
                 const_decl.type_check_analyze(handler, ctx)?;
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             TyDecl::FunctionDecl(node) => {
                 let fn_decl = ctx.engines.de().get_function(&node.decl_id);
@@ -624,6 +636,9 @@ impl TypeCheckFinalization for TyDecl {
             TyDecl::ConfigurableDecl(node) => {
                 let mut config_decl = (*ctx.engines.de().get_configurable(&node.decl_id)).clone();
                 config_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::ConstGenericDecl(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             TyDecl::FunctionDecl(node) => {
                 let mut fn_decl = (*ctx.engines.de().get_function(&node.decl_id)).clone();

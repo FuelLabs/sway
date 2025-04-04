@@ -2,9 +2,12 @@ use crate::cli;
 use ansiterm::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
-use forc_test::{decode_log_data, TestFilter, TestRunnerCount, TestedPackage};
+use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
 use forc_tracing::println_action_green;
-use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
+use forc_util::{
+    tx_utils::{decode_log_data, format_log_receipts},
+    ForcError, ForcResult,
+};
 use sway_core::fuel_prelude::fuel_tx::Receipt;
 use tracing::info;
 
@@ -243,6 +246,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
             reverse_order: cmd.build.print.reverse_order,
         },
         time_phases: cmd.build.print.time_phases,
+        profile: cmd.build.print.profile,
         metrics_outfile: cmd.build.print.metrics_outfile,
         minify: pkg::MinifyOpts {
             json_abi: cmd.build.minify.json_abi,

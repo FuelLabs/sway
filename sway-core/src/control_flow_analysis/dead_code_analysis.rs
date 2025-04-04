@@ -7,11 +7,11 @@ use crate::{
             self, ConfigurableDecl, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl,
             TraitDecl, TyAstNode, TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl,
         },
-        CallPath, Visibility,
+        CallPath, CallPathType, Visibility,
     },
-    transform::{self, AttributesMap},
+    transform::Attributes,
     type_system::TypeInfo,
-    Engines, TypeArgument, TypeEngine, TypeId,
+    Engines, GenericArgument, TypeEngine, TypeId,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::{BTreeSet, HashMap};
@@ -21,11 +21,7 @@ use sway_error::{
     handler::Handler,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{
-    constants::{ALLOW_DEAD_CODE_NAME, STD},
-    span::Span,
-    Ident, Named, Spanned,
-};
+use sway_types::{constants::STD, span::Span, Ident, Named, Spanned};
 
 // Defines if this node is a root in the dca graph or not
 fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeType) -> bool {
@@ -140,7 +136,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(true, |count| count <= 1)
+                        .is_none_or(|count| count <= 1)
                 }
                 ControlFlowGraphNode::FunctionParameter { .. } => {
                     // Consider variables declarations dead when count is not greater than 1
@@ -148,7 +144,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(true, |count| count <= 1)
+                        .is_none_or(|count| count <= 1)
                 }
                 _ => false,
             }
@@ -174,7 +170,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         connections_count
                             .get(n)
                             .cloned()
-                            .map_or(false, |count| count > 1)
+                            .is_some_and(|count| count > 1)
                     }
                 }
                 ControlFlowGraphNode::FunctionParameter {
@@ -192,7 +188,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         connections_count
                             .get(n)
                             .cloned()
-                            .map_or(true, |count| count > 1)
+                            .is_none_or(|count| count > 1)
                     }
                 }
                 ControlFlowGraphNode::ProgramNode {
@@ -216,7 +212,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     connections_count
                         .get(n)
                         .cloned()
-                        .map_or(false, |count| count > 0)
+                        .is_some_and(|count| count > 0)
                 }
                 _ => false,
             }
@@ -531,7 +527,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             if let Ok(ref vec) = result {
                 if !vec.is_empty() {
                     // Connect variable declaration node to its type ascription.
-                    connect_type_id(engines, type_ascription.type_id, graph, entry_node)?;
+                    connect_type_id(engines, type_ascription.type_id(), graph, entry_node)?;
                 }
             }
 
@@ -585,7 +581,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 .namespace
                 .insert_configurable(call_path.suffix.clone(), entry_node);
 
-            connect_type_id(engines, type_ascription.type_id, graph, entry_node)?;
+            connect_type_id(engines, type_ascription.type_id(), graph, entry_node)?;
 
             if let Some(value) = &value {
                 connect_expression(
@@ -602,6 +598,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             } else {
                 Ok(leaves.to_vec())
             }
+        }
+        ty::TyDecl::ConstGenericDecl(_) => {
+            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860");
         }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
@@ -739,7 +738,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     entry_node: NodeIndex,
     tree_type: &TreeType,
     trait_decl_ref: &Option<DeclRef<InterfaceDeclId>>,
-    implementing_for: &TypeArgument,
+    implementing_for: &GenericArgument,
     options: NodeConnectionOptions,
 ) -> Result<(), CompileError> {
     let decl_engine = engines.de();
@@ -759,7 +758,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
         };
     }
 
-    connect_type_id(engines, implementing_for.type_id, graph, entry_node)?;
+    connect_type_id(engines, implementing_for.type_id(), graph, entry_node)?;
 
     let trait_entry = graph.namespace.find_trait(trait_name).cloned();
     // Collect the methods that are directly implemented in the trait.
@@ -857,7 +856,7 @@ fn connect_trait_declaration(
         CallPath {
             prefixes: vec![],
             suffix: decl.name.clone(),
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,
@@ -881,7 +880,7 @@ fn connect_abi_declaration(
         CallPath {
             prefixes: vec![],
             suffix: decl.name.clone(),
-            is_absolute: false,
+            callpath_type: CallPathType::Ambiguous,
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,
@@ -899,7 +898,7 @@ fn connect_abi_declaration(
                 if let Some(TypeInfo::Struct(decl_ref)) = get_struct_type_info_from_type_id(
                     type_engine,
                     decl_engine,
-                    fn_decl.return_type.type_id,
+                    fn_decl.return_type.type_id(),
                 )? {
                     let decl = decl_engine.get_struct(&decl_ref);
                     if let Some(ns) = graph.namespace.get_struct(&decl.call_path.suffix).cloned() {
@@ -926,9 +925,12 @@ fn get_struct_type_info_from_type_id(
     match type_info {
         TypeInfo::Enum(decl_ref) => {
             let decl = decl_engine.get_enum(&decl_ref);
-            for param in decl.type_parameters.iter() {
+            for p in decl.type_parameters.iter() {
+                let p = p
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
                 if let Ok(Some(type_info)) =
-                    get_struct_type_info_from_type_id(type_engine, decl_engine, param.type_id)
+                    get_struct_type_info_from_type_id(type_engine, decl_engine, p.type_id)
                 {
                     return Ok(Some(type_info));
                 }
@@ -937,7 +939,7 @@ fn get_struct_type_info_from_type_id(
                 if let Ok(Some(type_info)) = get_struct_type_info_from_type_id(
                     type_engine,
                     decl_engine,
-                    var.type_argument.type_id,
+                    var.type_argument.type_id(),
                 ) {
                     return Ok(Some(type_info));
                 }
@@ -947,7 +949,7 @@ fn get_struct_type_info_from_type_id(
         TypeInfo::Tuple(type_args) => {
             for arg in type_args.iter() {
                 if let Ok(Some(type_info)) =
-                    get_struct_type_info_from_type_id(type_engine, decl_engine, arg.type_id)
+                    get_struct_type_info_from_type_id(type_engine, decl_engine, arg.type_id())
                 {
                     return Ok(Some(type_info));
                 }
@@ -958,7 +960,7 @@ fn get_struct_type_info_from_type_id(
             if let Some(type_arguments) = type_arguments {
                 for arg in type_arguments.iter() {
                     if let Ok(Some(type_info)) =
-                        get_struct_type_info_from_type_id(type_engine, decl_engine, arg.type_id)
+                        get_struct_type_info_from_type_id(type_engine, decl_engine, arg.type_id())
                     {
                         return Ok(Some(type_info));
                     }
@@ -968,10 +970,10 @@ fn get_struct_type_info_from_type_id(
         }
         TypeInfo::Struct { .. } => Ok(Some(type_info)),
         TypeInfo::Array(type_arg, _) => {
-            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id)
+            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id())
         }
         TypeInfo::Slice(type_arg) => {
-            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id)
+            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id())
         }
         _ => Ok(None),
     }
@@ -1029,7 +1031,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
             param_name: fn_param.name.clone(),
             is_self: engines
                 .te()
-                .get(fn_param.type_argument.initial_type_id)
+                .get(fn_param.type_argument.initial_type_id())
                 .is_self_type(),
         });
         graph.add_edge(entry_node, fn_param_node, "".into());
@@ -1043,7 +1045,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
 
         connect_type_id(
             engines,
-            fn_param.type_argument.type_id,
+            fn_param.type_argument.type_id(),
             graph,
             fn_param_node,
         )?;
@@ -1071,7 +1073,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     // not sure how correct it is to default to Unit here...
     // I think types should all be resolved by now.
     let ty = type_engine
-        .to_typeinfo(fn_decl.return_type.type_id, &span)
+        .to_typeinfo(fn_decl.return_type.type_id(), &span)
         .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
     let namespace_entry = FunctionNamespaceEntry {
@@ -1098,8 +1100,10 @@ fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
 ) -> Result<(), CompileError> {
     let type_engine = engines.te();
     for fn_param in &fn_decl.parameters {
-        let ty = type_engine
-            .to_typeinfo(fn_param.type_argument.type_id, &fn_param.type_argument.span)?;
+        let ty = type_engine.to_typeinfo(
+            fn_param.type_argument.type_id(),
+            &fn_param.type_argument.span(),
+        )?;
         match ty {
             TypeInfo::Enum(decl_ref) => {
                 let decl = engines.de().get_enum(&decl_ref);
@@ -1514,6 +1518,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             Ok(vec![node])
         }
+        ConstGenericExpression { decl, .. } => {
+            let Some(node) = graph.namespace.get_const_generic(decl).cloned() else {
+                return Ok(leaves.to_vec());
+            };
+
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+
+            Ok(vec![node])
+        }
         EnumInstantiation {
             enum_ref,
             variant_name,
@@ -1791,7 +1806,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             address.span.clone(),
             options,
         ),
-        Array {
+        ArrayExplicit {
             elem_type: _,
             contents,
         } => {
@@ -1817,6 +1832,35 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
 
             Ok(last)
+        }
+        ArrayRepeat {
+            elem_type: _,
+            value,
+            length,
+        } => {
+            let value_idx = connect_expression(
+                engines,
+                &value.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                value.span.clone(),
+                options,
+            )?;
+            let length_idx = connect_expression(
+                engines,
+                &length.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                length.span.clone(),
+                options,
+            )?;
+            Ok([value_idx, length_idx].concat())
         }
         ArrayIndex { prefix, index } => {
             let prefix_idx = connect_expression(
@@ -2030,7 +2074,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                         }
                     }
                 }
-                ty::TyReassignmentTarget::Deref(exp) => {
+                ty::TyReassignmentTarget::DerefAccess { exp, indices } => {
                     connect_expression(
                         engines,
                         &exp.expression,
@@ -2042,6 +2086,22 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                         exp.span.clone(),
                         options,
                     )?;
+
+                    for projection in indices {
+                        if let ProjectionKind::ArrayIndex { index, index_span } = projection {
+                            connect_expression(
+                                engines,
+                                &index.expression,
+                                graph,
+                                leaves,
+                                exit_node,
+                                "variable reassignment LHS array index",
+                                tree_type,
+                                index_span.clone(),
+                                options,
+                            )?;
+                        }
+                    }
                 }
             };
 
@@ -2425,7 +2485,7 @@ fn connect_type_alias_declaration<'eng: 'cfg, 'cfg>(
         .insert_alias(decl.name().clone(), entry_node);
 
     let ty::TyTypeAliasDecl { ty, .. } = decl;
-    connect_type_id(engines, ty.type_id, graph, entry_node)?;
+    connect_type_id(engines, ty.type_id(), graph, entry_node)?;
 
     Ok(())
 }
@@ -2446,8 +2506,11 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(enum_idx) = enum_idx.cloned() {
                 graph.add_edge(entry_node, enum_idx, "".into());
             }
-            for type_param in &decl.type_parameters {
-                connect_type_id(engines, type_param.type_id, graph, entry_node)?;
+            for p in &decl.type_parameters {
+                let p = p
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
+                connect_type_id(engines, p.type_id, graph, entry_node)?;
             }
         }
         TypeInfo::Struct(decl_ref) => {
@@ -2456,8 +2519,11 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(struct_idx) = struct_idx.cloned() {
                 graph.add_edge(entry_node, struct_idx, "".into());
             }
-            for type_param in &decl.type_parameters {
-                connect_type_id(engines, type_param.type_id, graph, entry_node)?;
+            for p in &decl.type_parameters {
+                let p = p
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
+                connect_type_id(engines, p.type_id, graph, entry_node)?;
             }
         }
         TypeInfo::Alias { name, .. } => {
@@ -2493,23 +2559,10 @@ fn connect_call_path_decl<'eng: 'cfg, 'cfg>(
     Ok(())
 }
 
-/// Checks [AttributesMap] for `#[allow(dead_code)]` usage, if so returns true
+/// Checks `attributes` for any `#[allow(dead_code)]` usage, if so returns true
 /// otherwise returns false.
-fn allow_dead_code(attributes: AttributesMap) -> bool {
-    fn allow_dead_code_helper(attributes: AttributesMap) -> Option<bool> {
-        Some(
-            attributes
-                .get(&transform::AttributeKind::Allow)?
-                .last()?
-                .args
-                .first()?
-                .name
-                .as_str()
-                == ALLOW_DEAD_CODE_NAME,
-        )
-    }
-
-    allow_dead_code_helper(attributes).unwrap_or_default()
+fn allow_dead_code(attributes: Attributes) -> bool {
+    attributes.has_allow_dead_code()
 }
 
 /// Returns true when the given `node` contains the attribute `#[allow(dead_code)]`
@@ -2522,6 +2575,9 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             }
             ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_configurable(decl_id).attributes.clone())
+            }
+            ty::TyDecl::ConstGenericDecl(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_type(decl_id).attributes.clone())

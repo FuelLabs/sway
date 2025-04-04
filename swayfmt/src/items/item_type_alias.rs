@@ -4,7 +4,10 @@ use crate::{
     utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, ItemTypeAlias};
+use sway_ast::{
+    keywords::{EqToken, Keyword, SemicolonToken, Token, TypeToken},
+    ItemTypeAlias, PubToken,
+};
 use sway_types::Spanned;
 
 impl Format for ItemTypeAlias {
@@ -17,24 +20,24 @@ impl Format for ItemTypeAlias {
         let start_len = formatted_code.len();
 
         // Check if visibility token exists if so add it.
-        if let Some(visibility_token) = &self.visibility {
-            write!(formatted_code, "{} ", visibility_token.span().as_str())?;
+        if self.visibility.is_some() {
+            write!(formatted_code, "{} ", PubToken::AS_STR)?;
         }
 
         // Add the `type` token
-        write!(formatted_code, "{} ", self.type_token.span().as_str())?;
+        write!(formatted_code, "{} ", TypeToken::AS_STR)?;
 
         // Add name of the type alias
         self.name.format(formatted_code, formatter)?;
 
         // Add the `=` token
-        write!(formatted_code, " {} ", self.eq_token.ident().as_str())?;
+        write!(formatted_code, " {} ", EqToken::AS_STR)?;
 
         // Format and add `ty`
         self.ty.format(formatted_code, formatter)?;
 
         // Add the `;` token
-        write!(formatted_code, "{}", self.semicolon_token.ident().as_str())?;
+        write!(formatted_code, "{}", SemicolonToken::AS_STR)?;
 
         rewrite_with_comments::<ItemTypeAlias>(
             formatter,

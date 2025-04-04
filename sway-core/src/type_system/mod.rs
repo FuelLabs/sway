@@ -13,9 +13,9 @@ use std::ops::Deref;
 pub use substitute::subst_types::SubstTypesContext;
 
 #[cfg(test)]
-use crate::language::CallPath;
+use crate::language::{CallPath, CallPathType};
 #[cfg(test)]
-use crate::{language::ty::TyEnumDecl, transform::AttributesMap};
+use crate::{language::ty::TyEnumDecl, transform::Attributes};
 pub use priv_prelude::*;
 #[cfg(test)]
 use sway_error::handler::Handler;
@@ -64,6 +64,7 @@ fn generic_enum_resolution() {
     use crate::{
         decl_engine::DeclEngineInsert, language::ty, span::Span, transform, Engines, Ident,
     };
+    use ast_elements::type_parameter::GenericTypeParameter;
 
     let engines = Engines::default();
 
@@ -81,37 +82,40 @@ fn generic_enum_resolution() {
         engines
             .te()
             .new_unknown_generic(generic_name.clone(), VecSet(vec![]), None, false);
-    let placeholder_type = engines.te().new_placeholder(TypeParameter {
-        type_id: generic_type,
-        initial_type_id: generic_type,
-        name: generic_name.clone(),
-        trait_constraints: vec![],
-        trait_constraints_span: sp.clone(),
-        is_from_parent: false,
-    });
-    let placeholder_type_param = TypeParameter {
+    let placeholder_type =
+        engines
+            .te()
+            .new_placeholder(TypeParameter::Type(GenericTypeParameter {
+                type_id: generic_type,
+                initial_type_id: generic_type,
+                name: generic_name.clone(),
+                trait_constraints: vec![],
+                trait_constraints_span: sp.clone(),
+                is_from_parent: false,
+            }));
+    let placeholder_type_param = TypeParameter::Type(GenericTypeParameter {
         type_id: placeholder_type,
         initial_type_id: placeholder_type,
         name: generic_name.clone(),
         trait_constraints: vec![],
         trait_constraints_span: sp.clone(),
         is_from_parent: false,
-    };
+    });
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name.clone(),
         tag: 0,
-        type_argument: TypeArgument {
+        type_argument: GenericArgument::Type(ast_elements::type_argument::GenericTypeArgument {
             type_id: placeholder_type,
             initial_type_id: placeholder_type,
             span: sp.clone(),
             call_path_tree: None,
-        },
+        }),
         span: sp.clone(),
-        attributes: transform::AttributesMap::default(),
+        attributes: transform::Attributes::default(),
     }];
 
     let mut call_path: CallPath<BaseIdent> = result_name.clone().into();
-    call_path.is_absolute = true;
+    call_path.callpath_type = CallPathType::Full;
     let decl_ref_1 = engines.de().insert(
         TyEnumDecl {
             call_path,
@@ -119,7 +123,7 @@ fn generic_enum_resolution() {
             variants: variant_types,
             span: sp.clone(),
             visibility: crate::language::Visibility::Public,
-            attributes: AttributesMap::default(),
+            attributes: Attributes::default(),
         },
         None,
     );
@@ -134,26 +138,26 @@ fn generic_enum_resolution() {
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name,
         tag: 0,
-        type_argument: TypeArgument {
+        type_argument: GenericArgument::Type(ast_elements::type_argument::GenericTypeArgument {
             type_id: boolean_type,
             initial_type_id: boolean_type,
             span: sp.clone(),
             call_path_tree: None,
-        },
+        }),
         span: sp.clone(),
-        attributes: transform::AttributesMap::default(),
+        attributes: transform::Attributes::default(),
     }];
-    let type_param = TypeParameter {
+    let type_param = TypeParameter::Type(GenericTypeParameter {
         type_id: boolean_type,
         initial_type_id: boolean_type,
         name: generic_name,
         trait_constraints: vec![],
         trait_constraints_span: sp.clone(),
         is_from_parent: false,
-    };
+    });
 
     let mut call_path: CallPath<BaseIdent> = result_name.into();
-    call_path.is_absolute = true;
+    call_path.callpath_type = CallPathType::Full;
     let decl_ref_2 = engines.de().insert(
         TyEnumDecl {
             call_path,
@@ -161,7 +165,7 @@ fn generic_enum_resolution() {
             variants: variant_types.clone(),
             span: sp.clone(),
             visibility: crate::language::Visibility::Public,
-            attributes: AttributesMap::default(),
+            attributes: Attributes::default(),
         },
         None,
     );
@@ -177,7 +181,7 @@ fn generic_enum_resolution() {
         let decl = engines.de().get_enum(decl_ref_1);
         assert_eq!(decl.call_path.suffix.as_str(), "Result");
         assert!(matches!(
-            &*engines.te().get(variant_types[0].type_argument.type_id),
+            &*engines.te().get(variant_types[0].type_argument.type_id()),
             TypeInfo::Boolean
         ));
     } else {

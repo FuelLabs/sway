@@ -1,0 +1,8 @@
+[[package]]
+name = "issue_6335_repro"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-2A7B279266ACFF97"

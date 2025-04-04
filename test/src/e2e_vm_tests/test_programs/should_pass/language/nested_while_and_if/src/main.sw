@@ -1,6 +1,6 @@
 script;
 
-use core::*;
+use std::*;
 
 fn foo(init: u64, n: u64) -> u64 {
     let mut index = 0;

@@ -11,11 +11,12 @@ impl CanInitStruct {
     }
 }
 
-impl core::ops::Eq for CanInitStruct {
+impl PartialEq for CanInitStruct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
+impl Eq for CanInitStruct {}
 
 pub struct CannotInitStruct {
     pub x: u64,
@@ -29,8 +30,9 @@ impl CannotInitStruct {
     }
 }
 
-impl core::ops::Eq for CannotInitStruct {
+impl PartialEq for CannotInitStruct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
+impl Eq for CannotInitStruct {}

@@ -1,6 +1,6 @@
 library;
 
-use core::ops::*;
+use std::ops::*;
 use std::hash::*;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -16,13 +16,14 @@ pub enum MyEnum {
     Y: u64,
 }
 
-impl Eq for MyStruct {
+impl PartialEq for MyStruct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
+impl Eq for MyStruct {}
 
-impl Eq for MyEnum {
+impl PartialEq for MyEnum {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (MyEnum::X(val1), MyEnum::X(val2)) => val1 == val2,
@@ -31,21 +32,25 @@ impl Eq for MyEnum {
         }
     }
 }
+impl Eq for MyEnum {}
 
-impl Eq for (u64, u64) {
+impl PartialEq for (u64, u64) {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
     }
 }
+impl Eq for (u64, u64) {}
 
-impl Eq for [u64; 3] {
+impl PartialEq for [u64; 3] {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
     }
 }
+impl Eq for [u64; 3] {}
 
-impl Eq for str[4] {
+impl PartialEq for str[4] {
     fn eq(self, other: Self) -> bool {
         sha256_str_array(self) == sha256_str_array(other)
     }
 }
+impl Eq for str[4] {}

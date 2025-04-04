@@ -1,7 +1,7 @@
 use crate::engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext};
 use crate::language::CallPath;
 use crate::type_system::TypeBinding;
-use crate::{Ident, TypeArgument, TypeId, TypeInfo};
+use crate::{GenericArgument, Ident, TypeId, TypeInfo};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -18,13 +18,13 @@ pub enum MethodName {
     FromModule { method_name: Ident },
     /// something like a::b::c()
     /// in this case, the path defines where the fn symbol is defined
-    /// used for things like core::ops::add(a, b).
+    /// used for things like std::ops::add(a, b).
     /// in this case, the first argument determines the type to look for
     FromTrait { call_path: CallPath },
     /// Represents a method lookup with a fully qualified path.
     /// like <S as Trait>::method()
     FromQualifiedPathRoot {
-        ty: TypeArgument,
+        ty: GenericArgument,
         as_trait: TypeId,
         method_name: Ident,
     },

@@ -17,13 +17,13 @@ pub enum FunctionDeclarationKind {
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
     pub purity: Purity,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub name: Ident,
     pub visibility: Visibility,
     pub body: CodeBlock,
     pub parameters: Vec<FunctionParameter>,
     pub span: Span,
-    pub return_type: TypeArgument,
+    pub return_type: GenericArgument,
     pub type_parameters: Vec<TypeParameter>,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub kind: FunctionDeclarationKind,
@@ -68,7 +68,7 @@ pub struct FunctionParameter {
     pub is_reference: bool,
     pub is_mutable: bool,
     pub mutability_span: Span,
-    pub type_argument: TypeArgument,
+    pub type_argument: GenericArgument,
 }
 
 impl EqWithEngines for FunctionParameter {}
@@ -83,10 +83,8 @@ impl PartialEqWithEngines for FunctionParameter {
 }
 
 impl FunctionDeclaration {
-    /// Checks if this `FunctionDeclaration` is a test.
+    /// Checks if this [FunctionDeclaration] is a test.
     pub(crate) fn is_test(&self) -> bool {
-        self.attributes
-            .keys()
-            .any(|k| matches!(k, AttributeKind::Test))
+        self.attributes.has_any_of_kind(AttributeKind::Test)
     }
 }

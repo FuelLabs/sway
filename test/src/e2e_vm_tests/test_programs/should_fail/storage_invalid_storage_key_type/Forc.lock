@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-C0C563B172E50A8D"
+
+[[package]]
+name = "storage_invalid_storage_key_type"
+source = "member"
+dependencies = ["std"]

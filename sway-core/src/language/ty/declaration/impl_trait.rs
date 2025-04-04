@@ -1,35 +1,76 @@
-use std::hash::{Hash, Hasher};
-
-use sway_types::{Ident, Named, Span, Spanned};
-
+use super::{TyAbiDecl, TyDeclParsedType, TyTraitDecl, TyTraitItem};
 use crate::{
-    decl_engine::DeclRefMixedInterface,
+    decl_engine::{DeclId, DeclRefMixedInterface, InterfaceDeclId},
     engine_threading::*,
     has_changes,
     language::{parsed::ImplSelfOrTrait, CallPath},
     type_system::*,
 };
-
-use super::{TyDeclParsedType, TyTraitItem};
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use sway_types::{Ident, Named, Span, Spanned};
 
 pub type TyImplItem = TyTraitItem;
 
 // impl <A, B, C> Trait<Arg, Arg> for Type<Arg, Arg>
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyImplSelfOrTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
-    pub trait_type_arguments: Vec<TypeArgument>,
+    pub trait_type_arguments: Vec<GenericArgument>,
     pub items: Vec<TyImplItem>,
     pub supertrait_items: Vec<TyImplItem>,
     pub trait_decl_ref: Option<DeclRefMixedInterface>,
-    pub implementing_for: TypeArgument,
+    pub implementing_for: GenericArgument,
     pub span: Span,
 }
 
 impl TyImplSelfOrTrait {
     pub fn is_impl_contract(&self, te: &TypeEngine) -> bool {
-        matches!(&*te.get(self.implementing_for.type_id), TypeInfo::Contract)
+        matches!(
+            &*te.get(self.implementing_for.type_id()),
+            TypeInfo::Contract
+        )
+    }
+
+    pub fn is_impl_self(&self) -> bool {
+        self.trait_decl_ref.is_none()
+    }
+
+    pub fn is_impl_trait(&self) -> bool {
+        match &self.trait_decl_ref {
+            Some(decl_ref) => matches!(decl_ref.id(), InterfaceDeclId::Trait(_)),
+            _ => false,
+        }
+    }
+
+    pub fn is_impl_abi(&self) -> bool {
+        match &self.trait_decl_ref {
+            Some(decl_ref) => matches!(decl_ref.id(), InterfaceDeclId::Abi(_)),
+            _ => false,
+        }
+    }
+
+    /// Returns [DeclId] of the trait implemented by `self`, if `self` implements a trait.
+    pub fn implemented_trait_decl_id(&self) -> Option<DeclId<TyTraitDecl>> {
+        match &self.trait_decl_ref {
+            Some(decl_ref) => match &decl_ref.id() {
+                InterfaceDeclId::Trait(decl_id) => Some(*decl_id),
+                InterfaceDeclId::Abi(_) => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Returns [DeclId] of the ABI implemented by `self`, if `self` implements an ABI for a contract.
+    pub fn implemented_abi_decl_id(&self) -> Option<DeclId<TyAbiDecl>> {
+        match &self.trait_decl_ref {
+            Some(decl_ref) => match &decl_ref.id() {
+                InterfaceDeclId::Abi(decl_id) => Some(*decl_id),
+                InterfaceDeclId::Trait(_) => None,
+            },
+            _ => None,
+        }
     }
 }
 

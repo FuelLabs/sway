@@ -8,12 +8,12 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind};
-use sway_types::{
-    ast::{Delimiter, PunctKind},
-    constants::DOC_COMMENT_ATTRIBUTE_NAME,
-    Spanned,
+use sway_ast::{
+    attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind},
+    keywords::{HashBangToken, HashToken, Token},
+    CommaToken,
 };
+use sway_types::{ast::Delimiter, Spanned};
 
 impl<T: Format + Spanned + std::fmt::Debug> Format for Annotated<T> {
     fn format(
@@ -23,7 +23,7 @@ impl<T: Format + Spanned + std::fmt::Debug> Format for Annotated<T> {
     ) -> Result<(), FormatterError> {
         // format each `Attribute`
         let mut start = None;
-        for attr in &self.attribute_list {
+        for attr in &self.attributes {
             if let Some(start) = start {
                 // Write any comments that may have been defined in between the
                 // attributes and the value
@@ -56,11 +56,12 @@ impl Format for AttributeArg {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
-        _formatter: &mut Formatter,
+        formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(formatted_code, "{}", self.name.span().as_str())?;
+        write!(formatted_code, "{}", self.name.as_str())?;
         if let Some(value) = &self.value {
-            write!(formatted_code, " = {}", value.span().as_str())?;
+            write!(formatted_code, " = ")?;
+            value.format(formatted_code, formatter)?;
         }
 
         Ok(())
@@ -87,7 +88,7 @@ impl Format for AttributeDecl {
             .attribute
             .get()
             .into_iter()
-            .partition(|a| a.name.as_str() == DOC_COMMENT_ATTRIBUTE_NAME);
+            .partition(|a| a.is_doc_comment());
 
         // invariant: doc comment attributes are singleton lists
         if let Some(attr) = doc_comment_attrs.into_iter().next() {
@@ -114,11 +115,14 @@ impl Format for AttributeDecl {
 
         // invariant: attribute lists cannot be empty
         // `#`
-        let hash_type_token_span = match &self.hash_kind {
-            AttributeHashKind::Inner(_) => Err(FormatterError::HashBangAttributeError),
-            AttributeHashKind::Outer(hash_token) => Ok(hash_token.span()),
+        match &self.hash_kind {
+            AttributeHashKind::Inner(_hash_bang_token) => {
+                write!(formatted_code, "{}", HashBangToken::AS_STR)?;
+            }
+            AttributeHashKind::Outer(_hash_token) => {
+                write!(formatted_code, "{}", HashToken::AS_STR)?;
+            }
         };
-        write!(formatted_code, "{}", hash_type_token_span?.as_str())?;
         // `[`
         Self::open_square_bracket(formatted_code, formatter)?;
         let mut regular_attrs = regular_attrs.iter().peekable();
@@ -127,7 +131,7 @@ impl Format for AttributeDecl {
                 formatter.shape.with_default_code_line(),
                 |formatter| -> Result<(), FormatterError> {
                     // name e.g. `storage`
-                    write!(formatted_code, "{}", attr.name.span().as_str())?;
+                    write!(formatted_code, "{}", attr.name.as_str())?;
                     if let Some(args) = &attr.args {
                         // `(`
                         Self::open_parenthesis(formatted_code, formatter)?;
@@ -141,7 +145,7 @@ impl Format for AttributeDecl {
             )?;
             // do not put a separator after the last attribute
             if regular_attrs.peek().is_some() {
-                write!(formatted_code, "{} ", PunctKind::Comma.as_char())?;
+                write!(formatted_code, "{} ", CommaToken::AS_STR)?;
             }
         }
         // `]\n`

@@ -1,3 +1,5 @@
+use sway_types::SourceId;
+
 use crate::priv_prelude::*;
 
 #[derive(Clone, Debug, Serialize)]
@@ -16,6 +18,10 @@ impl Module {
                 None
             }
         })
+    }
+
+    pub fn source_id(&self) -> Option<SourceId> {
+        self.kind.span().source_id().copied()
     }
 }
 
@@ -37,6 +43,19 @@ pub enum ModuleKind {
     Contract { contract_token: ContractToken },
     Predicate { predicate_token: PredicateToken },
     Library { library_token: LibraryToken },
+}
+
+impl ModuleKind {
+    /// [ModuleKind]'s friendly name string used for various reportings.
+    pub fn friendly_name(&self) -> &'static str {
+        use ModuleKind::*;
+        match self {
+            Script { .. } => "module kind (script)",
+            Contract { .. } => "module kind (contract)",
+            Predicate { .. } => "module kind (predicate)",
+            Library { .. } => "module kind (library)",
+        }
+    }
 }
 
 impl Spanned for ModuleKind {

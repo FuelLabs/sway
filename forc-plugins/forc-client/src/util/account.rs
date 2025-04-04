@@ -4,7 +4,11 @@ use fuels::{
     prelude::*,
     types::{coin_type_id::CoinTypeId, input::Input},
 };
-use fuels_accounts::{wallet::WalletUnlocked, Account};
+use fuels_accounts::{
+    signers::private_key::PrivateKeySigner,
+    wallet::{Unlocked, Wallet},
+    Account,
+};
 
 use super::aws::AwsSigner;
 
@@ -14,7 +18,7 @@ pub enum ForcClientAccount {
     /// Local signer where the private key owned locally. This can be
     /// generated through `forc-wallet` integration or manually by providing
     /// a private-key.
-    Wallet(WalletUnlocked),
+    Wallet(Wallet<Unlocked<PrivateKeySigner>>),
     /// A KMS Signer specifically using AWS KMS service. The signing key
     /// is managed by another entity for KMS signers. Messages are
     /// signed by the KMS entity. Signed transactions are retrieved
@@ -22,8 +26,32 @@ pub enum ForcClientAccount {
     KmsSigner(AwsSigner),
 }
 
-#[async_trait]
 impl Account for ForcClientAccount {
+    fn add_witnesses<Tb: TransactionBuilder>(&self, tb: &mut Tb) -> Result<()> {
+        tb.add_signer(self.clone())?;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl ViewOnlyAccount for ForcClientAccount {
+    fn address(&self) -> &Bech32Address {
+        match self {
+            ForcClientAccount::Wallet(wallet) => wallet.address(),
+            ForcClientAccount::KmsSigner(account) => {
+                fuels_accounts::ViewOnlyAccount::address(account)
+            }
+        }
+    }
+
+    fn try_provider(&self) -> Result<&Provider> {
+        match self {
+            ForcClientAccount::Wallet(wallet) => wallet.try_provider(),
+            ForcClientAccount::KmsSigner(account) => Ok(account.provider()),
+        }
+    }
+
     async fn get_asset_inputs_for_amount(
         &self,
         asset_id: AssetId,
@@ -43,37 +71,13 @@ impl Account for ForcClientAccount {
             }
         }
     }
-
-    fn add_witnesses<Tb: TransactionBuilder>(&self, tb: &mut Tb) -> Result<()> {
-        tb.add_signer(self.clone())?;
-
-        Ok(())
-    }
-}
-
-impl ViewOnlyAccount for ForcClientAccount {
-    fn address(&self) -> &Bech32Address {
-        match self {
-            ForcClientAccount::Wallet(wallet) => wallet.address(),
-            ForcClientAccount::KmsSigner(account) => {
-                fuels_accounts::ViewOnlyAccount::address(account)
-            }
-        }
-    }
-
-    fn try_provider(&self) -> Result<&Provider> {
-        match self {
-            ForcClientAccount::Wallet(wallet) => wallet.try_provider(),
-            ForcClientAccount::KmsSigner(account) => Ok(account.provider()),
-        }
-    }
 }
 
 #[async_trait]
 impl Signer for ForcClientAccount {
     async fn sign(&self, message: Message) -> Result<Signature> {
         match self {
-            ForcClientAccount::Wallet(wallet) => wallet.sign(message).await,
+            ForcClientAccount::Wallet(wallet) => wallet.signer().sign(message).await,
             ForcClientAccount::KmsSigner(account) => account.sign(message).await,
         }
     }

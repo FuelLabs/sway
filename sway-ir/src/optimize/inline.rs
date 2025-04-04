@@ -15,9 +15,9 @@ use crate::{
     function::Function,
     instruction::{FuelVmInstruction, InstOp},
     irtype::Type,
-    local_var::LocalVar,
     metadata::{combine, MetadataIndex},
     value::{Value, ValueContent, ValueDatum},
+    variable::LocalVar,
     AnalysisResults, BlockArgument, Instruction, Module, Pass, PassMutability, ScopedPass,
 };
 
@@ -147,7 +147,6 @@ pub fn fn_inline(
 ///
 /// e.g., If this is applied to main() then all calls in the program are removed.  This is
 /// obviously dangerous for recursive functions, in which case this pass would inline forever.
-
 pub fn inline_all_function_calls(
     context: &mut Context,
     function: &Function,
@@ -163,7 +162,6 @@ pub fn inline_all_function_calls(
 /// - The number of calls made to the function or if the function is called inside a loop.
 /// - A particular call has constant arguments implying further constant folding.
 /// - An attribute request, e.g., #[always_inline], #[never_inline].
-
 pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
     context: &mut Context,
     function: &Function,
@@ -214,7 +212,6 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
 ///
 /// The max_stack_size is a bit tricky, as the IR doesn't really know (or care) about the size of
 /// types.  See the source code for how it works.
-
 pub fn is_small_fn(
     max_blocks: Option<usize>,
     max_instrs: Option<usize>,
@@ -242,17 +239,17 @@ pub fn is_small_fn(
     }
 
     move |context: &Context, function: &Function, _call_site: &Value| -> bool {
-        max_blocks.map_or(true, |max_block_count| {
-            function.num_blocks(context) <= max_block_count
-        }) && max_instrs.map_or(true, |max_instrs_count| {
-            function.num_instructions_incl_asm_instructions(context) <= max_instrs_count
-        }) && max_stack_size.map_or(true, |max_stack_size_count| {
-            function
-                .locals_iter(context)
-                .map(|(_name, ptr)| count_type_elements(context, &ptr.get_inner_type(context)))
-                .sum::<usize>()
-                <= max_stack_size_count
-        })
+        max_blocks.is_none_or(|max_block_count| function.num_blocks(context) <= max_block_count)
+            && max_instrs.is_none_or(|max_instrs_count| {
+                function.num_instructions_incl_asm_instructions(context) <= max_instrs_count
+            })
+            && max_stack_size.is_none_or(|max_stack_size_count| {
+                function
+                    .locals_iter(context)
+                    .map(|(_name, ptr)| count_type_elements(context, &ptr.get_inner_type(context)))
+                    .sum::<usize>()
+                    <= max_stack_size_count
+            })
     }
 }
 
@@ -260,7 +257,6 @@ pub fn is_small_fn(
 ///
 /// The destination function, block and call site must be specified along with the function to
 /// inline.
-
 pub fn inline_function_call(
     context: &mut Context,
     function: Function,
@@ -606,6 +602,7 @@ fn inline_instruction(
             InstOp::GetLocal(local_var) => {
                 new_block.append(context).get_local(map_local(local_var))
             }
+            InstOp::GetGlobal(global_var) => new_block.append(context).get_global(global_var),
             InstOp::GetConfig(module, name) => new_block.append(context).get_config(module, name),
             InstOp::IntToPtr(value, ty) => {
                 new_block.append(context).int_to_ptr(map_value(value), ty)

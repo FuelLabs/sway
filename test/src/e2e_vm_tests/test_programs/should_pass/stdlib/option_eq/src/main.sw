@@ -10,33 +10,37 @@ enum MyEnum {
 }
 
 pub type StringArray = str[4];
-impl core::ops::Eq for StringArray {
+impl PartialEq for StringArray {
     fn eq(self, other: Self) -> bool {
         from_str_array(self) == from_str_array(other)
     }
 }
+impl Eq for StringArray {}
 
 pub type Array = [u32; 2];
-impl core::ops::Eq for Array {
+impl PartialEq for Array {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1]
     }
 }
+impl Eq for Array {}
 
-impl core::ops::Eq for MyStruct {
+impl PartialEq for MyStruct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
+impl Eq for MyStruct {}
 
 pub type Tuple = (u32, u32);
-impl core::ops::Eq for Tuple {
+impl PartialEq for Tuple {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
     }
 }
+impl Eq for Tuple {}
 
-impl core::ops::Eq for MyEnum {
+impl PartialEq for MyEnum {
     fn eq(self, other: MyEnum) -> bool {
         match (self, other) {
             (MyEnum::A(inner1), MyEnum::A(inner2)) => inner1 == inner2,
@@ -45,6 +49,7 @@ impl core::ops::Eq for MyEnum {
         }
     }
 }
+impl Eq for MyEnum {}
 
 fn main() -> bool {
     // Test with u8

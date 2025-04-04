@@ -1,31 +1,33 @@
-use std::{
-    cmp::Ordering,
-    fmt,
-    hash::{Hash, Hasher},
-};
-
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
-use sway_types::Spanned;
-
 use crate::{
     engine_threading::*,
-    language::{parsed::Supertrait, ty, CallPath},
+    language::{parsed::Supertrait, ty, CallPath, CallPathDisplayType},
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
         TypeCheckContext,
     },
     type_system::priv_prelude::*,
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
-    EnforceTypeArguments,
+    EnforceTypeArguments, Namespace,
 };
+use serde::{Deserialize, Serialize};
+use std::{
+    cmp::Ordering,
+    collections::BTreeMap,
+    fmt,
+    hash::{Hash, Hasher},
+};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_types::Spanned;
 
-#[derive(Debug, Clone)]
+use super::type_argument::GenericTypeArgument;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraitConstraint {
     pub trait_name: CallPath,
-    pub type_arguments: Vec<TypeArgument>,
+    pub type_arguments: Vec<GenericArgument>,
 }
 
 impl HashWithEngines for TraitConstraint {
@@ -122,7 +124,7 @@ impl CollectTypesMetadata for TraitConstraint {
         handler.scope(|handler| {
             for type_arg in &self.type_arguments {
                 res.extend(
-                    match type_arg.type_id.collect_types_metadata(handler, ctx) {
+                    match type_arg.type_id().collect_types_metadata(handler, ctx) {
                         Ok(res) => res,
                         Err(_) => continue,
                     },
@@ -160,13 +162,17 @@ impl TraitConstraint {
             }));
         }
 
+        self.trait_name = self
+            .trait_name
+            .to_canonical_path(ctx.engines(), ctx.namespace());
+
         // Type check the type arguments.
         for type_argument in &mut self.type_arguments {
-            type_argument.type_id = ctx
+            *type_argument.type_id_mut() = ctx
                 .resolve_type(
                     handler,
-                    type_argument.type_id,
-                    &type_argument.span,
+                    type_argument.type_id(),
+                    &type_argument.span(),
                     EnforceTypeArguments::Yes,
                     None,
                 )
@@ -193,9 +199,8 @@ impl TraitConstraint {
         let mut type_arguments = type_arguments.clone();
 
         match ctx
-            .namespace()
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-            .resolve_call_path_typed(&Handler::default(), engines, trait_name, ctx.self_type())
+            .resolve_call_path(&Handler::default(), trait_name)
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -206,18 +211,19 @@ impl TraitConstraint {
                 trait_decl
                     .type_parameters
                     .push(trait_decl.self_type.clone());
-                type_arguments.push(TypeArgument {
+                type_arguments.push(GenericArgument::Type(GenericTypeArgument {
                     type_id,
                     initial_type_id: type_id,
                     span: trait_name.span(),
                     call_path_tree: None,
-                });
+                }));
 
                 // Monomorphize the trait declaration.
                 ctx.monomorphize(
                     handler,
                     &mut trait_decl,
                     &mut type_arguments,
+                    BTreeMap::new(),
                     EnforceTypeArguments::Yes,
                     &trait_name.span(),
                 )?;
@@ -260,5 +266,12 @@ impl TraitConstraint {
         }
 
         Ok(())
+    }
+
+    pub fn to_display_name(&self, engines: &Engines, namespace: &Namespace) -> String {
+        let display_path = self
+            .trait_name
+            .to_display_path(CallPathDisplayType::StripPackagePrefix, namespace);
+        display_path.to_string_with_args(engines, &self.type_arguments)
     }
 }

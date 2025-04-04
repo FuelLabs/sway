@@ -9,6 +9,7 @@ use crate::{
 use std::fmt::Write;
 use sway_ast::{
     expr::asm::{AsmBlock, AsmBlockContents, AsmFinalExpr, AsmRegisterDeclaration},
+    keywords::{AsmToken, ColonToken, Keyword, SemicolonToken, Token},
     Instruction,
 };
 use sway_types::{ast::Delimiter, Spanned};
@@ -56,7 +57,7 @@ fn format_asm_block(
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
-    write!(formatted_code, "{}", asm_block.asm_token.span().as_str())?;
+    write!(formatted_code, "{}", AsmToken::AS_STR)?;
 
     formatter.with_shape(
         formatter.shape.with_default_code_line(),
@@ -174,8 +175,8 @@ impl Format for AsmRegisterDeclaration {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.register.format(formatted_code, formatter)?;
-        if let Some((colon_token, expr)) = &self.value_opt {
-            write!(formatted_code, "{} ", colon_token.span().as_str())?;
+        if let Some((_colon_token, expr)) = &self.value_opt {
+            write!(formatted_code, "{} ", ColonToken::AS_STR)?;
             expr.format(formatted_code, formatter)?;
         }
 
@@ -189,7 +190,7 @@ impl Format for Instruction {
         formatted_code: &mut FormattedCode,
         _formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(formatted_code, "{}", &self.op_code_ident().as_str())?;
+        write!(formatted_code, "{}", self.op_code_as_str())?;
         for arg in self.register_arg_idents() {
             write!(formatted_code, " {}", arg.as_str())?
         }
@@ -206,10 +207,10 @@ impl Format for AsmBlockContents {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        for (instruction, semicolon_token) in self.instructions.iter() {
+        for (instruction, _semicolon_token) in self.instructions.iter() {
             write!(formatted_code, "{}", formatter.indent_to_str()?)?;
             instruction.format(formatted_code, formatter)?;
-            writeln!(formatted_code, "{}", semicolon_token.span().as_str())?
+            writeln!(formatted_code, "{}", SemicolonToken::AS_STR)?
         }
         if let Some(final_expr) = &self.final_expr_opt {
             if formatter.shape.code_line.line_style == LineStyle::Multiline {
@@ -232,8 +233,8 @@ impl Format for AsmFinalExpr {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         self.register.format(formatted_code, formatter)?;
-        if let Some((colon_token, ty)) = &self.ty_opt {
-            write!(formatted_code, "{} ", colon_token.span().as_str())?;
+        if let Some((_colon_token, ty)) = &self.ty_opt {
+            write!(formatted_code, "{} ", ColonToken::AS_STR)?;
             ty.format(formatted_code, formatter)?;
         }
 

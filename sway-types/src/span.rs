@@ -1,12 +1,11 @@
-use std::fmt::Display;
-
-use serde::{Deserialize, Serialize};
-
 use crate::SourceId;
-
-use {
-    lazy_static::lazy_static,
-    std::{cmp, fmt, hash::Hash, sync::Arc},
+use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
+use std::{
+    cmp,
+    fmt::{self, Display},
+    hash::Hash,
+    sync::Arc,
 };
 
 lazy_static! {
@@ -43,7 +42,7 @@ impl<'a> Position<'a> {
 }
 
 /// Represents a span of the source code in a specific file.
-#[derive(Clone, Ord, PartialOrd)]
+#[derive(Clone, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Span {
     // The original source code.
     src: Arc<str>,
@@ -71,18 +70,6 @@ impl PartialEq for Span {
 
 impl Eq for Span {}
 
-impl Serialize for Span {
-    // Serialize a tuple two fields: `start` and `end`.
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        use serde::ser::SerializeTuple;
-
-        let mut state = serializer.serialize_tuple(2)?;
-        state.serialize_element(&self.start)?;
-        state.serialize_element(&self.end)?;
-        state.end()
-    }
-}
-
 impl From<Span> for std::ops::Range<usize> {
     fn from(value: Span) -> Self {
         Self {
@@ -107,6 +94,32 @@ impl Span {
         })
     }
 
+    /// Creates an empty [Span], means a span whose [Span::start] and [Span::end] are the same.
+    /// The resulting empty [Span] will point to the start of the provided `span` and
+    /// be in the same file.
+    pub fn empty_at_start(span: &Span) -> Span {
+        Span::new(
+            span.src().clone(),
+            span.start(),
+            span.start(),
+            span.source_id().copied(),
+        )
+        .expect("the existing `span` is a valid `Span`")
+    }
+
+    /// Creates an empty [Span], means a span whose [Span::start] and [Span::end] are the same.
+    /// The resulting empty [Span] will point to the end of the provided `span` and
+    /// be in the same file.
+    pub fn empty_at_end(span: &Span) -> Span {
+        Span::new(
+            span.src().clone(),
+            span.end(),
+            span.end(),
+            span.source_id().copied(),
+        )
+        .expect("the existing `span` is a valid `Span`")
+    }
+
     pub fn from_string(source: String) -> Span {
         let len = source.len();
         Span::new(Arc::from(source), 0, len, None).unwrap()
@@ -114,6 +127,10 @@ impl Span {
 
     pub fn src(&self) -> &Arc<str> {
         &self.src
+    }
+
+    pub fn source_id(&self) -> Option<&SourceId> {
+        self.source_id.as_ref()
     }
 
     pub fn start(&self) -> usize {
@@ -124,16 +141,22 @@ impl Span {
         self.end
     }
 
-    pub fn source_id(&self) -> Option<&SourceId> {
-        self.source_id.as_ref()
-    }
-
     pub fn start_pos(&self) -> Position {
         Position::new(&self.src, self.start).unwrap()
     }
 
     pub fn end_pos(&self) -> Position {
         Position::new(&self.src, self.end).unwrap()
+    }
+
+    /// Returns an empty [Span] that points to the start of `self`.
+    pub fn start_span(&self) -> Span {
+        Self::empty_at_start(self)
+    }
+
+    /// Returns an empty [Span] that points to the end of `self`.
+    pub fn end_span(&self) -> Span {
+        Self::empty_at_end(self)
     }
 
     pub fn split(&self) -> (Position, Position) {
@@ -215,6 +238,18 @@ impl Span {
 
     pub fn is_dummy(&self) -> bool {
         self.eq(&DUMMY_SPAN)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.start == self.end
+    }
+
+    /// Returns true if `self` contains `other`.
+    pub fn contains(&self, other: &Span) -> bool {
+        Arc::ptr_eq(&self.src, &other.src)
+            && self.source_id == other.source_id
+            && self.start <= other.start
+            && self.end >= other.end
     }
 }
 

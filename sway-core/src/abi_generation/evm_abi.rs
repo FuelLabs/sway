@@ -1,10 +1,10 @@
-use sway_types::integer_bits::IntegerBits;
+use sway_types::{integer_bits::IntegerBits, Named};
 
 use crate::{
     asm_generation::EvmAbiResult,
     decl_engine::DeclId,
     language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
-    Engines, TypeArgument, TypeId, TypeInfo,
+    Engines, GenericArgument, TypeId, TypeInfo,
 };
 
 pub fn generate_abi_program(program: &TyProgram, engines: &Engines) -> EvmAbiResult {
@@ -45,9 +45,12 @@ fn get_type_str(type_id: &TypeId, engines: &Engines, resolved_type_id: TypeId) -
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
-            (TypeInfo::Array(_, count), TypeInfo::Array(_, resolved_count)) => {
-                assert_eq!(count.val(), resolved_count.val());
-                format!("[_; {}]", count.val())
+            (TypeInfo::Array(_, length), TypeInfo::Array(_, resolved_length)) => {
+                assert_eq!(
+                    length.as_literal_val().unwrap(),
+                    resolved_length.as_literal_val().unwrap()
+                );
+                format!("[_; {:?}]", engines.help_out(length))
             }
             (TypeInfo::Slice(_), TypeInfo::Slice(_)) => "__slice[_]".into(),
             (TypeInfo::Custom { .. }, _) => {
@@ -66,7 +69,7 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
         Never => "never".into(),
         UnknownGeneric { name, .. } => name.to_string(),
         Placeholder(_) => "_".to_string(),
-        TypeParam(n) => format!("typeparam({n})"),
+        TypeParam(param) => format!("typeparam({})", param.name()),
         StringSlice => "str".into(),
         StringArray(x) => format!("str[{}]", x.val()),
         UnsignedInteger(x) => match x {
@@ -113,7 +116,11 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
             format!("contract caller {abi_name}")
         }
         Array(elem_ty, length) => {
-            format!("{}[{}]", abi_str_type_arg(elem_ty, engines), length.val())
+            format!(
+                "{}[{:?}]",
+                abi_str_type_arg(elem_ty, engines),
+                engines.help_out(length),
+            )
         }
         RawUntypedPtr => "raw untyped ptr".into(),
         RawUntypedSlice => "raw untyped slice".into(),
@@ -163,7 +170,7 @@ pub fn abi_param_type(type_info: &TypeInfo, engines: &Engines) -> ethabi::ParamT
         Tuple(fields) => ethabi::ParamType::Tuple(
             fields
                 .iter()
-                .map(|f| abi_param_type(&type_engine.get(f.type_id), engines))
+                .map(|f| abi_param_type(&type_engine.get(f.type_id()), engines))
                 .collect::<Vec<ethabi::ParamType>>(),
         ),
         Struct(decl_ref) => {
@@ -171,12 +178,12 @@ pub fn abi_param_type(type_info: &TypeInfo, engines: &Engines) -> ethabi::ParamT
             ethabi::ParamType::Tuple(
                 decl.fields
                     .iter()
-                    .map(|f| abi_param_type(&type_engine.get(f.type_argument.type_id), engines))
+                    .map(|f| abi_param_type(&type_engine.get(f.type_argument.type_id()), engines))
                     .collect::<Vec<ethabi::ParamType>>(),
             )
         }
         Array(elem_ty, ..) => ethabi::ParamType::Array(Box::new(abi_param_type(
-            &type_engine.get(elem_ty.type_id),
+            &type_engine.get(elem_ty.type_id()),
             engines,
         ))),
         _ => panic!("cannot convert type to Solidity ABI param type: {type_info:?}",),
@@ -197,9 +204,9 @@ fn generate_abi_function(
             name: x.name.to_string(),
             kind: ethabi::ParamType::Address,
             internal_type: Some(get_type_str(
-                &x.type_argument.type_id,
+                &x.type_argument.type_id(),
                 engines,
-                x.type_argument.type_id,
+                x.type_argument.type_id(),
             )),
         })
         .collect::<Vec<_>>();
@@ -209,9 +216,9 @@ fn generate_abi_function(
         name: String::default(),
         kind: ethabi::ParamType::Address,
         internal_type: Some(get_type_str(
-            &fn_decl.return_type.type_id,
+            &fn_decl.return_type.type_id(),
             engines,
-            fn_decl.return_type.type_id,
+            fn_decl.return_type.type_id(),
         )),
     };
 
@@ -226,6 +233,6 @@ fn generate_abi_function(
     })
 }
 
-fn abi_str_type_arg(type_arg: &TypeArgument, engines: &Engines) -> String {
-    abi_str(&engines.te().get(type_arg.type_id), engines)
+fn abi_str_type_arg(type_arg: &GenericArgument, engines: &Engines) -> String {
+    abi_str(&engines.te().get(type_arg.type_id()), engines)
 }

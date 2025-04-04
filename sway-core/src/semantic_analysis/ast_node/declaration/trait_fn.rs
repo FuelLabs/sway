@@ -24,13 +24,11 @@ impl ty::TyTraitFn {
         decl_id: &ParsedDeclId<TraitFn>,
     ) -> Result<(), ErrorEmitted> {
         let trait_fn = engines.pe().get_trait_fn(decl_id);
-        ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            trait_fn.name.clone(),
-            Declaration::TraitFnDeclaration(*decl_id),
-        )?;
-        let _ = ctx.scoped(engines, trait_fn.span.clone(), |_scoped_ctx| Ok(()));
+        let decl = Declaration::TraitFnDeclaration(*decl_id);
+        ctx.insert_parsed_symbol(handler, engines, trait_fn.name.clone(), decl.clone())?;
+        let _ = ctx.scoped(engines, trait_fn.span.clone(), Some(decl), |_scoped_ctx| {
+            Ok(())
+        });
         Ok(())
     }
 
@@ -51,7 +49,7 @@ impl ty::TyTraitFn {
         let type_engine = ctx.engines.te();
 
         // Create a namespace for the trait function.
-        ctx.by_ref().scoped(handler, Some(span.clone()), |mut ctx| {
+        ctx.by_ref().scoped(handler, Some(span.clone()), |ctx| {
             // TODO: when we add type parameters to trait fns, type check them here
 
             // Type check the parameters.
@@ -71,11 +69,11 @@ impl ty::TyTraitFn {
 
             // Type check the return type.
             let mut new_return_type = return_type.clone();
-            new_return_type.type_id = ctx
+            *new_return_type.type_id_mut() = ctx
                 .resolve_type(
                     handler,
-                    return_type.type_id,
-                    &return_type.span,
+                    return_type.type_id(),
+                    &return_type.span(),
                     EnforceTypeArguments::Yes,
                     None,
                 )

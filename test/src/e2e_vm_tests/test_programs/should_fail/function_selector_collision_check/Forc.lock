@@ -1,0 +1,8 @@
+[[package]]
+name = "function_selector_collision_check"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-59CCE7304B558BF2"

@@ -54,25 +54,28 @@ impl F {
     }
 }
 
-impl core::ops::Eq for T {
+impl PartialEq for T {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y && self.z == other.z && self.boolean == other.boolean && self.int8 == other.int8 && self.int16 == other.int16 && self.int32 == other.int32
     }
 }
+impl Eq for T {}
 
-impl core::ops::Eq for S {
+impl PartialEq for S {
     fn eq(self, other: Self) -> bool {
         self.x == other.x && self.y == other.y && self.z == other.z && self.u == other.u && self.t == other.t && self.f_int8.equals(other.f_int8) && self.f_int64.equals(other.f_int64) && self.f_tuple.equals(other.f_tuple)
     }
 }
+impl Eq for S {}
 
-impl core::ops::Eq for F {
+impl PartialEq for F {
     fn eq(self, other: Self) -> bool {
         self.equals(other)
     }
 }
+impl Eq for F {}
 
-impl core::ops::Eq for E {
+impl PartialEq for E {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (E::A(l), E::A(r)) => l == r,
@@ -87,6 +90,7 @@ impl core::ops::Eq for E {
         }
     }
 }
+impl Eq for E {}
 
 storage {
     x: u64 = 64,

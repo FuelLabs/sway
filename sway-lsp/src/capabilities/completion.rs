@@ -5,12 +5,12 @@ use lsp_types::{
 };
 use sway_core::{
     language::ty::{TyAstNodeContent, TyDecl, TyFunctionDecl, TyFunctionParameter},
-    namespace::Items,
-    Engines, TypeId, TypeInfo,
+    Engines, Namespace, TypeId, TypeInfo,
 };
+use sway_types::Spanned;
 
 pub(crate) fn to_completion_items(
-    namespace: &Items,
+    namespace: &Namespace,
     engines: &Engines,
     ident_to_complete: &TokenIdent,
     fn_decl: &TyFunctionDecl,
@@ -24,7 +24,7 @@ pub(crate) fn to_completion_items(
 /// Gathers the given [`TypeId`] struct's fields and methods and builds completion items.
 fn completion_items_for_type_id(
     engines: &Engines,
-    namespace: &Items,
+    namespace: &Namespace,
     type_id: TypeId,
     position: Position,
 ) -> Vec<CompletionItem> {
@@ -37,7 +37,7 @@ fn completion_items_for_type_id(
                 kind: Some(CompletionItemKind::FIELD),
                 label: field.name.as_str().to_string(),
                 label_details: Some(CompletionItemLabelDetails {
-                    description: Some(field.type_argument.span.clone().str()),
+                    description: Some(field.type_argument.span().clone().str()),
                     detail: None,
                 }),
                 ..Default::default()
@@ -46,7 +46,10 @@ fn completion_items_for_type_id(
         }
     }
 
-    for method in namespace.get_methods_for_type(engines, type_id) {
+    for method in namespace
+        .current_module()
+        .get_methods_for_type(engines, type_id)
+    {
         let method = method.expect_typed();
         let fn_decl = engines.de().get_function(&method.id().clone());
         let params = &fn_decl.parameters;
@@ -101,7 +104,11 @@ fn fn_signature_string(
         .parameters
         .iter()
         .map(|p| {
-            replace_self_with_type_str(engines, p.type_argument.clone().span.str(), parent_type_id)
+            replace_self_with_type_str(
+                engines,
+                p.type_argument.clone().span().str(),
+                parent_type_id,
+            )
         })
         .collect::<Vec<String>>()
         .join(", ");
@@ -110,7 +117,7 @@ fn fn_signature_string(
         params_str,
         replace_self_with_type_str(
             engines,
-            fn_decl.return_type.clone().span.str(),
+            fn_decl.return_type.clone().span().str(),
             parent_type_id
         )
     )
@@ -134,7 +141,7 @@ fn replace_self_with_type_str(
 /// if it can resolve `a` in the given function.
 fn type_id_of_raw_ident(
     engines: &Engines,
-    namespace: &Items,
+    namespace: &Namespace,
     ident_name: &str,
     fn_decl: &TyFunctionDecl,
 ) -> Option<TypeId> {
@@ -152,6 +159,7 @@ fn type_id_of_raw_ident(
         if parts[i].ends_with(')') {
             let method_name = parts[i].split_at(parts[i].find('(').unwrap_or(0)).0;
             curr_type_id = namespace
+                .current_module()
                 .get_methods_for_type(engines, curr_type_id?)
                 .into_iter()
                 .find_map(|method| {
@@ -162,7 +170,7 @@ fn type_id_of_raw_ident(
                                 .de()
                                 .get_function(&method.id().clone())
                                 .return_type
-                                .type_id,
+                                .type_id(),
                         );
                     }
                     None
@@ -173,7 +181,7 @@ fn type_id_of_raw_ident(
                 .fields
                 .iter()
                 .find(|field| field.name.as_str() == parts[i])
-                .map(|field| field.type_argument.type_id);
+                .map(|field| field.type_argument.type_id());
         }
         i += 1;
     }
@@ -189,7 +197,7 @@ fn type_id_of_local_ident(ident_name: &str, fn_decl: &TyFunctionDecl) -> Option<
         .find_map(|param| {
             // Check if this ident is a function parameter
             if param.name.as_str() == ident_name {
-                return Some(param.type_argument.type_id);
+                return Some(param.type_argument.type_id());
             }
             None
         })

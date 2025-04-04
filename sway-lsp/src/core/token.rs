@@ -15,7 +15,7 @@ use sway_core::{
     },
     transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
-    Engines, TraitConstraint, TypeArgument, TypeEngine,
+    Engines, GenericArgument, TraitConstraint, TypeEngine,
 };
 use sway_types::{Ident, SourceEngine, Span, Spanned};
 
@@ -52,7 +52,7 @@ pub enum ParsedAstToken {
     Supertrait(Supertrait),
     TraitConstraint(TraitConstraint),
     TraitFn(ParsedDeclId<TraitFn>),
-    TypeArgument(TypeArgument),
+    TypeArgument(GenericArgument),
     TypeParameter(TypeParameter),
     UseStatement(UseStatement),
 }
@@ -67,6 +67,7 @@ pub enum TypedAstToken {
     TyStructScrutineeField(ty::TyStructScrutineeField),
     TypedConstantDeclaration(ty::TyConstantDecl),
     TypedConfigurableDeclaration(ty::TyConfigurableDecl),
+    TypedConstGenericDeclaration(ty::TyConstGenericDecl),
     TypedTraitTypeDeclaration(ty::TyTraitType),
     TypedFunctionDeclaration(ty::TyFunctionDecl),
     TypedFunctionParameter(ty::TyFunctionParameter),
@@ -78,7 +79,7 @@ pub enum TypedAstToken {
     TypedStorageAccess(ty::TyStorageAccess),
     TypedStorageAccessDescriptor(ty::TyStorageAccessDescriptor),
     TypedReassignment(ty::TyReassignment),
-    TypedArgument(TypeArgument),
+    TypedArgument(GenericArgument),
     TypedParameter(TypeParameter),
     TypedTraitConstraint(TraitConstraint),
     TypedModuleName,
@@ -302,11 +303,11 @@ pub fn type_info_to_symbol_kind(
         }
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
-            let type_info = type_engine.get(elem_ty.type_id);
+            let type_info = type_engine.get(elem_ty.type_id());
             type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
         }
         TypeInfo::Slice(elem_ty) => {
-            let type_info = type_engine.get(elem_ty.type_id);
+            let type_info = type_engine.get(elem_ty.type_id());
             type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
         }
         _ => SymbolKind::Unknown,

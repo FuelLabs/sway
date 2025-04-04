@@ -1,7 +1,5 @@
 library;
 
-use core::ops::Eq;
-
 pub trait TestInstance {
     fn new() -> Self;
 }
@@ -48,7 +46,7 @@ impl TestInstance for str {
     }
 }
 
-impl Eq for str[6] {
+impl PartialEq for str[6] {
     fn eq(self, other: Self) -> bool {
         let mut i = 0;
         while i < 6 {
@@ -61,10 +59,11 @@ impl Eq for str[6] {
 
             i = i + 1;
         };
-        
+
         true
     }
 }
+impl Eq for str[6] {}
 
 impl TestInstance for str[6] {
     fn new() -> Self {
@@ -72,13 +71,14 @@ impl TestInstance for str[6] {
     }
 }
 
-impl Eq for [u64;2] {
+impl PartialEq for [u64; 2] {
     fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1] 
+        self[0] == other[0] && self[1] == other[1]
     }
 }
+impl Eq for [u64; 2] {}
 
-impl TestInstance for [u64;2] {
+impl TestInstance for [u64; 2] {
     fn new() -> Self {
         [123456, 654321]
     }
@@ -88,11 +88,12 @@ pub struct Struct {
     pub x: u64,
 }
 
-impl Eq for Struct {
+impl PartialEq for Struct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
+impl Eq for Struct {}
 
 impl TestInstance for Struct {
     fn new() -> Self {
@@ -100,17 +101,18 @@ impl TestInstance for Struct {
     }
 }
 
-pub struct EmptyStruct { }
+pub struct EmptyStruct {}
 
-impl Eq for EmptyStruct {
+impl PartialEq for EmptyStruct {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
+impl Eq for EmptyStruct {}
 
 impl TestInstance for EmptyStruct {
     fn new() -> Self {
-        EmptyStruct { }
+        EmptyStruct {}
     }
 }
 
@@ -118,13 +120,14 @@ pub enum Enum {
     A: u64,
 }
 
-impl Eq for Enum {
+impl PartialEq for Enum {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Enum::A(l), Enum::A(r)) => l == r,
         }
     }
 }
+impl Eq for Enum {}
 
 impl TestInstance for Enum {
     fn new() -> Self {
@@ -132,11 +135,12 @@ impl TestInstance for Enum {
     }
 }
 
-impl Eq for (u8, u32) {
+impl PartialEq for (u8, u32) {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0 && self.1 == other.1
     }
 }
+impl Eq for (u8, u32) {}
 
 impl TestInstance for (u8, u32) {
     fn new() -> Self {
@@ -152,7 +156,9 @@ impl TestInstance for b256 {
 
 impl TestInstance for raw_ptr {
     fn new() -> Self {
-        let null_ptr = asm() { zero: raw_ptr };
+        let null_ptr = asm() {
+            zero: raw_ptr
+        };
 
         null_ptr.add::<u64>(42)
     }
@@ -160,17 +166,20 @@ impl TestInstance for raw_ptr {
 
 impl TestInstance for raw_slice {
     fn new() -> Self {
-        let null_ptr = asm() { zero: raw_ptr };
-        
-        std::raw_slice::from_parts::<u64>(null_ptr, 42)
+        let null_ptr = asm() {
+            zero: raw_ptr
+        };
+
+        raw_slice::from_parts::<u64>(null_ptr, 42)
     }
 }
 
-impl Eq for raw_slice {
+impl PartialEq for raw_slice {
     fn eq(self, other: Self) -> bool {
         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
     }
 }
+impl Eq for raw_slice {}
 
 impl TestInstance for () {
     fn new() -> Self {
@@ -178,20 +187,22 @@ impl TestInstance for () {
     }
 }
 
-impl Eq for () {
+impl PartialEq for () {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
+impl Eq for () {}
 
-impl TestInstance for [u64;0] {
+impl TestInstance for [u64; 0] {
     fn new() -> Self {
         []
     }
 }
 
-impl Eq for [u64;0] {
+impl PartialEq for [u64; 0] {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
+impl Eq for [u64; 0] {}

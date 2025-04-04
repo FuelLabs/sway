@@ -1,0 +1,8 @@
+[[package]]
+name = "self_return_type"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-722DFCAB6A209427"

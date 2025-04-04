@@ -11,19 +11,18 @@ use std::fmt::Write;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::InstOp;
 use crate::{
     block::{Block, BlockIterator, Label},
-    constant::Constant,
     context::Context,
     error::IrError,
     irtype::Type,
-    local_var::{LocalVar, LocalVarContent},
     metadata::MetadataIndex,
     module::Module,
     value::{Value, ValueDatum},
+    variable::{LocalVar, LocalVarContent},
     BlockArgument, BranchToWithArgs,
 };
+use crate::{Constant, InstOp};
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
 /// [`Context`].

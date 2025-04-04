@@ -5,7 +5,7 @@ use crate::{
             abstract_instruction_set::AbstractInstructionSet,
             allocated_abstract_instruction_set::AllocatedAbstractInstructionSet,
             compiler_constants,
-            data_section::{DataSection, Entry},
+            data_section::{DataSection, Entry, EntryName},
             globals_section::GlobalsSection,
             register_sequencer::RegisterSequencer,
         },
@@ -75,7 +75,7 @@ impl AbstractProgram {
     pub(crate) fn is_empty(&self) -> bool {
         self.non_entries.is_empty()
             && self.entries.is_empty()
-            && self.data_section.value_pairs.is_empty()
+            && self.data_section.iter_all_entries().next().is_none()
     }
 
     /// Adds prologue, globals allocation, before entries, contract method switch, and allocates virtual register.
@@ -164,14 +164,28 @@ impl AbstractProgram {
     /// Right now, it looks like this:
     ///
     /// WORD OP
-    /// [1]    MOV $scratch $pc
-    /// [-]    JMPF $zero i2
-    /// [2]    DATA_START (0-32) (in bytes, offset from $is)
-    /// [-]    DATA_START (32-64)
-    /// [3]    LW $ds $scratch 1
-    /// [-]    ADD $ds $ds $scratch
-    /// [4]    .program_start:
+    ///     1    MOV $scratch $pc
+    ///     -    JMPF $zero i10
+    ///     2    DATA_START (0-32) (in bytes, offset from $is)
+    ///     -    DATA_START (32-64)
+    ///     3    CONFIGURABLES_OFFSET (0-32)
+    ///     -    CONFIGURABLES_OFFSET (32-64)
+    ///     4    LW $ds $scratch 1
+    ///     -    ADD $ds $ds $scratch
+    ///     5    .program_start:
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
+        const _: () = assert!(
+            crate::PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES == 16,
+            "Inconsistency in the assumption of prelude organisation"
+        );
+        const _: () = assert!(
+            crate::PRELUDE_CONFIGURABLES_SIZE_IN_BYTES == 8,
+            "Inconsistency in the assumption of prelude organisation"
+        );
+        const _: () = assert!(
+            crate::PRELUDE_SIZE_IN_BYTES == 32,
+            "Inconsistency in the assumption of prelude organisation"
+        );
         let label = self.reg_seqr.get_label();
         AllocatedAbstractInstructionSet {
             ops: [
@@ -195,12 +209,18 @@ impl AbstractProgram {
                     comment: "data section offset".into(),
                     owning_span: None,
                 },
+                // word 3 -- full word u64 placeholder
                 AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Label(label)),
-                    comment: "end of metadata".into(),
+                    opcode: Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder),
+                    comment: "configurables offset".into(),
                     owning_span: None,
                 },
-                // word 3 -- load the data offset into $ds
+                AllocatedAbstractOp {
+                    opcode: Either::Right(ControlFlowOp::Label(label)),
+                    comment: "end of configurables offset".into(),
+                    owning_span: None,
+                },
+                // word 4 -- load the data offset into $ds
                 AllocatedAbstractOp {
                     opcode: Either::Left(AllocatedOpcode::LW(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
@@ -210,7 +230,7 @@ impl AbstractProgram {
                     comment: "".into(),
                     owning_span: None,
                 },
-                // word 3.5 -- add $ds $ds $is
+                // word 4.5 -- add $ds $ds $is
                 AllocatedAbstractOp {
                     opcode: Either::Left(AllocatedOpcode::ADD(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
@@ -281,7 +301,7 @@ impl AbstractProgram {
             // Put the selector in the data section.
             let data_label = self.data_section.insert_data_value(Entry::new_word(
                 u32::from_be_bytes(selector) as u64,
-                None,
+                EntryName::NonConfigurable,
                 None,
             ));
 
@@ -329,9 +349,10 @@ impl AbstractProgram {
         asm.ops.push(AllocatedAbstractOp {
             opcode: Either::Left(AllocatedOpcode::MOVI(
                 AllocatedRegister::Constant(ConstantRegister::Scratch),
-                VirtualImmediate18 {
-                    value: compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
-                },
+                VirtualImmediate18::new_unchecked(
+                    compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE.into(),
+                    "constant must fit in 18 bits",
+                ),
             )),
             comment: "[function selection]: load revert code for mismatched function selector"
                 .into(),
@@ -349,9 +370,10 @@ impl AbstractProgram {
     fn append_globals_allocation(&self, asm: &mut AllocatedAbstractInstructionSet) {
         let len_in_bytes = self.globals_section.len_in_bytes();
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::CFEI(VirtualImmediate24 {
-                value: len_in_bytes as u32,
-            })),
+            opcode: Either::Left(AllocatedOpcode::CFEI(VirtualImmediate24::new_unchecked(
+                len_in_bytes,
+                "length (bytes) must fit in 24 bits",
+            ))),
             comment: "allocate stack space for globals".into(),
             owning_span: None,
         });

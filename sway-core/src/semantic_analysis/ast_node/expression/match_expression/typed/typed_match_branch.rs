@@ -92,9 +92,8 @@ impl ty::TyMatchBranch {
             for (ident, is_struct_field) in variables {
                 let default_handler = &Handler::default();
                 // If there exist a configurable with the same name as the pattern variable.
-                if let Ok(ty::TyDecl::ConfigurableDecl(configurable_decl)) = ctx
-                    .namespace()
-                    .resolve_symbol_typed(default_handler, engines, &ident, ctx.self_type())
+                if let Ok(ty::TyDecl::ConfigurableDecl(configurable_decl)) =
+                    ctx.resolve_symbol(default_handler, &ident)
                 {
                     let name = (&ident).into();
                     let configurable_span = engines
@@ -128,7 +127,7 @@ impl ty::TyMatchBranch {
             )?;
 
         // create a new namespace for this branch result
-        ctx.scoped(handler, Some(branch_span.clone()), |mut scoped_ctx| {
+        ctx.scoped(handler, Some(branch_span.clone()), |scoped_ctx| {
             // for every variable that comes into result block, create a variable declaration,
             // insert it into the branch namespace, and add it to the block of code statements
             let mut code_block_contents: Vec<ty::TyAstNode> = vec![];

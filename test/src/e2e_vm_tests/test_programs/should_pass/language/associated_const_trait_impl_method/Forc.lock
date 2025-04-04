@@ -1,8 +1,8 @@
 [[package]]
 name = "associated_const_trait_impl_method"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-8AB25F9778B354B0"

@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-E4EB5F90E61EC58F"
+
+[[package]]
+name = "transmute"
+source = "member"
+dependencies = ["std"]

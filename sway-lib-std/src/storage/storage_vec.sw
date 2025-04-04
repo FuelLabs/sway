@@ -7,6 +7,8 @@ use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 use ::vec::Vec;
+use ::iterator::Iterator;
+use ::codec::*;
 
 /// A persistent vector struct.
 pub struct StorageVec<V> {}
@@ -938,6 +940,69 @@ impl<V> StorageKey<StorageVec<V>> {
                 }
             }
         }
+    }
+
+    /// Returns an [Iterator] to iterate over this `StorageVec`.
+    ///
+    /// # Returns
+    ///
+    /// * [StorageVecIter<V>] - The struct which can be iterated over.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///     storage.vec.push(15);
+    ///
+    ///     // Get the iterator
+    ///     let iter = storage.vec.iter();
+    ///
+    ///     assert_eq(5, iter.next().unwrap().read());
+    ///     assert_eq(10, iter.next().unwrap().read());
+    ///     assert_eq(15, iter.next().unwrap().read());
+    ///
+    ///     for elem in storage.vec.iter() {
+    ///         let elem_value = elem.read();
+    ///         log(elem_value);
+    ///     }
+    /// }
+    /// ```
+    #[storage(read)]
+    pub fn iter(self) -> StorageVecIter<V> {
+        StorageVecIter {
+            values: self,
+            len: read::<u64>(self.field_id(), 0).unwrap_or(0),
+            index: 0,
+        }
+    }
+}
+
+pub struct StorageVecIter<V> {
+    values: StorageKey<StorageVec<V>>,
+    len: u64,
+    index: u64,
+}
+
+impl<V> Iterator for StorageVecIter<V> {
+    type Item = StorageKey<V>;
+    fn next(ref mut self) -> Option<Self::Item> {
+        if self.index >= self.len {
+            return None
+        }
+
+        let key = sha256(self.values.field_id());
+        let offset = offset_calculator::<V>(self.index);
+        let result = Some(StorageKey::<V>::new(key, offset, sha256((self.index, key))));
+
+        self.index += 1;
+
+        result
     }
 }
 

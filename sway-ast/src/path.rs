@@ -17,6 +17,24 @@ pub struct PathExprSegment {
     pub generics_opt: Option<(DoubleColonToken, GenericArgs)>,
 }
 
+impl PathExpr {
+    pub fn last_segment(&self) -> &PathExprSegment {
+        self.suffix
+            .iter()
+            .map(|s| &s.1)
+            .last()
+            .unwrap_or(&self.prefix)
+    }
+
+    pub fn last_segment_mut(&mut self) -> &mut PathExprSegment {
+        self.suffix
+            .iter_mut()
+            .map(|s| &mut s.1)
+            .last()
+            .unwrap_or(&mut self.prefix)
+    }
+}
+
 impl Spanned for PathExpr {
     fn span(&self) -> Span {
         let start = match &self.root_opt {
@@ -72,6 +90,14 @@ impl PathType {
             .last()
             .unwrap_or(&self.prefix)
     }
+
+    pub fn last_segment_mut(&mut self) -> &mut PathTypeSegment {
+        self.suffix
+            .iter_mut()
+            .map(|s| &mut s.1)
+            .last()
+            .unwrap_or(&mut self.prefix)
+    }
 }
 
 impl Spanned for PathType {
@@ -110,5 +136,5 @@ impl Spanned for PathTypeSegment {
 #[derive(Clone, Debug, Serialize)]
 pub struct QualifiedPathRoot {
     pub ty: Box<Ty>,
-    pub as_trait: Option<(AsToken, Box<PathType>)>,
+    pub as_trait: (AsToken, Box<PathType>),
 }

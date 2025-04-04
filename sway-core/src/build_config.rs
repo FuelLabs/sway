@@ -34,6 +34,10 @@ pub enum BuildTarget {
     EVM,
 }
 
+impl BuildTarget {
+    pub const CFG: &'static [&'static str] = &["evm", "fuel"];
+}
+
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum OptLevel {
     #[default]
@@ -188,6 +192,7 @@ pub struct BuildConfig {
     pub(crate) include_tests: bool,
     pub(crate) optimization_level: OptLevel,
     pub time_phases: bool,
+    pub profile: bool,
     pub metrics_outfile: Option<String>,
     pub lsp_mode: Option<LspConfig>,
 }
@@ -234,6 +239,7 @@ impl BuildConfig {
             print_ir: PrintIr::default(),
             include_tests: false,
             time_phases: false,
+            profile: false,
             metrics_outfile: None,
             optimization_level: OptLevel::Opt0,
             lsp_mode: None,
@@ -278,6 +284,10 @@ impl BuildConfig {
             time_phases: a,
             ..self
         }
+    }
+
+    pub fn with_profile(self, a: bool) -> Self {
+        Self { profile: a, ..self }
     }
 
     pub fn with_metrics(self, a: Option<String>) -> Self {

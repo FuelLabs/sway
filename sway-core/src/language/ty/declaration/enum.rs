@@ -1,30 +1,28 @@
+use crate::{
+    decl_engine::MaterializeConstGenerics,
+    engine_threading::*,
+    has_changes,
+    language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
+    transform,
+    type_system::*,
+};
+use monomorphization::MonomorphizeHelper;
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     hash::{Hash, Hasher},
 };
-
-use monomorphization::MonomorphizeHelper;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{
-    engine_threading::*,
-    has_changes,
-    language::{parsed::EnumDeclaration, CallPath, Visibility},
-    transform,
-    type_system::*,
-};
-
-use super::TyDeclParsedType;
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyEnumDecl {
     pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub variants: Vec<TyEnumVariant>,
     pub span: Span,
     pub visibility: Visibility,
@@ -106,6 +104,18 @@ impl MonomorphizeHelper for TyEnumDecl {
     }
 }
 
+impl MaterializeConstGenerics for TyEnumDecl {
+    fn materialize_const_generics(
+        &mut self,
+        _engines: &Engines,
+        _handler: &Handler,
+        _name: &str,
+        _value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+}
+
 impl TyEnumDecl {
     pub(crate) fn expect_variant_from_name(
         &self,
@@ -133,13 +143,13 @@ impl Spanned for TyEnumVariant {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyEnumVariant {
     pub name: Ident,
-    pub type_argument: TypeArgument,
+    pub type_argument: GenericArgument,
     pub(crate) tag: usize,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl HashWithEngines for TyEnumVariant {

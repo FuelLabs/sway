@@ -1,20 +1,19 @@
-use std::hash::{Hash, Hasher};
-
-use sway_types::{Ident, Named, Spanned};
-
 use crate::{
     engine_threading::*,
     language::{parsed::VariableDeclaration, ty::*},
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
+use sway_types::{Ident, Named, Spanned};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyVariableDecl {
     pub name: Ident,
     pub body: TyExpression,
     pub mutability: VariableMutability,
     pub return_type: TypeId,
-    pub type_ascription: TypeArgument,
+    pub type_ascription: GenericArgument,
 }
 
 impl TyDeclParsedType for TyVariableDecl {

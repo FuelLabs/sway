@@ -1,8 +1,9 @@
 use crate::{
+    ast_elements::type_argument::GenericTypeArgument,
     decl_engine::DeclEngine,
     language::ty,
     type_system::{TypeId, TypeInfo},
-    TypeArgument, TypeEngine,
+    GenericArgument, TypeEngine,
 };
 
 use super::convert::convert_resolved_typeid_no_span;
@@ -26,7 +27,7 @@ pub(super) fn create_tagged_union_type(
                 type_engine,
                 decl_engine,
                 context,
-                tev.type_argument.type_id,
+                tev.type_argument.type_id(),
             )
         })
         .collect::<Result<Vec<_>, CompileError>>()?;
@@ -101,7 +102,13 @@ pub(super) fn get_struct_name_field_index_and_type(
         .to_typeinfo(struct_type_id, &field_kind.span())
         .ok()?;
     match (struct_ty_info, &field_kind) {
-        (TypeInfo::Struct(decl_ref), ty::ProjectionKind::StructField { name: field_name }) => {
+        (
+            TypeInfo::Struct(decl_ref),
+            ty::ProjectionKind::StructField {
+                name: field_name,
+                field_to_access: _,
+            },
+        ) => {
             let decl = decl_engine.get_struct(&decl_ref);
             Some((
                 decl.call_path.suffix.as_str().to_owned(),
@@ -109,12 +116,12 @@ pub(super) fn get_struct_name_field_index_and_type(
                     .iter()
                     .enumerate()
                     .find(|(_, field)| field.name == *field_name)
-                    .map(|(idx, field)| (idx as u64, field.type_argument.type_id)),
+                    .map(|(idx, field)| (idx as u64, field.type_argument.type_id())),
             ))
         }
         (
             TypeInfo::Alias {
-                ty: TypeArgument { type_id, .. },
+                ty: GenericArgument::Type(GenericTypeArgument { type_id, .. }),
                 ..
             },
             _,
@@ -138,6 +145,7 @@ macro_rules! impl_typed_named_field_for {
             fn get_field_kind(&self) -> ty::ProjectionKind {
                 ty::ProjectionKind::StructField {
                     name: self.name.clone(),
+                    field_to_access: None,
                 }
             }
         }
@@ -179,7 +187,10 @@ pub(super) fn get_indices_for_struct_access(
                 match (ty_info, &field_kind) {
                     (
                         TypeInfo::Struct(decl_ref),
-                        ty::ProjectionKind::StructField { name: field_name },
+                        ty::ProjectionKind::StructField {
+                            name: field_name,
+                            field_to_access: _,
+                        },
                     ) => {
                         let decl = decl_engine.get_struct(&decl_ref);
                         let field_idx_and_type_opt = decl
@@ -188,7 +199,7 @@ pub(super) fn get_indices_for_struct_access(
                             .enumerate()
                             .find(|(_, field)| field.name == *field_name);
                         let (field_idx, field_type) = match field_idx_and_type_opt {
-                            Some((idx, field)) => (idx as u64, field.type_argument.type_id),
+                            Some((idx, field)) => (idx as u64, field.type_argument.type_id()),
                             None => {
                                 return Err(CompileError::InternalOwned(
                                     format!(
@@ -206,7 +217,7 @@ pub(super) fn get_indices_for_struct_access(
                     }
                     (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, .. }) => {
                         let field_type = match fields.get(*index) {
-                            Some(field_type_argument) => field_type_argument.type_id,
+                            Some(field_type_argument) => field_type_argument.type_id(),
                             None => {
                                 return Err(CompileError::InternalOwned(
                                     format!(

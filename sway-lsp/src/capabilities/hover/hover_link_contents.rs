@@ -9,6 +9,7 @@ use sway_core::{
         ty::{TyDecl, TyTraitDecl},
         CallPath,
     },
+    namespace::TraitMap,
     Engines, TypeId, TypeInfo,
 };
 
@@ -54,6 +55,7 @@ impl<'a> HoverLinkContents<'a> {
                 );
                 decl.type_parameters
                     .iter()
+                    .filter_map(|x| x.as_type_parameter())
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
             }
             TypeInfo::Struct(decl_id) => {
@@ -65,6 +67,7 @@ impl<'a> HoverLinkContents<'a> {
                 );
                 decl.type_parameters
                     .iter()
+                    .filter_map(|x| x.as_type_parameter())
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
             }
             _ => {}
@@ -93,10 +96,8 @@ impl<'a> HoverLinkContents<'a> {
         if let Some(namespace) = self.session.namespace() {
             let call_path =
                 CallPath::from(trait_decl.name.clone()).to_fullpath(self.engines, &namespace);
-            let impl_spans = namespace
-                .module(self.engines)
-                .current_items()
-                .get_impl_spans_for_trait_name(&call_path);
+            let impl_spans =
+                TraitMap::get_impl_spans_for_trait_name(namespace.current_module(), &call_path);
             self.add_implementations(&trait_decl.span(), impl_spans);
         }
     }
@@ -104,10 +105,11 @@ impl<'a> HoverLinkContents<'a> {
     /// Adds implementations of the given type to the list of implementations using the [`TyDecl`].
     pub fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
         if let Some(namespace) = self.session.namespace() {
-            let impl_spans = namespace
-                .module(self.engines)
-                .current_items()
-                .get_impl_spans_for_decl(self.engines, ty_decl);
+            let impl_spans = TraitMap::get_impl_spans_for_decl(
+                namespace.current_module(),
+                self.engines,
+                ty_decl,
+            );
             self.add_implementations(&ty_decl.span(self.engines), impl_spans);
         }
     }
@@ -115,10 +117,11 @@ impl<'a> HoverLinkContents<'a> {
     /// Adds implementations of the given type to the list of implementations using the [`TypeId`].
     pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: TypeId) {
         if let Some(namespace) = self.session.namespace() {
-            let impl_spans = namespace
-                .module(self.engines)
-                .current_items()
-                .get_impl_spans_for_type(self.engines, &type_id);
+            let impl_spans = TraitMap::get_impl_spans_for_type(
+                namespace.current_module(),
+                self.engines,
+                &type_id,
+            );
             self.add_implementations(decl_span, impl_spans);
         }
     }

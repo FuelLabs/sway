@@ -43,11 +43,12 @@ mod ir_builder {
                 }
 
             rule script_or_predicate() -> IrAstModule
-                = kind:module_kind() "{" _ configs:init_config()* _ fn_decls:fn_decl()* "}" _
+                = kind:module_kind() "{" _ configs:init_config()* _ global_vars:global_var()* _ fn_decls:fn_decl()* "}" _
                   metadata:metadata_decls() {
                     IrAstModule {
                         kind,
                         configs,
+                        global_vars,
                         fn_decls,
                         metadata
                     }
@@ -59,14 +60,30 @@ mod ir_builder {
 
             rule contract() -> IrAstModule
                 = "contract" _ "{" _
-                  configs:init_config()* fn_decls:fn_decl()* "}" _
+                  configs:init_config()* _ global_vars:global_var()* _ fn_decls:fn_decl()* "}" _
                   metadata:metadata_decls() {
                     IrAstModule {
                         kind: crate::module::Kind::Contract,
                         configs,
+                        global_vars,
                         fn_decls,
                         metadata
                     }
+                }
+
+            rule global_var() -> IrAstGlobalVar
+                = "global" _ m:("mut" _)? name:path() _ ":" _ ty:ast_ty() init:global_init()? {
+                    IrAstGlobalVar {
+                        name,
+                        ty,
+                        init,
+                        mutable: m.is_some(),
+                    }
+                }
+
+            rule global_init() -> IrAstOperation
+                = "=" _ cv:op_const() {
+                    cv
                 }
 
             rule config_encoded_bytes() -> Vec<u8>
@@ -216,6 +233,7 @@ mod ir_builder {
                 / op_contract_call()
                 / op_get_elem_ptr()
                 / op_get_local()
+                / op_get_global()
                 / op_get_config()
                 / op_gtf()
                 / op_int_to_ptr()
@@ -332,7 +350,10 @@ mod ir_builder {
                 = "get_local" _ ast_ty() comma() name:id() {
                     IrAstOperation::GetLocal(name)
                 }
-
+            rule op_get_global() -> IrAstOperation
+                = "get_global" _ ast_ty() comma() name:path() {
+                    IrAstOperation::GetGlobal(name)
+                }
             rule op_get_config() -> IrAstOperation
                 = "get_config" _ ast_ty() comma() name:id() {
                     IrAstOperation::GetConfig(name)
@@ -589,6 +610,9 @@ mod ir_builder {
                     Ident::new(Span::new(id.into(), 0, id.len(), None).unwrap())
                 }
 
+            rule path() -> Vec<String>
+                = (id() ** "::")
+
             // Metadata decls are sensitive to the newlines since the assignee idx could belong to
             // the previous decl otherwise.  e.g.,
             //
@@ -678,25 +702,35 @@ mod ir_builder {
     use crate::{
         asm::{AsmArg, AsmInstruction},
         block::Block,
-        constant::{Constant, ConstantValue},
+        constant::{ConstantContent, ConstantValue},
         context::Context,
         error::IrError,
         function::Function,
         instruction::{InstOp, Predicate, Register},
         irtype::Type,
-        local_var::LocalVar,
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument, ConfigContent, Instruction, UnaryOpKind, B256,
+        variable::LocalVar,
+        BinaryOpKind, BlockArgument, ConfigContent, Constant, GlobalVar, Instruction, UnaryOpKind,
+        B256,
     };
 
     #[derive(Debug)]
     pub(super) struct IrAstModule {
         kind: Kind,
         configs: Vec<IrAstConfig>,
+        global_vars: Vec<IrAstGlobalVar>,
         fn_decls: Vec<IrAstFnDecl>,
         metadata: Vec<(MdIdxRef, IrMetadatum)>,
+    }
+
+    #[derive(Debug)]
+    pub(super) struct IrAstGlobalVar {
+        name: Vec<String>,
+        ty: IrAstTy,
+        init: Option<IrAstOperation>,
+        mutable: bool,
     }
 
     #[derive(Debug)]
@@ -749,6 +783,7 @@ mod ir_builder {
         ContractCall(IrAstTy, String, String, String, String, String),
         GetElemPtr(String, IrAstTy, Vec<String>),
         GetLocal(String),
+        GetGlobal(Vec<String>),
         GetConfig(String),
         Gtf(String, u64),
         IntToPtr(String, IrAstTy),
@@ -838,14 +873,24 @@ mod ir_builder {
                 IrAstConstValue::Array(el_ty, els) => {
                     let els: Vec<_> = els
                         .iter()
-                        .map(|cv| cv.value.as_constant(context, el_ty.clone()))
+                        .map(|cv| {
+                            cv.value
+                                .as_constant(context, el_ty.clone())
+                                .get_content(context)
+                                .clone()
+                        })
                         .collect();
                     ConstantValue::Array(els)
                 }
                 IrAstConstValue::Struct(flds) => {
                     let fields: Vec<_> = flds
                         .iter()
-                        .map(|(ty, cv)| cv.value.as_constant(context, ty.clone()))
+                        .map(|(ty, cv)| {
+                            cv.value
+                                .as_constant(context, ty.clone())
+                                .get_content(context)
+                                .clone()
+                        })
                         .collect::<Vec<_>>();
                     ConstantValue::Struct(fields)
                 }
@@ -853,38 +898,40 @@ mod ir_builder {
         }
 
         fn as_constant(&self, context: &mut Context, val_ty: IrAstTy) -> Constant {
-            Constant {
+            let value = self.as_constant_value(context, val_ty.clone());
+            let constant = ConstantContent {
                 ty: val_ty.to_ir_type(context),
-                value: self.as_constant_value(context, val_ty),
-            }
+                value,
+            };
+            Constant::unique(context, constant)
         }
 
         fn as_value(&self, context: &mut Context, val_ty: IrAstTy) -> Value {
             match self {
                 IrAstConstValue::Undef => unreachable!("Can't convert 'undef' to a value."),
-                IrAstConstValue::Unit => Constant::get_unit(context),
-                IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
+                IrAstConstValue::Unit => ConstantContent::get_unit(context),
+                IrAstConstValue::Bool(b) => ConstantContent::get_bool(context, *b),
                 IrAstConstValue::Hex256(bs) => match val_ty {
                     IrAstTy::U256 => {
                         let n = U256::from_be_bytes(bs);
-                        Constant::get_uint256(context, n)
+                        ConstantContent::get_uint256(context, n)
                     }
-                    IrAstTy::B256 => Constant::get_b256(context, *bs),
+                    IrAstTy::B256 => ConstantContent::get_b256(context, *bs),
                     _ => unreachable!("invalid type for hex number"),
                 },
                 IrAstConstValue::Number(n) => match val_ty {
-                    IrAstTy::U8 => Constant::get_uint(context, 8, *n),
-                    IrAstTy::U64 => Constant::get_uint(context, 64, *n),
+                    IrAstTy::U8 => ConstantContent::get_uint(context, 8, *n),
+                    IrAstTy::U64 => ConstantContent::get_uint(context, 64, *n),
                     _ => unreachable!(),
                 },
-                IrAstConstValue::String(s) => Constant::get_string(context, s.clone()),
+                IrAstConstValue::String(s) => ConstantContent::get_string(context, s.clone()),
                 IrAstConstValue::Array(..) => {
                     let array_const = self.as_constant(context, val_ty);
-                    Constant::get_array(context, array_const)
+                    ConstantContent::get_array(context, array_const.get_content(context).clone())
                 }
                 IrAstConstValue::Struct(_) => {
                     let struct_const = self.as_constant(context, val_ty);
-                    Constant::get_struct(context, struct_const)
+                    ConstantContent::get_struct(context, struct_const.get_content(context).clone())
                 }
             }
         }
@@ -970,6 +1017,7 @@ mod ir_builder {
         let mut builder = IrBuilder {
             module,
             configs_map: build_configs_map(&mut ctx, &module, ir_ast_mod.configs, &md_map),
+            globals_map: build_global_vars_map(&mut ctx, &module, ir_ast_mod.global_vars),
             md_map,
             unresolved_calls: Vec::new(),
         };
@@ -986,6 +1034,7 @@ mod ir_builder {
     struct IrBuilder {
         module: Module,
         configs_map: BTreeMap<String, String>,
+        globals_map: BTreeMap<Vec<String>, GlobalVar>,
         md_map: HashMap<MdIdxRef, MetadataIndex>,
         unresolved_calls: Vec<PendingCall>,
     }
@@ -1310,6 +1359,10 @@ mod ir_builder {
                         .append(context)
                         .get_local(*local_map.get(&local_name).unwrap())
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::GetGlobal(global_name) => block
+                        .append(context)
+                        .get_global(*self.globals_map.get(&global_name).unwrap())
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::GetConfig(name) => block
                         .append(context)
                         .get_config(self.module, name)
@@ -1499,6 +1552,26 @@ mod ir_builder {
             }
             Ok(())
         }
+    }
+
+    fn build_global_vars_map(
+        context: &mut Context,
+        module: &Module,
+        global_vars: Vec<IrAstGlobalVar>,
+    ) -> BTreeMap<Vec<String>, GlobalVar> {
+        global_vars
+            .into_iter()
+            .map(|global_var_node| {
+                let ty = global_var_node.ty.to_ir_type(context);
+                let init = global_var_node.init.map(|init| match init {
+                    IrAstOperation::Const(ty, val) => val.value.as_constant(context, ty),
+                    _ => unreachable!("Global const initializer must be a const value."),
+                });
+                let global_var = GlobalVar::new(context, ty, init, global_var_node.mutable);
+                module.add_global_variable(context, global_var_node.name.clone(), global_var);
+                (global_var_node.name, global_var)
+            })
+            .collect()
     }
 
     fn build_configs_map(

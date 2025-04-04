@@ -1,5 +1,7 @@
 category = "fail"
 
-#check: $()impl Alias2 {
-#nextln: $()fn foo() {}
-#nextln: $()Duplicate definitions for the method "foo" for type "Alias2".
+#check: $()Type contains duplicate declarations
+#check: $()fn foo() {}
+#nextln: $()"foo" previously defined here.
+#check: $()fn foo() {}
+#nextln: $()Method "foo" already declared in type "Alias2" (which is an alias for "MyStruct1").

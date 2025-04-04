@@ -11,6 +11,19 @@ pub enum ItemTraitItem {
     Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
 }
 
+impl ItemTraitItem {
+    /// [ItemTraitItem]'s friendly name string used for various reportings.
+    pub fn friendly_name(&self) -> &'static str {
+        use ItemTraitItem::*;
+        match self {
+            Fn(..) => "function signature",
+            Const(..) => "associated constant",
+            Type(..) => "associated type",
+            Error(..) => "error",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct ItemTrait {
     pub visibility: Option<PubToken>,
@@ -65,6 +78,20 @@ impl Spanned for ItemTraitItem {
 pub struct Traits {
     pub prefix: PathType,
     pub suffixes: Vec<(AddToken, PathType)>,
+}
+
+impl Traits {
+    pub fn iter(&self) -> impl Iterator<Item = &PathType> {
+        vec![&self.prefix]
+            .into_iter()
+            .chain(self.suffixes.iter().map(|(_add_token, path)| path))
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut PathType> {
+        vec![&mut self.prefix]
+            .into_iter()
+            .chain(self.suffixes.iter_mut().map(|(_add_token, path)| path))
+    }
 }
 
 impl Spanned for Traits {

@@ -1,18 +1,17 @@
+use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
 use crate::{
     engine_threading::*,
     language::parsed::{self, AbiDeclaration},
     transform,
     type_system::*,
 };
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
-
 use sway_types::{Ident, Named, Span, Spanned};
-
-use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
 
 /// A [TyAbiDecl] contains the type-checked version of the parse tree's
 /// `AbiDeclaration`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyAbiDecl {
     /// The name of the abi trait (also known as a "contract trait")
     pub name: Ident,
@@ -21,7 +20,7 @@ pub struct TyAbiDecl {
     pub supertraits: Vec<parsed::Supertrait>,
     pub items: Vec<TyTraitItem>,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
 }
 
 impl TyDeclParsedType for TyAbiDecl {

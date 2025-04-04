@@ -1,7 +1,5 @@
 use crate::{
-    decl_engine::{
-        DeclEngine, DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert,
-    },
+    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert},
     engine_threading::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
@@ -17,6 +15,7 @@ type DestinationType = TypeId;
 #[derive(Clone, Default)]
 pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
+    pub const_generics_materialization: BTreeMap<String, crate::language::ty::TyExpression>,
 }
 
 impl DebugWithEngines for TypeSubstMap {
@@ -63,6 +62,7 @@ impl TypeSubstMap {
     pub(crate) fn new() -> TypeSubstMap {
         TypeSubstMap {
             mapping: BTreeMap::<SourceType, DestinationType>::new(),
+            const_generics_materialization: BTreeMap::new(),
         }
     }
 
@@ -86,18 +86,22 @@ impl TypeSubstMap {
         let type_engine = engines.te();
         let mapping = type_parameters
             .iter()
-            .filter(|type_param| {
-                let type_info = type_engine.get(type_param.type_id);
+            .filter_map(|p| p.as_type_parameter())
+            .filter(|p| {
+                let type_info = type_engine.get(p.type_id);
                 !matches!(*type_info, TypeInfo::Placeholder(_))
             })
-            .map(|type_param| {
+            .map(|p| {
                 (
-                    type_param.type_id,
-                    type_engine.new_placeholder(type_param.clone()),
+                    p.type_id,
+                    type_engine.new_placeholder(TypeParameter::Type(p.clone())),
                 )
             })
             .collect();
-        TypeSubstMap { mapping }
+        TypeSubstMap {
+            mapping,
+            const_generics_materialization: BTreeMap::new(),
+        }
     }
 
     /// Constructs a new [TypeSubstMap] from a superset [TypeId] and a subset
@@ -148,14 +152,17 @@ impl TypeSubstMap {
     /// methods, etc, that are implemented for the type of `superset` so that
     /// they can be used for `subset`.
     pub(crate) fn from_superset_and_subset(
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         superset: TypeId,
         subset: TypeId,
     ) -> TypeSubstMap {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
+
         match (&*type_engine.get(superset), &*type_engine.get(subset)) {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
                 mapping: BTreeMap::from([(superset, subset)]),
+                const_generics_materialization: BTreeMap::new(),
             },
             (
                 TypeInfo::Custom {
@@ -168,17 +175,16 @@ impl TypeSubstMap {
                     .clone()
                     .unwrap_or_default()
                     .iter()
-                    .map(|x| x.type_id)
+                    .map(|x| x.type_id())
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments
                     .clone()
                     .unwrap_or_default()
                     .iter()
-                    .map(|x| x.type_id)
+                    .map(|x| x.type_id())
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
-                    type_engine,
-                    decl_engine,
+                    engines,
                     type_parameters,
                     type_arguments,
                 )
@@ -189,16 +195,25 @@ impl TypeSubstMap {
                 let type_parameters = decl_params
                     .type_parameters
                     .iter()
-                    .map(|x| x.type_id)
+                    .map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("will only work with type parameters");
+                        x.type_id
+                    })
                     .collect::<Vec<_>>();
                 let type_arguments = decl_args
                     .type_parameters
                     .iter()
-                    .map(|x| x.type_id)
+                    .map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("will only work with type parameters");
+                        x.type_id
+                    })
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
-                    type_engine,
-                    decl_engine,
+                    engines,
                     type_parameters,
                     type_arguments,
                 )
@@ -210,45 +225,73 @@ impl TypeSubstMap {
                 let type_parameters = decl_params
                     .type_parameters
                     .iter()
-                    .map(|x| x.type_id)
+                    .map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    })
                     .collect::<Vec<_>>();
                 let type_arguments = decl_args
                     .type_parameters
                     .iter()
-                    .map(|x| x.type_id)
+                    .map(|x| {
+                        let x = x
+                            .as_type_parameter()
+                            .expect("only works with type parameters");
+                        x.type_id
+                    })
                     .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
-                    type_engine,
-                    decl_engine,
+                    engines,
                     type_parameters,
                     type_arguments,
                 )
             }
             (TypeInfo::Tuple(type_parameters), TypeInfo::Tuple(type_arguments)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
-                    type_engine,
-                    decl_engine,
+                    engines,
                     type_parameters
                         .iter()
-                        .map(|x| x.type_id)
+                        .map(|x| x.type_id())
                         .collect::<Vec<_>>(),
-                    type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>(),
+                    type_arguments
+                        .iter()
+                        .map(|x| x.type_id())
+                        .collect::<Vec<_>>(),
                 )
             }
-            (TypeInfo::Array(type_parameter, _), TypeInfo::Array(type_argument, _)) => {
-                TypeSubstMap::from_superset_and_subset_helper(
-                    type_engine,
-                    decl_engine,
-                    vec![type_parameter.type_id],
-                    vec![type_argument.type_id],
-                )
+            (TypeInfo::Array(type_parameter, l), TypeInfo::Array(type_argument, r)) => {
+                let mut map = TypeSubstMap::from_superset_and_subset_helper(
+                    engines,
+                    vec![type_parameter.type_id()],
+                    vec![type_argument.type_id()],
+                );
+                match (&l, &r) {
+                    (
+                        Length::AmbiguousVariableExpression { ident },
+                        Length::Literal { val, .. },
+                    ) => {
+                        map.const_generics_materialization.insert(
+                            ident.as_str().into(),
+                            crate::language::ty::TyExpression {
+                                expression: crate::language::ty::TyExpressionVariant::Literal(
+                                    crate::language::Literal::U64(*val as u64),
+                                ),
+                                return_type: type_engine.id_of_u64(),
+                                span: sway_types::Span::dummy(),
+                            },
+                        );
+                        map
+                    }
+                    _ => map,
+                }
             }
             (TypeInfo::Slice(type_parameter), TypeInfo::Slice(type_argument)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
-                    type_engine,
-                    decl_engine,
-                    vec![type_parameter.type_id],
-                    vec![type_argument.type_id],
+                    engines,
+                    vec![type_parameter.type_id()],
+                    vec![type_argument.type_id()],
                 )
             }
             (TypeInfo::Unknown, TypeInfo::Unknown)
@@ -262,9 +305,11 @@ impl TypeSubstMap {
             | (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_))
             | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
                 mapping: BTreeMap::new(),
+                const_generics_materialization: BTreeMap::new(),
             },
             _ => TypeSubstMap {
                 mapping: BTreeMap::new(),
+                const_generics_materialization: BTreeMap::new(),
             },
         }
     }
@@ -274,8 +319,7 @@ impl TypeSubstMap {
     /// is extended with the result from calling `from_superset_and_subset`
     /// with each [SourceType]s and [DestinationType]s in the original [TypeSubstMap].
     fn from_superset_and_subset_helper(
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
     ) -> TypeSubstMap {
@@ -284,7 +328,7 @@ impl TypeSubstMap {
 
         for (s, d) in type_mapping.mapping.clone().iter() {
             type_mapping.mapping.extend(
-                TypeSubstMap::from_superset_and_subset(type_engine, decl_engine, *s, *d)
+                TypeSubstMap::from_superset_and_subset(engines, *s, *d)
                     .mapping
                     .iter(),
             );
@@ -301,11 +345,18 @@ impl TypeSubstMap {
         type_arguments: Vec<DestinationType>,
     ) -> TypeSubstMap {
         let mapping = type_parameters.into_iter().zip(type_arguments).collect();
-        TypeSubstMap { mapping }
+        TypeSubstMap {
+            mapping,
+            const_generics_materialization: BTreeMap::new(),
+        }
     }
 
     pub(crate) fn extend(&mut self, subst_map: &TypeSubstMap) {
         self.mapping.extend(subst_map.mapping.iter());
+    }
+
+    pub(crate) fn insert(&mut self, source: SourceType, destination: DestinationType) {
+        self.mapping.insert(source, destination);
     }
 
     /// Given a [TypeId] `type_id`, find (or create) a match for `type_id` in
@@ -343,13 +394,17 @@ impl TypeSubstMap {
                 let mut need_to_create_new = false;
 
                 for variant in &mut decl.variants {
-                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines) {
+                    if let Some(type_id) = self.find_match(variant.type_argument.type_id(), engines)
+                    {
                         need_to_create_new = true;
-                        variant.type_argument.type_id = type_id;
+                        *variant.type_argument.type_id_mut() = type_id;
                     }
                 }
 
                 for type_param in &mut decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter_mut()
+                        .expect("only works with type parameters");
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -371,12 +426,15 @@ impl TypeSubstMap {
                 let mut decl = (*parsed_decl_engine.get_struct(&decl_id)).clone();
                 let mut need_to_create_new = false;
                 for field in &mut decl.fields {
-                    if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
+                    if let Some(type_id) = self.find_match(field.type_argument.type_id(), engines) {
                         need_to_create_new = true;
-                        field.type_argument.type_id = type_id;
+                        *field.type_argument.type_id_mut() = type_id;
                     }
                 }
                 for type_param in &mut decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter_mut()
+                        .expect("only works with type parameters");
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -398,12 +456,15 @@ impl TypeSubstMap {
                 let mut decl = (*decl_engine.get_struct(&decl_id)).clone();
                 let mut need_to_create_new = false;
                 for field in &mut decl.fields {
-                    if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
+                    if let Some(type_id) = self.find_match(field.type_argument.type_id(), engines) {
                         need_to_create_new = true;
-                        field.type_argument.type_id = type_id;
+                        *field.type_argument.type_id_mut() = type_id;
                     }
                 }
                 for type_param in &mut decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter_mut()
+                        .expect("only works with type parameters");
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -422,13 +483,17 @@ impl TypeSubstMap {
                 let mut need_to_create_new = false;
 
                 for variant in &mut decl.variants {
-                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines) {
+                    if let Some(type_id) = self.find_match(variant.type_argument.type_id(), engines)
+                    {
                         need_to_create_new = true;
-                        variant.type_argument.type_id = type_id;
+                        *variant.type_argument.type_id_mut() = type_id;
                     }
                 }
 
                 for type_param in &mut decl.type_parameters {
+                    let type_param = type_param
+                        .as_type_parameter_mut()
+                        .expect("only works with type parameters");
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -442,26 +507,27 @@ impl TypeSubstMap {
                     None
                 }
             }
-            TypeInfo::Array(mut elem_type, length) => {
-                self.find_match(elem_type.type_id, engines).map(|type_id| {
-                    elem_type.type_id = type_id;
+            TypeInfo::Array(mut elem_type, length) => self
+                .find_match(elem_type.type_id(), engines)
+                .map(|type_id| {
+                    *elem_type.type_id_mut() = type_id;
                     type_engine.insert_array(engines, elem_type, length)
-                })
-            }
+                }),
             TypeInfo::Slice(mut elem_type) => {
-                self.find_match(elem_type.type_id, engines).map(|type_id| {
-                    elem_type.type_id = type_id;
-                    type_engine.insert_slice(engines, elem_type)
-                })
+                self.find_match(elem_type.type_id(), engines)
+                    .map(|type_id| {
+                        *elem_type.type_id_mut() = type_id;
+                        type_engine.insert_slice(engines, elem_type)
+                    })
             }
             TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;
                 let fields = fields
                     .into_iter()
                     .map(|mut field| {
-                        if let Some(type_id) = self.find_match(field.type_id, engines) {
+                        if let Some(type_id) = self.find_match(field.type_id(), engines) {
                             need_to_create_new = true;
-                            field.type_id = type_id;
+                            *field.type_id_mut() = type_id;
                         }
                         field.clone()
                     })
@@ -473,21 +539,21 @@ impl TypeSubstMap {
                 }
             }
             TypeInfo::Alias { name, mut ty } => {
-                self.find_match(ty.type_id, engines).map(|type_id| {
-                    ty.type_id = type_id;
+                self.find_match(ty.type_id(), engines).map(|type_id| {
+                    *ty.type_id_mut() = type_id;
                     type_engine.new_alias(engines, name, ty)
                 })
             }
-            TypeInfo::Ptr(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
-                ty.type_id = type_id;
+            TypeInfo::Ptr(mut ty) => self.find_match(ty.type_id(), engines).map(|type_id| {
+                *ty.type_id_mut() = type_id;
                 type_engine.insert_ptr(engines, ty)
             }),
             TypeInfo::TraitType { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Ref {
                 to_mutable_value,
                 referenced_type: mut ty,
-            } => self.find_match(ty.type_id, engines).map(|type_id| {
-                ty.type_id = type_id;
+            } => self.find_match(ty.type_id(), engines).map(|type_id| {
+                *ty.type_id_mut() = type_id;
                 type_engine.insert_ref(engines, to_mutable_value, ty)
             }),
             TypeInfo::Unknown
@@ -523,6 +589,12 @@ fn iter_for_match(
             TypeInfo::Placeholder(current_type_param),
         ) = ((*source_type_info).clone(), type_info)
         {
+            let source_type_param = source_type_param
+                .as_type_parameter()
+                .expect("only works with type parameters");
+            let current_type_param = current_type_param
+                .as_type_parameter()
+                .expect("only works with type parameters");
             if source_type_param.name.as_str() == current_type_param.name.as_str()
                 && current_type_param
                     .trait_constraints

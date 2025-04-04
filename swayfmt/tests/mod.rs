@@ -6,11 +6,11 @@ use test_macros::assert_eq_pretty;
 /// Takes a configured formatter as input and formats a given input and checks the actual output against an
 /// expected output. There are two format passes to ensure that the received output does not change on a second pass.
 fn check_with_formatter(unformatted: &str, expected: &str, formatter: &mut Formatter) {
-    let first_formatted = Formatter::format(formatter, Arc::from(unformatted), None).unwrap();
+    let first_formatted = Formatter::format(formatter, Arc::from(unformatted)).unwrap();
     assert_eq_pretty!(first_formatted, expected);
 
     let second_formatted =
-        Formatter::format(formatter, Arc::from(first_formatted.clone()), None).unwrap();
+        Formatter::format(formatter, Arc::from(first_formatted.clone())).unwrap();
     assert_eq_pretty!(second_formatted, first_formatted);
 }
 
@@ -74,7 +74,33 @@ fn struct_alignment() {
         contract;
         pub struct Foo<T, P> {
            barbazfoo: u64,
-           baz  : bool,
+           baz  :   bool,
+        }
+        "#},
+        indoc! {r#"
+        contract;
+        pub struct Foo<T, P> {
+            barbazfoo : u64,
+            baz       : bool,
+        }
+        "#},
+        &mut formatter,
+    );
+}
+
+#[test]
+#[ignore = "Bug in `swayfmt`. Activate this test once https://github.com/FuelLabs/sway/issues/6805 is fixed."]
+fn struct_alignment_without_trailing_comma() {
+    // The last struct field does not have trailing comma.
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(40);
+
+    check_with_formatter(
+        indoc! {r#"
+        contract;
+        pub struct Foo<T, P> {
+           barbazfoo: u64,
+           baz  :   bool
         }
         "#},
         indoc! {r#"
@@ -98,7 +124,7 @@ fn struct_alignment_with_public_fields() {
         contract;
         pub struct Foo<T, P> {
            barbazfoo: u64,
-           pub baz     : bool,
+           pub baz     :   bool,
         }
         "#},
         indoc! {r#"
@@ -116,7 +142,51 @@ fn struct_alignment_with_public_fields() {
         contract;
         pub struct Foo<T, P> {
            pub barbazfoo: u64,
-           baz     : bool,
+           baz     :   bool,
+        }
+        "#},
+        indoc! {r#"
+        contract;
+        pub struct Foo<T, P> {
+            pub barbazfoo : u64,
+            baz           : bool,
+        }
+        "#},
+        &mut formatter,
+    );
+}
+
+#[test]
+#[ignore = "Bug in `swayfmt`. Activate this test once https://github.com/FuelLabs/sway/issues/6805 is fixed."]
+fn struct_alignment_with_public_fields_without_trailing_comma() {
+    // The last struct field does not have trailing comma.
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(40);
+
+    check_with_formatter(
+        indoc! {r#"
+        contract;
+        pub struct Foo<T, P> {
+           barbazfoo: u64,
+           pub baz     :   bool
+        }
+        "#},
+        indoc! {r#"
+        contract;
+        pub struct Foo<T, P> {
+            barbazfoo : u64,
+            pub baz   : bool,
+        }
+        "#},
+        &mut formatter,
+    );
+
+    check_with_formatter(
+        indoc! {r#"
+        contract;
+        pub struct Foo<T, P> {
+           pub barbazfoo: u64,
+           baz     :   bool
         }
         "#},
         indoc! {r#"
@@ -157,7 +227,34 @@ fn struct_public_fields() {
 }
 
 #[test]
-fn struct_ending_comma() {
+fn struct_public_fields_without_trailing_comma() {
+    // The last struct field does not have trailing comma.
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::Off;
+
+    check_with_formatter(
+        indoc! {r#"
+        contract;
+        pub struct Foo<T, P> {
+           pub  barbaz:   T,
+           foo: u64,
+             pub  baz  :  bool
+        }
+        "#},
+        indoc! {r#"
+        contract;
+        pub struct Foo<T, P> {
+            pub barbaz: T,
+            foo: u64,
+            pub baz: bool,
+        }
+        "#},
+        &mut formatter,
+    );
+}
+
+#[test]
+fn struct_add_ending_comma() {
     check(
         indoc! {r#"
         contract;
@@ -183,10 +280,10 @@ fn enum_without_variant_alignment() {
         contract;
 
         enum Color {
-            Blue: (), Green: (),
-                    Red: (),
-            Silver: (),
-                            Grey: () }
+            Blue: (), Green:   (),
+                    Red:  (),
+            Silver:   ()   ,
+                            Grey:    ()  , }
         "#},
         indoc! {r#"
         contract;
@@ -204,7 +301,6 @@ fn enum_without_variant_alignment() {
 
 #[test]
 fn enum_with_variant_alignment() {
-    // Creating a config with enum_variant_align_threshold that exceeds longest variant length
     let mut formatter = Formatter::default();
     formatter.config.structures.field_alignment = FieldAlignment::AlignFields(20);
     check_with_formatter(
@@ -212,10 +308,10 @@ fn enum_with_variant_alignment() {
         contract;
 
         enum Color {
-            Blue: (), Green: (),
-                    Red: (),
-            Silver: (),
-                            Grey: (), }
+            Blue: (), Green:   (),
+                    Red:  (),
+            Silver:   ()   ,
+                            Grey:    ()  , }
         "#},
         indoc! {r#"
         contract;
@@ -226,6 +322,177 @@ fn enum_with_variant_alignment() {
             Red    : (),
             Silver : (),
             Grey   : (),
+        }
+        "#},
+        &mut formatter,
+    );
+}
+
+#[test]
+fn enum_without_variant_alignment_without_trailing_comma() {
+    // The last enum variant does not have trailing comma.
+    check(
+        indoc! {r#"
+        contract;
+
+        enum Color {
+            Blue: (), Green : (),
+                    Red  : (),
+            Silver:   ()   ,
+                            Grey:    () }
+        "#},
+        indoc! {r#"
+        contract;
+
+        enum Color {
+            Blue: (),
+            Green: (),
+            Red: (),
+            Silver: (),
+            Grey: (),
+        }
+        "#},
+    );
+}
+
+#[test]
+#[ignore = "Bug in `swayfmt`. Activate this test once https://github.com/FuelLabs/sway/issues/6805 is fixed."]
+fn enum_with_variant_alignment_without_trailing_comma() {
+    // The last enum variant does not have trailing comma.
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(20);
+    check_with_formatter(
+        indoc! {r#"
+        contract;
+
+        enum Color {
+            Blue: (), Green : (),
+                    Red  : (),
+            Silver:   ()   ,
+                            Grey:    () }
+        "#},
+        indoc! {r#"
+        contract;
+
+        enum Color {
+            Blue   : (),
+            Green  : (),
+            Red    : (),
+            Silver : (),
+            Grey   : (),
+        }
+        "#},
+        &mut formatter,
+    );
+}
+
+#[test]
+fn configurable_without_alignment() {
+    check(
+        indoc! {r#"
+        contract;
+
+        configurable {
+            Blue: u64 = 0, Green: u64   = 0,
+                    Red: u64=0,
+            Silver: u64=   0,
+                            Grey: u64   =0, }
+        "#},
+        indoc! {r#"
+        contract;
+
+        configurable {
+            Blue: u64 = 0,
+            Green: u64 = 0,
+            Red: u64 = 0,
+            Silver: u64 = 0,
+            Grey: u64 = 0,
+        }
+        "#},
+    );
+}
+
+#[test]
+fn configurable_with_alignment() {
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(20);
+    check_with_formatter(
+        indoc! {r#"
+        contract;
+
+        configurable {
+            Blue: u64 = 0, Green: u64   = 0,
+                    Red: u64=0,
+            Silver: u64=   0,
+                            Grey: u64   =0, }
+        "#},
+        indoc! {r#"
+        contract;
+
+        configurable {
+            Blue   : u64 = 0,
+            Green  : u64 = 0,
+            Red    : u64 = 0,
+            Silver : u64 = 0,
+            Grey   : u64 = 0,
+        }
+        "#},
+        &mut formatter,
+    );
+}
+
+#[test]
+fn configurable_without_alignment_without_trailing_comma() {
+    // The last configurable does not have trailing comma.
+    check(
+        indoc! {r#"
+        contract;
+
+        configurable {
+            Blue: u64 = 0, Green: u64   = 0,
+                    Red: u64=0,
+            Silver: u64=   0,
+                            Grey: u64   =0 }
+        "#},
+        indoc! {r#"
+        contract;
+
+        configurable {
+            Blue: u64 = 0,
+            Green: u64 = 0,
+            Red: u64 = 0,
+            Silver: u64 = 0,
+            Grey: u64 = 0,
+        }
+        "#},
+    );
+}
+
+#[test]
+#[ignore = "Bug in `swayfmt`. Activate this test once https://github.com/FuelLabs/sway/issues/6805 is fixed."]
+fn configurable_with_alignment_without_trailing_comma() {
+    // The last configurable does not have trailing comma.
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(20);
+    check_with_formatter(
+        indoc! {r#"
+        contract;
+
+        configurable {
+            Blue: u64 = 0, Green: u64   = 0,
+                    Red: u64=0,
+            Silver: u64=   0,
+                            Grey: u64   =0 }
+        "#},
+        indoc! {r#"
+        contract;
+
+        configurable {
+            Blue   : u64 = 0,
+            Green  : u64 = 0,
+            Red    : u64 = 0,
+            Silver : u64 = 0,
+            Grey   : u64 = 0,
         }
         "#},
         &mut formatter,
@@ -1000,7 +1267,7 @@ fn impl_spacing() {
             fn is_baz_true(self) -> bool;
         }
 
-        impl<A ,     B>    Qux<A, B> for
+        impl<A ,     B ,  const  N   :     u64>    Qux<A, B> for
         Foo
         where
             A    : Qux,
@@ -1020,7 +1287,7 @@ fn impl_spacing() {
             fn is_baz_true(self) -> bool;
         }
 
-        impl<A, B> Qux<A, B> for Foo
+        impl<A, B, const N: u64> Qux<A, B> for Foo
         where
             A: Qux,
             B: Qux,
@@ -3151,6 +3418,73 @@ fn retain_in_keyword() {
             SRC14 {
                 target in 0x7bb458adc1d118713319a5baa00a2d049dd64d2916477d2688d76970c898cd55: ContractId = ContractId::zero(),
             },
+        }
+        "#},
+    );
+}
+
+#[test]
+fn tuple_field_access() {
+    check(
+        indoc! {r#"
+        contract;
+
+        fn fun() {
+            let t = (1, 1);
+            let a = t . 0;
+            let b = t
+              .
+                    1
+              ;
+        }
+        "#},
+        indoc! {r#"
+        contract;
+
+        fn fun() {
+            let t = (1, 1);
+            let a = t.0;
+            let b = t.1;
+        }
+        "#},
+    );
+}
+
+#[test]
+fn contract_for_loop() {
+    check(
+        indoc! {r#"
+        contract;
+
+        abi MyContract {
+            fn test_function() -> bool;
+        }
+
+        impl MyContract for Contract {
+            fn test_function() -> bool {
+                let mut my_vec: Vec<u64> = Vec::new();
+                for iter in my_vec.iter() {
+
+                }
+
+                true
+            }
+        }
+        "#},
+        indoc! {r#"
+        contract;
+
+        abi MyContract {
+            fn test_function() -> bool;
+        }
+
+        impl MyContract for Contract {
+            fn test_function() -> bool {
+                let mut my_vec: Vec<u64> = Vec::new();
+                for iter in my_vec.iter() {    }
+
+                true
+            }
         }
         "#},
     );

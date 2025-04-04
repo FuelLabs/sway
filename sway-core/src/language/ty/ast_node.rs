@@ -1,11 +1,3 @@
-use std::{
-    fmt::{self, Debug},
-    hash::{Hash, Hasher},
-};
-
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Span};
-
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -18,12 +10,19 @@ use crate::{
     type_system::*,
     types::*,
 };
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+};
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::{Ident, Span};
 
 pub trait GetDeclIdent {
     fn get_decl_ident(&self, engines: &Engines) -> Option<Ident>;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyAstNode {
     pub content: TyAstNodeContent,
     pub span: Span,
@@ -140,6 +139,26 @@ impl GetDeclIdent for TyAstNode {
     }
 }
 
+impl MaterializeConstGenerics for TyAstNode {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        match &mut self.content {
+            TyAstNodeContent::Declaration(TyDecl::VariableDecl(decl)) => decl
+                .body
+                .materialize_const_generics(engines, handler, name, value),
+            TyAstNodeContent::Expression(expr) => {
+                expr.materialize_const_generics(engines, handler, name, value)
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
 impl TyAstNode {
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
     pub(crate) fn is_public(&self, decl_engine: &DeclEngine) -> bool {
@@ -185,7 +204,7 @@ impl TyAstNode {
             } => {
                 let fn_decl = decl_engine.get_function(decl_id);
                 let TyFunctionDecl { attributes, .. } = &*fn_decl;
-                attributes.contains_key(&AttributeKind::Test)
+                attributes.has_any_of_kind(AttributeKind::Test)
             }
             _ => false,
         }
@@ -226,6 +245,9 @@ impl TyAstNode {
                     if let Some(value) = &decl.value {
                         value.check_deprecated(engines, handler, allow_deprecated);
                     }
+                }
+                TyDecl::ConstGenericDecl(_) => {
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                 }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
@@ -286,6 +308,9 @@ impl TyAstNode {
                     TyDecl::VariableDecl(_decl) => {}
                     TyDecl::ConstantDecl(_decl) => {}
                     TyDecl::ConfigurableDecl(_decl) => {}
+                    TyDecl::ConstGenericDecl(_decl) => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
                     TyDecl::TraitTypeDecl(_) => {}
                     TyDecl::FunctionDecl(decl) => {
                         let fn_decl_id = decl.decl_id;
@@ -353,13 +378,13 @@ impl TyAstNode {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyAstNodeContent {
     Declaration(TyDecl),
     Expression(TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect(TySideEffect),
-    Error(Box<[Span]>, ErrorEmitted),
+    Error(Box<[Span]>, #[serde(skip)] ErrorEmitted),
 }
 
 impl EqWithEngines for TyAstNodeContent {}

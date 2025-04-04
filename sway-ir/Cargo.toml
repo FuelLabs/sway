@@ -18,6 +18,7 @@ once_cell.workspace = true
 peg.workspace = true
 prettydiff.workspace = true
 rustc-hash.workspace = true
+serde = { version = "1.0", features = ["derive"] }
 slotmap.workspace = true
 sway-features.workspace = true
 sway-ir-macros.workspace = true

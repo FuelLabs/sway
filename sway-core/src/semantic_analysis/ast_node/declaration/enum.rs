@@ -5,7 +5,9 @@ use crate::{
     type_system::*,
     Engines,
 };
+use ast_elements::type_parameter::GenericTypeParameter;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::Spanned;
 use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyEnumDecl {
@@ -16,21 +18,19 @@ impl ty::TyEnumDecl {
         decl_id: &ParsedDeclId<EnumDeclaration>,
     ) -> Result<(), ErrorEmitted> {
         let enum_decl = engines.pe().get_enum(decl_id);
-        ctx.insert_parsed_symbol(
-            handler,
-            engines,
-            enum_decl.name.clone(),
-            Declaration::EnumDeclaration(*decl_id),
-        )?;
+        let decl = Declaration::EnumDeclaration(*decl_id);
+        ctx.insert_parsed_symbol(handler, engines, enum_decl.name.clone(), decl.clone())?;
 
         // create a namespace for the decl, used to create a scope for generics
-        let _ = ctx.scoped(engines, enum_decl.span.clone(), |mut _ctx| Ok(()));
+        let _ = ctx.scoped(engines, enum_decl.span.clone(), Some(decl), |mut _ctx| {
+            Ok(())
+        });
         Ok(())
     }
 
     pub fn type_check(
         handler: &Handler,
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         decl: EnumDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let EnumDeclaration {
@@ -44,9 +44,9 @@ impl ty::TyEnumDecl {
         } = decl;
 
         // create a namespace for the decl, used to create a scope for generics
-        ctx.scoped(handler, Some(span.clone()), |mut ctx| {
+        ctx.scoped(handler, Some(span.clone()), |ctx| {
             // Type check the type parameters.
-            let new_type_parameters = TypeParameter::type_check_type_params(
+            let new_type_parameters = GenericTypeParameter::type_check_type_params(
                 handler,
                 ctx.by_ref(),
                 type_parameters,
@@ -88,11 +88,11 @@ impl ty::TyEnumVariant {
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let mut type_argument = variant.type_argument;
-        type_argument.type_id = ctx
+        *type_argument.type_id_mut() = ctx
             .resolve_type(
                 handler,
-                type_argument.type_id,
-                &type_argument.span,
+                type_argument.type_id(),
+                &type_argument.span(),
                 EnforceTypeArguments::Yes,
                 None,
             )

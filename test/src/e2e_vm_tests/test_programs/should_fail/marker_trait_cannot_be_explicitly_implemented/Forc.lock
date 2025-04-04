@@ -1,0 +1,8 @@
+[[package]]
+name = "marker_trait_cannot_be_explicitly_implemented"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-8AFA071721F70D50"

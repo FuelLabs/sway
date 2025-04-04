@@ -1,0 +1,8 @@
+[[package]]
+name = "method_on_primitives"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-8D9646CA7E6F9448"

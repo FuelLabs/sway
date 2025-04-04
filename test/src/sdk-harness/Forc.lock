@@ -1,7 +1,7 @@
 [[package]]
 name = "abi_impl_methods_callable"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
 name = "asset_id"
@@ -113,10 +113,6 @@ dependencies = ["std"]
 name = "contract_bytecode"
 source = "member"
 dependencies = ["std"]
-
-[[package]]
-name = "core"
-source = "path+from-root-214E8589AEAE48E5"
 
 [[package]]
 name = "ec_recover"
@@ -252,7 +248,17 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "run_external_proxy_with_storage"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "run_external_target"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "run_external_target_with_storage"
 source = "member"
 dependencies = ["std"]
 
@@ -268,8 +274,7 @@ dependencies = ["std"]
 
 [[package]]
 name = "std"
-source = "path+from-root-EAEA0954D15D4BBE"
-dependencies = ["core"]
+source = "path+from-root-214E8589AEAE48E5"
 
 [[package]]
 name = "storage"
@@ -304,10 +309,7 @@ dependencies = ["std"]
 [[package]]
 name = "storage_string"
 source = "member"
-dependencies = [
-    "core",
-    "std",
-]
+dependencies = ["std"]
 
 [[package]]
 name = "storage_vec_nested"
@@ -327,7 +329,7 @@ dependencies = ["std"]
 [[package]]
 name = "string_slice_predicate"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
 name = "superabi"
@@ -410,7 +412,7 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "tx_output_change_contract"
+name = "tx_output_contract"
 source = "member"
 dependencies = ["std"]
 

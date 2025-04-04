@@ -5,7 +5,7 @@ use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
     Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, DocComment,
-    DocStyle, GenericTokenTree, Punct, Spacing, TokenStream,
+    DocStyle, Punct, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -123,7 +123,6 @@ pub fn lex_commented(
         source_id,
         stream,
     };
-    let mut gather_module_docs = false;
     let mut file_start_offset: usize = 0;
 
     let mut parent_token_trees = Vec::new();
@@ -170,21 +169,7 @@ pub fn lex_commented(
                         CommentKind::Trailing
                     };
 
-                    let ctt = lex_line_comment(
-                        &mut l,
-                        end,
-                        index,
-                        comment_kind,
-                        file_start_offset,
-                        gather_module_docs,
-                    );
-                    if let CommentedTokenTree::Tree(GenericTokenTree::DocComment(DocComment {
-                        doc_style: DocStyle::Inner,
-                        ..
-                    })) = &ctt
-                    {
-                        gather_module_docs = true;
-                    }
+                    let ctt = lex_line_comment(&mut l, end, index, comment_kind);
                     token_trees.push(ctt);
                     continue;
                 }
@@ -196,8 +181,6 @@ pub fn lex_commented(
                 }
                 Some(_) | None => {}
             }
-        } else {
-            gather_module_docs = false;
         }
 
         if character.is_xid_start() || character == '_' {
@@ -224,7 +207,7 @@ pub fn lex_commented(
             let not_is_single_underscore = character != '_'
                 || l.stream
                     .peek()
-                    .map_or(false, |(_, next)| next.is_xid_continue());
+                    .is_some_and(|(_, next)| next.is_xid_continue());
             if not_is_single_underscore {
                 // Consume until we hit other than `XID_CONTINUE`.
                 while l.stream.next_if(|(_, c)| c.is_xid_continue()).is_some() {}
@@ -358,8 +341,6 @@ fn lex_line_comment(
     end: usize,
     index: usize,
     comment_kind: CommentKind,
-    offset: usize,
-    gather_module_docs: bool,
 ) -> CommentedTokenTree {
     let _ = l.stream.next();
 
@@ -372,15 +353,7 @@ fn lex_line_comment(
 
     let doc_style = match (sp.as_str().chars().nth(2), sp.as_str().chars().nth(3)) {
         // `//!` is an inner line doc comment.
-        (Some('!'), _) => {
-            if index - offset == 0 || gather_module_docs {
-                // TODO(#4112): remove this conditional block to enable
-                // inner doc comment attributes for all items
-                Some(DocStyle::Inner)
-            } else {
-                None
-            }
-        }
+        (Some('!'), _) => Some(DocStyle::Inner),
         // `////` (more than 3 slashes) is not considered a doc comment.
         (Some('/'), Some('/')) => None,
         // `///` is an outer line doc comment.
@@ -682,7 +655,7 @@ fn lex_int_lit(
         let end_opt = parse_digits(&mut big_uint, l, 10);
         (big_uint, end_opt)
     };
-    let (radix, (big_uint, end_opt)) = if digit == 0 {
+    let (big_uint, end_opt) = if digit == 0 {
         let prefixed_int_lit = |l: &mut Lexer<'_>, radix| {
             let _ = l.stream.next();
             let d = l.stream.next();
@@ -706,36 +679,24 @@ fn lex_int_lit(
         };
 
         match l.stream.peek() {
-            Some((_, 'x')) => (16, prefixed_int_lit(l, 16)?),
-            Some((_, 'o')) => (8, prefixed_int_lit(l, 8)?),
-            Some((_, 'b')) => (2, prefixed_int_lit(l, 2)?),
-            Some((_, '_' | '0'..='9')) => (10, decimal_int_lit(l, 0)),
-            Some(&(next_index, _)) => (10, (BigUint::from(0u32), Some(next_index))),
-            None => (10, (BigUint::from(0u32), None)),
+            Some((_, 'x')) => prefixed_int_lit(l, 16)?,
+            Some((_, 'o')) => prefixed_int_lit(l, 8)?,
+            Some((_, 'b')) => prefixed_int_lit(l, 2)?,
+            Some((_, '_' | '0'..='9')) => decimal_int_lit(l, 0),
+            Some(&(next_index, _)) => (BigUint::from(0u32), Some(next_index)),
+            None => (BigUint::from(0u32), None),
         }
     } else {
-        (10, decimal_int_lit(l, digit))
+        decimal_int_lit(l, digit)
     };
 
     let ty_opt = lex_int_ty_opt(l)?;
-
-    // Only accepts u256 literals in hex form
-    if let Some((LitIntType::U256, span)) = &ty_opt {
-        if radix != 16 {
-            return Err(error(
-                l.handler,
-                LexError {
-                    kind: LexErrorKind::U256NotInHex,
-                    span: span.clone(),
-                },
-            ));
-        }
-    }
 
     let literal = Literal::Int(LitInt {
         span: span(l, index, end_opt.unwrap_or(l.src.len())),
         parsed: big_uint,
         ty_opt,
+        is_generated_b256: false,
     });
 
     Ok(Some(CommentedTokenTree::Tree(literal.into())))
@@ -1046,17 +1007,19 @@ mod tests {
         );
         assert_matches!(
             tts.next(),
-            Some(CommentedTokenTree::Comment(Comment {
+            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
+                doc_style: DocStyle::Inner,
                 span,
-                comment_kind: CommentKind::Newlined,
-            })) if span.as_str() ==  "//!inner"
+                content_span
+            }))) if span.as_str() ==  "//!inner" && content_span.as_str() == "inner"
         );
         assert_matches!(
             tts.next(),
-            Some(CommentedTokenTree::Comment(Comment {
+            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
+                doc_style: DocStyle::Inner,
                 span,
-                comment_kind: CommentKind::Newlined,
-            })) if span.as_str() ==  "//! inner"
+                content_span
+            }))) if span.as_str() ==  "//! inner" && content_span.as_str() == " inner"
         );
         assert_matches!(
             tts.next(),

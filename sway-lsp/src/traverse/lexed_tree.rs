@@ -29,12 +29,12 @@ impl<'a> LexedTree<'a> {
     }
 
     pub fn collect_module_kinds(&self, lexed_program: &LexedProgram) {
-        insert_module_kind(self.ctx, &lexed_program.root.tree.kind);
+        insert_module_kind(self.ctx, &lexed_program.root.tree.value.kind);
         lexed_program
             .root
             .submodules_recursive()
             .for_each(|(_, dep)| {
-                insert_module_kind(self.ctx, &dep.module.tree.kind);
+                insert_module_kind(self.ctx, &dep.module.tree.value.kind);
             });
     }
 }
@@ -769,7 +769,8 @@ impl Parse for ElementAccess {
             | ElementAccess::TupleFieldProjection { target, .. } => {
                 target.parse(ctx);
             }
-            _ => {}
+            ElementAccess::Deref { target, .. } => target.parse(ctx),
+            ElementAccess::Var(_) => {}
         }
     }
 }

@@ -17,6 +17,7 @@ mod debug_generation;
 pub mod decl_engine;
 pub mod ir_generation;
 pub mod language;
+pub mod marker_traits;
 mod metadata;
 pub mod query_engine;
 pub mod semantic_analysis;
@@ -33,27 +34,29 @@ pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
-use indexmap::IndexMap;
+use itertools::Itertools;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
+use semantic_analysis::program::TypeCheckFailed;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
+use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::warning::{CompileWarning, Warning};
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
-    PrintPassesOpts, ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, FN_DCE_NAME,
-    FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
+    PrintPassesOpts, ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME,
+    FN_INLINE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
     RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
-use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
-use sway_types::SourceEngine;
+use sway_types::{SourceEngine, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
-use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
+use transform::{ArgsExpectValues, Attribute, AttributeKind, Attributes, ExpectedArgs};
 use types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata};
 
 pub use semantic_analysis::namespace::{self, Namespace};
@@ -138,55 +141,221 @@ pub fn parse_tree_type(
     sway_parse::parse_module_kind(handler, input, None).map(|kind| convert_module_kind(&kind))
 }
 
-/// Convert attributes from `Annotated<Module>` to an [AttributesMap].
-fn module_attrs_to_map(
-    handler: &Handler,
-    attribute_list: &[AttributeDecl],
-) -> Result<AttributesMap, ErrorEmitted> {
-    let mut attrs_map: IndexMap<_, Vec<Attribute>> = IndexMap::new();
-    for attr_decl in attribute_list {
-        let attrs = attr_decl.attribute.get().into_iter();
-        for attr in attrs {
-            let name = attr.name.as_str();
-            if name != DOC_COMMENT_ATTRIBUTE_NAME {
-                // prevent using anything except doc comment attributes
-                handler.emit_err(CompileError::ExpectedModuleDocComment {
-                    span: attr.name.span(),
-                });
+/// Converts `attribute_decls` to [Attributes].
+///
+/// This function always returns [Attributes], even if the attributes are erroneous.
+/// Errors and warnings are returned via [Handler]. The callers should ignore eventual errors
+/// in attributes and proceed with the compilation. [Attributes] are tolerant to erroneous
+/// attributes and follows the last-wins principle, which allows annotated elements to
+/// proceed with compilation. After their successful compilation, callers need to inspect
+/// the [Handler] and still emit errors if there were any.
+pub(crate) fn attr_decls_to_attributes(
+    attribute_decls: &[AttributeDecl],
+    can_annotate: impl Fn(&Attribute) -> bool,
+    target_friendly_name: &'static str,
+) -> (Handler, Attributes) {
+    let handler = Handler::default();
+    // Check if attribute is an unsupported inner attribute (`#!`).
+    // Note that we are doing that before creating the flattened `attributes`,
+    // because we want the error to point at the `#!` token.
+    // Note also that we will still include those attributes into
+    // the `attributes`. There are cases, like e.g., LSP, where
+    // having complete list of attributes is needed.
+    // In the below analysis, though, we will be ignoring inner attributes,
+    // means not checking their content.
+    for attr_decl in attribute_decls
+        .iter()
+        .filter(|attr| !attr.is_doc_comment() && attr.is_inner())
+    {
+        handler.emit_err(CompileError::Unimplemented {
+            span: attr_decl.hash_kind.span(),
+            feature: "Using inner attributes (`#!`)".to_string(),
+            help: vec![],
+        });
+    }
+
+    let attributes = Attributes::new(attribute_decls);
+
+    // Check for unknown attributes.
+    for attribute in attributes.unknown().filter(|attr| attr.is_outer()) {
+        handler.emit_warn(CompileWarning {
+            span: attribute.name.span(),
+            warning_content: Warning::UnknownAttribute {
+                attribute: (&attribute.name).into(),
+                known_attributes: attributes.known_attribute_names(),
+            },
+        });
+    }
+
+    // Check for attributes annotating invalid targets.
+    for ((attribute_kind, _attribute_direction), mut attributes) in &attributes
+        .all()
+        .filter(|attr| attr.is_doc_comment() || attr.is_outer())
+        .chunk_by(|attr| (attr.kind, attr.direction))
+    {
+        // For doc comments, we want to show the error on a complete doc comment,
+        // and not on every documentation line.
+        if attribute_kind == AttributeKind::DocComment {
+            let first_doc_line = attributes
+                .next()
+                .expect("`chunk_by` guarantees existence of at least one element in the chunk");
+            if !can_annotate(first_doc_line) {
+                let last_doc_line = match attributes.last() {
+                    Some(last_attr) => last_attr,
+                    // There is only one doc line in the complete doc comment.
+                    None => first_doc_line,
+                };
+                handler.emit_err(
+                    ConvertParseTreeError::InvalidAttributeTarget {
+                        span: Span::join(
+                            first_doc_line.span.clone(),
+                            &last_doc_line.span.start_span(),
+                        ),
+                        attribute: first_doc_line.name.clone(),
+                        target_friendly_name,
+                        can_only_annotate_help: first_doc_line
+                            .can_only_annotate_help(target_friendly_name),
+                    }
+                    .into(),
+                );
             }
-
-            let args = attr
-                .args
-                .as_ref()
-                .map(|parens| {
-                    parens
-                        .get()
-                        .into_iter()
-                        .cloned()
-                        .map(|arg| AttributeArg {
-                            name: arg.name.clone(),
-                            value: arg.value.clone(),
-                            span: arg.span(),
-                        })
-                        .collect()
-                })
-                .unwrap_or_else(Vec::new);
-
-            let attribute = Attribute {
-                name: attr.name.clone(),
-                args,
-                span: attr_decl.span(),
-            };
-
-            if let Some(attr_kind) = match name {
-                DOC_COMMENT_ATTRIBUTE_NAME => Some(AttributeKind::DocComment),
-                _ => None,
-            } {
-                attrs_map.entry(attr_kind).or_default().push(attribute);
+        } else {
+            // For other attributes, the error is shown for every individual attribute.
+            for attribute in attributes {
+                if !can_annotate(attribute) {
+                    handler.emit_err(
+                        ConvertParseTreeError::InvalidAttributeTarget {
+                            span: attribute.name.span(),
+                            attribute: attribute.name.clone(),
+                            target_friendly_name,
+                            can_only_annotate_help: attribute
+                                .can_only_annotate_help(target_friendly_name),
+                        }
+                        .into(),
+                    );
+                }
             }
         }
     }
-    Ok(AttributesMap::new(Arc::new(attrs_map)))
+
+    // In all the subsequent test we are checking only non-doc-comment attributes
+    // and only those that didn't produce invalid target or unsupported inner attributes errors.
+    let should_be_checked =
+        |attr: &&Attribute| !attr.is_doc_comment() && attr.is_outer() && can_annotate(attr);
+
+    // Check for attributes multiplicity.
+    for (_attribute_kind, attributes_of_kind) in
+        attributes.all_by_kind(|attr| should_be_checked(attr) && !attr.kind.allows_multiple())
+    {
+        if attributes_of_kind.len() > 1 {
+            let (last_attribute, previous_attributes) = attributes_of_kind
+                .split_last()
+                .expect("`attributes_of_kind` has more then one element");
+            handler.emit_err(
+                ConvertParseTreeError::InvalidAttributeMultiplicity {
+                    last_occurrence: (&last_attribute.name).into(),
+                    previous_occurrences: previous_attributes
+                        .iter()
+                        .map(|attr| (&attr.name).into())
+                        .collect(),
+                }
+                .into(),
+            );
+        }
+    }
+
+    // Check for arguments multiplicity.
+    // For attributes that can be applied only once but are applied several times
+    // we will still check arguments in every attribute occurrence.
+    for attribute in attributes.all().filter(should_be_checked) {
+        let _ = attribute.check_args_multiplicity(&handler);
+    }
+
+    // Check for expected arguments.
+    // For attributes that can be applied only once but are applied more times
+    // we will check arguments of every attribute occurrence.
+    // If an attribute does not expect any arguments, we will not check them,
+    // but emit only the above error about invalid number of arguments.
+    for attribute in attributes
+        .all()
+        .filter(|attr| should_be_checked(attr) && attr.can_have_arguments())
+    {
+        match attribute.expected_args() {
+            ExpectedArgs::None => unreachable!("`attribute` can have arguments"),
+            ExpectedArgs::Any => {}
+            ExpectedArgs::MustBeIn(expected_args) => {
+                for arg in attribute.args.iter() {
+                    if !expected_args.contains(&arg.name.as_str()) {
+                        handler.emit_err(
+                            ConvertParseTreeError::InvalidAttributeArg {
+                                attribute: attribute.name.clone(),
+                                arg: (&arg.name).into(),
+                                expected_args: expected_args.clone(),
+                            }
+                            .into(),
+                        );
+                    }
+                }
+            }
+            ExpectedArgs::ShouldBeIn(expected_args) => {
+                for arg in attribute.args.iter() {
+                    if !expected_args.contains(&arg.name.as_str()) {
+                        handler.emit_warn(CompileWarning {
+                            span: arg.name.span(),
+                            warning_content: Warning::UnknownAttributeArg {
+                                attribute: attribute.name.clone(),
+                                arg: (&arg.name).into(),
+                                expected_args: expected_args.clone(),
+                            },
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Check for expected argument values.
+    // We use here the same logic for what to check, as in the above check
+    // for expected arguments.
+    for attribute in attributes
+        .all()
+        .filter(|attr| should_be_checked(attr) && attr.can_have_arguments())
+    {
+        // In addition, if an argument **must** be in expected args but is not,
+        // we will not be checking it, but only emit the error above.
+        // But if it **should** be in expected args and is not,
+        // we still impose on it the expectation coming from its attribute.
+        fn check_value_expected(handler: &Handler, attribute: &Attribute, is_value_expected: bool) {
+            for arg in attribute.args.iter() {
+                if let ExpectedArgs::MustBeIn(expected_args) = attribute.expected_args() {
+                    if !expected_args.contains(&arg.name.as_str()) {
+                        continue;
+                    }
+                }
+
+                if (is_value_expected && arg.value.is_none())
+                    || (!is_value_expected && arg.value.is_some())
+                {
+                    handler.emit_err(
+                        ConvertParseTreeError::InvalidAttributeArgExpectsValue {
+                            attribute: attribute.name.clone(),
+                            arg: (&arg.name).into(),
+                            value_span: arg.value.as_ref().map(|literal| literal.span()),
+                        }
+                        .into(),
+                    );
+                }
+            }
+        }
+
+        match attribute.args_expect_values() {
+            ArgsExpectValues::Yes => check_value_expected(&handler, attribute, true),
+            ArgsExpectValues::No => check_value_expected(&handler, attribute, false),
+            ArgsExpectValues::Maybe => {}
+        }
+    }
+
+    (handler, attributes)
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
@@ -201,33 +370,42 @@ fn parse_in_memory(
     let hash = hasher.finish();
     let module = sway_parse::parse_file(handler, src, None)?;
 
+    let (attributes_handler, attributes) = attr_decls_to_attributes(
+        &module.attributes,
+        |attr| attr.can_annotate_module_kind(),
+        module.value.kind.friendly_name(),
+    );
+    let attributes_error_emitted = handler.append(attributes_handler);
+
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::new(BuildTarget::EVM, experimental),
         handler,
         engines,
         module.value.clone(),
     )?;
-    let module_kind_span = module.value.kind.span();
-    let submodules = Vec::default();
-    let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
-    let root = parsed::ParseModule {
-        span: span::Span::dummy(),
-        module_kind_span,
-        module_eval_order: vec![],
-        tree,
-        submodules,
-        attributes,
-        hash,
-    };
-    let lexed_program = lexed::LexedProgram::new(
-        kind,
-        lexed::LexedModule {
-            tree: module.value,
-            submodules: Vec::default(),
-        },
-    );
 
-    Ok((lexed_program, parsed::ParseProgram { kind, root }))
+    match attributes_error_emitted {
+        Some(err) => Err(err),
+        None => {
+            let root = parsed::ParseModule {
+                span: span::Span::dummy(),
+                module_kind_span: module.value.kind.span(),
+                module_eval_order: vec![],
+                tree,
+                submodules: vec![],
+                attributes,
+                hash,
+            };
+            let lexed_program = lexed::LexedProgram::new(
+                kind,
+                lexed::LexedModule {
+                    tree: module,
+                    submodules: vec![],
+                },
+            );
+            Ok((lexed_program, parsed::ParseProgram { kind, root }))
+        }
+    }
 }
 
 pub struct Submodule {
@@ -359,6 +537,13 @@ fn parse_module_tree(
         lsp_mode,
     );
 
+    let (attributes_handler, attributes) = attr_decls_to_attributes(
+        &module.attributes,
+        |attr| attr.can_annotate_module_kind(),
+        module.value.kind.friendly_name(),
+    );
+    let attributes_error_emitted = handler.append(attributes_handler);
+
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::new(build_target, experimental),
@@ -366,15 +551,18 @@ fn parse_module_tree(
         engines,
         module.value.clone(),
     )?;
-    let module_kind_span = module.value.kind.span();
-    let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
 
+    if let Some(err) = attributes_error_emitted {
+        return Err(err);
+    }
+
+    let module_kind_span = module.value.kind.span();
     let lexed_submodules = submodules
         .iter()
         .map(|s| (s.name.clone(), s.lexed.clone()))
         .collect::<Vec<_>>();
     let lexed = lexed::LexedModule {
-        tree: module.value,
+        tree: module,
         submodules: lexed_submodules,
     };
 
@@ -440,14 +628,14 @@ pub(crate) fn is_ty_module_cache_up_to_date(
 ) -> bool {
     let cache = engines.qe().module_cache.read();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-    cache.get(&key).map_or(false, |entry| {
-        entry.typed.as_ref().map_or(false, |typed| {
+    cache.get(&key).is_some_and(|entry| {
+        entry.typed.as_ref().is_some_and(|typed| {
             // Check if the cache is up to date based on file versions
             let cache_up_to_date = build_config
                 .and_then(|x| x.lsp_mode.as_ref())
                 .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
-                .map_or(true, |version| {
-                    version.map_or(true, |v| typed.version.map_or(false, |tv| v <= tv))
+                .is_none_or(|version| {
+                    version.map_or(true, |v| typed.version.is_some_and(|tv| v <= tv))
                 });
 
             // If the cache is up to date, recursively check all dependencies
@@ -471,7 +659,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
 ) -> bool {
     let cache = engines.qe().module_cache.read();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-    cache.get(&key).map_or(false, |entry| {
+    cache.get(&key).is_some_and(|entry| {
         // Determine if the cached dependency information is still valid
         let cache_up_to_date = build_config
             .and_then(|x| x.lsp_mode.as_ref())
@@ -497,7 +685,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
                     //   - If there's no cached version (entry.parsed.version is None), the cache is outdated.
                     //   - If there's a cached version, compare them: cache is up-to-date if the LSP file version
                     //     is not greater than the cached version.
-                    version.map_or(true, |v| entry.parsed.version.map_or(false, |ev| v <= ev))
+                    version.map_or(true, |v| entry.parsed.version.is_some_and(|ev| v <= ev))
                 },
             );
 
@@ -548,35 +736,67 @@ pub fn parsed_to_ast(
     handler: &Handler,
     engines: &Engines,
     parse_program: &mut parsed::ParseProgram,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Package,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     experimental: ExperimentalFeatures,
-) -> Result<ty::TyProgram, ErrorEmitted> {
+) -> Result<ty::TyProgram, TypeCheckFailed> {
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
     // Build the dependency graph for the submodules.
-    build_module_dep_graph(handler, &mut parse_program.root)?;
+    build_module_dep_graph(handler, &mut parse_program.root).map_err(|error| TypeCheckFailed {
+        root_module: None,
+        namespace: initial_namespace.clone(),
+        error,
+    })?;
 
-    let namespace = Namespace::init_root(initial_namespace);
+    let collection_namespace = Namespace::new(handler, engines, initial_namespace.clone(), true)
+        .map_err(|error| TypeCheckFailed {
+            root_module: None,
+            namespace: initial_namespace.clone(),
+            error,
+        })?;
     // Collect the program symbols.
-    let mut collection_ctx =
-        ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
 
+    let mut collection_ctx =
+        ty::TyProgram::collect(handler, engines, parse_program, collection_namespace).map_err(
+            |error| TypeCheckFailed {
+                root_module: None,
+                namespace: initial_namespace.clone(),
+                error,
+            },
+        )?;
+
+    let typecheck_namespace =
+        Namespace::new(handler, engines, initial_namespace, true).map_err(|error| {
+            TypeCheckFailed {
+                root_module: None,
+                namespace: collection_ctx.namespace().current_package_ref().clone(),
+                error,
+            }
+        })?;
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
         engines,
         parse_program,
         &mut collection_ctx,
-        namespace,
+        typecheck_namespace,
         package_name,
         build_config,
         experimental,
     );
-    check_should_abort(handler, retrigger_compilation.clone())?;
 
+    let mut typed_program = typed_program_opt?;
+
+    check_should_abort(handler, retrigger_compilation.clone()).map_err(|error| {
+        TypeCheckFailed {
+            root_module: Some(Arc::new(typed_program.root_module.clone())),
+            namespace: typed_program.namespace.current_package_ref().clone(),
+            error,
+        }
+    })?;
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
     // LSP needs these to build its token map, and they are cleared by `clear_program` as
     // part of the LSP garbage collection functionality instead.
@@ -584,18 +804,17 @@ pub fn parsed_to_ast(
         engines.pe().clear();
     }
 
-    let mut typed_program = match typed_program_opt {
-        Ok(typed_program) => typed_program,
-        Err(e) => return Err(e),
-    };
-
     typed_program.check_deprecated(engines, handler);
 
     match typed_program.check_recursive(engines, handler) {
         Ok(()) => {}
-        Err(e) => {
+        Err(error) => {
             handler.dedup();
-            return Err(e);
+            return Err(TypeCheckFailed {
+                root_module: Some(Arc::new(typed_program.root_module.clone())),
+                namespace: typed_program.namespace.current_package().clone(),
+                error,
+            });
         }
     };
 
@@ -608,9 +827,13 @@ pub fn parsed_to_ast(
         );
         let types_metadata = match types_metadata_result {
             Ok(types_metadata) => types_metadata,
-            Err(e) => {
+            Err(error) => {
                 handler.dedup();
-                return Err(e);
+                return Err(TypeCheckFailed {
+                    root_module: Some(Arc::new(typed_program.root_module.clone())),
+                    namespace: typed_program.namespace.current_package().clone(),
+                    error,
+                });
             }
         };
 
@@ -636,7 +859,13 @@ pub fn parsed_to_ast(
             None => (None, None),
         };
 
-        check_should_abort(handler, retrigger_compilation.clone())?;
+        check_should_abort(handler, retrigger_compilation.clone()).map_err(|error| {
+            TypeCheckFailed {
+                root_module: Some(Arc::new(typed_program.root_module.clone())),
+                namespace: typed_program.namespace.current_package_ref().clone(),
+                error,
+            }
+        })?;
 
         // Perform control flow analysis and extend with any errors.
         let _ = perform_control_flow_analysis(
@@ -654,16 +883,16 @@ pub fn parsed_to_ast(
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
     let mut ctx = Context::new(engines.se(), experimental);
-    let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
-    if let Err(e) = ir_generation::compile::compile_constants(
+    if let Err(errs) = ir_generation::compile::compile_constants_for_package(
         engines,
         &mut ctx,
-        &mut md_mgr,
         module,
-        typed_program.root.namespace.module(engines),
+        &typed_program.namespace,
     ) {
-        handler.emit_err(e);
+        errs.into_iter().for_each(|err| {
+            handler.emit_err(err.clone());
+        });
     }
 
     // CEI pattern analysis
@@ -673,21 +902,24 @@ pub fn parsed_to_ast(
         handler.emit_warn(warn);
     }
 
+    let mut md_mgr = MetadataManager::default();
     // Check that all storage initializers can be evaluated at compile time.
-    let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
-        handler,
-        engines,
-        &mut ctx,
-        &mut md_mgr,
-        module,
-    );
-    let typed_program_with_storage_slots = match typed_wiss_res {
-        Ok(typed_program_with_storage_slots) => typed_program_with_storage_slots,
-        Err(e) => {
+    typed_program
+        .get_typed_program_with_initialized_storage_slots(
+            handler,
+            engines,
+            &mut ctx,
+            &mut md_mgr,
+            module,
+        )
+        .map_err(|error: ErrorEmitted| {
             handler.dedup();
-            return Err(e);
-        }
-    };
+            TypeCheckFailed {
+                root_module: Some(Arc::new(typed_program.root_module.clone())),
+                namespace: typed_program.namespace.current_package_ref().clone(),
+                error,
+            }
+        })?;
 
     // All unresolved types lead to compile errors.
     for err in types_metadata.iter().filter_map(|m| match m {
@@ -702,10 +934,7 @@ pub fn parsed_to_ast(
         handler.emit_err(err);
     }
 
-    // Check if a non-test function calls `#[test]` function.
-
-    handler.dedup();
-    Ok(typed_program_with_storage_slots)
+    Ok(typed_program)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -713,7 +942,7 @@ pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Package,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -740,6 +969,7 @@ pub fn compile_to_ast(
 
     // Parse the program to a concrete syntax tree (CST).
     let parse_program_opt = time_expr!(
+        package_name,
         "parse the program to a concrete syntax tree (CST)",
         "parse_cst",
         parse(input, handler, engines, build_config, experimental),
@@ -758,12 +988,13 @@ pub fn compile_to_ast(
     };
 
     // If tests are not enabled, exclude them from `parsed_program`.
-    if build_config.map_or(true, |config| !config.include_tests) {
+    if build_config.is_none_or(|config| !config.include_tests) {
         parsed_program.exclude_tests(engines);
     }
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let typed_res = time_expr!(
+    let program = time_expr!(
+        package_name,
         "parse the concrete syntax tree (CST) to a typed AST",
         "parse_ast",
         parsed_to_ast(
@@ -784,7 +1015,7 @@ pub fn compile_to_ast(
 
     handler.dedup();
 
-    let programs = Programs::new(lexed_program, parsed_program, typed_res, metrics);
+    let programs = Programs::new(lexed_program, parsed_program, program, metrics);
 
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
@@ -807,7 +1038,7 @@ pub fn compile_to_asm(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Package,
     build_config: &BuildConfig,
     package_name: &str,
     experimental: ExperimentalFeatures,
@@ -836,7 +1067,7 @@ pub fn ast_to_asm(
 ) -> Result<CompiledAsm, ErrorEmitted> {
     let typed_program = match &programs.typed {
         Ok(typed_program) => typed_program,
-        Err(err) => return Err(*err),
+        Err(err) => return Err(err.error),
     };
 
     let asm =
@@ -919,7 +1150,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
             pass_group.append_pass(FN_INLINE_NAME);
 
             // Do DCE so other optimizations run faster.
-            pass_group.append_pass(FN_DCE_NAME);
+            pass_group.append_pass(GLOBALS_DCE_NAME);
             pass_group.append_pass(DCE_NAME);
         }
     }
@@ -974,13 +1205,13 @@ pub fn compile_to_bytecode(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Package,
     build_config: &BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
     experimental: ExperimentalFeatures,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
-    let asm_res = compile_to_asm(
+    let mut asm_res = compile_to_asm(
         handler,
         engines,
         input,
@@ -989,13 +1220,41 @@ pub fn compile_to_bytecode(
         package_name,
         experimental,
     )?;
-    asm_to_bytecode(handler, asm_res, source_map, engines.se(), build_config)
+    asm_to_bytecode(
+        handler,
+        &mut asm_res,
+        source_map,
+        engines.se(),
+        build_config,
+    )
+}
+
+/// Size of the prelude's CONFIGURABLES_OFFSET section, in bytes.
+pub const PRELUDE_CONFIGURABLES_SIZE_IN_BYTES: usize = 8;
+/// Offset (in bytes) of the CONFIGURABLES_OFFSET section in the prelude.
+pub const PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES: usize = 16;
+/// Total size of the prelude in bytes. Instructions start right after.
+pub const PRELUDE_SIZE_IN_BYTES: usize = 32;
+
+/// Given bytecode, overwrite the existing offset to configurables offset in the prelude with the given one.
+pub fn set_bytecode_configurables_offset(
+    compiled_bytecode: &mut CompiledBytecode,
+    md: &[u8; PRELUDE_CONFIGURABLES_SIZE_IN_BYTES],
+) {
+    assert!(
+        compiled_bytecode.bytecode.len()
+            >= PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES + PRELUDE_CONFIGURABLES_SIZE_IN_BYTES
+    );
+    let code = &mut compiled_bytecode.bytecode;
+    for (index, byte) in md.iter().enumerate() {
+        code[index + PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES] = *byte;
+    }
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
     handler: &Handler,
-    mut asm: CompiledAsm,
+    asm: &mut CompiledAsm,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
     build_config: &BuildConfig,
@@ -1046,7 +1305,7 @@ fn dead_code_analysis<'a>(
     module_dead_code_analysis(
         handler,
         engines,
-        &program.root,
+        &program.root_module,
         &tree_type,
         &mut dead_code_graph,
     )?;
@@ -1087,7 +1346,7 @@ fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
 
 fn return_path_analysis(engines: &Engines, program: &ty::TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
-    module_return_path_analysis(engines, &program.root, &mut errors);
+    module_return_path_analysis(engines, &program.root_module, &mut errors);
     errors
 }
 

@@ -1,7 +1,13 @@
 //! The `B512` type supports the usage of 64-byte values in Sway which are needed when working with public keys and signatures.
 library;
 
-use ::convert::From;
+use ::ops::*;
+use ::primitives::*;
+use ::convert::{From, Into, TryFrom};
+use ::bytes::Bytes;
+use ::option::Option::{self, *};
+use ::raw_slice::*;
+use ::codec::*;
 
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.
@@ -10,11 +16,12 @@ pub struct B512 {
     bits: [b256; 2],
 }
 
-impl core::ops::Eq for B512 {
+impl PartialEq for B512 {
     fn eq(self, other: Self) -> bool {
         (self.bits)[0] == (other.bits)[0] && (self.bits)[1] == (other.bits)[1]
     }
 }
+impl Eq for B512 {}
 
 impl From<(b256, b256)> for B512 {
     /// Converts from a `b256` tuple to a `B512`.
@@ -157,5 +164,61 @@ impl B512 {
     /// ```
     pub fn is_zero(self) -> bool {
         (self.bits)[0] == b256::zero() && (self.bits)[1] == b256::zero()
+    }
+}
+
+impl TryFrom<Bytes> for B512 {
+    /// Casts raw `Bytes` data to an `B512`.
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes`: [Bytes] - The raw `Bytes` data to be casted.
+    ///
+    /// # Returns
+    ///
+    /// * [B512] - The newly created `B512` from the raw `Bytes`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo(bytes: Bytes) {
+    ///    let result = B512::try_from(bytes);
+    ///    assert(result.is_some());
+    ///    let b512 = result.unwrap();
+    /// }
+    /// ```
+    fn try_from(bytes: Bytes) -> Option<Self> {
+        if bytes.len() != 64 {
+            return None;
+        }
+
+        Some(Self {
+            bits: asm(ptr: bytes.ptr()) {
+                ptr: [b256; 2]
+            },
+        })
+    }
+}
+
+impl Into<Bytes> for B512 {
+    /// Casts an `B512` to raw `Bytes` data.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - The underlying raw `Bytes` data of the `B512`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let b512 = B512::from((b256::zero(), b256::zero()));
+    ///     let bytes_data: Bytes = b512.into()
+    ///     assert(bytes_data.len() == 64);
+    /// }
+    /// ```
+    fn into(self) -> Bytes {
+        Bytes::from(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64))
     }
 }

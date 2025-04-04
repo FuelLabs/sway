@@ -1,13 +1,13 @@
 script;
 
-use core::ops::*;
+use std::ops::*;
 
 enum Error {
     BoolError: bool,
     U8Error: u8,
 }
 
-impl Eq for Error {
+impl PartialEq for Error {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Error::BoolError(val1), Error::BoolError(val2)) => val2 == val1,
@@ -16,15 +16,34 @@ impl Eq for Error {
         }
     }
 }
+impl Eq for Error {}
 
-fn test_none_ok_or<T, E>(_val: T, default: E) where E: Eq {
+fn test_none_ok_or_eq<T, E>(_val: T, default: E)
+where
+    E: Eq,
+{
     match None::<T>.ok_or(default) {
         Ok(_) => revert(0),
         Err(e) => assert(default == e),
     }
 }
 
+fn test_none_ok_or_partial_eq<T, E>(_val: T, default: E)
+where
+    E: Eq,
+{
+    match None::<T>.ok_or(default) {
+        Ok(_) => revert(0),
+        Err(e) => assert(default == e),
+    }
+}
+
+fn test() {
+    test_none_ok_or_eq(true, Error::BoolError(true));
+    test_none_ok_or_partial_eq(true, Error::BoolError(true));
+}
+
 fn main() -> bool {
-    test_none_ok_or(true, Error::BoolError(true));
+    test();
     return true;
 }

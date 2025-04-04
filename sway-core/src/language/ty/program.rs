@@ -4,6 +4,7 @@ use crate::{
     decl_engine::*,
     fuel_prelude::fuel_tx::StorageSlot,
     language::{parsed, ty::*, Purity},
+    semantic_analysis::namespace,
     transform::AllowDeprecatedState,
     type_system::*,
     types::*,
@@ -20,7 +21,8 @@ use sway_types::*;
 #[derive(Debug, Clone)]
 pub struct TyProgram {
     pub kind: TyProgramKind,
-    pub root: TyModule,
+    pub root_module: TyModule,
+    pub namespace: namespace::Namespace,
     pub declarations: Vec<TyDecl>,
     pub configurables: Vec<TyConfigurableDecl>,
     pub storage_slots: Vec<StorageSlot>,
@@ -136,7 +138,7 @@ impl TyProgram {
                         ..
                     } = &*impl_trait_decl;
                     if matches!(
-                        &*ty_engine.get(implementing_for.type_id),
+                        &*ty_engine.get(implementing_for.type_id()),
                         TypeInfo::Contract
                     ) {
                         // add methods to the ABI only if they come from an ABI implementation
@@ -206,7 +208,7 @@ impl TyProgram {
                         for field in storage_decl.fields.iter() {
                             if let Some(error) = get_type_not_allowed_error(
                                 engines,
-                                field.type_argument.type_id,
+                                field.type_argument.type_id(),
                                 &field.type_argument,
                                 |t| match t {
                                     TypeInfo::StringSlice => {
@@ -287,7 +289,7 @@ impl TyProgram {
                 };
 
                 let main_fn = decl_engine.get(&main_fn_id);
-                if !ty_engine.get(main_fn.return_type.type_id).is_bool() {
+                if !ty_engine.get(main_fn.return_type.type_id()).is_bool() {
                     handler.emit_err(CompileError::PredicateMainDoesNotReturnBool(
                         main_fn.span.clone(),
                     ));
@@ -341,7 +343,7 @@ impl TyProgram {
                     for p in main_fn.parameters() {
                         if let Some(error) = get_type_not_allowed_error(
                             engines,
-                            p.type_argument.type_id,
+                            p.type_argument.type_id(),
                             &p.type_argument,
                             |t| match t {
                                 TypeInfo::StringSlice => {
@@ -360,7 +362,7 @@ impl TyProgram {
                     // Check main return type is valid
                     if let Some(error) = get_type_not_allowed_error(
                         engines,
-                        main_fn.return_type.type_id,
+                        main_fn.return_type.type_id(),
                         &main_fn.return_type,
                         |t| match t {
                             TypeInfo::StringSlice => {
@@ -374,7 +376,7 @@ impl TyProgram {
                     ) {
                         // Let main return `raw_slice` directly
                         if !matches!(
-                            &*engines.te().get(main_fn.return_type.type_id),
+                            &*engines.te().get(main_fn.return_type.type_id()),
                             TypeInfo::RawUntypedSlice
                         ) {
                             handler.emit_err(error);
@@ -428,16 +430,13 @@ impl TyProgram {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
-        self.root
-            .submodules_recursive()
-            .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
-            .chain(self.root.test_fns(decl_engine))
+    ) -> impl 'b + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
+        self.root_module.test_fns_recursive(decl_engine)
     }
 
     pub fn check_deprecated(&self, engines: &Engines, handler: &Handler) {
         let mut allow_deprecated = AllowDeprecatedState::default();
-        self.root
+        self.root_module
             .check_deprecated(engines, handler, &mut allow_deprecated);
     }
 
@@ -446,7 +445,7 @@ impl TyProgram {
         engines: &Engines,
         handler: &Handler,
     ) -> Result<(), ErrorEmitted> {
-        self.root.check_recursive(engines, handler)
+        self.root_module.check_recursive(engines, handler)
     }
 }
 
@@ -495,8 +494,8 @@ impl CollectTypesMetadata for TyProgram {
             // an entry point. Also dig into all the submodules of a library because nodes in those
             // submodules can also be entry points.
             TyProgramKind::Library { .. } => {
-                for module in std::iter::once(&self.root).chain(
-                    self.root
+                for module in std::iter::once(&self.root_module).chain(
+                    self.root_module
                         .submodules_recursive()
                         .map(|(_, submod)| &*submod.module),
                 ) {
@@ -524,8 +523,8 @@ impl CollectTypesMetadata for TyProgram {
 
         // Now consider unit tests: all unit test are considered entry points regardless of the
         // program type
-        for module in std::iter::once(&self.root).chain(
-            self.root
+        for module in std::iter::once(&self.root_module).chain(
+            self.root_module
                 .submodules_recursive()
                 .map(|(_, submod)| &*submod.module),
         ) {

@@ -41,9 +41,7 @@ pub(crate) fn struct_instantiation(
         TypeBinding::type_check(&mut call_path_binding, &Handler::default(), ctx.by_ref());
 
     let TypeBinding {
-        inner: CallPath {
-            prefixes, suffix, ..
-        },
+        inner: CallPath { suffix, .. },
         type_arguments,
         span: inner_span,
     } = &call_path_binding;
@@ -72,9 +70,12 @@ pub(crate) fn struct_instantiation(
     };
 
     // find the module that the struct decl is in
-    let type_info_prefix = ctx.namespace().prepend_module_path(prefixes);
+    let type_info_prefix = call_path_binding
+        .inner
+        .to_fullpath(engines, ctx.namespace())
+        .prefixes;
     ctx.namespace()
-        .lookup_submodule_from_absolute_path(handler, engines, &type_info_prefix)?;
+        .require_module_from_absolute_path(handler, &type_info_prefix)?;
 
     // resolve the type of the struct decl
     let type_id = ctx
@@ -296,14 +297,17 @@ pub(crate) fn struct_instantiation(
 
     let instantiation_span = inner_span.clone();
     ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow)
-        .scoped(handler, None, |mut scoped_ctx| {
+        .scoped(handler, None, |scoped_ctx| {
             // Insert struct type parameter into namespace.
             // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
-            for type_parameter in struct_decl.type_parameters.iter() {
-                type_parameter.insert_into_namespace_self(handler, scoped_ctx.by_ref())?;
+            for p in struct_decl.type_parameters.iter() {
+                let p = p
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
+                p.insert_into_namespace_self(handler, scoped_ctx.by_ref())?;
             }
 
-            type_id.check_type_parameter_bounds(handler, scoped_ctx, &span, None)?;
+            type_id.check_type_parameter_bounds(handler, scoped_ctx.by_ref(), &span, None)?;
 
             let exp = ty::TyExpression {
                 expression: ty::TyExpressionVariant::StructExpression {
@@ -332,18 +336,19 @@ fn collect_struct_constructors(
     // Also, strictly speaking, we could also have public module functions that create structs,
     // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
     // that we wish to encourage.
-    namespace.program_id(engines).read(engines, |m| {
-        m.current_items()
-            .get_items_for_type(engines, struct_type_id)
+    namespace.current_module().read(engines, |m| {
+        m.get_items_for_type(engines, struct_type_id)
             .iter()
             .filter_map(|item| match item {
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),
                 ResolvedTraitImplItem::Typed(item) => match item {
-                    ty::TyTraitItem::Fn(fn_decl_id) => Some(fn_decl_id),
+                    ty::TyTraitItem::Fn(fn_decl_id) => {
+                        Some(fn_decl_id.get_method_safe_to_unify(engines, struct_type_id))
+                    }
                     _ => None,
                 },
             })
-            .map(|fn_decl_id| engines.de().get_function(fn_decl_id))
+            .map(|fn_decl_id| engines.de().get_function(&fn_decl_id))
             .filter(|fn_decl| {
                 matches!(fn_decl.visibility, Visibility::Public)
                     && fn_decl
@@ -394,12 +399,12 @@ fn type_check_field_arguments(
                     let ctx = ctx
                         .by_ref()
                         .with_help_text(help_text)
-                        .with_type_annotation(struct_field.type_argument.type_id)
+                        .with_type_annotation(struct_field.type_argument.type_id())
                         .with_unify_generic(true);
 
-                    // TODO-IG: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
-                    //          We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
-                    //          not treated as an error in the `type_check()`'s result.
+                    // TODO: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
+                    //       We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
+                    //       not treated as an error in the `type_check()`'s result.
                     let typed_expr = handler
                         .scope(|handler| ty::TyExpression::type_check(handler, ctx, &field.value));
 
@@ -468,7 +473,7 @@ fn unify_field_arguments_and_struct_fields(
                     handler,
                     engines,
                     typed_field.value.return_type,
-                    struct_field.type_argument.type_id,
+                    struct_field.type_argument.type_id(),
                     &typed_field.value.span, // Use the span of the initialization value.
                     help_text,
                     None,

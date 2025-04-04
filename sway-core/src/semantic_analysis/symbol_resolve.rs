@@ -5,17 +5,17 @@ use crate::{
     decl_engine::{parsed_engine::ParsedDeclEngineReplace, parsed_id::ParsedDeclId},
     language::{
         parsed::{
-            AbiDeclaration, AstNode, AstNodeContent, CodeBlock, ConfigurableDeclaration,
-            ConstantDeclaration, Declaration, EnumDeclaration, EnumVariant, Expression,
-            ExpressionKind, FunctionDeclaration, FunctionParameter, ImplItem, ImplSelfOrTrait,
-            ParseModule, ParseProgram, ReassignmentTarget, Scrutinee, StorageDeclaration,
-            StorageEntry, StructDeclaration, StructExpressionField, StructField,
-            StructScrutineeField, Supertrait, TraitDeclaration, TraitFn, TraitItem,
+            AbiDeclaration, ArrayExpression, AstNode, AstNodeContent, CodeBlock,
+            ConfigurableDeclaration, ConstantDeclaration, Declaration, EnumDeclaration,
+            EnumVariant, Expression, ExpressionKind, FunctionDeclaration, FunctionParameter,
+            ImplItem, ImplSelfOrTrait, ParseModule, ParseProgram, ReassignmentTarget, Scrutinee,
+            StorageDeclaration, StorageEntry, StructDeclaration, StructExpressionField,
+            StructField, StructScrutineeField, Supertrait, TraitDeclaration, TraitFn, TraitItem,
             TraitTypeDeclaration, TypeAliasDeclaration, VariableDeclaration,
         },
         CallPath, CallPathTree, ResolvedCallPath,
     },
-    TraitConstraint, TypeArgument, TypeBinding, TypeParameter,
+    GenericArgument, TraitConstraint, TypeBinding, TypeParameter,
 };
 
 use super::symbol_resolve_context::SymbolResolveContext;
@@ -87,6 +87,9 @@ impl ResolveSymbols for Declaration {
             Declaration::TraitTypeDeclaration(decl_id) => decl_id.resolve_symbols(handler, ctx),
             Declaration::TraitFnDeclaration(decl_id) => decl_id.resolve_symbols(handler, ctx),
             Declaration::ConfigurableDeclaration(decl_id) => decl_id.resolve_symbols(handler, ctx),
+            Declaration::ConstGenericDeclaration(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 }
@@ -389,9 +392,9 @@ impl ResolveSymbols for TypeAliasDeclaration {
     }
 }
 
-impl ResolveSymbols for TypeArgument {
+impl ResolveSymbols for GenericArgument {
     fn resolve_symbols(&mut self, handler: &Handler, ctx: SymbolResolveContext) {
-        if let Some(call_path) = self.call_path_tree.as_mut() {
+        if let Some(call_path) = self.call_path_tree_mut() {
             call_path.resolve_symbols(handler, ctx);
         }
     }
@@ -399,9 +402,13 @@ impl ResolveSymbols for TypeArgument {
 
 impl ResolveSymbols for TypeParameter {
     fn resolve_symbols(&mut self, handler: &Handler, mut ctx: SymbolResolveContext) {
-        self.trait_constraints
-            .iter_mut()
-            .for_each(|tc| tc.resolve_symbols(handler, ctx.by_ref()));
+        match self {
+            TypeParameter::Type(p) => p
+                .trait_constraints
+                .iter_mut()
+                .for_each(|tc| tc.resolve_symbols(handler, ctx.by_ref())),
+            TypeParameter::Const(_) => todo!(),
+        }
     }
 }
 
@@ -542,10 +549,13 @@ impl ResolveSymbols for ExpressionKind {
             ExpressionKind::TupleIndex(expr) => {
                 expr.prefix.resolve_symbols(handler, ctx.by_ref());
             }
-            ExpressionKind::Array(expr) => expr
-                .contents
+            ExpressionKind::Array(ArrayExpression::Explicit { contents, .. }) => contents
                 .iter_mut()
                 .for_each(|e| e.resolve_symbols(handler, ctx.by_ref())),
+            ExpressionKind::Array(ArrayExpression::Repeat { value, length }) => {
+                value.resolve_symbols(handler, ctx.by_ref());
+                length.resolve_symbols(handler, ctx.by_ref());
+            }
             ExpressionKind::Struct(expr) => {
                 expr.call_path_binding
                     .resolve_symbols(handler, ctx.by_ref());

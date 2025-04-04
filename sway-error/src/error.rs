@@ -1,4 +1,7 @@
-use crate::convert_parse_tree_error::ConvertParseTreeError;
+use crate::convert_parse_tree_error::{
+    get_attribute_type, get_expected_attributes_args_multiplicity_msg, AttributeType,
+    ConvertParseTreeError,
+};
 use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 use crate::formatting::*;
 use crate::lex_error::LexError;
@@ -7,7 +10,6 @@ use crate::type_error::TypeError;
 
 use core::fmt;
 use std::fmt::Formatter;
-use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
 use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
 use thiserror::Error;
@@ -50,6 +52,18 @@ impl fmt::Display for InterfaceName {
 // provided identifier.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
+    #[error("\"const generics\" are not supported here.")]
+    ConstGenericNotSupportedHere { span: Span },
+    #[error("This expression is not supported as lengths.")]
+    LengthExpressionNotSupported { span: Span },
+    #[error(
+        "This needs \"{feature}\" to be enabled, but it is currently disabled. For more details go to {url}."
+    )]
+    FeatureIsDisabled {
+        feature: String,
+        url: String,
+        span: Span,
+    },
     #[error(
         "There was an error while evaluating the evaluation order for the module dependency graph."
     )]
@@ -476,10 +490,6 @@ pub enum CompileError {
         function_name: Ident,
     },
     #[error(
-        "Expected Module level doc comment. All other attributes are unsupported at this level."
-    )]
-    ExpectedModuleDocComment { span: Span },
-    #[error(
         "This register was not initialized in the initialization section of the ASM expression. \
          Initialized registers are: {initialized_registers}"
     )]
@@ -613,15 +623,25 @@ pub enum CompileError {
     ConflictingImplsForTraitAndType {
         trait_name: String,
         type_implementing_for: String,
+        type_implementing_for_unaliased: String,
         existing_impl_span: Span,
         second_impl_span: Span,
+    },
+    #[error(
+        "\"{marker_trait_full_name}\" is a marker trait and cannot be explicitly implemented."
+    )]
+    MarkerTraitExplicitlyImplemented {
+        marker_trait_full_name: String,
+        span: Span,
     },
     #[error("Duplicate definitions for the {decl_kind} \"{decl_name}\" for type \"{type_implementing_for}\".")]
     DuplicateDeclDefinedForType {
         decl_kind: String,
         decl_name: String,
         type_implementing_for: String,
-        span: Span,
+        type_implementing_for_unaliased: String,
+        existing_impl_span: Span,
+        second_impl_span: Span,
     },
     #[error("The function \"{fn_name}\" in {interface_name} is defined with {num_parameters} parameters, but the provided implementation has {provided_parameters} parameters.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
@@ -679,6 +699,8 @@ pub enum CompileError {
         span: Span,
         prefix_span: Span,
     },
+    #[error("Constant requires expression.")]
+    ConstantRequiresExpression { span: Span },
     #[error("Constants cannot be shadowed. {shadowing_source} \"{name}\" shadows constant of the same name.")]
     ConstantsCannotBeShadowed {
         /// Defines what shadows the constant.
@@ -791,9 +813,9 @@ pub enum CompileError {
     },
     #[error(
         "The function \"{fn_name}\" in {interface_name} is pure, but this \
-        implementation is not.  The \"{STORAGE_PURITY_ATTRIBUTE_NAME}\" annotation must be \
+        implementation is not.  The \"storage\" annotation must be \
         removed, or the trait declaration must be changed to \
-        \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\"."
+        \"#[storage({attrs})]\"."
     )]
     TraitDeclPureImplImpure {
         fn_name: Ident,
@@ -803,7 +825,7 @@ pub enum CompileError {
     },
     #[error(
         "Storage attribute access mismatch. The function \"{fn_name}\" in \
-        {interface_name} requires the storage attribute(s) #[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]."
+        {interface_name} requires the storage attribute(s) #[storage({attrs})]."
     )]
     TraitImplPurityMismatch {
         fn_name: Ident,
@@ -815,7 +837,7 @@ pub enum CompileError {
     ImpureInNonContract { span: Span },
     #[error(
         "This function performs storage access but does not have the required storage \
-        attribute(s). Try adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({suggested_attributes})]\" to the function \
+        attribute(s). Try adding \"#[storage({suggested_attributes})]\" to the function \
         declaration."
     )]
     StorageAccessMismatched {
@@ -915,10 +937,6 @@ pub enum CompileError {
     ContinueOutsideLoop { span: Span },
     /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
     /// https://github.com/FuelLabs/sway/issues/3077
-    #[error("Contract ID is not a constant item.")]
-    ContractIdConstantNotAConstDecl { span: Span },
-    /// This will be removed once loading contract IDs in a dependency namespace is refactored and no longer manual:
-    /// https://github.com/FuelLabs/sway/issues/3077
     #[error("Contract ID value is not a literal.")]
     ContractIdValueNotALiteral { span: Span },
 
@@ -992,6 +1010,15 @@ pub enum CompileError {
     AssociatedTypeNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
+    #[error(
+        "Methods {method_name} and {other_method_name} name have clashing function selectors."
+    )]
+    FunctionSelectorClash {
+        method_name: Ident,
+        span: Span,
+        other_method_name: Ident,
+        other_span: Span,
+    },
     #[error("{invalid_type} is not a valid type in the self type of an impl block.")]
     TypeIsNotValidAsImplementingFor {
         invalid_type: InvalidImplementingForType,
@@ -1009,8 +1036,8 @@ pub enum CompileError {
     FallbackFnsCannotHaveParameters { span: Span },
     #[error("Could not generate the entry method. See errors above for more details.")]
     CouldNotGenerateEntry { span: Span },
-    #[error("Missing `core` in dependencies.")]
-    CouldNotGenerateEntryMissingCore { span: Span },
+    #[error("Missing `std` in dependencies.")]
+    CouldNotGenerateEntryMissingStd { span: Span },
     #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
     CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
     #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
@@ -1033,6 +1060,8 @@ pub enum CompileError {
         trait_names: Vec<String>,
         trait_types_and_names: Vec<(String, String)>,
     },
+    #[error("Multiple contracts methods with the same name.")]
+    MultipleContractsMethodsWithTheSameName { spans: Vec<Span> },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1045,6 +1074,9 @@ impl Spanned for CompileError {
     fn span(&self) -> Span {
         use CompileError::*;
         match self {
+            ConstGenericNotSupportedHere { span } => span.clone(),
+            LengthExpressionNotSupported { span } => span.clone(),
+            FeatureIsDisabled { span, .. } => span.clone(),
             ModuleDepGraphEvaluationError { .. } => Span::dummy(),
             ModuleDepGraphCyclicReference { .. } => Span::dummy(),
             UnknownVariable { span, .. } => span.clone(),
@@ -1108,7 +1140,6 @@ impl Spanned for CompileError {
             NotAType { span, .. } => span.clone(),
             MissingEnumInstantiator { span, .. } => span.clone(),
             PathDoesNotReturn { span, .. } => span.clone(),
-            ExpectedModuleDocComment { span } => span.clone(),
             UnknownRegister { span, .. } => span.clone(),
             MissingImmediate { span, .. } => span.clone(),
             InvalidImmediateValue { span, .. } => span.clone(),
@@ -1148,7 +1179,10 @@ impl Spanned for CompileError {
             ConflictingImplsForTraitAndType {
                 second_impl_span, ..
             } => second_impl_span.clone(),
-            DuplicateDeclDefinedForType { span, .. } => span.clone(),
+            MarkerTraitExplicitlyImplemented { span, .. } => span.clone(),
+            DuplicateDeclDefinedForType {
+                second_impl_span, ..
+            } => second_impl_span.clone(),
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
             RecursiveCall { span, .. } => span.clone(),
@@ -1161,6 +1195,7 @@ impl Spanned for CompileError {
             ContractStorageFromExternalContext { span, .. } => span.clone(),
             InvalidOpcodeFromPredicate { span, .. } => span.clone(),
             ArrayOutOfBounds { span, .. } => span.clone(),
+            ConstantRequiresExpression { span, .. } => span.clone(),
             ConstantsCannotBeShadowed { name, .. } => name.span(),
             ConfigurablesCannotBeShadowed { name, .. } => name.span(),
             ConfigurablesCannotBeMatchedAgainst { name, .. } => name.span(),
@@ -1217,7 +1252,6 @@ impl Spanned for CompileError {
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
-            ContractIdConstantNotAConstDecl { span } => span.clone(),
             ContractIdValueNotALiteral { span } => span.clone(),
             RefMutableNotAllowedInMain { span, .. } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
@@ -1235,6 +1269,7 @@ impl Spanned for CompileError {
             ConflictingSuperAbiMethods { span, .. } => span.clone(),
             AssociatedTypeNotSupportedInAbi { span, .. } => span.clone(),
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
+            FunctionSelectorClash { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),
             TypeIsNotValidAsImplementingFor { span, .. } => span.clone(),
@@ -1243,7 +1278,7 @@ impl Spanned for CompileError {
             FallbackFnsAreContractOnly { span } => span.clone(),
             FallbackFnsCannotHaveParameters { span } => span.clone(),
             CouldNotGenerateEntry { span } => span.clone(),
-            CouldNotGenerateEntryMissingCore { span } => span.clone(),
+            CouldNotGenerateEntryMissingStd { span } => span.clone(),
             CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
             CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
             EncodingUnsupportedType { span } => span.clone(),
@@ -1252,6 +1287,7 @@ impl Spanned for CompileError {
             InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
             MultipleImplsSatisfyingTraitForType { span, .. } => span.clone(),
+            MultipleContractsMethodsWithTheSameName { spans } => spans[0].clone(),
         }
     }
 }
@@ -1607,7 +1643,7 @@ impl ToDiagnostic for CompileError {
                         source_engine,
                         struct_decl_span.clone(),
                         format!("Struct \"{struct_name}\" is declared here, and has {} field{}.",
-                            number_to_str(*total_number_of_fields),
+                            num_to_str(*total_number_of_fields),
                             plural_s(*total_number_of_fields),
                         )
                     ),
@@ -1727,7 +1763,7 @@ impl ToDiagnostic for CompileError {
                         let mut help = vec![];
 
                         if trait_candidates.len() > 1 {
-                            help.push(format!("There are these {} traits with the name \"{trait_name}\" available in the modules:", number_to_str(trait_candidates.len())));
+                            help.push(format!("There are these {} traits with the name \"{trait_name}\" available in the modules:", num_to_str(trait_candidates.len())));
                             for trait_candidate in trait_candidates.iter() {
                                 help.push(format!("{}- {trait_candidate}", Indent::Single));
                             }
@@ -1797,7 +1833,7 @@ impl ToDiagnostic for CompileError {
                         source_engine,
                         struct_decl_span.clone(),
                         format!("Struct \"{struct_name}\" is declared here, and has {} field{}.",
-                            number_to_str(*total_number_of_fields),
+                            num_to_str(*total_number_of_fields),
                             plural_s(*total_number_of_fields),
                         )
                     ),
@@ -2076,7 +2112,7 @@ impl ToDiagnostic for CompileError {
                             source_engine,
                             struct_decl_span.clone(),
                             format!("Struct \"{struct_name}\" is declared here, and has {} {public}fields.",
-                                number_to_str(available_fields.len())
+                                num_to_str(available_fields.len())
                             )
                         ));
                     }
@@ -2155,16 +2191,16 @@ impl ToDiagnostic for CompileError {
                     ]
                 }
             },
-	    SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
-		reason: Some(Reason::new(code(1), "Multiple bindings for symbol in this scope".to_string())),
-		issue: Issue::error(
-		    source_engine,
-		    span.clone(),
-		    format!("The following paths are all valid bindings for symbol \"{}\": {}", name, paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>().join(", ")),
-		),
-		hints: paths.iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
-		help: vec![format!("Consider using a fully qualified name, e.g., {}::{}", paths[0], name.as_str())],
-	    },
+            SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Multiple bindings exist for symbol in the scope".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("The following paths are all valid bindings for symbol \"{}\": {}.", name, sequence_to_str(&paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>(), Enclosing::DoubleQuote, 2)),
+                ),
+                hints: vec![],
+                help: vec![format!("Consider using a fully qualified name, e.g., `{}::{}`.", paths[0], name)],
+            },
             StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Storage field does not exist".to_string())),
                 issue: Issue::error(
@@ -2202,7 +2238,7 @@ impl ToDiagnostic for CompileError {
                             source_engine,
                             storage_decl_span.clone(),
                             format!("Storage is declared here, and has {} fields.",
-                                number_to_str(available_fields.len())
+                                num_to_str(available_fields.len())
                             )
                         ));
                     }
@@ -2283,26 +2319,80 @@ impl ToDiagnostic for CompileError {
                     format!("{}- referencing a mutable copy of \"{decl_name}\", by returning it from a block: `&mut {{ {decl_name} }}`.", Indent::Single)
                 ],
             },
-            ConflictingImplsForTraitAndType { trait_name, type_implementing_for, existing_impl_span, second_impl_span } => Diagnostic {
+            ConflictingImplsForTraitAndType { trait_name, type_implementing_for, type_implementing_for_unaliased, existing_impl_span, second_impl_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Trait is already implemented for type".to_string())),
                 issue: Issue::error(
                     source_engine,
                     second_impl_span.clone(),
-                    format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\".")
+                    if type_implementing_for == type_implementing_for_unaliased {
+                        format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\".")
+                    } else {
+                        format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\" (which is an alias for \"{type_implementing_for_unaliased}\").")
+                    }
                 ),
                 hints: vec![
                     Hint::info(
                         source_engine,
                         existing_impl_span.clone(),
-                        format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\".",
-                            call_path_suffix_with_args(trait_name)
-                        )
+                        if type_implementing_for == type_implementing_for_unaliased {
+                            format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\".",
+                                    call_path_suffix_with_args(trait_name)
+                            )
+                        } else {
+                            format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\" (which is an alias for \"{type_implementing_for_unaliased}\").",
+                                    call_path_suffix_with_args(trait_name)
+                            )
+                        }
                     ),
                 ],
                 help: vec![
                     "In Sway, there can be at most one implementation of a trait for any given type.".to_string(),
                     "This property is called \"trait coherence\".".to_string(),
                 ],
+            },
+            DuplicateDeclDefinedForType { decl_kind, decl_name, type_implementing_for, type_implementing_for_unaliased, existing_impl_span, second_impl_span } => {
+                let decl_kind_snake_case = sway_types::style::to_upper_camel_case(decl_kind);
+                Diagnostic {
+                    reason: Some(Reason::new(code(1), "Type contains duplicate declarations".to_string())),
+                    issue: Issue::error(
+                        source_engine,
+                        second_impl_span.clone(),
+                        if type_implementing_for == type_implementing_for_unaliased {
+                            format!("{decl_kind_snake_case} \"{decl_name}\" already declared in type \"{type_implementing_for}\".")
+                        } else {
+                            format!("{decl_kind_snake_case} \"{decl_name}\" already declared in type \"{type_implementing_for}\" (which is an alias for \"{type_implementing_for_unaliased}\").")
+                        }
+                    ),
+                    hints: vec![
+                        Hint::info(
+                            source_engine,
+                            existing_impl_span.clone(),
+                            format!("\"{decl_name}\" previously defined here.")
+                        )
+                    ],
+                    help: vec![
+                        "A type may not contain two or more declarations of the same name".to_string(),
+                    ],
+                }
+            },
+            MarkerTraitExplicitlyImplemented { marker_trait_full_name, span} => Diagnostic {
+                reason: Some(Reason::new(code(1), "Marker traits cannot be explicitly implemented".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Trait \"{marker_trait_full_name}\" is a marker trait and cannot be explicitly implemented.")
+                ),
+                hints: vec![],
+                help: match marker_trait_name(marker_trait_full_name) {
+                    "Error" => vec![
+                        "\"Error\" marker trait is automatically implemented by the compiler for string slices".to_string(),
+                        "and enums annotated with the `#[error_type]` attribute.".to_string(),
+                    ],
+                    "Enum" => vec![
+                        "\"Enum\" marker trait is automatically implemented by the compiler for all enum types.".to_string(),
+                    ],
+                    _ => vec![],
+                }
             },
             AssignmentToNonMutableVariable { lhs_span, decl_name } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Immutable variables cannot be assigned to".to_string())),
@@ -2670,32 +2760,155 @@ impl ToDiagnostic for CompileError {
                                 error.span.as_str()
                             )
                         ),
-                        hints: {
-                            let suggestions = &did_you_mean(error.span.as_str(), known_op_codes.iter(), 2);
-                            if suggestions.is_empty() {
-                                vec![]
-                            } else {
-                                vec![
-                                    Hint::help(
-                                        source_engine,
-                                        error.span.clone(),
-                                        format!("Did you mean {}?", sequence_to_str_or(suggestions, Enclosing::DoubleQuote, 2))
-                                    ),
-                                ]
-                            }
-                        },
+                        hints: vec![did_you_mean_help(source_engine, error.span.clone(), known_op_codes.iter(), 2, Enclosing::DoubleQuote)],
                         help: vec![]
                     },
                     _ => Diagnostic {
-                                // TODO: Temporary we use self here to achieve backward compatibility.
-                                //       In general, self must not be used and will not be used once we
-                                //       switch to our own #[error] macro. All the values for the formatting
-                                //       of a diagnostic must come from the enum variant parameters.
+                                // TODO: Temporary we use `self` here to achieve backward compatibility.
+                                //       In general, `self` must not be used. All the values for the formatting
+                                //       of a diagnostic must come from its enum variant parameters.
                                 issue: Issue::error(source_engine, self.span(), format!("{}", self)),
                                 ..Default::default()
                         },
                 }
             },
+            ConvertParseTree { error } => {
+                match error {
+                    ConvertParseTreeError::InvalidAttributeTarget { span, attribute, target_friendly_name, can_only_annotate_help } => Diagnostic {
+                        reason: Some(Reason::new(code(1), match get_attribute_type(attribute) {
+                            AttributeType::InnerDocComment => "Inner doc comment (`//!`) cannot document item",
+                            AttributeType::OuterDocComment => "Outer doc comment (`///`) cannot document item",
+                            AttributeType::Attribute => "Attribute cannot annotate item",
+                        }.to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            span.clone(),
+                            match get_attribute_type(attribute) {
+                                AttributeType::InnerDocComment => format!("Inner doc comment (`//!`) cannot document {}{target_friendly_name}.", a_or_an(&target_friendly_name)),
+                                AttributeType::OuterDocComment => format!("Outer doc comment (`///`) cannot document {}{target_friendly_name}.", a_or_an(&target_friendly_name)),
+                                AttributeType::Attribute => format!("\"{attribute}\" attribute cannot annotate {}{target_friendly_name}.", a_or_an(&target_friendly_name)),
+                            }.to_string()
+                        ),
+                        hints: vec![],
+                        help: can_only_annotate_help.iter().map(|help| help.to_string()).collect(),
+                    },
+                    ConvertParseTreeError::InvalidAttributeMultiplicity { last_occurrence, previous_occurrences } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Attribute can be applied only once".to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            last_occurrence.span(),
+                            format!("\"{last_occurrence}\" attribute can be applied only once, but is applied {} times.", num_to_str(previous_occurrences.len() + 1))
+                        ),
+                        hints: {
+                            let (first_occurrence, other_occurrences) = previous_occurrences.split_first().expect("there is at least one previous occurrence in `previous_occurrences`");
+                            let mut hints = vec![Hint::info(source_engine, first_occurrence.span(), "It is already applied here.".to_string())];
+                            other_occurrences.iter().for_each(|occurrence| hints.push(Hint::info(source_engine, occurrence.span(), "And here.".to_string())));
+                            hints
+                        },
+                        help: vec![],
+                    },
+                    ConvertParseTreeError::InvalidAttributeArgsMultiplicity { span, attribute, args_multiplicity, num_of_args } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Number of attribute arguments is invalid".to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            span.clone(),
+                            format!("\"{attribute}\" attribute must {}, but has {}.", get_expected_attributes_args_multiplicity_msg(args_multiplicity), num_to_str_or_none(*num_of_args))
+                        ),
+                        hints: vec![],
+                        help: vec![],
+                    },
+                    ConvertParseTreeError::InvalidAttributeArg { attribute, arg, expected_args } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Attribute argument is invalid".to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            arg.span(),
+                            format!("\"{arg}\" is an invalid argument for attribute \"{attribute}\".")
+                        ),
+                        hints: {
+                            let mut hints = vec![did_you_mean_help(source_engine, arg.span(), expected_args, 2, Enclosing::DoubleQuote)];
+                            if expected_args.len() == 1 {
+                                hints.push(Hint::help(source_engine, arg.span(), format!("The only valid argument is \"{}\".", expected_args[0])));
+                            } else if expected_args.len() <= 3 {
+                                hints.push(Hint::help(source_engine, arg.span(), format!("Valid arguments are {}.", sequence_to_str(expected_args, Enclosing::DoubleQuote, usize::MAX))));
+                            } else {
+                                hints.push(Hint::help(source_engine, arg.span(), "Valid arguments are:".to_string()));
+                                hints.append(&mut Hint::multi_help(source_engine, &arg.span(), sequence_to_list(expected_args, Indent::Single, usize::MAX)))
+                            }
+                            hints
+                        },
+                        help: vec![],
+                    },
+                    ConvertParseTreeError::InvalidAttributeArgExpectsValue { attribute, arg, value_span  } => Diagnostic {
+                        reason: Some(Reason::new(code(1), format!("Attribute argument must {}have a value",
+                            match value_span {
+                                Some(_) => "not ",
+                                None => "",
+                            }
+                        ))),
+                        issue: Issue::error(
+                            source_engine,
+                            arg.span(),
+                            format!("\"{arg}\" argument of the attribute \"{attribute}\" must {}have a value.",
+                                match value_span {
+                                    Some(_) => "not ",
+                                    None => "",
+                                }
+                            )
+                        ),
+                        hints: vec![
+                            match &value_span {
+                                Some(value_span) => Hint::help(source_engine, value_span.clone(), format!("Remove the value: `= {}`.", value_span.as_str())),
+                                None => Hint::help(source_engine, arg.span(), format!("To set the value, use the `=` operator: `{arg} = <value>`.")),
+                            }
+                        ],
+                        help: vec![],
+                    },
+                    ConvertParseTreeError::InvalidAttributeArgValueType { span, arg, expected_type, received_type } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Attribute argument value has a wrong type".to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            span.clone(),
+                            format!("\"{arg}\" argument must have a value of type \"{expected_type}\".")
+                        ),
+                        hints: vec![
+                            Hint::help(
+                                source_engine,
+                                span.clone(),
+                                format!("This value has type \"{received_type}\"."),
+                            )
+                        ],
+                        help: vec![],
+                    },
+                    ConvertParseTreeError::InvalidAttributeArgValue { span, arg, expected_values } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Attribute argument value is invalid".to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            span.clone(),
+                            format!("\"{}\" is an invalid value for argument \"{arg}\".", span.as_str())
+                        ),
+                        hints: {
+                            let mut hints = vec![did_you_mean_help(source_engine, span.clone(), expected_values, 2, Enclosing::DoubleQuote)];
+                            if expected_values.len() == 1 {
+                                hints.push(Hint::help(source_engine, span.clone(), format!("The only valid argument value is \"{}\".", expected_values[0])));
+                            } else if expected_values.len() <= 3 {
+                                hints.push(Hint::help(source_engine, span.clone(), format!("Valid argument values are {}.", sequence_to_str(expected_values, Enclosing::DoubleQuote, usize::MAX))));
+                            } else {
+                                hints.push(Hint::help(source_engine, span.clone(), "Valid argument values are:".to_string()));
+                                hints.append(&mut Hint::multi_help(source_engine, span, sequence_to_list(expected_values, Indent::Single, usize::MAX)))
+                            }
+                            hints
+                        },
+                        help: vec![],
+                    },
+                    _ => Diagnostic {
+                                // TODO: Temporarily we use `self` here to achieve backward compatibility.
+                                //       In general, `self` must not be used. All the values for the formatting
+                                //       of a diagnostic must come from its enum variant parameters.
+                                issue: Issue::error(source_engine, self.span(), format!("{}", self)),
+                                ..Default::default()
+                        },
+                }
+            }
             ConfigurableMissingAbiDecodeInPlace { span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Configurables need a function named \"abi_decode_in_place\" to be in scope".to_string())),
                 issue: Issue::error(
@@ -2705,8 +2918,8 @@ impl ToDiagnostic for CompileError {
                 ),
                 hints: vec![],
                 help: vec![
-                    "The function \"abi_decode_in_place\" is usually defined in the standard library module \"core::codec\".".into(),
-                    "Verify that you are using a version of the \"core\" standard library that contains this function.".into(),
+                    "The function \"abi_decode_in_place\" is usually defined in the standard library module \"std::codec\".".into(),
+                    "Verify that you are using a version of the \"std\" standard library that contains this function.".into(),
                 ],
             },
             StorageAccessMismatched { span, is_pure, suggested_attributes, storage_access_violations } => Diagnostic {
@@ -2751,7 +2964,7 @@ impl ToDiagnostic for CompileError {
                     ))
                     .collect(),
                 help: vec![
-                    format!("Consider declaring the function \"{}\" as `#[{STORAGE_PURITY_ATTRIBUTE_NAME}({suggested_attributes})]`,",
+                    format!("Consider declaring the function \"{}\" as `#[storage({suggested_attributes})]`,",
                         span.as_str()
                     ),
                     format!("or removing the {} from the function body.",
@@ -2775,11 +2988,32 @@ impl ToDiagnostic for CompileError {
                     format!("#{} {} for {}", e, name, type_id.clone())
                 ).collect::<Vec<_>>().join("\n"))],
             },
-           _ => Diagnostic {
-                    // TODO: Temporary we use self here to achieve backward compatibility.
-                    //       In general, self must not be used and will not be used once we
-                    //       switch to our own #[error] macro. All the values for the formatting
-                    //       of a diagnostic must come from the enum variant parameters.
+            MultipleContractsMethodsWithTheSameName { spans } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Multiple contracts methods with the same name.".into())),
+                issue: Issue::error(
+                    source_engine,
+                    spans[0].clone(),
+                    "This is the first method".into()
+                ),
+                hints: spans.iter().skip(1).map(|span| {
+                    Hint::error(source_engine, span.clone(), "This is the duplicated method.".into())
+                }).collect(),
+                help: vec!["Contract methods names must be unique, even when implementing multiple ABIs.".into()],
+            },
+            FunctionSelectorClash { method_name, span, other_method_name, other_span } => Diagnostic {
+		reason: Some(Reason::new(code(1), format!("Methods {method_name} and {other_method_name} have clashing function selectors."))),
+		issue: Issue::error(
+		    source_engine,
+		    span.clone(),
+		    String::new()
+		),
+		hints: vec![Hint::error(source_engine, other_span.clone(), format!("The declaration of {other_method_name} is here"))],
+		help: vec![format!("The methods of a contract must have distinct function selectors, which are computed from the method hash. \nRenaming one of the methods should solve the problem")]
+	    },
+            _ => Diagnostic {
+                    // TODO: Temporarily we use `self` here to achieve backward compatibility.
+                    //       In general, `self` must not be used. All the values for the formatting
+                    //       of a diagnostic must come from its enum variant parameters.
                     issue: Issue::error(source_engine, self.span(), format!("{}", self)),
                     ..Default::default()
             }
@@ -2812,6 +3046,9 @@ pub enum TypeNotAllowedReason {
 
     #[error("slices or types containing slices on `const` are not allowed.")]
     SliceInConst,
+
+    #[error("references, pointers, slices, string slices or types containing any of these are not allowed.")]
+    NotAllowedInTransmute,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2914,4 +3151,32 @@ impl fmt::Display for StorageAccess {
             )),
         }
     }
+}
+
+/// Extracts only the suffix part of the `marker_trait_full_name`, without the arguments.
+/// E.g.:
+/// - `std::marker::Error` => `Error`
+/// - `std::marker::SomeMarkerTrait::<T>` => `SomeMarkerTrait`
+/// - `std::marker::SomeMarkerTrait<T>` => `SomeMarkerTrait`
+///
+/// Panics if the `marker_trait_full_name` does not start with "std::marker::".
+fn marker_trait_name(marker_trait_full_name: &str) -> &str {
+    const MARKER_TRAITS_MODULE: &str = "std::marker::";
+    assert!(
+        marker_trait_full_name.starts_with(MARKER_TRAITS_MODULE),
+        "`marker_trait_full_name` must start with \"std::marker::\", but it was \"{}\"",
+        marker_trait_full_name
+    );
+
+    let lower_boundary = MARKER_TRAITS_MODULE.len();
+    let name_part = &marker_trait_full_name[lower_boundary..];
+
+    let upper_boundary = marker_trait_full_name.len() - lower_boundary;
+    let only_name_len = std::cmp::min(
+        name_part.find(':').unwrap_or(upper_boundary),
+        name_part.find('<').unwrap_or(upper_boundary),
+    );
+    let upper_boundary = lower_boundary + only_name_len;
+
+    &marker_trait_full_name[lower_boundary..upper_boundary]
 }

@@ -4,9 +4,10 @@ use crate::fuel_prelude::{
     fuel_types::{Bytes32, Bytes8},
 };
 use sway_ir::{
-    constant::{Constant, ConstantValue},
+    constant::{ConstantContent, ConstantValue},
     context::Context,
     irtype::Type,
+    Constant,
 };
 use sway_types::u256::U256;
 
@@ -20,28 +21,27 @@ enum InByte8Padding {
 }
 
 /// Hands out storage keys using storage field names or an existing key.
-/// Basically returns sha256("storage::<storage_namespace_name1>::<storage_namespace_name2>.<storage_field_name>")
+/// Basically returns sha256((0u8, "storage::<storage_namespace_name1>::<storage_namespace_name2>.<storage_field_name>"))
 /// or key if defined.
 pub(super) fn get_storage_key(storage_field_names: Vec<String>, key: Option<U256>) -> Bytes32 {
-    if let Some(key) = key {
-        return key.to_be_bytes().into();
+    match key {
+        Some(key) => key.to_be_bytes().into(),
+        None => hash_storage_key_string(get_storage_key_string(&storage_field_names)),
     }
-
-    Hasher::hash(get_storage_key_string(storage_field_names))
 }
 
-pub fn get_storage_key_string(storage_field_names: Vec<String>) -> String {
+pub fn get_storage_key_string(storage_field_names: &[String]) -> String {
     if storage_field_names.len() == 1 {
         format!(
             "{}{}{}",
-            sway_utils::constants::STORAGE_DOMAIN,
+            sway_utils::constants::STORAGE_TOP_LEVEL_NAMESPACE,
             sway_utils::constants::STORAGE_FIELD_SEPARATOR,
             storage_field_names.last().unwrap(),
         )
     } else {
         format!(
             "{}{}{}{}{}",
-            sway_utils::constants::STORAGE_DOMAIN,
+            sway_utils::constants::STORAGE_TOP_LEVEL_NAMESPACE,
             sway_utils::constants::STORAGE_NAMESPACE_SEPARATOR,
             storage_field_names
                 .iter()
@@ -56,10 +56,10 @@ pub fn get_storage_key_string(storage_field_names: Vec<String>) -> String {
 }
 
 /// Hands out unique storage field ids using storage field names and struct field names.
-/// Basically returns sha256("storage::<storage_namespace_name1>::<storage_namespace_name2>.<storage_field_name>.<struct_field_name1>.<struct_field_name2>")
+/// Basically returns sha256((0u8, "storage::<storage_namespace_name1>::<storage_namespace_name2>.<storage_field_name>.<struct_field_name1>.<struct_field_name2>")).
 pub(super) fn get_storage_field_id(
-    storage_field_names: Vec<String>,
-    struct_field_names: Vec<String>,
+    storage_field_names: &[String],
+    struct_field_names: &[String],
 ) -> Bytes32 {
     let data = format!(
         "{}{}",
@@ -74,7 +74,27 @@ pub(super) fn get_storage_field_id(
             )
         }
     );
-    Hasher::hash(data)
+
+    hash_storage_key_string(data)
+}
+
+fn hash_storage_key_string(storage_key_string: String) -> Bytes32 {
+    let mut hasher = Hasher::default();
+    // Certain storage types, like, e.g., `StorageMap` allow
+    // storage slots of their contained elements to be defined
+    // based on developer's input. E.g., the `key` in a `StorageMap`
+    // used to calculate the storage slot is a developer input.
+    //
+    // To ensure that pre-images of such storage slots can never
+    // be the same as a pre-image of compiler generated key of storage
+    // field, we prefix the pre-images with a single byte that denotes
+    // the domain. Storage types like `StorageMap` must have a different
+    // domain prefix than the `STORAGE_DOMAIN` which is 0u8.
+    //
+    // For detailed elaboration see: https://github.com/FuelLabs/sway/issues/6317
+    hasher.input(sway_utils::constants::STORAGE_DOMAIN);
+    hasher.input(storage_key_string);
+    hasher.finalize()
 }
 
 use uint::construct_uint;
@@ -109,7 +129,7 @@ pub fn serialize_to_storage_slots(
     key: Option<U256>,
     ty: &Type,
 ) -> Vec<StorageSlot> {
-    match &constant.value {
+    match &constant.get_content(context).value {
         ConstantValue::Undef => vec![],
         // If not being a part of an aggregate, single byte values like `bool`, `u8`, and unit
         // are stored as a byte at the beginning of the storage slot.
@@ -200,7 +220,12 @@ pub fn serialize_to_storage_slots(
             // is a multiple of 4. This is useful because each storage slot is 4 words.
             // Regarding padding, the top level type in the call is either a string array, struct, or
             // a union. They will properly set the initial padding for the further recursive calls.
-            let mut packed = serialize_to_words(constant, context, ty, InByte8Padding::default());
+            let mut packed = serialize_to_words(
+                constant.get_content(context),
+                context,
+                ty,
+                InByte8Padding::default(),
+            );
             packed.extend(vec![
                 Bytes8::new([0; 8]);
                 ((packed.len() + 3) / 4) * 4 - packed.len()
@@ -224,8 +249,10 @@ pub fn serialize_to_storage_slots(
                 type_size_in_bytes,
                 ty.as_string(context)
             );
+
+            let storage_key = get_storage_key(storage_field_names, key);
             (0..(type_size_in_bytes + 31) / 32)
-                .map(|i| add_to_b256(get_storage_key(storage_field_names.clone(), key.clone()), i))
+                .map(|i| add_to_b256(storage_key, i))
                 .zip((0..packed.len() / 4).map(|i| {
                     Bytes32::new(
                         Vec::from_iter((0..4).flat_map(|j| *packed[4 * i + j]))
@@ -243,7 +270,7 @@ pub fn serialize_to_storage_slots(
 /// Given a constant value `constant` and a type `ty`, serialize the constant into a vector of
 /// words and apply the requested padding if needed.
 fn serialize_to_words(
-    constant: &Constant,
+    constant: &ConstantContent,
     context: &Context,
     ty: &Type,
     padding: InByte8Padding,

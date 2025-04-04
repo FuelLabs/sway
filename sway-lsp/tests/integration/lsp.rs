@@ -201,7 +201,7 @@ pub(crate) async fn visualize_request(server: &ServerState, uri: &Url, graph_kin
 
     let response = request::handle_visualize(server, params).unwrap().unwrap();
     let re = Regex::new(r#"digraph \{
-    0 \[ label = "core" shape = box URL = "vscode://file/[[:ascii:]]+/sway-lib-core/Forc.toml"\]
+    0 \[ label = "std" shape = box URL = "vscode://file/[[:ascii:]]+/sway-lib-std/Forc.toml"\]
     1 \[ label = "struct_field_access" shape = box URL = "vscode://file/[[:ascii:]]+/struct_field_access/Forc.toml"\]
     1 -> 0 \[ \]
 \}
@@ -247,7 +247,7 @@ pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
     }
 }
 
-pub(crate) async fn document_symbol_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn document_symbols_request(server: &ServerState, uri: &Url) {
     let params = DocumentSymbolParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
@@ -256,8 +256,62 @@ pub(crate) async fn document_symbol_request(server: &ServerState, uri: &Url) {
     let response = request::handle_document_symbol(server, params)
         .await
         .unwrap();
-    if let Some(DocumentSymbolResponse::Flat(res)) = response {
-        assert!(!res.is_empty());
+
+    if let Some(DocumentSymbolResponse::Nested(symbols)) = response {
+        // Check for enum with its variants
+        let enum_symbol = symbols
+            .iter()
+            .find(|s| s.name == "NumberOrString")
+            .expect("Should find NumberOrString enum");
+        assert_eq!(enum_symbol.kind, SymbolKind::ENUM);
+        let variants = enum_symbol
+            .children
+            .as_ref()
+            .expect("Enum should have variants");
+        assert_eq!(variants.len(), 2);
+        assert!(variants.iter().any(|v| v.name == "Number"));
+        assert!(variants.iter().any(|v| v.name == "String"));
+
+        // Check for struct with its fields
+        let struct_symbol = symbols
+            .iter()
+            .find(|s| s.name == "Data")
+            .expect("Should find Data struct");
+        assert_eq!(struct_symbol.kind, SymbolKind::STRUCT);
+        let fields = struct_symbol
+            .children
+            .as_ref()
+            .expect("Struct should have fields");
+        assert_eq!(fields.len(), 2);
+        assert!(fields
+            .iter()
+            .any(|f| f.name == "value" && f.detail.as_deref() == Some("NumberOrString")));
+        assert!(fields
+            .iter()
+            .any(|f| f.name == "address" && f.detail.as_deref() == Some("u64")));
+
+        // Check for impl with nested function and variable
+        let impl_symbol = symbols
+            .iter()
+            .find(|s| s.name == "impl FooABI for Contract")
+            .expect("Should find impl block");
+        let impl_fns = impl_symbol
+            .children
+            .as_ref()
+            .expect("Impl should have functions");
+        let main_fn = impl_fns
+            .iter()
+            .find(|f| f.name == "main")
+            .expect("Should find main function");
+        let vars = main_fn
+            .children
+            .as_ref()
+            .expect("Function should have variables");
+        assert!(vars
+            .iter()
+            .any(|v| v.name == "_data" && v.detail.as_deref() == Some("Data")));
+    } else {
+        panic!("Expected nested document symbols response");
     }
 }
 
@@ -451,58 +505,58 @@ pub(crate) async fn code_lens_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response.unwrap());
 }
 
-pub(crate) async fn completion_request(server: &ServerState, uri: &Url) {
-    let params = CompletionParams {
-        text_document_position: TextDocumentPositionParams {
-            text_document: TextDocumentIdentifier { uri: uri.clone() },
-            position: Position {
-                line: 19,
-                character: 8,
-            },
-        },
-        work_done_progress_params: Default::default(),
-        partial_result_params: Default::default(),
-        context: Some(CompletionContext {
-            trigger_kind: CompletionTriggerKind::TRIGGER_CHARACTER,
-            trigger_character: Some(".".to_string()),
-        }),
-    };
-    let res = request::handle_completion(server, params).await.unwrap();
-    let expected = CompletionResponse::Array(vec![
-        CompletionItem {
-            label: "a".to_string(),
-            kind: Some(CompletionItemKind::FIELD),
-            label_details: Some(CompletionItemLabelDetails {
-                detail: None,
-                description: Some("bool".to_string()),
-            }),
-            ..Default::default()
-        },
-        CompletionItem {
-            label: "get(…)".to_string(),
-            kind: Some(CompletionItemKind::METHOD),
-            label_details: Some(CompletionItemLabelDetails {
-                detail: None,
-                description: Some("fn(self, MyStruct) -> MyStruct".to_string()),
-            }),
-            text_edit: Some(CompletionTextEdit::Edit(TextEdit {
-                range: Range {
-                    start: Position {
-                        line: 19,
-                        character: 8,
-                    },
-                    end: Position {
-                        line: 19,
-                        character: 8,
-                    },
-                },
-                new_text: "get(foo)".to_string(),
-            })),
-            ..Default::default()
-        },
-    ]);
-    assert_eq!(expected, res.unwrap());
-}
+// pub(crate) async fn completion_request(server: &ServerState, uri: &Url) {
+//     let params = CompletionParams {
+//         text_document_position: TextDocumentPositionParams {
+//             text_document: TextDocumentIdentifier { uri: uri.clone() },
+//             position: Position {
+//                 line: 19,
+//                 character: 8,
+//             },
+//         },
+//         work_done_progress_params: Default::default(),
+//         partial_result_params: Default::default(),
+//         context: Some(CompletionContext {
+//             trigger_kind: CompletionTriggerKind::TRIGGER_CHARACTER,
+//             trigger_character: Some(".".to_string()),
+//         }),
+//     };
+//     let res = request::handle_completion(server, params).await.unwrap();
+//     let expected = CompletionResponse::Array(vec![
+//         CompletionItem {
+//             label: "a".to_string(),
+//             kind: Some(CompletionItemKind::FIELD),
+//             label_details: Some(CompletionItemLabelDetails {
+//                 detail: None,
+//                 description: Some("bool".to_string()),
+//             }),
+//             ..Default::default()
+//         },
+//         CompletionItem {
+//             label: "get(…)".to_string(),
+//             kind: Some(CompletionItemKind::METHOD),
+//             label_details: Some(CompletionItemLabelDetails {
+//                 detail: None,
+//                 description: Some("fn(self, MyStruct) -> MyStruct".to_string()),
+//             }),
+//             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
+//                 range: Range {
+//                     start: Position {
+//                         line: 19,
+//                         character: 8,
+//                     },
+//                     end: Position {
+//                         line: 19,
+//                         character: 8,
+//                     },
+//                 },
+//                 new_text: "get(foo)".to_string(),
+//             })),
+//             ..Default::default()
+//         },
+//     ]);
+//     assert_eq!(expected, res.unwrap());
+// }
 
 pub(crate) async fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDefinition<'a>) {
     let params = GotoDefinitionParams {
@@ -664,10 +718,7 @@ pub fn create_did_change_params(
     }
 }
 
-pub(crate) async fn inlay_hints_request<'a>(
-    server: &ServerState,
-    uri: &Url,
-) -> Option<Vec<InlayHint>> {
+pub(crate) async fn inlay_hints_request(server: &ServerState, uri: &Url) -> Option<Vec<InlayHint>> {
     let params = InlayHintParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         range: Range {

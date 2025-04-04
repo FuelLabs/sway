@@ -5,18 +5,54 @@ use clap::{Parser, ValueEnum};
 macro_rules! features {
     ($($name:ident = $enabled:literal, $url:literal),* $(,)?) => {
         paste::paste! {
-            pub const CFG: &[&str] = &[
-                $(
-                    stringify!([<experimental_ $name:snake>]),
-                )*
-            ];
-
-            #[derive(Copy, Clone, Debug, ValueEnum)]
+            #[derive(Copy, Clone, Debug, ValueEnum, PartialEq, Eq, Hash)]
             #[value(rename_all = "snake")]
             pub enum Feature {
                 $(
                     [<$name:camel>],
                 )*
+            }
+
+            impl Feature {
+                pub const CFG: &[&str] = &[
+                    $(
+                        stringify!([<experimental_ $name:snake>]),
+                    )*
+                ];
+
+                pub fn name(&self) -> &'static str {
+                    match self {
+                        $(
+                            Feature::[<$name:camel>] => {
+                                stringify!([<$name:snake>])
+                            },
+                        )*
+                    }
+                }
+
+                pub fn url(&self) -> &'static str {
+                    match self {
+                        $(
+                            Feature::[<$name:camel>] => {
+                                $url
+                            },
+                        )*
+                    }
+                }
+
+                pub fn error_because_is_disabled(&self, span: &sway_types::Span) -> sway_error::error::CompileError {
+                    match self {
+                        $(
+                            Self::[<$name:camel>] => {
+                                sway_error::error::CompileError::FeatureIsDisabled {
+                                    feature: stringify!([<$name:snake>]).into(),
+                                    url: $url.into(),
+                                    span: span.clone()
+                                }
+                            },
+                        )*
+                    }
+                }
             }
 
             impl std::str::FromStr for Feature {
@@ -131,6 +167,12 @@ impl ExperimentalFeatures {
 features! {
     new_encoding = true,
     "https://github.com/FuelLabs/sway/issues/5727",
+    references = true,
+    "https://github.com/FuelLabs/sway/issues/5063",
+    error_type = false,
+    "https://github.com/FuelLabs/sway/issues/6765",
+    const_generics = false,
+    "https://github.com/FuelLabs/sway/issues/6860",
 }
 
 #[derive(Clone, Debug, Default, Parser)]
@@ -228,6 +270,7 @@ mod tests {
 
         let mut features = ExperimentalFeatures {
             new_encoding: false,
+            ..Default::default()
         };
 
         std::env::set_var("FORC_EXPERIMENTAL", "new_encoding");

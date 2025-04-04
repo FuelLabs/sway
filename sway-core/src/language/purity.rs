@@ -1,7 +1,11 @@
+use serde::{Deserialize, Serialize};
+
+use sway_ast::attribute::{STORAGE_READ_ARG_NAME, STORAGE_WRITE_ARG_NAME};
+
 /// The purity of a function is related to its access of contract storage. If a function accesses
 /// or could potentially access contract storage, it is [Purity::Impure]. If a function does not utilize any
 /// any accesses (reads _or_ writes) of storage, then it is [Purity::Pure].
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum Purity {
     #[default]
     Pure,
@@ -22,13 +26,12 @@ impl Purity {
 
     // Useful for error messages, show the syntax needed in the #[storage(...)] attribute.
     pub fn to_attribute_syntax(&self) -> String {
-        use sway_types::constants::*;
         match self {
             Purity::Pure => "".to_owned(),
-            Purity::Reads => STORAGE_PURITY_READ_NAME.to_owned(),
-            Purity::Writes => STORAGE_PURITY_WRITE_NAME.to_owned(),
+            Purity::Reads => STORAGE_READ_ARG_NAME.to_owned(),
+            Purity::Writes => STORAGE_WRITE_ARG_NAME.to_owned(),
             Purity::ReadsWrites => {
-                format!("{STORAGE_PURITY_READ_NAME}, {STORAGE_PURITY_WRITE_NAME}")
+                format!("{STORAGE_READ_ARG_NAME}, {STORAGE_WRITE_ARG_NAME}")
             }
         }
     }
