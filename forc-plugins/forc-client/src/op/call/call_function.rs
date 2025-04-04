@@ -8,10 +8,13 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Result};
 use fuel_abi_types::abi::{program::ProgramABI, unified_program::UnifiedProgramABI};
-use fuels::programs::calls::{
-    receipt_parser::ReceiptParser,
-    traits::{ContractDependencyConfigurator, TransactionTuner},
-    ContractCall,
+use fuels::{
+    accounts::ViewOnlyAccount,
+    programs::calls::{
+        receipt_parser::ReceiptParser,
+        traits::{ContractDependencyConfigurator, TransactionTuner},
+        ContractCall,
+    },
 };
 use fuels_core::{
     codec::{
@@ -116,6 +119,8 @@ pub async fn call_function(
         output_param: output_param.clone(),
         is_payable: call_parameters.amount > 0,
         custom_assets: Default::default(),
+        inputs: Vec::new(),
+        outputs: Vec::new(),
     };
 
     // Setup variable output policy and log decoder
@@ -132,7 +137,7 @@ pub async fn call_function(
             // Automatically retrieve missing contract addresses from the call
             let external_contracts = get_missing_contracts(
                 call.clone(),
-                wallet.provider().unwrap(),
+                wallet.provider(),
                 &tx_policies,
                 &variable_output_policy,
                 &log_decoder,
@@ -153,46 +158,37 @@ pub async fn call_function(
     };
 
     // Execute the call based on execution mode
-    let chain_id = wallet
-        .provider()
-        .unwrap()
-        .consensus_parameters()
-        .await?
-        .chain_id();
+    let chain_id = wallet.provider().consensus_parameters().await?.chain_id();
+    let tb = call
+        .clone()
+        .with_external_contracts(external_contracts)
+        .transaction_builder(tx_policies, variable_output_policy, &wallet)
+        .await
+        .expect("Failed to initialize transaction builder");
     let (tx_status, tx_hash) = match mode {
         cmd::call::ExecutionMode::DryRun => {
             let tx = call
-                .with_external_contracts(external_contracts)
-                .build_tx(tx_policies, variable_output_policy, &wallet)
+                .build_tx(tb, &wallet)
                 .await
                 .expect("Failed to build transaction");
             let tx_hash = tx.id(chain_id);
             let tx_status = wallet
                 .provider()
-                .unwrap()
                 .dry_run(tx)
                 .await
                 .expect("Failed to dry run transaction");
             (tx_status, tx_hash)
         }
         cmd::call::ExecutionMode::Simulate => {
-            forc_tracing::println_warning(&format!(
-                "Simulating transaction with wallet... {}",
-                wallet.address().hash()
-            ));
+            let tb = tb.with_build_strategy(ScriptBuildStrategy::StateReadOnly);
             let tx = call
-                .with_external_contracts(external_contracts)
-                .transaction_builder(tx_policies, variable_output_policy, &wallet)
+                .build_tx(tb, &wallet)
                 .await
-                .expect("Failed to build transaction")
-                .with_build_strategy(ScriptBuildStrategy::StateReadOnly)
-                .build(wallet.provider().unwrap())
-                .await?;
+                .expect("Failed to build transaction");
             let tx_hash = tx.id(chain_id);
             let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
             let tx_status = wallet
                 .provider()
-                .unwrap()
                 .dry_run_opt(tx, false, gas_price)
                 .await
                 .expect("Failed to simulate transaction");
@@ -204,14 +200,12 @@ pub async fn call_function(
                 &format!("0x{}", wallet.address().hash()),
             );
             let tx = call
-                .with_external_contracts(external_contracts)
-                .build_tx(tx_policies, variable_output_policy, &wallet)
+                .build_tx(tb, &wallet)
                 .await
                 .expect("Failed to build transaction");
             let tx_hash = tx.id(chain_id);
             let tx_status = wallet
                 .provider()
-                .unwrap()
                 .send_transaction_and_await_commit(tx)
                 .await
                 .expect("Failed to send transaction");
@@ -259,39 +253,28 @@ pub async fn call_function(
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::cmd;
-    use crate::op::call::call;
-    use fuels::{
-        accounts::wallet::{Wallet, WalletUnlocked},
-        crypto::SecretKey,
-        prelude::*,
+    use crate::{
+        cmd,
+        op::call::{call, get_wallet, PrivateKeySigner},
     };
+    use fuels::{crypto::SecretKey, prelude::*};
 
-    pub(crate) fn get_contract_call_cmd(
+    fn get_contract_call_cmd(
         id: ContractId,
-        wallet: &WalletUnlocked,
+        node_url: &str,
+        secret_key: SecretKey,
         selector: &str,
         args: Vec<&str>,
     ) -> cmd::Call {
-        // get secret key from wallet - use unsafe because secret_key is private
-        // 0000000000000000000000000000000000000000000000000000000000000001
-        let secret_key =
-            unsafe { std::mem::transmute::<&WalletUnlocked, &(Wallet, SecretKey)>(wallet).1 };
         cmd::Call {
             address: (*id).into(),
-            abi: Some(either::Either::Left(std::path::PathBuf::from(
+            abi: Some(Either::Left(std::path::PathBuf::from(
                 "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json",
             ))),
             function: Some(selector.to_string()),
             function_args: args.into_iter().map(String::from).collect(),
-            node: crate::NodeTarget {
-                node_url: Some(wallet.provider().unwrap().url().to_owned()),
-                ..Default::default()
-            },
-            caller: cmd::call::Caller {
-                signing_key: Some(secret_key),
-                wallet: false,
-            },
+            node: crate::NodeTarget { node_url: Some(node_url.to_string()), ..Default::default() },
+            caller: cmd::call::Caller { signing_key: Some(secret_key), wallet: false },
             call_parameters: Default::default(),
             mode: cmd::call::ExecutionMode::DryRun,
             gas: None,
@@ -307,21 +290,17 @@ pub mod tests {
         abi = "forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json"
     ));
 
-    pub async fn get_contract_instance(
-    ) -> (TestContract<WalletUnlocked>, ContractId, WalletUnlocked) {
-        // Launch a local network and deploy the contract
-        let mut wallets = launch_custom_provider_and_get_wallets(
-            WalletsConfig::new(
-                Some(1),             /* Single wallet */
-                Some(1),             /* Single coin (UTXO) */
-                Some(1_000_000_000), /* Amount per coin */
-            ),
-            None,
-            None,
-        )
-        .await
-        .unwrap();
-        let wallet = wallets.pop().unwrap();
+    pub async fn get_contract_instance() -> (TestContract<Wallet>, ContractId, Provider, SecretKey)
+    {
+        let secret_key = SecretKey::random(&mut rand::thread_rng());
+        let signer = PrivateKeySigner::new(secret_key);
+        let coins = setup_single_asset_coins(signer.address(), AssetId::zeroed(), 1, 1_000_000);
+        let provider = setup_test_provider(coins, vec![], None, None)
+            .await
+            .unwrap();
+        let wallet = get_wallet(Some(secret_key), false, provider.clone())
+            .await
+            .unwrap();
 
         let id = Contract::load_from(
             "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types.bin",
@@ -330,49 +309,57 @@ pub mod tests {
         .unwrap()
         .deploy(&wallet, TxPolicies::default())
         .await
-        .unwrap();
+        .unwrap()
+        .contract_id;
 
         let instance = TestContract::new(id.clone(), wallet.clone());
 
-        (instance, id.into(), wallet)
+        (instance, id.into(), provider, secret_key)
     }
 
     #[tokio::test]
     async fn contract_call_with_abi() {
-        let (_, id, wallet) = get_contract_instance().await;
+        let (_, id, provider, secret_key) = get_contract_instance().await;
+        let node_url = provider.url();
 
         // test_empty_no_return
-        let cmd = get_contract_call_cmd(id, &wallet, "test_empty_no_return", vec![]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_empty_no_return", vec![]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "()");
 
         // test_empty
-        let cmd = get_contract_call_cmd(id, &wallet, "test_empty", vec![]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_empty", vec![]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "()");
 
         // test_unit
-        let cmd = get_contract_call_cmd(id, &wallet, "test_unit", vec!["()"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_unit", vec!["()"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "()");
 
         // test_u8
-        let cmd = get_contract_call_cmd(id, &wallet, "test_u8", vec!["255"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_u8", vec!["255"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "255");
 
         // test_u16
-        let cmd = get_contract_call_cmd(id, &wallet, "test_u16", vec!["65535"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_u16", vec!["65535"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "65535");
 
         // test_u32
-        let cmd = get_contract_call_cmd(id, &wallet, "test_u32", vec!["4294967295"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_u32", vec!["4294967295"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "4294967295");
 
         // test_u64
-        let cmd = get_contract_call_cmd(id, &wallet, "test_u64", vec!["18446744073709551615"]);
+        let cmd = get_contract_call_cmd(
+            id,
+            node_url,
+            secret_key,
+            "test_u64",
+            vec!["18446744073709551615"],
+        );
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(
             call(operation, cmd).await.unwrap().result,
@@ -382,7 +369,8 @@ pub mod tests {
         // test_u128
         let cmd = get_contract_call_cmd(
             id,
-            &wallet,
+            node_url,
+            secret_key,
             "test_u128",
             vec!["340282366920938463463374607431768211455"],
         );
@@ -395,7 +383,8 @@ pub mod tests {
         // test_u256
         let cmd = get_contract_call_cmd(
             id,
-            &wallet,
+            node_url,
+            secret_key,
             "test_u256",
             vec!["115792089237316195423570985008687907853269984665640564039457584007913129639935"],
         );
@@ -408,7 +397,8 @@ pub mod tests {
         // test b256
         let cmd = get_contract_call_cmd(
             id,
-            &wallet,
+            node_url,
+            secret_key,
             "test_b256",
             vec!["0000000000000000000000000000000000000000000000000000000000000042"],
         );
@@ -421,7 +411,8 @@ pub mod tests {
         // test_b256 - fails if 0x prefix provided since it extracts input as an external contract; we don't want to do this so explicitly provide the external contract as empty
         let mut cmd = get_contract_call_cmd(
             id,
-            &wallet,
+            node_url,
+            secret_key,
             "test_b256",
             vec!["0x0000000000000000000000000000000000000000000000000000000000000042"],
         );
@@ -433,27 +424,33 @@ pub mod tests {
         );
 
         // test_bytes
-        let cmd = get_contract_call_cmd(id, &wallet, "test_bytes", vec!["0x42"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_bytes", vec!["0x42"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "0x42");
 
         // test bytes without 0x prefix
-        let cmd = get_contract_call_cmd(id, &wallet, "test_bytes", vec!["42"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_bytes", vec!["42"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "0x42");
 
         // test_str
-        let cmd = get_contract_call_cmd(id, &wallet, "test_str", vec!["fuel"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_str", vec!["fuel"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "fuel");
 
         // test str array
-        let cmd = get_contract_call_cmd(id, &wallet, "test_str_array", vec!["fuel rocks"]);
+        let cmd = get_contract_call_cmd(
+            id,
+            node_url,
+            secret_key,
+            "test_str_array",
+            vec!["fuel rocks"],
+        );
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "fuel rocks");
 
         // test str array - fails if length mismatch
-        let cmd = get_contract_call_cmd(id, &wallet, "test_str_array", vec!["fuel"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_str_array", vec!["fuel"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(
             call(operation, cmd).await.unwrap_err().to_string(),
@@ -461,19 +458,26 @@ pub mod tests {
         );
 
         // test str slice
-        let cmd = get_contract_call_cmd(id, &wallet, "test_str_slice", vec!["fuel rocks 42"]);
+        let cmd = get_contract_call_cmd(
+            id,
+            node_url,
+            secret_key,
+            "test_str_slice",
+            vec!["fuel rocks 42"],
+        );
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "fuel rocks 42");
 
         // test tuple
-        let cmd = get_contract_call_cmd(id, &wallet, "test_tuple", vec!["(42, true)"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_tuple", vec!["(42, true)"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "(42, true)");
 
         // test array
         let cmd = get_contract_call_cmd(
             id,
-            &wallet,
+            node_url,
+            secret_key,
             "test_array",
             vec!["[42, 42, 42, 42, 42, 42, 42, 42, 42, 42]"],
         );
@@ -484,7 +488,7 @@ pub mod tests {
         );
 
         // test_array - fails if different types
-        let cmd = get_contract_call_cmd(id, &wallet, "test_array", vec!["[42, true]"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_array", vec!["[42, true]"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(
             call(operation, cmd).await.unwrap_err().to_string(),
@@ -492,7 +496,7 @@ pub mod tests {
         );
 
         // test_array - succeeds if length not matched!?
-        let cmd = get_contract_call_cmd(id, &wallet, "test_array", vec!["[42, 42]"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_array", vec!["[42, 42]"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert!(call(operation, cmd)
             .await
@@ -501,12 +505,13 @@ pub mod tests {
             .starts_with("[42, 42, 0,"));
 
         // test_vector
-        let cmd = get_contract_call_cmd(id, &wallet, "test_vector", vec!["[42, 42]"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_vector", vec!["[42, 42]"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "[42, 42]");
 
         // test_vector - fails if different types
-        let cmd = get_contract_call_cmd(id, &wallet, "test_vector", vec!["[42, true]"]);
+        let cmd =
+            get_contract_call_cmd(id, node_url, secret_key, "test_vector", vec!["[42, true]"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(
             call(operation, cmd).await.unwrap_err().to_string(),
@@ -514,12 +519,13 @@ pub mod tests {
         );
 
         // test_struct - Identity { name: str[2], id: u64 }
-        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{fu, 42}"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_struct", vec!["{fu, 42}"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "{fu, 42}");
 
         // test_struct - fails if incorrect inner attribute length
-        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{fuel, 42}"]);
+        let cmd =
+            get_contract_call_cmd(id, node_url, secret_key, "test_struct", vec!["{fuel, 42}"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(
             call(operation, cmd).await.unwrap_err().to_string(),
@@ -527,27 +533,28 @@ pub mod tests {
         );
 
         // test_struct - succeeds if missing inner final attribute; default value is used
-        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{fu}"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_struct", vec!["{fu}"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "{fu, 0}");
 
         // test_struct - succeeds to use default values for all attributes if missing
-        let cmd = get_contract_call_cmd(id, &wallet, "test_struct", vec!["{}"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_struct", vec!["{}"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "{\0\0, 0}");
 
         // test_enum
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(Active:true)"]);
+        let cmd =
+            get_contract_call_cmd(id, node_url, secret_key, "test_enum", vec!["(Active:true)"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "(Active:true)");
 
         // test_enum - succeeds if using index
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(1:56)"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_enum", vec!["(1:56)"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "(Pending:56)");
 
         // test_enum - fails if variant not found
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(A:true)"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_enum", vec!["(A:true)"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(
             call(operation, cmd).await.unwrap_err().to_string(),
@@ -555,7 +562,7 @@ pub mod tests {
         );
 
         // test_enum - fails if variant value incorrect
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(Active:3)"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_enum", vec!["(Active:3)"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(
             call(operation, cmd).await.unwrap_err().to_string(),
@@ -563,7 +570,7 @@ pub mod tests {
         );
 
         // test_enum - fails if variant value is missing
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum", vec!["(Active:)"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_enum", vec!["(Active:)"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(
             call(operation, cmd).await.unwrap_err().to_string(),
@@ -571,40 +578,53 @@ pub mod tests {
         );
 
         // test_option - encoded like an enum
-        let cmd = get_contract_call_cmd(id, &wallet, "test_option", vec!["(0:())"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_option", vec!["(0:())"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "(None:())");
 
         // test_option - encoded like an enum; none value ignored
-        let cmd = get_contract_call_cmd(id, &wallet, "test_option", vec!["(0:42)"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_option", vec!["(0:42)"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "(None:())");
 
         // test_option - encoded like an enum; some value
-        let cmd = get_contract_call_cmd(id, &wallet, "test_option", vec!["(1:42)"]);
+        let cmd = get_contract_call_cmd(id, node_url, secret_key, "test_option", vec!["(1:42)"]);
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "(Some:42)");
     }
 
     #[tokio::test]
     async fn contract_call_with_abi_complex() {
-        let (_, id, wallet) = get_contract_instance().await;
+        let (_, id, provider, secret_key) = get_contract_instance().await;
+        let node_url = provider.url();
 
         // test_complex_struct
-        let cmd =
-            get_contract_call_cmd(id, &wallet, "test_struct_with_generic", vec!["{42, fuel}"]);
+        let cmd = get_contract_call_cmd(
+            id,
+            node_url,
+            secret_key,
+            "test_struct_with_generic",
+            vec!["{42, fuel}"],
+        );
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "{42, fuel}");
 
         // test_enum_with_generic
-        let cmd = get_contract_call_cmd(id, &wallet, "test_enum_with_generic", vec!["(value:32)"]);
+        let cmd = get_contract_call_cmd(
+            id,
+            node_url,
+            secret_key,
+            "test_enum_with_generic",
+            vec!["(value:32)"],
+        );
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "(value:32)");
 
         // test_enum_with_complex_generic
         let cmd = get_contract_call_cmd(
             id,
-            &wallet,
+            node_url,
+            secret_key,
             "test_enum_with_complex_generic",
             vec!["(value:{42, fuel})"],
         );
@@ -616,7 +636,8 @@ pub mod tests {
 
         let cmd = get_contract_call_cmd(
             id,
-            &wallet,
+            node_url,
+            secret_key,
             "test_enum_with_complex_generic",
             vec!["(container:{{42, fuel}, fuel})"],
         );
@@ -629,18 +650,18 @@ pub mod tests {
 
     #[tokio::test]
     async fn contract_value_forwarding() {
-        let (_, id, wallet) = get_contract_instance().await;
+        let (_, id, provider, secret_key) = get_contract_instance().await;
+        let node_url = provider.url();
 
-        let provider = wallet.provider().unwrap();
         let consensus_parameters = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_parameters.base_asset_id();
-        let get_recipient_balance = |addr: Bech32Address| async move {
+        let get_recipient_balance = |addr: Bech32Address, provider: Provider| async move {
             provider
                 .get_asset_balance(&addr, *base_asset_id)
                 .await
                 .unwrap()
         };
-        let get_contract_balance = |id: ContractId| async move {
+        let get_contract_balance = |id: ContractId, provider: Provider| async move {
             provider
                 .get_contract_asset_balance(&Bech32ContractId::from(id), *base_asset_id)
                 .await
@@ -648,14 +669,19 @@ pub mod tests {
         };
 
         // contract call transfer funds to another contract
-        let (_, id_2, _) = get_contract_instance().await;
+        let (_, id_2, _, _) = get_contract_instance().await;
         let (amount, asset_id, recipient) = (
             "1",
             &format!("{{0x{}}}", base_asset_id),
             &format!("(ContractId:{{0x{}}})", id_2),
         );
-        let mut cmd =
-            get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
+        let mut cmd = get_contract_call_cmd(
+            id,
+            node_url,
+            secret_key,
+            "transfer",
+            vec![amount, asset_id, recipient],
+        );
         let operation = cmd.validate_and_get_operation().unwrap();
         cmd.call_parameters = cmd::call::CallParametersOpts {
             amount: amount.parse::<u64>().unwrap(),
@@ -667,21 +693,26 @@ pub mod tests {
             call(operation.clone(), cmd.clone()).await.unwrap().result,
             "()"
         );
-        assert_eq!(get_contract_balance(id_2).await, 0);
+        assert_eq!(get_contract_balance(id_2, provider.clone()).await, 0);
         cmd.mode = cmd::call::ExecutionMode::Live;
         assert_eq!(call(operation, cmd).await.unwrap().result, "()");
-        assert_eq!(get_contract_balance(id_2).await, 1);
-        assert_eq!(get_contract_balance(id).await, 1);
+        assert_eq!(get_contract_balance(id_2, provider.clone()).await, 1);
+        assert_eq!(get_contract_balance(id, provider.clone()).await, 1);
 
         // contract call transfer funds to another address
-        let random_wallet = WalletUnlocked::new_random(None);
+        let random_wallet = Wallet::random(&mut rand::thread_rng(), provider.clone());
         let (amount, asset_id, recipient) = (
             "2",
             &format!("{{0x{}}}", base_asset_id),
             &format!("(Address:{{0x{}}})", random_wallet.address().hash()),
         );
-        let mut cmd =
-            get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
+        let mut cmd = get_contract_call_cmd(
+            id,
+            node_url,
+            secret_key,
+            "transfer",
+            vec![amount, asset_id, recipient],
+        );
         cmd.call_parameters = cmd::call::CallParametersOpts {
             amount: amount.parse::<u64>().unwrap(),
             asset_id: Some(*base_asset_id),
@@ -691,22 +722,27 @@ pub mod tests {
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "()");
         assert_eq!(
-            get_recipient_balance(random_wallet.address().clone()).await,
+            get_recipient_balance(random_wallet.address().clone(), provider.clone()).await,
             2
         );
-        assert_eq!(get_contract_balance(id).await, 1);
+        assert_eq!(get_contract_balance(id, provider.clone()).await, 1);
 
         // contract call transfer funds to another address
         // specify amount x, provide amount x - 1
         // fails with panic reason 'NotEnoughBalance'
-        let random_wallet = WalletUnlocked::new_random(None);
+        let random_wallet = Wallet::random(&mut rand::thread_rng(), provider.clone());
         let (amount, asset_id, recipient) = (
             "5",
             &format!("{{0x{}}}", base_asset_id),
             &format!("(Address:{{0x{}}})", random_wallet.address().hash()),
         );
-        let mut cmd =
-            get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
+        let mut cmd = get_contract_call_cmd(
+            id,
+            node_url,
+            secret_key,
+            "transfer",
+            vec![amount, asset_id, recipient],
+        );
         cmd.call_parameters = cmd::call::CallParametersOpts {
             amount: amount.parse::<u64>().unwrap() - 3,
             asset_id: Some(*base_asset_id),
@@ -719,18 +755,23 @@ pub mod tests {
             .unwrap_err()
             .to_string()
             .contains("PanicInstruction { reason: NotEnoughBalance"));
-        assert_eq!(get_contract_balance(id).await, 1);
+        assert_eq!(get_contract_balance(id, provider.clone()).await, 1);
 
         // contract call transfer funds to another address
         // specify amount x, provide amount x + 5; should succeed
-        let random_wallet = WalletUnlocked::new_random(None);
+        let random_wallet = Wallet::random(&mut rand::thread_rng(), provider.clone());
         let (amount, asset_id, recipient) = (
             "3",
             &format!("{{0x{}}}", base_asset_id),
             &format!("(Address:{{0x{}}})", random_wallet.address().hash()),
         );
-        let mut cmd =
-            get_contract_call_cmd(id, &wallet, "transfer", vec![amount, asset_id, recipient]);
+        let mut cmd = get_contract_call_cmd(
+            id,
+            node_url,
+            secret_key,
+            "transfer",
+            vec![amount, asset_id, recipient],
+        );
         cmd.call_parameters = cmd::call::CallParametersOpts {
             amount: amount.parse::<u64>().unwrap() + 5,
             asset_id: Some(*base_asset_id),
@@ -740,9 +781,9 @@ pub mod tests {
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result, "()");
         assert_eq!(
-            get_recipient_balance(random_wallet.address().clone()).await,
+            get_recipient_balance(random_wallet.address().clone(), provider.clone()).await,
             3
         );
-        assert_eq!(get_contract_balance(id).await, 6); // extra amount (5) is forwarded to the contract
+        assert_eq!(get_contract_balance(id, provider.clone()).await, 6); // extra amount (5) is forwarded to the contract
     }
 }
