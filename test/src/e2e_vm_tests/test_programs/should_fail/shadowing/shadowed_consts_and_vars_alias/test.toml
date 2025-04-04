@@ -4,13 +4,13 @@ category = "fail"
 #sameln: $()Constant of the same name already exists
 #check: $()use lib::X as Y;
 #nextln: $()Constant "Y" is already declared here.
-#check: $()const Y = 7;
+#check: $()const Y: u64 = 7;
 #nextln: $()Constant "Y" has the same name as an already declared constant.
 
 #check: $()error
 #sameln: $()Constants cannot be shadowed
 
-#check: $()const Y = 7;
+#check: $()const Y: u64 = 7;
 #nextln: $()Shadowed constant "Y" is declared here.
 
 #check: $()let Y = 4;
@@ -25,7 +25,7 @@ category = "fail"
 #check: $()let Y = 4;
 #nextln: $()Variable "Y" shadows imported constant of the same name.
 
-#check: $()pub const X = 5;
+#check: $()pub const X: u64 = 5;
 #nextln: $()This is the original declaration of the imported constant "Y".
 
 #check: $()Consider renaming the variable "Y" or using a different alias for the imported constant.
@@ -39,7 +39,7 @@ category = "fail"
 #check: $()let M = 4;
 #nextln: $()Variable "M" shadows imported constant of the same name.
 
-#check: $()pub const L = 5;
+#check: $()pub const L: u64 = 5;
 #nextln: $()This is the original declaration of the imported constant "M".
 
 #check: $()Consider renaming the variable "M" or using a different alias for the imported constant.
@@ -53,7 +53,7 @@ category = "fail"
 #check: $()let R = 5;
 #nextln: $()Variable "R" shadows imported constant of the same name.
 
-#check: $()pub const P = 5;
+#check: $()pub const P: u64 = 5;
 #nextln: $()This is the original declaration of the imported constant "R".
 
 #check: $()Consider renaming the variable "R" or using a different alias for the imported constant.

@@ -6,7 +6,7 @@ use std::{asset::transfer, call_frames::msg_asset_id, context::msg_amount};
 // ANCHOR: abi_import
 use wallet_abi::Wallet;
 // ANCHOR_END: abi_import
-const OWNER_ADDRESS = Address::from(0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
+const OWNER_ADDRESS: Address = Address::from(0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
 
 storage {
     balance: u64 = 0,

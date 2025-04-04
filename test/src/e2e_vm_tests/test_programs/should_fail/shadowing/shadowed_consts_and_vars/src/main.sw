@@ -8,15 +8,15 @@ use lib::L_A;
 
 // module const shadowing an imported const
 use lib::L_X;
-const L_X = 1; 
+const L_X: u64 = 1; 
 
 // module const shadowing a module const
-const M_X = 2;
-const M_X = 3;
+const M_X: u64 = 2;
+const M_X: u64 = 3;
 
-const M_Y = 4;
+const M_Y: u64 = 4;
 
-const M_Z = 41;
+const M_Z: u64 = 41;
 
 use lib::L_Y;
 use lib::L_Z;
@@ -31,26 +31,26 @@ struct StructWithConstNames {
 
 fn main() {
     // local const shadowing a module const
-    const M_Y = 5;
+    const M_Y: u64 = 5;
     {
-        const M_Y = 55;
+        const M_Y: u64 = 55;
     }
 
     // local const shadowing a const imported in module
-    const L_Y = 6;
+    const L_Y: u64 = 6;
 
     // local const shadowing a local const
-    const F_X = 7;
-    const F_X = 8;
+    const F_X: u64 = 7;
+    const F_X: u64 = 8;
     {
-        const F_X = 81;
+        const F_X: u64 = 81;
     }
 
     {
         // scoped local const shadowing a scoped local const
-        const F_Y = 9;
+        const F_Y: u64 = 9;
         {
-            const F_Y = 10;
+            const F_Y: u64 = 10;
         }
     }
 
@@ -61,12 +61,12 @@ fn main() {
     }
 
     // variable shadowing a local const
-    const F_Z = 11;
+    const F_Z: u64 = 11;
     let F_Z = 102;
 
     // local const shadowing a variable
     let F_A = 103;
-    const F_A = 12;
+    const F_A: u64 = 12;
 
     // variable shadowing a variable - this is okay!
     let A = 104;
@@ -83,10 +83,10 @@ fn main() {
     let B = 108;
     {
         // scoped const shadowing a variable
-        const B = 13;
+        const B: u64 = 13;
     }
 
-    const F_K = 14;
+    const F_K: u64 = 14;
     {
         // scoped variable shadowing a local const
         let F_K = 109;
@@ -103,7 +103,7 @@ fn main() {
 
     // const shadowing a locally imported const
     use lib::L_M;
-    const L_M = 15;
+    const L_M: u64 = 15;
 
     let s = StructWithConstNames {
         M_X,
@@ -121,38 +121,38 @@ fn main() {
 
 use lib::L_N;
 
-const M_M = 16;
+const M_M: u64 = 16;
 
 struct S { }
 
 impl S {
-    const S_X = 200;
-    const S_X = 201;
+    const S_X: u64 = 200;
+    const S_X: u64 = 201;
 
-    const L_N = 202;
+    const L_N: u64 = 202;
 
-    const M_M = 203;
+    const M_M: u64 = 203;
 
-    const S_Y = 204;
+    const S_Y: u64 = 204;
 
     fn f() {
-        const S_Y = 205;
+        const S_Y: u64 = 205;
     }
 }
 
 enum E { }
 
 impl E {
-    const E_X = 300;
-    const E_X = 301;
+    const E_X: u64 = 300;
+    const E_X: u64 = 301;
 
-    const L_N = 302;
+    const L_N: u64 = 302;
 
-    const M_M = 303;
+    const M_M: u64 = 303;
 
-    const E_Y = 304;
+    const E_Y: u64 = 304;
 
     fn f() {
-        const E_Y = 305;
+        const E_Y: u64 = 305;
     }
 }

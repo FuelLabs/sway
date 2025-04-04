@@ -10,7 +10,7 @@ abi Abi2{
 
 pub fn main() {
     let contract_1 = abi(Abi1, b256::min());
-    const INVALID_CONST = contract_1.foo();
+    const INVALID_CONST: b256 = contract_1.foo();
     let contract_2 = abi(Abi2, INVALID_CONST);
     let _ = contract_2.bar();
 }

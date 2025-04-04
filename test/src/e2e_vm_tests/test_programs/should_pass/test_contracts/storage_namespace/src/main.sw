@@ -2,8 +2,8 @@ contract;
 use std::{hash::*, storage::storage_api::{read, write}};
 use basic_storage_abi::*;
 
-const C1 = 1;
-const S5 = __to_str_array("aaaaa");
+const C1: u64 = 1;
+const S5: str[5] = __to_str_array("aaaaa");
 
 storage {
     my_storage_namespace {

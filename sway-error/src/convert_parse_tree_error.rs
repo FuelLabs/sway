@@ -103,8 +103,6 @@ pub enum ConvertParseTreeError {
     ExpectedModuleAtBeginning { span: Span },
     #[error("Constant requires expression.")]
     ConstantRequiresExpression { span: Span },
-    #[error("Constant requires type ascription.")]
-    ConstantRequiresTypeAscription { span: Span },
     #[error("Unknown type name \"self\". A self type with a similar name exists (notice the capitalization): `Self`")]
     UnknownTypeNameSelf { span: Span },
     #[error("{}", match get_attribute_type(attribute) {
@@ -256,7 +254,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::SelfImplForContract { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedModuleAtBeginning { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
-            ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),
             ConvertParseTreeError::UnknownTypeNameSelf { span } => span.clone(),
             ConvertParseTreeError::InvalidAttributeTarget { span, .. } => span.clone(),
             ConvertParseTreeError::InvalidAttributeMultiplicity {

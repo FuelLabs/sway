@@ -1,7 +1,7 @@
 library;
 
-pub const X = 5;
+pub const X: u64 = 5;
 
-pub const L = 5;
+pub const L: u64 = 5;
 
-pub const P = 5;
+pub const P: u64 = 5;

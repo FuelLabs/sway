@@ -1,6 +1,6 @@
 script;
 
-const N = 10;
+const N: u64 = 10;
 
 fn simple_break_test() {
     let mut i = 0;

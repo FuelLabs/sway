@@ -1,3 +1,3 @@
 library;
 
-const X;
+const X: u64;

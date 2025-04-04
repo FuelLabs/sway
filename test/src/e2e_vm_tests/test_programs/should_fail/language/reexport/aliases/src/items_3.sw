@@ -14,7 +14,7 @@ pub enum Items3_Variants {
     V: u64,
 }
 
-pub const ITEMS_3_FUNCTION_RES = 3872;
+pub const ITEMS_3_FUNCTION_RES: u64 = 3872;
 
 pub fn items_3_function() -> u64 {
     ITEMS_3_FUNCTION_RES
