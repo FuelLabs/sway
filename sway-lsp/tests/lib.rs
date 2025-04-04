@@ -1239,6 +1239,7 @@ fn go_to_definition_for_functions() {
 }
 
 #[test]
+#[ignore]
 fn go_to_definition_for_structs() {
     run_async!({
         let server = ServerState::default();

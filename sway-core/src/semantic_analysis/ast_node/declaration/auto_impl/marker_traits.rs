@@ -41,15 +41,17 @@ where
         let enum_decl_id = enum_decl.to_enum_id(&Handler::default(), engines).unwrap();
         let enum_decl = self.ctx.engines().de().get(&enum_decl_id);
 
-        let program_id = enum_decl.span().source_id().map(|sid| sid.program_id());
-
         let impl_enum_code = format!(
             "#[allow(dead_code)] impl Enum for {} {{ }}",
             enum_decl.name()
         );
 
-        let impl_enum_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &impl_enum_code);
+        let impl_enum_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            enum_decl.span().source_id(),
+            &impl_enum_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         impl_enum_node.ok()
     }
