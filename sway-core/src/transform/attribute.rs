@@ -102,6 +102,22 @@ impl AttributeArg {
         }
     }
 
+    /// Returns a mandatory [Span] of the [String] value from `self`,
+    /// or an error if the value does not exist or is not of type [String].
+    ///
+    /// `attribute` is the the parent [Attribute] of `self`.
+    pub fn get_string_span(
+        &self,
+        handler: &Handler,
+        attribute: &Attribute,
+    ) -> Result<Span, ErrorEmitted> {
+        let _ = self.get_string(handler, attribute)?;
+        match &self.value {
+            Some(Literal::String(lit_string)) => Ok(lit_string.span.clone().trim_quotes()),
+            _ => unreachable!(),
+        }
+    }
+
     /// Returns an optional [String] value from `self`,
     /// or an error if the value exists but is not of type [String].
     pub fn get_string_opt(&self, handler: &Handler) -> Result<Option<&String>, ErrorEmitted> {
@@ -317,7 +333,7 @@ pub enum ArgsExpectValues {
     ///
     /// E.g.: `#[cfg(target = "fuel", experimental_new_encoding = false)]`.
     Yes,
-    /// None of the arguments can never have values specified, or the
+    /// None of the arguments can have values specified, or the
     /// [Attribute] does not expect any arguments.
     ///
     /// E.g.: `#[storage(read, write)]`, `#[fallback]`.
@@ -348,6 +364,7 @@ pub enum AttributeKind {
     Cfg,
     Deprecated,
     Fallback,
+    AbiName,
 }
 
 /// Denotes if an [ItemTraitItem] belongs to an ABI or to a trait.
@@ -376,6 +393,7 @@ impl AttributeKind {
             CFG_ATTRIBUTE_NAME => AttributeKind::Cfg,
             DEPRECATED_ATTRIBUTE_NAME => AttributeKind::Deprecated,
             FALLBACK_ATTRIBUTE_NAME => AttributeKind::Fallback,
+            ABI_NAME_ATTRIBUTE_NAME => AttributeKind::AbiName,
             _ => AttributeKind::Unknown,
         }
     }
@@ -402,6 +420,7 @@ impl AttributeKind {
             Cfg => true,
             Deprecated => false,
             Fallback => false,
+            AbiName => false,
         }
     }
 }
@@ -440,6 +459,7 @@ impl Attribute {
             // `deprecated`, `deprecated(note = "note")`.
             Deprecated => Multiplicity::at_most(1),
             Fallback => Multiplicity::zero(),
+            AbiName => Multiplicity::exactly(1),
         }
     }
 
@@ -493,6 +513,7 @@ impl Attribute {
             }
             Deprecated => MustBeIn(vec![DEPRECATED_NOTE_ARG_NAME]),
             Fallback => None,
+            AbiName => MustBeIn(vec![ABI_NAME_NAME_ARG_NAME]),
         }
     }
 
@@ -513,6 +534,7 @@ impl Attribute {
             // `deprecated(note = "note")`.
             Deprecated => Yes,
             Fallback => No,
+            AbiName => Yes,
         }
     }
 
@@ -531,6 +553,7 @@ impl Attribute {
             //       Deprecating the module kind will mean deprecating all its items.
             Deprecated => false,
             Fallback => false,
+            AbiName => false,
         }
     }
 
@@ -582,6 +605,7 @@ impl Attribute {
                 ItemKind::Error(_, _) => true,
             },
             Fallback => matches!(item_kind, ItemKind::Fn(_)),
+            AbiName => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
         }
     }
 
@@ -605,6 +629,7 @@ impl Attribute {
             Cfg => true,
             Deprecated => true,
             Fallback => false,
+            AbiName => false,
         }
     }
 
@@ -628,6 +653,7 @@ impl Attribute {
             // TODO: Change to true once https://github.com/FuelLabs/sway/issues/6942 is implemented.
             Deprecated => false,
             Fallback => false,
+            AbiName => false,
         }
     }
 
@@ -648,6 +674,7 @@ impl Attribute {
             Cfg => true,
             Deprecated => !matches!(item, ItemImplItem::Type(_)),
             Fallback => false,
+            AbiName => false,
         }
     }
 
@@ -667,6 +694,7 @@ impl Attribute {
             Cfg => true,
             Deprecated => true,
             Fallback => false,
+            AbiName => false,
         }
     }
 
@@ -684,6 +712,7 @@ impl Attribute {
             // TODO: Change to true once https://github.com/FuelLabs/sway/issues/6942 is implemented.
             Deprecated => false,
             Fallback => false,
+            AbiName => false,
         }
     }
 
@@ -700,6 +729,7 @@ impl Attribute {
             Cfg => true,
             Deprecated => true,
             Fallback => false,
+            AbiName => false,
         }
     }
 
@@ -749,6 +779,9 @@ impl Attribute {
                 "\"deprecated\" attribute is currently not implemented for all elements that could be deprecated.",
             ],
             Fallback => vec!["\"fallback\" attribute can only annotate module functions in a contract module."],
+            AbiName => vec![
+                "\"abi_name\" attribute is currently not implemented for all elements that could be renamed in ABIs.",
+            ],
         };
 
         if help.is_empty() && target_friendly_name.starts_with("module kind") {
@@ -947,6 +980,12 @@ impl Attributes {
     pub fn deprecated(&self) -> Option<&Attribute> {
         self.deprecated_attr_index
             .map(|index| &self.attributes[index])
+    }
+
+    /// Returns the `#[abi_name]` [Attribute], or `None` if the
+    /// [Attributes] does not contain any `#[abi_name]` attributes.
+    pub fn abi_name(&self) -> Option<&Attribute> {
+        self.of_kind(AttributeKind::AbiName).last()
     }
 
     /// Returns the `#[test]` [Attribute], or `None` if the

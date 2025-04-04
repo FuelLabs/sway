@@ -47,6 +47,10 @@ pub const CFG_PROGRAM_TYPE_ARG_NAME: &str = "program_type";
 pub const DEPRECATED_ATTRIBUTE_NAME: &str = "deprecated";
 pub const DEPRECATED_NOTE_ARG_NAME: &str = "note";
 
+// Abi names.
+pub const ABI_NAME_ATTRIBUTE_NAME: &str = "abi_name";
+pub const ABI_NAME_NAME_ARG_NAME: &str = "name";
+
 pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_ATTRIBUTE_NAME,
     DOC_COMMENT_ATTRIBUTE_NAME,
@@ -57,6 +61,7 @@ pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     CFG_ATTRIBUTE_NAME,
     DEPRECATED_ATTRIBUTE_NAME,
     FALLBACK_ATTRIBUTE_NAME,
+    ABI_NAME_ATTRIBUTE_NAME,
 ];
 
 /// An attribute declaration. Attribute declaration

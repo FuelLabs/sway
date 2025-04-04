@@ -1,5 +1,5 @@
 ---
-source: test/tests/tests.rs
+source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args
 exit status: 1
@@ -239,5 +239,16 @@ error: Number of attribute arguments is invalid
   |
 ____
 
-  Aborting due to 16 errors.
+error: Attribute argument is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/abi_name_attr.sw:6:12
+  |
+...
+6 | #[abi_name(nam = "name")]
+  |            ^^^ "nam" is an invalid argument for attribute "abi_name".
+  |            --- help: Did you mean "name"?
+  |            --- help: The only valid argument is "name".
+  |
+____
+
+  Aborting due to 17 errors.
 error: Failed to compile attributes_invalid_args
