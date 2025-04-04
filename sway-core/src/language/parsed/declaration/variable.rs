@@ -3,13 +3,13 @@ use sway_types::{Named, Spanned};
 use crate::{
     engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::parsed::Expression,
-    Ident, TypeArgument,
+    GenericArgument, Ident,
 };
 
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration {
     pub name: Ident,
-    pub type_ascription: TypeArgument,
+    pub type_ascription: GenericArgument,
     pub body: Expression, // will be codeblock variant
     pub is_mutable: bool,
 }

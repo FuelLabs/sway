@@ -6,7 +6,7 @@ use crate::{
     },
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
-    Engines, TypeArgument, TypeId,
+    Engines, GenericArgument, TypeId,
 };
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
@@ -228,7 +228,7 @@ impl Spanned for AmbiguousSuffix {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QualifiedPathType {
-    pub ty: TypeArgument,
+    pub ty: GenericArgument,
     pub as_trait: TypeId,
     pub as_trait_span: Span,
 }

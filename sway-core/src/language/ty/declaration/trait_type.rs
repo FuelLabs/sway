@@ -13,7 +13,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 pub struct TyTraitType {
     pub name: Ident,
     pub attributes: transform::Attributes,
-    pub ty: Option<TypeArgument>,
+    pub ty: Option<GenericArgument>,
     pub implementing_type: TypeId,
     pub span: Span,
 }
@@ -37,7 +37,7 @@ impl Named for TyTraitType {
 impl IsConcrete for TyTraitType {
     fn is_concrete(&self, engines: &Engines) -> bool {
         if let Some(ty) = &self.ty {
-            ty.type_id.is_concrete(engines, TreatNumericAs::Concrete)
+            ty.type_id().is_concrete(engines, TreatNumericAs::Concrete)
         } else {
             false
         }

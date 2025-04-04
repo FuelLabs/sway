@@ -112,7 +112,7 @@ fn convert_resolved_type_info(
                 .get_struct(decl_ref)
                 .fields
                 .iter()
-                .map(|field| field.type_argument.type_id)
+                .map(|field| field.type_argument.type_id())
                 .collect::<Vec<_>>()
                 .as_slice(),
         )?,
@@ -132,7 +132,7 @@ fn convert_resolved_type_info(
                 type_engine,
                 decl_engine,
                 context,
-                elem_type.type_id,
+                elem_type.type_id(),
                 span,
             )?;
             Type::new_array(context, elem_type, len as u64)
@@ -145,7 +145,7 @@ fn convert_resolved_type_info(
                 // aggregate which might not make as much sense as a dedicated Unit type.
                 Type::get_unit(context)
             } else {
-                let new_fields: Vec<_> = fields.iter().map(|x| x.type_id).collect();
+                let new_fields: Vec<_> = fields.iter().map(|x| x.type_id()).collect();
                 create_tuple_aggregate(type_engine, decl_engine, context, &new_fields)?
             }
         }
@@ -153,19 +153,19 @@ fn convert_resolved_type_info(
         TypeInfo::RawUntypedSlice => Type::get_slice(context),
         TypeInfo::Ptr(_) => Type::get_uint64(context),
         TypeInfo::Alias { ty, .. } => {
-            convert_resolved_type_id(type_engine, decl_engine, context, ty.type_id, span)?
+            convert_resolved_type_id(type_engine, decl_engine, context, ty.type_id(), span)?
         }
         // refs to slice are actually fat pointers,
         // all others refs are thin pointers.
         TypeInfo::Ref {
             referenced_type, ..
         } => {
-            if let Some(slice_elem) = type_engine.get(referenced_type.type_id).as_slice() {
+            if let Some(slice_elem) = type_engine.get(referenced_type.type_id()).as_slice() {
                 let elem_ir_type = convert_resolved_type_id(
                     type_engine,
                     decl_engine,
                     context,
-                    slice_elem.type_id,
+                    slice_elem.type_id(),
                     span,
                 )?;
                 Type::get_typed_slice(context, elem_ir_type)

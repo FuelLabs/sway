@@ -761,7 +761,7 @@ fn handle_trait(
     ctx: &TypeCheckContext,
     type_id: TypeId,
     trait_name: &CallPath,
-    type_arguments: &[TypeArgument],
+    type_arguments: &[GenericArgument],
     function_name: &str,
     access_span: Span,
 ) -> Result<(InterfaceItemMap, ItemMap, ItemMap), ErrorEmitted> {

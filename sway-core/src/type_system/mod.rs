@@ -104,12 +104,12 @@ fn generic_enum_resolution() {
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name.clone(),
         tag: 0,
-        type_argument: TypeArgument {
+        type_argument: GenericArgument::Type(ast_elements::type_argument::GenericTypeArgument {
             type_id: placeholder_type,
             initial_type_id: placeholder_type,
             span: sp.clone(),
             call_path_tree: None,
-        },
+        }),
         span: sp.clone(),
         attributes: transform::Attributes::default(),
     }];
@@ -138,12 +138,12 @@ fn generic_enum_resolution() {
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name,
         tag: 0,
-        type_argument: TypeArgument {
+        type_argument: GenericArgument::Type(ast_elements::type_argument::GenericTypeArgument {
             type_id: boolean_type,
             initial_type_id: boolean_type,
             span: sp.clone(),
             call_path_tree: None,
-        },
+        }),
         span: sp.clone(),
         attributes: transform::Attributes::default(),
     }];
@@ -181,7 +181,7 @@ fn generic_enum_resolution() {
         let decl = engines.de().get_enum(decl_ref_1);
         assert_eq!(decl.call_path.suffix.as_str(), "Result");
         assert!(matches!(
-            &*engines.te().get(variant_types[0].type_argument.type_id),
+            &*engines.te().get(variant_types[0].type_argument.type_id()),
             TypeInfo::Boolean
         ));
     } else {
