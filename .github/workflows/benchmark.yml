@@ -35,7 +35,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-binstall
+          tool: cargo-codspeed
 
       - name: Build the benchmark target(s)
         run: cargo codspeed build
