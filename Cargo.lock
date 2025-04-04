@@ -3051,6 +3051,7 @@ dependencies = [
  "semver 1.0.26",
  "serde",
  "serde_json",
+ "serial_test",
  "tar",
  "tempfile",
  "thiserror 1.0.69",
