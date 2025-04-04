@@ -1194,7 +1194,7 @@ impl FromStr for PinnedId {
 }
 
 /// The `pkg::Graph` is of *a -> b* where *a* depends on *b*. We can determine compilation order by
-/// performing a toposort of the graph with reversed weights. The resulting order ensures all
+/// performing a toposort of the graph with reversed edges. The resulting order ensures all
 /// dependencies are always compiled before their dependents.
 pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     let rev_pkg_graph = petgraph::visit::Reversed(&graph);
