@@ -1,0 +1,103 @@
+---
+source: test/src/snapshot/mod.rs
+assertion_line: 125
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error --release --experimental error_type
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error
+   Compiling library attributes_error_type_and_error (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error)
+warning: Empty error type enum cannot be used in `panic` expressions
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error/src/main.sw:5:10
+  |
+...
+5 | pub enum EmptyErrorTypeEnum { }
+  |          ------------------ Error type enum "EmptyErrorTypeEnum" is empty and can never be used in `panic` expressions.
+  |
+  = help: Empty enums with no enum variants can never be instantiated.
+  = help: Thus, they cannot have instances to use as arguments in `panic` expressions.
+  = help:  
+  = help: Consider adding enum variants to "EmptyErrorTypeEnum" and attributing them
+  = help: with the `#[error]` attribute.
+____
+
+warning: Error message is empty
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error/src/main.sw:12:17
+   |
+...
+12 |     #[error(m = "")]
+   |                 -- Error enum variant "EmptyErrorMessages::B" has an empty error message.
+   |                 -- help: Consider adding a helpful error message here.
+   |
+____
+
+warning: Error message is empty
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error/src/main.sw:16:17
+   |
+...
+16 |     #[error(m = "")]
+   |                 -- Error enum variant "EmptyErrorMessages::D" has an empty error message.
+   |                 -- help: Consider adding a helpful error message here.
+   |
+____
+
+error: Error message is duplicated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error/src/main.sw:53:17
+   |
+...
+25 |     #[error(m = "duplicated trice")]
+   |                 ------------------ info: It is already used here.
+26 |     L: (),
+27 |     #[error(m = "duplicated twice")]
+28 |     E: (),
+29 |     #[error(m = "a")]
+...
+44 |     O: (),
+45 |     #[error(m = "duplicated trice")]
+   |                 ------------------ info: And here.
+...
+49 |     #[error(m = "duplicated trice")]
+   |                 ------------------ info: And here.
+...
+53 |     #[error(m = "duplicated trice")]
+   |                 ^^^^^^^^^^^^^^^^^^ This error message is duplicated.
+   |                 ------------------ help: Consider using a unique error message for every error variant.
+   |
+____
+
+error: Error message is duplicated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error/src/main.sw:47:17
+   |
+...
+27 |     #[error(m = "duplicated twice")]
+   |                 ------------------ info: It is already used here.
+28 |     E: (),
+29 |     #[error(m = "a")]
+30 |     A: (),
+31 |     #[error(m = "duplicated once")]
+...
+40 |     H: (),
+41 |     #[error(m = "duplicated twice")]
+   |                 ------------------ info: And here.
+...
+47 |     #[error(m = "duplicated twice")]
+   |                 ^^^^^^^^^^^^^^^^^^ This error message is duplicated.
+   |                 ------------------ help: Consider using a unique error message for every error variant.
+   |
+____
+
+error: Error message is duplicated
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error/src/main.sw:35:17
+   |
+...
+31 |     #[error(m = "duplicated once")]
+   |                 ----------------- info: It is already used here.
+...
+35 |     #[error(m = "duplicated once")]
+   |                 ^^^^^^^^^^^^^^^^^ This error message is duplicated.
+   |                 ----------------- help: Consider using a unique error message for every error variant.
+   |
+____
+
+  Compiled library "attributes_error_type_and_error" with 6 warnings.
+    Finished release [optimized + fuel] target(s) [32 B] in ???

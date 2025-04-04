@@ -197,6 +197,7 @@ impl T for S {
 #[cfg(target = "fuel")]
 #[cfg(program_type = "contract")]
 #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
+#[error_type]
 enum E {
     /// Comment.
     /// Comment.
@@ -206,6 +207,7 @@ enum E {
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
+    #[error(m = "msg")]
     A: (),
 }
 

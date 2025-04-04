@@ -1,6 +1,8 @@
 use crate::{
     diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic},
-    formatting::{did_you_mean_help, sequence_to_list, sequence_to_str, Enclosing, Indent},
+    formatting::{
+        did_you_mean_help, num_to_str, sequence_to_list, sequence_to_str, Enclosing, Indent,
+    },
 };
 
 use core::fmt;
@@ -134,6 +136,17 @@ pub enum Warning {
         second_field_full_name: String,
         second_field_key_is_compiler_generated: bool,
         key: String,
+    },
+    ErrorTypeEmptyEnum {
+        enum_name: IdentUnique,
+    },
+    ErrorEmptyErrorMessage {
+        enum_name: Ident,
+        enum_variant_name: Ident,
+    },
+    ErrorDuplicatedErrorMessage {
+        last_occurrence: Span,
+        previous_occurrences: Vec<Span>,
     },
 }
 
@@ -294,6 +307,18 @@ impl fmt::Display for Warning {
                 write!(f, "{deprecated_element} \"{deprecated_element_name}\" is deprecated. {}", help.as_ref().unwrap_or(&"".into())),
             DuplicatedStorageKey { first_field_full_name, second_field_full_name, key, .. } =>
                 write!(f, "Two storage fields have the same storage key.\nFirst field: {first_field_full_name}\nSecond field: {second_field_full_name}\nKey: {key}"),
+            ErrorTypeEmptyEnum { enum_name } =>
+                write!(f, "Empty error type enum \"{enum_name}\" can never be instantiated and used in `panic` expressions."),
+            ErrorEmptyErrorMessage { enum_name, enum_variant_name } =>
+                write!(f, "Error enum variant \"{enum_name}::{enum_variant_name}\" has an empty error message. Consider adding a helpful error message."),
+            ErrorDuplicatedErrorMessage { previous_occurrences, .. } =>
+                write!(f, "This error message is duplicated{}. Consider using a unique error message for every error variant.",
+                    if previous_occurrences.len() == 1 {
+                        "".to_string()
+                    } else {
+                        format!(" {} times", num_to_str(previous_occurrences.len()))
+                    }
+                ),
         }
     }
 }
@@ -520,7 +545,54 @@ impl ToDiagnostic for CompileWarning {
                 ]),
                 help: vec![],
             },
-            // "\"{arg}\" is an unknown argument for attribute \"{attribute}\". Known arguments are: {}.", sequence_to_str(&expected_args, Enclosing::DoubleQuote, usize::MAX)
+            ErrorTypeEmptyEnum { enum_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Empty error type enum cannot be used in `panic` expressions".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    enum_name.span(),
+                    format!("Error type enum \"{enum_name}\" is empty and can never be used in `panic` expressions."),
+                ),
+                hints: vec![],
+                help: vec![
+                    "Empty enums with no enum variants can never be instantiated.".to_string(),
+                    "Thus, they cannot have instances to use as arguments in `panic` expressions.".to_string(),
+                    Diagnostic::help_empty_line(),
+                    format!("Consider adding enum variants to \"{enum_name}\" and attributing them"),
+                    "with the `#[error]` attribute.".to_string(),
+                ],
+            },
+            ErrorEmptyErrorMessage { enum_name, enum_variant_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Error message is empty".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    self.span(),
+                    format!("Error enum variant \"{enum_name}::{enum_variant_name}\" has an empty error message."),
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        self.span(),
+                        "Consider adding a helpful error message here.".to_string(),
+                    )
+                ],
+                help: vec![],
+            },
+            ErrorDuplicatedErrorMessage { last_occurrence, previous_occurrences } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Error message is duplicated".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    last_occurrence.clone(),
+                    "This error message is duplicated.".to_string(),
+                ),
+                hints: {
+                    let (first_occurrence, other_occurrences) = previous_occurrences.split_first().expect("there is at least one previous occurrence in `previous_occurrences`");
+                    let mut hints = vec![Hint::info(source_engine, first_occurrence.clone(), "It is already used here.".to_string())];
+                    other_occurrences.iter().for_each(|occurrence| hints.push(Hint::info(source_engine, occurrence.clone(), "And here.".to_string())));
+                    hints.push(Hint::help(source_engine, last_occurrence.clone(), "Consider using a unique error message for every error variant.".to_string()));
+                    hints
+                },
+                help: vec![],
+            },
            _ => Diagnostic {
                     // TODO: Temporarily we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we

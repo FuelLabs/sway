@@ -11,10 +11,14 @@ abi Abi {
 #[payable(invalid)]
 #[deprecated(invalid)]
 #[fallback(invalid)]
+#[error_type(invalid)]
+#[error(invalid)]
 impl Abi for Contract {
     #[test(invalid)]
     //! Invalid inner comment.
     #[fallback(invalid)]
+    #[error_type(invalid)]
+    #[error(invalid)]
     fn abi_function() {
         let _ = 0;
     }

@@ -6,11 +6,15 @@ use std::{
 };
 
 use graph_cycles::Cycles;
+use indexmap::IndexMap;
+use itertools::Itertools;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
 };
-use sway_types::{BaseIdent, Named, SourceId};
+use sway_features::Feature;
+use sway_types::{BaseIdent, Named, SourceId, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclId},
@@ -18,11 +22,12 @@ use crate::{
     is_ty_module_cache_up_to_date,
     language::{
         parsed::*,
-        ty::{self, TyAstNodeContent, TyDecl},
+        ty::{self, TyAstNodeContent, TyDecl, TyEnumDecl},
         CallPath, ModName,
     },
     query_engine::{ModuleCacheKey, TypedModuleInfo},
     semantic_analysis::*,
+    transform::AttributeKind,
     BuildConfig, Engines, TypeInfo,
 };
 
@@ -539,7 +544,7 @@ impl ty::TyModule {
         // Check which structs and enums needs to have auto impl for `AbiEncode` and `AbiDecode`.
         // We need to do this before type checking, because the impls must be right after
         // the declarations.
-        let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
+        let all_abi_encode_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
             decl.trait_name.suffix.as_str() == "AbiEncode"
         });
 
@@ -549,11 +554,11 @@ impl ty::TyModule {
             let auto_impl_encoding_traits = match &node.content {
                 AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_struct(decl_id);
-                    !all_abiencode_impls.contains_key(&decl.name)
+                    !all_abi_encode_impls.contains_key(&decl.name)
                 }
                 AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_enum(decl_id);
-                    !all_abiencode_impls.contains_key(&decl.name)
+                    !all_abi_encode_impls.contains_key(&decl.name)
                 }
                 _ => false,
             };
@@ -572,9 +577,10 @@ impl ty::TyModule {
                     match &node.content {
                         TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
                         | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {
-                            let (a, b) = ctx.generate_abi_encode_and_decode_impls(engines, decl);
-                            generated.extend(a);
-                            generated.extend(b);
+                            let (abi_encode_impl, abi_decode_impl) =
+                                ctx.generate_abi_encode_and_decode_impls(engines, decl);
+                            generated.extend(abi_encode_impl);
+                            generated.extend(abi_decode_impl);
                         }
                         _ => {}
                     }
@@ -585,9 +591,42 @@ impl ty::TyModule {
             // reported as an error when type-checking trait impls.
             if ctx.experimental.error_type {
                 let mut ctx = MarkerTraitsAutoImplContext::new(&mut ctx);
-                if let TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) = &node.content {
-                    let a = ctx.generate_enum_marker_trait_impl(engines, decl);
-                    generated.extend(a);
+                if let TyAstNodeContent::Declaration(TyDecl::EnumDecl(enum_decl)) = &node.content {
+                    let enum_decl = &*ctx.engines().de().get(&enum_decl.decl_id);
+
+                    let enum_marker_trait_impl =
+                        ctx.generate_enum_marker_trait_impl(engines, enum_decl);
+                    generated.extend(enum_marker_trait_impl);
+
+                    if check_is_valid_error_type_enum(handler, enum_decl).is_ok_and(|res| res) {
+                        let error_type_marker_trait_impl =
+                            ctx.generate_error_type_marker_trait_impl_for_enum(engines, enum_decl);
+                        generated.extend(error_type_marker_trait_impl);
+                    }
+                }
+            } else {
+                // Check for usages of `error_type` and `error` attributes without the feature enabled.
+                if let TyAstNodeContent::Declaration(TyDecl::EnumDecl(enum_decl)) = &node.content {
+                    let enum_decl = &*ctx.engines().de().get(&enum_decl.decl_id);
+                    for attr in enum_decl.attributes.of_kind(AttributeKind::ErrorType) {
+                        handler.emit_err(CompileError::FeatureIsDisabled {
+                            feature: Feature::ErrorType.name().to_string(),
+                            url: Feature::ErrorType.url().to_string(),
+                            span: attr.name.span(),
+                        });
+                    }
+
+                    for attr in enum_decl
+                        .variants
+                        .iter()
+                        .flat_map(|variant| variant.attributes.of_kind(AttributeKind::Error))
+                    {
+                        handler.emit_err(CompileError::FeatureIsDisabled {
+                            feature: Feature::ErrorType.name().to_string(),
+                            url: Feature::ErrorType.url().to_string(),
+                            span: attr.name.span(),
+                        });
+                    }
                 }
             }
 
@@ -597,6 +636,122 @@ impl ty::TyModule {
 
         Ok(typed_nodes)
     }
+}
+
+/// Performs all semantic checks for `error_type` and `error` attributes, and returns true if the
+/// `enum_decl` is a valid error type declaration.
+fn check_is_valid_error_type_enum(
+    handler: &Handler,
+    enum_decl: &TyEnumDecl,
+) -> Result<bool, ErrorEmitted> {
+    let has_error_type_attribute = enum_decl.attributes.has_error_type();
+
+    if has_error_type_attribute && enum_decl.variants.is_empty() {
+        handler.emit_warn(CompileWarning {
+            span: enum_decl.name().span(),
+            warning_content: Warning::ErrorTypeEmptyEnum {
+                enum_name: enum_decl.name().into(),
+            },
+        });
+    }
+
+    // We show warnings for error messages even if the error type enum
+    // is not well formed, e.g., if it doesn't have the `error_type` attribute.
+    let mut duplicated_error_messages = IndexMap::<&str, Vec<Span>>::new();
+    for (enum_variant_name, error_attr) in enum_decl.variants.iter().flat_map(|variant| {
+        variant
+            .attributes
+            .error()
+            .map(|error_attr| (&variant.name, error_attr))
+    }) {
+        error_attr.check_args_multiplicity(handler)?;
+        assert_eq!(
+            (1usize, 1usize),
+            (&error_attr.args_multiplicity()).into(),
+            "`#[error]` attribute must have argument multiplicity of exactly one"
+        );
+
+        let m_arg = &error_attr.args[0];
+        let error_msg = m_arg.get_string(handler, error_attr)?;
+
+        if error_msg.is_empty() {
+            handler.emit_warn(CompileWarning {
+                span: m_arg
+                    .value
+                    .as_ref()
+                    .expect("`m` argument has a valid empty string value")
+                    .span(),
+                warning_content: Warning::ErrorEmptyErrorMessage {
+                    enum_name: enum_decl.name().clone(),
+                    enum_variant_name: enum_variant_name.clone(),
+                },
+            });
+        } else {
+            // We ignore duplicated empty messages and for those show
+            // only the warning that the message is empty.
+            duplicated_error_messages
+                .entry(error_msg)
+                .or_default()
+                .push(
+                    m_arg
+                        .value
+                        .as_ref()
+                        .expect("`m` argument has a valid empty string value")
+                        .span(),
+                );
+        }
+    }
+
+    // Emit duplicated messages warnings, if we actually have duplicates.
+    for duplicated_error_messages in duplicated_error_messages
+        .into_values()
+        .filter(|spans| spans.len() > 1)
+    {
+        let (last_occurrence, previous_occurrences) = duplicated_error_messages
+            .split_last()
+            .expect("`duplicated_error_messages` has more then one element");
+        handler.emit_warn(CompileWarning {
+            span: last_occurrence.clone(),
+            warning_content: Warning::ErrorDuplicatedErrorMessage {
+                last_occurrence: last_occurrence.clone(),
+                previous_occurrences: previous_occurrences.into(),
+            },
+        });
+    }
+
+    handler.scope(|handler| {
+        if has_error_type_attribute {
+            let non_error_variants = enum_decl
+                .variants
+                .iter()
+                .filter(|variant| !variant.attributes.has_error())
+                .collect_vec();
+            if !non_error_variants.is_empty() {
+                handler.emit_err(CompileError::ErrorTypeEnumHasNonErrorVariants {
+                    enum_name: enum_decl.name().into(),
+                    non_error_variants: non_error_variants
+                        .iter()
+                        .map(|variant| (&variant.name).into())
+                        .collect(),
+                });
+            }
+        } else {
+            for variant in enum_decl
+                .variants
+                .iter()
+                .filter(|variant| variant.attributes.has_error())
+            {
+                handler.emit_err(CompileError::ErrorAttributeInNonErrorEnum {
+                    enum_name: enum_decl.name().into(),
+                    enum_variant_name: (&variant.name).into(),
+                });
+            }
+        }
+
+        Ok(())
+    })?;
+
+    Ok(has_error_type_attribute)
 }
 
 fn collect_fallback_fn(

@@ -2,6 +2,8 @@
 pub mod abi_encoding;
 pub mod marker_traits;
 
+use std::ops::Deref;
+
 use crate::{
     engine_threading::SpannedWithEngines,
     language::{
@@ -302,5 +304,16 @@ where
             // Otherwise, take the type from the span.
             _ => Some(ta.span().as_str().to_string()),
         }
+    }
+}
+
+impl<'a, 'b, I> Deref for AutoImplContext<'a, 'b, I>
+where
+    'a: 'b,
+{
+    type Target = TypeCheckContext<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        self.ctx
     }
 }

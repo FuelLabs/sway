@@ -243,3 +243,5 @@ RawSlice
 StringArray
 StringSlice
 calldata
+Cfg
+evm

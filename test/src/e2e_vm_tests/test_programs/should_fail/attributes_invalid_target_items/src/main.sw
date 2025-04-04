@@ -7,6 +7,8 @@
 #[cfg(invalid)]
 #[deprecated(invalid)]
 #[fallback(invalid)]
+#[error_type(invalid)]
+#[error(invalid)]
 #[unknown(invalid)]
 library;
 
@@ -33,6 +35,8 @@ library;
 /// Invalid outer comment.
 #[deprecated(invalid)]
 #[fallback(invalid)]
+#[error_type(invalid)]
+#[error(invalid)]
 //! Invalid inner comment.
 /// Invalid outer comment.
 mod module_kind;

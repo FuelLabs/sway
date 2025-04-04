@@ -14,6 +14,8 @@ mod cfg_attr_program_type;
 mod cfg_attr_target;
 mod deprecated_attr;
 mod fallback_attr;
+mod error_type_attr;
+mod error_attr;
 
 /// Outer doc comment supports multiple.
 /// Outer doc comment supports multiple.
