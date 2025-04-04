@@ -1,4 +1,4 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
+use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestPrivateStructFieldsInStorageAndAbi",
@@ -6,7 +6,7 @@ abigen!(Contract(
 ));
 
 async fn test_storage_private_struct_fields_instance(
-) -> TestPrivateStructFieldsInStorageAndAbi<WalletUnlocked> {
+) -> TestPrivateStructFieldsInStorageAndAbi<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/private_struct_fields_in_storage_and_abi/out/release/private_struct_fields_in_storage_and_abi.bin",
@@ -15,7 +15,8 @@ async fn test_storage_private_struct_fields_instance(
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestPrivateStructFieldsInStorageAndAbi::new(id.clone(), wallet)
 }

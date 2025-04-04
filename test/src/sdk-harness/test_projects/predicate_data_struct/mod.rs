@@ -2,14 +2,13 @@ use fuel_vm::fuel_asm::{op, RegId};
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_tx::{Address, AssetId, Output};
 use fuels::{
-    accounts::wallet::{Wallet, WalletUnlocked},
     core::codec::{ABIEncoder, EncoderConfig},
     prelude::*,
     types::{input::Input, transaction_builders::ScriptTransactionBuilder, Token},
 };
 use std::str::FromStr;
 
-async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
+async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
     let predicate_code =
         std::fs::read("test_projects/predicate_data_struct/out/release/predicate_data_struct.bin")
             .unwrap();
@@ -36,7 +35,7 @@ async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
 
 async fn create_predicate(
     predicate_address: Address,
-    wallet: &WalletUnlocked,
+    wallet: &Wallet,
     amount_to_predicate: u64,
     asset_id: AssetId,
 ) {
@@ -49,7 +48,7 @@ async fn create_predicate(
         .await
         .unwrap();
 
-    let provider = wallet.provider().unwrap();
+    let provider = wallet.provider();
     let output_coin = Output::coin(predicate_address, amount_to_predicate, asset_id);
     let output_change = Output::change(wallet.address().into(), 0, asset_id);
     let mut tx = ScriptTransactionBuilder::prepare_transfer(
@@ -59,7 +58,7 @@ async fn create_predicate(
     )
     .with_script(op::ret(RegId::ONE).to_bytes().to_vec());
 
-    tx.add_signer(wallet.clone()).unwrap();
+    tx.add_signer(wallet.signer().clone()).unwrap();
     let tx = tx.build(provider).await.unwrap();
     provider.send_transaction(tx).await.unwrap();
 }
@@ -79,7 +78,7 @@ async fn submit_to_predicate(
         amount: amount_to_predicate,
         ..Default::default()
     };
-    let provider = wallet.provider().unwrap();
+    let provider = wallet.provider();
 
     let utxo_predicate_hash = provider.get_spendable_resources(filter).await.unwrap();
 
@@ -113,7 +112,6 @@ async fn submit_to_predicate(
 async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {
     wallet
         .provider()
-        .unwrap()
         .get_asset_balance(&address.into(), asset_id)
         .await
         .unwrap()

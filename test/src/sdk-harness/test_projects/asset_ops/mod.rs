@@ -1,7 +1,5 @@
 use fuels::{
-    accounts::wallet::WalletUnlocked,
     prelude::*,
-    types::AssetId,
     types::{Bits256, Bytes32, Identity},
 };
 use sha2::{Digest, Sha256};
@@ -447,6 +445,7 @@ async fn can_send_message_output_with_data() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -488,6 +487,7 @@ async fn can_send_message_output_without_data() {
         .unwrap();
 
     let message_receipt = call_response
+        .tx_status
         .receipts
         .iter()
         .find(|&r| matches!(r, fuels::tx::Receipt::MessageOut { .. }))
@@ -500,9 +500,7 @@ async fn can_send_message_output_without_data() {
     assert_eq!(Vec::<u8>::new(), message_receipt.data().unwrap());
 }
 
-async fn get_fuelcoin_instance(
-    wallet: WalletUnlocked,
-) -> (TestFuelCoinContract<WalletUnlocked>, ContractId) {
+async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract<Wallet>, ContractId) {
     let fuelcontract_id = Contract::load_from(
         "test_projects/asset_ops/out/release/asset_ops.bin",
         LoadConfiguration::default(),
@@ -510,7 +508,8 @@ async fn get_fuelcoin_instance(
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     wallet
         .force_transfer_to_contract(&fuelcontract_id, 1000, AssetId::BASE, TxPolicies::default())
@@ -521,7 +520,7 @@ async fn get_fuelcoin_instance(
     (fuelcontract_instance, fuelcontract_id.into())
 }
 
-async fn get_balance_contract_id(wallet: WalletUnlocked) -> ContractId {
+async fn get_balance_contract_id(wallet: Wallet) -> ContractId {
     let balance_id = Contract::load_from(
         "test_artifacts/balance_contract/out/release/balance_contract.bin",
         LoadConfiguration::default(),
@@ -529,7 +528,8 @@ async fn get_balance_contract_id(wallet: WalletUnlocked) -> ContractId {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     balance_id.into()
 }

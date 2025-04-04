@@ -1,7 +1,5 @@
 use fuels::{
-    accounts::wallet::WalletUnlocked,
     prelude::*,
-    types::ContractId,
     types::{Bits256, SizedAsciiString},
 };
 use sha2::{Digest, Sha256};
@@ -142,7 +140,7 @@ fn hash_struct(arr: [u8; 55], algorithm: Hash) -> [u8; 32] {
     }
 }
 
-async fn get_hashing_instance() -> (HashingTestContract<WalletUnlocked>, ContractId) {
+async fn get_hashing_instance() -> (HashingTestContract<Wallet>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let id = Contract::load_from(
@@ -152,7 +150,8 @@ async fn get_hashing_instance() -> (HashingTestContract<WalletUnlocked>, Contrac
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = HashingTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
