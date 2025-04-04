@@ -891,7 +891,7 @@ fn handle_impl_contract(
     let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
 
     // Only handle if this is an impl Contract block
-    if let TypeInfo::Contract = &*engines.te().get(implementing_for.type_id) {
+    if let TypeInfo::Contract = &*engines.te().get(implementing_for.type_id()) {
         // Check if there's an explicit trait being implemented
         match item_impl.trait_opt {
             Some((_, _)) => return Ok(vec![]),
@@ -943,7 +943,7 @@ fn handle_impl_contract(
 
                 // Insert ABI declaration
                 let abi_decl_id = engines.pe().insert(abi_decl);
-                let impl_item_parent = (&*engines.te().get(implementing_for.type_id)).into();
+                let impl_item_parent = (&*engines.te().get(implementing_for.type_id())).into();
 
                 // Convert original impl items to ImplItems
                 let items = item_impl
