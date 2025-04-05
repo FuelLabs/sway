@@ -59,55 +59,15 @@ pub async fn call_function(
 
     let cmd::call::FuncType::Selector(selector) = function;
 
+    let (encoded_data, output_param) =
+        prepare_contract_call_data(&unified_program_abi, &selector, &function_args)?;
+
     // Setup connection to node
     let (wallet, tx_policies, base_asset_id) = super::setup_connection(&node, caller, &gas).await?;
     let call_parameters = cmd::call::CallParametersOpts {
         asset_id: call_parameters.asset_id.or(Some(base_asset_id)),
         ..call_parameters
     };
-
-    // Get function definition from ABI
-    let type_lookup = unified_program_abi
-        .types
-        .iter()
-        .map(|decl| (decl.type_id, decl.clone()))
-        .collect::<HashMap<_, _>>();
-
-    // Find the function in the ABI
-    let abi_func = unified_program_abi
-        .functions
-        .iter()
-        .find(|abi_func| abi_func.name == selector)
-        .ok_or_else(|| anyhow!("Function '{}' not found in ABI", selector))?;
-
-    // Validate number of arguments
-    if abi_func.inputs.len() != function_args.len() {
-        bail!(
-            "Number of arguments does not match number of parameters in function signature; expected {}, got {}", 
-            abi_func.inputs.len(),
-            function_args.len()
-        );
-    }
-
-    // Parse function arguments to tokens
-    let tokens = abi_func
-        .inputs
-        .iter()
-        .zip(function_args)
-        .map(|(type_application, arg)| {
-            let param_type = ParamType::try_from_type_application(type_application, &type_lookup)
-                .expect("Failed to convert input type application");
-            param_type_val_to_token(&param_type, &arg)
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    // Get output parameter type
-    let output_param = ParamType::try_from_type_application(&abi_func.output, &type_lookup)
-        .expect("Failed to convert output type");
-
-    // Encode function arguments
-    let abi_encoder = ABIEncoder::new(EncoderConfig::default());
-    let encoded_data = abi_encoder.encode(&tokens)?;
 
     // Create the contract call
     let call = ContractCall {
@@ -248,6 +208,60 @@ pub async fn call_function(
         &node,
         show_receipts,
     )
+}
+
+fn prepare_contract_call_data(
+    unified_program_abi: &UnifiedProgramABI,
+    selector: &str,
+    function_args: &[String],
+) -> Result<(Vec<u8>, ParamType)> {
+    let type_lookup = unified_program_abi
+        .types
+        .iter()
+        .map(|decl| (decl.type_id, decl.clone()))
+        .collect::<HashMap<_, _>>();
+
+    // Find the function in the ABI
+    let abi_func = unified_program_abi
+        .functions
+        .iter()
+        .find(|f| f.name == selector)
+        .cloned()
+        .ok_or_else(|| anyhow!("Function '{selector}' not found in ABI"))?;
+
+    // Validate number of arguments
+    if abi_func.inputs.len() != function_args.len() {
+        bail!(
+            "Argument count mismatch for '{selector}': expected {}, got {}",
+            abi_func.inputs.len(),
+            function_args.len()
+        );
+    }
+
+    // Parse function arguments to tokens
+    let tokens = abi_func
+        .inputs
+        .iter()
+        .zip(function_args)
+        .map(|(type_application, arg)| {
+            let param_type =
+                ParamType::try_from_type_application(type_application, &type_lookup)
+                    .map_err(|e| anyhow!("Failed to convert input type application: {e}"))?;
+            param_type_val_to_token(&param_type, arg)
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    // Get output parameter type
+    let output_param = ParamType::try_from_type_application(&abi_func.output, &type_lookup)
+        .map_err(|e| anyhow!("Failed to convert output type: {e}"))?;
+
+    // Encode function arguments
+    let abi_encoder = ABIEncoder::new(EncoderConfig::default());
+    let encoded_data = abi_encoder
+        .encode(&tokens)
+        .map_err(|e| anyhow!("Failed to encode function arguments: {e}"))?;
+
+    Ok((encoded_data, output_param))
 }
 
 #[cfg(test)]
