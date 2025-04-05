@@ -27,7 +27,7 @@ pub async fn transfer(
         wallet
             .transfer(&recipient.into(), amount, asset_id, tx_policies)
             .await
-            .map_err(|e| anyhow!("Failed to transfer funds: {}", e))?
+            .map_err(|e| anyhow!("Failed to transfer funds to recipient: {}", e))?
     } else {
         println!(
             "\nTransferring {} 0x{} to contract address 0x{}...\n",
@@ -41,7 +41,7 @@ pub async fn transfer(
         wallet
             .force_transfer_to_contract(&contract_id, amount, asset_id, tx_policies)
             .await
-            .map_err(|e| anyhow!("Failed to transfer funds: {}", e))?
+            .map_err(|e| anyhow!("Failed to transfer funds to contract: {}", e))?
     };
 
     // We don't need to load the ABI for a simple transfer
