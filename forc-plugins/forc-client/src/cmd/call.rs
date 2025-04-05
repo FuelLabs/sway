@@ -271,12 +271,12 @@ impl Command {
     pub fn validate_and_get_operation(&self) -> Result<Operation, String> {
         // Case 1: List functions
         if self.list_functions {
-            if self.abi.is_none() {
+            let Some(abi) = &self.abi else {
                 return Err("ABI is required when using --list-functions".to_string());
-            }
+            };
             return Ok(Operation::ListFunctions {
                 contract_id: (*self.address).into(),
-                abi: self.abi.clone().expect("ABI should be validated"),
+                abi: abi.to_owned(),
             });
         }
 
@@ -294,20 +294,20 @@ impl Command {
 
         // Case 3: Call function
         if let Some(function) = &self.function {
-            if self.abi.is_none() {
+            let Some(abi) = &self.abi else {
                 return Err("ABI is required when calling a function".to_string());
-            }
+            };
             let func_type = FuncType::from_str(function)?;
             return Ok(Operation::CallFunction {
                 contract_id: (*self.address).into(),
-                abi: self.abi.clone().expect("ABI should be validated"),
+                abi: abi.to_owned(),
                 function: func_type,
-                function_args: self.function_args.clone(),
+                function_args: self.function_args.to_owned(),
             });
         }
 
         // No valid operation matched
-        Err("Either function selector, --list-functions flag, or non-zero --amount for direct transfer must be provided".to_string())
+        Err("Either function selector, --list-functions flag, or non-zero --amount for direct transfers must be provided".to_string())
     }
 }
 
