@@ -124,19 +124,19 @@ pub async fn call_function(
         .with_external_contracts(external_contracts)
         .transaction_builder(tx_policies, variable_output_policy, &wallet)
         .await
-        .expect("Failed to initialize transaction builder");
+        .map_err(|e| anyhow!("Failed to initialize transaction builder: {e}"))?;
     let (tx_status, tx_hash) = match mode {
         cmd::call::ExecutionMode::DryRun => {
             let tx = call
                 .build_tx(tb, &wallet)
                 .await
-                .expect("Failed to build transaction");
+                .map_err(|e| anyhow!("Failed to build transaction: {e}"))?;
             let tx_hash = tx.id(chain_id);
             let tx_status = wallet
                 .provider()
                 .dry_run(tx)
                 .await
-                .expect("Failed to dry run transaction");
+                .map_err(|e| anyhow!("Failed to dry run transaction: {e}"))?;
             (tx_status, tx_hash)
         }
         cmd::call::ExecutionMode::Simulate => {
@@ -144,14 +144,14 @@ pub async fn call_function(
             let tx = call
                 .build_tx(tb, &wallet)
                 .await
-                .expect("Failed to build transaction");
+                .map_err(|e| anyhow!("Failed to build transaction: {e}"))?;
             let tx_hash = tx.id(chain_id);
             let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
             let tx_status = wallet
                 .provider()
                 .dry_run_opt(tx, false, gas_price)
                 .await
-                .expect("Failed to simulate transaction");
+                .map_err(|e| anyhow!("Failed to simulate transaction: {e}"))?;
             (tx_status, tx_hash)
         }
         cmd::call::ExecutionMode::Live => {
@@ -162,13 +162,13 @@ pub async fn call_function(
             let tx = call
                 .build_tx(tb, &wallet)
                 .await
-                .expect("Failed to build transaction");
+                .map_err(|e| anyhow!("Failed to build transaction: {e}"))?;
             let tx_hash = tx.id(chain_id);
             let tx_status = wallet
                 .provider()
                 .send_transaction_and_await_commit(tx)
                 .await
-                .expect("Failed to send transaction");
+                .map_err(|e| anyhow!("Failed to send transaction: {e}"))?;
             (tx_status, tx_hash)
         }
     };
@@ -176,7 +176,7 @@ pub async fn call_function(
     // Process transaction results
     let receipts = tx_status
         .take_receipts_checked(Some(&log_decoder))
-        .expect("Failed to take receipts");
+        .map_err(|e| anyhow!("Failed to take receipts: {e}"))?;
 
     // Parse the result based on output format
     let mut receipt_parser = ReceiptParser::new(&receipts, DecoderConfig::default());
@@ -184,16 +184,17 @@ pub async fn call_function(
         cmd::call::OutputFormat::Default => {
             let data = receipt_parser
                 .extract_contract_call_data(contract_id)
-                .expect("Failed to extract contract call data");
+                .ok_or(anyhow!("Failed to extract contract call data"))?;
             ABIDecoder::default()
                 .decode_as_debug_str(&output_param, data.as_slice())
-                .expect("Failed to decode as debug string")
+                .map_err(|e| anyhow!("Failed to decode as debug string: {e}"))?
         }
         cmd::call::OutputFormat::Raw => {
             let token = receipt_parser
                 .parse_call(&Bech32ContractId::from(contract_id), &output_param)
-                .expect("Failed to extract contract call data");
-            token_to_string(&token).expect("Failed to convert token to string")
+                .map_err(|e| anyhow!("Failed to parse call data: {e}"))?;
+            token_to_string(&token)
+                .map_err(|e| anyhow!("Failed to convert token to string: {e}"))?
         }
     };
 
