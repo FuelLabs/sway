@@ -44,9 +44,6 @@ where
             return None;
         }
 
-        let enum_decl_id = enum_decl.to_enum_id(&Handler::default(), engines).unwrap();
-        let enum_decl = self.ctx.engines().de().get(&enum_decl_id);
-
         let impl_enum_code = format!(
             "#[allow(dead_code, deprecated)] impl {marker_trait_name} for {} {{ }}",
             enum_decl.name()
