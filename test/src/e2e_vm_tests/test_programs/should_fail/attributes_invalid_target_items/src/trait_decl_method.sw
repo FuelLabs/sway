@@ -7,5 +7,7 @@ trait T {
     #[payable(invalid)]
     #[deprecated(invalid)]
     #[fallback(invalid)]
+    #[error_type(invalid)]
+    #[error(invalid)]
     fn trait_method(self);
 } 
