@@ -1,36 +1,85 @@
 # Attributes
 
-The Sway compiler supports a list of attributes that perform various operations that are useful for building, testing and documenting Sway programs. Below is a list of all available attributes:
+Attributes are a form of metadata that can additionally instruct Sway compiler or other tools like `forc test`. Attributes can annotate different language elements, like, e.g., items, enum variants, struct fields, etc.
+
+Below is the list of attributes supported by the Sway compiler, ordered alphabetically:
+
+- [Allow](#allow)
+- [Cfg](#cfg)
+- [Deprecated](#deprecated)
+- [Error](#error)
+- [Error Type](#error-type)
+- [Fallback](#fallback)
+- [Inline](#inline)
+- [Payable](#payable)
+- [Storage](#payable)
+- [Test](#test)
 
 ## Allow
 
-The `#[allow(...)]` attribute overrides checks so that violations will go unreported. The following checks can be disabled:
+The `#[allow(...)]` attribute disables compiler checks so that certain warnings will go unreported. The following warnings can be disabled:
 
-- `#[allow(dead_code)]` disable checks for dead code;
-- `#[allow(deprecated)]` disables checks for usage of deprecated structs, functions and other items.
+- `#[allow(dead_code)]` disables warnings for dead code;
+- `#[allow(deprecated)]` disables warnings for usage of deprecated elements, like, e.g., structs, functions, enum variants, etc.
 
-## Doc
+## Cfg
 
-The `#[doc(..)]` attribute specifies documentation.
+The `#[cfg(...)]` attribute allows conditional compilation. The annotated code element will be compiled only if the condition in to the `cfg` attribute evaluates to true. The following conditions can be expressed:
 
-Line doc comments beginning with exactly three slashes `///`, are interpreted as a special syntax for doc attributes. That is, they are equivalent to writing `#[doc("...")]` around the body of the comment, i.e., `/// Foo` turns into `#[doc("Foo")]`
+- `#[cfg(target = "<target>")]` where `<target>` can be either "evm" or "fuel";
+- `#[cfg(program_type = "<program_type>")]` where `<program_type>` can be either "predicate", "script", "contract", or "library";
+- `#[cfg(experimental_<feature_flag> = true/false)]` where `<feature_flag>` is one of the known experimental feature flags.
 
-Line comments beginning with `//!` are doc comments that apply to the module of the source file they are in. That is, they are equivalent to writing `#![doc("...")]` around the body of the comment. `//!` module level doc comments should be at the top of Sway files.
+## Deprecated
 
-Documentation can be generated from doc attributes using `forc doc`.
+The `#[deprecated]` attribute marks an item as deprecated and makes the compiler emit a warning for every usage of the deprecated item. This warning can be disabled using `#[allow(deprecated)]`.
+
+It is possible to improve the warning message with `#[deprecated(note = "Your deprecation message.")]`
+
+## Error
+
+The `#[error]` defines an error message for an error type enum variant:
+
+```sway
+#[error_type]
+enum SomeErrors {
+    #[error(m = "An unexpected error occurred.")]
+    UnexpectedError: (),
+}
+```
+
+> **Note**: Error types are still an experimental feature. For more info, see the [tracking issue for "Error types"](https://github.com/FuelLabs/sway/issues/6765).
+
+## Error Type
+
+The `#[error_type]` marks an enum as error type enum:
+
+```sway
+#[error_type]
+enum SomeErrors {
+    ...
+}
+```
+
+All variants of an error type enum must be annotated with the [`#[error]` attribute](#error). Error type enums are meant to be use in `panic` expressions for rich error reporting.
+
+> **Note**: Error types are still an experimental feature. For more info, see the [tracking issue for "Error types"](https://github.com/FuelLabs/sway/issues/6765).
+
+## Fallback
+
+The `#[fallback]` attribute makes the compiler use the marked function as the contract call fallback function. This means that, when a contract method is called, and the contract method selection fails, the fallback function will be called instead.
+
+More details in [Calling Contracts](../blockchain-development/calling_contracts.md#fallback).
 
 ## Inline
 
-The inline attribute suggests that a copy of the attributed function should be placed in the caller, rather than generating code to call the function where it is defined.
-
-> **Note**: The Sway compiler automatically inlines functions based on internal heuristics. Incorrectly inlining functions can make the program slower, so this attribute should be used with care.
+The inline attribute *suggests* to the compiler if a copy of the annotated function should be placed in the caller, rather than generating code to call the function where it is defined.
 
 The `#[inline(never)]` attribute *suggests* that an inline expansion should never be performed.
 
 The `#[inline(always)]` attribute *suggests* that an inline expansion should always be performed.
 
-> **Note**: `#[inline(..)]` in every form is a hint, with no *requirements*
- on the language to place a copy of the attributed function in the caller.
+> **Note**: `#[inline(..)]` in every form is a hint, with no *requirements* on the compiler to place a copy of the annotated function in the caller. The Sway compiler automatically inlines functions based on internal heuristics. Incorrectly inlining functions can make the program slower, so this attribute should be used with care.
 
 ## Payable
 
@@ -53,13 +102,3 @@ The `#[test]` attribute marks a function to be executed as a test.
 The `#[test(should_revert)]` attribute marks a function to be executed as a test that should revert.
 
 More details in [Unit Testing](../testing/unit-testing.md).
-
-## Deprecated
-
-The `#[deprecated]` attribute marks an item as deprecated and makes the compiler emit a warning for every usage of the deprecated item. This warning can be disabled using `#[allow(deprecated)]`.
-
-It is possible to improve the warning message with `#[deprecated(note = "your message")]`
-
-## Fallback
-
-The `#[fallback]` attribute makes the compiler use the marked function as the contract call fallback function, which means that, when a contract is called, and the contract selection fails, the fallback function will be called instead.

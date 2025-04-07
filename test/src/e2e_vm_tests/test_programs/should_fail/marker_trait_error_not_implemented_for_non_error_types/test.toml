@@ -42,9 +42,10 @@ experimental = { error_type = true }
 #nextln: $()Trait "Error" is not implemented for type "(u64, u64, u64)".
 
 #check: $()error
-#check: $()implements_error(());
-#nextln: $()Trait "Error" is not implemented for type "()".
+#check: $()implements_error(Enum::A);
+#nextln: $()Trait "Error" is not implemented for type "Enum".
 
 #check: $()error
-#check: $()implements_error_no_args::<()>();
-#nextln: $()Trait "Error" is not implemented for type "()".
+#check: $()implements_error_no_args::<Enum>();
+#nextln: $()Trait "Error" is not implemented for type "Enum".
+
