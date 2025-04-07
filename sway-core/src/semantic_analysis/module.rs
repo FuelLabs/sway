@@ -568,7 +568,7 @@ impl ty::TyModule {
                         !all_abi_encode_impls.contains_key(&decl.name),
                         !all_debug_impls.contains_key(&decl.name),
                     )
-                },
+                }
                 AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_enum(decl_id);
                     (
