@@ -117,6 +117,7 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
                 let logged_type = self.get_logged_type(ctx.experimental.new_encoding).unwrap();
                 types_metadata.push(TypeMetadata::LoggedType(
                     LogId::new(logged_type.get_abi_type_str(
+                        handler,
                         &AbiStrContext {
                             program_name: ctx.program_name.clone(),
                             abi_with_callpaths: true,
@@ -125,7 +126,7 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
                         },
                         ctx.engines,
                         logged_type,
-                    )),
+                    )?),
                     logged_type,
                 ));
             }
