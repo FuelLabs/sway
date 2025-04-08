@@ -4,6 +4,7 @@ mod module;
 #[allow(clippy::module_inception)]
 mod namespace;
 mod package;
+mod project;
 mod resolved_declaration;
 mod trait_map;
 
@@ -13,6 +14,7 @@ pub use module::module_not_found;
 pub use module::Module;
 pub use namespace::Namespace;
 pub use package::Package;
+pub use project::Project;
 pub use resolved_declaration::ResolvedDeclaration;
 pub(crate) use trait_map::IsExtendingExistingImpl;
 pub(crate) use trait_map::IsImplSelf;
@@ -22,6 +24,8 @@ pub use trait_map::TryInsertingTraitImplOnFailure;
 
 use sway_types::Ident;
 
+// TODO: Should this be ProgramId? If so, then remove program_id from Package
+pub type PackageId = String;
 type ModuleName = String;
 pub type ModulePath = [Ident];
 pub type ModulePathBuf = Vec<Ident>;
