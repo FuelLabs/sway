@@ -391,7 +391,7 @@ forc build --release  <- nothing will be printed
 To enable code generation even on `Release` builds, the flag `force-dbg-in-release` needs to be enabled inside `forc.toml`.
 Example:
 
-```
+```toml
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
