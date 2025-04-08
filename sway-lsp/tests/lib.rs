@@ -1239,7 +1239,7 @@ fn go_to_definition_for_functions() {
 }
 
 #[test]
-#[ignore]
+#[ignore = "https://github.com/FuelLabs/sway/issues/7025"]
 fn go_to_definition_for_structs() {
     run_async!({
         let server = ServerState::default();
