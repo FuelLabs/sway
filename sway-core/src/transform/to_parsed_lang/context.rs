@@ -36,9 +36,6 @@ pub struct Context {
 
     /// Keeps track of the implementing type as we convert the tree.
     pub(crate) implementing_type: Option<Declaration>,
-
-    /// Unique suffix used to generate unique names for anonymous ABIs
-    anon_abi_suffix: usize,
 }
 
 impl Context {
@@ -59,14 +56,7 @@ impl Context {
             for_unique_suffix: std::default::Default::default(),
             program_type: std::default::Default::default(),
             implementing_type: None,
-            anon_abi_suffix: 0,
         }
-    }
-
-    /// Returns a unique suffix used to generate a unique name for an anonymous ABI
-    pub fn next_anon_suffix(&mut self) -> usize {
-        self.anon_abi_suffix += 1;
-        self.anon_abi_suffix
     }
 
     /// Updates the value of `module_has_configurable_block`.

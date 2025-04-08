@@ -34,9 +34,13 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::CompileError};
 use sway_features::ExperimentalFeatures;
 use sway_types::{integer_bits::IntegerBits, BaseIdent};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{style::to_upper_camel_case, Ident, Span, Spanned};
 
-use std::{collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, str::FromStr};
+use std::{
+    collections::HashSet, convert::TryFrom, env, fs, iter, mem::MaybeUninit, path::Path,
+    str::FromStr,
+};
+use sway_utils::{constants::MANIFEST_FILE_NAME, find_parent_manifest_dir};
 
 pub fn convert_parse_tree(
     context: &mut Context,
@@ -881,6 +885,46 @@ pub fn item_impl_to_declaration(
     }
 }
 
+fn get_project_name() -> String {
+    // Function to extract project name from a manifest file
+    fn extract_project_name_from_manifest(manifest_path: &Path) -> Option<String> {
+        fs::read_to_string(manifest_path).ok().and_then(|content| {
+            toml::from_str::<toml::Value>(&content)
+                .ok()
+                .and_then(|value| {
+                    value
+                        .as_table()
+                        .and_then(|table| table.get("project"))
+                        .and_then(|project| project.as_table())
+                        .and_then(|project_table| project_table.get("name"))
+                        .and_then(|name| name.as_str())
+                        .map(|name| to_upper_camel_case(name))
+                })
+        })
+    }
+
+    // Get the current directory
+    let current_dir = match env::current_dir() {
+        Ok(dir) => dir,
+        Err(_) => return "Anonymous".to_string(),
+    };
+
+    // Find the manifest directory (similar to ManifestFile::from_dir)
+    let manifest_dir = match find_parent_manifest_dir(&current_dir) {
+        Some(dir) => dir,
+        None => return "Anonymous".to_string(),
+    };
+
+    // Construct path to manifest file
+    let manifest_path = manifest_dir.join(MANIFEST_FILE_NAME);
+
+    // Extract the project name from the manifest
+    match extract_project_name_from_manifest(&manifest_path) {
+        Some(name) => name,
+        None => "Anonymous".to_string(),
+    }
+}
+
 fn handle_impl_contract(
     context: &mut Context,
     handler: &Handler,
@@ -896,11 +940,11 @@ fn handle_impl_contract(
         match item_impl.trait_opt {
             Some((_, _)) => return Ok(vec![]),
             None => {
-                // Generate unique name for anonymous ABI
-                let anon_abi_name = Ident::new_with_override(
-                    format!("_AnonymousAbi_{}", context.next_anon_suffix()),
-                    span.clone(),
-                );
+                let project_name = get_project_name();
+
+                // Generate ABI name using project name with "Abi" suffix
+                let anon_abi_name =
+                    Ident::new_with_override(format!("{}Abi", project_name), span.clone());
 
                 // Convert the methods to ABI interface
                 let mut interface_surface = Vec::new();
