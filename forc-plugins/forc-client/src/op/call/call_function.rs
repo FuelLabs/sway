@@ -1,5 +1,5 @@
 use crate::{
-    cmd::{self, call::FuncType},
+    cmd::{self, call::{FuncType, Verbosity}},
     op::call::{
         missing_contracts::get_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
@@ -46,11 +46,12 @@ pub async fn call_function(
         caller,
         call_parameters,
         gas,
-        show_receipts,
         output,
         external_contracts,
+        verbosity,
         ..
     } = cmd;
+    let verbosity: Verbosity = verbosity.into();
 
     // Load ABI (already provided in the operation)
     let abi_str = super::load_abi(&abi).await?;
@@ -207,7 +208,7 @@ pub async fn call_function(
         result,
         &mode,
         &node,
-        show_receipts,
+        &verbosity,
     )
 }
 
@@ -295,8 +296,8 @@ pub mod tests {
             gas: None,
             external_contracts: None,
             output: cmd::call::OutputFormat::Raw,
-            show_receipts: false,
             list_functions: false,
+            verbosity: 0,
         }
     }
 
