@@ -270,6 +270,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         metrics_outfile: cmd.print.metrics_outfile.clone(),
         binary_outfile: cmd.build_output.bin_file.clone(),
         debug_outfile: cmd.build_output.debug_file.clone(),
+        hex_outfile: cmd.build_output.hex_file.clone(),
         tests: false,
         member_filter: pkg::MemberFilter::only_scripts(),
         experimental: cmd.experimental.experimental.clone(),
