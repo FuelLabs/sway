@@ -1,5 +1,8 @@
 use crate::{
-    cmd::{self, call::{FuncType, Verbosity}},
+    cmd::{
+        self,
+        call::{FuncType, Verbosity},
+    },
     op::call::{
         missing_contracts::get_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
@@ -174,11 +177,14 @@ pub async fn call_function(
     let fuel_tx::Transaction::Script(script) = tx.into() else {
         return Err(anyhow!("Transaction is not a script"));
     };
-    
+
     // Display the script JSON when verbosity level is 2 or higher (vv)
     if verbosity.v2() {
         let script_json = serde_json::json!({ "Script": script });
-        forc_tracing::println_label_green("transaction script:\n", &serde_json::to_string_pretty(&script_json).unwrap());
+        forc_tracing::println_label_green(
+            "transaction script:\n",
+            &serde_json::to_string_pretty(&script_json).unwrap(),
+        );
     }
 
     // Process transaction results

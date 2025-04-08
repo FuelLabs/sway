@@ -289,7 +289,7 @@ pub struct Command {
     /// Output format for the call result
     #[clap(long, default_value = "default", help_heading = "OUTPUT")]
     pub output: OutputFormat,
-    
+
     /// Set verbosity levels; currently only supports max 2 levels
     #[clap(short = 'v', action = clap::ArgAction::Count, help_heading = "OUTPUT")]
     pub verbosity: u8,
