@@ -57,8 +57,6 @@ pub enum OutputFormat {
     Default,
     /// Raw unformatted output
     Raw,
-    /// JSON formatted output
-    Json,
 }
 
 /// Verbosity level for log output
