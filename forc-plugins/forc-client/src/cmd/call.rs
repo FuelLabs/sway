@@ -57,6 +57,37 @@ pub enum OutputFormat {
     Default,
     /// Raw unformatted output
     Raw,
+    /// JSON formatted output
+    Json,
+}
+
+/// Verbosity level for log output
+#[derive(Debug, Clone, PartialEq, Default)]
+#[repr(transparent)]
+pub struct Verbosity(pub u8);
+
+impl Verbosity {
+    /// Verbose mode (-v)
+    pub(crate) fn v1(&self) -> bool {
+        self.0 >= 1
+    }
+
+    /// Very Verbose mode (-vv)
+    pub(crate) fn v2(&self) -> bool {
+        self.0 >= 2
+    }
+}
+
+impl From<u8> for Verbosity {
+    fn from(level: u8) -> Self {
+        Verbosity(level)
+    }
+}
+
+impl From<Verbosity> for u8 {
+    fn from(verbosity: Verbosity) -> Self {
+        verbosity.0
+    }
 }
 
 /// Flags for specifying the caller account
@@ -260,10 +291,10 @@ pub struct Command {
     /// Output format for the call result
     #[clap(long, default_value = "default", help_heading = "OUTPUT")]
     pub output: OutputFormat,
-
-    /// Show transaction receipts in the output
-    #[clap(long, short = 'r', alias = "receipts", help_heading = "OUTPUT")]
-    pub show_receipts: bool,
+    
+    /// Set verbosity levels; currently only supports max 2 levels
+    #[clap(short = 'v', action = clap::ArgAction::Count, help_heading = "OUTPUT")]
+    pub verbosity: u8,
 }
 
 impl Command {
