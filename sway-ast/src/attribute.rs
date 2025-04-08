@@ -47,6 +47,11 @@ pub const CFG_PROGRAM_TYPE_ARG_NAME: &str = "program_type";
 pub const DEPRECATED_ATTRIBUTE_NAME: &str = "deprecated";
 pub const DEPRECATED_NOTE_ARG_NAME: &str = "note";
 
+// Error types.
+pub const ERROR_TYPE_ATTRIBUTE_NAME: &str = "error_type";
+pub const ERROR_ATTRIBUTE_NAME: &str = "error";
+pub const ERROR_M_ARG_NAME: &str = "m";
+
 pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_ATTRIBUTE_NAME,
     DOC_COMMENT_ATTRIBUTE_NAME,

@@ -1,4 +1,4 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
+use fuels::prelude::*;
 
 abigen!(Contract(
     name = "MethodsContract",
@@ -25,7 +25,7 @@ async fn run_methods_test() {
     assert!(result.value);
 }
 
-async fn get_methods_instance(wallet: WalletUnlocked) -> MethodsContract<WalletUnlocked> {
+async fn get_methods_instance(wallet: Wallet) -> MethodsContract<Wallet> {
     let id = Contract::load_from(
         "test_artifacts/methods_contract/out/release/methods_contract.bin",
         LoadConfiguration::default(),
@@ -33,7 +33,8 @@ async fn get_methods_instance(wallet: WalletUnlocked) -> MethodsContract<WalletU
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     MethodsContract::new(id.clone(), wallet)
 }

@@ -290,6 +290,10 @@ impl Hint {
         }
     }
 
+    pub fn underscored_info(source_engine: &SourceEngine, span: Span) -> Self {
+        Self::info(source_engine, span, "".to_string())
+    }
+
     pub fn multi_info(source_engine: &SourceEngine, span: &Span, hints: Vec<String>) -> Vec<Self> {
         hints
             .into_iter()
