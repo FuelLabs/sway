@@ -39,7 +39,7 @@ impl Syscall {
 /// The application of the syscalls can be turned off,
 /// guaranteeing total isolation from the outside world.
 ///
-/// Capture of the syscalls can be turned on, allowing the
+/// Capture of the syscalls can be turned on, allowing
 /// its application even after the VM is not running anymore.
 ///
 /// Supported syscalls:
