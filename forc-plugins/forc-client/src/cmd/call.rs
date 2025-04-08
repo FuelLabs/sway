@@ -170,6 +170,12 @@ pub enum Operation {
     --abi ./contract-abi.json \
     get_balance 0x0087675439e10a8351b1d5e4cf9d0ea6da77675623ff6b16470b5e3c58998423
 
+# Call a contract with function parameters; additionally print logs, receipts and script json
+» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+    --abi ./contract-abi.json \
+    get_balance 0x0087675439e10a8351b1d5e4cf9d0ea6da77675623ff6b16470b5e3c58998423 \
+    -vv
+
 # Call a contract without function parameters
 » forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --abi ./contract-abi.json \
