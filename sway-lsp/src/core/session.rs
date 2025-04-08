@@ -196,7 +196,6 @@ impl Session {
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
         let _p = tracing::trace_span!("token_definition_response").entered();
-        dbg!(uri.as_str(), position);
         self.token_map
             .token_at_position(uri, position)
             .and_then(|item| item.value().declared_token_ident(&self.engines.read()))
