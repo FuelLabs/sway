@@ -9,5 +9,7 @@ impl S {
     #[payable(invalid)]
     //! Invalid inner comment.
     #[fallback(invalid)]
+    #[error_type(invalid)]
+    #[error(invalid)]
     fn assoc_fn() {}
 }

@@ -1,5 +1,5 @@
 use fuel_vm::fuel_tx::Contract as FuelsTxContract;
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
+use fuels::{prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "ContractBytecodeTest",
@@ -29,8 +29,8 @@ async fn can_get_bytecode_root() {
 }
 
 async fn get_test_contract_instance(
-    wallet: WalletUnlocked,
-) -> (ContractBytecodeTest<WalletUnlocked>, Bech32ContractId) {
+    wallet: Wallet,
+) -> (ContractBytecodeTest<Wallet>, Bech32ContractId) {
     let id = Contract::load_from(
         "test_projects/contract_bytecode/out/release/contract_bytecode.bin",
         LoadConfiguration::default(),
@@ -38,7 +38,8 @@ async fn get_test_contract_instance(
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let instance = ContractBytecodeTest::new(id.clone(), wallet);
 
