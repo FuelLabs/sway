@@ -2724,20 +2724,22 @@ impl<'eng> FnCompiler<'eng> {
 
         let referenced_type = self.engines.te().get_unaliased(referenced_ast_type);
 
-        let result = if referenced_type.is_copy_type() || referenced_type.is_reference() {
+       if referenced_type.is_copy_type() || referenced_type.is_reference() {
             // For non aggregates, we need to return the value.
             // This means, loading the value the `ptr` is pointing to.
-            self.current_block.append(context).load(ptr)
+            let result = self.current_block.append(context).load(ptr);
+            Ok(TerminatorValue::new(
+                CompiledValue::InRegister(result),
+                context,
+            ))
         } else {
             // For aggregates, we access them via pointer, so we just
             // need to return the `ptr`.
-            ptr
-        };
-
-        Ok(TerminatorValue::new(
-            CompiledValue::InRegister(result),
-            context,
-        ))
+            Ok(TerminatorValue::new(
+                CompiledValue::InMemory(ptr),
+                context,
+            ))
+        }
     }
 
     /// Compiles a [ty::TyExpression] of the variant [TyExpressionVariant::Deref]
