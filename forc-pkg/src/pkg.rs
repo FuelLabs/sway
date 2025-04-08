@@ -2385,7 +2385,7 @@ pub fn build(
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let program_ty = manifest.program_type().ok();
-        let dbg_generation = match (profile.is_release(), manifest.project.dbg_release) {
+        let dbg_generation = match (profile.is_release(), manifest.project.force_dbg_in_release) {
             (true, Some(true)) | (false, _) => DbgGeneration::Full,
             (true, _) => DbgGeneration::None,
         };
