@@ -213,7 +213,7 @@ pub struct Project {
     #[serde(default)]
     pub experimental: HashMap<String, bool>,
     pub metadata: Option<toml::Value>,
-    pub dbg_release: Option<bool>,
+    pub force_dbg_in_release: Option<bool>,
 }
 
 // Validation function for the `name` field
@@ -1407,7 +1407,7 @@ mod tests {
             forc_version: None,
             experimental: HashMap::new(),
             metadata: Some(toml::Value::from(toml::value::Table::new())),
-            dbg_release: None,
+            force_dbg_in_release: None,
         };
 
         let serialized = toml::to_string(&project).unwrap();
@@ -1436,7 +1436,7 @@ mod tests {
             forc_version: None,
             experimental: HashMap::new(),
             metadata: None,
-            dbg_release: None,
+            force_dbg_in_release: None,
         };
 
         let serialized = toml::to_string(&project).unwrap();
@@ -1489,7 +1489,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata
             description = "Invalid TOML"
         "#;
@@ -1502,7 +1502,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             ] = "Invalid key"
         "#;
@@ -1515,7 +1515,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             nested = { key = "value1" }
 
@@ -1538,7 +1538,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             boolean = true
             integer = 42
@@ -1574,13 +1574,13 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
             description = "A test workspace"
             version = "1.0.0"
             authors = ["Test Author"]
             homepage = "https://example.com"
-            
+
             [workspace.metadata.ci]
             workflow = "main"
             timeout = 3600
@@ -1619,7 +1619,7 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
         "#;
 
@@ -1634,15 +1634,15 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
             numbers = [1, 2, 3]
             strings = ["a", "b", "c"]
             mixed = [1, "two", true]
-            
+
             [workspace.metadata.nested]
             key = "value"
-            
+
             [workspace.metadata.nested.deep]
             another = "value"
         "#;
