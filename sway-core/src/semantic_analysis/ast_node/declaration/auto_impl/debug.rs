@@ -7,9 +7,10 @@ use crate::{
     Engines, TypeParameter,
 };
 
-use super::abi_encoding::AbiEncodingAutoImplInfo;
+#[derive(Default)]
+pub struct DebugAutoImplInfo {}
 
-pub type DebugAutoImplContext<'a, 'b> = super::AutoImplContext<'a, 'b, AbiEncodingAutoImplInfo>;
+pub type DebugAutoImplContext<'a, 'b> = super::AutoImplContext<'a, 'b, DebugAutoImplInfo>;
 
 impl<'a, 'b> DebugAutoImplContext<'a, 'b>
 where
@@ -21,15 +22,32 @@ where
         decl: &ty::TyDecl,
     ) -> Option<TyAstNode> {
         match decl {
-            TyDecl::StructDecl(_) => self.debug_auto_impl_struct(engines, decl),
-            TyDecl::EnumDecl(_) => self.debug_auto_impl_enum(engines, decl),
+            TyDecl::StructDecl(_) => self.auto_impl_debug_struct(engines, decl),
+            TyDecl::EnumDecl(_) => self.auto_impl_debug_enum(engines, decl),
             _ => None,
         }
     }
 
+    // checks if the current module is a dependency of the `debug` module.
+    fn is_debug_dependency(&self) -> bool {
+        // Dependencies of the debug library in std cannot have debug implemented for them.
+        self.ctx.namespace.current_package_name().as_str() == "std"
+            && matches!(
+                self.ctx.namespace.current_module().name().as_str(),
+                "codec"
+                    | "raw_slice"
+                    | "raw_ptr"
+                    | "ops"
+                    | "primitives"
+                    | "registers"
+                    | "flags"
+                    | "debug"
+            )
+    }
+
     // Auto implements Debug for structs and returns their `AstNode`s.
-    fn debug_auto_impl_struct(&mut self, engines: &Engines, decl: &TyDecl) -> Option<TyAstNode> {
-        if self.ctx.namespace.current_package_name().as_str() == "core" {
+    fn auto_impl_debug_struct(&mut self, engines: &Engines, decl: &TyDecl) -> Option<TyAstNode> {
+        if self.is_debug_dependency() {
             return None;
         }
 
@@ -61,8 +79,8 @@ where
 
         let name = name.as_str();
 
-        format!("#[allow(dead_code)] impl{type_parameters_declaration} Debug for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-            #[allow(dead_code)]
+        format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} Debug for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            #[allow(dead_code, deprecated)]
             fn fmt(self, ref mut _f: Formatter) {{
                 {body}
             }}
@@ -86,8 +104,8 @@ where
     }
 
     // Auto implements Debug for enums and returns their `AstNode`s.
-    fn debug_auto_impl_enum(&mut self, engines: &Engines, decl: &TyDecl) -> Option<TyAstNode> {
-        if self.ctx.namespace.current_package_name().as_str() == "core" {
+    fn auto_impl_debug_enum(&mut self, engines: &Engines, decl: &TyDecl) -> Option<TyAstNode> {
+        if self.is_debug_dependency() {
             return None;
         }
 
