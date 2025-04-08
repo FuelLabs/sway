@@ -101,7 +101,7 @@ pub fn parse(
     match config {
         None => parse_in_memory(handler, engines, src, experimental, DbgGeneration::None),
         // When a `BuildConfig` is given,
-        // the module source may declare `dep`s that must be parsed from other files.
+        // the module source may declare `mod`s that must be parsed from other files.
         Some(config) => parse_module_tree(
             handler,
             engines,
