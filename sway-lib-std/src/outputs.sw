@@ -39,6 +39,8 @@ const OUTPUT_VARIABLE_TO_OFFSET = 8;
 pub enum Output {
     /// A coin output.
     Coin: (),
+    /// A coin output.
+    DataCoin: (),
     /// A contract output.
     Contract: (),
     /// Remaining "change" from spending of a coin.
@@ -86,6 +88,7 @@ pub fn output_type(index: u64) -> Option<Output> {
         2u8 => Some(Output::Change),
         3u8 => Some(Output::Variable),
         4u8 => Some(Output::ContractCreated),
+        5u8 => Some(Output::DataCoin),
         _ => None,
     }
 }
@@ -187,7 +190,7 @@ pub fn output_count() -> u16 {
 /// ```
 pub fn output_amount(index: u64) -> Option<u64> {
     match output_type(index) {
-        Some(Output::Coin) => Some(__gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT)),
+        Some(Output::Coin) | Some(Output::DataCoin) => Some(__gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT)),
         Some(Output::Contract) => None,
         // For now, output changes are always guaranteed to have an amount of
         // zero since they're only set after execution terminates.
@@ -233,7 +236,7 @@ pub fn output_amount(index: u64) -> Option<u64> {
 /// ```
 pub fn output_asset_id(index: u64) -> Option<AssetId> {
     match output_type(index) {
-        Some(Output::Coin) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
+        Some(Output::Coin) | Some(Output::DataCoin) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
         Some(Output::Change) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
         Some(Output::Variable) => {
             let ptr = output_pointer(index).unwrap();
@@ -269,7 +272,7 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 /// ```
 pub fn output_asset_to(index: u64) -> Option<Address> {
     match output_type(index) {
-        Some(Output::Coin) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
+        Some(Output::Coin) | Some(Output::DataCoin) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
         Some(Output::Change) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
         Some(Output::Variable) => {
             let ptr = output_pointer(index).unwrap();
@@ -283,6 +286,7 @@ impl PartialEq for Output {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Output::Coin, Output::Coin) => true,
+            (Output::DataCoin, Output::DataCoin) => true,
             (Output::Contract, Output::Contract) => true,
             (Output::Change, Output::Change) => true,
             (Output::Variable, Output::Variable) => true,
@@ -292,3 +296,14 @@ impl PartialEq for Output {
     }
 }
 impl Eq for Output {}
+
+
+pub fn output_data_coin_data<T>(index: u64) -> Option<T>
+where
+    T: AbiDecode,
+{
+    match output_type(index) {
+        Some(Output::DataCoin) => Some(decode_output_data_coin_data_by_index::<T>(index)),
+        _ => None,
+    }
+}

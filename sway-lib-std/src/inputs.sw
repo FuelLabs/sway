@@ -35,6 +35,8 @@ pub const GTF_INPUT_COIN_PREDICATE_LENGTH = 0x209;
 pub const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x20A;
 pub const GTF_INPUT_COIN_PREDICATE = 0x20B;
 pub const GTF_INPUT_COIN_PREDICATE_DATA = 0x20C;
+pub const GTF_INPUT_DATA_COIN_DATA_LENGTH = 0x20E;
+pub const GTF_INPUT_DATA_COIN_DATA = 0x20F;
 // pub const GTF_INPUT_COIN_PREDICATE_GAS_USED = 0x20D;
 // pub const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x225;
 pub const GTF_INPUT_MESSAGE_SENDER = 0x240;
@@ -54,6 +56,8 @@ pub const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x24A;
 pub enum Input {
     /// A coin input.
     Coin: (),
+    /// A coin input.
+    DataCoin: (),
     /// A contract input.
     Contract: (),
     /// A message input.
@@ -64,6 +68,7 @@ impl PartialEq for Input {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Input::Coin, Input::Coin) => true,
+            (Input::DataCoin, Input::DataCoin) => true,
             (Input::Contract, Input::Contract) => true,
             (Input::Message, Input::Message) => true,
             _ => false,
@@ -107,6 +112,7 @@ pub fn input_type(index: u64) -> Option<Input> {
         0u8 => Some(Input::Coin),
         1u8 => Some(Input::Contract),
         2u8 => Some(Input::Message),
+        3u8 => Some(Input::DataCoin),
         _ => None,
     }
 }
@@ -199,7 +205,7 @@ fn input_pointer(index: u64) -> Option<raw_ptr> {
 /// ```
 pub fn input_amount(index: u64) -> Option<u64> {
     match input_type(index) {
-        Some(Input::Coin) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT)),
+        Some(Input::Coin) | Some(Input::DataCoin) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT)),
         Some(Input::Message) => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_AMOUNT)),
         _ => None,
     }
@@ -227,7 +233,7 @@ pub fn input_amount(index: u64) -> Option<u64> {
 /// ```
 pub fn input_coin_owner(index: u64) -> Option<Address> {
     match input_type(index) {
-        Some(Input::Coin) => Some(Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
+        Some(Input::Coin) | Some(Input::DataCoin) => Some(Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
         _ => None,
     }
 }
@@ -254,7 +260,7 @@ pub fn input_coin_owner(index: u64) -> Option<Address> {
 #[allow(dead_code)]
 fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
     match input_type(index) {
-        Some(Input::Coin) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE_DATA)),
+        Some(Input::Coin) | Some(Input::DataCoin) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE_DATA)),
         Some(Input::Message) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA)),
         _ => None,
     }
@@ -285,8 +291,18 @@ where
     T: AbiDecode,
 {
     match input_type(index) {
-        Some(Input::Coin) => Some(decode_predicate_data_by_index::<T>(index)),
+        Some(Input::Coin) | Some(Input::DataCoin) => Some(decode_predicate_data_by_index::<T>(index)),
         Some(Input::Message) => Some(decode_predicate_data_by_index::<T>(index)),
+        _ => None,
+    }
+}
+
+pub fn input_data_coin_data<T>(index: u64) -> Option<T>
+where
+    T: AbiDecode,
+{
+    match input_type(index) {
+        Some(Input::DataCoin) => Some(decode_data_coin_data_by_index::<T>(index)),
         _ => None,
     }
 }
@@ -313,7 +329,7 @@ where
 /// ```
 pub fn input_asset_id(index: u64) -> Option<AssetId> {
     match input_type(index) {
-        Some(Input::Coin) => Some(AssetId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
+        Some(Input::Coin) | Some(Input::DataCoin) => Some(AssetId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
         Some(Input::Message) => Some(AssetId::base()),
         _ => None,
     }
@@ -341,7 +357,7 @@ pub fn input_asset_id(index: u64) -> Option<AssetId> {
 /// ```
 pub fn input_witness_index(index: u64) -> Option<u16> {
     match input_type(index) {
-        Some(Input::Coin) => Some(__gtf::<u16>(index, GTF_INPUT_COIN_WITNESS_INDEX)),
+        Some(Input::Coin) | Some(Input::DataCoin) => Some(__gtf::<u16>(index, GTF_INPUT_COIN_WITNESS_INDEX)),
         Some(Input::Message) => Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)),
         _ => None,
     }
@@ -369,7 +385,7 @@ pub fn input_witness_index(index: u64) -> Option<u16> {
 /// ```
 pub fn input_predicate_length(index: u64) -> Option<u64> {
     match input_type(index) {
-        Some(Input::Coin) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_LENGTH)),
+        Some(Input::Coin) | Some(Input::DataCoin) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_LENGTH)),
         Some(Input::Message) => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH)),
         _ => None,
     }
@@ -397,7 +413,7 @@ pub fn input_predicate_length(index: u64) -> Option<u64> {
 /// ```
 fn input_predicate_pointer(index: u64) -> Option<raw_ptr> {
     match input_type(index) {
-        Some(Input::Coin) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE)),
+        Some(Input::Coin) | Some(Input::DataCoin) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE)),
         Some(Input::Message) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_PREDICATE)),
         _ => None,
     }
@@ -462,8 +478,15 @@ pub fn input_predicate(index: u64) -> Option<Bytes> {
 /// ```
 pub fn input_predicate_data_length(index: u64) -> Option<u64> {
     match input_type(index) {
-        Some(Input::Coin) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH)),
+        Some(Input::Coin) | Some(Input::DataCoin) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH)),
         Some(Input::Message) => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)),
+        _ => None,
+    }
+}
+
+pub fn input_data_coin_data_length(index: u64) -> Option<u64> {
+    match input_type(index) {
+        Some(Input::DataCoin) => Some(__gtf::<u64>(index, GTF_INPUT_DATA_COIN_DATA_LENGTH)),
         _ => None,
     }
 }
