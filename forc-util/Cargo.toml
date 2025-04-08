@@ -24,6 +24,7 @@ hex.workspace = true
 mark-flaky-tests.workspace = true
 paste.workspace = true
 regex.workspace = true
+rustrict.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serial_test.workspace = true
