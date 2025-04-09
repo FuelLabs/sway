@@ -65,6 +65,12 @@ impl source::Fetch for Pinned {
         }
 
         let mut lock = forc_util::path_lock(repo_path)?;
+        // TODO: Here we assume that if the local path already exists, that it contains the
+        // full and correct source for that registry entry and hasn't been tampered with. This is
+        // probably fine for most cases as users should never be touching these
+        // directories, however we should add some code to validate this. E.g. can we
+        // recreate the ipfs cid by hashing the directory or something along these lines?
+        // https://github.com/FuelLabs/sway/issues/7075
         {
             let _guard = lock.write()?;
             if !repo_path.exists() {

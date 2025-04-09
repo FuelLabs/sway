@@ -345,6 +345,7 @@ impl source::Fetch for Pinned {
         // probably fine for most cases as users should never be touching these
         // directories, however we should add some code to validate this. E.g. can we
         // recreate the ipfs cid by hashing the directory or something along these lines?
+        // https://github.com/FuelLabs/sway/issues/7075
         {
             let _guard = lock.write()?;
             if !path.exists() {
