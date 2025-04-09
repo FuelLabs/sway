@@ -50,7 +50,7 @@ pub struct ServerState {
     pub(crate) cb_rx: Arc<Receiver<TaskMessage>>,
     pub(crate) finished_compilation: Arc<Notify>,
     pub(crate) pid_locked_files: PidLockedFiles,
-    manifest_cache: DashMap<Url, Arc<PathBuf>>,
+    pub manifest_cache: DashMap<Url, Arc<PathBuf>>,
     last_compilation_state: Arc<RwLock<LastCompilationState>>,
 }
 

@@ -165,6 +165,26 @@ fn did_change() {
     });
 }
 
+#[test]
+fn sync_with_updates_to_manifest_in_workspace() {
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let path = test_fixtures_dir().join("workspace/test-contract/src/main.sw");
+        eprintln!("compiling path: {:#?}", path);
+        let uri = init_and_open(&mut service, path).await;
+        
+        // get all the keys from the manifest cache and print them
+        let manifest_cache: Vec<_> = service.inner().manifest_cache.clone().into_read_only().keys().cloned().collect();
+        eprintln!("manifest cache: {:#?}", manifest_cache);
+
+        eprintln!("did change");
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
+        service.inner().wait_for_parsing().await;
+        eprintln!("test complete");
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
 // TODO: Fix this test Issue #7002
 // #[test]
 // fn did_cache_test() {
