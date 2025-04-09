@@ -925,7 +925,7 @@ fn get_struct_type_info_from_type_id(
     match type_info {
         TypeInfo::Enum(decl_ref) => {
             let decl = decl_engine.get_enum(&decl_ref);
-            for p in decl.type_parameters.iter() {
+            for p in decl.generic_parameters.iter() {
                 let p = p
                     .as_type_parameter()
                     .expect("only works with type parameters");
@@ -2506,7 +2506,7 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(enum_idx) = enum_idx.cloned() {
                 graph.add_edge(entry_node, enum_idx, "".into());
             }
-            for p in &decl.type_parameters {
+            for p in &decl.generic_parameters {
                 let p = p
                     .as_type_parameter()
                     .expect("only works with type parameters");
@@ -2519,10 +2519,11 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(struct_idx) = struct_idx.cloned() {
                 graph.add_edge(entry_node, struct_idx, "".into());
             }
-            for p in &decl.type_parameters {
-                let p = p
-                    .as_type_parameter()
-                    .expect("only works with type parameters");
+            for p in decl
+                .generic_parameters
+                .iter()
+                .filter_map(|x| x.as_type_parameter())
+            {
                 connect_type_id(engines, p.type_id, graph, entry_node)?;
             }
         }

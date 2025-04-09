@@ -3,7 +3,11 @@ use crate::{
     decl_engine::{parsed_id::ParsedDeclId, DeclMapping, InterfaceItemMap, ItemMap},
     engine_threading::*,
     has_changes,
-    language::{parsed::ConstGenericDeclaration, ty, CallPath},
+    language::{
+        parsed::ConstGenericDeclaration,
+        ty::{self, TyExpression},
+        CallPath,
+    },
     namespace::TraitMap,
     semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::priv_prelude::*,
@@ -119,6 +123,13 @@ impl TypeParameter {
         match self {
             TypeParameter::Type(_) => None,
             TypeParameter::Const(p) => Some(p),
+        }
+    }
+
+    pub fn is_from_parent(&self) -> bool {
+        match self {
+            TypeParameter::Type(p) => p.is_from_parent,
+            TypeParameter::Const(p) => p.is_from_parent,
         }
     }
 
@@ -852,12 +863,142 @@ fn handle_trait(
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ConstGenericExpr {
+    Literal { val: usize, span: Span },
+    AmbiguousVariableExpression { ident: Ident },
+}
+
+impl ConstGenericExpr {
+    pub fn from_ty_expression(
+        handler: &Handler,
+        expr: &ty::TyExpression,
+    ) -> Result<Self, ErrorEmitted> {
+        match &expr.expression {
+            ty::TyExpressionVariant::Literal(crate::language::Literal::U64(val)) => {
+                Ok(ConstGenericExpr::Literal {
+                    val: *val as usize,
+                    span: expr.span.clone(),
+                })
+            }
+            ty::TyExpressionVariant::ConstGenericExpression { call_path, .. } => {
+                Ok(ConstGenericExpr::AmbiguousVariableExpression {
+                    ident: call_path.suffix.clone(),
+                })
+            }
+            _ => Err(
+                handler.emit_err(CompileError::ConstGenericNotSupportedHere {
+                    span: expr.span.clone(),
+                }),
+            ),
+        }
+    }
+
+    pub fn to_ty_expression(&self, engines: &Engines) -> TyExpression {
+        match self {
+            ConstGenericExpr::Literal { val, span } => TyExpression {
+                expression: ty::TyExpressionVariant::Literal(crate::language::Literal::U64(
+                    *val as u64,
+                )),
+                return_type: engines.te().id_of_u64(),
+                span: span.clone(),
+            },
+            ConstGenericExpr::AmbiguousVariableExpression { .. } => todo!(),
+        }
+    }
+
+    pub fn discriminant_value(&self) -> usize {
+        match &self {
+            Self::Literal { .. } => 0,
+            Self::AmbiguousVariableExpression { .. } => 1,
+        }
+    }
+
+    /// Creates a new literal [Length] without span annotation.
+    pub fn literal(val: usize, span: Option<Span>) -> Self {
+        Self::Literal {
+            val,
+            span: span.unwrap_or(Span::dummy()),
+        }
+    }
+
+    pub fn as_literal_val(&self) -> Option<usize> {
+        match self {
+            Self::Literal { val, .. } => Some(*val),
+            _ => None,
+        }
+    }
+
+    pub fn is_annotated(&self) -> bool {
+        !self.span().is_dummy()
+    }
+}
+
+impl PartialOrd for ConstGenericExpr {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l.partial_cmp(r),
+            (
+                Self::AmbiguousVariableExpression { ident: l },
+                Self::AmbiguousVariableExpression { ident: r },
+            ) => l.partial_cmp(r),
+            _ => None,
+        }
+    }
+}
+
+impl Eq for ConstGenericExpr {}
+
+impl PartialEq for ConstGenericExpr {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l == r,
+            (
+                Self::AmbiguousVariableExpression { ident: l },
+                Self::AmbiguousVariableExpression { ident: r },
+            ) => l == r,
+            _ => false,
+        }
+    }
+}
+
+impl std::hash::Hash for ConstGenericExpr {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
+        match self {
+            Self::Literal { val, .. } => val.hash(state),
+            Self::AmbiguousVariableExpression { ident } => ident.hash(state),
+        }
+    }
+}
+
+impl Spanned for ConstGenericExpr {
+    fn span(&self) -> Span {
+        match self {
+            Self::Literal { span, .. } => span.clone(),
+            Self::AmbiguousVariableExpression { ident, .. } => ident.span(),
+        }
+    }
+}
+
+impl DebugWithEngines for ConstGenericExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &crate::Engines) -> std::fmt::Result {
+        match self {
+            Self::Literal { val, .. } => write!(f, "{val}"),
+            Self::AmbiguousVariableExpression { ident } => {
+                write!(f, "{}", ident.as_str())
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstGenericParameter {
     pub name: Ident,
     pub ty: TypeId,
     pub is_from_parent: bool,
     pub span: Span,
     pub id: Option<ParsedDeclId<ConstGenericDeclaration>>,
+    pub expr: Option<ConstGenericExpr>,
 }
 
 impl HashWithEngines for ConstGenericParameter {
@@ -871,8 +1012,8 @@ impl HashWithEngines for ConstGenericParameter {
 
 impl EqWithEngines for ConstGenericParameter {}
 impl PartialEqWithEngines for ConstGenericParameter {
-    fn eq(&self, _other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
-        todo!()
+    fn eq(&self, other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name.as_str() == other.name.as_str()
     }
 }
 

@@ -59,6 +59,7 @@ pub fn resolve_type(
                 check_visibility,
             )
             .ok();
+
             type_decl_opt_to_type_id(
                 handler,
                 engines,
