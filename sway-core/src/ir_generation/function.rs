@@ -2717,14 +2717,13 @@ impl<'eng> FnCompiler<'eng> {
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let (ptr, referenced_ast_type) =
-            self.compile_deref_up_to_ptr(context, md_mgr, ast_expr, span_md_idx)?;
+        let (ptr, referenced_ast_type) = self.compile_deref_up_to_ptr(context, md_mgr, ast_expr)?;
 
         let ptr = return_on_termination_or_extract!(ptr).unwrap_memory();
 
         let referenced_type = self.engines.te().get_unaliased(referenced_ast_type);
 
-       if referenced_type.is_copy_type() || referenced_type.is_reference() {
+        if referenced_type.is_copy_type() || referenced_type.is_reference() {
             // For non aggregates, we need to return the value.
             // This means, loading the value the `ptr` is pointing to.
             let result = self.current_block.append(context).load(ptr);
@@ -2735,10 +2734,7 @@ impl<'eng> FnCompiler<'eng> {
         } else {
             // For aggregates, we access them via pointer, so we just
             // need to return the `ptr`.
-            Ok(TerminatorValue::new(
-                CompiledValue::InMemory(ptr),
-                context,
-            ))
+            Ok(TerminatorValue::new(CompiledValue::InMemory(ptr), context))
         }
     }
 
@@ -2759,7 +2755,6 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-        span_md_idx: Option<MetadataIndex>,
     ) -> Result<(TerminatorValue, TypeId), CompileError> {
         let ref_value = self.compile_expression_to_memory(context, md_mgr, ast_expr)?;
         let ref_value = if ref_value.is_terminator {
@@ -2768,7 +2763,7 @@ impl<'eng> FnCompiler<'eng> {
             ref_value.value.unwrap_memory()
         };
 
-        let ptr_as_int = if ref_value
+        let ptr = if ref_value
             .get_type(context)
             .is_some_and(|ref_value_type| ref_value_type.is_ptr(context))
         {
@@ -2792,21 +2787,6 @@ impl<'eng> FnCompiler<'eng> {
                 ast_expr.span.clone(),
             )),
         }?;
-
-        let referenced_ir_type = convert_resolved_type_id(
-            self.engines.te(),
-            self.engines.de(),
-            context,
-            referenced_ast_type,
-            &ast_expr.span.clone(),
-        )?;
-
-        let ptr_type = Type::new_ptr(context, referenced_ir_type);
-        let ptr = self
-            .current_block
-            .append(context)
-            .int_to_ptr(ptr_as_int, ptr_type)
-            .add_metadatum(context, span_md_idx);
 
         Ok((
             TerminatorValue::new(CompiledValue::InMemory(ptr), context),
@@ -3848,8 +3828,7 @@ impl<'eng> FnCompiler<'eng> {
                     ));
                 };
 
-                let (ptr, _) =
-                    self.compile_deref_up_to_ptr(context, md_mgr, reference_exp, span_md_idx)?;
+                let (ptr, _) = self.compile_deref_up_to_ptr(context, md_mgr, reference_exp)?;
 
                 if indices.is_empty() {
                     // A non-aggregate;
