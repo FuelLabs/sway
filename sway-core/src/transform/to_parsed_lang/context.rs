@@ -28,7 +28,7 @@ pub struct Context {
     /// The build target.
     build_target: BuildTarget,
 
-    /// The build profile (debug or release).
+    /// Indicates whether the `__dbg` intrinsic generates code or not
     dbg_generation: DbgGeneration,
 
     /// The program type.

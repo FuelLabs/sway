@@ -2055,7 +2055,7 @@ fn expr_func_app_to_expression_kind(
         Some(Intrinsic::Dbg)
             if context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root =>
         {
-            if arguments.len() > 1 {
+            if arguments.len() != 1 {
                 return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
                     name: Intrinsic::Dbg.to_string(),
                     expected: 1,
@@ -2094,26 +2094,31 @@ fn expr_func_app_to_expression_kind(
                 is_mutable: true,
             });
 
-            let current_file = span
-                .source_id()
-                .map(|x| engines.se().get_path(x))
-                .unwrap_or_default();
-            let current_line_col = span.line_col();
+            fn get_current_file_from_span(engines: &Engines, span: &Span) -> String {
+                let Some(source_id) = span.source_id() else {
+                    return String::new();
+                };
+                let current_file = engines.se().get_path(source_id);
 
-            // find the manifest path of the current span
-            let program_id = engines
-                .se()
-                .get_program_id_from_manifest_path(&current_file)
-                .unwrap();
-            let manifest_path = engines
-                .se()
-                .get_manifest_path_from_program_id(&program_id)
-                .unwrap();
-            let current_file = current_file
-                .display()
-                .to_string()
-                .replace(&manifest_path.display().to_string(), "");
-            let current_file = current_file.strip_prefix("/").unwrap();
+                // find the manifest path of the current span
+                let program_id = engines
+                    .se()
+                    .get_program_id_from_manifest_path(&current_file)
+                    .unwrap();
+                let manifest_path = engines
+                    .se()
+                    .get_manifest_path_from_program_id(&program_id)
+                    .unwrap();
+                let current_file = current_file
+                    .display()
+                    .to_string()
+                    .replace(&manifest_path.display().to_string(), "");
+                if let Some(current_file) = current_file.strip_prefix("/") {
+                    current_file.to_string()
+                } else {
+                    current_file
+                }
+            }
 
             fn ast_node_to_print_str(f_ident: BaseIdent, s: &str, span: &Span) -> AstNode {
                 AstNode {
@@ -2147,6 +2152,9 @@ fn expr_func_app_to_expression_kind(
                     span: span.clone(),
                 }
             }
+
+            let current_file = get_current_file_from_span(engines, &span);
+            let current_line_col = span.line_col();
 
             let arg_id: String = format!("arg_{}", context.next_for_unique_suffix());
             let arg_ident = BaseIdent::new_no_span(arg_id.to_string());
@@ -2236,6 +2244,13 @@ fn expr_func_app_to_expression_kind(
         Some(Intrinsic::Dbg)
             if !context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root =>
         {
+            if arguments.len() != 1 {
+                return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+                    name: Intrinsic::Dbg.to_string(),
+                    expected: 1,
+                    span,
+                }));
+            }
             return Ok(arguments[0].kind.clone());
         }
         Some(intrinsic) if last.is_none() && !is_relative_to_root => {
