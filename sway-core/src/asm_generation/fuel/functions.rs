@@ -636,6 +636,7 @@ impl FuelAsmBuilder<'_, '_> {
         });
     }
 
+    //TODO: @hal3e - ask someone from compiler if we need to update this
     /// Read the returns the base pointer for predicate data
     fn read_args_base_from_predicate_data(&mut self, base_reg: &VirtualRegister) {
         // Final label to jump to continue execution, once the predicate data pointer is

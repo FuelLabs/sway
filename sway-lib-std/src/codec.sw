@@ -2,6 +2,24 @@ library;
 
 use ::raw_slice::*;
 
+const GTF_SCRIPT_DATA = 0xA;
+const GTF_SCRIPT_DATA_LENGTH = 0x4;
+
+const GTF_INPUT_TYPE = 0x200;
+const INPUT_COIN = 0u8;
+const INPUT_MESSAGE = 2u8;
+const INPUT_DATA_COIN = 3u8;
+const GTF_OUTPUT_TYPE = 0x300;
+const OUTPUT_DATA_COIN = 5u8;
+const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x20A;
+const GTF_INPUT_COIN_PREDICATE_DATA = 0x20C;
+const GTF_INPUT_DATA_COIN_DATA_LENGTH = 0x20E;
+const GTF_INPUT_DATA_COIN_DATA = 0x20F;
+const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x247;
+const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x24A;
+const GTF_OUTPUT_DATA_COIN_DATA = 0x311;
+const GTF_OUTPUT_DATA_COIN_DATA_LENGTH = 0x310;
+
 pub struct Buffer {
     buffer: (raw_ptr, u64, u64), // ptr, capacity, size
 }
@@ -73,8 +91,8 @@ impl BufferReader {
     }
 
     pub fn from_script_data() -> BufferReader {
-        let ptr = __gtf::<raw_ptr>(0, 0xA); // SCRIPT_DATA
-        let _len = __gtf::<u64>(0, 0x4); // SCRIPT_DATA_LEN
+        let ptr = __gtf::<raw_ptr>(0, GTF_SCRIPT_DATA);
+        let _len = __gtf::<u64>(0, GTF_SCRIPT_DATA_LENGTH);
         BufferReader { ptr }
     }
 
@@ -87,15 +105,42 @@ impl BufferReader {
     }
 
     pub fn from_predicate_data_by_index(predicate_index: u64) -> BufferReader {
-        match __gtf::<u8>(predicate_index, 0x200) { // GTF_INPUT_TYPE
-            0u8 => {
-                let ptr = __gtf::<raw_ptr>(predicate_index, 0x20C); // INPUT_COIN_PREDICATE_DATA
-                let _len = __gtf::<u64>(predicate_index, 0x20A); // INPUT_COIN_PREDICATE_DATA_LENGTH
+        match __gtf::<u8>(predicate_index, GTF_INPUT_TYPE) {
+            INPUT_COIN => {
+                let ptr = __gtf::<raw_ptr>(predicate_index, GTF_INPUT_COIN_PREDICATE_DATA);
+                let _len = __gtf::<u64>(predicate_index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH);
                 BufferReader { ptr }
             },
-            2u8 => {
-                let ptr = __gtf::<raw_ptr>(predicate_index, 0x24A); // INPUT_MESSAGE_PREDICATE_DATA
-                let _len = __gtf::<u64>(predicate_index, 0x247); // INPUT_MESSAGE_PREDICATE_DATA_LENGTH
+            INPUT_MESSAGE => {
+                let ptr = __gtf::<raw_ptr>(predicate_index, GTF_INPUT_MESSAGE_PREDICATE_DATA);
+                let _len = __gtf::<u64>(predicate_index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH);
+                BufferReader { ptr }
+            },
+            INPUT_DATA_COIN => {
+                let ptr = __gtf::<raw_ptr>(predicate_index, GTF_INPUT_COIN_PREDICATE_DATA);
+                let _len = __gtf::<u64>(predicate_index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH);
+                BufferReader { ptr }
+            },
+            _ => __revert(0),
+        }
+    }
+
+    pub fn from_data_coin_data_by_index (data_coin_index: u64) -> BufferReader {
+        match __gtf::<u8>(data_coin_index, GTF_INPUT_TYPE) {
+            INPUT_DATA_COIN => {
+                let ptr = __gtf::<raw_ptr>(data_coin_index, GTF_INPUT_DATA_COIN_DATA);
+                let _len = __gtf::<u64>(data_coin_index, GTF_INPUT_DATA_COIN_DATA_LENGTH);
+                BufferReader { ptr }
+            },
+            _ => __revert(0),
+        }
+    }
+
+    pub fn from_output_data_coin_data_by_index (data_coin_index: u64) -> BufferReader {
+        match __gtf::<u8>(data_coin_index, GTF_OUTPUT_TYPE) {
+            OUTPUT_DATA_COIN => {
+                let ptr = __gtf::<raw_ptr>(data_coin_index, GTF_OUTPUT_DATA_COIN_DATA);
+                let _len = __gtf::<u64>(data_coin_index, GTF_OUTPUT_DATA_COIN_DATA_LENGTH);
                 BufferReader { ptr }
             },
             _ => __revert(0),
@@ -5231,6 +5276,22 @@ where
     T: AbiDecode,
 {
     let mut buffer = BufferReader::from_predicate_data_by_index(index);
+    T::abi_decode(buffer)
+}
+
+pub fn decode_data_coin_data_by_index<T>(index: u64) -> T
+where
+    T: AbiDecode,
+{
+    let mut buffer = BufferReader::from_data_coin_data_by_index(index);
+    T::abi_decode(buffer)
+}
+
+pub fn decode_output_data_coin_data_by_index<T>(index: u64) -> T
+where
+    T: AbiDecode,
+{
+    let mut buffer = BufferReader::from_output_data_coin_data_by_index(index);
     T::abi_decode(buffer)
 }
 
