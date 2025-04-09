@@ -297,6 +297,8 @@ pub struct Command {
     pub output: OutputFormat,
 
     /// Set verbosity levels; currently only supports max 2 levels
+    /// - `-v=1`: Print decoded logs
+    /// - `-v=2`: Additionally print receipts and script json
     #[clap(short = 'v', action = clap::ArgAction::Count, help_heading = "OUTPUT")]
     pub verbosity: u8,
 }
