@@ -991,7 +991,7 @@ impl TypeId {
 
                 let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
-                for p in decl.type_parameters.iter() {
+                for p in decl.generic_parameters.iter() {
                     let p = p
                         .as_type_parameter()
                         .expect("only works with type parameters");
@@ -1008,7 +1008,7 @@ impl TypeId {
                 }
 
                 let type_arguments = decl
-                    .type_parameters
+                    .generic_parameters
                     .iter()
                     .map(|p| {
                         let p = p
@@ -1045,7 +1045,7 @@ impl TypeId {
 
                 let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
-                for p in decl.type_parameters.iter() {
+                for p in decl.generic_parameters.iter() {
                     let p = p
                         .as_type_parameter()
                         .expect("only works with type parameters");
@@ -1062,7 +1062,7 @@ impl TypeId {
                 }
 
                 let type_arguments = decl
-                    .type_parameters
+                    .generic_parameters
                     .iter()
                     .map(|p| {
                         let p = p
@@ -1141,7 +1141,7 @@ impl TypeId {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 Some(
-                    decl.type_parameters
+                    decl.generic_parameters
                         .iter()
                         .map(|p| {
                             let p = p
@@ -1163,7 +1163,7 @@ impl TypeId {
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
                 Some(
-                    decl.type_parameters
+                    decl.generic_parameters
                         .iter()
                         .map(|p| {
                             let p = p

@@ -223,19 +223,23 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 let struct_decl = decl_engine.get_struct(struct_id);
-                for p in &struct_decl.type_parameters {
-                    let p = p
-                        .as_type_parameter()
-                        .expect("only works for type parameters");
-                    ctx.call_site_insert(p.type_id, instantiation_span.clone());
+                for p in &struct_decl.generic_parameters {
+                    match p {
+                        TypeParameter::Type(p) => {
+                            ctx.call_site_insert(p.type_id, instantiation_span.clone());
+                        }
+                        TypeParameter::Const(_) => {}
+                    }
                 }
                 if let TypeInfo::Struct(decl_ref) = &*ctx.engines.te().get(self.return_type) {
                     let decl = decl_engine.get_struct(decl_ref);
-                    for p in &decl.type_parameters {
-                        let p = p
-                            .as_type_parameter()
-                            .expect("only works for type parameters");
-                        ctx.call_site_insert(p.type_id, instantiation_span.clone());
+                    for p in &decl.generic_parameters {
+                        match p {
+                            TypeParameter::Type(p) => {
+                                ctx.call_site_insert(p.type_id, instantiation_span.clone());
+                            }
+                            TypeParameter::Const(_) => {}
+                        }
                     }
                 }
                 for field in fields.iter() {
@@ -308,7 +312,7 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
-                for p in enum_decl.type_parameters.iter() {
+                for p in enum_decl.generic_parameters.iter() {
                     let p = p
                         .as_type_parameter()
                         .expect("only works for type parameters");
@@ -325,7 +329,7 @@ impl CollectTypesMetadata for TyExpression {
                             .collect_types_metadata(handler, ctx)?,
                     );
                 }
-                for p in enum_decl.type_parameters.iter() {
+                for p in enum_decl.generic_parameters.iter() {
                     let p = p
                         .as_type_parameter()
                         .expect("only works for type parameters");

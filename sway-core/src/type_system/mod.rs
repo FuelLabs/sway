@@ -119,7 +119,7 @@ fn generic_enum_resolution() {
     let decl_ref_1 = engines.de().insert(
         TyEnumDecl {
             call_path,
-            type_parameters: vec![placeholder_type_param],
+            generic_parameters: vec![placeholder_type_param],
             variants: variant_types,
             span: sp.clone(),
             visibility: crate::language::Visibility::Public,
@@ -161,7 +161,7 @@ fn generic_enum_resolution() {
     let decl_ref_2 = engines.de().insert(
         TyEnumDecl {
             call_path,
-            type_parameters: vec![type_param],
+            generic_parameters: vec![type_param],
             variants: variant_types.clone(),
             span: sp.clone(),
             visibility: crate::language::Visibility::Public,
