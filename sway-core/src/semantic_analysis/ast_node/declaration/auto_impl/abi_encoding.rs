@@ -211,7 +211,7 @@ where
         let abi_encode_body = self.generate_abi_encode_struct_body(engines, &struct_decl);
         let abi_encode_code = self.generate_abi_encode_code(
             struct_decl.name(),
-            &struct_decl.type_parameters,
+            &struct_decl.generic_parameters,
             abi_encode_body,
         );
         let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
@@ -224,7 +224,7 @@ where
         let abi_decode_body = self.generate_abi_decode_struct_body(engines, &struct_decl);
         let abi_decode_code = self.generate_abi_decode_code(
             struct_decl.name(),
-            &struct_decl.type_parameters,
+            &struct_decl.generic_parameters,
             abi_decode_body?,
         );
         let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
@@ -258,7 +258,7 @@ where
         let abi_encode_body = self.generate_abi_encode_enum_body(engines, &enum_decl);
         let abi_encode_code = self.generate_abi_encode_code(
             enum_decl.name(),
-            &enum_decl.type_parameters,
+            &enum_decl.generic_parameters,
             abi_encode_body,
         );
         let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
@@ -271,7 +271,7 @@ where
         let abi_decode_body = self.generate_abi_decode_enum_body(engines, &enum_decl);
         let abi_decode_code = self.generate_abi_decode_code(
             enum_decl.name(),
-            &enum_decl.type_parameters,
+            &enum_decl.generic_parameters,
             abi_decode_body?,
         );
         let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(

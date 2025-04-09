@@ -99,12 +99,7 @@ where
             let non_parent_type_params = value
                 .type_parameters()
                 .iter()
-                .filter(|x| {
-                    let x = x
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
-                    !x.is_from_parent
-                })
+                .filter(|x| !x.is_from_parent())
                 .count()
                 - adjust_for_trait_decl;
 
@@ -124,14 +119,17 @@ where
                 )));
             }
 
-            for type_argument in type_arguments.iter_mut() {
-                *type_argument.type_id_mut() = resolve_type(
+            let args = type_arguments
+                .iter_mut()
+                .filter_map(|x| x.as_type_argument_mut());
+            for type_argument in args {
+                type_argument.type_id = resolve_type(
                     handler,
                     engines,
                     namespace,
                     mod_path,
-                    type_argument.type_id(),
-                    &type_argument.span(),
+                    type_argument.type_id,
+                    &type_argument.span,
                     enforce_type_arguments,
                     None,
                     self_type,
@@ -140,23 +138,33 @@ where
                 )
                 .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }
-            let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-                value
-                    .type_parameters()
-                    .iter()
-                    .map(|type_param| {
-                        let type_param = type_param
-                            .as_type_parameter()
-                            .expect("only works with type parameters");
-                        type_param.type_id
-                    })
-                    .collect(),
-                type_arguments
-                    .iter()
-                    .map(|type_arg| type_arg.type_id())
-                    .collect(),
-            );
-            Ok(type_mapping)
+
+            let mut params = vec![];
+            let mut args = vec![];
+            let mut consts = BTreeMap::new();
+            for (p, a) in value.type_parameters().iter().zip(type_arguments.iter()) {
+                match (p, a) {
+                    (TypeParameter::Type(p), GenericArgument::Type(a)) => {
+                        params.push(p.type_id);
+                        args.push(a.type_id);
+                    }
+                    (TypeParameter::Const(p), GenericArgument::Const(a)) => {
+                        consts.insert(
+                            p.name.as_str().to_string(),
+                            a.expr.to_ty_expression(engines),
+                        );
+                    }
+                    // TODO const generic was not materialized yet
+                    (TypeParameter::Const(_), GenericArgument::Type(_)) => {}
+                    x => todo!("{x:?}"),
+                }
+            }
+
+            Ok(
+                TypeSubstMap::from_type_parameters_and_type_arguments_and_const_generics(
+                    params, args, consts,
+                ),
+            )
         }
     }
 }
@@ -223,6 +231,10 @@ where
     value.subst(&SubstTypesContext::new(engines, &type_mapping, true));
 
     for (name, expr) in const_generics.iter() {
+        let _ = value.materialize_const_generics(engines, handler, name, expr);
+    }
+
+    for (name, expr) in type_mapping.const_generics_materialization.iter() {
         let _ = value.materialize_const_generics(engines, handler, name, expr);
     }
 
@@ -337,6 +349,9 @@ pub(crate) fn type_decl_opt_to_type_id(
                     span.clone(),
                 )));
             }
+        }
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::ConstGenericDecl(_))) => {
+            return Ok(engines.te().id_of_u64())
         }
         _ => {
             let err = handler.emit_err(CompileError::UnknownTypeName {

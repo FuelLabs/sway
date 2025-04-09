@@ -1103,7 +1103,7 @@ impl Parse for GenericArgument {
         let type_info = ctx.engines.te().get(self.type_id());
         match &*type_info {
             TypeInfo::Array(type_arg, length) => {
-                let ident = Ident::new(length.span());
+                let ident = Ident::new(length.expr().span());
                 ctx.tokens.insert(
                     ctx.ident(&ident),
                     Token::from_parsed(
@@ -1157,7 +1157,7 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
             );
         }
         TypeInfo::Array(type_arg, length) => {
-            let ident = Ident::new(length.span());
+            let ident = Ident::new(length.expr().span());
             ctx.tokens.insert(
                 ctx.ident(&ident),
                 Token::from_parsed(

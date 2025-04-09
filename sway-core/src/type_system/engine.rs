@@ -26,7 +26,10 @@ use sway_types::{
     integer_bits::IntegerBits, span::Span, Ident, Named, ProgramId, SourceId, Spanned,
 };
 
-use super::{ast_elements::length::NumericLength, unify::unifier::UnifyKind};
+use super::{
+    ast_elements::{length::NumericLength, type_parameter::ConstGenericExpr},
+    unify::unifier::UnifyKind,
+};
 
 /// To be able to garbage-collect [TypeInfo]s from the [TypeEngine]
 /// we need to track which types need to be GCed when a particular
@@ -577,7 +580,11 @@ impl TypeEngine {
         elem_type: TypeId,
         length: usize,
     ) -> TypeId {
-        self.insert_array(engines, elem_type.into(), Length::literal(length, None))
+        self.insert_array(
+            engines,
+            elem_type.into(),
+            Length(ConstGenericExpr::literal(length, None)),
+        )
     }
 
     /// Inserts a new [TypeInfo::StringArray] into the [TypeEngine] and returns
@@ -970,7 +977,8 @@ impl TypeEngine {
             | TypeInfo::Numeric
             | TypeInfo::Placeholder(_)
             | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::Array(.., Length::AmbiguousVariableExpression { .. }) => true,
+            | TypeInfo::Array(.., Length(ConstGenericExpr::AmbiguousVariableExpression { .. }))
+            | TypeInfo::Struct(_) => true,
             TypeInfo::ContractCaller { abi_name, address } => {
                 Self::is_replaceable_contract_caller(abi_name, address)
             }
@@ -1245,7 +1253,7 @@ impl TypeEngine {
             | TypeInfo::Ref { referenced_type: ta, .. } => ta.is_annotated(),
 
             TypeInfo::Array(ta, l) => {
-                ta.is_annotated() || l.is_annotated()
+                ta.is_annotated() || l.expr().is_annotated()
             }
 
             // The above reasoning for `TypeArgument`s applies also for the `TypeParameter`s.
@@ -1288,10 +1296,10 @@ impl TypeEngine {
     }
 
     fn is_changeable_enum(&self, engines: &Engines, decl: &TyEnumDecl) -> bool {
-        self.are_changeable_type_parameters(engines, &decl.type_parameters)
+        self.are_changeable_type_parameters(engines, &decl.generic_parameters)
         // TODO: Remove once https://github.com/FuelLabs/sway/issues/6687 is fixed.
         ||
-        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.type_parameters)
+        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.generic_parameters)
     }
 
     fn is_changeable_untyped_enum(&self, engines: &Engines, decl: &EnumDeclaration) -> bool {
@@ -1302,10 +1310,10 @@ impl TypeEngine {
     }
 
     fn is_changeable_struct(&self, engines: &Engines, decl: &TyStructDecl) -> bool {
-        self.are_changeable_type_parameters(engines, &decl.type_parameters)
+        self.are_changeable_type_parameters(engines, &decl.generic_parameters)
         // TODO: Remove once https://github.com/FuelLabs/sway/issues/6687 is fixed.
         ||
-        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.type_parameters)
+        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.generic_parameters)
     }
 
     fn is_changeable_untyped_struct(&self, engines: &Engines, decl: &StructDeclaration) -> bool {
@@ -1333,11 +1341,9 @@ impl TypeEngine {
         if type_parameters.is_empty() {
             false
         } else {
-            type_parameters.iter().any(|tp| {
-                let tp = tp
-                    .as_type_parameter()
-                    .expect("only works with type parameters");
-                self.is_type_id_of_changeable_type(engines, tp.type_id)
+            type_parameters.iter().any(|tp| match tp {
+                TypeParameter::Type(p) => self.is_type_id_of_changeable_type(engines, p.type_id),
+                TypeParameter::Const(_) => true,
             })
         }
     }
@@ -1423,7 +1429,7 @@ impl TypeEngine {
 
             TypeInfo::Enum(decl_id) => {
                 let decl = decl_engine.get_enum(decl_id);
-                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.type_parameters)
+                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.generic_parameters)
             }
             TypeInfo::UntypedEnum(decl_id) => {
                 let decl = parsed_decl_engine.get_enum(decl_id);
@@ -1431,7 +1437,7 @@ impl TypeEngine {
             }
             TypeInfo::Struct(decl_id) => {
                 let decl = decl_engine.get_struct(decl_id);
-                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.type_parameters)
+                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.generic_parameters)
             }
             TypeInfo::UntypedStruct(decl_id) => {
                 let decl = parsed_decl_engine.get_struct(decl_id);
@@ -1489,6 +1495,7 @@ impl TypeEngine {
         } else {
             type_parameters
                 .iter()
+                .filter(|x| x.as_type_parameter().is_some())
                 .any(|tp| self.module_might_outlive_type_parameter(engines, module_source_id, tp))
         }
     }
@@ -1583,7 +1590,7 @@ impl TypeEngine {
     ) -> bool {
         !(self.is_changeable_type_argument(engines, elem_type)
             || elem_type.is_annotated()
-            || length.is_annotated())
+            || length.expr().is_annotated())
     }
 
     fn is_shareable_string_array(&self, length: &NumericLength) -> bool {

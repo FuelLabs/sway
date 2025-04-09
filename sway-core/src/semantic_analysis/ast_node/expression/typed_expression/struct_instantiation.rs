@@ -300,10 +300,11 @@ pub(crate) fn struct_instantiation(
         .scoped(handler, None, |scoped_ctx| {
             // Insert struct type parameter into namespace.
             // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
-            for p in struct_decl.type_parameters.iter() {
-                let p = p
-                    .as_type_parameter()
-                    .expect("only works with type parameters");
+            for p in struct_decl
+                .generic_parameters
+                .iter()
+                .filter_map(|x| x.as_type_parameter())
+            {
                 p.insert_into_namespace_self(handler, scoped_ctx.by_ref())?;
             }
 

@@ -1,4 +1,5 @@
 use crate::{
+    ast_elements::type_parameter::ConstGenericExpr,
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
         ty::{TyEnumDecl, TyStructDecl},
@@ -286,15 +287,19 @@ impl<'a> UnifyCheck<'a> {
                 return if !elem_types_unify {
                     false
                 } else {
-                    match (&l1, &r1) {
-                        (Length::Literal { val: l, .. }, Length::Literal { val: r, .. }) => l == r,
+                    match (&l1.expr(), &r1.expr()) {
                         (
-                            Length::AmbiguousVariableExpression { ident: l },
-                            Length::AmbiguousVariableExpression { ident: r },
+                            ConstGenericExpr::Literal { val: l, .. },
+                            ConstGenericExpr::Literal { val: r, .. },
                         ) => l == r,
-                        (Length::Literal { .. }, Length::AmbiguousVariableExpression { .. }) => {
-                            true
-                        }
+                        (
+                            ConstGenericExpr::AmbiguousVariableExpression { ident: l },
+                            ConstGenericExpr::AmbiguousVariableExpression { ident: r },
+                        ) => l == r,
+                        (
+                            ConstGenericExpr::Literal { .. },
+                            ConstGenericExpr::AmbiguousVariableExpression { .. },
+                        ) => true,
                         _ => false,
                     }
                 };
@@ -788,12 +793,12 @@ impl<'a> UnifyCheck<'a> {
             return false;
         }
 
-        if left.type_parameters.len() != right.type_parameters.len() {
+        if left.generic_parameters.len() != right.generic_parameters.len() {
             return false;
         }
 
         let l_types = left
-            .type_parameters
+            .generic_parameters
             .iter()
             .map(|x| {
                 let x = x
@@ -804,7 +809,7 @@ impl<'a> UnifyCheck<'a> {
             .collect::<Vec<_>>();
 
         let r_types = right
-            .type_parameters
+            .generic_parameters
             .iter()
             .map(|x| {
                 let x = x
@@ -859,31 +864,29 @@ impl<'a> UnifyCheck<'a> {
             return false;
         }
 
-        if left.type_parameters.len() != right.type_parameters.len() {
+        if left.generic_parameters.len() != right.generic_parameters.len() {
             return false;
         }
 
-        let l_types = left
-            .type_parameters
-            .iter()
-            .map(|x| {
-                let x = x
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                x.type_id
-            })
-            .collect::<Vec<_>>();
+        let mut l_types = vec![];
+        let mut r_types = vec![];
 
-        let r_types = right
-            .type_parameters
+        for (l, r) in left
+            .generic_parameters
             .iter()
-            .map(|x| {
-                let x = x
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                x.type_id
-            })
-            .collect::<Vec<_>>();
+            .zip(right.generic_parameters.iter())
+        {
+            match (l, r) {
+                (TypeParameter::Type(l), TypeParameter::Type(r)) => {
+                    l_types.push(l.type_id);
+                    r_types.push(r.type_id);
+                }
+                (TypeParameter::Const(_), TypeParameter::Const(_)) => {
+                    // TODO
+                }
+                _ => return false,
+            }
+        }
 
         self.check_multiple(&l_types, &r_types)
     }
@@ -900,10 +903,10 @@ pub fn array_constraint_subset() {
             span: sway_types::Span::dummy(),
             call_path_tree: None,
         }),
-        Length::Literal {
+        Length(ConstGenericExpr::Literal {
             val: 1,
             span: sway_types::Span::dummy(),
-        },
+        }),
     );
     let array_u64_n = engines.te().insert_array(
         &engines,
@@ -913,9 +916,9 @@ pub fn array_constraint_subset() {
             span: sway_types::Span::dummy(),
             call_path_tree: None,
         }),
-        Length::AmbiguousVariableExpression {
+        Length(ConstGenericExpr::AmbiguousVariableExpression {
             ident: sway_types::BaseIdent::new_no_span("N".into()),
-        },
+        }),
     );
 
     // [u64; 1] is a subset of [u64; N]

@@ -122,9 +122,10 @@ fn convert_resolved_type_info(
             context,
             &decl_engine.get_enum(decl_ref).variants,
         )?,
-        TypeInfo::Array(elem_type, length) if length.as_literal_val().is_some() => {
+        TypeInfo::Array(elem_type, length) if length.expr().as_literal_val().is_some() => {
             // SAFETY: Safe by the guard above
             let len = length
+                .expr()
                 .as_literal_val()
                 .expect("unexpected non literal array length");
 

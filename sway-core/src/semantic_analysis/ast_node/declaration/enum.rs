@@ -69,7 +69,7 @@ impl ty::TyEnumDecl {
             // create the enum decl
             let decl = ty::TyEnumDecl {
                 call_path,
-                type_parameters: new_type_parameters,
+                generic_parameters: new_type_parameters,
                 variants: variants_buf,
                 span,
                 attributes,

@@ -53,7 +53,7 @@ impl<'a> HoverLinkContents<'a> {
                     &decl.span(),
                     decl.call_path.clone(),
                 );
-                decl.type_parameters
+                decl.generic_parameters
                     .iter()
                     .filter_map(|x| x.as_type_parameter())
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
@@ -65,7 +65,7 @@ impl<'a> HoverLinkContents<'a> {
                     &decl.span(),
                     decl.call_path.clone(),
                 );
-                decl.type_parameters
+                decl.generic_parameters
                     .iter()
                     .filter_map(|x| x.as_type_parameter())
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));

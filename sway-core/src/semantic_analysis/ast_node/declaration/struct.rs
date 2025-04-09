@@ -67,7 +67,7 @@ impl ty::TyStructDecl {
             // create the struct decl
             let decl = ty::TyStructDecl {
                 call_path: path,
-                type_parameters: new_type_parameters,
+                generic_parameters: new_type_parameters,
                 fields: new_fields,
                 visibility,
                 span,

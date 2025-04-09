@@ -2,6 +2,7 @@ use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed
 use sway_ast::brackets::{Parens, SquareBrackets};
 use sway_ast::keywords::{DoubleColonToken, OpenAngleBracketToken, PtrToken, SliceToken};
 use sway_ast::ty::{Ty, TyArrayDescriptor, TyTupleDescriptor};
+use sway_ast::{Expr, Literal};
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::{ast::Delimiter, Ident};
 
@@ -102,6 +103,10 @@ impl Parse for Ty {
         {
             let path_type = parser.parse()?;
             return Ok(Ty::Path(path_type));
+        }
+
+        if let Ok(literal) = parser.parse::<Literal>() {
+            return Ok(Ty::Expr(Box::new(Expr::Literal(literal))));
         }
 
         Err(parser.emit_error(ParseErrorKind::ExpectedType))

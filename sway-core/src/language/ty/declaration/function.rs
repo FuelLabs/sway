@@ -16,6 +16,7 @@ use monomorphization::MonomorphizeHelper;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
+    collections::BTreeMap,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -175,15 +176,23 @@ impl DeclRefFunction {
 
         if let Some(method_implementing_for_typeid) = method.implementing_for_typeid {
             let mut type_id_type_subst_map = TypeSubstMap::new();
+
             if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
                 let impl_self_or_trait = &*engines.de().get(&t.decl_id);
+
                 let mut type_id_type_parameters = vec![];
+                let mut const_generic_parameters = BTreeMap::default();
                 type_id.extract_type_parameters(
                     engines,
                     0,
                     &mut type_id_type_parameters,
+                    &mut const_generic_parameters,
                     impl_self_or_trait.implementing_for.type_id(),
                 );
+
+                type_id_type_subst_map
+                    .const_generics_materialization
+                    .append(&mut const_generic_parameters);
 
                 for p in impl_self_or_trait
                     .impl_type_parameters
@@ -199,6 +208,7 @@ impl DeclRefFunction {
                             )
                         })
                         .collect::<Vec<_>>();
+
                     if !matches.is_empty() {
                         // Adds type substitution for first match only as we can apply only one.
                         type_id_type_subst_map.insert(p.type_id, matches[0].0);
