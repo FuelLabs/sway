@@ -1,8 +1,8 @@
 [[package]]
-name = "dbg-release"
+name = "dbg_wrong_args_count"
 source = "member"
 dependencies = ["std"]
 
 [[package]]
 name = "std"
-source = "path+from-root-A0CBC1A24DC31ED4"
+source = "path+from-root-7E04A7BB9FC18A6D"

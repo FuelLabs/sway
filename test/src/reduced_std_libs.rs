@@ -1,4 +1,4 @@
-// This module contains functions for creating reduced versions of the `std` library.
+//! This module contains functions for creating reduced versions of the `std` library.
 
 use anyhow::{bail, Context, Ok, Result};
 use core::result::Result::Ok as CoreOk;
