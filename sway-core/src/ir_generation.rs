@@ -208,8 +208,6 @@ pub fn compile_program<'eng>(
         ),
     }?;
 
-    println!("{}", ctx);
-
     type_correction(&mut ctx).map_err(|ir_error: sway_ir::IrError| {
         vec![CompileError::InternalOwned(
             ir_error.to_string(),
