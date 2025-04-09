@@ -59,6 +59,35 @@ pub enum OutputFormat {
     Raw,
 }
 
+/// Verbosity level for log output
+#[derive(Debug, Clone, PartialEq, Default)]
+#[repr(transparent)]
+pub struct Verbosity(pub u8);
+
+impl Verbosity {
+    /// Verbose mode (-v)
+    pub(crate) fn v1(&self) -> bool {
+        self.0 >= 1
+    }
+
+    /// Very Verbose mode (-vv)
+    pub(crate) fn v2(&self) -> bool {
+        self.0 >= 2
+    }
+}
+
+impl From<u8> for Verbosity {
+    fn from(level: u8) -> Self {
+        Verbosity(level)
+    }
+}
+
+impl From<Verbosity> for u8 {
+    fn from(verbosity: Verbosity) -> Self {
+        verbosity.0
+    }
+}
+
 /// Flags for specifying the caller account
 #[derive(Debug, Default, Clone, Parser, serde::Deserialize, serde::Serialize)]
 pub struct Caller {
@@ -140,6 +169,12 @@ pub enum Operation {
 » forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --abi ./contract-abi.json \
     get_balance 0x0087675439e10a8351b1d5e4cf9d0ea6da77675623ff6b16470b5e3c58998423
+
+# Call a contract with function parameters; additionally print logs, receipts and script json
+» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+    --abi ./contract-abi.json \
+    get_balance 0x0087675439e10a8351b1d5e4cf9d0ea6da77675623ff6b16470b5e3c58998423 \
+    -vv
 
 # Call a contract without function parameters
 » forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
@@ -261,9 +296,11 @@ pub struct Command {
     #[clap(long, default_value = "default", help_heading = "OUTPUT")]
     pub output: OutputFormat,
 
-    /// Show transaction receipts in the output
-    #[clap(long, short = 'r', alias = "receipts", help_heading = "OUTPUT")]
-    pub show_receipts: bool,
+    /// Set verbosity levels; currently only supports max 2 levels
+    /// - `-v=1`: Print decoded logs
+    /// - `-v=2`: Additionally print receipts and script json
+    #[clap(short = 'v', action = clap::ArgAction::Count, help_heading = "OUTPUT")]
+    pub verbosity: u8,
 }
 
 impl Command {
