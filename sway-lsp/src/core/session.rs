@@ -8,7 +8,7 @@ use crate::{
         document::{Documents, TextDocument},
         sync::SyncWorkspace,
         token::{self, TypedAstToken},
-        token_map::{TokenMap, TokenMapExt},
+        token_map::{TokenMap, TokenMapExt}, token_map_ext,
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     traverse::{
@@ -287,26 +287,35 @@ impl Session {
 pub fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let _p = tracing::trace_span!("build_plan").entered();
     let manifest_dir = PathBuf::from(uri.path());
+    eprintln!("manifest_dir: {:#?}", manifest_dir);
     let manifest =
         ManifestFile::from_dir(manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
         })?;
+    // eprintln!("manifest: {:#?}", manifest);
     let member_manifests =
         manifest
             .member_manifests()
             .map_err(|_| DocumentError::MemberManifestsFailed {
                 dir: uri.path().into(),
             })?;
+    eprintln!("member_manifests names: {:#?}", member_manifests.keys());
     let lock_path = manifest
         .lock_path()
         .map_err(|_| DocumentError::ManifestsLockPathFailed {
             dir: uri.path().into(),
         })?;
+    eprintln!("lock_path: {:#?}", lock_path);
     // TODO: Either we want LSP to deploy a local node in the background or we want this to
     // point to Fuel operated IPFS node.
     let ipfs_node = pkg::source::IPFSNode::Local;
-    pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false, &ipfs_node)
-        .map_err(LanguageServerError::BuildPlanFailed)
+
+    // 
+
+    pkg::BuildPlan::from_manifests(&member_manifests, false, &ipfs_node).map_err(LanguageServerError::BuildPlanFailed)
+
+    // pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false, &ipfs_node)
+    //     .map_err(LanguageServerError::BuildPlanFailed)
 }
 
 pub fn compile(
@@ -468,7 +477,9 @@ pub fn parse_project(
     let _p = tracing::trace_span!("parse_project").entered();
     let build_plan = session
         .build_plan_cache
-        .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
+        .get_or_update(&session.sync, || build_plan(uri))?;
+
+    //eprintln!("build_plan: {:#?}", build_plan);
 
     let results = compile(
         &build_plan,
@@ -702,26 +713,64 @@ impl BuildPlanCache {
     /// Retrieves a BuildPlan from the cache or updates it if necessary.
     pub fn get_or_update<F>(
         &self,
-        manifest_path: &Option<PathBuf>,
+        sync: &SyncWorkspace,
         update_fn: F,
     ) -> Result<BuildPlan, LanguageServerError>
     where
         F: FnOnce() -> Result<BuildPlan, LanguageServerError>,
     {
+        let manifest_path = sync.manifest_path();
+        let temp_manifest_path = sync.temp_manifest_path();
+        let temp_lock_path = sync.temp_lock_path();
+
+        eprintln!("manifest_path: {:#?}", manifest_path);
+        eprintln!("temp_manifest_path: {:#?}", temp_manifest_path);
+        eprintln!("temp_lock_path: {:#?}", temp_lock_path);
         let should_update = {
             let cache = self.cache.read();
             manifest_path
                 .as_ref()
-                .and_then(|path| path.metadata().ok()?.modified().ok())
+                .and_then(|path| {
+                    eprintln!("path: {:#?}", path);
+                    eprintln!("path modified: {:?}", path.metadata().ok()?.modified());
+                    path.metadata().ok()?.modified().ok()
+                })
                 .map_or(cache.is_none(), |time| {
                     cache.as_ref().is_none_or(|&(_, last)| time > last)
                 })
         };
 
+        eprintln!("should update: {:#?}", should_update);
+
         if should_update {
+            // Remove the old lock file if it exists
+            if let Some(temp_lock_path) = temp_lock_path {
+                if temp_lock_path.exists() {
+                    eprintln!("removing old lock file: {:#?}", temp_lock_path);
+                    std::fs::remove_file(&temp_lock_path).map_err(|err| DocumentError::UnableToRemoveFile {
+                        path: temp_lock_path.to_string_lossy().to_string(),
+                        err: err.to_string(),
+                    })?;
+                }
+            }
+            // If the manifest file has been modifed, we need to replace the Forc.toml in the temp directory
+            if let Some(temp_manifest_path) = temp_manifest_path {
+                if let Some(manifest_path) = manifest_path {
+                    eprintln!("copying manifest file to temp directory: {:#?}", temp_manifest_path);
+                    std::fs::copy(&manifest_path, &temp_manifest_path).map_err(|err| DocumentError::UnableToWriteFile {
+                        path: temp_manifest_path.to_string_lossy().to_string(),
+                        err: err.to_string(),
+                    })?;
+                }
+            }
+
             let new_plan = update_fn()?;
             let mut cache = self.cache.write();
             *cache = Some((new_plan.clone(), SystemTime::now()));
+            // eprintln!("new plan {:#?}", new_plan);
+
+            
+            
             Ok(new_plan)
         } else {
             let cache = self.cache.read();
