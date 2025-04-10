@@ -59,6 +59,7 @@ impl Format for Ty {
                 write!(formatted_code, "{}", BangToken::AS_STR)?;
                 Ok(())
             }
+            Self::Expr(_) => todo!(),
         }
     }
 }
@@ -253,6 +254,7 @@ impl LeafSpans for Ty {
                 collected_spans
             }
             Ty::Never { bang_token } => vec![ByteSpan::from(bang_token.span())],
+            Ty::Expr(_) => todo!(),
         }
     }
 }
