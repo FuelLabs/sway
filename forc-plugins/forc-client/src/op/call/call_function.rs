@@ -1,5 +1,8 @@
 use crate::{
-    cmd::{self, call::FuncType},
+    cmd::{
+        self,
+        call::{FuncType, Verbosity},
+    },
     op::call::{
         missing_contracts::get_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
@@ -46,11 +49,12 @@ pub async fn call_function(
         caller,
         call_parameters,
         gas,
-        show_receipts,
         output,
         external_contracts,
+        verbosity,
         ..
     } = cmd;
+    let verbosity: Verbosity = verbosity.into();
 
     // Load ABI (already provided in the operation)
     let abi_str = super::load_abi(&abi).await?;
@@ -125,19 +129,18 @@ pub async fn call_function(
         .transaction_builder(tx_policies, variable_output_policy, &wallet)
         .await
         .map_err(|e| anyhow!("Failed to initialize transaction builder: {e}"))?;
-    let (tx_status, tx_hash) = match mode {
+    let (tx, tx_status) = match mode {
         cmd::call::ExecutionMode::DryRun => {
             let tx = call
                 .build_tx(tb, &wallet)
                 .await
                 .map_err(|e| anyhow!("Failed to build transaction: {e}"))?;
-            let tx_hash = tx.id(chain_id);
             let tx_status = wallet
                 .provider()
-                .dry_run(tx)
+                .dry_run(tx.clone())
                 .await
                 .map_err(|e| anyhow!("Failed to dry run transaction: {e}"))?;
-            (tx_status, tx_hash)
+            (tx, tx_status)
         }
         cmd::call::ExecutionMode::Simulate => {
             let tb = tb.with_build_strategy(ScriptBuildStrategy::StateReadOnly);
@@ -145,14 +148,13 @@ pub async fn call_function(
                 .build_tx(tb, &wallet)
                 .await
                 .map_err(|e| anyhow!("Failed to build transaction: {e}"))?;
-            let tx_hash = tx.id(chain_id);
             let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
             let tx_status = wallet
                 .provider()
-                .dry_run_opt(tx, false, gas_price)
+                .dry_run_opt(tx.clone(), false, gas_price)
                 .await
                 .map_err(|e| anyhow!("Failed to simulate transaction: {e}"))?;
-            (tx_status, tx_hash)
+            (tx, tx_status)
         }
         cmd::call::ExecutionMode::Live => {
             forc_tracing::println_action_green(
@@ -163,15 +165,27 @@ pub async fn call_function(
                 .build_tx(tb, &wallet)
                 .await
                 .map_err(|e| anyhow!("Failed to build transaction: {e}"))?;
-            let tx_hash = tx.id(chain_id);
             let tx_status = wallet
                 .provider()
-                .send_transaction_and_await_commit(tx)
+                .send_transaction_and_await_commit(tx.clone())
                 .await
                 .map_err(|e| anyhow!("Failed to send transaction: {e}"))?;
-            (tx_status, tx_hash)
+            (tx, tx_status)
         }
     };
+    let tx_hash = tx.id(chain_id);
+    let fuel_tx::Transaction::Script(script) = tx.into() else {
+        return Err(anyhow!("Transaction is not a script"));
+    };
+
+    // Display the script JSON when verbosity level is 2 or higher (vv)
+    if verbosity.v2() {
+        let script_json = serde_json::json!({ "Script": script });
+        forc_tracing::println_label_green(
+            "transaction script:\n",
+            &serde_json::to_string_pretty(&script_json).unwrap(),
+        );
+    }
 
     // Process transaction results
     let receipts = tx_status
@@ -207,7 +221,7 @@ pub async fn call_function(
         result,
         &mode,
         &node,
-        show_receipts,
+        &verbosity,
     )
 }
 
@@ -295,8 +309,8 @@ pub mod tests {
             gas: None,
             external_contracts: None,
             output: cmd::call::OutputFormat::Raw,
-            show_receipts: false,
             list_functions: false,
+            verbosity: 0,
         }
     }
 

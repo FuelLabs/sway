@@ -59,9 +59,10 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
                 node,
                 caller,
                 gas,
-                show_receipts,
+                verbosity,
                 ..
             } = cmd;
+            let verbosity: cmd::call::Verbosity = verbosity.into();
 
             // Already validated that mode is ExecutionMode::Live
             let (wallet, tx_policies, base_asset_id) =
@@ -74,8 +75,8 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
                 amount,
                 asset_id,
                 tx_policies,
-                show_receipts,
                 &node,
+                &verbosity,
             )
             .await?;
             Ok(response)
@@ -179,15 +180,14 @@ pub(crate) fn process_transaction_output(
     result: String,
     mode: &cmd::call::ExecutionMode,
     node: &crate::NodeTarget,
-    show_receipts: bool,
+    verbosity: &cmd::call::Verbosity,
 ) -> Result<CallResponse> {
     // print receipts
-    if show_receipts {
+    if verbosity.v2() {
         let formatted_receipts = forc_util::tx_utils::format_log_receipts(receipts, true)?;
         forc_tracing::println_label_green("receipts:", &formatted_receipts);
     }
 
-    // decode logs
     let logs = receipts
         .iter()
         .filter_map(|receipt| match receipt {
@@ -202,8 +202,8 @@ pub(crate) fn process_transaction_output(
         })
         .collect::<Vec<_>>();
 
-    // print logs
-    if !logs.is_empty() {
+    // display logs if verbosity is set
+    if verbosity.v1() && !logs.is_empty() {
         forc_tracing::println_green_bold("logs:");
         for log in logs.iter() {
             println!("  {:#}", log);
