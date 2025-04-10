@@ -282,7 +282,8 @@ pub(super) async fn run(
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(typed_program, include_tests, &engines, experimental)
+                let enable_predicate_logs = false;
+                let mut ir = compile_program(typed_program, include_tests, enable_predicate_logs, &engines, experimental)
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
                         let e = e[0].clone();

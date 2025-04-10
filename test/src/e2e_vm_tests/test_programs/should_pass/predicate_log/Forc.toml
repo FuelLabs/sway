@@ -7,6 +7,3 @@ implicit-std = false
 
 [dependencies]
 std = { path = "../../../../../../sway-lib-std" }
-
-[build-profile.debug]
-enable-predicate-logs = false

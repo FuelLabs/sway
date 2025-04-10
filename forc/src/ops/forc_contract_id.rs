@@ -78,6 +78,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
         hex_outfile: cmd.build_output.hex_file.clone(),
         build_target: BuildTarget::default(),
         tests: false,
+        enable_predicate_logs: false,
         member_filter: pkg::MemberFilter::only_contracts(),
         experimental: cmd.experimental.experimental.clone(),
         no_experimental: cmd.experimental.no_experimental.clone(),
