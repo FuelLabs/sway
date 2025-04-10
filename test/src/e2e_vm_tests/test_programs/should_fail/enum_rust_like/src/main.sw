@@ -9,11 +9,16 @@ enum Enum1 {
 }
 
 enum Enum2 {
+  F(u32),        // Illegal
+  G(u32, u32),   // Also illegal, but shadowed by previous error
+}
+
+enum Enum3 {
   F(bool, u32, str[4]), // Illegal
   G(u32, u32),          // Also illegal, but shadowed by previous error
 }
 
-enum Enum3 {
+enum Enum4 {
   A { x: i32, y: i32 }, // Illegal
   Another(u64, bool),   // Also illegal, but shadowed by previous error
 }

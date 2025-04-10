@@ -98,80 +98,66 @@ impl Parse for TypeField {
     fn parse(parser: &mut Parser) -> ParseResult<TypeField> {
         let visibility = parser.take();
         let name: Ident = parser.parse()?;
+        let name_span = name.span();
 
-        // Check if we have a struct variant e.g. `Variant { .. }`
+        // Check for the common, valid case `Variant: Type` first.
+        if parser.peek::<ColonToken>().is_some() {
+            let colon_token = parser.parse()?;
+            let ty = parser.parse()?;
+            return Ok(TypeField {
+                visibility,
+                name,
+                colon_token,
+                ty,
+            });
+        }
+
+        // --- Colon was not found after name, proceed with error handling ---
+
+        // Case 1: Check for invalid struct-like variant `Variant { ... }`
         if let Some((_inner_parser, brace_span)) = parser.enter_delimited(Delimiter::Brace) {
-            // We found a struct-like variant - this is invalid for enums.
-            let name_span = name.span();
             let error_span = Span::join(name_span, &brace_span);
-
-            // Emit error with helpful suggestion pointing to the whole invalid construct.
-            let error = parser.emit_error_with_span(
+            return Err(parser.emit_error_with_span(
                 ParseErrorKind::MissingColonInEnumTypeField {
                     variant_name: name,
-                    tuple_contents: None, // Indicate it's not a tuple variant issue
+                    tuple_contents: None, // Not a tuple issue
                 },
                 error_span,
-            );
-            // Although this is an error, we consumed the tokens for the braced group,
-            // so we return the error without trying further recovery here.
-            return Err(error);
+            ));
         }
 
-        // Check if we have a tuple variant by looking for opening parenthesis
-        if let Some((inner_parser, tuple_span)) = parser.enter_delimited(Delimiter::Parenthesis) {
-            // We found a tuple variant without a colon
-            let tuple_contents = inner_parser.full_span().clone();
-            let name_span = name.span();
-            let error_span = Span::join(name_span, &tuple_span);
-
-            // Emit error with helpful suggestion
-            let error = parser.emit_error_with_span(
+        // Case 2: Check for invalid tuple-like variant `Variant ( ... )` (missing colon)
+        if let Some((inner_parser, paren_span)) = parser.enter_delimited(Delimiter::Parenthesis) {
+            let tuple_contents_span = inner_parser.full_span().clone();
+            let error_span = Span::join(name_span.clone(), &paren_span);
+            return Err(parser.emit_error_with_span(
                 ParseErrorKind::MissingColonInEnumTypeField {
                     variant_name: name,
-                    tuple_contents: Some(tuple_contents),
+                    tuple_contents: Some(tuple_contents_span),
                 },
                 error_span,
-            );
-
-            // Try to continue parsing after error
-            return Err(error);
+            ));
         }
 
-        // Handle the colon token
-        let colon_token = if parser.peek::<ColonToken>().is_some() {
-            parser.parse()?
-        } else {
-            // Check if this is a unit variant (comma follows or at end of tokens)
-            if parser.is_empty() || parser.peek::<sway_ast::CommaToken>().is_some() {
-                // Unit variant - missing colon
-                let name_span = name.span();
-                return Err(parser.emit_error_with_span(
-                    ParseErrorKind::MissingColonInEnumTypeField {
-                        variant_name: name,
-                        tuple_contents: Some(Span::dummy()),
-                    },
-                    name_span,
-                ));
-            } else {
-                // No colon but not a unit variant - something else follows
-                let name_span = name.span();
-                return Err(parser.emit_error_with_span(
-                    ParseErrorKind::MissingColonInEnumTypeField {
-                        variant_name: name,
-                        tuple_contents: None,
-                    },
-                    name_span,
-                ));
-            }
-        };
+        // Case 3: Check for unit-like variant `Variant,` or `Variant` (at end)
+        if parser.is_empty() || parser.peek::<sway_ast::CommaToken>().is_some() {
+            return Err(parser.emit_error_with_span(
+                ParseErrorKind::MissingColonInEnumTypeField {
+                    variant_name: name,
+                    tuple_contents: Some(Span::dummy()), // Indicate unit-like
+                },
+                name_span,
+            ));
+        }
 
-        Ok(TypeField {
-            visibility,
-            name,
-            colon_token,
-            ty: parser.parse()?,
-        })
+        // Case 4: Something else follows where a colon was expected
+        Err(parser.emit_error_with_span(
+            ParseErrorKind::MissingColonInEnumTypeField {
+                variant_name: name,
+                tuple_contents: None,
+            },
+            name_span,
+        ))
     }
 }
 

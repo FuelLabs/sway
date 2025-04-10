@@ -10,6 +10,14 @@ category = "fail"
 
 # check: $()error
 # check: enum_rust_like/src/main.sw:12:3
+# check: $()F(u32),        // Illegal
+# nextln: $()`F(u32)` is not a valid enum variant declaration.
+# nextln: $()Did you mean `F: (u32)`?
+# check: $()In Sway, enum variants are in the form `Variant: ()`, `Variant: <type>`, or `Variant: (<type1>, ..., <typeN>)`.
+# nextln: $()E.g., `Foo: (), `Bar: u64`, or `Bar: (bool, u32)`.
+
+# check: $()error
+# check: enum_rust_like/src/main.sw:17:3
 # check: $()F(bool, u32, str[4]), // Illegal
 # nextln: $()`F(bool, u32, str[4])` is not a valid enum variant declaration.
 # nextln: $()Did you mean `F: (bool, u32, str[4])`?
@@ -17,7 +25,7 @@ category = "fail"
 # nextln: $()E.g., `Foo: (), `Bar: u64`, or `Bar: (bool, u32)`.
 
 # check: $()error
-# check: enum_rust_like/src/main.sw:17:3
+# check: enum_rust_like/src/main.sw:22:3
 # check: $()A { x: i32, y: i32 }, // Illegal
 # nextln: $()`A { x: i32, y: i32 }` is not a valid enum variant declaration.
 # check: $()In Sway, enum variants are in the form `Variant: ()`, `Variant: <type>`, or `Variant: (<type1>, ..., <typeN>)`.
