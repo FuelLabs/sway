@@ -9,6 +9,7 @@ pub mod ops;
 pub mod raw_ptr;
 pub mod raw_slice;
 pub mod codec;
+pub mod debug;
 pub mod slice;
 pub mod constants;
 pub mod error_signals;

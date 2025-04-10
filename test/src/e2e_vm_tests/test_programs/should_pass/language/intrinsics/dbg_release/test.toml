@@ -1,0 +1,4 @@
+category = "run"
+expected_result = { action = "return", value = 1 }
+expected_result_new_encoding = { action = "return_data", value = "000000000000000B" }
+expected_warnings = 10
