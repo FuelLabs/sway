@@ -99,6 +99,25 @@ impl Parse for TypeField {
         let visibility = parser.take();
         let name: Ident = parser.parse()?;
 
+        // Check if we have a struct variant e.g. `Variant { .. }`
+        if let Some((_inner_parser, brace_span)) = parser.enter_delimited(Delimiter::Brace) {
+            // We found a struct-like variant - this is invalid for enums.
+            let name_span = name.span();
+            let error_span = Span::join(name_span, &brace_span);
+
+            // Emit error with helpful suggestion pointing to the whole invalid construct.
+            let error = parser.emit_error_with_span(
+                ParseErrorKind::MissingColonInEnumTypeField {
+                    variant_name: name,
+                    tuple_contents: None, // Indicate it's not a tuple variant issue
+                },
+                error_span,
+            );
+            // Although this is an error, we consumed the tokens for the braced group,
+            // so we return the error without trying further recovery here.
+            return Err(error);
+        }
+
         // Check if we have a tuple variant by looking for opening parenthesis
         if let Some((inner_parser, tuple_span)) = parser.enter_delimited(Delimiter::Parenthesis) {
             // We found a tuple variant without a colon
