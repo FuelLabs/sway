@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "version_and_git_same_dep"
+
+[dependencies]
+foo = { version = "0.1.0", git = "https://github.com/FuelLabs/foo" }
