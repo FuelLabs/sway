@@ -1,7 +1,7 @@
 script;
 
 #[allow(dead_code)]
-const A = 1;
+const A: u64 = 1;
 
 #[allow(dead_code)]
 struct A {

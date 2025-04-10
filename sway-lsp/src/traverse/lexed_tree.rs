@@ -388,9 +388,7 @@ impl Parse for ItemConst {
         }
         insert_keyword(ctx, self.const_token.span());
 
-        if let Some((.., ty)) = self.ty_opt.as_ref() {
-            ty.parse(ctx);
-        }
+        self.ty.parse(ctx);
 
         if let Some(expr) = self.expr_opt.as_ref() {
             expr.parse(ctx);

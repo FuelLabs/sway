@@ -1,19 +1,22 @@
 use crate::{Parse, ParseResult, Parser};
 
-use sway_ast::ItemConst;
+use sway_ast::{keywords::ColonToken, ItemConst, Ty};
+use sway_error::parser_error::ParseErrorKind;
 
 impl Parse for ItemConst {
     fn parse(parser: &mut Parser) -> ParseResult<ItemConst> {
         let visibility = parser.take();
         let const_token = parser.parse()?;
         let name = parser.parse()?;
-        let ty_opt = match parser.take() {
+        let ty_opt: Option<(ColonToken, Ty)> = match parser.take() {
             Some(colon_token) => {
                 let ty = parser.parse()?;
                 Some((colon_token, ty))
             }
             None => None,
         };
+        let (_, ty) = ty_opt
+            .ok_or_else(|| parser.emit_error(ParseErrorKind::ExpectedTypeAnnotationForConstants))?;
         let eq_token_opt = parser.take();
         let expr_opt = match &eq_token_opt {
             Some(_eq) => Some(parser.parse()?),
@@ -27,7 +30,7 @@ impl Parse for ItemConst {
             visibility,
             const_token,
             name,
-            ty_opt,
+            ty,
             eq_token_opt,
             expr_opt,
             semicolon_token,

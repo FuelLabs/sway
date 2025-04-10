@@ -10,15 +10,15 @@ fn s(x : u64) -> S {
 
 fn main() -> u64 {
   // unsigned integers
-  const A = !0u8;
-  const B = !0u16;
-  const C = !0u32;
-  const D = !0u64;
+  const A: u8 = !0u8;
+  const B: u16 = !0u16;
+  const C: u32 = !0u32;
+  const D: u64 = !0u64;
 
   // bool
-  const E = !true;
+  const E: bool = !true;
 
-  const X = s(1);
+  const X: S = s(1);
   X.s
 }
 

@@ -1,6 +1,6 @@
 script;
 
-const COND = false;
+const COND: bool = false;
 
 fn main() {
     while COND { }
