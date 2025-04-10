@@ -201,6 +201,7 @@ impl source::Fetch for Pinned {
         // directories, however we should add some code to validate this. E.g. can we
         // recreate the git hash by hashing the directory or something along these lines
         // using git?
+        // https://github.com/FuelLabs/sway/issues/7075
         {
             let _guard = lock.write()?;
             if !repo_path.exists() {

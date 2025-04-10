@@ -159,7 +159,7 @@ pub struct Pkg {
     pub locked: bool,
     /// The IPFS node to use for fetching IPFS sources.
     ///
-    /// [possible values: PUBLIC, LOCAL, <GATEWAY_URL>]
+    /// [possible values: FUEL, PUBLIC, LOCAL, <GATEWAY_URL>]
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
 }
