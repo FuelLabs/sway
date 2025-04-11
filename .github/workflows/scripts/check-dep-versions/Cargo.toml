@@ -6,5 +6,5 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-toml = "0.8"
 regex = "1"
+toml = "0.8"
