@@ -287,7 +287,7 @@ impl Session {
 pub fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let _p = tracing::trace_span!("build_plan").entered();
     let manifest_dir = PathBuf::from(uri.path());
-    eprintln!("manifest_dir: {:#?}", manifest_dir);
+    // eprintln!("💾 manifest_dir: {:#?}", manifest_dir);
     let manifest =
         ManifestFile::from_dir(manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
@@ -299,23 +299,38 @@ pub fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
             .map_err(|_| DocumentError::MemberManifestsFailed {
                 dir: uri.path().into(),
             })?;
-    eprintln!("member_manifests names: {:#?}", member_manifests.keys());
+    // if let Some(member_manifest) = member_manifests.get("test-contract") {
+    //     eprintln!("💾 member_manifest deps: {:#?}", member_manifest.dependencies);
+    // }
+
     let lock_path = manifest
         .lock_path()
         .map_err(|_| DocumentError::ManifestsLockPathFailed {
             dir: uri.path().into(),
         })?;
-    eprintln!("lock_path: {:#?}", lock_path);
+    // eprintln!("💾 lock_path: {:#?}", lock_path);
+
     // TODO: Either we want LSP to deploy a local node in the background or we want this to
     // point to Fuel operated IPFS node.
     let ipfs_node = pkg::source::IPFSNode::Local;
+    pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false, &ipfs_node)
+        .map_err(LanguageServerError::BuildPlanFailed)
 
-    // 
+    // pkg::BuildPlan::from_manifests(&member_manifests, false, &ipfs_node).map_err(LanguageServerError::BuildPlanFailed)
 
-    pkg::BuildPlan::from_manifests(&member_manifests, false, &ipfs_node).map_err(LanguageServerError::BuildPlanFailed)
+    
 
-    // pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false, &ipfs_node)
-    //     .map_err(LanguageServerError::BuildPlanFailed)
+    // eprintln!("💾 build_plan result: {:#?}", build_plan);
+
+    // if build_plan.is_err() {
+    //     eprintln!("💾 build_plan failed, trying again with manifests");
+    //     let res = pkg::BuildPlan::from_manifests(&member_manifests, false, &ipfs_node).map_err(LanguageServerError::BuildPlanFailed);
+    //     eprintln!("💾 from_manifests build_plan result: {:#?}", res);
+    //     res
+    // } else {
+    //     eprintln!("💾 build_plan succeeded");
+    //     build_plan
+    // }
 }
 
 pub fn compile(
@@ -478,8 +493,6 @@ pub fn parse_project(
     let build_plan = session
         .build_plan_cache
         .get_or_update(&session.sync, || build_plan(uri))?;
-
-    //eprintln!("build_plan: {:#?}", build_plan);
 
     let results = compile(
         &build_plan,
@@ -721,18 +734,27 @@ impl BuildPlanCache {
     {
         let manifest_path = sync.manifest_path();
         let temp_manifest_path = sync.temp_manifest_path();
-        let temp_lock_path = sync.temp_lock_path();
+        // let temp_lock_path = sync.temp_lock_path();
 
-        eprintln!("manifest_path: {:#?}", manifest_path);
-        eprintln!("temp_manifest_path: {:#?}", temp_manifest_path);
-        eprintln!("temp_lock_path: {:#?}", temp_lock_path);
+        // let temp_dir = sync.temp_dir().unwrap();
+        // eprintln!("👷 temp_dir: {:#?}", temp_dir);
+        // // print every file recursively in the temp dir
+        // for entry in std::fs::read_dir(temp_dir).unwrap() {
+        //     let entry = entry.unwrap();
+        //     let path = entry.path();
+        //     eprintln!("---- 👷 path: {:#?}", path);
+        // }
+
+        // eprintln!("👷 manifest_path: {:#?}", manifest_path);
+        // eprintln!("👷 temp_manifest_path: {:#?}", temp_manifest_path);
+        // eprintln!("👷 temp_lock_path: {:#?}", temp_lock_path);
         let should_update = {
             let cache = self.cache.read();
             manifest_path
                 .as_ref()
                 .and_then(|path| {
-                    eprintln!("path: {:#?}", path);
-                    eprintln!("path modified: {:?}", path.metadata().ok()?.modified());
+                    // eprintln!("👷 path: {:#?}", path);
+                    // eprintln!("👷 path modified: {:?}", path.metadata().ok()?.modified());
                     path.metadata().ok()?.modified().ok()
                 })
                 .map_or(cache.is_none(), |time| {
@@ -740,27 +762,79 @@ impl BuildPlanCache {
                 })
         };
 
-        eprintln!("should update: {:#?}", should_update);
+        // eprintln!("👷 should update: {:#?}", should_update);
 
         if should_update {
-            // Remove the old lock file if it exists
-            if let Some(temp_lock_path) = temp_lock_path {
-                if temp_lock_path.exists() {
-                    eprintln!("removing old lock file: {:#?}", temp_lock_path);
-                    std::fs::remove_file(&temp_lock_path).map_err(|err| DocumentError::UnableToRemoveFile {
-                        path: temp_lock_path.to_string_lossy().to_string(),
-                        err: err.to_string(),
-                    })?;
-                }
-            }
-            // If the manifest file has been modifed, we need to replace the Forc.toml in the temp directory
+            // // Remove the old lock file if it exists
+            // if let Some(temp_lock_path) = temp_lock_path {
+            //     if temp_lock_path.exists() {
+            //         eprintln!("🔒 lock file path: {:#?}", temp_lock_path);
+            //         let lock_file: forc_pkg::lock::Lock = forc_pkg::lock::Lock::from_path(&temp_lock_path).unwrap();
+            //         eprintln!("🔒 lock file: {:#?}", lock_file);
+                    
+            //         eprintln!("🗑️ removing old lock file: {:#?}", temp_lock_path);
+            //         if let Err(err) = std::fs::remove_file(&temp_lock_path).map_err(|err| DocumentError::UnableToRemoveFile {
+            //             path: temp_lock_path.to_string_lossy().to_string(),
+            //             err: err.to_string(),
+            //         }) {
+            //             eprintln!("🗑️ error removing old lock file: {:#?}", err);
+            //         }
+            //     }
+            // }
+
             if let Some(temp_manifest_path) = temp_manifest_path {
                 if let Some(manifest_path) = manifest_path {
-                    eprintln!("copying manifest file to temp directory: {:#?}", temp_manifest_path);
-                    std::fs::copy(&manifest_path, &temp_manifest_path).map_err(|err| DocumentError::UnableToWriteFile {
-                        path: temp_manifest_path.to_string_lossy().to_string(),
-                        err: err.to_string(),
-                    })?;
+                    // Read the original manifest file content
+                    let manifest_content = std::fs::read_to_string(&manifest_path).unwrap();
+                    
+                    // Parse the content with toml_edit
+                    let mut doc = manifest_content.parse::<toml_edit::DocumentMut>().unwrap();
+                    
+                    // Read the manifest through the normal API to access dependency information
+                    let manifest: ManifestFile = ManifestFile::from_file(&manifest_path).unwrap();
+                    
+                    if let ManifestFile::Package(package_manifest) = manifest {
+                        if let Some(dependencies) = &package_manifest.dependencies {
+                            // Get the dependencies table from the parsed TOML
+                            if let Some(deps_table) = doc.get_mut("dependencies").and_then(|v| v.as_table_mut()) {
+                                // Iterate through dependencies to update paths
+                                for (name, dependency) in dependencies {
+                                    if let forc_pkg::manifest::Dependency::Detailed(dependency_details) = dependency {
+                                        if let Some(path) = &dependency_details.path {
+                                            let project_path = sync.manifest_dir().unwrap();
+                                            
+                                            // Resolve the absolute path
+                                            let absolute_dep_path = resolve_dependency_path(&project_path, path);
+                                            eprintln!("👷 Converting relative path: {:#?} to absolute: {:#?}", path, absolute_dep_path);
+                                            
+                                            // Update the path in the TOML document - be more explicit
+                                            if let Some(dep_item) = deps_table.get_mut(name) {
+                                                // First check if this is an inline table
+                                                if let Some(dep_table) = dep_item.as_inline_table_mut() {
+                                                    // Create a proper value for toml_edit
+                                                    let path_value = toml_edit::Value::from(absolute_dep_path.clone());
+                                                    dep_table.insert("path", path_value);
+                                                } 
+                                                // Or if it's a regular table
+                                                else if let Some(dep_table) = dep_item.as_table_mut() {
+                                                    // Create a proper value for toml_edit
+                                                    let path_value = toml_edit::Value::from(absolute_dep_path.clone());
+                                                    dep_table.insert("path", toml_edit::Item::Value(path_value));
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Write the modified TOML document to the temp file
+                    let doc_string = doc.to_string();
+                    std::fs::write(&temp_manifest_path, doc_string).unwrap();
+                    
+                    let temp_manifest_content = std::fs::read_to_string(&temp_manifest_path).unwrap();
+                    eprintln!("👷 Raw temp manifest content:\n{}", temp_manifest_content);
                 }
             }
 
@@ -780,6 +854,14 @@ impl BuildPlanCache {
                 .ok_or(LanguageServerError::BuildPlanCacheIsEmpty)
         }
     }
+}
+
+// Function to resolve dependency path
+fn resolve_dependency_path(project_path: &PathBuf, relative_path: &str) -> String {
+    let normalized_path = project_path.join(relative_path).canonicalize()
+        .expect("Failed to resolve path");
+    
+    normalized_path.to_str().unwrap().to_string()
 }
 
 #[cfg(test)]
