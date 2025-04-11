@@ -14,6 +14,7 @@ Below is the list of attributes supported by the Sway compiler, ordered alphabet
 - [Payable](#payable)
 - [Storage](#payable)
 - [Test](#test)
+- [ABI Name](#abi-name)
 
 ## Allow
 
@@ -102,3 +103,34 @@ The `#[test]` attribute marks a function to be executed as a test.
 The `#[test(should_revert)]` attribute marks a function to be executed as a test that should revert.
 
 More details in [Unit Testing](../testing/unit-testing.md).
+
+## ABI Name
+
+The `#[abi_name]` attribute allows to specify the ABI name for an item.
+This means that when a contract ABI JSON file is generated, the name that is output is the one specified
+by the attribute. This can be useful to allow renaming items, while allowing for keeping backwards
+compatibility at the contract ABI level.
+
+```sway
+contract;
+
+#[abi_name(name = "RenamedMyStruct")]
+struct MyStruct {}
+
+#[abi_name(name = "RenamedMyEnum")]
+enum MyEnum {
+  A: ()
+}
+
+abi MyAbi {
+    fn my_struct() -> MyStruct;
+    fn my_enum() -> MyEnum;
+}
+
+impl MyAbi for Contract {
+  fn my_struct() -> MyStruct { MyStruct{} }
+  fn my_enum() -> MyEnum { MyEnum::A }
+}
+```
+
+> **Note**: At the moment, only enum and struct types support the attribute. For more info, see the [tracking issue for "ABI names"](https://github.com/FuelLabs/sway/issues/6765).
