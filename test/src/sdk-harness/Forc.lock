@@ -223,6 +223,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "predicate_panic_expression"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "private_struct_fields_in_storage_and_abi"
 source = "member"
 dependencies = ["std"]

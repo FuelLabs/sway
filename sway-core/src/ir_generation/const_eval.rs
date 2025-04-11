@@ -633,6 +633,11 @@ fn const_eval_typed_expr(
                 span: exp.span.clone(),
             });
         }
+        ty::TyExpressionVariant::Panic(exp) => {
+            return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                span: exp.span.clone(),
+            });
+        }
         ty::TyExpressionVariant::MatchExp { desugared, .. } => {
             const_eval_typed_expr(lookup, known_consts, desugared)?
         }

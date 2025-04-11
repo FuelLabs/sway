@@ -85,6 +85,7 @@ pub fn possibly_nonzero_u64_expression(ctx: &TypeCheckContext, expr: &ty::TyExpr
         | Reassignment(_)
         | ImplicitReturn(_)
         | Return(_)
+        | Panic(_)
         | Ref(_)
         | Deref(_) => true,
     }

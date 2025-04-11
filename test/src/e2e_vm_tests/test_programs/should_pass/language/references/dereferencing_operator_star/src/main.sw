@@ -340,7 +340,7 @@ fn dereference_enum<T>()
     let mut r_mut_r_mut_x = &mut r_mut_x;
     let r_mut_r_mut_r_mut_x = &mut r_mut_r_mut_x;
 
-    // TODO-IG: Uncomment the version with (t) once this issue for match expression is resolved:
+    // TODO: (REFERENCES) Uncomment the version with (t) once this issue for match expression is resolved:
     // error: Internal compiler error: Unable to resolve variable 't'.
 
     match *r_x {

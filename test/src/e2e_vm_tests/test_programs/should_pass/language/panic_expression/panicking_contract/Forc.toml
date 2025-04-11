@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "panicking_contract"
+
+[dependencies]
+panicking_lib = { path = "../panicking_lib" }
+std = { path = "../../../../../reduced_std_libs/sway-lib-std-core" }

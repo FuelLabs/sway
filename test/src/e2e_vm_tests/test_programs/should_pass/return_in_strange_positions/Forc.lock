@@ -1,8 +1,0 @@
-[[package]]
-name = "return_in_strange_positions"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-84E9200F5E0D7AA2"

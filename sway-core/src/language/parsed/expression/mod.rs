@@ -508,6 +508,7 @@ pub enum ExpressionKind {
     /// semicolon, denoting that it is the [Expression] to be returned from that block.
     ImplicitReturn(Box<Expression>),
     Return(Box<Expression>),
+    Panic(Box<Expression>),
     Ref(RefExpression),
     Deref(Box<Expression>),
 }
@@ -579,6 +580,7 @@ impl PartialEqWithEngines for ExpressionKind {
                 lhs.eq(rhs, ctx)
             }
             (ExpressionKind::Return(lhs), ExpressionKind::Return(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::Panic(lhs), ExpressionKind::Panic(rhs)) => lhs.eq(rhs, ctx),
             (ExpressionKind::Ref(lhs), ExpressionKind::Ref(rhs)) => lhs.eq(rhs, ctx),
             (ExpressionKind::Deref(lhs), ExpressionKind::Deref(rhs)) => lhs.eq(rhs, ctx),
             _ => false,

@@ -1,0 +1,2 @@
+category = "compile"
+experimental = { new_encoding = true, error_type = true }

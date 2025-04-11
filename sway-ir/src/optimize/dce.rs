@@ -140,7 +140,7 @@ pub fn dce(
     // Instructions that store to a symbol, directly or indirectly. This information can be unknown.
     let mut stores_of_sym: StoresOfSymbol = StoresOfSymbol::Known(HashMap::new());
 
-    // TODO-IG: Update this logic once `mut arg: T`s are implemented.
+    // TODO: (REFERENCES) Update this logic once `mut arg: T`s are implemented.
     //          Currently, only `ref mut arg` arguments can be stored to,
     //          which means they can be loaded from the caller.
     //          Once we support `mut arg` in general, this will not be

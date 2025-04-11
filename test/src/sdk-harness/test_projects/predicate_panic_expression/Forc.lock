@@ -1,0 +1,8 @@
+[[package]]
+name = "predicate_panic_expression"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-1BEFE5DD01350E6F"

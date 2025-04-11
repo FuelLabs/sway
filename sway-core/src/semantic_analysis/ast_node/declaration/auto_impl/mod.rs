@@ -94,11 +94,11 @@ where
         }
     }
 
-    /// Generates code like: `T: Eq + Hash,\n`.
+    /// Generates code like: ` where T: Eq + Hash + <extra_constraint>,\n`.
     fn generate_type_parameters_constraints_code(
         &self,
         type_parameters: &[TypeParameter],
-        extra_constraint: &str,
+        extra_constraint: Option<&str>,
     ) -> String {
         let mut code = String::new();
 
@@ -106,19 +106,24 @@ where
             let p = p
                 .as_type_parameter()
                 .expect("only works with type parameters");
-            code.push_str(&format!(
-                "{}: {},\n",
-                p.name.as_str(),
-                itertools::intersperse(
-                    [extra_constraint].into_iter().chain(
-                        p.trait_constraints
-                            .iter()
-                            .map(|x| x.trait_name.suffix.as_str())
-                    ),
-                    " + "
-                )
-                .collect::<String>()
-            ));
+            if !p.trait_constraints.is_empty() || extra_constraint.is_some() {
+                code.push_str(&format!(
+                    "{}: {},\n",
+                    p.name.as_str(),
+                    itertools::intersperse(
+                        extra_constraint
+                            .map_or(vec![], |extra_constraint| vec![extra_constraint])
+                            .into_iter()
+                            .chain(
+                                p.trait_constraints
+                                    .iter()
+                                    .map(|x| x.trait_name.suffix.as_str())
+                            ),
+                        " + "
+                    )
+                    .collect::<String>()
+                ));
+            }
         }
 
         if !code.is_empty() {
