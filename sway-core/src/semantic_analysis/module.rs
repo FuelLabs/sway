@@ -272,7 +272,7 @@ impl ty::TyModule {
         source_id: Option<&SourceId>,
         engines: &Engines,
         build_config: Option<&BuildConfig>,
-    ) -> Option<Arc<ty::TyModule>> {
+    ) -> Option<(Arc<ty::TyModule>, Arc<namespace::Module>)> {
         let source_id = source_id?;
 
         // Create a cache key and get the module cache
@@ -292,7 +292,7 @@ impl ty::TyModule {
 
                 // Return the cached module if it's up to date, otherwise None
                 if is_up_to_date {
-                    Some(typed.module.clone())
+                    Some((typed.module.clone(), typed.namespace_module.clone()))
                 } else {
                     None
                 }
@@ -321,12 +321,14 @@ impl ty::TyModule {
         } = parsed;
 
         // Try to get the cached root module if it's up to date
-        if let Some(module) = ty::TyModule::get_cached_ty_module_if_up_to_date(
-            parsed.span.source_id(),
-            engines,
-            build_config,
-        ) {
-            return Ok(module);
+        if let Some((ty_module, _namespace_module)) =
+            ty::TyModule::get_cached_ty_module_if_up_to_date(
+                parsed.span.source_id(),
+                engines,
+                build_config,
+            )
+        {
+            return Ok(ty_module);
         }
 
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
@@ -344,14 +346,17 @@ impl ty::TyModule {
                     engines,
                     build_config,
                 ) {
-                    // If cached, create TySubmodule from cached module
-                    Ok::<(BaseIdent, ty::TySubmodule), ErrorEmitted>((
-                        name.clone(),
-                        ty::TySubmodule {
-                            module: cached_module,
-                            mod_name_span: submodule.mod_name_span.clone(),
-                        },
-                    ))
+                    // If cached, restore namespace module and return cached TySubmodule
+                    let (ty_module, namespace_module) = cached_module;
+                    ctx.namespace_mut()
+                        .current_module_mut()
+                        .import_cached_submodule(name, (*namespace_module).clone());
+
+                    let ty_submod = ty::TySubmodule {
+                        module: ty_module,
+                        mod_name_span: submodule.mod_name_span.clone(),
+                    };
+                    Ok::<(BaseIdent, ty::TySubmodule), ErrorEmitted>((name.clone(), ty_submod))
                 } else {
                     // If not cached, type-check the submodule
                     let type_checked_submodule = ty::TySubmodule::type_check(
@@ -485,6 +490,7 @@ impl ty::TyModule {
                 &key,
                 TypedModuleInfo {
                     module: ty_module.clone(),
+                    namespace_module: Arc::new(ctx.namespace().current_module().clone()),
                     version,
                 },
             );

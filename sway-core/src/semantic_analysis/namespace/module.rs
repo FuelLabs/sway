@@ -105,6 +105,10 @@ impl Module {
         self.submodules.insert(name.to_string(), module);
     }
 
+    pub(crate) fn import_cached_submodule(&mut self, name: &Ident, module: Module) {
+        self.submodules.insert(name.to_string(), module);
+    }
+
     pub fn read<R>(&self, _engines: &crate::Engines, mut f: impl FnMut(&Module) -> R) -> R {
         f(self)
     }
