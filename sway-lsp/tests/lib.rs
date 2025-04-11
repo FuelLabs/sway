@@ -165,6 +165,36 @@ fn did_change() {
     });
 }
 
+#[test]
+fn sync_with_updates_to_manifest_in_workspace() {
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let workspace_dir = test_fixtures_dir().join("workspace");
+        let path = workspace_dir.join("test-contract/src/main.sw");
+        eprintln!("compiling path: {:#?}", path);
+        let uri = init_and_open(&mut service, path).await;
+
+        // add test-library as a dependency to the test-contract manifest file
+        let test_lib_string = "test-library = { path = \"../test-library\" }";
+        let test_contract_manifest = workspace_dir.join("test-contract/Forc.toml");
+        let mut manifest_content = fs::read_to_string(&test_contract_manifest).unwrap();
+        manifest_content.push_str(&test_lib_string);
+        eprintln!("🖍️ adding test-library to test-contract manifest");
+        fs::write(&test_contract_manifest, &manifest_content).unwrap();
+
+        eprintln!("\n 📷 📷 did change 📷 📷 \n");
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
+        service.inner().wait_for_parsing().await;
+        eprintln!("\n ✅ test complete \n");
+
+        // remove the test-library from the test-contract manifest file
+        manifest_content = manifest_content.replace(&test_lib_string, "");
+        fs::write(&test_contract_manifest, &manifest_content).unwrap();
+
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
 // TODO: Fix this test Issue #7002
 // #[test]
 // fn did_cache_test() {
