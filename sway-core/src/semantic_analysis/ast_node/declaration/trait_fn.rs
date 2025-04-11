@@ -103,8 +103,8 @@ impl ty::TyTraitFn {
         ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
-            body: ty::TyCodeBlock::default(),
-            parameters: self.parameters.clone(),
+            body: <_>::default(),
+            parameters: self.parameters.clone().into(),
             implementing_type: match abi_mode.clone() {
                 AbiMode::ImplAbiFn(_abi_name, abi_decl_id) => {
                     // ABI and their super-ABI methods cannot have the same names,
@@ -119,13 +119,13 @@ impl ty::TyTraitFn {
             },
             implementing_for_typeid,
             span: self.name.span(),
-            call_path: CallPath::from(self.name.clone()),
+            call_path: CallPath::from(self.name.clone()).into(),
             attributes: self.attributes.clone(),
             return_type: self.return_type.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
-            where_clause: vec![],
+            where_clause: vec![].into(),
             is_trait_method_dummy: true,
             is_type_check_finalized: true,
             kind: ty::TyFunctionDeclKind::Default,

@@ -163,19 +163,19 @@ impl ty::TyFunctionDecl {
 
                 let function_decl = ty::TyFunctionDecl {
                     name: name.clone(),
-                    body: TyCodeBlock::default(),
-                    parameters: new_parameters,
+                    body: <_>::default(),
+                    parameters: new_parameters.into(),
                     implementing_type: None,
                     implementing_for_typeid,
                     span: span.clone(),
-                    call_path,
+                    call_path: call_path.into(),
                     attributes: attributes.clone(),
                     return_type,
                     type_parameters: new_type_parameters,
                     visibility,
                     is_contract_call,
                     purity: *purity,
-                    where_clause: where_clause.clone(),
+                    where_clause: where_clause.clone().into(),
                     is_trait_method_dummy: false,
                     is_type_check_finalized: false,
                     kind: match kind {
@@ -220,7 +220,7 @@ impl ty::TyFunctionDecl {
                 }
 
                 // Insert the previously type checked function parameters into the current namespace.
-                for p in parameters {
+                for p in parameters.iter() {
                     p.insert_into_namespace(handler, ctx.by_ref());
                 }
 
@@ -240,7 +240,7 @@ impl ty::TyFunctionDecl {
                 let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, true)
                     .unwrap_or_else(|_err| ty::TyCodeBlock::default());
 
-                ty_fn_decl.body = body;
+                ty_fn_decl.body = body.into();
                 ty_fn_decl.is_type_check_finalized = true;
 
                 return_type.type_id().check_type_parameter_bounds(
