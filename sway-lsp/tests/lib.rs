@@ -173,7 +173,6 @@ fn sync_with_updates_to_manifest_in_workspace() {
         let path = workspace_dir.join("test-contract/src/main.sw");
         eprintln!("compiling path: {:#?}", path);
         let uri = init_and_open(&mut service, path).await;
-        
 
         // add test-library as a dependency to the test-contract manifest file
         let test_lib_string = "test-library = { path = \"../test-library\" }";
@@ -182,8 +181,6 @@ fn sync_with_updates_to_manifest_in_workspace() {
         manifest_content.push_str(&test_lib_string);
         eprintln!("🖍️ adding test-library to test-contract manifest");
         fs::write(&test_contract_manifest, &manifest_content).unwrap();
-
-        
 
         eprintln!("\n 📷 📷 did change 📷 📷 \n");
         let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
