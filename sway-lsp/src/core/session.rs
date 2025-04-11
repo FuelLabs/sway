@@ -734,54 +734,17 @@ impl BuildPlanCache {
     {
         let manifest_path = sync.manifest_path();
         let temp_manifest_path = sync.temp_manifest_path();
-        // let temp_lock_path = sync.temp_lock_path();
-
-        // let temp_dir = sync.temp_dir().unwrap();
-        // eprintln!("👷 temp_dir: {:#?}", temp_dir);
-        // // print every file recursively in the temp dir
-        // for entry in std::fs::read_dir(temp_dir).unwrap() {
-        //     let entry = entry.unwrap();
-        //     let path = entry.path();
-        //     eprintln!("---- 👷 path: {:#?}", path);
-        // }
-
-        // eprintln!("👷 manifest_path: {:#?}", manifest_path);
-        // eprintln!("👷 temp_manifest_path: {:#?}", temp_manifest_path);
-        // eprintln!("👷 temp_lock_path: {:#?}", temp_lock_path);
         let should_update = {
             let cache = self.cache.read();
             manifest_path
                 .as_ref()
-                .and_then(|path| {
-                    // eprintln!("👷 path: {:#?}", path);
-                    // eprintln!("👷 path modified: {:?}", path.metadata().ok()?.modified());
-                    path.metadata().ok()?.modified().ok()
-                })
+                .and_then(|path| path.metadata().ok()?.modified().ok())
                 .map_or(cache.is_none(), |time| {
                     cache.as_ref().is_none_or(|&(_, last)| time > last)
                 })
         };
 
-        // eprintln!("👷 should update: {:#?}", should_update);
-
         if should_update {
-            // // Remove the old lock file if it exists
-            // if let Some(temp_lock_path) = temp_lock_path {
-            //     if temp_lock_path.exists() {
-            //         eprintln!("🔒 lock file path: {:#?}", temp_lock_path);
-            //         let lock_file: forc_pkg::lock::Lock = forc_pkg::lock::Lock::from_path(&temp_lock_path).unwrap();
-            //         eprintln!("🔒 lock file: {:#?}", lock_file);
-                    
-            //         eprintln!("🗑️ removing old lock file: {:#?}", temp_lock_path);
-            //         if let Err(err) = std::fs::remove_file(&temp_lock_path).map_err(|err| DocumentError::UnableToRemoveFile {
-            //             path: temp_lock_path.to_string_lossy().to_string(),
-            //             err: err.to_string(),
-            //         }) {
-            //             eprintln!("🗑️ error removing old lock file: {:#?}", err);
-            //         }
-            //     }
-            // }
-
             if let Some(temp_manifest_path) = temp_manifest_path {
                 if let Some(manifest_path) = manifest_path {
                     // Read the original manifest file content
@@ -803,10 +766,17 @@ impl BuildPlanCache {
                                         if let Some(path) = &dependency_details.path {
                                             let project_path = sync.manifest_dir().unwrap();
                                             
-                                            // Resolve the absolute path
+                                            // Define the resolve_dependency_path closure right before using it
+                                            let resolve_dependency_path = |project_path: &PathBuf, relative_path: &str| -> String {
+                                                let normalized_path = project_path.join(relative_path).canonicalize()
+                                                    .expect("Failed to resolve path");
+                                                normalized_path.to_str().unwrap().to_string()
+                                            };
+
+                                            // Use the closure
                                             let absolute_dep_path = resolve_dependency_path(&project_path, path);
                                             eprintln!("👷 Converting relative path: {:#?} to absolute: {:#?}", path, absolute_dep_path);
-                                            
+
                                             // Update the path in the TOML document - be more explicit
                                             if let Some(dep_item) = deps_table.get_mut(name) {
                                                 // First check if this is an inline table
@@ -841,10 +811,6 @@ impl BuildPlanCache {
             let new_plan = update_fn()?;
             let mut cache = self.cache.write();
             *cache = Some((new_plan.clone(), SystemTime::now()));
-            // eprintln!("new plan {:#?}", new_plan);
-
-            
-            
             Ok(new_plan)
         } else {
             let cache = self.cache.read();
@@ -854,14 +820,6 @@ impl BuildPlanCache {
                 .ok_or(LanguageServerError::BuildPlanCacheIsEmpty)
         }
     }
-}
-
-// Function to resolve dependency path
-fn resolve_dependency_path(project_path: &PathBuf, relative_path: &str) -> String {
-    let normalized_path = project_path.join(relative_path).canonicalize()
-        .expect("Failed to resolve path");
-    
-    normalized_path.to_str().unwrap().to_string()
 }
 
 #[cfg(test)]
