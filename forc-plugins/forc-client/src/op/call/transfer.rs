@@ -13,8 +13,8 @@ pub async fn transfer(
     amount: u64,
     asset_id: AssetId,
     tx_policies: TxPolicies,
-    show_receipts: bool,
     node: &crate::NodeTarget,
+    verbosity: &crate::cmd::call::Verbosity,
 ) -> anyhow::Result<super::CallResponse> {
     let provider = wallet.provider();
 
@@ -53,7 +53,7 @@ pub async fn transfer(
         "".to_string(),
         &crate::cmd::call::ExecutionMode::Live,
         node,
-        show_receipts,
+        verbosity,
     )
 }
 
@@ -112,8 +112,8 @@ mod tests {
             amount,
             *base_asset_id,
             tx_policies,
-            false, // show_receipts
             &node,
+            &(0u8.into()),
         )
         .await
         .unwrap();
@@ -163,8 +163,8 @@ mod tests {
             amount,
             *base_asset_id,
             tx_policies,
-            false, // show_receipts
             &node,
+            &(0u8.into()),
         )
         .await
         .unwrap();

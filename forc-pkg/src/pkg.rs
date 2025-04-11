@@ -285,6 +285,8 @@ pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
     pub minify: MinifyOpts,
+    /// If set, generates a JSON file containing the hex-encoded script binary.
+    pub hex_outfile: Option<String>,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,
     /// If set, outputs debug info to the provided file.
@@ -427,6 +429,15 @@ impl BuiltPackage {
         Ok(())
     }
 
+    pub fn write_hexcode(&self, path: &Path) -> Result<()> {
+        let hex_file = serde_json::json!({
+            "hex": format!("0x{}", hex::encode(&self.bytecode.bytes)),
+        });
+
+        fs::write(path, hex_file.to_string())?;
+        Ok(())
+    }
+
     /// Writes debug_info (source_map) of the BuiltPackage to the given `out_file`.
     pub fn write_debug_info(&self, out_file: &Path) -> Result<()> {
         if matches!(out_file.extension(), Some(ext) if ext == "json") {
@@ -505,6 +516,7 @@ impl BuiltPackage {
             self.bytecode.bytes.len(),
             format_bytecode_size(self.bytecode.bytes.len())
         );
+
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -1194,7 +1206,7 @@ impl FromStr for PinnedId {
 }
 
 /// The `pkg::Graph` is of *a -> b* where *a* depends on *b*. We can determine compilation order by
-/// performing a toposort of the graph with reversed weights. The resulting order ensures all
+/// performing a toposort of the graph with reversed edges. The resulting order ensures all
 /// dependencies are always compiled before their dependents.
 pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     let rev_pkg_graph = petgraph::visit::Reversed(&graph);
@@ -2156,6 +2168,7 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
 /// Builds a project with given BuildOptions.
 pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
     let BuildOpts {
+        hex_outfile,
         minify,
         binary_outfile,
         debug_outfile,
@@ -2248,6 +2261,12 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
                 .unwrap_or_else(|| output_dir.join("debug_symbols.obj"));
             built_package.write_debug_info(&debug_path)?;
         }
+
+        if let Some(hex_path) = hex_outfile {
+            let hexfile_path = output_dir.join(hex_path);
+            built_package.write_hexcode(&hexfile_path)?;
+        }
+
         built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
         built_workspace.push(Arc::new(built_package));
     }
@@ -2721,6 +2740,7 @@ pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
 mod test {
     use super::*;
     use regex::Regex;
+    use tempfile::NamedTempFile;
 
     fn setup_build_plan() -> BuildPlan {
         let current_dir = env!("CARGO_MANIFEST_DIR");
@@ -2789,5 +2809,61 @@ mod test {
 }
 "#;
         assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_write_hexcode() -> Result<()> {
+        // Create a temporary file for testing
+        let temp_file = NamedTempFile::new()?;
+        let path = temp_file.path();
+
+        let current_dir = env!("CARGO_MANIFEST_DIR");
+        let manifest_dir = PathBuf::from(current_dir).parent().unwrap().join(
+            "test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/test_contract",
+        );
+
+        // Create a test BuiltPackage with some bytecode
+        let test_bytecode = vec![0x01, 0x02, 0x03, 0x04];
+        let built_package = BuiltPackage {
+            descriptor: PackageDescriptor {
+                name: "test_package".to_string(),
+                target: BuildTarget::Fuel,
+                pinned: Pinned {
+                    name: "built_test".to_owned(),
+                    source: source::Pinned::MEMBER,
+                },
+                manifest_file: PackageManifestFile::from_dir(manifest_dir)?,
+            },
+            program_abi: ProgramABI::Fuel(fuel_abi_types::abi::program::ProgramABI {
+                program_type: "".to_owned(),
+                spec_version: "".into(),
+                encoding_version: "".into(),
+                concrete_types: vec![],
+                metadata_types: vec![],
+                functions: vec![],
+                configurables: None,
+                logged_types: None,
+                messages_types: None,
+            }),
+            storage_slots: vec![],
+            warnings: vec![],
+            source_map: SourceMap::new(),
+            tree_type: TreeType::Script,
+            bytecode: BuiltPackageBytecode {
+                bytes: test_bytecode,
+                entries: vec![],
+            },
+            bytecode_without_tests: None,
+        };
+
+        // Write the hexcode
+        built_package.write_hexcode(path)?;
+
+        // Read the file and verify its contents
+        let contents = fs::read_to_string(path)?;
+        let expected = r#"{"hex":"0x01020304"}"#;
+        assert_eq!(contents, expected);
+
+        Ok(())
     }
 }
