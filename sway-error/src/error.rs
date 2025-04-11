@@ -2727,7 +2727,7 @@ impl ToDiagnostic for CompileError {
                         ],
                         help: vec![
                             "In Sway, enum variants are in the form `Variant: ()`, `Variant: <type>`, or `Variant: (<type1>, ..., <typeN>)`.".to_string(),
-                            format!("E.g., `Foo: (), `Bar: u64`, or `Bar: (bool, u32)`."),
+                            "E.g., `Foo: (), `Bar: u64`, or `Bar: (bool, u32)`.".to_string(),
                         ],
                     },
                     ParseErrorKind::UnassignableExpression { erroneous_expression_kind, erroneous_expression_span } => Diagnostic {
