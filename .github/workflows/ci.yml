@@ -21,6 +21,7 @@ env:
 jobs:
   verifications-complete:
     needs:
+      - check-dependency-version-formats
       - build-sway-lib-std
       - build-sway-examples
       - build-reference-examples
@@ -52,6 +53,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "pass"
+
+  check-dependency-version-formats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Make script executable
+        run: chmod +x .github/scripts/check_dep_versions.sh
+
+      - name: Check Workspace Dependency Version Formats in Cargo.toml
+        run: .github/scripts/check_dep_versions.sh Cargo.toml
+
   get-fuel-core-version:
     runs-on: buildjet-4vcpu-ubuntu-2204
     outputs:
