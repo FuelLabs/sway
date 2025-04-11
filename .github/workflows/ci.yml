@@ -60,11 +60,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Make script executable
-        run: chmod +x .github/scripts/check_dep_versions.sh
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
 
-      - name: Check Workspace Dependency Version Formats in Cargo.toml
-        run: .github/workflows/scripts/check_dep_versions.sh Cargo.toml
+      - name: Cache check-dep-versions build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: check-dep-versions-${{ runner.os }}-${{ hashFiles('.github/scripts/check-dep-versions/Cargo.lock') }}
+
+      - name: Check Workspace Dependency Version Formats
+        run: |
+          cargo run --manifest-path .github/workflows/scripts/check-dep-versions/Cargo.toml --release -- Cargo.toml
 
   get-fuel-core-version:
     runs-on: buildjet-4vcpu-ubuntu-2204
