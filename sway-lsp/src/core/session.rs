@@ -9,7 +9,6 @@ use crate::{
         sync::SyncWorkspace,
         token::{self, TypedAstToken},
         token_map::{TokenMap, TokenMapExt},
-        token_map_ext,
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     traverse::{
@@ -288,48 +287,26 @@ impl Session {
 pub fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let _p = tracing::trace_span!("build_plan").entered();
     let manifest_dir = PathBuf::from(uri.path());
-    // eprintln!("💾 manifest_dir: {:#?}", manifest_dir);
     let manifest =
         ManifestFile::from_dir(manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
         })?;
-    // eprintln!("manifest: {:#?}", manifest);
     let member_manifests =
         manifest
             .member_manifests()
             .map_err(|_| DocumentError::MemberManifestsFailed {
                 dir: uri.path().into(),
             })?;
-    // if let Some(member_manifest) = member_manifests.get("test-contract") {
-    //     eprintln!("💾 member_manifest deps: {:#?}", member_manifest.dependencies);
-    // }
-
     let lock_path = manifest
         .lock_path()
         .map_err(|_| DocumentError::ManifestsLockPathFailed {
             dir: uri.path().into(),
         })?;
-    // eprintln!("💾 lock_path: {:#?}", lock_path);
-
     // TODO: Either we want LSP to deploy a local node in the background or we want this to
     // point to Fuel operated IPFS node.
     let ipfs_node = pkg::source::IPFSNode::Local;
     pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false, &ipfs_node)
         .map_err(LanguageServerError::BuildPlanFailed)
-
-    // pkg::BuildPlan::from_manifests(&member_manifests, false, &ipfs_node).map_err(LanguageServerError::BuildPlanFailed)
-
-    // eprintln!("💾 build_plan result: {:#?}", build_plan);
-
-    // if build_plan.is_err() {
-    //     eprintln!("💾 build_plan failed, trying again with manifests");
-    //     let res = pkg::BuildPlan::from_manifests(&member_manifests, false, &ipfs_node).map_err(LanguageServerError::BuildPlanFailed);
-    //     eprintln!("💾 from_manifests build_plan result: {:#?}", res);
-    //     res
-    // } else {
-    //     eprintln!("💾 build_plan succeeded");
-    //     build_plan
-    // }
 }
 
 pub fn compile(
@@ -493,6 +470,7 @@ pub fn parse_project(
         .build_plan_cache
         .get_or_update(&session.sync, || build_plan(uri))?;
 
+    eprintln!("👷 build_plan: {:#?}", build_plan);
     let results = compile(
         &build_plan,
         engines,
@@ -830,25 +808,18 @@ impl BuildPlanCache {
                         .to_string_lossy()
                         .to_string();
 
-                    eprintln!("👷 Converting path: {:#?} to: {:#?}", rel_path, abs_path);
-
                     // Update the path in the TOML document
                     if let Some(dep_item) = deps_table.get_mut(name) {
-                        self.update_path_in_table(dep_item, abs_path);
+                        let path_value = toml_edit::Value::from(abs_path);
+                        if let Some(table) = dep_item.as_inline_table_mut() {
+                            table.insert("path", path_value);
+                        }
                     }
                 }
             }
         }
 
         Ok(())
-    }
-
-    /// Update path in the table
-    fn update_path_in_table(&self, dep_item: &mut toml_edit::Item, abs_path: String) {
-        let path_value = toml_edit::Value::from(abs_path);
-        if let Some(table) = dep_item.as_inline_table_mut() {
-            table.insert("path", path_value);
-        }
     }
 }
 
