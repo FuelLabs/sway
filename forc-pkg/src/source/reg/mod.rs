@@ -458,6 +458,12 @@ where
         let _ = std::fs::remove_dir_all(&tmp_dir);
     }
 
+    // Add a guard to ensure cleanup happens if we got out of scope whether by
+    // returning or panicking.
+    let _cleanup_guard = scopeguard::guard(&tmp_dir, |dir| {
+        let _ = std::fs::remove_dir_all(dir);
+    });
+
     let github_resolver = GithubRegistryResolver::with_default_github(source.namespace.clone());
 
     let path = location_from_root(github_resolver.chunk_size, &source.namespace, pkg_name)
@@ -491,7 +497,6 @@ where
     })?;
 
     let res = f(index_file).await?;
-    let _ = std::fs::remove_dir_all(&tmp_dir);
     Ok(res)
 }
 
