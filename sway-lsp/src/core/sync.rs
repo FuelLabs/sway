@@ -169,12 +169,6 @@ impl SyncWorkspace {
         }
     }
 
-    pub(crate) fn temp_lock_path(&self) -> Option<PathBuf> {
-        self.temp_dir()
-            .map(|dir| dir.join(sway_utils::constants::LOCK_FILE_NAME))
-            .ok()
-    }
-
     pub(crate) fn temp_manifest_path(&self) -> Option<PathBuf> {
         self.temp_dir()
             .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
