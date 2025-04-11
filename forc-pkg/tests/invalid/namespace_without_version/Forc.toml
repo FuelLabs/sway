@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "namespace_without_version"
+
+[dependencies]
+foo = { git = "https://github.com/FuelLabs/foo", namespace = "bar" }
