@@ -147,6 +147,11 @@ impl IndexFile {
         let pkg_version = package.version().clone();
         self.versions.insert(pkg_version, package);
     }
+
+    /// Returns an iterator over the versions in the index file.
+    pub fn versions(&self) -> impl Iterator<Item = &semver::Version> {
+        self.versions.keys()
+    }
 }
 
 #[cfg(test)]
