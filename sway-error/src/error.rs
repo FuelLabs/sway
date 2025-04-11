@@ -1062,6 +1062,19 @@ pub enum CompileError {
     },
     #[error("Multiple contracts methods with the same name.")]
     MultipleContractsMethodsWithTheSameName { spans: Vec<Span> },
+    #[error("Error type enum \"{enum_name}\" has non-error variant{} {}. All variants must be marked as `#[error]`.",
+        plural_s(non_error_variants.len()),
+        sequence_to_str(non_error_variants, Enclosing::DoubleQuote, 2)
+    )]
+    ErrorTypeEnumHasNonErrorVariants {
+        enum_name: IdentUnique,
+        non_error_variants: Vec<IdentUnique>,
+    },
+    #[error("Enum variant \"{enum_variant_name}\" is marked as `#[error]`, but \"{enum_name}\" is not an `#[error_type]` enum.")]
+    ErrorAttributeInNonErrorEnum {
+        enum_name: IdentUnique,
+        enum_variant_name: IdentUnique,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1288,6 +1301,10 @@ impl Spanned for CompileError {
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
             MultipleImplsSatisfyingTraitForType { span, .. } => span.clone(),
             MultipleContractsMethodsWithTheSameName { spans } => spans[0].clone(),
+            ErrorTypeEnumHasNonErrorVariants { enum_name, .. } => enum_name.span(),
+            ErrorAttributeInNonErrorEnum {
+                enum_variant_name, ..
+            } => enum_variant_name.span(),
         }
     }
 }
@@ -3024,15 +3041,49 @@ impl ToDiagnostic for CompileError {
                 help: vec!["Contract methods names must be unique, even when implementing multiple ABIs.".into()],
             },
             FunctionSelectorClash { method_name, span, other_method_name, other_span } => Diagnostic {
-		reason: Some(Reason::new(code(1), format!("Methods {method_name} and {other_method_name} have clashing function selectors."))),
-		issue: Issue::error(
-		    source_engine,
-		    span.clone(),
-		    String::new()
-		),
-		hints: vec![Hint::error(source_engine, other_span.clone(), format!("The declaration of {other_method_name} is here"))],
-		help: vec![format!("The methods of a contract must have distinct function selectors, which are computed from the method hash. \nRenaming one of the methods should solve the problem")]
-	    },
+                reason: Some(Reason::new(code(1), format!("Methods {method_name} and {other_method_name} have clashing function selectors."))),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    String::new()
+                ),
+                hints: vec![Hint::error(source_engine, other_span.clone(), format!("The declaration of {other_method_name} is here"))],
+                help: vec![format!("The methods of a contract must have distinct function selectors, which are computed from the method hash. \nRenaming one of the methods should solve the problem")]
+            },
+            ErrorTypeEnumHasNonErrorVariants { enum_name, non_error_variants } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Error type enum cannot have non-error variants".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    enum_name.span(),
+                    format!("Error type enum \"{enum_name}\" has non-error variant{} {}.",
+                        plural_s(non_error_variants.len()),
+                        sequence_to_str(non_error_variants, Enclosing::DoubleQuote, 2)
+                    )
+                ),
+                hints: non_error_variants.iter().map(|variant| Hint::underscored_info(source_engine, variant.span())).collect(),
+                help: vec![
+                    "All error type enum's variants must be marked as errors.".to_string(),
+                    "To mark error variants as errors, annotate them with the `#[error]` attribute.".to_string(),
+                ]
+            },
+            ErrorAttributeInNonErrorEnum { enum_name, enum_variant_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Error enum variants must be in error type enums".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    enum_variant_name.span(),
+                    format!("Enum variant \"{enum_variant_name}\" is marked as `#[error]`, but its enum is not an error type enum.")
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        enum_name.span(),
+                        format!("Consider annotating \"{enum_name}\" enum with the `#[error_type]` attribute."),
+                    )
+                ],
+                help: vec![
+                    "Enum variants can be marked as `#[error]` only if their parent enum is annotated with the `#[error_type]` attribute.".to_string(),
+                ]
+            },
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting

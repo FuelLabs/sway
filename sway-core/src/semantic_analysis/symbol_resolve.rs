@@ -15,7 +15,7 @@ use crate::{
         },
         CallPath, CallPathTree, ResolvedCallPath,
     },
-    TraitConstraint, TypeArgument, TypeBinding, TypeParameter,
+    GenericArgument, TraitConstraint, TypeBinding, TypeParameter,
 };
 
 use super::symbol_resolve_context::SymbolResolveContext;
@@ -392,9 +392,9 @@ impl ResolveSymbols for TypeAliasDeclaration {
     }
 }
 
-impl ResolveSymbols for TypeArgument {
+impl ResolveSymbols for GenericArgument {
     fn resolve_symbols(&mut self, handler: &Handler, ctx: SymbolResolveContext) {
-        if let Some(call_path) = self.call_path_tree.as_mut() {
+        if let Some(call_path) = self.call_path_tree_mut() {
             call_path.resolve_symbols(handler, ctx);
         }
     }

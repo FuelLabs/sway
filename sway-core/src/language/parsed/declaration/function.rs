@@ -23,7 +23,7 @@ pub struct FunctionDeclaration {
     pub body: CodeBlock,
     pub parameters: Vec<FunctionParameter>,
     pub span: Span,
-    pub return_type: TypeArgument,
+    pub return_type: GenericArgument,
     pub type_parameters: Vec<TypeParameter>,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub kind: FunctionDeclarationKind,
@@ -68,7 +68,7 @@ pub struct FunctionParameter {
     pub is_reference: bool,
     pub is_mutable: bool,
     pub mutability_span: Span,
-    pub type_argument: TypeArgument,
+    pub type_argument: GenericArgument,
 }
 
 impl EqWithEngines for FunctionParameter {}

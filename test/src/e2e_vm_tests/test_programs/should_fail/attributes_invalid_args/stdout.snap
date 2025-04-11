@@ -1,5 +1,6 @@
 ---
-source: test/tests/tests.rs
+source: test/src/snapshot/mod.rs
+assertion_line: 125
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args
 exit status: 1
@@ -239,5 +240,25 @@ error: Number of attribute arguments is invalid
   |
 ____
 
-  Aborting due to 16 errors.
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/error_type_attr.sw:9:14
+  |
+...
+9 | #[error_type(invalid)] // Should be no invalid arg error or warning here.
+  |              ^^^^^^^ "error_type" attribute must not have any arguments, but has one.
+  |
+____
+
+error: Attribute argument is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/error_attr.sw:11:13
+   |
+...
+11 |     #[error(msg = "not ok")]
+   |             ^^^ "msg" is an invalid argument for attribute "error".
+   |             --- help: Did you mean "m"?
+   |             --- help: The only valid argument is "m".
+   |
+____
+
+  Aborting due to 18 errors.
 error: Failed to compile attributes_invalid_args

@@ -348,6 +348,8 @@ pub enum AttributeKind {
     Cfg,
     Deprecated,
     Fallback,
+    ErrorType,
+    Error,
 }
 
 /// Denotes if an [ItemTraitItem] belongs to an ABI or to a trait.
@@ -376,6 +378,8 @@ impl AttributeKind {
             CFG_ATTRIBUTE_NAME => AttributeKind::Cfg,
             DEPRECATED_ATTRIBUTE_NAME => AttributeKind::Deprecated,
             FALLBACK_ATTRIBUTE_NAME => AttributeKind::Fallback,
+            ERROR_TYPE_ATTRIBUTE_NAME => AttributeKind::ErrorType,
+            ERROR_ATTRIBUTE_NAME => AttributeKind::Error,
             _ => AttributeKind::Unknown,
         }
     }
@@ -402,6 +406,8 @@ impl AttributeKind {
             Cfg => true,
             Deprecated => false,
             Fallback => false,
+            ErrorType => false,
+            Error => false,
         }
     }
 }
@@ -440,6 +446,8 @@ impl Attribute {
             // `deprecated`, `deprecated(note = "note")`.
             Deprecated => Multiplicity::at_most(1),
             Fallback => Multiplicity::zero(),
+            ErrorType => Multiplicity::zero(),
+            Error => Multiplicity::exactly(1),
         }
     }
 
@@ -493,6 +501,8 @@ impl Attribute {
             }
             Deprecated => MustBeIn(vec![DEPRECATED_NOTE_ARG_NAME]),
             Fallback => None,
+            ErrorType => None,
+            Error => MustBeIn(vec![ERROR_M_ARG_NAME]),
         }
     }
 
@@ -513,6 +523,9 @@ impl Attribute {
             // `deprecated(note = "note")`.
             Deprecated => Yes,
             Fallback => No,
+            ErrorType => No,
+            // `error(msg = "msg")`.
+            Error => Yes,
         }
     }
 
@@ -531,6 +544,8 @@ impl Attribute {
             //       Deprecating the module kind will mean deprecating all its items.
             Deprecated => false,
             Fallback => false,
+            ErrorType => false,
+            Error => false,
         }
     }
 
@@ -582,6 +597,8 @@ impl Attribute {
                 ItemKind::Error(_, _) => true,
             },
             Fallback => matches!(item_kind, ItemKind::Fn(_)),
+            ErrorType => matches!(item_kind, ItemKind::Enum(_)),
+            Error => false,
         }
     }
 
@@ -591,7 +608,7 @@ impl Attribute {
 
     pub(crate) fn can_annotate_struct_or_enum_field(
         &self,
-        _struct_or_enum_field: StructOrEnumField,
+        struct_or_enum_field: StructOrEnumField,
     ) -> bool {
         use AttributeKind::*;
         match self.kind {
@@ -605,6 +622,8 @@ impl Attribute {
             Cfg => true,
             Deprecated => true,
             Fallback => false,
+            ErrorType => false,
+            Error => struct_or_enum_field == StructOrEnumField::EnumField,
         }
     }
 
@@ -628,6 +647,8 @@ impl Attribute {
             // TODO: Change to true once https://github.com/FuelLabs/sway/issues/6942 is implemented.
             Deprecated => false,
             Fallback => false,
+            ErrorType => false,
+            Error => false,
         }
     }
 
@@ -648,6 +669,8 @@ impl Attribute {
             Cfg => true,
             Deprecated => !matches!(item, ItemImplItem::Type(_)),
             Fallback => false,
+            ErrorType => false,
+            Error => false,
         }
     }
 
@@ -667,6 +690,8 @@ impl Attribute {
             Cfg => true,
             Deprecated => true,
             Fallback => false,
+            ErrorType => false,
+            Error => false,
         }
     }
 
@@ -684,6 +709,8 @@ impl Attribute {
             // TODO: Change to true once https://github.com/FuelLabs/sway/issues/6942 is implemented.
             Deprecated => false,
             Fallback => false,
+            ErrorType => false,
+            Error => false,
         }
     }
 
@@ -700,6 +727,8 @@ impl Attribute {
             Cfg => true,
             Deprecated => true,
             Fallback => false,
+            ErrorType => false,
+            Error => false,
         }
     }
 
@@ -749,6 +778,8 @@ impl Attribute {
                 "\"deprecated\" attribute is currently not implemented for all elements that could be deprecated.",
             ],
             Fallback => vec!["\"fallback\" attribute can only annotate module functions in a contract module."],
+            ErrorType => vec!["\"error_type\" attribute can only annotate enums."],
+            Error => vec!["\"error\" attribute can only annotate enum variants of enums annotated with the \"error_type\" attribute."],
         };
 
         if help.is_empty() && target_friendly_name.starts_with("module kind") {
@@ -892,6 +923,14 @@ impl Attributes {
             .any(arg_filter)
     }
 
+    pub fn has_error_type(&self) -> bool {
+        self.of_kind(AttributeKind::ErrorType).any(|_| true)
+    }
+
+    pub fn has_error(&self) -> bool {
+        self.of_kind(AttributeKind::Error).any(|_| true)
+    }
+
     /// Returns the value of the `#[inline]` [Attribute], or `None` if the
     /// [Attributes] does not contain any `#[inline]` attributes.
     pub fn inline(&self) -> Option<Inline> {
@@ -954,6 +993,13 @@ impl Attributes {
     pub fn test(&self) -> Option<&Attribute> {
         // Last-wins approach.
         self.of_kind(AttributeKind::Test).last()
+    }
+
+    /// Returns the `#[error]` [Attribute], or `None` if the
+    /// [Attributes] does not contain any `#[error]` attributes.
+    pub fn error(&self) -> Option<&Attribute> {
+        // Last-wins approach.
+        self.of_kind(AttributeKind::Error).last()
     }
 }
 

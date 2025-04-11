@@ -37,7 +37,7 @@ pub(crate) fn instantiate_struct_field_access(
             TypeInfo::Ref {
                 referenced_type, ..
             } => {
-                let referenced_type_id = referenced_type.type_id;
+                let referenced_type_id = referenced_type.type_id();
 
                 current_prefix_te = Box::new(ty::TyExpression {
                     expression: ty::TyExpressionVariant::Deref(current_prefix_te),
@@ -94,7 +94,7 @@ pub(crate) fn instantiate_struct_field_access(
         }
     };
 
-    let return_type = field.type_argument.type_id;
+    let return_type = field.type_argument.type_id();
     Ok(ty::TyExpression {
         expression: ty::TyExpressionVariant::StructFieldAccess {
             resolved_type_of_parent: current_prefix_te.return_type,

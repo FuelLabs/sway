@@ -93,7 +93,7 @@ impl<T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'_, T> {
             lines.push(self.formatted_list_item(
                 self.engines,
                 Some(param.name.to_string()),
-                param.type_argument.type_id,
+                param.type_argument.type_id(),
             ));
         });
         lines
@@ -104,7 +104,7 @@ impl<T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'_, T> {
         if self
             .engines
             .te()
-            .get(self.decl.return_type().type_id)
+            .get(self.decl.return_type().type_id())
             .is_unit()
         {
             return vec![];
@@ -113,7 +113,7 @@ impl<T: Spanned + Named + FunctionSignature> FnDocCommentCodeAction<'_, T> {
             String::new(),
             "### Returns".to_string(),
             String::new(),
-            self.formatted_list_item(self.engines, None, self.decl.return_type().type_id),
+            self.formatted_list_item(self.engines, None, self.decl.return_type().type_id()),
         ]
     }
 
