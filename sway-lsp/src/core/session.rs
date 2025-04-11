@@ -8,7 +8,8 @@ use crate::{
         document::{Documents, TextDocument},
         sync::SyncWorkspace,
         token::{self, TypedAstToken},
-        token_map::{TokenMap, TokenMapExt}, token_map_ext,
+        token_map::{TokenMap, TokenMapExt},
+        token_map_ext,
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     traverse::{
@@ -29,7 +30,7 @@ use pkg::{
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     ops::Deref,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{atomic::AtomicBool, Arc},
     time::SystemTime,
 };
@@ -317,8 +318,6 @@ pub fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
         .map_err(LanguageServerError::BuildPlanFailed)
 
     // pkg::BuildPlan::from_manifests(&member_manifests, false, &ipfs_node).map_err(LanguageServerError::BuildPlanFailed)
-
-    
 
     // eprintln!("💾 build_plan result: {:#?}", build_plan);
 
@@ -745,67 +744,9 @@ impl BuildPlanCache {
         };
 
         if should_update {
-            if let Some(temp_manifest_path) = temp_manifest_path {
-                if let Some(manifest_path) = manifest_path {
-                    // Read the original manifest file content
-                    let manifest_content = std::fs::read_to_string(&manifest_path).unwrap();
-                    
-                    // Parse the content with toml_edit
-                    let mut doc = manifest_content.parse::<toml_edit::DocumentMut>().unwrap();
-                    
-                    // Read the manifest through the normal API to access dependency information
-                    let manifest: ManifestFile = ManifestFile::from_file(&manifest_path).unwrap();
-                    
-                    if let ManifestFile::Package(package_manifest) = manifest {
-                        if let Some(dependencies) = &package_manifest.dependencies {
-                            // Get the dependencies table from the parsed TOML
-                            if let Some(deps_table) = doc.get_mut("dependencies").and_then(|v| v.as_table_mut()) {
-                                // Iterate through dependencies to update paths
-                                for (name, dependency) in dependencies {
-                                    if let forc_pkg::manifest::Dependency::Detailed(dependency_details) = dependency {
-                                        if let Some(path) = &dependency_details.path {
-                                            let project_path = sync.manifest_dir().unwrap();
-                                            
-                                            // Define the resolve_dependency_path closure right before using it
-                                            let resolve_dependency_path = |project_path: &PathBuf, relative_path: &str| -> String {
-                                                let normalized_path = project_path.join(relative_path).canonicalize()
-                                                    .expect("Failed to resolve path");
-                                                normalized_path.to_str().unwrap().to_string()
-                                            };
-
-                                            // Use the closure
-                                            let absolute_dep_path = resolve_dependency_path(&project_path, path);
-                                            eprintln!("👷 Converting relative path: {:#?} to absolute: {:#?}", path, absolute_dep_path);
-
-                                            // Update the path in the TOML document - be more explicit
-                                            if let Some(dep_item) = deps_table.get_mut(name) {
-                                                // First check if this is an inline table
-                                                if let Some(dep_table) = dep_item.as_inline_table_mut() {
-                                                    // Create a proper value for toml_edit
-                                                    let path_value = toml_edit::Value::from(absolute_dep_path.clone());
-                                                    dep_table.insert("path", path_value);
-                                                } 
-                                                // Or if it's a regular table
-                                                else if let Some(dep_table) = dep_item.as_table_mut() {
-                                                    // Create a proper value for toml_edit
-                                                    let path_value = toml_edit::Value::from(absolute_dep_path.clone());
-                                                    dep_table.insert("path", toml_edit::Item::Value(path_value));
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Write the modified TOML document to the temp file
-                    let doc_string = doc.to_string();
-                    std::fs::write(&temp_manifest_path, doc_string).unwrap();
-                    
-                    let temp_manifest_content = std::fs::read_to_string(&temp_manifest_path).unwrap();
-                    eprintln!("👷 Raw temp manifest content:\n{}", temp_manifest_content);
-                }
+            // Process manifest file if needed
+            if let (Some(temp_path), Some(manifest_path)) = (temp_manifest_path, manifest_path) {
+                self.update_temp_manifest(sync, &manifest_path, &temp_path)?;
             }
 
             let new_plan = update_fn()?;
@@ -818,6 +759,95 @@ impl BuildPlanCache {
                 .as_ref()
                 .map(|(plan, _)| plan.clone())
                 .ok_or(LanguageServerError::BuildPlanCacheIsEmpty)
+        }
+    }
+
+    /// Updates the temporary manifest file with absolute paths for dependencies
+    fn update_temp_manifest(
+        &self,
+        sync: &SyncWorkspace,
+        manifest_path: &Path,
+        temp_path: &Path,
+    ) -> Result<(), LanguageServerError> {
+        // Read and parse the original manifest
+        let manifest_content =
+            std::fs::read_to_string(manifest_path).map_err(|err| DocumentError::IOError {
+                path: manifest_path.to_string_lossy().to_string(),
+                error: err.to_string(),
+            })?;
+
+        let mut doc = manifest_content
+            .parse::<toml_edit::DocumentMut>()
+            .map_err(|err| DocumentError::IOError {
+                path: manifest_path.to_string_lossy().to_string(),
+                error: format!("Failed to parse TOML: {}", err),
+            })?;
+
+        let manifest =
+            ManifestFile::from_file(manifest_path).map_err(|err| DocumentError::IOError {
+                path: manifest_path.to_string_lossy().to_string(),
+                error: err.to_string(),
+            })?;
+
+        if let ManifestFile::Package(package) = manifest {
+            // Process dependencies if they exist
+            if let Some(deps) = &package.dependencies {
+                if let Some(deps_table) = doc.get_mut("dependencies").and_then(|v| v.as_table_mut())
+                {
+                    self.process_dependencies(sync, deps, deps_table)?;
+                }
+            }
+        }
+
+        // Write the updated manifest to the temp file
+        std::fs::write(temp_path, doc.to_string()).map_err(|err| {
+            DocumentError::UnableToWriteFile {
+                path: temp_path.to_string_lossy().to_string(),
+                err: err.to_string(),
+            }
+        })?;
+
+        Ok(())
+    }
+
+    /// Process dependencies and convert relative paths to absolute
+    fn process_dependencies(
+        &self,
+        sync: &SyncWorkspace,
+        deps: &std::collections::BTreeMap<String, forc_pkg::manifest::Dependency>,
+        deps_table: &mut toml_edit::Table,
+    ) -> Result<(), LanguageServerError> {
+        let project_dir = sync.manifest_dir()?;
+
+        for (name, dependency) in deps {
+            if let forc_pkg::manifest::Dependency::Detailed(details) = dependency {
+                if let Some(rel_path) = &details.path {
+                    // Convert relative path to absolute
+                    let abs_path = project_dir
+                        .join(rel_path)
+                        .canonicalize()
+                        .map_err(|_| DirectoryError::CanonicalizeFailed)?
+                        .to_string_lossy()
+                        .to_string();
+
+                    eprintln!("👷 Converting path: {:#?} to: {:#?}", rel_path, abs_path);
+
+                    // Update the path in the TOML document
+                    if let Some(dep_item) = deps_table.get_mut(name) {
+                        self.update_path_in_table(dep_item, abs_path);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Update path in the table
+    fn update_path_in_table(&self, dep_item: &mut toml_edit::Item, abs_path: String) {
+        let path_value = toml_edit::Value::from(abs_path);
+        if let Some(table) = dep_item.as_inline_table_mut() {
+            table.insert("path", path_value);
         }
     }
 }
