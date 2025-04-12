@@ -214,7 +214,7 @@ impl std::hash::BuildHasher for MemoizedBuildHasher {
     }
 }
 
-// Ony works with `write_u64`, because it returns the last "hashed" u64, as is.
+// Only works with `write_u64`, because it returns the last "hashed" u64, as is.
 struct MemoizedHasher {
     last_u64: Option<u64>,
 }
