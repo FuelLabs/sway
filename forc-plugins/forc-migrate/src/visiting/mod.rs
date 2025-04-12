@@ -353,7 +353,7 @@ impl __ProgramVisitor {
         Self::visit_block(
             ctx,
             __ref([lexed_fn.body.inner]),
-            ty_fn.as_ref().map(|ty| &ty.body),
+            ty_fn.as_ref().map(|ty| ty.body.as_ref()),
             visitor,
             output,
         )?;
