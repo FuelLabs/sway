@@ -38,7 +38,7 @@ fuel-core-client = { version = "0.21.0", default-features = false }
 fuel-core-types = { version = "0.21.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.43.1"
+fuel-asm = "0.63.1"
 fuel-crypto = "0.43.1"
 fuel-types = "0.43.1"
 fuel-tx = "0.43.1"
