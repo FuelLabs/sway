@@ -291,37 +291,37 @@ ____
 
 tested -- panic_in_non_statement_positions
 
-      test in_init ... ok ???
+      test in_init ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_array ... ok ???
+      test in_array ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_length_1_array ... ok ???
+      test in_length_1_array ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_length_2_array_first ... ok ???
+      test in_length_2_array_first ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_length_2_array_second ... ok ???
+      test in_length_2_array_second ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_tuple ... ok ???
+      test in_tuple ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_struct ... ok ???
+      test in_struct ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_parentheses ... ok ???
+      test in_parentheses ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_if_condition ... ok ???
+      test in_if_condition ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_while_condition ... ok ???
+      test in_while_condition ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_enum ... ok ???
+      test in_enum ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_enum_multivariant ... ok ???
+      test in_enum_multivariant ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_fun_arg ... ok ???
+      test in_fun_arg ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_lazy_and ... ok ???
+      test in_lazy_and ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_lazy_or ... ok ???
+      test in_lazy_or ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_match_scrutinee ... ok ???
+      test in_match_scrutinee ... ok (???, 0 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
 
 test result: OK. 16 passed; 0 failed; finished in ???
