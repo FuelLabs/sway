@@ -58,6 +58,9 @@ pub struct PackageEntry {
     /// Dependencies of the current package entry. Can be consumed to enable
     /// parallel fetching by the consumers of this index, mainly forc.
     dependencies: Vec<PackageDependencyIdentifier>,
+    /// Determines if the package should be skipped while building. Marked as
+    /// voided by the publisher for various reasons.
+    yanked: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -79,6 +82,7 @@ impl PackageEntry {
         source_cid: String,
         abi_cid: Option<String>,
         dependencies: Vec<PackageDependencyIdentifier>,
+        yanked: bool,
     ) -> Self {
         Self {
             name,
@@ -86,6 +90,7 @@ impl PackageEntry {
             source_cid,
             abi_cid,
             dependencies,
+            yanked,
         }
     }
 
@@ -113,6 +118,11 @@ impl PackageEntry {
     pub fn dependencies(&self) -> impl Iterator<Item = &PackageDependencyIdentifier> {
         self.dependencies.iter()
     }
+
+    /// Returns the `yanked` status of this package.
+    pub fn yanked(&self) -> bool {
+        self.yanked
+    }
 }
 
 impl PackageDependencyIdentifier {
@@ -136,6 +146,11 @@ impl IndexFile {
     pub fn insert(&mut self, package: PackageEntry) {
         let pkg_version = package.version().clone();
         self.versions.insert(pkg_version, package);
+    }
+
+    /// Returns an iterator over the versions in the index file.
+    pub fn versions(&self) -> impl Iterator<Item = &semver::Version> {
+        self.versions.keys()
     }
 }
 
@@ -164,14 +179,16 @@ mod tests {
             "version":"0.0.1",
             "source_cid":"QmOlderHash",
             "abi_cid":"QmOlderAbiHash",
-            "dependencies":[]
+            "dependencies":[],
+            "yanked": false
         },
         "0.0.2":{
             "package_name":"tester",
             "version":"0.0.2",
             "source_cid":"QmExampleHash",
             "abi_cid":"QmExampleAbiHash",
-            "dependencies":[]
+            "dependencies":[],
+            "yanked": false
         }
     }"#;
 
@@ -209,7 +226,8 @@ mod tests {
                     "package_name": "dep1",
                     "version": "^0.5.0"
                 }
-            ]
+            ],
+            "yanked": false
         }
     }"#;
 
@@ -225,12 +243,15 @@ mod tests {
             PackageDependencyIdentifier::new("new-dep2".to_string(), "=0.9.0".to_string()),
         ];
 
+        let yanked = false;
+
         let new_package = PackageEntry::new(
             "new-package".to_string(),
             semver::Version::new(2, 1, 0),
             "QmNewPackageHash".to_string(),
             Some("QmNewPackageAbiHash".to_string()),
             dependencies,
+            yanked,
         );
 
         index_file.insert(new_package);
@@ -294,7 +315,8 @@ mod tests {
                         "package_name": "third-dep",
                         "version": "0.2.0"
                     }
-                ]
+                ],
+                "yanked": false
             }
         }"#;
 
@@ -310,6 +332,7 @@ mod tests {
         assert_eq!(main_pkg.name, "main-package");
         assert_eq!(main_pkg.source_cid, "QmMainHash");
         assert_eq!(main_pkg.abi_cid, None);
+        assert!(!main_pkg.yanked);
 
         // Verify dependencies
         assert_eq!(main_pkg.dependencies.len(), 3);
@@ -350,7 +373,8 @@ mod tests {
                 "package_name": "minimal-package",
                 "version": "0.5.0",
                 "source_cid": "QmMinimalHash",
-                "dependencies": []
+                "dependencies": [],
+                "yanked": false
             }
         }"#;
 
@@ -362,30 +386,5 @@ mod tests {
         assert_eq!(pkg.source_cid, "QmMinimalHash");
         assert_eq!(pkg.abi_cid, None);
         assert_eq!(pkg.dependencies.len(), 0);
-    }
-
-    #[test]
-    fn test_package_entry_new() {
-        // Test the new() constructor method
-        let dependencies = vec![PackageDependencyIdentifier {
-            package_name: "dep1".to_string(),
-            version: "^1.0".to_string(),
-        }];
-
-        let entry = PackageEntry::new(
-            "test-package".to_string(),
-            semver::Version::new(2, 0, 0),
-            "QmTestHash".to_string(),
-            Some("QmAbiHash".to_string()),
-            dependencies.clone(),
-        );
-
-        assert_eq!(entry.name, "test-package");
-        assert_eq!(entry.version, semver::Version::new(2, 0, 0));
-        assert_eq!(entry.source_cid, "QmTestHash");
-        assert_eq!(entry.abi_cid, Some("QmAbiHash".to_string()));
-        assert_eq!(entry.dependencies.len(), 1);
-        assert_eq!(entry.dependencies[0].package_name, "dep1");
-        assert_eq!(entry.dependencies[0].version, "^1.0");
     }
 }

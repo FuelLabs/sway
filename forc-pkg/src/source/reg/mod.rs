@@ -390,6 +390,44 @@ impl From<Pinned> for source::Pinned {
     }
 }
 
+/// Resolve a CID from index file and pinned package. Basically goes through
+/// the index file to find corresponding entry described by the pinned instance.
+fn resolve_to_cid(index_file: &IndexFile, pinned: &Pinned) -> anyhow::Result<Cid> {
+    let other_versions = index_file
+        .versions()
+        .filter(|ver| **ver != pinned.source.version)
+        .map(|ver| format!("{}.{}.{}", ver.major, ver.minor, ver.patch))
+        .collect::<Vec<_>>()
+        .join(",");
+
+    let package_entry = index_file.get(&pinned.source.version).ok_or_else(|| {
+        anyhow!(
+            "Version {} not found for {}. Other available versions: [{}]",
+            pinned.source.version,
+            pinned.source.name,
+            other_versions
+        )
+    })?;
+
+    let cid = Cid::from_str(package_entry.source_cid()).with_context(|| {
+        format!(
+            "Invalid CID {}v{}: `{}`",
+            package_entry.name(),
+            package_entry.version(),
+            package_entry.source_cid()
+        )
+    })?;
+    if package_entry.yanked() {
+        bail!(
+            "Version {} of {} is yanked. Other avaiable versions: [{}]",
+            pinned.source.version,
+            pinned.source.name,
+            other_versions
+        );
+    }
+    Ok(cid)
+}
+
 async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::Result<PathBuf> {
     let path = with_tmp_fetch_index(
         fetch_id,
@@ -406,22 +444,8 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
             }
             fs::create_dir_all(&path)?;
 
-            let package_entry = index_file.get(&pinned.source.version).ok_or_else(|| {
-                anyhow!(
-                    "Version {} not found for {}",
-                    pinned.source.version,
-                    pinned.source.name
-                )
-            })?;
+            let cid = resolve_to_cid(&index_file, pinned)?;
 
-            let cid = Cid::from_str(package_entry.source_cid()).with_context(|| {
-                format!(
-                    "Invalid CID {}v{}: `{}`",
-                    package_entry.name(),
-                    package_entry.version(),
-                    package_entry.source_cid()
-                )
-            })?;
             match ipfs_node {
                 IPFSNode::Local => {
                     println_action_green("Fetching", "with local IPFS node");
@@ -502,8 +526,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{file_location::Namespace, Pinned, Source};
-    use crate::source::ipfs::Cid;
+    use super::{file_location::Namespace, resolve_to_cid, Pinned, Source};
+    use crate::source::{
+        ipfs::Cid,
+        reg::index_file::{IndexFile, PackageEntry},
+    };
     use std::str::FromStr;
 
     #[test]
@@ -547,5 +574,111 @@ mod tests {
         };
 
         assert_eq!(pinned, expected_pinned)
+    }
+
+    #[test]
+    fn test_resolve_to_cid() {
+        let mut index_file = IndexFile::default();
+
+        // Add a regular version with a valid CID
+        let valid_cid = "QmdMVqLqpba2mMB5AUjYCxubC6tLGevQFunpBkbC2UbrKS";
+        let valid_version = semver::Version::new(1, 0, 0);
+        let valid_entry = PackageEntry::new(
+            "test_package".to_string(),
+            valid_version.clone(),
+            valid_cid.to_string(),
+            None,   // no abi_cid
+            vec![], // no dependencies
+            false,  // not yanked
+        );
+        index_file.insert(valid_entry);
+
+        // Add a yanked version
+        let yanked_cid = "QmdMVqLqpba2mMB5AUjYCxubC6tLGevQFunpBkbC2UbrKR";
+        let yanked_version = semver::Version::new(0, 9, 0);
+        let yanked_entry = PackageEntry::new(
+            "test_package".to_string(),
+            yanked_version.clone(),
+            yanked_cid.to_string(),
+            None,   // no abi_cid
+            vec![], // no dependencies
+            true,   // yanked
+        );
+        index_file.insert(yanked_entry);
+
+        // Add another version just to have multiple available
+        let other_cid = "QmdMVqLqpba2mMB5AUjYCxubC6tLGevQFunpBkbC2UbrKT";
+        let other_version = semver::Version::new(1, 1, 0);
+        let other_entry = PackageEntry::new(
+            "test_package".to_string(),
+            other_version.clone(),
+            other_cid.to_string(),
+            None,   // no abi_cid
+            vec![], // no dependencies
+            false,  // not yanked
+        );
+        index_file.insert(other_entry);
+
+        // Test Case 1: Successful resolution
+        let valid_source = Source {
+            name: "test_package".to_string(),
+            version: valid_version.clone(),
+            namespace: Namespace::Flat,
+        };
+        let valid_pinned = Pinned {
+            source: valid_source,
+            cid: Cid::from_str(valid_cid).unwrap(),
+        };
+
+        let result = resolve_to_cid(&index_file, &valid_pinned);
+        assert!(result.is_ok());
+        let valid_cid = Cid::from_str(valid_cid).unwrap();
+        assert_eq!(result.unwrap(), valid_cid);
+
+        // Test Case 2: Error when version doesn't exist
+        let nonexistent_version = semver::Version::new(2, 0, 0);
+        let nonexistent_source = Source {
+            name: "test_package".to_string(),
+            version: nonexistent_version,
+            namespace: Namespace::Flat,
+        };
+        let nonexistent_pinned = Pinned {
+            source: nonexistent_source,
+            // this cid just a placeholder, as this version does not exists
+            cid: valid_cid,
+        };
+
+        let result = resolve_to_cid(&index_file, &nonexistent_pinned);
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Version 2.0.0 not found"));
+        assert!(
+            error_msg.contains("Other available versions: [1.1.0,0.9.0,1.0.0]")
+                || error_msg.contains("Other available versions: [0.9.0,1.0.0,1.1.0]")
+                || error_msg.contains("Other available versions: [1.0.0,0.9.0,1.1.0]")
+                || error_msg.contains("Other available versions: [0.9.0,1.1.0,1.0.0]")
+                || error_msg.contains("Other available versions: [1.0.0,1.1.0,0.9.0]")
+                || error_msg.contains("Other available versions: [1.1.0,1.0.0,0.9.0]")
+        );
+
+        // Test Case 3: Error when version is yanked
+        let yanked_source = Source {
+            name: "test_package".to_string(),
+            version: yanked_version.clone(),
+            namespace: Namespace::Flat,
+        };
+        let yanked_pinned = Pinned {
+            source: yanked_source,
+            cid: Cid::from_str(yanked_cid).unwrap(),
+        };
+
+        let result = resolve_to_cid(&index_file, &yanked_pinned);
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Version 0.9.0 of test_package is yanked"));
+        assert!(
+            error_msg.contains("Other avaiable versions: [1.1.0,1.0.0]")
+                || error_msg.contains("Other avaiable versions: [1.0.0,1.1.0]")
+        );
     }
 }
