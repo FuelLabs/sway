@@ -67,7 +67,8 @@ mod tests {
         let source_cid = "QmHash".to_string();
         let abi_cid = None;
         let dependencies = vec![];
-        PackageEntry::new(name, version, source_cid, abi_cid, dependencies)
+        let yanked = false;
+        PackageEntry::new(name, version, source_cid, abi_cid, dependencies, yanked)
     }
 
     #[test]
