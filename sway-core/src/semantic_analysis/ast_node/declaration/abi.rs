@@ -147,21 +147,27 @@ impl ty::TyAbiDecl {
                                     );
                                 }
                             }
+
+                            let method_name = method.name.clone();
+
                             new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(
-                                ctx.engines.de().insert(method.clone(), Some(&decl_id)),
+                                ctx.engines.de().insert(method, Some(&decl_id)),
                             ));
 
-                            method.name.clone()
+                            method_name
                         }
                         TraitItem::Constant(decl_id) => {
                             let const_decl = engines.pe().get_constant(&decl_id).as_ref().clone();
                             let const_decl =
                                 ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl)?;
-                            let decl_ref =
-                                ctx.engines.de().insert(const_decl.clone(), Some(&decl_id));
+
+                            let const_name = const_decl.call_path.suffix.clone();
+
+                            let decl_ref = ctx.engines.de().insert(const_decl, Some(&decl_id));
                             new_interface_surface
                                 .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
-                            const_decl.call_path.suffix.clone()
+
+                            const_name
                         }
                         TraitItem::Type(decl_id) => {
                             let type_decl = engines.pe().get_trait_type(&decl_id).as_ref().clone();
@@ -170,11 +176,13 @@ impl ty::TyAbiDecl {
                             });
                             let type_decl =
                                 ty::TyTraitType::type_check(handler, ctx.by_ref(), type_decl)?;
-                            let decl_ref =
-                                ctx.engines().de().insert(type_decl.clone(), Some(&decl_id));
+
+                            let type_name = type_decl.name.clone();
+                            let decl_ref = ctx.engines().de().insert(type_decl, Some(&decl_id));
                             new_interface_surface
                                 .push(ty::TyTraitInterfaceItem::Type(decl_ref.clone()));
-                            type_decl.name
+
+                            type_name
                         }
                         TraitItem::Error(_, _) => {
                             continue;

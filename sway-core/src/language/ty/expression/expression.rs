@@ -75,7 +75,11 @@ impl ReplaceDecls for TyExpression {
 }
 
 impl UpdateConstantExpression for TyExpression {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+    fn update_constant_expression(
+        &mut self,
+        engines: &Engines,
+        implementing_type: &TyDecl,
+    ) -> HasChanges {
         self.expression
             .update_constant_expression(engines, implementing_type)
     }

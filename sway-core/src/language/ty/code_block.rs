@@ -75,10 +75,15 @@ impl ReplaceDecls for TyCodeBlock {
 }
 
 impl UpdateConstantExpression for TyCodeBlock {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+    fn update_constant_expression(
+        &mut self,
+        engines: &Engines,
+        implementing_type: &TyDecl,
+    ) -> HasChanges {
         self.contents
             .iter_mut()
-            .for_each(|x| x.update_constant_expression(engines, implementing_type));
+            .map(|ast_node| ast_node.update_constant_expression(engines, implementing_type))
+            .fold(HasChanges::No, |acc, x| acc | x)
     }
 }
 

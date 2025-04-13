@@ -316,7 +316,7 @@ fn rename_const_generics_on_function_inner(
 impl DeclRefFunction {
     /// Makes method with a copy of type_id.
     /// This avoids altering the type_id already in the type map.
-    /// Without this it is possible to retrieve a method from the type map unify its types and
+    /// Without this it is possible to retrieve a method from the type map, unify its types and
     /// the second time it won't be possible to retrieve the same method.
     pub fn get_method_safe_to_unify(
         &self,
@@ -335,12 +335,13 @@ impl DeclRefFunction {
         let decl_engine = engines.de();
 
         let original = &*decl_engine.get_function(self);
-        let mut method = original.clone();
 
-        if let Some(method_implementing_for) = method.implementing_for {
+        if let Some(method_implementing_for) = original.implementing_for {
+            let mut method = original.clone();
+
             let mut type_id_type_subst_map = TypeSubstMap::new();
 
-            if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
+            if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
                 let impl_self_or_trait = &*engines.de().get(&t.decl_id);
                 rename_const_generics_on_function(
                     handler,
@@ -406,30 +407,35 @@ impl DeclRefFunction {
             method_type_subst_map.extend(&type_id_type_subst_map);
             method_type_subst_map.insert(method_implementing_for, type_id);
 
-            method.subst(&SubstTypesContext::new(
-                handler,
-                engines,
-                &method_type_subst_map,
-                true,
-            ));
-
-            let r = engines
-                .de()
-                .insert(
-                    method.clone(),
-                    engines.de().get_parsed_decl_id(self.id()).as_ref(),
-                )
-                .with_parent(decl_engine, self.id().into());
+            let decl_ref = if method
+                .subst(&SubstTypesContext::new(
+                    handler,
+                    engines,
+                    &method_type_subst_map,
+                    true,
+                ))
+                .has_changes()
+            {
+                engines
+                    .de()
+                    .insert(
+                        method.clone(),
+                        engines.de().get_parsed_decl_id(self.id()).as_ref(),
+                    )
+                    .with_parent(decl_engine, self.id().into())
+            } else {
+                self.clone()
+            };
 
             engines.obs().trace(|| {
                 format!(
                     "    after get_method_safe_to_unify: {:?}; {:?}",
                     engines.help_out(type_id),
-                    engines.help_out(r.id())
+                    engines.help_out(decl_ref.id())
                 )
             });
 
-            return r;
+            return decl_ref;
         }
 
         engines.obs().trace(|| {
@@ -549,10 +555,14 @@ impl SubstTypes for TyFunctionDecl {
 
         if let Some(map) = ctx.type_subst_map.as_ref() {
             let handler = Handler::default();
+            // TODO: This is a workaround until we implement `materialize_const_generics`
+            //       that returns `HasChanges`.
+            let mut const_generic_materialization_has_changes = HasChanges::No;
             for (name, value) in &map.const_generics_materialization {
                 let _ = self.materialize_const_generics(ctx.engines, &handler, name, value);
+                const_generic_materialization_has_changes = HasChanges::Yes;
             }
-            HasChanges::Yes
+            changes | const_generic_materialization_has_changes
         } else {
             changes
         }

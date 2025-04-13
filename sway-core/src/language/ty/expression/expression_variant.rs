@@ -1368,56 +1368,73 @@ impl TypeCheckFinalization for TyExpressionVariant {
 }
 
 impl UpdateConstantExpression for TyExpressionVariant {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+    fn update_constant_expression(
+        &mut self,
+        engines: &Engines,
+        implementing_type: &TyDecl,
+    ) -> HasChanges {
         use TyExpressionVariant::*;
         match self {
-            Literal(..) => (),
-            FunctionApplication { .. } => (),
+            Literal(..) => HasChanges::No,
+            FunctionApplication { .. } => HasChanges::No,
             LazyOperator { lhs, rhs, .. } => {
-                (*lhs).update_constant_expression(engines, implementing_type);
-                (*rhs).update_constant_expression(engines, implementing_type);
+                has_changes!(
+                    (*lhs).update_constant_expression(engines, implementing_type);
+                    (*rhs).update_constant_expression(engines, implementing_type);
+                )
             }
             ConstantExpression { ref mut decl, .. } => {
                 if let Some(impl_const) =
                     find_const_decl_from_impl(implementing_type, engines.de(), decl)
                 {
                     **decl = impl_const;
+                    HasChanges::Yes
+                } else {
+                    HasChanges::No
                 }
             }
             ConfigurableExpression { .. } => {
                 unreachable!()
             }
-            ConstGenericExpression { .. } => {}
-            VariableExpression { .. } => (),
+            ConstGenericExpression { .. } => HasChanges::No,
+            VariableExpression { .. } => HasChanges::No,
             Tuple { fields } => fields
                 .iter_mut()
-                .for_each(|x| x.update_constant_expression(engines, implementing_type)),
+                .map(|field| field.update_constant_expression(engines, implementing_type))
+                .fold(HasChanges::No, |acc, x| acc | x),
             ArrayExplicit {
                 contents,
                 elem_type: _,
             } => contents
                 .iter_mut()
-                .for_each(|x| x.update_constant_expression(engines, implementing_type)),
+                .map(|elem| elem.update_constant_expression(engines, implementing_type))
+                .fold(HasChanges::No, |acc, x| acc | x),
             ArrayRepeat {
                 elem_type: _,
                 value,
                 length,
             } => {
-                value.update_constant_expression(engines, implementing_type);
-                length.update_constant_expression(engines, implementing_type);
+                has_changes!(
+                    value.update_constant_expression(engines, implementing_type);
+                    length.update_constant_expression(engines, implementing_type);
+                )
             }
             ArrayIndex { prefix, index } => {
-                (*prefix).update_constant_expression(engines, implementing_type);
-                (*index).update_constant_expression(engines, implementing_type);
+                has_changes!(
+                    (*prefix).update_constant_expression(engines, implementing_type);
+                    (*index).update_constant_expression(engines, implementing_type);
+                )
             }
-            StructExpression { fields, .. } => fields.iter_mut().for_each(|x| {
-                x.value
-                    .update_constant_expression(engines, implementing_type)
-            }),
-            CodeBlock(block) => {
-                block.update_constant_expression(engines, implementing_type);
-            }
-            FunctionParameter => (),
+            StructExpression { fields, .. } => fields
+                .iter_mut()
+                .map(|field| {
+                    field
+                        .value
+                        .update_constant_expression(engines, implementing_type)
+                })
+                .fold(HasChanges::No, |acc, x| acc | x),
+            CodeBlock(block) => block.update_constant_expression(engines, implementing_type),
+            FunctionParameter => HasChanges::No,
             MatchExp { desugared, .. } => {
                 desugared.update_constant_expression(engines, implementing_type)
             }
@@ -1426,18 +1443,22 @@ impl UpdateConstantExpression for TyExpressionVariant {
                 then,
                 r#else,
             } => {
-                condition.update_constant_expression(engines, implementing_type);
-                then.update_constant_expression(engines, implementing_type);
+                let mut has_changes = has_changes!(
+                    condition.update_constant_expression(engines, implementing_type);
+                    then.update_constant_expression(engines, implementing_type);
+                );
                 if let Some(ref mut r#else) = r#else {
-                    r#else.update_constant_expression(engines, implementing_type);
+                    has_changes =
+                        has_changes | r#else.update_constant_expression(engines, implementing_type);
                 }
+                has_changes
             }
-            AsmExpression { .. } => {}
+            AsmExpression { .. } => HasChanges::No,
             StructFieldAccess { prefix, .. } => {
-                prefix.update_constant_expression(engines, implementing_type);
+                prefix.update_constant_expression(engines, implementing_type)
             }
             TupleElemAccess { prefix, .. } => {
-                prefix.update_constant_expression(engines, implementing_type);
+                prefix.update_constant_expression(engines, implementing_type)
             }
             EnumInstantiation {
                 enum_ref: _,
@@ -1445,33 +1466,35 @@ impl UpdateConstantExpression for TyExpressionVariant {
                 ..
             } => {
                 if let Some(ref mut contents) = contents {
-                    contents.update_constant_expression(engines, implementing_type);
-                };
+                    contents.update_constant_expression(engines, implementing_type)
+                } else {
+                    HasChanges::No
+                }
             }
             AbiCast { address, .. } => {
                 address.update_constant_expression(engines, implementing_type)
             }
-            StorageAccess { .. } => (),
-            IntrinsicFunction(_) => {}
-            EnumTag { exp } => {
-                exp.update_constant_expression(engines, implementing_type);
-            }
+            StorageAccess { .. } => HasChanges::No,
+            IntrinsicFunction(_) => HasChanges::No,
+            EnumTag { exp } => exp.update_constant_expression(engines, implementing_type),
             UnsafeDowncast { exp, .. } => {
-                exp.update_constant_expression(engines, implementing_type);
+                exp.update_constant_expression(engines, implementing_type)
             }
-            AbiName(_) => (),
+            AbiName(_) => HasChanges::No,
             WhileLoop {
                 ref mut condition,
                 ref mut body,
             } => {
-                condition.update_constant_expression(engines, implementing_type);
-                body.update_constant_expression(engines, implementing_type);
+                has_changes!(
+                    condition.update_constant_expression(engines, implementing_type);
+                    body.update_constant_expression(engines, implementing_type);
+                )
             }
             ForLoop { ref mut desugared } => {
-                desugared.update_constant_expression(engines, implementing_type);
+                desugared.update_constant_expression(engines, implementing_type)
             }
-            Break => (),
-            Continue => (),
+            Break => HasChanges::No,
+            Continue => HasChanges::No,
             Reassignment(reassignment) => {
                 reassignment.update_constant_expression(engines, implementing_type)
             }

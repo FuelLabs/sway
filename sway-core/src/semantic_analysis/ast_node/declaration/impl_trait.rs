@@ -788,10 +788,6 @@ impl TyImplSelfOrTrait {
                         }
                     }
 
-                    let impl_trait_decl: ty::TyDecl = decl_engine
-                        .insert(impl_trait.clone(), Some(parsed_decl_id))
-                        .into();
-
                     let mut finalizing_ctx =
                         TypeCheckFinalizationContext::new(ctx.engines, ctx.by_ref());
                     for item in new_items {
@@ -1036,13 +1032,18 @@ fn type_check_trait_implementation(
                     !ctx.code_block_first_pass(),
                 ));
 
+                let type_decl_name = type_decl.name.clone();
+                let type_decl_ty_type_id = type_decl.ty.as_ref().map(|type_arg| type_arg.type_id());
+
                 // Remove this type from the checklist.
-                let name = type_decl.name.clone();
-                type_checklist.remove(&name);
+                type_checklist.remove(&type_decl_name);
 
                 // Add this type to the "impld decls".
-                let decl_ref = decl_engine.insert(type_decl.clone(), Some(decl_id));
-                impld_item_refs.insert((name, implementing_for), TyTraitItem::Type(decl_ref));
+                let decl_ref = decl_engine.insert(type_decl, Some(decl_id));
+                impld_item_refs.insert(
+                    (type_decl_name.clone(), implementing_for),
+                    TyTraitItem::Type(decl_ref),
+                );
 
                 // We want the `Self` type to have the span that points to an arbitrary location within
                 // the source file in which the trait is implemented for a type. The `trait_name` points
@@ -1050,27 +1051,29 @@ fn type_check_trait_implementation(
                 let self_type_id = type_engine
                     .new_unknown_generic_self(trait_name.span(), false)
                     .0;
-                if let Some(type_arg) = type_decl.ty.clone() {
+                if let Some(type_arg_type_id) = type_decl_ty_type_id {
                     trait_type_mapping.extend(
                         &TypeSubstMap::from_type_parameters_and_type_arguments(
                             [type_engine.insert_trait_type(
                                 engines,
-                                type_decl.name.clone(),
+                                type_decl_name.clone(),
                                 implementing_for,
                             )]
                             .into_iter(),
-                            [type_arg.type_id()].into_iter(),
+                            [type_arg_type_id].into_iter(),
                         ),
                     );
                     trait_type_mapping.extend(
                         &TypeSubstMap::from_type_parameters_and_type_arguments(
-                            [type_engine.insert_trait_type(
-                                engines,
-                                type_decl.name.clone(),
-                                self_type_id,
-                            )]
+                            [
+                                type_engine.insert_trait_type(
+                                    engines,
+                                    type_decl_name,
+                                    self_type_id,
+                                ),
+                            ]
                             .into_iter(),
-                            [type_arg.type_id()].into_iter(),
+                            [type_arg_type_id].into_iter(),
                         ),
                     );
                 }
@@ -1245,6 +1248,12 @@ fn type_check_trait_implementation(
             TyImplItem::Fn(decl_ref) => {
                 let mut method = (*decl_engine.get_function(decl_ref)).clone();
 
+                let mut has_changes = if impl_type_parameters.is_empty() {
+                    HasChanges::No
+                } else {
+                    HasChanges::Yes
+                };
+
                 // We need to add impl type parameters to the method's type parameters
                 // so that in-line monomorphization can complete.
                 //
@@ -1252,7 +1261,7 @@ fn type_check_trait_implementation(
                 // parameters so the type constraints are correctly applied to the method.
                 //
                 // NOTE: this is a semi-hack that is used to force monomorphization of
-                // trait methods that contain a generic defined in the parent impl...
+                // trait methods that contain a generic defined in the parent impl
                 // without stuffing the generic into the method's type parameters, its
                 // not currently possible to monomorphize on that generic at function
                 // application time.
@@ -1264,49 +1273,82 @@ fn type_check_trait_implementation(
                         .collect::<Vec<_>>(),
                 );
 
-                method.implementing_for = Some(implementing_for);
-                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
-                method.subst(&SubstTypesContext::new(
-                    handler,
-                    engines,
-                    &trait_type_mapping,
-                    !ctx.code_block_first_pass(),
-                ));
-                all_items_refs.push(TyImplItem::Fn(
+                if method.implementing_for != Some(implementing_for) {
+                    method.implementing_for = Some(implementing_for);
+                    has_changes = HasChanges::Yes;
+                }
+
+                if method.replace_decls(&decl_mapping, handler, &mut ctx)? {
+                    has_changes = HasChanges::Yes;
+                };
+
+                has_changes = has_changes
+                    | method.subst(&SubstTypesContext::new(
+                        handler,
+                        engines,
+                        &trait_type_mapping,
+                        !ctx.code_block_first_pass(),
+                    ));
+
+                let decl_ref = if has_changes.has_changes() {
                     decl_engine
                         .insert(
                             method,
                             decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
                         )
-                        .with_parent(decl_engine, (*decl_ref.id()).into()),
-                ));
+                        .with_parent(decl_engine, (*decl_ref.id()).into())
+                } else {
+                    decl_ref.clone()
+                };
+
+                all_items_refs.push(TyImplItem::Fn(decl_ref));
             }
             TyImplItem::Constant(decl_ref) => {
                 let mut const_decl = (*decl_engine.get_constant(decl_ref)).clone();
-                const_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
-                const_decl.subst(&SubstTypesContext::new(
-                    handler,
-                    engines,
-                    &trait_type_mapping,
-                    !ctx.code_block_first_pass(),
-                ));
-                all_items_refs.push(TyImplItem::Constant(decl_engine.insert(
-                    const_decl,
-                    decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                )));
+                let mut has_changes =
+                    if const_decl.replace_decls(&decl_mapping, handler, &mut ctx)? {
+                        HasChanges::Yes
+                    } else {
+                        HasChanges::No
+                    };
+                has_changes = has_changes
+                    | const_decl.subst(&SubstTypesContext::new(
+                        handler,
+                        engines,
+                        &trait_type_mapping,
+                        !ctx.code_block_first_pass(),
+                    ));
+
+                let decl_ref = if has_changes.has_changes() {
+                    decl_engine.insert(
+                        const_decl,
+                        decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+                    )
+                } else {
+                    decl_ref.clone()
+                };
+
+                all_items_refs.push(TyImplItem::Constant(decl_ref));
             }
             TyImplItem::Type(decl_ref) => {
                 let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
-                type_decl.subst(&SubstTypesContext::new(
+                let has_changes = type_decl.subst(&SubstTypesContext::new(
                     handler,
                     engines,
                     &trait_type_mapping,
                     !ctx.code_block_first_pass(),
                 ));
-                all_items_refs.push(TyImplItem::Type(decl_engine.insert(
-                    type_decl.clone(),
-                    decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                )));
+
+                let decl_ref = if has_changes.has_changes() {
+                    decl_engine.insert(
+                        type_decl.clone(),
+                        decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+                    )
+                } else {
+                    decl_ref.clone()
+                };
+
+                all_items_refs.push(TyImplItem::Type(decl_ref));
             }
         }
     }
@@ -1582,7 +1624,7 @@ fn type_check_impl_method(
         // parameters so the type constraints are correctly applied to the method.
         //
         // NOTE: this is a semi-hack that is used to force monomorphization of
-        // trait methods that contain a generic defined in the parent impl...
+        // trait methods that contain a generic defined in the parent impl
         // without stuffing the generic into the method's type parameters, its
         // not currently possible to monomorphize on that generic at function
         // application time.
