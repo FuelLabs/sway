@@ -465,7 +465,7 @@ impl AllocatedAbstractInstructionSet {
     /// which switch from immediate to register based destinations after each loop.
     fn resolve_labels(&mut self, data_section: &mut DataSection) -> LabeledBlocks {
         self.mark_far_jumps();
-        self.map_label_offsets(&data_section)
+        self.map_label_offsets(data_section)
     }
 
     // Pessimistic instruction size, in units of 32b.
