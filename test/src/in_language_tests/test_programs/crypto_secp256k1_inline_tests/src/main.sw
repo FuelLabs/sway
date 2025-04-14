@@ -452,3 +452,9 @@ fn secp256k1_hash() {
     let hash = sha256(secp256k1);
     assert(hash == 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b);
 }
+
+#[test]
+fn secp256k1_codec() {
+    let secp256k1 = Secp256k1::from((b256::zero(), b256::zero()));
+    log(secp256k1);
+}
