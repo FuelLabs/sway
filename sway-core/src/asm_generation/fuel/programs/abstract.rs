@@ -12,9 +12,7 @@ use crate::{
         ProgramKind,
     },
     asm_lang::{
-        allocated_ops::{AllocatedOpcode, AllocatedRegister},
-        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, VirtualImmediate12,
-        VirtualImmediate18, VirtualImmediate24,
+        allocated_ops::{AllocatedOpcode, AllocatedRegister}, AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24
     },
     decl_engine::DeclRefFunction,
 };
@@ -199,7 +197,7 @@ impl AbstractProgram {
                 },
                 // word 1.5
                 AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Jump(label)),
+                    opcode: Either::Right(ControlFlowOp::Jump {to: label, type_: JumpType::Unconditional, force_far: false}),
                     comment: String::new(),
                     owning_span: None,
                 },
@@ -249,7 +247,7 @@ impl AbstractProgram {
     fn append_jump_to_entry(&mut self, asm: &mut AllocatedAbstractInstructionSet) {
         let entry = self.entries.iter().find(|x| x.name == "__entry").unwrap();
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Right(ControlFlowOp::Jump(entry.label)),
+            opcode: Either::Right(ControlFlowOp::Jump { to: entry.label, type_: JumpType::Unconditional, force_far: false }),
             comment: "jump to ABI function selector".into(),
             owning_span: None,
         });
@@ -332,7 +330,11 @@ impl AbstractProgram {
             // Jump to the function label if the selector was equal.
             asm.ops.push(AllocatedAbstractOp {
                 // If the comparison result is _not_ equal to 0, then it was indeed equal.
-                opcode: Either::Right(ControlFlowOp::JumpIfNotZero(CMP_RESULT_REG, entry.label)),
+                opcode: Either::Right(ControlFlowOp::Jump {
+                    to: entry.label,
+                    type_: JumpType::NotZero(CMP_RESULT_REG),
+                    force_far: false,
+                }),
                 comment: "[function selection]: jump to selected contract function".into(),
                 owning_span: None,
             });
@@ -340,7 +342,11 @@ impl AbstractProgram {
 
         if let Some(fallback_fn) = fallback_fn {
             asm.ops.push(AllocatedAbstractOp {
-                opcode: Either::Right(ControlFlowOp::Call(fallback_fn)),
+                opcode: Either::Right(ControlFlowOp::Jump {
+                    to: fallback_fn,
+                    type_: JumpType::Call,
+                    force_far: false,
+                 }),
                 comment: "[function selection]: call contract fallback function".into(),
                 owning_span: None,
             });

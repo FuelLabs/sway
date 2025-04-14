@@ -16,8 +16,7 @@ use crate::{
         FinalizedAsm, ProgramKind,
     },
     asm_lang::{
-        virtual_register::*, Label, Op, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18,
-        VirtualOp, WideCmp, WideOperations,
+        virtual_register::*, JumpType, Label, Op, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18, VirtualOp, WideCmp, WideOperations
     },
     decl_engine::DeclRefFunction,
     metadata::MetadataManager,
@@ -174,7 +173,11 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
 
                 // call decode
                 self.before_entries.push(Op {
-                    opcode: Either::Right(crate::asm_lang::ControlFlowOp::Call(*decode_fn_label)),
+                    opcode: Either::Right(crate::asm_lang::ControlFlowOp::Jump {
+                        to: *decode_fn_label,
+                        type_: JumpType::Call,
+                        force_far: false,
+                    }),
                     comment: format!("decode configurable {}", name),
                     owning_span: None,
                 });

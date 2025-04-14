@@ -1,9 +1,7 @@
 use crate::{
     asm_generation::fuel::data_section::EntryName,
     asm_lang::{
-        allocated_ops::{AllocatedOpcode, AllocatedRegister},
-        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, RealizedOp,
-        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+        allocated_ops::{AllocatedOpcode, AllocatedRegister}, AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, RealizedOp, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24
     },
 };
 
@@ -195,13 +193,114 @@ impl AllocatedAbstractInstructionSet {
         self
     }
 
+    pub(crate) fn compile_jump(
+        data_section: &mut DataSection,
+        curr_offset: u64,
+        target_offset: u64,
+        condition_nonzero: Option<AllocatedRegister>,
+        far: bool,
+    ) -> Vec<RealizedOp> {
+        if curr_offset == target_offset {
+            if !far {
+                unreachable!("Self jump should have been marked by mark_far_jumps");
+            }
+
+            return vec![
+                RealizedOp {
+                    opcode: AllocatedOpcode::NOOP,
+                    owning_span: None,
+                    comment: "[self jump]: land here".into(),
+                },
+                if let Some(cond_nz) = condition_nonzero {
+                    RealizedOp {
+                        opcode: AllocatedOpcode::JNZB(
+                            cond_nz,
+                            AllocatedRegister::Constant(ConstantRegister::Zero),
+                            VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                        ),
+                        owning_span: None,
+                        comment: "[self jump]: jump to preceeding noop".into(),
+                    }
+                } else {
+                    RealizedOp {
+                        opcode: AllocatedOpcode::JMPB(
+                            AllocatedRegister::Constant(ConstantRegister::Zero),
+                            VirtualImmediate18::new_unchecked(0, "unreachable()"),
+                        ),
+                        owning_span: None,
+                        comment: "[self jump]: jump to preceeding noop".into(),
+                    }
+                }
+            ];
+        }
+
+        if curr_offset > target_offset {
+            let delta = curr_offset - target_offset;
+            if far {
+                let data_id = data_section.insert_data_value(Entry::new_word(
+                    delta,
+                    EntryName::NonConfigurable,
+                    None,
+                ));
+
+                vec![
+                    RealizedOp {
+                        opcode: AllocatedOpcode::LoadDataId(AllocatedRegister::Constant(ConstantRegister::Scratch), data_id),
+                        owning_span: None,
+                        comment: "[far jump]: load target address".into(),
+                    },
+                    RealizedOp {
+                        opcode: AllocatedOpcode::JMPB(
+                            AllocatedRegister::Constant(ConstantRegister::Scratch),
+                            VirtualImmediate18::new_unchecked(0, "zero must fit in 18 bits"),
+                        ),
+                    },
+                    owning_span: None,
+                    comment: "[far jump]: jump".into(),
+                ]
+            } else {
+                vec![
+                    
+                        RealizedOp {
+                            opcode: if let Some(cond_nz) = condition_nonzero { AllocatedOpcode::JNZB(
+                                cond_nz,
+                                AllocatedRegister::Constant(ConstantRegister::Zero),
+                                VirtualImmediate12::new_unchecked(delta, "ensured by mark_far_jumps"),
+                            ) } else {
+AllocatedOpcode::JMPB(
+                                AllocatedRegister::Constant(ConstantRegister::Zero),
+                                VirtualImmediate18::new_unchecked(delta, "ensured by mark_far_jumps"),
+                            )
+                            },
+                            owning_span: None,
+                            comment: "".into(),
+                        }
+                ]
+            }
+        }
+
+
+
+
+        RealizedOp {
+            opcode: AllocatedOpcode::JMPB(
+                AllocatedRegister::Constant(ConstantRegister::Zero),
+                VirtualImmediate18::new_unchecked(0, "unreachable()"),
+            ),
+            owning_span,
+            comment,
+        }
+
+    }
+
+
     /// Runs two passes -- one to get the instruction offsets of the labels and one to replace the
     /// labels in the organizational ops
     pub(crate) fn realize_labels(
         mut self,
         data_section: &mut DataSection,
     ) -> Result<(RealizedAbstractInstructionSet, LabeledBlocks), crate::CompileError> {
-        let label_offsets = self.resolve_labels(data_section, 0)?;
+        let label_offsets = self.resolve_labels(data_section);
         let mut curr_offset = 0;
 
         let mut realized_ops = vec![];
@@ -221,15 +320,22 @@ impl AllocatedAbstractInstructionSet {
                     comment,
                 }),
                 Either::Right(org_op) => match org_op {
-                    ControlFlowOp::Jump(ref lab) | ControlFlowOp::Call(ref lab) => {
+                    ControlFlowOp::Jump {to, type_, force_far} => {
+                        if force_far {
+                            // Emit far jump
+                        } else {
+                            // Emit near jump
+
+                        }
+
                         let imm = || {
                             VirtualImmediate18::new_unchecked(
                                 // JMP(B/F) adds a 1
-                                rel_offset(curr_offset, lab) - 1,
+                                rel_offset(curr_offset, to) - 1,
                                 "Programs with more than 2^18 labels are unsupported right now",
                             )
                         };
-                        match curr_offset.cmp(&label_offsets.get(lab).unwrap().offs) {
+                        match curr_offset.cmp(&label_offsets.get(to).unwrap().offs) {
                             Ordering::Equal => {
                                 assert!(matches!(
                                     self.ops[op_idx - 1].opcode,
@@ -266,15 +372,15 @@ impl AllocatedAbstractInstructionSet {
                             }
                         }
                     }
-                    ControlFlowOp::JumpIfNotZero(r1, ref lab) => {
+                    ControlFlowOp::JumpIfNotZero(r1, ref to) => {
                         let imm = || {
                             VirtualImmediate12::new_unchecked(
                                 // JNZ(B/F) adds a 1
-                                rel_offset(curr_offset, lab) - 1,
+                                rel_offset(curr_offset, to) - 1,
                                 "Programs with more than 2^12 labels are unsupported right now",
                             )
                         };
-                        match curr_offset.cmp(&label_offsets.get(lab).unwrap().offs) {
+                        match curr_offset.cmp(&label_offsets.get(to).unwrap().offs) {
                             Ordering::Equal => {
                                 assert!(matches!(
                                     self.ops[op_idx - 1].opcode,
@@ -314,12 +420,12 @@ impl AllocatedAbstractInstructionSet {
                             }
                         }
                     }
-                    ControlFlowOp::SaveRetAddr(r1, ref lab) => {
+                    ControlFlowOp::SaveRetAddr(r1, ref to) => {
                         let imm = VirtualImmediate12::new_unchecked(
-                            rel_offset(curr_offset, lab),
+                            rel_offset(curr_offset, to),
                             "Programs with more than 2^12 relative offset are unsupported right now",
                         );
-                        assert!(curr_offset < label_offsets.get(lab).unwrap().offs);
+                        assert!(curr_offset < label_offsets.get(to).unwrap().offs);
                         realized_ops.push(RealizedOp {
                             opcode: AllocatedOpcode::SUB(
                                 r1.clone(),
@@ -359,32 +465,6 @@ impl AllocatedAbstractInstructionSet {
                             comment: String::new(),
                         });
                     }
-                    ControlFlowOp::LoadLabel(r1, ref lab) => {
-                        // LoadLabel ops are inserted by `rewrite_far_jumps`.
-                        // So the next instruction must be a relative jump.
-                        assert!(matches!(
-                            self.ops[op_idx + 1].opcode,
-                            Either::Left(
-                                AllocatedOpcode::JMPB(..)
-                                    | AllocatedOpcode::JNZB(..)
-                                    | AllocatedOpcode::JMPF(..)
-                                    | AllocatedOpcode::JNZF(..)
-                            )
-                        ));
-                        // We compute the relative offset w.r.t the actual jump.
-                        // Sub 1 because the relative jumps add a 1.
-                        let offset = rel_offset(curr_offset + 1, lab) - 1;
-                        let data_id = data_section.insert_data_value(Entry::new_word(
-                            offset,
-                            EntryName::NonConfigurable,
-                            None,
-                        ));
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::LoadDataId(r1, data_id),
-                            owning_span,
-                            comment,
-                        });
-                    }
                     ControlFlowOp::Comment => continue,
                     ControlFlowOp::Label(..) => continue,
 
@@ -399,43 +479,76 @@ impl AllocatedAbstractInstructionSet {
         let realized_ops = RealizedAbstractInstructionSet { ops: realized_ops };
         Ok((realized_ops, label_offsets))
     }
-
+    
+    /// Iteratively resolve the label offsets.
+    ///
+    /// For very large programs the label offsets may be too large to fit in an immediate jump
+    /// (JI, JNEI or JNZI).  In these case we must replace the immediate jumps with register
+    /// based jumps (JMP, JNE) but these require more than one instruction; usually an
+    /// instruction to load the destination register and then the jump itself.
+    ///
+    /// But we don't know the offset of a label until we scan through the ops and count them.
+    /// So we have a chicken and egg situation where we may need to add new instructions which
+    /// would change the offsets to all labels thereafter, which in turn could require more
+    /// instructions to be added, and so on.
+    ///
+    /// This should really only take 2 iterations (and only for very, very large programs) and
+    /// the pathological case somehow has many labels clustered at the 12 or 18 bit boundaries
+    /// which switch from immediate to register based destinations after each loop.
     fn resolve_labels(
         &mut self,
         data_section: &mut DataSection,
-        iter_count: usize,
-    ) -> Result<LabeledBlocks, crate::CompileError> {
-        // Iteratively resolve the label offsets.
-        //
-        // For very large programs the label offsets may be too large to fit in an immediate jump
-        // (JI, JNEI or JNZI).  In these case we must replace the immediate jumps with register
-        // based jumps (JMP, JNE) but these require more than one instruction; usually an
-        // instruction to load the destination register and then the jump itself.
-        //
-        // But we don't know the offset of a label until we scan through the ops and count them.
-        // So we have a chicken and egg situation where we may need to add new instructions which
-        // would change the offsets to all labels thereafter, which in turn could require more
-        // instructions to be added, and so on.
-        //
-        // This should really only take 2 iterations (and only for very, very large programs) and
-        // the pathological case somehow has many labels clustered at the 12 or 18 bit boundaries
-        // which switch from immediate to register based destinations after each loop.
+    ) -> LabeledBlocks {
+        self.mark_far_jumps();
+        self.map_label_offsets(&data_section)
+    }
 
-        if iter_count > 10 {
-            return Err(crate::CompileError::Internal(
-                "Failed to resolve ASM label offsets.",
-                Span::dummy(),
-            ));
-        }
+    // Pessimistic instruction size, in units of 32b.
+    fn worst_case_instruction_size(op: &AllocatedAbstractOp) -> u64 {
+        use ControlFlowOp::*;
+        match op.opcode {
+            Either::Right(Label(_)) => 0,
 
-        let (remap_needed, label_offsets) = self.map_label_offsets(data_section);
+            // Loads from data section may take up to 2 instructions
+            Either::Left(AllocatedOpcode::LoadDataId(_, _) | AllocatedOpcode::AddrDataId(_, _)) => 2,
+            
+            // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
+            Either::Left(AllocatedOpcode::CFEI(ref op))
+            | Either::Left(AllocatedOpcode::CFSI(ref op))
+                if op.value() == 0 =>
+            {
+                0
+            }
 
-        if !remap_needed || !self.rewrite_far_jumps(&label_offsets, data_section) {
-            // We didn't need to make any changes to the ops, so the labels are now correct.
-            Ok(label_offsets)
-        } else {
-            // We did add new ops and so we need to update the label offsets.
-            self.resolve_labels(data_section, iter_count + 1)
+            // Another special case for the blob opcode, used for testing.
+            Either::Left(AllocatedOpcode::BLOB(ref count)) => count.value() as u64,
+
+            // These ops will end up being exactly one op, so the cur_offset goes up one.
+            Either::Right(LoadLabel(..)) | Either::Left(_) => 1,
+
+            // Worst case for jump is 2 opcodes
+            Either::Right(Jump { .. }) => 2,
+
+            // We use three instructions to save the absolute address for return.
+            // SUB r1 $pc $is
+            // SRLI r1 r1 2 / DIVI r1 r1 4
+            // ADDI $r1 $r1 offset
+            Either::Right(SaveRetAddr(..)) => 3,
+
+            Either::Right(Comment) => 0,
+
+            Either::Right(DataSectionOffsetPlaceholder) => {
+                // If the placeholder is 32 bits, this is 1. if 64, this should be 2. We use LW
+                // to load the data, which loads a whole word, so for now this is 2.
+                2
+            }
+
+            Either::Right(ConfigurablesOffsetPlaceholder) => 2,
+
+            Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
+                "fix me, pushall and popall don't really belong in control flow ops \
+                        since they're not about control flow"
+            ),
         }
     }
 
@@ -478,8 +591,10 @@ impl AllocatedAbstractInstructionSet {
             Either::Left(AllocatedOpcode::BLOB(ref count)) => count.value() as u64,
 
             // These ops will end up being exactly one op, so the cur_offset goes up one.
-            Either::Right(Jump(..) | JumpIfNotZero(..) | Call(..) | LoadLabel(..))
-            | Either::Left(_) => 1,
+            Either::Right(LoadLabel(..)) | Either::Left(_) => 1,
+
+            //
+            Either::Right(Jump { force_far, ..}) => if force_far {2} else {1},
 
             // We use three instructions to save the absolute address for return.
             // SUB r1 $pc $is
@@ -504,40 +619,86 @@ impl AllocatedAbstractInstructionSet {
         }
     }
 
-    fn map_label_offsets(&self, data_section: &DataSection) -> (bool, LabeledBlocks) {
+    /// Go through all jumps and check if they could require a far jump in the worst case.
+    fn mark_far_jumps(&mut self) {
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
         let mut cur_basic_block = None;
 
-        // We decide here whether remapping jumps are necessary.
-        // 1. JMPB and JMPF offsets are more than 18 bits
-        // 2. JNZF and JNZB offsets are more than 12 bits
+        struct JumpInfo {
+            to: Label,
+            offset: u64,
+            op_idx: usize,
+            limit: u64,
+        }
 
-        let mut jnz_labels = HashSet::new();
-        let mut jmp_labels = HashSet::new();
-
-        use ControlFlowOp::*;
+        let mut jumps = Vec::new();
 
         for (op_idx, op) in self.ops.iter().enumerate() {
             // If we're seeing a control flow op then it's the end of the block.
-            if let Either::Right(Label(_) | Jump(_) | JumpIfNotZero(..)) = op.opcode {
+            if let Either::Right(ControlFlowOp::Label(_) | ControlFlowOp::Jump {..}) = op.opcode {
                 if let Some((lab, _idx, offs)) = cur_basic_block {
                     // Insert the previous basic block.
                     labelled_blocks.insert(lab, BasicBlock { offs });
                 }
             }
-
-            if let Either::Right(Label(cur_lab)) = op.opcode {
+            if let Either::Right(ControlFlowOp::Label(cur_lab)) = op.opcode {
                 // Save the new block label and furthest offset.
                 cur_basic_block = Some((cur_lab, op_idx, cur_offset));
             }
 
-            if let Either::Right(Jump(lab) | Call(lab)) = op.opcode {
-                jmp_labels.insert((cur_offset, lab));
+            if let Either::Right(ControlFlowOp::Jump {to, type_, ..}) = &op.opcode {
+                jumps.push(JumpInfo {
+                    to: *to,
+                    offset: cur_offset,
+                    op_idx,
+                    limit: if matches!(type_, JumpType::NotZero(_)) {
+                        consts::TWELVE_BITS
+                    } else {
+                        consts::EIGHTEEN_BITS
+                    },
+                });
             }
 
-            if let Either::Right(JumpIfNotZero(_, lab)) = op.opcode {
-                jnz_labels.insert((cur_offset, lab));
+            // Update the offset.
+            cur_offset += Self::worst_case_instruction_size(op);
+        }
+
+        // Don't forget the final block.
+        if let Some((lab, _idx, offs)) = cur_basic_block {
+            labelled_blocks.insert(lab, BasicBlock { offs });
+        }
+
+        for jump in jumps {
+            let rel_offset = labelled_blocks.get(&jump.to).unwrap().offs.abs_diff(jump.offset);
+            // Self jumps need a NOOP inserted before it so that we can jump to the NOOP.
+            // This is handled by the force_far machinery as well.
+            if rel_offset == 0  || rel_offset > jump.limit {
+                let Either::Right(ControlFlowOp::Jump { force_far, .. }) = &mut self.ops[jump.op_idx].opcode else {
+                    unreachable!("detect_jumps_requiring_rewrite incorrectly returned non-jump-op index");
+                };
+                *force_far = true;
+            }
+        }
+    }
+
+    fn map_label_offsets(&self, data_section: &DataSection) -> LabeledBlocks {
+        let mut labelled_blocks = LabeledBlocks::new();
+        let mut cur_offset = 0;
+        let mut cur_basic_block = None;
+
+
+        for (op_idx, op) in self.ops.iter().enumerate() {
+            // If we're seeing a control flow op then it's the end of the block.
+            if let Either::Right(ControlFlowOp::Label(_) | ControlFlowOp::Jump {..}) = op.opcode {
+                if let Some((lab, _idx, offs)) = cur_basic_block {
+                    // Insert the previous basic block.
+                    labelled_blocks.insert(lab, BasicBlock { offs });
+                }
+            }
+            if let Either::Right(ControlFlowOp::Label(cur_lab)) = op.opcode {
+                // Save the new block label and furthest offset.
+                cur_basic_block = Some((cur_lab, op_idx, cur_offset));
             }
 
             // Update the offset.
@@ -549,146 +710,7 @@ impl AllocatedAbstractInstructionSet {
             labelled_blocks.insert(lab, BasicBlock { offs });
         }
 
-        let needs_remap = |offset, lab, limit| {
-            let rel_offset = labelled_blocks.get(lab).unwrap().offs.abs_diff(offset);
-            // Self jumps need a NOOP inserted before it so that we can jump to the NOOP.
-            // if rel_offset exceeds limit, we'll need to insert LoadLabels.
-            rel_offset == 0 || rel_offset > limit
-        };
-        let need_to_remap_jumps = jmp_labels
-            .iter()
-            .any(|(offset, lab)| needs_remap(*offset, lab, consts::EIGHTEEN_BITS))
-            || jnz_labels
-                .iter()
-                .any(|(offset, lab)| needs_remap(*offset, lab, consts::TWELVE_BITS));
-
-        (need_to_remap_jumps, labelled_blocks)
-    }
-
-    /// If an instruction uses a label which can't fit in its immediate value then translate it
-    /// into an instruction which loads the offset from the data section into a register and then
-    /// use the equivalent non-immediate instruction with the register.
-    fn rewrite_far_jumps(
-        &mut self,
-        label_offsets: &LabeledBlocks,
-        data_section: &DataSection,
-    ) -> bool {
-        let min_ops = self.ops.len();
-        let mut modified = false;
-        let mut curr_offset = 0;
-
-        self.ops = self
-            .ops
-            .drain(..)
-            .fold(Vec::with_capacity(min_ops), |mut new_ops, op| {
-                let op_size = Self::instruction_size(&op, data_section);
-                let rel_offset = |lab| label_offsets.get(lab).unwrap().offs.abs_diff(curr_offset);
-                match &op.opcode {
-                    Either::Right(ControlFlowOp::Jump(ref lab))
-                    | Either::Right(ControlFlowOp::Call(ref lab)) => {
-                        if rel_offset(lab) == 0 {
-                            new_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Left(AllocatedOpcode::NOOP),
-                                comment: "emit noop for self loop".into(),
-                                owning_span: None,
-                            });
-                            new_ops.push(op);
-                            modified = true;
-                        } else if rel_offset(lab) - 1 <= consts::EIGHTEEN_BITS {
-                            new_ops.push(op)
-                        } else {
-                            // Load the offset into $tmp.
-                            new_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Right(ControlFlowOp::LoadLabel(
-                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                    *lab,
-                                )),
-                                comment: String::new(),
-                                owning_span: None,
-                            });
-
-                            // Jump to $tmp.
-                            if curr_offset > label_offsets.get(lab).unwrap().offs {
-                                new_ops.push(AllocatedAbstractOp {
-                                    opcode: Either::Left(AllocatedOpcode::JMPB(
-                                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                        VirtualImmediate18::new_unchecked(0, "zero must fit in 18 bits"),
-                                    )),
-                                    ..op
-                                });
-                            } else {
-                                new_ops.push(AllocatedAbstractOp {
-                                    opcode: Either::Left(AllocatedOpcode::JMPF(
-                                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                        VirtualImmediate18 ::new_unchecked(0, "zero must fit in 18 bits"),
-                                    )),
-                                    ..op
-                                });
-                            }
-                            modified = true;
-                        }
-                    }
-                    Either::Right(ControlFlowOp::JumpIfNotZero(r1, ref lab)) => {
-                        if rel_offset(lab) == 0 {
-                            new_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Left(AllocatedOpcode::NOOP),
-                                comment: "emit noop for self loop".into(),
-                                owning_span: None,
-                            });
-                            new_ops.push(op);
-                            modified = true;
-                        } else if rel_offset(lab) - 1 <= consts::TWELVE_BITS {
-                            new_ops.push(op)
-                        } else {
-                            // Load the destination address into $tmp.
-                            new_ops.push(AllocatedAbstractOp {
-                                opcode: Either::Right(ControlFlowOp::LoadLabel(
-                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                    *lab,
-                                )),
-                                comment: String::new(),
-                                owning_span: None,
-                            });
-
-                            // JNZB/JNZF r1 $tmp.
-                            if curr_offset > label_offsets.get(lab).unwrap().offs {
-                                new_ops.push(AllocatedAbstractOp {
-                                    opcode: Either::Left(AllocatedOpcode::JNZB(
-                                        r1.clone(),
-                                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                        VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
-                                    )),
-                                    ..op
-                                });
-                            } else {
-                                new_ops.push(AllocatedAbstractOp {
-                                    opcode: Either::Left(AllocatedOpcode::JNZF(
-                                        r1.clone(),
-                                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                        VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
-                                    )),
-                                    ..op
-                                });
-                            }
-                            modified = true;
-                        }
-                    }
-                    Either::Right(ControlFlowOp::SaveRetAddr(_r1, ref lab)) => {
-                        if rel_offset(lab) <= consts::TWELVE_BITS {
-                            new_ops.push(op)
-                        } else {
-                            panic!("Return to address must be right after the call for which we saved this address.");
-                        }
-                    }
-
-                    // Everything else we copy as is.
-                    _ => new_ops.push(op),
-                }
-                curr_offset += op_size;
-                new_ops
-            });
-
-        modified
+        labelled_blocks
     }
 }
 
@@ -704,4 +726,10 @@ impl std::fmt::Display for AllocatedAbstractInstructionSet {
                 .join("\n")
         )
     }
+}
+
+
+enum RewriteJump {
+    SelfJump,
+    FarJump,
 }
