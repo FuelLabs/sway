@@ -18,7 +18,6 @@ use sha2::{Digest, Sha256};
 use std::{
     fmt,
     hash::{Hash, Hasher},
-    sync::Arc,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
@@ -34,12 +33,12 @@ pub enum TyFunctionDeclKind {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyFunctionDecl {
     pub name: Ident,
-    pub body: Arc<TyCodeBlock>,
-    pub parameters: Arc<Vec<TyFunctionParameter>>,
+    pub body: TyCodeBlock,
+    pub parameters: Vec<TyFunctionParameter>,
     pub implementing_type: Option<TyDecl>,
     pub implementing_for_typeid: Option<TypeId>,
     pub span: Span,
-    pub call_path: Arc<CallPath>,
+    pub call_path: CallPath,
     pub attributes: transform::Attributes,
     pub type_parameters: Vec<TypeParameter>,
     pub return_type: GenericArgument,
@@ -47,25 +46,10 @@ pub struct TyFunctionDecl {
     /// whether this function exists in another contract and requires a call to it or not
     pub is_contract_call: bool,
     pub purity: Purity,
-    pub where_clause: Arc<Vec<(Ident, Vec<TraitConstraint>)>>,
+    pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub is_trait_method_dummy: bool,
     pub is_type_check_finalized: bool,
     pub kind: TyFunctionDeclKind,
-}
-
-impl TyFunctionDecl {
-    pub fn parameters_iter_mut(&mut self) -> std::slice::IterMut<'_, TyFunctionParameter> {
-        if std::sync::Arc::get_mut(&mut self.parameters).is_none() {
-            let parameters = self.parameters.as_ref().clone();
-            self.parameters = parameters.into();
-        }
-
-        // This unwrap can in theory fail if between the "is_none" above
-        // and now the ref count increased
-        std::sync::Arc::get_mut(&mut self.parameters)
-            .unwrap()
-            .iter_mut()
-    }
 }
 
 impl TyDeclParsedType for TyFunctionDecl {
@@ -165,7 +149,7 @@ impl MaterializeConstGenerics for TyFunctionDecl {
         name: &str,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
-        for param in self.parameters_iter_mut() {
+        for param in self.parameters.iter_mut() {
             param
                 .type_argument
                 .type_id_mut()
@@ -457,14 +441,14 @@ impl TyFunctionDecl {
             implementing_type: None,
             implementing_for_typeid: None,
             span: span.clone(),
-            call_path: CallPath::from(Ident::dummy()).into(),
+            call_path: CallPath::from(Ident::dummy()),
             attributes: Default::default(),
             is_contract_call: false,
             parameters: Default::default(),
             visibility: *visibility,
             return_type: return_type.clone(),
             type_parameters: Default::default(),
-            where_clause: where_clause.clone().into(),
+            where_clause: where_clause.clone(),
             is_trait_method_dummy: false,
             is_type_check_finalized: true,
             kind: match kind {

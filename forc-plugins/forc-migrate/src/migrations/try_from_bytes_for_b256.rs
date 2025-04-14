@@ -99,7 +99,7 @@ fn replace_b256_from_bytes_with_try_from_bytes_step(
 
             // This check is sufficient. The only `from` in `std::bytes` that
             // satisfies it is the `<From<Bytes> for b256>::from`.
-            if !(ty_fn_call_info.fn_decl.call_path.as_ref() == &from_call_path
+            if !(ty_fn_call_info.fn_decl.call_path == from_call_path
                 && implementing_for_type_id == ctx.engines.te().id_of_b256())
             {
                 return Ok(InvalidateTypedElement::No);

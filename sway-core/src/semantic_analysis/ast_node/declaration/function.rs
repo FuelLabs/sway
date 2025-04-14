@@ -164,18 +164,18 @@ impl ty::TyFunctionDecl {
                 let function_decl = ty::TyFunctionDecl {
                     name: name.clone(),
                     body: <_>::default(),
-                    parameters: new_parameters.into(),
+                    parameters: new_parameters,
                     implementing_type: None,
                     implementing_for_typeid,
                     span: span.clone(),
-                    call_path: call_path.into(),
+                    call_path,
                     attributes: attributes.clone(),
                     return_type,
                     type_parameters: new_type_parameters,
                     visibility,
                     is_contract_call,
                     purity: *purity,
-                    where_clause: where_clause.clone().into(),
+                    where_clause: where_clause.clone(),
                     is_trait_method_dummy: false,
                     is_type_check_finalized: false,
                     kind: match kind {
@@ -240,7 +240,7 @@ impl ty::TyFunctionDecl {
                 let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, true)
                     .unwrap_or_else(|_err| ty::TyCodeBlock::default());
 
-                ty_fn_decl.body = body.into();
+                ty_fn_decl.body = body;
                 ty_fn_decl.is_type_check_finalized = true;
 
                 return_type.type_id().check_type_parameter_bounds(
@@ -333,16 +333,16 @@ fn test_function_selector_behavior() {
         name: Ident::dummy(),
         implementing_type: None,
         implementing_for_typeid: None,
-        body: ty::TyCodeBlock::default().into(),
-        parameters: vec![].into(),
+        body: ty::TyCodeBlock::default(),
+        parameters: vec![],
         span: Span::dummy(),
-        call_path: CallPath::from(Ident::dummy()).into(),
+        call_path: CallPath::from(Ident::dummy()),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
-        where_clause: vec![].into(),
+        where_clause: vec![],
         is_trait_method_dummy: false,
         is_type_check_finalized: true,
         kind: ty::TyFunctionDeclKind::Default,
@@ -359,7 +359,7 @@ fn test_function_selector_behavior() {
         name: Ident::new_with_override("bar".into(), Span::dummy()),
         implementing_type: None,
         implementing_for_typeid: None,
-        body: ty::TyCodeBlock::default().into(),
+        body: ty::TyCodeBlock::default(),
         parameters: vec![
             ty::TyFunctionParameter {
                 name: Ident::dummy(),
@@ -387,16 +387,15 @@ fn test_function_selector_behavior() {
                     },
                 ),
             },
-        ]
-        .into(),
+        ],
         span: Span::dummy(),
-        call_path: CallPath::from(Ident::dummy()).into(),
+        call_path: CallPath::from(Ident::dummy()),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
-        where_clause: vec![].into(),
+        where_clause: vec![],
         is_trait_method_dummy: false,
         is_type_check_finalized: true,
         kind: ty::TyFunctionDeclKind::Default,
