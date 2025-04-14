@@ -218,7 +218,7 @@ impl AllocatedAbstractInstructionSet {
                             VirtualImmediate12::new_unchecked(0, "unreachable()"),
                         ),
                         owning_span: None,
-                        comment: "[self jump]: jump to preceeding noop".into(),
+                        comment: "[self jump]: jump to preceding noop".into(),
                     }
                 } else {
                     RealizedOp {
@@ -227,7 +227,7 @@ impl AllocatedAbstractInstructionSet {
                             VirtualImmediate18::new_unchecked(0, "unreachable()"),
                         ),
                         owning_span: None,
-                        comment: "[self jump]: jump to preceeding noop".into(),
+                        comment: "[self jump]: jump to preceding noop".into(),
                     }
                 },
             ];
