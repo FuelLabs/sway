@@ -287,3 +287,9 @@ fn point2d_b256_array_try_from() {
     assert(array[0] == 0x0000000000000000000000000000000000000000000000000000000000000000);
     assert(array[1] == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
 }
+
+#[test]
+fn point2d_codec() {
+    let point = Point2D::new();
+    log(point);
+}
