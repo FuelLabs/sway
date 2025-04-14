@@ -336,9 +336,9 @@ pub fn tx_script_data_length() -> Option<u64> {
 /// }
 /// ```
 pub fn tx_witnesses_count() -> u64 {
-    match tx_type() {
-        Transaction::Script | Transaction::Upgrade | Transaction::Upload | Transaction::Blob => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
-        Transaction::Create => __gtf::<u64>(0, GTF_CREATE_WITNESSES_COUNT),
+    match __gtf::<u8>(0, GTF_TYPE) {
+        TX_TYPE_SCRIPT | TX_TYPE_UPGRADE | TX_TYPE_UPLOAD | TX_TYPE_BLOB => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
+        TX_TYPE_CREATE => __gtf::<u64>(0, GTF_CREATE_WITNESSES_COUNT),
         _ => revert(0),
     }
 }
@@ -368,9 +368,9 @@ fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
         return None
     }
 
-    match tx_type() {
-        Transaction::Script | Transaction::Upgrade | Transaction::Upload | Transaction::Blob => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
-        Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_WITNESS_AT_INDEX)),
+    match __gtf::<u8>(0, GTF_TYPE) {
+        TX_TYPE_SCRIPT | TX_TYPE_UPGRADE | TX_TYPE_UPLOAD | TX_TYPE_BLOB => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
+        TX_TYPE_CREATE => Some(__gtf::<raw_ptr>(index, GTF_CREATE_WITNESS_AT_INDEX)),
         _ => None,
     }
 }
