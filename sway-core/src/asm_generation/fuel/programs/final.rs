@@ -1,6 +1,6 @@
 use crate::{
     asm_generation::{
-        fuel::data_section::DataSection, instruction_set::InstructionSet, ProgramKind,
+        fuel::data_section::FinalDataSection, instruction_set::InstructionSet, ProgramKind,
     },
     asm_lang::allocated_ops::AllocatedOp,
     decl_engine::DeclRefFunction,
@@ -12,7 +12,7 @@ use super::{FnName, ImmOffset, SelectorOpt};
 /// A [FinalProgram] represents code which may be serialized to VM bytecode.
 pub(crate) struct FinalProgram {
     pub(crate) kind: ProgramKind,
-    pub(crate) data_section: DataSection,
+    pub(crate) data_section: FinalDataSection,
     pub(crate) ops: Vec<AllocatedOp>,
     pub(crate) entries: Vec<(SelectorOpt, ImmOffset, FnName, Option<DeclRefFunction>)>,
 }

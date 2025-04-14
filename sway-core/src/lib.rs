@@ -1222,7 +1222,7 @@ pub fn compile_to_bytecode(
     )?;
     asm_to_bytecode(
         handler,
-        &mut asm_res,
+        asm_res,
         source_map,
         engines.se(),
         build_config,
@@ -1254,7 +1254,7 @@ pub fn set_bytecode_configurables_offset(
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
     handler: &Handler,
-    asm: &mut CompiledAsm,
+    asm: CompiledAsm,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
     build_config: &BuildConfig,

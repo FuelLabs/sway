@@ -40,8 +40,10 @@ impl BuildTarget {
 
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum OptLevel {
+    /// Debug
     #[default]
     Opt0 = 0,
+    /// Release
     Opt1 = 1,
 }
 

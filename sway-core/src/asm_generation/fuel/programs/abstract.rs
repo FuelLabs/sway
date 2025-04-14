@@ -302,7 +302,6 @@ impl AbstractProgram {
             let data_label = self.data_section.insert_data_value(Entry::new_word(
                 u32::from_be_bytes(selector) as u64,
                 EntryName::NonConfigurable,
-                None,
             ));
 
             // Load the data into a register for comparison.

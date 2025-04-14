@@ -104,7 +104,6 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                     self.context,
                     constant.get_content(self.context),
                     EntryName::Configurable(name.clone()),
-                    None,
                 );
                 let dataid = self.data_section.insert_data_value(entry);
                 self.configurable_v0_data_id.insert(name.clone(), dataid);
@@ -125,7 +124,6 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                 let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
                     encoded_bytes.clone(),
                     EntryName::Configurable(name.clone()),
-                    None,
                 ));
 
                 self.before_entries.push(Op {
@@ -277,7 +275,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
         }
 
         let final_program = allocated_program
-            .into_final_program()
+            .into_final_program(build_config.map(|c| c.optimization_level).unwrap_or_default())
             .map_err(|e| handler.emit_err(e))?;
 
         if build_config
@@ -1273,7 +1271,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.context,
             constant.get_content(self.context),
             EntryName::NonConfigurable,
-            None,
         );
         let data_id = self.data_section.insert_data_value(entry);
 
@@ -2134,7 +2131,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     self.context,
                     constant.get_content(self.context),
                     config_name,
-                    None,
                 );
                 let data_id = self.data_section.insert_data_value(entry);
 
@@ -2258,7 +2254,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             let data_id = self.data_section.insert_data_value(Entry::new_word(
                 imm,
                 EntryName::NonConfigurable,
-                None,
             ));
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LoadDataId(reg.clone(), data_id)),

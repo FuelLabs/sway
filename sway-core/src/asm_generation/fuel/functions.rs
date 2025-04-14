@@ -850,7 +850,6 @@ impl FuelAsmBuilder<'_, '_> {
                                     self.context,
                                     constant.get_content(self.context),
                                     EntryName::NonConfigurable,
-                                    None,
                                 ));
                             self.ptr_map.insert(*ptr, Storage::Data(data_id));
                         }
@@ -881,7 +880,6 @@ impl FuelAsmBuilder<'_, '_> {
                                         self.context,
                                         constant.get_content(self.context),
                                         EntryName::NonConfigurable,
-                                        None,
                                     ));
 
                                 init_mut_vars.push(InitMutVars {

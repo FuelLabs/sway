@@ -1,3 +1,4 @@
+use super::fuel::data_section::{FinalDataSection, PackedDataSection};
 use super::instruction_set::InstructionSet;
 use super::{
     fuel::{checks, data_section::DataSection},
@@ -40,7 +41,7 @@ pub struct DataSectionInformation {
 /// applied to it
 #[derive(Clone)]
 pub struct FinalizedAsm {
-    pub data_section: DataSection,
+    pub data_section: FinalDataSection,
     pub program_section: InstructionSet,
     pub program_kind: ProgramKind,
     pub entries: Vec<FinalizedEntry>,
@@ -69,7 +70,7 @@ pub struct CompiledBytecode {
 
 impl FinalizedAsm {
     pub(crate) fn to_bytecode_mut(
-        &mut self,
+        self,
         handler: &Handler,
         source_map: &mut SourceMap,
         source_engine: &SourceEngine,
@@ -115,7 +116,7 @@ impl fmt::Display for FinalizedAsm {
 
 fn to_bytecode_mut(
     ops: &[AllocatedOp],
-    data_section: &mut DataSection,
+    data_section: &mut PackedDataSection,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
     build_config: &BuildConfig,
@@ -314,27 +315,12 @@ fn to_bytecode_mut(
             print!("{}{:#010x} ", " ".repeat(indentation), offset);
 
             match &pair.value {
-                Datum::Byte(w) => println!(".byte i{w}, as hex {w:02X}"),
-                Datum::Word(w) => {
-                    println!(".word i{w}, as hex be bytes ({:02X?})", w.to_be_bytes())
-                }
-                Datum::ByteArray(bs) => {
+                Datum::U8(v) => println!(".byte i{}, as hex {:02X}", v, v),
+                Datum::U16(v) => println!(".quarterword i{}, as hex {:02X?}", v, v.to_be_bytes()),
+                Datum::U32(v) => println!(".halfword i{}, as hex {:02X?}", v, v.to_be_bytes()),
+                Datum::U64(v) => println!(".word i{}, as hex {:02X?}", v, v.to_be_bytes()),
+                Datum::ByRef(bs) => {
                     print!(".bytes as hex ({bs:02X?}), len i{}, as ascii \"", bs.len());
-
-                    for b in bs {
-                        print!(
-                            "{}",
-                            if *b == b' ' || b.is_ascii_graphic() {
-                                *b as char
-                            } else {
-                                '.'
-                            }
-                        );
-                    }
-                    println!("\"");
-                }
-                Datum::Slice(bs) => {
-                    print!(".slice as hex ({bs:02X?}), len i{}, as ascii \"", bs.len());
 
                     for b in bs {
                         print!(
@@ -368,22 +354,7 @@ fn to_bytecode_mut(
     assert_eq!(half_word_ix * 4, offset_to_data_section_in_bytes as usize);
     assert_eq!(bytecode.len(), offset_to_data_section_in_bytes as usize);
 
-    let num_nonconfigurables = data_section.non_configurables.len();
-    let named_data_section_entries_offsets = data_section
-        .configurables
-        .iter()
-        .enumerate()
-        .map(|(id, entry)| {
-            let EntryName::Configurable(name) = &entry.name else {
-                panic!("Non-configurable in configurables part of datasection");
-            };
-            (
-                name.clone(),
-                offset_to_data_section_in_bytes
-                    + data_section.absolute_idx_to_offset(id + num_nonconfigurables) as u64,
-            )
-        })
-        .collect::<BTreeMap<String, u64>>();
+    let named_data_section_entries_offsets = data_section.named_offsets();
 
     let mut data_section = data_section.serialize_to_bytes();
     bytecode.append(&mut data_section);

@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     asm_generation::{
-        asm_builder::AsmBuilder, from_ir::StateAccessType, fuel::data_section::DataSection,
+        asm_builder::AsmBuilder, from_ir::StateAccessType, fuel::data_section::{DataSection, FinalDataSection, PackedDataSection},
         instruction_set::InstructionSet, FinalizedAsm, ProgramABI, ProgramKind,
     },
     asm_lang::Label,
@@ -729,9 +729,7 @@ struct EvmFinalProgram {
 impl EvmFinalProgram {
     fn finalize(self) -> FinalizedAsm {
         FinalizedAsm {
-            data_section: DataSection {
-                ..Default::default()
-            },
+            data_section: FinalDataSection::default(),
             program_section: InstructionSet::Evm { ops: self.ops },
             program_kind: ProgramKind::Script,
             entries: vec![],

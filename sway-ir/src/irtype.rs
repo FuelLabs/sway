@@ -259,6 +259,11 @@ impl Type {
         matches!(*self.get_content(context), TypeContent::Uint(8))
     }
 
+    /// Is u16 type
+    pub fn is_uint16(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::Uint(16))
+    }
+
     /// Is u32 type
     pub fn is_uint32(&self, context: &Context) -> bool {
         matches!(*self.get_content(context), TypeContent::Uint(32))
@@ -634,54 +639,6 @@ impl TypeSize {
     /// Returns the size of the type in words (aligned to word boundary).
     pub fn in_words(&self) -> u64 {
         (self.size_in_bytes + 7) / 8
-    }
-}
-
-/// Provides information about padding expected when laying values in memory.
-/// Padding depends on the type of the value, but also on the embedding of
-/// the value in aggregates. E.g., in an array of `u8`, each `u8` is "padded"
-/// to its size of one byte while as a struct field, it will be right padded
-/// to 8 bytes.
-#[derive(Clone, Debug, serde::Serialize)]
-pub enum Padding {
-    Left { target_size: usize },
-    Right { target_size: usize },
-}
-
-impl Padding {
-    /// Returns the default [Padding] for `u8`.
-    pub fn default_for_u8(_value: u8) -> Self {
-        // Dummy _value is used only to ensure correct usage at the call site.
-        Self::Right { target_size: 1 }
-    }
-
-    /// Returns the default [Padding] for `u64`.
-    pub fn default_for_u64(_value: u64) -> Self {
-        // Dummy _value is used only to ensure correct usage at the call site.
-        Self::Right { target_size: 8 }
-    }
-
-    /// Returns the default [Padding] for a byte array.
-    pub fn default_for_byte_array(value: &[u8]) -> Self {
-        Self::Right {
-            target_size: value.len(),
-        }
-    }
-
-    /// Returns the default [Padding] for an aggregate.
-    /// `aggregate_size` is the overall size of the aggregate in bytes.
-    pub fn default_for_aggregate(aggregate_size: usize) -> Self {
-        Self::Right {
-            target_size: aggregate_size,
-        }
-    }
-
-    /// The target size in bytes.
-    pub fn target_size(&self) -> usize {
-        use Padding::*;
-        match self {
-            Left { target_size } | Right { target_size } => *target_size,
-        }
     }
 }
 
