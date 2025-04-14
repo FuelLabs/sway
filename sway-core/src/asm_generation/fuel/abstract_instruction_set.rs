@@ -3,7 +3,8 @@ use crate::{
         allocated_abstract_instruction_set::AllocatedAbstractInstructionSet, register_allocator,
     },
     asm_lang::{
-        allocated_ops::AllocatedOp, Op, OrganizationalOp, RealizedOp, VirtualOp, VirtualRegister,
+        allocated_ops::AllocatedOp, JumpType, Op, OrganizationalOp, RealizedOp, VirtualOp,
+        VirtualRegister,
     },
 };
 
@@ -41,9 +42,9 @@ impl AbstractInstructionSet {
             .enumerate()
             .filter_map(|(idx, ops)| match (&ops[0].opcode, &ops[1].opcode) {
                 (
-                    Either::Right(OrganizationalOp::Jump { to, .. }),
+                    Either::Right(OrganizationalOp::Jump { to, type_, .. }),
                     Either::Right(OrganizationalOp::Label(label)),
-                ) if to == label => Some(idx),
+                ) if to == label && !matches!(type_, JumpType::Call) => Some(idx),
                 _otherwise => None,
             })
             .collect();

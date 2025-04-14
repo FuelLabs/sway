@@ -234,7 +234,7 @@ impl AllocatedAbstractInstructionSet {
         }
 
         if curr_offset > target_offset {
-            let delta = curr_offset - target_offset;
+            let delta = curr_offset - target_offset - 1;
             return if far {
                 let data_id = data_section.insert_data_value(Entry::new_word(
                     delta,
@@ -288,7 +288,7 @@ impl AllocatedAbstractInstructionSet {
             };
         }
 
-        let delta = target_offset - curr_offset;
+        let delta = target_offset - curr_offset - 1;
 
         if far {
             let data_id = data_section.insert_data_value(Entry::new_word(
