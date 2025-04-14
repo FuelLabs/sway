@@ -16,7 +16,8 @@ use crate::{
         FinalizedAsm, ProgramKind,
     },
     asm_lang::{
-        virtual_register::*, JumpType, Label, Op, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18, VirtualOp, WideCmp, WideOperations
+        virtual_register::*, JumpType, Label, Op, VirtualImmediate06, VirtualImmediate12,
+        VirtualImmediate18, VirtualOp, WideCmp, WideOperations,
     },
     decl_engine::DeclRefFunction,
     metadata::MetadataManager,

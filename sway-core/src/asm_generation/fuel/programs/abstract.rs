@@ -12,7 +12,9 @@ use crate::{
         ProgramKind,
     },
     asm_lang::{
-        allocated_ops::{AllocatedOpcode, AllocatedRegister}, AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24
+        allocated_ops::{AllocatedOpcode, AllocatedRegister},
+        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, VirtualImmediate12,
+        VirtualImmediate18, VirtualImmediate24,
     },
     decl_engine::DeclRefFunction,
 };
@@ -197,7 +199,11 @@ impl AbstractProgram {
                 },
                 // word 1.5
                 AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Jump {to: label, type_: JumpType::Unconditional, force_far: false}),
+                    opcode: Either::Right(ControlFlowOp::Jump {
+                        to: label,
+                        type_: JumpType::Unconditional,
+                        force_far: false,
+                    }),
                     comment: String::new(),
                     owning_span: None,
                 },
@@ -247,7 +253,11 @@ impl AbstractProgram {
     fn append_jump_to_entry(&mut self, asm: &mut AllocatedAbstractInstructionSet) {
         let entry = self.entries.iter().find(|x| x.name == "__entry").unwrap();
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Right(ControlFlowOp::Jump { to: entry.label, type_: JumpType::Unconditional, force_far: false }),
+            opcode: Either::Right(ControlFlowOp::Jump {
+                to: entry.label,
+                type_: JumpType::Unconditional,
+                force_far: false,
+            }),
             comment: "jump to ABI function selector".into(),
             owning_span: None,
         });
@@ -346,7 +356,7 @@ impl AbstractProgram {
                     to: fallback_fn,
                     type_: JumpType::Call,
                     force_far: false,
-                 }),
+                }),
                 comment: "[function selection]: call contract fallback function".into(),
                 owning_span: None,
             });

@@ -9,7 +9,9 @@ use crate::{
         ProgramKind,
     },
     asm_lang::{
-        virtual_register::{self, *}, JumpType, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp
+        virtual_register::{self, *},
+        JumpType, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+        VirtualOp,
     },
     decl_engine::DeclRef,
     fuel_prelude::fuel_asm::GTFArgs,

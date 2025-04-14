@@ -41,7 +41,7 @@ impl AbstractInstructionSet {
             .enumerate()
             .filter_map(|(idx, ops)| match (&ops[0].opcode, &ops[1].opcode) {
                 (
-                    Either::Right(OrganizationalOp::Jump {to, ..}),
+                    Either::Right(OrganizationalOp::Jump { to, .. }),
                     Either::Right(OrganizationalOp::Label(label)),
                 ) if to == label => Some(idx),
                 _otherwise => None,
