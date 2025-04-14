@@ -199,7 +199,7 @@ impl AllocatedAbstractInstructionSet {
     /// labels in the organizational ops
     pub(crate) fn realize_labels(
         mut self,
-        data_section: &mut DataSection,
+        data_section: &mut PackedDataSection,
     ) -> Result<(RealizedAbstractInstructionSet, LabeledBlocks), crate::CompileError> {
         let label_offsets = self.resolve_labels(data_section, 0)?;
         let mut curr_offset = 0;
@@ -427,7 +427,7 @@ impl AllocatedAbstractInstructionSet {
             ));
         }
 
-        let (remap_needed, label_offsets) = self.map_label_offsets(data_section);
+        let (remap_needed, label_offsets) = self.map_label_offsets();
 
         if !remap_needed || !self.rewrite_far_jumps(&label_offsets, data_section) {
             // We didn't need to make any changes to the ops, so the labels are now correct.
@@ -435,6 +435,55 @@ impl AllocatedAbstractInstructionSet {
         } else {
             // We did add new ops and so we need to update the label offsets.
             self.resolve_labels(data_section, iter_count + 1)
+        }
+    }
+
+    // Maximum amount of concrete (4 byte) opcodes that can be emitted in a single instruction.
+    fn max_instruction_size(op: &AllocatedAbstractOp) -> u64 {
+        use ControlFlowOp::*;
+        match op.opcode {
+            Either::Right(Label(_)) => 0,
+
+            // Data section referencing can take up to 2 instructions
+            Either::Left(AllocatedOpcode::LoadDataId(_, _) | AllocatedOpcode::AddrDataId(_, _))=> {
+                2
+            }
+
+            // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
+            Either::Left(AllocatedOpcode::CFEI(ref op))
+            | Either::Left(AllocatedOpcode::CFSI(ref op))
+                if op.value() == 0 =>
+            {
+                0
+            }
+
+            // Another special case for the blob opcode, used for testing.
+            Either::Left(AllocatedOpcode::BLOB(ref count)) => count.value() as u64,
+
+            // These ops will end up being exactly one op, so the cur_offset goes up one.
+            Either::Right(Jump(..) | JumpIfNotZero(..) | Call(..) | LoadLabel(..))
+            | Either::Left(_) => 1,
+
+            // We use three instructions to save the absolute address for return.
+            // SUB r1 $pc $is
+            // SRLI r1 r1 2 / DIVI r1 r1 4
+            // ADDI $r1 $r1 offset
+            Either::Right(SaveRetAddr(..)) => 3,
+
+            Either::Right(Comment) => 0,
+
+            Either::Right(DataSectionOffsetPlaceholder) => {
+                // If the placeholder is 32 bits, this is 1. if 64, this should be 2. We use LW
+                // to load the data, which loads a whole word, so for now this is 2.
+                2
+            }
+
+            Either::Right(ConfigurablesOffsetPlaceholder) => 2,
+
+            Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
+                "fix me, pushall and popall don't really belong in control flow ops \
+                        since they're not about control flow"
+            ),
         }
     }
 
@@ -503,7 +552,7 @@ impl AllocatedAbstractInstructionSet {
         }
     }
 
-    fn map_label_offsets(&self, data_section: &PackedDataSection) -> (bool, LabeledBlocks) {
+    fn map_label_offsets(&self) -> (bool, LabeledBlocks) {
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
         let mut cur_basic_block = None;
@@ -539,8 +588,9 @@ impl AllocatedAbstractInstructionSet {
                 jnz_labels.insert((cur_offset, lab));
             }
 
-            // Update the offset.
-            cur_offset += Self::instruction_size(op, data_section);
+            // Update the maximum offset. We're pessimistic here, so if the all labels
+            // can still be placed this will definitely work.
+            cur_offset += Self::max_instruction_size(op);
         }
 
         // Don't forget the final block.
