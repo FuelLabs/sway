@@ -614,7 +614,7 @@ pub(crate) fn compile_jump(
         let delta = curr_offset - target_offset - 1;
         return if far {
             let data_id = data_section.insert_data_value(Entry::new_word(
-                delta,
+                delta + 1, // +1 since the load instruction must be skipped as well
                 EntryName::NonConfigurable,
                 None,
             ));
@@ -669,7 +669,7 @@ pub(crate) fn compile_jump(
 
     if far {
         let data_id = data_section.insert_data_value(Entry::new_word(
-            delta,
+            delta - 1,
             EntryName::NonConfigurable,
             None,
         ));
