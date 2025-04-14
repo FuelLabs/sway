@@ -13,7 +13,7 @@ use super::*;
 use crate::{
     asm_generation::fuel::{
         compiler_constants::DATA_SECTION_REGISTER,
-        data_section::{DataId, DataSection},
+        data_section::{DataId, DataSection, PackedDataSection},
     },
     fuel_prelude::fuel_asm::{self, op},
 };
@@ -605,7 +605,7 @@ impl AllocatedOp {
         &self,
         offset_to_data_section: u64,
         offset_from_instr_start: u64,
-        data_section: &DataSection,
+        data_section: &PackedDataSection,
     ) -> FuelAsmData {
         use AllocatedOpcode::*;
         FuelAsmData::Instructions(vec![match &self.opcode {
@@ -852,90 +852,85 @@ fn addr_of(
 
 /// Converts a virtual load word instruction which uses data labels into one which uses
 /// actual bytewise offsets for use in bytecode.
+/// Copy-types are loaded directly into the register. For non-copy types, the register
+/// will instead contain a pointer to the value in the data section.
 /// Returns one op if the type is less than one word big, but two ops if it has to construct
 /// a pointer and add it to $is.
 fn realize_load(
     dest: &AllocatedRegister,
     data_id: &DataId,
-    data_section: &DataSection,
+    data_section: &PackedDataSection,
     offset_to_data_section: u64,
     offset_from_instr_start: u64,
 ) -> Vec<fuel_asm::Instruction> {
-    // if this data is larger than a word, instead of loading the data directly
-    // into the register, we want to load a pointer to the data into the register
-    // this appends onto the data section and mutates it by adding the pointer as a literal
-    let has_copy_type = data_section.has_copy_type(data_id).expect(
-        "Internal miscalculation in data section -- data id did not match up to any actual data",
-    );
+    // let offset_bytes = data_section.data_id_to_offset(data_id);
 
-    let is_byte = data_section.is_byte(data_id).expect(
-        "Internal miscalculation in data section -- data id did not match up to any actual data",
-    );
+    // let has_copy_type = data_section.has_copy_type(data_id).expect(
+    //     "Internal miscalculation in data section -- data id did not match up to any actual data",
+    // );
 
-    // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
-    let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
-    assert!(
-        offset_bytes % 8 == 0,
-        "Internal miscalculation in data section -- data offset is not aligned to a word",
-    );
-    let offset_words = offset_bytes / 8;
+    todo!();
 
-    let imm = VirtualImmediate12::new(
-        if is_byte { offset_bytes } else { offset_words },
-        Span::new(" ".into(), 0, 0, None).unwrap(),
-    );
-    let offset = match imm {
-        Ok(value) => value,
-        Err(_) => panic!(
-            "Unable to offset into the data section more than 2^12 bits. \
-                                Unsupported data section length: {} words.",
-            offset_words
-        ),
-    };
+    // let size_bytes = data_section.size(data_id).expect(
+    //     "Internal miscalculation in data section -- data id did not match up to any actual data",
+    // );
+    
+    // let imm = VirtualImmediate12::new(
+    //     if is_byte { offset_bytes } else { offset_words },
+    //     Span::new(" ".into(), 0, 0, None).unwrap(),
+    // );
+    // let offset = match imm {
+    //     Ok(value) => value,
+    //     Err(_) => panic!(
+    //         "Unable to offset into the data section more than 2^12 bits. \
+    //                             Unsupported data section length: {} words.",
+    //         offset_words
+    //     ),
+    // };
 
-    if !has_copy_type {
-        // load the pointer itself into the register. `offset_to_data_section` is in bytes.
-        // The -4 is because $pc is added in the *next* instruction.
-        let pointer_offset_from_current_instr =
-            offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
+    // if !has_copy_type {
+    //     // load the pointer itself into the register. `offset_to_data_section` is in bytes.
+    //     // The -4 is because $pc is added in the *next* instruction.
+    //     let pointer_offset_from_current_instr =
+    //         offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
 
-        // insert the pointer as bytes as a new data section entry at the end of the data
-        let data_id_for_pointer = data_section
-            .data_id_of_pointer(pointer_offset_from_current_instr)
-            .expect("Pointer offset must be in data_section");
+    //     // insert the pointer as bytes as a new data section entry at the end of the data
+    //     let data_id_for_pointer = data_section
+    //         .data_id_of_pointer(pointer_offset_from_current_instr)
+    //         .expect("Pointer offset must be in data_section");
 
-        // now load the pointer we just created into the `dest`ination
-        let mut buf = Vec::with_capacity(2);
-        buf.append(&mut realize_load(
-            dest,
-            &data_id_for_pointer,
-            data_section,
-            offset_to_data_section,
-            offset_from_instr_start,
-        ));
-        // add $pc to the pointer since it is relative to the current instruction.
-        buf.push(
-            fuel_asm::op::ADD::new(
-                dest.to_reg_id(),
-                dest.to_reg_id(),
-                ConstantRegister::ProgramCounter.to_reg_id(),
-            )
-            .into(),
-        );
-        buf
-    } else if is_byte {
-        vec![fuel_asm::op::LB::new(
-            dest.to_reg_id(),
-            fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            offset.value().into(),
-        )
-        .into()]
-    } else {
-        vec![fuel_asm::op::LW::new(
-            dest.to_reg_id(),
-            fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            offset.value().into(),
-        )
-        .into()]
-    }
+    //     // now load the pointer we just created into the `dest`ination
+    //     let mut buf = Vec::with_capacity(2);
+    //     buf.append(&mut realize_load(
+    //         dest,
+    //         &data_id_for_pointer,
+    //         data_section,
+    //         offset_to_data_section,
+    //         offset_from_instr_start,
+    //     ));
+    //     // add $pc to the pointer since it is relative to the current instruction.
+    //     buf.push(
+    //         fuel_asm::op::ADD::new(
+    //             dest.to_reg_id(),
+    //             dest.to_reg_id(),
+    //             ConstantRegister::ProgramCounter.to_reg_id(),
+    //         )
+    //         .into(),
+    //     );
+    //     buf
+    // } else if is_byte {
+    //     vec![fuel_asm::op::LB::new(
+    //         dest.to_reg_id(),
+    //         fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+    //         offset.value().into(),
+    //     )
+    //     .into()]
+    // } else {
+    //     vec![fuel_asm::op::LW::new(
+    //         dest.to_reg_id(),
+    //         fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+    //         offset.value().into(),
+    //     )
+    //     .into()]
+    // }
 }

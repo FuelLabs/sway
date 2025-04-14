@@ -10,7 +10,7 @@ use crate::{
 use super::{
     abstract_instruction_set::RealizedAbstractInstructionSet,
     compiler_constants as consts,
-    data_section::{DataSection, Entry},
+    data_section::{DataSection, Entry, PackedDataSection},
 };
 
 use fuel_vm::fuel_asm::Imm12;
@@ -377,7 +377,6 @@ impl AllocatedAbstractInstructionSet {
                         let data_id = data_section.insert_data_value(Entry::new_word(
                             offset,
                             EntryName::NonConfigurable,
-                            None,
                         ));
                         realized_ops.push(RealizedOp {
                             opcode: AllocatedOpcode::LoadDataId(r1, data_id),
@@ -402,7 +401,7 @@ impl AllocatedAbstractInstructionSet {
 
     fn resolve_labels(
         &mut self,
-        data_section: &mut DataSection,
+        data_section: &mut PackedDataSection,
         iter_count: usize,
     ) -> Result<LabeledBlocks, crate::CompileError> {
         // Iteratively resolve the label offsets.
@@ -440,7 +439,7 @@ impl AllocatedAbstractInstructionSet {
     }
 
     // Instruction size in units of 32b.
-    fn instruction_size(op: &AllocatedAbstractOp, data_section: &DataSection) -> u64 {
+    fn instruction_size(op: &AllocatedAbstractOp, data_section: &PackedDataSection) -> u64 {
         use ControlFlowOp::*;
         match op.opcode {
             Either::Right(Label(_)) => 0,
@@ -504,7 +503,7 @@ impl AllocatedAbstractInstructionSet {
         }
     }
 
-    fn map_label_offsets(&self, data_section: &DataSection) -> (bool, LabeledBlocks) {
+    fn map_label_offsets(&self, data_section: &PackedDataSection) -> (bool, LabeledBlocks) {
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
         let mut cur_basic_block = None;
@@ -571,7 +570,7 @@ impl AllocatedAbstractInstructionSet {
     fn rewrite_far_jumps(
         &mut self,
         label_offsets: &LabeledBlocks,
-        data_section: &DataSection,
+        data_section: &PackedDataSection,
     ) -> bool {
         let min_ops = self.ops.len();
         let mut modified = false;

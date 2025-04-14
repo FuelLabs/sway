@@ -9,7 +9,7 @@ use crate::{
         ProgramKind,
     },
     asm_lang::Label,
-    decl_engine::DeclRefFunction,
+    decl_engine::DeclRefFunction, OptLevel,
 };
 
 /// An [AllocatedProgram] represents code which has allocated registers but still has abstract
@@ -23,7 +23,7 @@ pub(crate) struct AllocatedProgram {
 }
 
 impl AllocatedProgram {
-    pub(crate) fn into_final_program(mut self) -> Result<FinalProgram, crate::CompileError> {
+    pub(crate) fn into_final_program(mut self, optimization: OptLevel) -> Result<FinalProgram, crate::CompileError> {
         // Concat the prologue and all the functions together.
         let abstract_ops = AllocatedAbstractInstructionSet {
             ops: std::iter::once(self.prologue.ops)
@@ -32,8 +32,13 @@ impl AllocatedProgram {
                 .collect(),
         };
 
+        // Prepare data section for label realization
+        let mut data_section = self.data_section
+            .pack(optimization);
+
+        // Realize the labels in the program.
         let (realized_ops, mut label_offsets) =
-            abstract_ops.realize_labels(&mut self.data_section)?;
+            abstract_ops.realize_labels(&mut data_section)?;
         let ops = realized_ops.allocated_ops();
 
         // Collect the entry point offsets.
@@ -51,7 +56,7 @@ impl AllocatedProgram {
 
         Ok(FinalProgram {
             kind: self.kind,
-            data_section: self.data_section,
+            data_section: data_section.finalize(),
             ops,
             entries,
         })
