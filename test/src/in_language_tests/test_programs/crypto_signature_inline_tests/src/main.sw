@@ -362,3 +362,91 @@ fn signature_bits() {
         iter += 1;
     }
 }
+
+#[test]
+fn signature_eq() {
+    let secp256r1_1 = Signature::Secp256r1(Secp256r1::from((b256::zero(), b256::zero())));
+    let secp256r1_2 = Signature::Secp256r1(Secp256r1::from((b256::zero(), b256::zero())));
+    let secp256r1_3 = Signature::Secp256r1(Secp256r1::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    )));
+    let secp256r1_4 = Signature::Secp256r1(Secp256r1::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    )));
+    let secp256r1_5 = Signature::Secp256r1(Secp256r1::from((b256::max(), b256::max())));
+    let secp256r1_6 = Signature::Secp256r1(Secp256r1::from((b256::max(), b256::max())));
+
+    let secp256k1_1 = Signature::Secp256k1(Secp256k1::from((b256::zero(), b256::zero())));
+    let secp256k1_2 = Signature::Secp256k1(Secp256k1::from((b256::zero(), b256::zero())));
+    let secp256k1_3 = Signature::Secp256k1(Secp256k1::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    )));
+    let secp256k1_4 = Signature::Secp256k1(Secp256k1::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    )));
+    let secp256k1_5 = Signature::Secp256k1(Secp256k1::from((b256::max(), b256::max())));
+    let secp256k1_6 = Signature::Secp256k1(Secp256k1::from((b256::max(), b256::max())));
+
+    let ed25519_1 = Signature::Ed25519(Ed25519::from((b256::zero(), b256::zero())));
+    let ed25519_2 = Signature::Ed25519(Ed25519::from((b256::zero(), b256::zero())));
+    let ed25519_3 = Signature::Ed25519(Ed25519::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    )));
+    let ed25519_4 = Signature::Ed25519(Ed25519::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    )));
+    let ed25519_5 = Signature::Ed25519(Ed25519::from((b256::max(), b256::max())));
+    let ed25519_6 = Signature::Ed25519(Ed25519::from((b256::max(), b256::max())));
+
+    assert(secp256r1_1 == secp256r1_2);
+    assert(secp256r1_3 == secp256r1_4);
+    assert(secp256r1_5 == secp256r1_6);
+    assert(secp256r1_1 != secp256r1_3);
+    assert(secp256r1_1 != secp256r1_5);
+    assert(secp256r1_3 != secp256r1_5);
+
+    assert(secp256k1_1 == secp256k1_2);
+    assert(secp256k1_3 == secp256k1_4);
+    assert(secp256k1_5 == secp256k1_6);
+    assert(secp256k1_1 != secp256k1_3);
+    assert(secp256k1_1 != secp256k1_5);
+    assert(secp256k1_3 != secp256k1_5);
+
+    assert(ed25519_1 == ed25519_2);
+    assert(ed25519_3 == ed25519_4);
+    assert(ed25519_5 == ed25519_6);
+    assert(ed25519_1 != ed25519_3);
+    assert(ed25519_1 != ed25519_5);
+    assert(ed25519_3 != ed25519_5);
+
+    assert(secp256r1_1 != secp256k1_1);
+    assert(secp256r1_1 != ed25519_1);
+    assert(secp256r1_3 != secp256k1_3);
+    assert(secp256r1_3 != ed25519_3);
+    assert(secp256r1_5 != secp256k1_5);
+    assert(secp256r1_5 != ed25519_5);
+
+    assert(secp256r1_1 != ed25519_3);
+    assert(secp256r1_1 != secp256k1_3);
+    assert(secp256r1_1 != ed25519_5);
+    assert(secp256r1_1 != secp256k1_5);
+
+    assert(secp256k1_1 != ed25519_1);
+    assert(secp256k1_3 != ed25519_3);
+    assert(secp256k1_5 != ed25519_5);
+
+    assert(secp256k1_1 != ed25519_3);
+    assert(secp256k1_1 != ed25519_5);
+}
+
+#[test]
+fn signature_codec() {
+    let signature = Signature::Secp256r1(Secp256r1::from((b256::zero(), b256::zero())));
+    log(signature);
+}
