@@ -233,6 +233,8 @@ impl AllocatedAbstractInstructionSet {
                                 _ => None,
                             },
                             force_far,
+                            comment,
+                            owning_span,
                         );
                         debug_assert_eq!(ops.len() as u64, op_size);
                         realized_ops.extend(ops);
@@ -571,6 +573,8 @@ pub(crate) fn compile_jump(
     target_offset: u64,
     condition_nonzero: Option<AllocatedRegister>,
     far: bool,
+    comment: String,
+    owning_span: Option<Span>,
 ) -> Vec<RealizedOp> {
     if curr_offset == target_offset {
         if !far {
@@ -580,8 +584,8 @@ pub(crate) fn compile_jump(
         return vec![
             RealizedOp {
                 opcode: AllocatedOpcode::NOOP,
-                owning_span: None,
-                comment: "[self jump]: land here".into(),
+                owning_span: owning_span.clone(),
+                comment: "".into(),
             },
             if let Some(cond_nz) = condition_nonzero {
                 RealizedOp {
@@ -590,8 +594,8 @@ pub(crate) fn compile_jump(
                         AllocatedRegister::Constant(ConstantRegister::Zero),
                         VirtualImmediate12::new_unchecked(0, "unreachable()"),
                     ),
-                    owning_span: None,
-                    comment: "[self jump]: jump to preceding noop".into(),
+                    owning_span,
+                    comment,
                 }
             } else {
                 RealizedOp {
@@ -599,8 +603,8 @@ pub(crate) fn compile_jump(
                         AllocatedRegister::Constant(ConstantRegister::Zero),
                         VirtualImmediate18::new_unchecked(0, "unreachable()"),
                     ),
-                    owning_span: None,
-                    comment: "[self jump]: jump to preceding noop".into(),
+                    owning_span,
+                    comment,
                 }
             },
         ];
@@ -621,8 +625,8 @@ pub(crate) fn compile_jump(
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
                         data_id,
                     ),
-                    owning_span: None,
-                    comment: "[far jump]: load target address".into(),
+                    owning_span: owning_span.clone(),
+                    comment: "load far jump target address".into(),
                 },
                 RealizedOp {
                     opcode: if let Some(cond_nz) = condition_nonzero {
@@ -637,8 +641,8 @@ pub(crate) fn compile_jump(
                             VirtualImmediate18::new_unchecked(0, "unreachable()"),
                         )
                     },
-                    owning_span: None,
-                    comment: "[far jump]: jump".into(),
+                    owning_span,
+                    comment,
                 },
             ]
         } else {
@@ -655,8 +659,8 @@ pub(crate) fn compile_jump(
                         VirtualImmediate18::new_unchecked(delta, "ensured by mark_far_jumps"),
                     )
                 },
-                owning_span: None,
-                comment: "".into(),
+                owning_span,
+                comment,
             }]
         };
     }
@@ -676,8 +680,8 @@ pub(crate) fn compile_jump(
                     AllocatedRegister::Constant(ConstantRegister::Scratch),
                     data_id,
                 ),
-                owning_span: None,
-                comment: "[far jump]: load target address".into(),
+                owning_span: owning_span.clone(),
+                comment: "load far jump target address".into(),
             },
             RealizedOp {
                 opcode: if let Some(cond_nz) = condition_nonzero {
@@ -692,8 +696,8 @@ pub(crate) fn compile_jump(
                         VirtualImmediate18::new_unchecked(0, "unreachable()"),
                     )
                 },
-                owning_span: None,
-                comment: "[far jump]: jump".into(),
+                owning_span,
+                comment,
             },
         ]
     } else {
@@ -710,8 +714,8 @@ pub(crate) fn compile_jump(
                     VirtualImmediate18::new_unchecked(delta, "ensured by mark_far_jumps"),
                 )
             },
-            owning_span: None,
-            comment: "".into(),
+            owning_span,
+            comment,
         }]
     }
 }
