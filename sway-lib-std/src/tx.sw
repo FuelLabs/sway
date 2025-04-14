@@ -337,10 +337,7 @@ pub fn tx_script_data_length() -> Option<u64> {
 /// ```
 pub fn tx_witnesses_count() -> u64 {
     match tx_type() {
-        Transaction::Script
-        | Transaction::Upgrade
-        | Transaction::Upload
-        | Transaction::Blob => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
+        Transaction::Script | Transaction::Upgrade | Transaction::Upload | Transaction::Blob => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
         Transaction::Create => __gtf::<u64>(0, GTF_CREATE_WITNESSES_COUNT),
         _ => revert(0),
     }
@@ -372,10 +369,7 @@ fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
     }
 
     match tx_type() {
-        Transaction::Script
-        | Transaction::Upgrade
-        | Transaction::Upload
-        | Transaction::Blob => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
+        Transaction::Script | Transaction::Upgrade | Transaction::Upload | Transaction::Blob => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
         Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_WITNESS_AT_INDEX)),
         _ => None,
     }
@@ -535,18 +529,18 @@ pub fn tx_script_bytecode<T>() -> Option<T> {
 /// ```
 pub fn tx_script_bytecode_hash() -> Option<b256> {
     if __gtf::<u8>(0, GTF_TYPE) == TX_TYPE_SCRIPT {
-            // Get the script memory details
-            let mut result_buffer = b256::zero();
-            let script_length = __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH);
-            let script_ptr = __gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT);
+        // Get the script memory details
+        let mut result_buffer = b256::zero();
+        let script_length = __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH);
+        let script_ptr = __gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT);
 
-            // Run the hash opcode for the script in memory
-            Some(
-                asm(hash: result_buffer, ptr: script_ptr, len: script_length) {
-                    s256 hash ptr len;
-                    hash: b256
-                },
-            )
+        // Run the hash opcode for the script in memory
+        Some(
+            asm(hash: result_buffer, ptr: script_ptr, len: script_length) {
+                s256 hash ptr len;
+                hash: b256
+            },
+        )
     } else {
         None
     }
