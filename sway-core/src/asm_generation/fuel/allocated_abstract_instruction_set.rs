@@ -192,157 +192,6 @@ impl AllocatedAbstractInstructionSet {
         self
     }
 
-    pub(crate) fn compile_jump(
-        data_section: &mut DataSection,
-        curr_offset: u64,
-        target_offset: u64,
-        condition_nonzero: Option<AllocatedRegister>,
-        far: bool,
-    ) -> Vec<RealizedOp> {
-        if curr_offset == target_offset {
-            if !far {
-                unreachable!("Self jump should have been marked by mark_far_jumps");
-            }
-
-            return vec![
-                RealizedOp {
-                    opcode: AllocatedOpcode::NOOP,
-                    owning_span: None,
-                    comment: "[self jump]: land here".into(),
-                },
-                if let Some(cond_nz) = condition_nonzero {
-                    RealizedOp {
-                        opcode: AllocatedOpcode::JNZB(
-                            cond_nz,
-                            AllocatedRegister::Constant(ConstantRegister::Zero),
-                            VirtualImmediate12::new_unchecked(0, "unreachable()"),
-                        ),
-                        owning_span: None,
-                        comment: "[self jump]: jump to preceding noop".into(),
-                    }
-                } else {
-                    RealizedOp {
-                        opcode: AllocatedOpcode::JMPB(
-                            AllocatedRegister::Constant(ConstantRegister::Zero),
-                            VirtualImmediate18::new_unchecked(0, "unreachable()"),
-                        ),
-                        owning_span: None,
-                        comment: "[self jump]: jump to preceding noop".into(),
-                    }
-                },
-            ];
-        }
-
-        if curr_offset > target_offset {
-            let delta = curr_offset - target_offset - 1;
-            return if far {
-                let data_id = data_section.insert_data_value(Entry::new_word(
-                    delta,
-                    EntryName::NonConfigurable,
-                    None,
-                ));
-
-                vec![
-                    RealizedOp {
-                        opcode: AllocatedOpcode::LoadDataId(
-                            AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            data_id,
-                        ),
-                        owning_span: None,
-                        comment: "[far jump]: load target address".into(),
-                    },
-                    RealizedOp {
-                        opcode: if let Some(cond_nz) = condition_nonzero {
-                            AllocatedOpcode::JNZB(
-                                cond_nz,
-                                AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                VirtualImmediate12::new_unchecked(0, "unreachable()"),
-                            )
-                        } else {
-                            AllocatedOpcode::JMPB(
-                                AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                VirtualImmediate18::new_unchecked(0, "unreachable()"),
-                            )
-                        },
-                        owning_span: None,
-                        comment: "[far jump]: jump".into(),
-                    },
-                ]
-            } else {
-                vec![RealizedOp {
-                    opcode: if let Some(cond_nz) = condition_nonzero {
-                        AllocatedOpcode::JNZB(
-                            cond_nz,
-                            AllocatedRegister::Constant(ConstantRegister::Zero),
-                            VirtualImmediate12::new_unchecked(delta, "ensured by mark_far_jumps"),
-                        )
-                    } else {
-                        AllocatedOpcode::JMPB(
-                            AllocatedRegister::Constant(ConstantRegister::Zero),
-                            VirtualImmediate18::new_unchecked(delta, "ensured by mark_far_jumps"),
-                        )
-                    },
-                    owning_span: None,
-                    comment: "".into(),
-                }]
-            };
-        }
-
-        let delta = target_offset - curr_offset - 1;
-
-        if far {
-            let data_id = data_section.insert_data_value(Entry::new_word(
-                delta,
-                EntryName::NonConfigurable,
-                None,
-            ));
-
-            vec![
-                RealizedOp {
-                    opcode: AllocatedOpcode::LoadDataId(
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        data_id,
-                    ),
-                    owning_span: None,
-                    comment: "[far jump]: load target address".into(),
-                },
-                RealizedOp {
-                    opcode: if let Some(cond_nz) = condition_nonzero {
-                        AllocatedOpcode::JNZF(
-                            cond_nz,
-                            AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate12::new_unchecked(0, "unreachable()"),
-                        )
-                    } else {
-                        AllocatedOpcode::JMPF(
-                            AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate18::new_unchecked(0, "unreachable()"),
-                        )
-                    },
-                    owning_span: None,
-                    comment: "[far jump]: jump".into(),
-                },
-            ]
-        } else {
-            vec![RealizedOp {
-                opcode: if let Some(cond_nz) = condition_nonzero {
-                    AllocatedOpcode::JNZF(
-                        cond_nz,
-                        AllocatedRegister::Constant(ConstantRegister::Zero),
-                        VirtualImmediate12::new_unchecked(delta, "ensured by mark_far_jumps"),
-                    )
-                } else {
-                    AllocatedOpcode::JMPF(
-                        AllocatedRegister::Constant(ConstantRegister::Zero),
-                        VirtualImmediate18::new_unchecked(delta, "ensured by mark_far_jumps"),
-                    )
-                },
-                owning_span: None,
-                comment: "".into(),
-            }]
-        }
-    }
-
     /// Runs two passes -- one to get the instruction offsets of the labels and one to replace the
     /// labels in the organizational ops
     pub(crate) fn realize_labels(
@@ -375,7 +224,7 @@ impl AllocatedAbstractInstructionSet {
                         force_far,
                     } => {
                         let target_offset = label_offsets.get(&to).unwrap().offs;
-                        let ops = Self::compile_jump(
+                        let ops = compile_jump(
                             data_section,
                             curr_offset,
                             target_offset,
@@ -448,27 +297,29 @@ impl AllocatedAbstractInstructionSet {
         Ok((realized_ops, label_offsets))
     }
 
-    /// Iteratively resolve the label offsets.
+    /// Resolve jump label offsets.
     ///
-    /// For very large programs the label offsets may be too large to fit in an immediate jump
-    /// (JI, JNEI or JNZI).  In these case we must replace the immediate jumps with register
-    /// based jumps (JMP, JNE) but these require more than one instruction; usually an
-    /// instruction to load the destination register and then the jump itself.
+    /// For very large programs the label offsets may be too large to fit in an immediate part
+    /// of the jump instruction. In these case we must use a register value as a jump target.
+    /// This requires two instructions, one to load the destination register and then the jump itself.
     ///
     /// But we don't know the offset of a label until we scan through the ops and count them.
     /// So we have a chicken and egg situation where we may need to add new instructions which
     /// would change the offsets to all labels thereafter, which in turn could require more
     /// instructions to be added, and so on.
     ///
-    /// This should really only take 2 iterations (and only for very, very large programs) and
-    /// the pathological case somehow has many labels clustered at the 12 or 18 bit boundaries
-    /// which switch from immediate to register based destinations after each loop.
+    /// For this reason, we take a two-pass approach. On the first pass, we pessimistically assume
+    /// that all jumps may require take two opcodes, and use this assumption to calculate the
+    /// offsets of labels. Then we see which jumps actually require two opcodes and mark them as such.
+    /// This approach is not optimal as it sometimes requires more opcodes than necessary,
+    /// but it is simple and quite works well in practice.
     fn resolve_labels(&mut self, data_section: &mut DataSection) -> LabeledBlocks {
         self.mark_far_jumps();
         self.map_label_offsets(data_section)
     }
 
-    // Pessimistic instruction size, in units of 32b.
+    // Returns largest size an instruction can take up.
+    // The return value is in concrete instructions, i.e. units of 4 bytes.
     fn worst_case_instruction_size(op: &AllocatedAbstractOp) -> u64 {
         use ControlFlowOp::*;
         match op.opcode {
@@ -519,7 +370,9 @@ impl AllocatedAbstractInstructionSet {
         }
     }
 
-    // Instruction size in units of 32b.
+    // Actual size of an instruction. Note that for jump instructions to return
+    // the correct value, the program must have been ran through [`Self::mark_far_jumps`] first.
+    // The return value is in concrete instructions, i.e. units of 4 bytes.
     fn instruction_size(op: &AllocatedAbstractOp, data_section: &DataSection) -> u64 {
         use ControlFlowOp::*;
         match op.opcode {
@@ -654,15 +507,14 @@ impl AllocatedAbstractInstructionSet {
                 let Either::Right(ControlFlowOp::Jump { force_far, .. }) =
                     &mut self.ops[jump.op_idx].opcode
                 else {
-                    unreachable!(
-                        "detect_jumps_requiring_rewrite incorrectly returned non-jump-op index"
-                    );
+                    unreachable!("invalid jump index");
                 };
                 *force_far = true;
             }
         }
     }
 
+    /// Map the labels to their offsets in the program.
     fn map_label_offsets(&self, data_section: &DataSection) -> LabeledBlocks {
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
@@ -705,5 +557,161 @@ impl std::fmt::Display for AllocatedAbstractInstructionSet {
                 .collect::<Vec<_>>()
                 .join("\n")
         )
+    }
+}
+
+/// Compiles jump into the appropriate operations.
+/// Near jumps are compiled into a single instruction, while far jumps are compiled into
+/// two instructions: one to load the target address and another to jump to it.
+///
+/// `mark_far_jumps` must have been called before this to ensure `far` is set correctly.
+pub(crate) fn compile_jump(
+    data_section: &mut DataSection,
+    curr_offset: u64,
+    target_offset: u64,
+    condition_nonzero: Option<AllocatedRegister>,
+    far: bool,
+) -> Vec<RealizedOp> {
+    if curr_offset == target_offset {
+        if !far {
+            unreachable!("Self jump should have been marked by mark_far_jumps");
+        }
+
+        return vec![
+            RealizedOp {
+                opcode: AllocatedOpcode::NOOP,
+                owning_span: None,
+                comment: "[self jump]: land here".into(),
+            },
+            if let Some(cond_nz) = condition_nonzero {
+                RealizedOp {
+                    opcode: AllocatedOpcode::JNZB(
+                        cond_nz,
+                        AllocatedRegister::Constant(ConstantRegister::Zero),
+                        VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                    ),
+                    owning_span: None,
+                    comment: "[self jump]: jump to preceding noop".into(),
+                }
+            } else {
+                RealizedOp {
+                    opcode: AllocatedOpcode::JMPB(
+                        AllocatedRegister::Constant(ConstantRegister::Zero),
+                        VirtualImmediate18::new_unchecked(0, "unreachable()"),
+                    ),
+                    owning_span: None,
+                    comment: "[self jump]: jump to preceding noop".into(),
+                }
+            },
+        ];
+    }
+
+    if curr_offset > target_offset {
+        let delta = curr_offset - target_offset - 1;
+        return if far {
+            let data_id = data_section.insert_data_value(Entry::new_word(
+                delta,
+                EntryName::NonConfigurable,
+                None,
+            ));
+
+            vec![
+                RealizedOp {
+                    opcode: AllocatedOpcode::LoadDataId(
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        data_id,
+                    ),
+                    owning_span: None,
+                    comment: "[far jump]: load target address".into(),
+                },
+                RealizedOp {
+                    opcode: if let Some(cond_nz) = condition_nonzero {
+                        AllocatedOpcode::JNZB(
+                            cond_nz,
+                            AllocatedRegister::Constant(ConstantRegister::Scratch),
+                            VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                        )
+                    } else {
+                        AllocatedOpcode::JMPB(
+                            AllocatedRegister::Constant(ConstantRegister::Scratch),
+                            VirtualImmediate18::new_unchecked(0, "unreachable()"),
+                        )
+                    },
+                    owning_span: None,
+                    comment: "[far jump]: jump".into(),
+                },
+            ]
+        } else {
+            vec![RealizedOp {
+                opcode: if let Some(cond_nz) = condition_nonzero {
+                    AllocatedOpcode::JNZB(
+                        cond_nz,
+                        AllocatedRegister::Constant(ConstantRegister::Zero),
+                        VirtualImmediate12::new_unchecked(delta, "ensured by mark_far_jumps"),
+                    )
+                } else {
+                    AllocatedOpcode::JMPB(
+                        AllocatedRegister::Constant(ConstantRegister::Zero),
+                        VirtualImmediate18::new_unchecked(delta, "ensured by mark_far_jumps"),
+                    )
+                },
+                owning_span: None,
+                comment: "".into(),
+            }]
+        };
+    }
+
+    let delta = target_offset - curr_offset - 1;
+
+    if far {
+        let data_id = data_section.insert_data_value(Entry::new_word(
+            delta,
+            EntryName::NonConfigurable,
+            None,
+        ));
+
+        vec![
+            RealizedOp {
+                opcode: AllocatedOpcode::LoadDataId(
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    data_id,
+                ),
+                owning_span: None,
+                comment: "[far jump]: load target address".into(),
+            },
+            RealizedOp {
+                opcode: if let Some(cond_nz) = condition_nonzero {
+                    AllocatedOpcode::JNZF(
+                        cond_nz,
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                    )
+                } else {
+                    AllocatedOpcode::JMPF(
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate18::new_unchecked(0, "unreachable()"),
+                    )
+                },
+                owning_span: None,
+                comment: "[far jump]: jump".into(),
+            },
+        ]
+    } else {
+        vec![RealizedOp {
+            opcode: if let Some(cond_nz) = condition_nonzero {
+                AllocatedOpcode::JNZF(
+                    cond_nz,
+                    AllocatedRegister::Constant(ConstantRegister::Zero),
+                    VirtualImmediate12::new_unchecked(delta, "ensured by mark_far_jumps"),
+                )
+            } else {
+                AllocatedOpcode::JMPF(
+                    AllocatedRegister::Constant(ConstantRegister::Zero),
+                    VirtualImmediate18::new_unchecked(delta, "ensured by mark_far_jumps"),
+                )
+            },
+            owning_span: None,
+            comment: "".into(),
+        }]
     }
 }

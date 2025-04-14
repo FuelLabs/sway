@@ -1310,7 +1310,9 @@ pub(crate) enum ControlFlowOp<Reg> {
         to: Label,
         /// Jump type
         type_: JumpType<Reg>,
-        /// Force far jump, reserving space for an extra opcode to load target address
+        /// Force far jump, reserving space for an extra opcode to load target address.
+        /// If this is false but the target is far, [`mark_far_jumps`] pass will enable this.
+        /// Also, this will be enabled for self-jumps, as they require a noop to be inserted before them.
         force_far: bool,
     },
     // Save a return label address in a register.
