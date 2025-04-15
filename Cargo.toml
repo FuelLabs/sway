@@ -105,6 +105,9 @@ fuel-types = "0.59"
 fuel-tx = "0.59"
 fuel-vm = "0.59"
 
+# Dependencies for Fuel Telemetry
+fuel-telemetry = { git = "https://github.com/FuelLabs/fuel-telemetry.git", branch = "main" }
+
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.12"
 

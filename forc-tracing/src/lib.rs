@@ -3,12 +3,84 @@
 use ansiterm::Colour;
 use std::str;
 use std::{env, io};
-use tracing::{Level, Metadata};
+use tracing::{Level, Metadata, Subscriber};
 pub use tracing_subscriber::{
     self,
     filter::{EnvFilter, LevelFilter},
     fmt::{format::FmtSpan, MakeWriter},
+    layer::{Context, Filter},
+    prelude::__tracing_subscriber_SubscriberExt,
+    util::SubscriberInitExt,
+    Layer,
 };
+
+#[cfg(feature = "telemetry")]
+use fuel_telemetry::WorkerGuard;
+
+#[cfg(feature = "telemetry")]
+pub mod telemetry {
+    pub use fuel_telemetry::{
+        debug_telemetry, error_telemetry, info_telemetry, span_telemetry, trace_telemetry,
+        warn_telemetry,
+    };
+}
+
+#[macro_export]
+macro_rules! telemetry_disabled {
+    () => {
+        compile_error!("Telemetry is disabled. Add `features = [\"telemetry\"]` to the `forc-tracing` dependency to enable telemetry");
+    }
+}
+
+#[cfg(not(feature = "telemetry"))]
+pub mod telemetry {
+    #[macro_export]
+    macro_rules! error_telemetry {
+        ($($arg:tt)*) => {
+            $crate::telemetry_disabled!();
+        };
+    }
+
+    #[macro_export]
+    macro_rules! info_telemetry {
+        ($($arg:tt)*) => {
+            $crate::telemetry_disabled!();
+        };
+    }
+
+    #[macro_export]
+    macro_rules! warn_telemetry {
+        ($($arg:tt)*) => {
+            $crate::telemetry_disabled!();
+        };
+    }
+
+    #[macro_export]
+    macro_rules! debug_telemetry {
+        ($($arg:tt)*) => {
+            $crate::telemetry_disabled!();
+        };
+    }
+
+    #[macro_export]
+    macro_rules! trace_telemetry {
+        ($($arg:tt)*) => {
+            $crate::telemetry_disabled!();
+        };
+    }
+
+    #[macro_export]
+    macro_rules! span_telemetry {
+        ($($arg:tt)*) => {
+            $crate::telemetry_disabled!();
+        };
+    }
+
+    pub use {
+        debug_telemetry, error_telemetry, info_telemetry, span_telemetry, trace_telemetry,
+        warn_telemetry,
+    };
+}
 
 const ACTION_COLUMN_WIDTH: usize = 12;
 
@@ -165,14 +237,41 @@ pub struct TracingSubscriberOptions {
     pub writer_mode: Option<TracingWriterMode>,
 }
 
+struct HideTelemetryFilter<S: Subscriber> {
+    _marker: std::marker::PhantomData<S>,
+}
+
+impl<S: Subscriber> HideTelemetryFilter<S> {
+    fn new<F: Filter<S>>(_inner: F) -> Self {
+        Self {
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<S> Filter<S> for HideTelemetryFilter<S>
+where
+    S: Subscriber + for<'lookup> tracing_subscriber::registry::LookupSpan<'lookup>,
+{
+    fn enabled(&self, _meta: &Metadata<'_>, ctx: &Context<'_, S>) -> bool {
+        if let Some(span) = ctx.lookup_current() {
+            if span
+                .fields()
+                .iter()
+                .any(|field| field.name() == "telemetry")
+            {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
 pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
-    let env_filter = match env::var_os(LOG_FILTER) {
-        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
-        None => EnvFilter::new("info"),
-    };
     let level_filter = options
         .log_level
         .or_else(|| {
@@ -190,8 +289,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                 .and_then(|silent| if silent { Some(LevelFilter::OFF) } else { None })
         });
 
-    let builder = tracing_subscriber::fmt::Subscriber::builder()
-        .with_env_filter(env_filter)
+    let layer = tracing_subscriber::fmt::layer()
         .with_ansi(true)
         .with_level(false)
         .with_file(false)
@@ -202,11 +300,52 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
             writer_mode: options.writer_mode.unwrap_or(TracingWriterMode::Stdio),
         });
 
+    #[cfg(feature = "telemetry")]
+    let (telemetry_layer, telemetry_guard) = fuel_telemetry::new_with_watchers!().unwrap();
+
     // If log level, verbosity, or silent mode is set, it overrides the RUST_LOG setting
     if let Some(level_filter) = level_filter {
-        builder.with_max_level(level_filter).init();
+        let hide_telemetry_filter = HideTelemetryFilter::new(level_filter);
+
+        #[cfg(feature = "telemetry")]
+        tracing_subscriber::registry()
+            .with(telemetry_layer)
+            .with(layer.with_filter(hide_telemetry_filter))
+            .init();
+
+        #[cfg(not(feature = "telemetry"))]
+        tracing_subscriber::registry()
+            .with(layer.with_filter(hide_telemetry_filter))
+            .init();
     } else {
-        builder.init();
+        let env_filter = match env::var_os(LOG_FILTER) {
+            Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
+            None => EnvFilter::new("info"),
+        };
+
+        let hide_telemetry_filter = HideTelemetryFilter::new(env_filter);
+
+        #[cfg(feature = "telemetry")]
+        tracing_subscriber::registry()
+            .with(telemetry_layer)
+            .with(layer.with_filter(hide_telemetry_filter))
+            .init();
+
+        #[cfg(not(feature = "telemetry"))]
+        tracing_subscriber::registry()
+            .with(layer.with_filter(hide_telemetry_filter))
+            .init();
+    }
+
+    #[cfg(feature = "telemetry")]
+    {
+        // When the process ends, Thread Local Storage will drop this guard allowing
+        // the tracing appender to flush any remaining telemetry to disk.
+        thread_local! {
+            static GUARD: std::cell::RefCell<Option<WorkerGuard>> = const { std::cell::RefCell::new(None) };
+        }
+
+        GUARD.set(Some(telemetry_guard));
     }
 }
 
