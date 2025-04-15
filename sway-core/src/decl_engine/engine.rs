@@ -121,6 +121,7 @@ impl Clone for DeclEngine {
 
 pub trait DeclEngineGet<I, U> {
     fn get(&self, index: &I) -> Arc<U>;
+    fn map<R>(&self, index: &I, f: impl FnOnce(&U) -> R) -> R;
 }
 
 pub trait DeclEngineGetParsedDeclId<T>
@@ -175,11 +176,19 @@ macro_rules! decl_engine_get {
             fn get(&self, index: &DeclId<$decl>) -> Arc<$decl> {
                 self.$slab.get(index.inner())
             }
+
+            fn map<R>(&self, index: &DeclId<$decl>, f: impl FnOnce(&$decl) -> R) -> R {
+                self.$slab.map(index.inner(), f)
+            }
         }
 
         impl DeclEngineGet<DeclRef<DeclId<$decl>>, $decl> for DeclEngine {
             fn get(&self, index: &DeclRef<DeclId<$decl>>) -> Arc<$decl> {
                 self.$slab.get(index.id().inner())
+            }
+
+            fn map<R>(&self, index: &DeclRef<DeclId<$decl>>, f: impl FnOnce(&$decl) -> R) -> R {
+                self.$slab.map(index.id().inner(), f)
             }
         }
     };

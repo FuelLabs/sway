@@ -614,7 +614,7 @@ impl Renderable for TyFunctionDecl {
         let attributes = self.attributes.to_html_string();
 
         let mut fn_sig = format!("fn {}(", self.name.as_str());
-        for param in &self.parameters {
+        for param in self.parameters.iter() {
             let mut param_str = String::new();
             if param.is_reference {
                 write!(param_str, "ref ")?;
@@ -651,7 +651,7 @@ impl Renderable for TyFunctionDecl {
                             }
                             : "(";
                             @ if multiline {
-                                @ for param in &self.parameters {
+                                @ for param in self.parameters.iter() {
                                     br;
                                     : "    ";
                                     @ if param.is_reference {
@@ -672,7 +672,7 @@ impl Renderable for TyFunctionDecl {
                                 br;
                                 : ")";
                             } else {
-                                @ for param in &self.parameters {
+                                @ for param in self.parameters.iter() {
                                     @ if param.is_reference {
                                         : "ref";
                                     }

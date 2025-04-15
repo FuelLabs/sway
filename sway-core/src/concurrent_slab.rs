@@ -115,6 +115,15 @@ where
             .clone()
     }
 
+    /// Improve performance by avoiding `Arc::clone`.
+    /// The slab is kept locked while running `f`.
+    pub fn map<R>(&self, index: usize, f: impl FnOnce(&T) -> R) -> R {
+        let inner = self.inner.read();
+        f(inner.items[index]
+            .as_ref()
+            .expect("invalid slab index for ConcurrentSlab::get"))
+    }
+
     pub fn retain(&self, predicate: impl Fn(&usize, &mut Arc<T>) -> bool) {
         let mut inner = self.inner.write();
 
