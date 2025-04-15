@@ -290,6 +290,7 @@ pub enum Dependency {
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
+    pub(crate) namespace: Option<String>,
     pub path: Option<String>,
     pub(crate) git: Option<String>,
     pub(crate) branch: Option<String>,
@@ -322,6 +323,9 @@ impl DependencyDetails {
             branch,
             tag,
             rev,
+            version,
+            ipfs,
+            namespace,
             ..
         } = self;
 
@@ -329,6 +333,17 @@ impl DependencyDetails {
             bail!("Details reserved for git sources used without a git field");
         }
 
+        if version.is_some() && git.is_some() {
+            bail!("Both version and git details provided for same dependency");
+        }
+
+        if version.is_some() && ipfs.is_some() {
+            bail!("Both version and ipfs details provided for same dependency");
+        }
+
+        if version.is_none() && namespace.is_some() {
+            bail!("Namespace can only be specified for sources with version");
+        }
         Ok(())
     }
 }
@@ -526,7 +541,7 @@ impl GenericManifestFile for PackageManifestFile {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -594,7 +609,7 @@ impl PackageManifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -612,7 +627,7 @@ impl PackageManifest {
     /// This also `validate`s the manifest, returning an `Err` in the case that invalid names,
     /// fields were used.
     ///
-    /// If `core` and `std` are unspecified, `std` will be added to the `dependencies` table
+    /// If `std` is unspecified, `std` will be added to the `dependencies` table
     /// implicitly. In this case, the git tag associated with the version of this crate is used to
     /// specify the pinned commit at which we fetch `std`.
     pub fn from_string(contents: String) -> Result<Self> {
@@ -729,23 +744,18 @@ impl PackageManifest {
         self.proxy.as_ref()
     }
 
-    /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
+    /// Check for the `std` package under `[dependencies]`. If it is missing, add
     /// `std` implicitly.
     ///
     /// This makes the common case of depending on `std` a lot smoother for most users, while still
-    /// allowing for the uncommon case of custom `core`/`std` deps.
-    ///
-    /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
-    /// guarantee that the user's `core` is compatible with the implicit `std`.
+    /// allowing for the uncommon case of custom `std` deps.
     fn implicitly_include_std_if_missing(&mut self) {
-        use sway_types::constants::{CORE, STD};
+        use sway_types::constants::STD;
         // Don't include `std` if:
-        // - this *is* `core` or `std`.
-        // - either `core` or `std` packages are already specified.
+        // - this *is* `std`.
+        // - `std` package is already specified.
         // - a dependency already exists with the name "std".
-        if self.project.name == CORE
-            || self.project.name == STD
-            || self.pkg_dep(CORE).is_some()
+        if self.project.name == STD
             || self.pkg_dep(STD).is_some()
             || self.dep(STD).is_some()
             || !self.project.implicit_std.unwrap_or(true)
@@ -1103,6 +1113,7 @@ impl std::ops::Deref for WorkspaceManifestFile {
 ///
 /// Returns the path to the package on success, or `None` in the case it could not be found.
 pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+    use crate::source::reg::REG_DIR_NAME;
     use sway_types::constants::STD;
     const SWAY_STD_FOLDER: &str = "sway-lib-std";
     walkdir::WalkDir::new(dir)
@@ -1116,11 +1127,13 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
             let path = entry.path();
             let manifest = PackageManifest::from_file(path).ok()?;
             // If the package is STD, make sure it is coming from correct folder.
+            // That is either sway-lib-std, by fetching the sway repo (for std added as git dependency)
+            // or from registry folder (for std added as a registry dependency).
             if (manifest.project.name == pkg_name && pkg_name != STD)
                 || (manifest.project.name == STD
-                    && path
-                        .components()
-                        .any(|comp| comp.as_os_str() == SWAY_STD_FOLDER))
+                    && path.components().any(|comp| {
+                        comp.as_os_str() == SWAY_STD_FOLDER || comp.as_os_str() == REG_DIR_NAME
+                    }))
             {
                 Some(path.to_path_buf())
             } else {
@@ -1172,6 +1185,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
 
         let dependency_details_branch = DependencyDetails {
@@ -1194,6 +1208,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
 
         let dependency_details_tag = DependencyDetails {
@@ -1216,6 +1231,7 @@ mod tests {
             package: None,
             ipfs: None,
             rev: Some("9f35b8e".to_string()),
+            namespace: None,
         };
 
         let dependency_details_rev = DependencyDetails {
@@ -1294,6 +1310,23 @@ mod tests {
             Some(expected_mismatch_error.to_string())
         );
     }
+    #[test]
+    #[should_panic(expected = "Namespace can only be specified for sources with version")]
+    fn test_error_namespace_without_version() {
+        PackageManifest::from_dir("./tests/invalid/namespace_without_version").unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Both version and git details provided for same dependency")]
+    fn test_error_version_with_git_for_same_dep() {
+        PackageManifest::from_dir("./tests/invalid/version_and_git_same_dep").unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Both version and ipfs details provided for same dependency")]
+    fn test_error_version_with_ipfs_for_same_dep() {
+        PackageManifest::from_dir("./tests/invalid/version_and_ipfs_same_dep").unwrap();
+    }
 
     #[test]
     #[should_panic(expected = "duplicate key `foo` in table `dependencies`")]
@@ -1340,6 +1373,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
 
         let git_source_string = "https://github.com/FuelLabs/sway".to_string();
@@ -1352,6 +1386,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
         let dependency_details_git_branch = DependencyDetails {
             version: None,
@@ -1362,6 +1397,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
         let dependency_details_git_rev = DependencyDetails {
             version: None,
@@ -1372,6 +1408,7 @@ mod tests {
             package: None,
             rev: Some("9f35b8e".to_string()),
             ipfs: None,
+            namespace: None,
         };
 
         let dependency_details_ipfs = DependencyDetails {
@@ -1383,6 +1420,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: Some("QmVxgEbiDDdHpG9AesCpZAqNvHYp1P3tWLFdrpUBWPMBcc".to_string()),
+            namespace: None,
         };
 
         assert!(dependency_details_path.validate().is_ok());

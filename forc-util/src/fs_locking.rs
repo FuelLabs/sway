@@ -1,6 +1,6 @@
 use crate::{hash_path, user_forc_directory};
 use std::{
-    fs::{create_dir_all, remove_file, File},
+    fs::{create_dir_all, read_dir, remove_file, File},
     io::{self, Read, Write},
     path::{Path, PathBuf},
 };
@@ -19,6 +19,9 @@ impl PidFileLocking {
         dir: Y,
         extension: &str,
     ) -> PidFileLocking {
+        // Try to cleanup stale files, ignore any errors as this is best-effort
+        let _ = Self::cleanup_stale_files();
+
         let file_name = hash_path(filename);
         Self(
             user_forc_directory()
@@ -136,6 +139,38 @@ impl PidFileLocking {
         fs.flush()?;
         Ok(())
     }
+
+    /// Cleans up all stale lock files in the .lsp-locks directory
+    /// Returns a vector of paths that were cleaned up
+    pub fn cleanup_stale_files() -> io::Result<Vec<PathBuf>> {
+        let lock_dir = user_forc_directory().join(".lsp-locks");
+        let entries = read_dir(&lock_dir)?;
+        let mut cleaned_paths = Vec::new();
+
+        for entry in entries {
+            let entry = entry?;
+            let path = entry.path();
+            if let Some(ext) = path.extension().and_then(|ext| ext.to_str()) {
+                if ext == "lock" {
+                    if let Ok(mut file) = File::open(&path) {
+                        let mut contents = String::new();
+                        if file.read_to_string(&mut contents).is_ok() {
+                            if let Ok(pid) = contents.trim().parse::<usize>() {
+                                if !Self::is_pid_active(pid) {
+                                    remove_file(&path)?;
+                                    cleaned_paths.push(path);
+                                }
+                            } else {
+                                remove_file(&path)?;
+                                cleaned_paths.push(path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(cleaned_paths)
+    }
 }
 
 /// Checks if the specified file is marked as "dirty".
@@ -149,7 +184,8 @@ pub fn is_file_dirty<X: AsRef<Path>>(path: X) -> bool {
 
 #[cfg(test)]
 mod test {
-    use super::PidFileLocking;
+    use super::{user_forc_directory, PidFileLocking};
+    use mark_flaky_tests::flaky;
     use std::{
         fs::{metadata, File},
         io::{ErrorKind, Write},
@@ -209,5 +245,54 @@ mod test {
         assert!(!x.is_locked());
         let e = metadata(&x.0).unwrap_err().kind();
         assert_eq!(e, ErrorKind::NotFound);
+    }
+
+    #[flaky]
+    #[test]
+    fn test_cleanup_stale_files() {
+        // First create some test files
+        let test_lock = PidFileLocking::lsp("test_cleanup");
+        test_lock.lock().expect("Failed to create test lock file");
+
+        // Create a test lock file with invalid PID
+        let lock_path = user_forc_directory()
+            .join(".lsp-locks")
+            .join("test_cleanup_invalid.lock");
+
+        // Write invalid content to ensure parsing fails
+        {
+            let mut file = File::create(&lock_path).expect("Failed to create test lock file");
+            file.write_all(b"not-a-pid")
+                .expect("Failed to write invalid content");
+            file.flush().expect("Failed to flush file");
+        }
+
+        // Verify both files exist before cleanup
+        assert!(
+            test_lock.0.exists(),
+            "Valid lock file should exist before cleanup"
+        );
+        assert!(
+            lock_path.exists(),
+            "Invalid lock file should exist before cleanup"
+        );
+
+        // Run cleanup and check returned paths
+        let cleaned_paths =
+            PidFileLocking::cleanup_stale_files().expect("Failed to cleanup stale files");
+
+        // Verify that only the invalid lock file was cleaned up
+        assert_eq!(cleaned_paths.len(), 1, "Expected one file to be cleaned up");
+        assert_eq!(
+            cleaned_paths[0], lock_path,
+            "Expected invalid file to be cleaned up"
+        );
+
+        // Verify file system state
+        assert!(test_lock.0.exists(), "Active lock file should still exist");
+        assert!(!lock_path.exists(), "Lock file should be removed");
+
+        // Cleanup after test
+        test_lock.release().expect("Failed to release test lock");
     }
 }

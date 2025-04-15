@@ -1,5 +1,0 @@
-category = "fail"
-
-# Not sure if this is the originally expected error:
-# check: mod a_dependency;
-# nextln: $()Expected dependency at the beginning before any other items.

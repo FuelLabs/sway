@@ -9,6 +9,7 @@ use crate::{
     },
     type_system::*,
 };
+use ast_elements::type_parameter::GenericTypeParameter;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -52,7 +53,7 @@ pub enum TyExpressionVariant {
     ConstGenericExpression {
         span: Span,
         decl: Box<TyConstGenericDecl>,
-        call_path: Option<CallPath>,
+        call_path: CallPath,
     },
     VariableExpression {
         name: Ident,
@@ -861,7 +862,7 @@ impl ReplaceDecls for TyExpressionVariant {
                                 implementing_for_typeid,
                                 &[ctx.namespace().current_package_name().clone()],
                                 &call_path.suffix,
-                                method.return_type.type_id,
+                                method.return_type.type_id(),
                                 &arguments
                                     .iter()
                                     .map(|a| a.1.return_type)
@@ -875,7 +876,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
                     let mut inner_decl_mapping =
-                        TypeParameter::gather_decl_mapping_from_trait_constraints(
+                        GenericTypeParameter::gather_decl_mapping_from_trait_constraints(
                             handler,
                             ctx.by_ref(),
                             &method.type_parameters,
@@ -1077,7 +1078,7 @@ impl TypeCheckAnalysis for TyExpressionVariant {
                     unifier.unify(
                         handler,
                         arg.1.return_type,
-                        decl_param.type_argument.type_id,
+                        decl_param.type_argument.type_id(),
                         &Span::dummy(),
                         false,
                     );
@@ -1586,7 +1587,28 @@ impl DebugWithEngines for TyExpressionVariant {
             TyExpressionVariant::Continue => "continue".to_string(),
             TyExpressionVariant::Reassignment(reassignment) => {
                 let target = match &reassignment.lhs {
-                    TyReassignmentTarget::Deref(exp) => format!("{:?}", engines.help_out(exp)),
+                    TyReassignmentTarget::DerefAccess { exp, indices } => {
+                        let mut target = format!("{:?}", engines.help_out(exp));
+                        for index in indices {
+                            match index {
+                                ProjectionKind::StructField {
+                                    name,
+                                    field_to_access: _,
+                                } => {
+                                    target.push('.');
+                                    target.push_str(name.as_str());
+                                }
+                                ProjectionKind::TupleField { index, .. } => {
+                                    target.push('.');
+                                    target.push_str(index.to_string().as_str());
+                                }
+                                ProjectionKind::ArrayIndex { index, .. } => {
+                                    write!(&mut target, "[{:?}]", engines.help_out(index)).unwrap();
+                                }
+                            }
+                        }
+                        target
+                    }
                     TyReassignmentTarget::ElementAccess {
                         base_name,
                         base_type: _,
@@ -1595,7 +1617,10 @@ impl DebugWithEngines for TyExpressionVariant {
                         let mut target = base_name.to_string();
                         for index in indices {
                             match index {
-                                ProjectionKind::StructField { name } => {
+                                ProjectionKind::StructField {
+                                    name,
+                                    field_to_access: _,
+                                } => {
                                     target.push('.');
                                     target.push_str(name.as_str());
                                 }

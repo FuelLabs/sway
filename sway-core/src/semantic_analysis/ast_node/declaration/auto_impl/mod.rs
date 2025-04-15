@@ -2,6 +2,8 @@
 pub mod abi_encoding;
 pub mod marker_traits;
 
+use std::ops::Deref;
+
 use crate::{
     engine_threading::SpannedWithEngines,
     language::{
@@ -9,11 +11,11 @@ use crate::{
         ty::{self, TyAstNode, TyDecl},
     },
     semantic_analysis::TypeCheckContext,
-    Engines, TypeArgument, TypeInfo, TypeParameter,
+    Engines, GenericArgument, TypeInfo, TypeParameter,
 };
 use sway_error::handler::Handler;
 use sway_parse::Parse;
-use sway_types::{ProgramId, Spanned};
+use sway_types::{Named, ProgramId, Spanned};
 
 /// Contains all information needed to auto-implement code for a certain feature.
 pub struct AutoImplContext<'a, 'b, I>
@@ -86,7 +88,7 @@ where
         } else {
             format!(
                 "<{}>",
-                itertools::intersperse(type_parameters.iter().map(|x| { x.name.as_str() }), ", ")
+                itertools::intersperse(type_parameters.iter().map(|p| { p.name().as_str() }), ", ")
                     .collect::<String>()
             )
         }
@@ -100,13 +102,16 @@ where
     ) -> String {
         let mut code = String::new();
 
-        for t in type_parameters.iter() {
+        for p in type_parameters.iter() {
+            let p = p
+                .as_type_parameter()
+                .expect("only works with type parameters");
             code.push_str(&format!(
                 "{}: {},\n",
-                t.name.as_str(),
+                p.name.as_str(),
                 itertools::intersperse(
                     [extra_constraint].into_iter().chain(
-                        t.trait_constraints
+                        p.trait_constraints
                             .iter()
                             .map(|x| x.trait_name.suffix.as_str())
                     ),
@@ -146,7 +151,6 @@ where
             engines,
             item,
             false,
-            None,
             Some(kind),
         )
         .unwrap();
@@ -221,7 +225,7 @@ where
 
         let item = Self::parse(engines, program_id, code);
         let nodes = crate::transform::to_parsed_lang::item_to_ast_nodes(
-            &mut ctx, &handler, engines, item, false, None, None,
+            &mut ctx, &handler, engines, item, false, None,
         )
         .unwrap();
 
@@ -266,7 +270,8 @@ where
                 &handler,
                 impl_trait.trait_name.clone(),
                 impl_trait.trait_type_arguments.clone(),
-                impl_trait.implementing_for.type_id,
+                impl_trait.implementing_for.type_id(),
+                impl_trait.impl_type_parameters.clone(),
                 &impl_trait.items,
                 &impl_trait.span,
                 impl_trait
@@ -291,13 +296,24 @@ where
     /// The safest way would be to return a canonical fully qualified type path.
     /// We do not have a way to do this at the moment, so the best way is to use
     /// exactly what was typed by the user, to accommodate aliased imports.
-    fn generate_type(engines: &Engines, ta: &TypeArgument) -> Option<String> {
-        match &*engines.te().get(ta.type_id) {
+    fn generate_type(engines: &Engines, ta: &GenericArgument) -> Option<String> {
+        match &*engines.te().get(ta.type_id()) {
             // A special case for function return type.
             // When a function does not define a return type, the span points to the whole signature.
             TypeInfo::Tuple(v) if v.is_empty() => Some("()".into()),
             // Otherwise, take the type from the span.
             _ => Some(ta.span().as_str().to_string()),
         }
+    }
+}
+
+impl<'a, 'b, I> Deref for AutoImplContext<'a, 'b, I>
+where
+    'a: 'b,
+{
+    type Target = TypeCheckContext<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        self.ctx
     }
 }

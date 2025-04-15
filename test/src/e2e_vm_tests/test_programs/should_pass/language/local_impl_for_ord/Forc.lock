@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-FE72F77802732C1A'
+name = "local_impl_for_ord"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'local_impl_for_ord'
-source = 'member'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-FE72F77802732C1A"

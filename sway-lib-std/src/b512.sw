@@ -1,9 +1,13 @@
 //! The `B512` type supports the usage of 64-byte values in Sway which are needed when working with public keys and signatures.
 library;
 
+use ::ops::*;
+use ::primitives::*;
 use ::convert::{From, Into, TryFrom};
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
+use ::raw_slice::*;
+use ::codec::*;
 
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.
@@ -12,20 +16,12 @@ pub struct B512 {
     bits: [b256; 2],
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for B512 {
+impl PartialEq for B512 {
     fn eq(self, other: Self) -> bool {
         (self.bits)[0] == (other.bits)[0] && (self.bits)[1] == (other.bits)[1]
     }
 }
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for B512 {
-    fn eq(self, other: Self) -> bool {
-        (self.bits)[0] == (other.bits)[0] && (self.bits)[1] == (other.bits)[1]
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for B512 {}
+impl Eq for B512 {}
 
 impl From<(b256, b256)> for B512 {
     /// Converts from a `b256` tuple to a `B512`.

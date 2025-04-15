@@ -4,7 +4,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     type_error::TypeError,
 };
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use crate::{
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext, WithEngines},
@@ -247,8 +247,8 @@ impl<'a> Unifier<'a> {
             (Never, _) => {}
 
             // Type aliases and the types they encapsulate coerce to each other.
-            (Alias { ty, .. }, _) => self.unify(handler, ty.type_id, expected, span, false),
-            (_, Alias { ty, .. }) => self.unify(handler, received, ty.type_id, span, false),
+            (Alias { ty, .. }, _) => self.unify(handler, ty.type_id(), expected, span, false),
+            (_, Alias { ty, .. }) => self.unify(handler, received, ty.type_id(), span, false),
 
             (Enum(r_decl_ref), Enum(e_decl_ref)) => {
                 let r_decl = self.engines.de().get_enum(r_decl_ref);
@@ -377,9 +377,9 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    fn unify_tuples(&self, handler: &Handler, rfs: &[TypeArgument], efs: &[TypeArgument]) {
+    fn unify_tuples(&self, handler: &Handler, rfs: &[GenericArgument], efs: &[GenericArgument]) {
         for (rf, ef) in rfs.iter().zip(efs.iter()) {
-            self.unify(handler, rf.type_id, ef.type_id, &rf.span, false);
+            self.unify(handler, rf.type_id(), ef.type_id(), &rf.span(), false);
         }
     }
 
@@ -396,6 +396,12 @@ impl<'a> Unifier<'a> {
         let (en, etps) = e;
         if rn == en && rtps.len() == etps.len() {
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
+                let rtp = rtp
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
+                let etp = etp
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
                 self.unify(handler, rtp.type_id, etp.type_id, span, false);
             });
         } else {
@@ -425,6 +431,12 @@ impl<'a> Unifier<'a> {
         let (en, etps) = e;
         if rn == en && rtps.len() == etps.len() {
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
+                let rtp = rtp
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
+                let etp = etp
+                    .as_type_parameter()
+                    .expect("will only work with type parameters");
                 self.unify(handler, rtp.type_id, etp.type_id, span, false);
             });
         } else {
@@ -451,14 +463,14 @@ impl<'a> Unifier<'a> {
         received_parent: TypeId,
         expected_parent: TypeId,
         span: &Span,
-        received_type_argument: &TypeArgument,
-        expected_type_argument: &TypeArgument,
+        received_type_argument: &GenericArgument,
+        expected_type_argument: &GenericArgument,
     ) -> Result<(), ErrorEmitted> {
         let h = Handler::default();
         self.unify(
             &h,
-            received_type_argument.type_id,
-            expected_type_argument.type_id,
+            received_type_argument.type_id(),
+            expected_type_argument.type_id(),
             span,
             false,
         );

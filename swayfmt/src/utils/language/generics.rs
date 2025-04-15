@@ -21,6 +21,7 @@ impl Format for GenericParam {
                 write!(formatted_code, "{} ", ConstToken::AS_STR)?;
                 let _ = ident.format(formatted_code, formatter);
                 let _ = colon(formatted_code);
+                write!(formatted_code, " ")?;
                 ty.format(formatted_code, formatter)
             }
         }

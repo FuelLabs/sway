@@ -6,6 +6,9 @@ use ::bytes::*;
 use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
+use ::codec::*;
+use ::ops::*;
+use ::raw_slice::AsRawSlice;
 use ::clone::Clone;
 
 /// A UTF-8 encoded growable string. It has ownership over its buffer.
@@ -317,19 +320,11 @@ impl From<String> for raw_slice {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for String {
-    fn eq(self, other: Self) -> bool {
-        self.bytes == other.as_bytes()
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for String {
     fn eq(self, other: Self) -> bool {
         self.bytes == other.as_bytes()
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for String {}
 
 impl Hash for String {

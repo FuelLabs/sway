@@ -22,6 +22,7 @@ use sway_core::{
     Engines,
 };
 use sway_types::BaseIdent;
+use sway_types::Spanned;
 
 mod descriptor;
 pub mod module;
@@ -77,7 +78,7 @@ impl Documentation {
 
         // Add one documentation page for each primitive type that has an implementation.
         for (impl_trait, module_info) in impl_traits.iter() {
-            let impl_for_type = engines.te().get(impl_trait.implementing_for.type_id);
+            let impl_for_type = engines.te().get(impl_trait.implementing_for.type_id());
             if let Ok(Descriptor::Documentable(doc)) =
                 Descriptor::from_type_info(impl_for_type.as_ref(), engines, module_info.clone())
             {
@@ -103,7 +104,7 @@ impl Documentation {
                     for (impl_trait, _) in impl_traits.iter_mut() {
                         // Check if this implementation is for this struct/enum.
                         if item_name.as_str()
-                            == strip_generic_suffix(impl_trait.implementing_for.span.as_str())
+                            == strip_generic_suffix(impl_trait.implementing_for.span().as_str())
                         {
                             let module_info_override = if let Some(decl_module_info) =
                                 trait_decls.get(&impl_trait.trait_name.suffix)

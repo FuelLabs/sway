@@ -10,7 +10,7 @@ use colored::Colorize;
 use sway_core::{
     compile_ir_context_to_finalized_asm, compile_to_ast,
     ir_generation::compile_program,
-    namespace::{self, Root},
+    namespace::{self, Package},
     BuildTarget, Engines,
 };
 use sway_error::handler::Handler;
@@ -179,10 +179,10 @@ pub(super) async fn run(
     const PACKAGE_NAME: &str = "test_lib";
     let core_lib_name = sway_types::Ident::new_no_span(PACKAGE_NAME.to_string());
 
-    // Compile core library and reuse it when compiling tests.
+    // Compile std library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_root = compile_core(build_target, &engines, run_config);
+    let std_package = compile_std(build_target, &engines, run_config);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -244,8 +244,8 @@ pub(super) async fn run(
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default();
-		let mut initial_namespace = Root::new(core_lib_name.clone(), None, ProgramId::new(0), false);
-		initial_namespace.add_external("core".to_owned(), core_root.clone());
+                let mut initial_namespace = Package::new(core_lib_name.clone(), None, ProgramId::new(0), false);
+                initial_namespace.add_external("std".to_owned(), std_package.clone());
                 let compile_res = compile_to_ast(
                     &handler,
                     &engines,
@@ -528,17 +528,17 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core(
+fn compile_std(
     build_target: BuildTarget,
     engines: &Engines,
     run_config: &RunConfig,
-) -> namespace::Root {
+) -> namespace::Package {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
+    let libstd_root_dir = format!("{manifest_dir}/../sway-lib-std");
 
     let check_cmd = forc::cli::CheckCommand {
         build_target,
-        path: Some(libcore_root_dir),
+        path: Some(libstd_root_dir),
         offline_mode: true,
         terse_mode: true,
         disable_tests: false,
@@ -550,18 +550,18 @@ fn compile_core(
     let res = match forc::test::forc_check::check(check_cmd, engines) {
         Ok(res) => res,
         Err(err) => {
-            panic!("Failed to compile sway-lib-core for IR tests: {err:?}")
+            panic!("Failed to compile sway-lib-std for IR tests: {err:?}")
         }
     };
 
     match res.0 {
-        Some(typed_program) => typed_program.namespace.root_ref().clone(),
+        Some(typed_program) => typed_program.namespace.current_package_ref().clone(),
         _ => {
             let (errors, _warnings) = res.1.consume();
             for err in errors {
                 println!("{err:?}");
             }
-            panic!("Failed to compile sway-lib-core for IR tests.");
+            panic!("Failed to compile sway-lib-std for IR tests.");
         }
     }
 }

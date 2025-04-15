@@ -44,6 +44,10 @@
 //! accept `&&TElement` or `&&mut TElement` so that can be easily passed to
 //! [Iterator::filter] function.
 //!
+//! For the cases when migrations do target individual expressions, and do not need
+//! to inspect a larger scope, the visitor pattern is still supported and available
+//! via the tree visitors that are defined in [super::visiting].
+//!
 //! ## Matching elements in trees
 //!
 //! Functions matching on lexed trees are coming in two variants, immutable and mutable.

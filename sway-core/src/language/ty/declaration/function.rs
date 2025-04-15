@@ -1,5 +1,4 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericParameter,
     decl_engine::*,
     engine_threading::*,
     has_changes,
@@ -21,10 +20,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{
-    constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME},
-    Ident, Named, Span, Spanned,
-};
+use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TyFunctionDeclKind {
@@ -43,10 +39,9 @@ pub struct TyFunctionDecl {
     pub implementing_for_typeid: Option<TypeId>,
     pub span: Span,
     pub call_path: CallPath,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub type_parameters: Vec<TypeParameter>,
-    pub const_generic_parameters: Vec<ConstGenericParameter>,
-    pub return_type: TypeArgument,
+    pub return_type: GenericArgument,
     pub visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
     pub is_contract_call: bool,
@@ -77,11 +72,16 @@ impl DebugWithEngines for TyFunctionDecl {
                     "<{}>",
                     self.type_parameters
                         .iter()
-                        .map(|p| format!(
-                            "{:?} -> {:?}",
-                            engines.help_out(p.initial_type_id),
-                            engines.help_out(p.type_id)
-                        ))
+                        .map(|p| {
+                            let p = p
+                                .as_type_parameter()
+                                .expect("only works for type parameters");
+                            format!(
+                                "{:?} -> {:?}",
+                                engines.help_out(p.initial_type_id),
+                                engines.help_out(p.type_id)
+                            )
+                        })
                         .collect::<Vec<_>>()
                         .join(", ")
                 )
@@ -93,13 +93,13 @@ impl DebugWithEngines for TyFunctionDecl {
                 .map(|p| format!(
                     "{}:{} -> {}",
                     p.name.as_str(),
-                    engines.help_out(p.type_argument.initial_type_id),
-                    engines.help_out(p.type_argument.type_id)
+                    engines.help_out(p.type_argument.initial_type_id()),
+                    engines.help_out(p.type_argument.type_id())
                 ))
                 .collect::<Vec<_>>()
                 .join(", "),
-            engines.help_out(self.return_type.initial_type_id),
-            engines.help_out(self.return_type.type_id),
+            engines.help_out(self.return_type.initial_type_id()),
+            engines.help_out(self.return_type.type_id()),
         )
     }
 }
@@ -115,7 +115,12 @@ impl DisplayWithEngines for TyFunctionDecl {
                     "<{}>",
                     self.type_parameters
                         .iter()
-                        .map(|p| format!("{}", engines.help_out(p.initial_type_id)))
+                        .map(|p| {
+                            let p = p
+                                .as_type_parameter()
+                                .expect("only works for type parameters");
+                            format!("{}", engines.help_out(p.initial_type_id))
+                        })
                         .collect::<Vec<_>>()
                         .join(", ")
                 )
@@ -127,11 +132,11 @@ impl DisplayWithEngines for TyFunctionDecl {
                 .map(|p| format!(
                     "{}: {}",
                     p.name.as_str(),
-                    engines.help_out(p.type_argument.initial_type_id)
+                    engines.help_out(p.type_argument.initial_type_id())
                 ))
                 .collect::<Vec<_>>()
                 .join(", "),
-            engines.help_out(self.return_type.initial_type_id),
+            engines.help_out(self.return_type.initial_type_id()),
         )
     }
 }
@@ -147,10 +152,12 @@ impl MaterializeConstGenerics for TyFunctionDecl {
         for param in self.parameters.iter_mut() {
             param
                 .type_argument
-                .type_id
+                .type_id_mut()
                 .materialize_const_generics(engines, handler, name, value)?;
         }
-
+        self.return_type
+            .type_id_mut()
+            .materialize_const_generics(engines, handler, name, value)?;
         self.body
             .materialize_const_generics(engines, handler, name, value)
     }
@@ -175,31 +182,35 @@ impl DeclRefFunction {
                     engines,
                     0,
                     &mut type_id_type_parameters,
-                    impl_self_or_trait.implementing_for.type_id,
+                    impl_self_or_trait.implementing_for.type_id(),
                 );
 
-                for impl_type_parameter in impl_self_or_trait.impl_type_parameters.clone() {
+                for p in impl_self_or_trait
+                    .impl_type_parameters
+                    .iter()
+                    .filter_map(|x| x.as_type_parameter())
+                {
                     let matches = type_id_type_parameters
                         .iter()
                         .filter(|(_, orig_tp)| {
                             engines.te().get(*orig_tp).eq(
-                                &*engines.te().get(impl_type_parameter.type_id),
+                                &*engines.te().get(p.type_id),
                                 &PartialEqWithEnginesContext::new(engines),
                             )
                         })
                         .collect::<Vec<_>>();
                     if !matches.is_empty() {
                         // Adds type substitution for first match only as we can apply only one.
-                        type_id_type_subst_map.insert(impl_type_parameter.type_id, matches[0].0);
+                        type_id_type_subst_map.insert(p.type_id, matches[0].0);
                     } else if engines
                         .te()
-                        .get(impl_self_or_trait.implementing_for.initial_type_id)
+                        .get(impl_self_or_trait.implementing_for.initial_type_id())
                         .eq(
-                            &*engines.te().get(impl_type_parameter.initial_type_id),
+                            &*engines.te().get(p.initial_type_id),
                             &PartialEqWithEnginesContext::new(engines),
                         )
                     {
-                        type_id_type_subst_map.insert(impl_type_parameter.type_id, type_id);
+                        type_id_type_subst_map.insert(p.type_id, type_id);
                     }
                 }
             }
@@ -240,11 +251,11 @@ impl IsConcrete for TyFunctionDecl {
             .all(|tp| tp.is_concrete(engines))
             && self
                 .return_type
-                .type_id
+                .type_id()
                 .is_concrete(engines, TreatNumericAs::Concrete)
             && self.parameters().iter().all(|t| {
                 t.type_argument
-                    .type_id
+                    .type_id()
                     .is_concrete(engines, TreatNumericAs::Concrete)
             })
     }
@@ -254,7 +265,7 @@ impl declaration::FunctionSignature for TyFunctionDecl {
         &self.parameters
     }
 
-    fn return_type(&self) -> &TypeArgument {
+    fn return_type(&self) -> &GenericArgument {
         &self.return_type
     }
 }
@@ -281,7 +292,6 @@ impl HashWithEngines for TyFunctionDecl {
             parameters,
             return_type,
             type_parameters,
-            const_generic_parameters,
             visibility,
             is_contract_call,
             purity,
@@ -302,7 +312,6 @@ impl HashWithEngines for TyFunctionDecl {
         parameters.hash(state, engines);
         return_type.hash(state, engines);
         type_parameters.hash(state, engines);
-        const_generic_parameters.hash(state, engines);
         visibility.hash(state);
         is_contract_call.hash(state);
         purity.hash(state);
@@ -386,17 +395,20 @@ impl CollectTypesMetadata for TyFunctionDecl {
         body.append(
             &mut self
                 .return_type
-                .type_id
+                .type_id()
                 .collect_types_metadata(handler, ctx)?,
         );
-        for type_param in self.type_parameters.iter() {
-            body.append(&mut type_param.type_id.collect_types_metadata(handler, ctx)?);
+        for p in self.type_parameters.iter() {
+            let p = p
+                .as_type_parameter()
+                .expect("only works for type parameters");
+            body.append(&mut p.type_id.collect_types_metadata(handler, ctx)?);
         }
         for param in self.parameters.iter() {
             body.append(
                 &mut param
                     .type_argument
-                    .type_id
+                    .type_id()
                     .collect_types_metadata(handler, ctx)?,
             );
         }
@@ -436,7 +448,6 @@ impl TyFunctionDecl {
             visibility: *visibility,
             return_type: return_type.clone(),
             type_parameters: Default::default(),
-            const_generic_parameters: vec![],
             where_clause: where_clause.clone(),
             is_trait_method_dummy: false,
             is_type_check_finalized: true,
@@ -456,7 +467,7 @@ impl TyFunctionDecl {
                 // TODO: Use Span::join_all().
                 self.parameters[0].name.span(),
                 |acc, TyFunctionParameter { type_argument, .. }| {
-                    Span::join(acc, &type_argument.span)
+                    Span::join(acc, &type_argument.span())
                 },
             )
         } else {
@@ -502,9 +513,9 @@ impl TyFunctionDecl {
             .map(|TyFunctionParameter { type_argument, .. }| {
                 engines
                     .te()
-                    .to_typeinfo(type_argument.type_id, &type_argument.span)
+                    .to_typeinfo(type_argument.type_id(), &type_argument.span())
                     .expect("unreachable I think?")
-                    .to_selector_name(handler, engines, &type_argument.span)
+                    .to_selector_name(handler, engines, &type_argument.span())
             })
             .filter_map(|name| name.ok())
             .collect::<Vec<String>>();
@@ -528,28 +539,15 @@ impl TyFunctionDecl {
     /// Whether or not this function is a unit test, i.e. decorated with `#[test]`.
     pub fn is_test(&self) -> bool {
         //TODO match kind to Test
-        self.attributes
-            .contains_key(&transform::AttributeKind::Test)
+        self.attributes.has_any_of_kind(AttributeKind::Test)
     }
 
     pub fn inline(&self) -> Option<Inline> {
-        match self
-            .attributes
-            .get(&transform::AttributeKind::Inline)?
-            .last()?
-            .args
-            .first()?
-            .name
-            .as_str()
-        {
-            INLINE_NEVER_NAME => Some(Inline::Never),
-            INLINE_ALWAYS_NAME => Some(Inline::Always),
-            _ => None,
-        }
+        self.attributes.inline()
     }
 
     pub fn is_fallback(&self) -> bool {
-        self.attributes.contains_key(&AttributeKind::Fallback)
+        self.attributes.has_any_of_kind(AttributeKind::Fallback)
     }
 
     /// Whether or not this function is a constructor for the type given by `type_id`.
@@ -570,7 +568,7 @@ impl TyFunctionDecl {
             Some(TyDecl::ImplSelfOrTrait(t)) => {
                 let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
-                let implementing_for = engines.de().get(&t.decl_id).implementing_for.type_id;
+                let implementing_for = engines.de().get(&t.decl_id).implementing_for.type_id();
 
                 // TODO: Implement the check in detail for all possible cases (e.g. trait impls for generics etc.)
                 //       and return just the definite `bool` and not `Option<bool>`.
@@ -578,7 +576,7 @@ impl TyFunctionDecl {
                 //       error reporting where we suggest obvious most common constructors
                 //       that will be found using this simple check.
                 if unify_check.check(type_id, implementing_for)
-                    && unify_check.check(type_id, self.return_type.type_id)
+                    && unify_check.check(type_id, self.return_type.type_id())
                 {
                     Some(true)
                 } else {
@@ -598,7 +596,7 @@ impl TyFunctionDecl {
                 && matches!(
                     *engines
                         .te()
-                        .get(existing_trait_decl.implementing_for.type_id),
+                        .get(existing_trait_decl.implementing_for.type_id()),
                     TypeInfo::UnknownGeneric { .. }
                 )
             {
@@ -615,7 +613,7 @@ pub struct TyFunctionParameter {
     pub is_reference: bool,
     pub is_mutable: bool,
     pub mutability_span: Span,
-    pub type_argument: TypeArgument,
+    pub type_argument: GenericArgument,
 }
 
 impl EqWithEngines for TyFunctionParameter {}
@@ -648,7 +646,7 @@ impl HashWithEngines for TyFunctionParameter {
 
 impl SubstTypes for TyFunctionParameter {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_argument.type_id.subst(ctx)
+        self.type_argument.type_id_mut().subst(ctx)
     }
 }
 
@@ -702,15 +700,16 @@ impl DebugWithEngines for TyFunctionSig {
 impl TyFunctionSig {
     pub fn from_fn_decl(fn_decl: &TyFunctionDecl) -> Self {
         Self {
-            return_type: fn_decl.return_type.type_id,
+            return_type: fn_decl.return_type.type_id(),
             parameters: fn_decl
                 .parameters
                 .iter()
-                .map(|p| p.type_argument.type_id)
+                .map(|p| p.type_argument.type_id())
                 .collect::<Vec<_>>(),
             type_parameters: fn_decl
                 .type_parameters
                 .iter()
+                .filter_map(|x| x.as_type_parameter())
                 .map(|p| p.type_id)
                 .collect::<Vec<_>>(),
         }

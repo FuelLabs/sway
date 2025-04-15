@@ -1,0 +1,1 @@
+cmds = ["forc build --path {root} --release --experimental error_type"]

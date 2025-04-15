@@ -201,6 +201,7 @@ impl source::Fetch for Pinned {
         // directories, however we should add some code to validate this. E.g. can we
         // recreate the git hash by hashing the directory or something along these lines
         // using git?
+        // https://github.com/FuelLabs/sway/issues/7075
         {
             let _guard = lock.write()?;
             if !repo_path.exists() {
@@ -431,6 +432,12 @@ where
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
 
+    // Add a guard to ensure cleanup happens if we got out of scope whether by
+    // returning or panicking.
+    let _cleanup_guard = scopeguard::guard(&repo_dir, |dir| {
+        let _ = std::fs::remove_dir_all(dir);
+    });
+
     let config = git2::Config::open_default().unwrap();
 
     // Init auth manager
@@ -468,9 +475,6 @@ where
 
     // Call the user function.
     let output = f(repo)?;
-
-    // Clean up the temporary directory.
-    let _ = std::fs::remove_dir_all(&repo_dir);
     Ok(output)
 }
 
@@ -693,7 +697,6 @@ fn test_source_git_pinned_parsing() {
     let strings = [
         "git+https://github.com/foo/bar?branch=baz#64092602dd6158f3e41d775ed889389440a2cd86",
         "git+https://github.com/fuellabs/sway-lib-std?tag=v0.1.0#0000000000000000000000000000000000000000",
-        "git+https://github.com/fuellabs/sway-lib-core?tag=v0.0.1#0000000000000000000000000000000000000000",
         "git+https://some-git-host.com/owner/repo?rev#FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
         "git+https://some-git-host.com/owner/repo?default-branch#AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     ];
@@ -710,13 +713,6 @@ fn test_source_git_pinned_parsing() {
             source: Source {
                 repo: Url::from_str("https://github.com/fuellabs/sway-lib-std").unwrap(),
                 reference: Reference::Tag("v0.1.0".to_string()),
-            },
-            commit_hash: "0000000000000000000000000000000000000000".to_string(),
-        },
-        Pinned {
-            source: Source {
-                repo: Url::from_str("https://github.com/fuellabs/sway-lib-core").unwrap(),
-                reference: Reference::Tag("v0.0.1".to_string()),
             },
             commit_hash: "0000000000000000000000000000000000000000".to_string(),
         },

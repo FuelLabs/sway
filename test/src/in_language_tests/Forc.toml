@@ -8,6 +8,7 @@ members = [
   "test_programs/b512_inline_tests",
   "test_programs/block_inline_tests",
   "test_programs/bytes_inline_tests",
+  "test_programs/codec_implemented_tests",
   "test_programs/contract_id_inline_tests",
   "test_programs/contract_id_contract_tests",
   "test_programs/crypto_point2d_inline_tests",
@@ -55,4 +56,5 @@ members = [
   "test_programs/primitive_conversions_u256_inline_tests",
   "test_programs/vm_evm_evm_address_inline_tests",
   "test_programs/vm_evm_ecr_inline_tests",
+  "test_programs/ops_inline_tests",
 ]

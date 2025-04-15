@@ -105,6 +105,10 @@ impl Module {
         self.submodules.insert(name.to_string(), module);
     }
 
+    pub(crate) fn import_cached_submodule(&mut self, name: &Ident, module: Module) {
+        self.submodules.insert(name.to_string(), module);
+    }
+
     pub fn read<R>(&self, _engines: &crate::Engines, mut f: impl FnMut(&Module) -> R) -> R {
         f(self)
     }
@@ -291,7 +295,7 @@ impl Module {
         self.current_lexical_scope_id = parent_scope_id.unwrap(); // panics if pops do not match pushes
     }
 
-    pub fn walk_scope_chain<T>(
+    pub fn walk_scope_chain_early_return<T>(
         &self,
         mut f: impl FnMut(&LexicalScope) -> Result<Option<T>, ErrorEmitted>,
     ) -> Result<Option<T>, ErrorEmitted> {
@@ -310,23 +314,16 @@ impl Module {
         Ok(None)
     }
 
-    pub fn walk_scope_chain_mut<T>(
-        &mut self,
-        mut f: impl FnMut(&mut LexicalScope) -> Result<Option<T>, ErrorEmitted>,
-    ) -> Result<Option<T>, ErrorEmitted> {
-        let mut lexical_scope_opt = Some(self.current_lexical_scope_mut());
+    pub fn walk_scope_chain(&self, mut f: impl FnMut(&LexicalScope)) {
+        let mut lexical_scope_opt = Some(self.current_lexical_scope());
         while let Some(lexical_scope) = lexical_scope_opt {
-            let result = f(lexical_scope)?;
-            if let Some(result) = result {
-                return Ok(Some(result));
-            }
+            f(lexical_scope);
             if let Some(parent_scope_id) = lexical_scope.parent {
-                lexical_scope_opt = self.get_lexical_scope_mut(parent_scope_id);
+                lexical_scope_opt = self.get_lexical_scope(parent_scope_id);
             } else {
                 lexical_scope_opt = None;
             }
         }
-        Ok(None)
     }
 
     pub fn get_items_for_type(
@@ -344,7 +341,7 @@ impl Module {
         symbol: &Ident,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
         let mut last_handler = Handler::default();
-        let ret = self.walk_scope_chain(|lexical_scope| {
+        let ret = self.walk_scope_chain_early_return(|lexical_scope| {
             last_handler = Handler::default();
             Ok(lexical_scope
                 .items

@@ -13,6 +13,7 @@ BrowserStack
 CLI
 Deserialization
 deserializing
+deserialization
 DApp
 intrinsics
 Intrinsics
@@ -242,3 +243,5 @@ RawSlice
 StringArray
 StringSlice
 calldata
+Cfg
+evm

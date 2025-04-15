@@ -36,8 +36,8 @@ use sway_core::{
         },
         CallPathTree, HasSubmodules, Literal,
     },
-    transform::{AttributeKind, AttributesMap},
-    type_system::{TypeArgument, TypeParameter},
+    transform::Attributes,
+    type_system::{GenericArgument, TypeParameter},
     TraitConstraint, TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
@@ -87,11 +87,11 @@ impl<'a> ParsedTree<'a> {
     }
 }
 
-impl Parse for AttributesMap {
+impl Parse for Attributes {
     fn parse(&self, ctx: &ParseContext) {
-        self.par_iter()
-            .filter(|(kind, ..)| **kind != AttributeKind::DocComment)
-            .flat_map(|(.., attrs)| attrs)
+        self.all_as_slice()
+            .par_iter()
+            .filter(|attribute| !attribute.is_doc_comment())
             .for_each_with(ctx, |ctx, attribute| {
                 ctx.tokens.insert(
                     ctx.ident(&attribute.name),
@@ -843,7 +843,7 @@ impl Parse for ParsedDeclId<ImplSelfOrTrait> {
         } = &&*ctx
             .engines
             .te()
-            .get(impl_self_or_trait.implementing_for.type_id)
+            .get(impl_self_or_trait.implementing_for.type_id())
         {
             ctx.tokens.insert(
                 ctx.ident(&qualified_call_path.call_path.suffix),
@@ -1083,19 +1083,24 @@ impl Parse for EnumVariant {
 
 impl Parse for TypeParameter {
     fn parse(&self, ctx: &ParseContext) {
-        ctx.tokens.insert(
-            ctx.ident(&self.name),
-            Token::from_parsed(
-                ParsedAstToken::TypeParameter(self.clone()),
-                SymbolKind::TypeParameter,
-            ),
-        );
+        match self {
+            TypeParameter::Type(p) => {
+                ctx.tokens.insert(
+                    ctx.ident(&p.name),
+                    Token::from_parsed(
+                        ParsedAstToken::TypeParameter(self.clone()),
+                        SymbolKind::TypeParameter,
+                    ),
+                );
+            }
+            TypeParameter::Const(_) => {}
+        }
     }
 }
 
-impl Parse for TypeArgument {
+impl Parse for GenericArgument {
     fn parse(&self, ctx: &ParseContext) {
-        let type_info = ctx.engines.te().get(self.type_id);
+        let type_info = ctx.engines.te().get(self.type_id());
         match &*type_info {
             TypeInfo::Array(type_arg, length) => {
                 let ident = Ident::new(length.span());
@@ -1116,7 +1121,7 @@ impl Parse for TypeArgument {
             }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, None);
-                if let Some(tree) = &self.call_path_tree {
+                if let Some(tree) = &self.call_path_tree() {
                     let token =
                         Token::from_parsed(ParsedAstToken::TypeArgument(self.clone()), symbol_kind);
                     collect_call_path_tree(ctx, tree, &token, ctx.tokens);

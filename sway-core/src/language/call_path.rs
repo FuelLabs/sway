@@ -4,7 +4,7 @@ use crate::{
         OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     parsed::QualifiedPathType,
-    Engines, Ident, Namespace, TypeArgument,
+    Engines, GenericArgument, Ident, Namespace,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -417,7 +417,7 @@ impl CallPath {
             CallPathDisplayType::Regular => {}
             CallPathDisplayType::StripPackagePrefix => {
                 if let Some(first) = self.prefixes.first() {
-                    if namespace.root_ref().current_package_root_module().name() == first {
+                    if namespace.current_package_name() == first {
                         display_path = display_path.lshift();
                     }
                 }
@@ -434,7 +434,11 @@ impl CallPath {
     /// - `some::module::SomeGenericType<T, u64>`
     ///
     /// Note that the trailing arguments are never separated by `::` from the suffix.
-    pub(crate) fn to_string_with_args(&self, engines: &Engines, args: &[TypeArgument]) -> String {
+    pub(crate) fn to_string_with_args(
+        &self,
+        engines: &Engines,
+        args: &[GenericArgument],
+    ) -> String {
         let args = args
             .iter()
             .map(|type_arg| engines.help_out(type_arg).to_string())

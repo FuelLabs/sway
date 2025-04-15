@@ -1,6 +1,6 @@
 library;
 
-use std::{b512::B512, bytes::Bytes, primitive_conversions::b256::*, u128::U128};
+use std::{b512::B512, bytes::Bytes, primitive_conversions::b256::*, u128::*};
 
 #[test]
 fn b256_try_from_bytes() {
@@ -165,4 +165,13 @@ fn b256_into_tuple() {
     assert(b256_1 == 0x0000000000000000000000000000000000000000000000000000000000000000);
     assert(b256_2 == 0x0000000000000001000000000000000200000000000000030000000000000004);
     assert(b256_3 == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+}
+
+#[test]
+fn test_b256_as_u256() {
+    let val = 0x0000000000000000000000000000000000000000000000000000000000000002;
+    let result = val.as_u256();
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
 }

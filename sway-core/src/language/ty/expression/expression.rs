@@ -7,7 +7,7 @@ use crate::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
     },
-    transform::{AllowDeprecatedState, AttributeKind, AttributesMap},
+    transform::{AllowDeprecatedState, Attributes},
     type_system::*,
     types::*,
 };
@@ -17,7 +17,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
     type_error::TypeError,
-    warning::{CompileWarning, Warning},
+    warning::{CompileWarning, DeprecatedElement, Warning},
 };
 use sway_types::{Span, Spanned};
 
@@ -140,7 +140,7 @@ impl TypeCheckFinalization for TyExpression {
         let res = self.expression.type_check_finalize(handler, ctx);
         if let TyExpressionVariant::FunctionApplication { fn_ref, .. } = &self.expression {
             let method = ctx.engines.de().get_function(fn_ref);
-            self.return_type = method.return_type.type_id;
+            self.return_type = method.return_type.type_id();
         }
         res
     }
@@ -169,13 +169,17 @@ impl CollectTypesMetadata for TyExpression {
                 let function_decl = decl_engine.get_function(fn_ref);
 
                 ctx.call_site_push();
-                for (idx, type_parameter) in function_decl.type_parameters.iter().enumerate() {
-                    ctx.call_site_insert(type_parameter.type_id, call_path.span());
+                for (idx, p) in function_decl
+                    .type_parameters
+                    .iter()
+                    .filter_map(|x| x.as_type_parameter())
+                    .enumerate()
+                {
+                    ctx.call_site_insert(p.type_id, call_path.span());
 
                     // Verify type arguments are concrete
                     res.extend(
-                        type_parameter
-                            .type_id
+                        p.type_id
                             .collect_types_metadata(handler, ctx)?
                             .into_iter()
                             // try to use the caller span for better error messages
@@ -186,7 +190,7 @@ impl CollectTypesMetadata for TyExpression {
                                         .and_then(|type_binding| {
                                             type_binding.type_arguments.as_slice().get(idx)
                                         })
-                                        .map(|type_argument| Some(type_argument.span.clone()))
+                                        .map(|type_argument| Some(type_argument.span()))
                                         .unwrap_or(original_span);
                                     TypeMetadata::UnresolvedType(ident, span)
                                 }
@@ -219,13 +223,19 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 let struct_decl = decl_engine.get_struct(struct_id);
-                for type_parameter in &struct_decl.type_parameters {
-                    ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
+                for p in &struct_decl.type_parameters {
+                    let p = p
+                        .as_type_parameter()
+                        .expect("only works for type parameters");
+                    ctx.call_site_insert(p.type_id, instantiation_span.clone());
                 }
                 if let TypeInfo::Struct(decl_ref) = &*ctx.engines.te().get(self.return_type) {
                     let decl = decl_engine.get_struct(decl_ref);
-                    for type_parameter in &decl.type_parameters {
-                        ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
+                    for p in &decl.type_parameters {
+                        let p = p
+                            .as_type_parameter()
+                            .expect("only works for type parameters");
+                        ctx.call_site_insert(p.type_id, instantiation_span.clone());
                     }
                 }
                 for field in fields.iter() {
@@ -298,8 +308,11 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
-                for type_param in enum_decl.type_parameters.iter() {
-                    ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
+                for p in enum_decl.type_parameters.iter() {
+                    let p = p
+                        .as_type_parameter()
+                        .expect("only works for type parameters");
+                    ctx.call_site_insert(p.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
                     res.append(&mut contents.collect_types_metadata(handler, ctx)?);
@@ -308,12 +321,15 @@ impl CollectTypesMetadata for TyExpression {
                     res.append(
                         &mut variant
                             .type_argument
-                            .type_id
+                            .type_id()
                             .collect_types_metadata(handler, ctx)?,
                     );
                 }
-                for type_param in enum_decl.type_parameters.iter() {
-                    res.append(&mut type_param.type_id.collect_types_metadata(handler, ctx)?);
+                for p in enum_decl.type_parameters.iter() {
+                    let p = p
+                        .as_type_parameter()
+                        .expect("only works for type parameters");
+                    res.append(&mut p.type_id.collect_types_metadata(handler, ctx)?);
                 }
             }
             AbiCast { address, .. } => {
@@ -334,7 +350,7 @@ impl CollectTypesMetadata for TyExpression {
                 res.append(
                     &mut variant
                         .type_argument
-                        .type_id
+                        .type_id()
                         .collect_types_metadata(handler, ctx)?,
                 );
             }
@@ -383,6 +399,12 @@ impl MaterializeConstGenerics for TyExpression {
         self.return_type
             .materialize_const_generics(engines, handler, name, value)?;
         match &mut self.expression {
+            TyExpressionVariant::CodeBlock(block) => {
+                for node in block.contents.iter_mut() {
+                    node.materialize_const_generics(engines, handler, name, value)?;
+                }
+                Ok(())
+            }
             TyExpressionVariant::ConstGenericExpression { decl, .. } => {
                 decl.materialize_const_generics(engines, handler, name, value)
             }
@@ -393,7 +415,29 @@ impl MaterializeConstGenerics for TyExpression {
                 for (_, expr) in arguments {
                     expr.materialize_const_generics(engines, handler, name, value)?;
                 }
-
+                Ok(())
+            }
+            TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+                arguments, ..
+            }) => {
+                for expr in arguments {
+                    expr.materialize_const_generics(engines, handler, name, value)?;
+                }
+                Ok(())
+            }
+            TyExpressionVariant::Return(expr) => {
+                expr.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.materialize_const_generics(engines, handler, name, value)?;
+                then.materialize_const_generics(engines, handler, name, value)?;
+                if let Some(e) = r#else.as_mut() {
+                    e.materialize_const_generics(engines, handler, name, value)?;
+                }
                 Ok(())
             }
             TyExpressionVariant::WhileLoop { condition, body } => {
@@ -407,14 +451,23 @@ impl MaterializeConstGenerics for TyExpression {
                 prefix.materialize_const_generics(engines, handler, name, value)?;
                 index.materialize_const_generics(engines, handler, name, value)
             }
-            TyExpressionVariant::IntrinsicFunction(kind) => {
-                for expr in kind.arguments.iter_mut() {
-                    expr.materialize_const_generics(engines, handler, name, value)?;
-                }
-                Ok(())
-            }
             TyExpressionVariant::Literal(_) | TyExpressionVariant::VariableExpression { .. } => {
                 Ok(())
+            }
+            TyExpressionVariant::ArrayRepeat {
+                elem_type,
+                value: elem_value,
+                length,
+            } => {
+                elem_type.materialize_const_generics(engines, handler, name, value)?;
+                elem_value.materialize_const_generics(engines, handler, name, value)?;
+                length.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::Ref(r) => {
+                r.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::Deref(r) => {
+                r.materialize_const_generics(engines, handler, name, value)
             }
             _ => Err(handler.emit_err(
                 sway_error::error::CompileError::ConstGenericNotSupportedHere {
@@ -449,7 +502,8 @@ impl TyExpression {
     }
 
     // Checks if this expression references a deprecated item
-    // TODO: Change this fn for more deprecated checks.
+    // TODO: Extend checks in this function to fully implement deprecation.
+    //       See: https://github.com/FuelLabs/sway/issues/6942
     pub(crate) fn check_deprecated(
         &self,
         engines: &Engines,
@@ -457,37 +511,41 @@ impl TyExpression {
         allow_deprecated: &mut AllowDeprecatedState,
     ) {
         fn emit_warning_if_deprecated(
-            attributes: &AttributesMap,
+            attributes: &Attributes,
             span: &Span,
             handler: &Handler,
-            message: &str,
+            deprecated_element: DeprecatedElement,
+            deprecated_element_name: &str,
             allow_deprecated: &mut AllowDeprecatedState,
         ) {
             if allow_deprecated.is_allowed() {
                 return;
             }
 
-            if let Some(v) = attributes
-                .get(&AttributeKind::Deprecated)
-                .and_then(|x| x.last())
-            {
-                let mut message = message.to_string();
+            let Some(deprecated_attr) = attributes.deprecated() else {
+                return;
+            };
 
-                if let Some(sway_ast::Literal::String(s)) = v
-                    .args
-                    .iter()
-                    .find(|x| x.name.as_str() == "note")
-                    .and_then(|x| x.value.as_ref())
-                {
-                    message.push_str(": ");
-                    message.push_str(s.parsed.as_str());
-                }
+            let help = deprecated_attr
+                .args
+                .iter()
+                // Last "note" argument wins ;-)
+                .rfind(|arg| arg.is_deprecated_note())
+                .and_then(|note_arg| match note_arg.get_string_opt(handler) {
+                    Ok(note) => note.cloned(),
+                    // We treat invalid values here as not having the "note" provided.
+                    // Attribute checking will emit errors.
+                    Err(_) => None,
+                });
 
-                handler.emit_warn(CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::UsingDeprecated { message },
-                })
-            }
+            handler.emit_warn(CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::UsingDeprecated {
+                    deprecated_element,
+                    deprecated_element_name: deprecated_element_name.to_string(),
+                    help,
+                },
+            })
         }
 
         match &self.expression {
@@ -498,20 +556,21 @@ impl TyExpression {
                 arguments,
                 ..
             } => {
-                for (_, expr) in arguments.iter() {
+                for (_, expr) in arguments {
                     expr.check_deprecated(engines, handler, allow_deprecated);
                 }
 
                 let fn_ty = engines.de().get(fn_ref);
                 if let Some(TyDecl::ImplSelfOrTrait(t)) = &fn_ty.implementing_type {
                     let t = &engines.de().get(&t.decl_id).implementing_for;
-                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
+                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id()) {
                         let s = engines.de().get(struct_id);
                         emit_warning_if_deprecated(
                             &s.attributes,
                             &call_path.span(),
                             handler,
-                            "deprecated struct",
+                            DeprecatedElement::Struct,
+                            s.call_path.suffix.as_str(),
                             allow_deprecated,
                         );
                     }
@@ -521,7 +580,8 @@ impl TyExpression {
                     &fn_ty.attributes,
                     &call_path.span(),
                     handler,
-                    "deprecated function",
+                    DeprecatedElement::Function,
+                    fn_ty.call_path.suffix.as_str(),
                     allow_deprecated,
                 );
             }
@@ -534,7 +594,8 @@ impl TyExpression {
                     &decl.attributes,
                     span,
                     handler,
-                    "deprecated constant",
+                    DeprecatedElement::Const,
+                    decl.call_path.suffix.as_str(),
                     allow_deprecated,
                 );
             }
@@ -543,29 +604,21 @@ impl TyExpression {
                     &decl.attributes,
                     span,
                     handler,
-                    "deprecated configurable",
+                    DeprecatedElement::Configurable,
+                    decl.call_path.suffix.as_str(),
                     allow_deprecated,
                 );
             }
-            TyExpressionVariant::ConstGenericExpression { span, .. } => {
-                // Const generics don´t have attributes,
-                // so deprecation warnings cannot be turned off
-                emit_warning_if_deprecated(
-                    &AttributesMap::default(),
-                    span,
-                    handler,
-                    "deprecated configurable",
-                    allow_deprecated,
-                );
-            }
+            // Const generics don´t have attributes, so deprecation warnings cannot be turned off.
+            TyExpressionVariant::ConstGenericExpression { .. } => {}
             TyExpressionVariant::VariableExpression { .. } => {}
             TyExpressionVariant::Tuple { fields } => {
-                for e in fields.iter() {
+                for e in fields {
                     e.check_deprecated(engines, handler, allow_deprecated);
                 }
             }
             TyExpressionVariant::ArrayExplicit { contents, .. } => {
-                for e in contents.iter() {
+                for e in contents {
                     e.check_deprecated(engines, handler, allow_deprecated);
                 }
             }
@@ -587,7 +640,8 @@ impl TyExpression {
                     &struct_decl.attributes,
                     instantiation_span,
                     handler,
-                    "deprecated struct",
+                    DeprecatedElement::Struct,
+                    struct_decl.call_path.suffix.as_str(),
                     allow_deprecated,
                 );
             }
@@ -597,11 +651,11 @@ impl TyExpression {
             TyExpressionVariant::FunctionParameter => {}
             TyExpressionVariant::MatchExp {
                 desugared,
-                //scrutinees,
+                // TODO: Check the scrutinees.
+                //       See: https://github.com/FuelLabs/sway/issues/6942
                 ..
             } => {
                 desugared.check_deprecated(engines, handler, allow_deprecated);
-                // TODO: check scrutinees if necessary
             }
             TyExpressionVariant::IfExp {
                 condition,
@@ -626,7 +680,8 @@ impl TyExpression {
                     &field_to_access.attributes,
                     field_instantiation_span,
                     handler,
-                    "deprecated struct field",
+                    DeprecatedElement::StructField,
+                    field_to_access.name.as_str(),
                     allow_deprecated,
                 );
             }
@@ -638,14 +693,17 @@ impl TyExpression {
                 tag,
                 contents,
                 variant_instantiation_span,
+                call_path_binding,
                 ..
             } => {
                 let enum_ty = engines.de().get(enum_ref);
                 emit_warning_if_deprecated(
                     &enum_ty.attributes,
-                    variant_instantiation_span,
+                    // variant_instantiation_span,
+                    &call_path_binding.span,
                     handler,
-                    "deprecated enum",
+                    DeprecatedElement::Enum,
+                    enum_ty.call_path.suffix.as_str(),
                     allow_deprecated,
                 );
                 if let Some(variant_decl) = enum_ty.variants.get(*tag) {
@@ -653,7 +711,8 @@ impl TyExpression {
                         &variant_decl.attributes,
                         variant_instantiation_span,
                         handler,
-                        "deprecated enum variant",
+                        DeprecatedElement::EnumVariant,
+                        variant_decl.name.as_str(),
                         allow_deprecated,
                     );
                 }
@@ -662,11 +721,13 @@ impl TyExpression {
                 }
             }
             TyExpressionVariant::AbiCast { address, .. } => {
-                // TODO: check abi name?
+                // TODO: Check the abi name.
+                //       See: https://github.com/FuelLabs/sway/issues/6942
                 address.check_deprecated(engines, handler, allow_deprecated);
             }
             TyExpressionVariant::StorageAccess(access) => {
-                // TODO: check storage access?
+                // TODO: Check the storage access.
+                //       See: https://github.com/FuelLabs/sway/issues/6942
                 if let Some(expr) = &access.key_expression {
                     expr.check_deprecated(engines, handler, allow_deprecated);
                 }
@@ -682,11 +743,11 @@ impl TyExpression {
             }
             TyExpressionVariant::UnsafeDowncast {
                 exp,
-                //variant,
+                // TODO: Check the variant.
+                //       See: https://github.com/FuelLabs/sway/issues/6942
                 ..
             } => {
                 exp.check_deprecated(engines, handler, allow_deprecated);
-                // TODO: maybe check variant?
             }
             TyExpressionVariant::WhileLoop { condition, body } => {
                 condition.check_deprecated(engines, handler, allow_deprecated);
@@ -698,9 +759,38 @@ impl TyExpression {
             TyExpressionVariant::Break => {}
             TyExpressionVariant::Continue => {}
             TyExpressionVariant::Reassignment(reass) => {
-                if let TyReassignmentTarget::Deref(expr) = &reass.lhs {
-                    expr.check_deprecated(engines, handler, allow_deprecated);
+                if let TyReassignmentTarget::DerefAccess { exp, indices } = &reass.lhs {
+                    exp.check_deprecated(engines, handler, allow_deprecated);
+                    for indice in indices {
+                        match indice {
+                            ProjectionKind::StructField {
+                                name: idx_name,
+                                field_to_access,
+                            } => {
+                                if let Some(field_to_access) = field_to_access {
+                                    emit_warning_if_deprecated(
+                                        &field_to_access.attributes,
+                                        &idx_name.span(),
+                                        handler,
+                                        DeprecatedElement::StructField,
+                                        idx_name.as_str(),
+                                        allow_deprecated,
+                                    );
+                                }
+                            }
+                            ProjectionKind::TupleField {
+                                index: _,
+                                index_span: _,
+                            } => {}
+                            ProjectionKind::ArrayIndex {
+                                index,
+                                index_span: _,
+                            } => index.check_deprecated(engines, handler, allow_deprecated),
+                        }
+                    }
                 }
+                // TODO: Check `TyReassignmentTarget::ElementAccess`.
+                //       See: https://github.com/FuelLabs/sway/issues/6942
                 reass
                     .rhs
                     .check_deprecated(engines, handler, allow_deprecated);
@@ -726,13 +816,6 @@ impl TyExpression {
                 elem_type,
                 contents,
             } => Some((elem_type, contents)),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn as_literal_u64(&self) -> Option<u64> {
-        match &self.expression {
-            TyExpressionVariant::Literal(Literal::U64(v)) => Some(*v),
             _ => None,
         }
     }

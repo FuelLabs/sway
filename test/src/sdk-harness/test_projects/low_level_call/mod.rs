@@ -2,7 +2,6 @@ use fuel_vm::fuel_tx::{
     output::contract::Contract as OutputContract, Bytes32, ContractId, Output, TxPointer, UtxoId,
 };
 use fuels::{
-    accounts::wallet::WalletUnlocked,
     core::codec::*,
     prelude::*,
     types::{input::Input, Bits256, SizedAsciiString},
@@ -34,7 +33,7 @@ abigen!(
 
 async fn low_level_call(
     id: ContractId,
-    wallet: WalletUnlocked,
+    wallet: Wallet,
     function_selector: Vec<u8>,
     calldata: Vec<u8>,
     single_value_type_arg: bool,
@@ -75,7 +74,7 @@ async fn low_level_call(
     tx.call().await.unwrap();
 }
 
-async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, WalletUnlocked) {
+async fn get_contract_instance() -> (TestContract<Wallet>, ContractId, Wallet) {
     // Launch a local network and deploy the contract
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
@@ -97,7 +96,8 @@ async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, W
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let instance = TestContract::new(id.clone(), wallet.clone());
 

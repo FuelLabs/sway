@@ -1,6 +1,5 @@
 library;
 
-use core::ops::Eq;
 use ::asset::Asset;
 
 pub struct Wrapper {
@@ -15,17 +14,9 @@ impl Wrapper {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Wrapper {
-    fn eq(self, other: Self) -> bool {
-        self.asset == other.asset
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Wrapper {
     fn eq(self, other: Self) -> bool {
         self.asset == other.asset
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Wrapper {}

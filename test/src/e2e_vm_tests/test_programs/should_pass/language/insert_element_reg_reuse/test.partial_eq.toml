@@ -1,5 +1,0 @@
-category = "run"
-expected_result = { action = "return_data", value = "0000000000000001" }
-validate_abi = true
-
-experimental = { new_encoding = true, partial_eq = true }

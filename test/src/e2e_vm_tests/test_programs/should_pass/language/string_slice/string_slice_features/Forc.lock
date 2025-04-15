@@ -1,8 +1,8 @@
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-FB31F3B8BBBDDB33"
 
 [[package]]
 name = "string_slice_features"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]

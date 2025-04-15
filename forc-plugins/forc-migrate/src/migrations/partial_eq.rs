@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(deprecated)]
+
 use std::vec;
 
 use crate::{
@@ -21,7 +24,6 @@ use sway_core::{
     Engines,
 };
 use sway_error::formatting::{plural_s, Indent};
-use sway_features::Feature;
 use sway_types::{Ident, Span, Spanned};
 
 use super::{ContinueMigrationProcess, DryRun, MigrationStep, MigrationStepKind, ProgramInfo};
@@ -47,7 +49,7 @@ use super::{ContinueMigrationProcess, DryRun, MigrationStep, MigrationStepKind, 
 //       visitors to collect all trait constraints, which is a considerable effort. On the other
 //       hand the current types that are constrained all have `Eq` semantics, which is not
 //       changed by the introduction of `PartialEq`. Changing `Eq` constraint to `PartialEq`
-//       to lower the constraint is done in the `core` and `std`, where appropriate.
+//       to lower the constraint is done in the `std`, where appropriate.
 //       Suggesting to developers doing this replacement in their projects is mentioned
 //       in the tracking issue: https://github.com/FuelLabs/sway/issues/6883.
 
@@ -275,7 +277,7 @@ fn remove_deprecated_eq_trait_implementations_interaction(
         for annotated_eq_impl in annotated_eq_impls {
             // Check if the `#[cfg(experimental_partial_eq = false)]` attribute exists.
             if lexed_match::cfg_attribute_standalone_single_arg(
-                &annotated_eq_impl.attribute_list,
+                &annotated_eq_impl.attributes,
                 EXPERIMENTAL_PARTIAL_EQ_ATTRIBUTE,
                 |arg| arg.as_ref().is_some_and(literal::is_bool_false),
             )
@@ -328,7 +330,7 @@ fn remove_deprecated_eq_trait_implementations_interaction(
             // Check if the `#[cfg(experimental_partial_eq = true)]` attribute exists.
             let Some(cfg_experimental_partial_eq_attr) =
                 lexed_match::cfg_attribute_standalone_single_arg(
-                    &annotated_trait_impl.attribute_list,
+                    &annotated_trait_impl.attributes,
                     EXPERIMENTAL_PARTIAL_EQ_ATTRIBUTE,
                     |arg| arg.as_ref().is_some_and(literal::is_bool_true),
                 )
@@ -384,7 +386,7 @@ fn find_trait_impl(
     let attributed_eq_trait_impls = lexed_match::impl_self_or_trait_decls_annotated(module)
         .filter_map(|annotated| match &annotated.value {
             ItemKind::Impl(item_impl) if item_impl::implements_trait(trait_name)(&item_impl) => {
-                Some((&annotated.attribute_list, item_impl))
+                Some((&annotated.attributes, item_impl))
             }
             _ => None,
         });
@@ -438,7 +440,7 @@ fn implement_experimental_partial_eq_and_eq_traits(
     ) -> Result<Vec<Span>> {
         let mut result = vec![];
 
-        let core_ops_eq_call_path = CallPath::fullpath(&["core", "ops", "Eq"]);
+        let std_ops_eq_call_path = CallPath::fullpath(&["std", "ops", "Eq"]);
 
         let ty_impl_traits = ty_match::impl_self_or_trait_decls(ty_module)
             .map(|decl| engines.de().get_impl_self_or_trait(decl))
@@ -451,8 +453,8 @@ fn implement_experimental_partial_eq_and_eq_traits(
                     .implemented_trait_decl_id()
                     .expect("impl is a trait impl"),
             );
-            // Further inspect only `core::ops::Eq` impls.
-            if implemented_trait.call_path != core_ops_eq_call_path {
+            // Further inspect only `Eq` impls.
+            if implemented_trait.call_path != std_ops_eq_call_path {
                 continue;
             }
 
@@ -502,11 +504,8 @@ fn implement_experimental_partial_eq_and_eq_traits(
                 Span::empty_at_end(&attributes.last().expect("attributes are not empty").span())
             };
 
-            let cfg_attribute_decl = New::cfg_experimental_attribute_decl(
-                insert_span.clone(),
-                Feature::PartialEq,
-                false,
-            );
+            let cfg_attribute_decl =
+                New::cfg_experimental_attribute_decl(insert_span.clone(), "partial_eq", false);
 
             attributes.push(cfg_attribute_decl);
 
@@ -524,7 +523,7 @@ fn implement_experimental_partial_eq_and_eq_traits(
 
             // Set the `experimental_partial_eq` attribute to true.
             let Some(experimental_partial_eq_arg) = lexed_match_mut::cfg_attribute_arg(
-                &mut annotated_impl_partial_eq_trait.attribute_list,
+                &mut annotated_impl_partial_eq_trait.attributes,
                 with_name_mut(EXPERIMENTAL_PARTIAL_EQ_ATTRIBUTE),
             ) else {
                 bail!(internal_error(
@@ -578,7 +577,7 @@ fn implement_experimental_partial_eq_and_eq_traits(
                 .insert_annotated_item_after(annotated_impl_partial_eq_trait);
 
             // Note that we do not need to adjust the `use` statements to include `PartialEq`.
-            // All `core::ops` are a part of the core's prelude. If there was a `use core::ops::Eq`
+            // All `std::ops` are a part of the std's prelude. If there was a `use Eq`
             // in a modified file, it was actually not needed.
         }
 

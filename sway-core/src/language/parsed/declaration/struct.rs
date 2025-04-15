@@ -3,14 +3,14 @@ use crate::{
     language::Visibility,
     transform,
     type_system::TypeParameter,
-    TypeArgument,
+    GenericArgument,
 };
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct StructDeclaration {
     pub name: Ident,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub fields: Vec<StructField>,
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
@@ -46,9 +46,9 @@ impl Spanned for StructDeclaration {
 pub struct StructField {
     pub visibility: Visibility,
     pub name: Ident,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub(crate) span: Span,
-    pub type_argument: TypeArgument,
+    pub type_argument: GenericArgument,
 }
 
 impl EqWithEngines for StructField {}

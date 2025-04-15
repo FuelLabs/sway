@@ -10,7 +10,7 @@ use crate::{
         CallPath, QualifiedCallPath,
     },
     monomorphization::type_decl_opt_to_type_id,
-    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem, Root},
+    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
     type_system::SubstTypes,
     EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
@@ -74,12 +74,12 @@ pub fn resolve_type(
             )?
         }
         TypeInfo::Array(mut elem_ty, length) => {
-            elem_ty.type_id = resolve_type(
+            *elem_ty.type_id_mut() = resolve_type(
                 handler,
                 engines,
                 namespace,
                 mod_path,
-                elem_ty.type_id,
+                elem_ty.type_id(),
                 span,
                 enforce_type_arguments,
                 None,
@@ -92,12 +92,12 @@ pub fn resolve_type(
             engines.te().insert_array(engines, elem_ty, length)
         }
         TypeInfo::Slice(mut elem_ty) => {
-            elem_ty.type_id = resolve_type(
+            *elem_ty.type_id_mut() = resolve_type(
                 handler,
                 engines,
                 namespace,
                 mod_path,
-                elem_ty.type_id,
+                elem_ty.type_id(),
                 span,
                 enforce_type_arguments,
                 None,
@@ -111,12 +111,12 @@ pub fn resolve_type(
         }
         TypeInfo::Tuple(mut type_arguments) => {
             for type_argument in type_arguments.iter_mut() {
-                type_argument.type_id = resolve_type(
+                *type_argument.type_id_mut() = resolve_type(
                     handler,
                     engines,
                     namespace,
                     mod_path,
-                    type_argument.type_id,
+                    type_argument.type_id(),
                     span,
                     enforce_type_arguments,
                     None,
@@ -145,7 +145,7 @@ pub fn resolve_type(
             if let ResolvedTraitImplItem::Typed(TyTraitItem::Type(type_ref)) = trait_item_ref {
                 let type_decl = engines.de().get_type(type_ref.id());
                 if let Some(ty) = &type_decl.ty {
-                    ty.type_id
+                    ty.type_id()
                 } else {
                     type_id
                 }
@@ -160,12 +160,12 @@ pub fn resolve_type(
             referenced_type: mut ty,
             to_mutable_value,
         } => {
-            ty.type_id = resolve_type(
+            *ty.type_id_mut() = resolve_type(
                 handler,
                 engines,
                 namespace,
                 mod_path,
-                ty.type_id,
+                ty.type_id(),
                 span,
                 enforce_type_arguments,
                 None,
@@ -199,7 +199,7 @@ pub fn resolve_qualified_call_path(
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
     let type_engine = engines.te();
     if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
-        let root_type_id = match &&*type_engine.get(qualified_path_root.ty.type_id) {
+        let root_type_id = match &&*type_engine.get(qualified_path_root.ty.type_id()) {
             TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments,
@@ -228,7 +228,7 @@ pub fn resolve_qualified_call_path(
                     subst_ctx,
                 )?
             }
-            _ => qualified_path_root.ty.type_id,
+            _ => qualified_path_root.ty.type_id(),
         };
 
         let as_trait_opt = match &&*type_engine.get(qualified_path_root.as_trait) {
@@ -288,7 +288,7 @@ pub fn resolve_call_path(
     let (decl, decl_mod_path) = resolve_symbol_and_mod_path(
         handler,
         engines,
-        namespace.root_ref(),
+        namespace,
         &full_path.prefixes,
         &full_path.suffix,
         self_type,
@@ -299,11 +299,7 @@ pub fn resolve_call_path(
     }
 
     // Check that the modules in full_path are visible from the current module.
-    let _ = namespace.root_ref().check_module_privacy(
-        handler,
-        &full_path.prefixes,
-        namespace.current_mod_path(),
-    );
+    let _ = namespace.check_module_visibility(handler, &full_path.prefixes);
 
     // If the full path is different from the declaration path, then we are accessing a reexport,
     // which is by definition public.
@@ -332,28 +328,35 @@ pub fn resolve_call_path(
 pub(super) fn resolve_symbol_and_mod_path(
     handler: &Handler,
     engines: &Engines,
-    root: &Root,
+    namespace: &Namespace,
     mod_path: &ModulePath,
     symbol: &Ident,
     self_type: Option<TypeId>,
 ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
     assert!(!mod_path.is_empty());
-    if mod_path[0] == *root.current_package_name() {
-        resolve_symbol_and_mod_path_inner(handler, engines, root, mod_path, symbol, self_type)
+    if mod_path[0] == *namespace.current_package_name() {
+        resolve_symbol_and_mod_path_inner(
+            handler,
+            engines,
+            namespace.current_package_root_module(),
+            mod_path,
+            symbol,
+            self_type,
+        )
     } else {
-        match root.get_external_package(&mod_path[0].to_string()) {
-            Some(ext_root) => {
+        match namespace.get_external_package(&mod_path[0].to_string()) {
+            Some(ext_package) => {
                 // The path must be resolved in an external package.
                 // The root module in that package may have a different name than the name we
                 // use to refer to the package, so replace it.
-                let mut new_mod_path = vec![ext_root.current_package_name().clone()];
+                let mut new_mod_path = vec![ext_package.name().clone()];
                 for id in mod_path.iter().skip(1) {
                     new_mod_path.push(id.clone());
                 }
                 resolve_symbol_and_mod_path_inner(
                     handler,
                     engines,
-                    ext_root,
+                    ext_package.root_module(),
                     &new_mod_path,
                     symbol,
                     self_type,
@@ -361,7 +364,7 @@ pub(super) fn resolve_symbol_and_mod_path(
             }
             None => Err(handler.emit_err(crate::namespace::module_not_found(
                 mod_path,
-                mod_path[0] == *root.current_package_name(),
+                mod_path[0] == *namespace.current_package_name(),
             ))),
         }
     }
@@ -370,16 +373,17 @@ pub(super) fn resolve_symbol_and_mod_path(
 fn resolve_symbol_and_mod_path_inner(
     handler: &Handler,
     engines: &Engines,
-    root: &Root,
+    root_module: &Module,
     mod_path: &ModulePath,
     symbol: &Ident,
     self_type: Option<TypeId>,
 ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
     assert!(!mod_path.is_empty());
-    assert!(mod_path[0] == *root.current_package_name());
+    assert!(root_module.mod_path().len() == 1);
+    assert!(mod_path[0] == root_module.mod_path()[0]);
 
     // This block tries to resolve associated types
-    let mut current_module = root.current_package_root_module();
+    let mut current_module = root_module;
     let mut current_mod_path = vec![mod_path[0].clone()];
     let mut decl_opt = None;
     for ident in mod_path.iter().skip(1) {
@@ -419,7 +423,8 @@ fn resolve_symbol_and_mod_path_inner(
         return Ok((decl, current_mod_path));
     }
 
-    root.require_module(handler, &mod_path.to_vec())
+    root_module
+        .lookup_submodule(handler, &mod_path[1..])
         .and_then(|module| {
             let (decl, decl_path) = module.resolve_symbol(handler, engines, symbol)?;
             Ok((decl, decl_path))
@@ -445,7 +450,7 @@ fn decl_to_type_info(
                         symbol.span(),
                     )));
                 }
-                (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
+                (*engines.te().get(type_decl.ty.clone().unwrap().type_id())).clone()
             }
             ty::TyDecl::GenericTypeForFunctionScope(decl) => {
                 (*engines.te().get(decl.type_id)).clone()

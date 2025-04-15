@@ -16,7 +16,7 @@ pub struct ParseModule {
     pub tree: ParseTree,
     /// Submodules introduced within this module using the `dep` syntax in order of declaration.
     pub submodules: Vec<(ModName, ParseSubmodule)>,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     /// The span of the module kind.
     pub module_kind_span: Span,
     /// Evaluation order for the submodules

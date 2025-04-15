@@ -1,8 +1,8 @@
 [[package]]
 name = "contract_pure_calls_impure"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-35CE415E0DBF1633"

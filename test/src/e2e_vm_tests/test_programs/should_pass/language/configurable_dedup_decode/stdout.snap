@@ -1,15 +1,10 @@
 ---
-source: test/tests/tests.rs
+source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode
-   Compiling library core (sway-lib-core)
-// IR: Final
-library {
-}
-
    Compiling library std (sway-lib-std)
 // IR: Final
 library {
@@ -236,37 +231,37 @@ script {
 !0 = "test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode/src/main.sw"
 !1 = span !0 177 182
 !2 = span !0 136 143
-!3 = "sway-lib-core/src/codec.sw"
-!4 = span !3 68021 68024
-!5 = span !3 68035 68038
-!6 = span !3 68045 68051
-!7 = span !3 67991 68324
-!8 = fn_name_span !3 67998 68017
+!3 = "sway-lib-std/src/codec.sw"
+!4 = span !3 68022 68025
+!5 = span !3 68036 68039
+!6 = span !3 68046 68052
+!7 = span !3 67992 68325
+!8 = fn_name_span !3 67999 68018
 !9 = inline "never"
 !10 = (!7 !8 !9)
-!11 = span !3 68092 68144
-!12 = span !3 68174 68180
-!13 = span !3 68160 68181
-!14 = fn_call_path_span !3 68160 68173
-!15 = span !3 105322 105343
-!16 = fn_call_path_span !3 105322 105335
+!11 = span !3 68093 68145
+!12 = span !3 68175 68181
+!13 = span !3 68161 68182
+!14 = fn_call_path_span !3 68161 68174
+!15 = span !3 108675 108696
+!16 = fn_call_path_span !3 108675 108688
 !17 = (!13 !14 !15 !16)
-!18 = span !3 68149 68182
-!19 = span !3 68240 68244
-!20 = span !3 68230 68245
-!21 = span !3 68187 68322
-!22 = span !3 68295 68315
+!18 = span !3 68150 68183
+!19 = span !3 68241 68245
+!20 = span !3 68231 68246
+!21 = span !3 68188 68323
+!22 = span !3 68296 68316
 !23 = span !3 652 655
 !24 = span !3 666 670
 !25 = span !3 634 729
 !26 = fn_name_span !3 641 651
 !27 = (!25 !26)
-!28 = span !3 68734 68740
-!29 = span !3 68712 68807
-!30 = fn_name_span !3 68715 68725
+!28 = span !3 68735 68741
+!29 = span !3 68713 68808
+!30 = fn_name_span !3 68716 68726
 !31 = (!29 !30)
-!32 = span !3 68773 68801
-!33 = fn_call_path_span !3 68780 68792
+!32 = span !3 68774 68802
+!33 = fn_call_path_span !3 68781 68793
 !34 = span !3 593 605
 !35 = (!32 !33 !34)
 !36 = (!32 !33)
@@ -284,8 +279,8 @@ script {
 !48 = (!46 !47)
 !49 = span !42 90 111
 !50 = fn_call_path_span !42 90 96
-!51 = span !3 67737 67750
-!52 = fn_call_path_span !3 67737 67748
+!51 = span !3 67738 67751
+!52 = fn_call_path_span !3 67738 67749
 !53 = (!49 !50 !51 !52)
 !54 = (!49 !50 !51 !52)
 !55 = (!49 !50 !51 !52)
@@ -299,8 +294,8 @@ script {
 !63 = span !3 159 222
 !64 = (!49 !50 !51 !52 !63)
 !65 = (!49 !50 !51 !52)
-!66 = span !3 67721 67751
-!67 = fn_call_path_span !3 67726 67736
+!66 = span !3 67722 67752
+!67 = fn_call_path_span !3 67727 67737
 !68 = (!49 !50 !66 !67)
 !69 = (!49 !50 !66 !67)
 !70 = span !3 55 82
@@ -330,12 +325,12 @@ script {
 !94 = span !3 4684 4767
 !95 = (!49 !50 !66 !67 !94)
 !96 = (!49 !50 !66 !67)
-!97 = span !3 67708 67752
+!97 = span !3 67709 67753
 !98 = (!49 !50 !97)
-!99 = span !3 67757 67763
+!99 = span !3 67758 67764
 !100 = (!49 !50 !99)
-!101 = span !3 67757 67778
-!102 = fn_call_path_span !3 67764 67776
+!101 = span !3 67758 67779
+!102 = fn_call_path_span !3 67765 67777
 !103 = (!49 !50 !101 !102)
 !104 = (!49 !50 !101 !102)
 !105 = (!49 !50 !101 !102 !70)

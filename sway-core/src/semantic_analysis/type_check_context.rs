@@ -18,8 +18,9 @@ use crate::{
         ast_node::{AbiMode, ConstShadowingMode},
         Namespace,
     },
-    type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
-    EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeSubstMap, UnifyCheck,
+    type_system::{GenericArgument, SubstTypes, TypeId, TypeInfo},
+    EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap,
+    UnifyCheck,
 };
 use sway_error::{
     error::CompileError,
@@ -530,7 +531,7 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         value: &mut T,
-        type_arguments: &mut [TypeArgument],
+        type_arguments: &mut [GenericArgument],
         const_generics: BTreeMap<String, TyExpression>,
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
@@ -788,7 +789,7 @@ impl<'a> TypeCheckContext<'a> {
 
     /// Given a `method_name` and a `type_id`, find that method on that type in the namespace.
     /// `annotation_type` is the expected method return type. Requires `argument_types` because:
-    /// - standard operations like +, <=, etc. are called like "core::ops::<operation>" and the
+    /// - standard operations like +, <=, etc. are called like "std::ops::<operation>" and the
     ///   actual self type of the trait implementation is determined by the passed argument type.
     /// - we can have several implementations of generic traits for different types, that can
     ///   result in a method of a same name, but with different type arguments.
@@ -878,13 +879,13 @@ impl<'a> TypeCheckContext<'a> {
                         .parameters
                         .iter()
                         .zip(arguments_types.iter().skip(args_len_diff))
-                        .all(|(p, a)| coercion_check.check(*a, p.type_argument.type_id))
+                        .all(|(p, a)| coercion_check.check(*a, p.type_argument.type_id()))
                     && (matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
                         || matches!(
-                            &*type_engine.get(method.return_type.type_id),
+                            &*type_engine.get(method.return_type.type_id()),
                             TypeInfo::Never
                         )
-                        || coercion_check.check(annotation_type, method.return_type.type_id))
+                        || coercion_check.check(annotation_type, method.return_type.type_id()))
                 {
                     maybe_method_decl_refs.push(decl_ref);
                 }
@@ -894,7 +895,7 @@ impl<'a> TypeCheckContext<'a> {
                 let mut trait_methods = HashMap::<
                     (
                         CallPath,
-                        Vec<WithEngines<TypeArgument>>,
+                        Vec<WithEngines<GenericArgument>>,
                         Option<WithEngines<TypeInfo>>,
                     ),
                     DeclRefFunction,
@@ -944,15 +945,15 @@ impl<'a> TypeCheckContext<'a> {
                                             {
                                                 let p1_type_id = self.resolve_type(
                                                     handler,
-                                                    p1.type_id,
-                                                    &p1.span,
+                                                    p1.type_id(),
+                                                    &p1.span(),
                                                     EnforceTypeArguments::Yes,
                                                     None,
                                                 )?;
                                                 let p2_type_id = self.resolve_type(
                                                     handler,
-                                                    p2.type_id,
-                                                    &p2.span,
+                                                    p2.type_id(),
+                                                    &p2.span(),
                                                     EnforceTypeArguments::Yes,
                                                     None,
                                                 )?;
@@ -1041,7 +1042,7 @@ impl<'a> TypeCheckContext<'a> {
                         } else {
                             fn to_string(
                                 trait_name: CallPath,
-                                trait_type_args: Vec<WithEngines<TypeArgument>>,
+                                trait_type_args: Vec<WithEngines<GenericArgument>>,
                             ) -> String {
                                 format!(
                                     "{}{}",
@@ -1101,10 +1102,10 @@ impl<'a> TypeCheckContext<'a> {
                         method
                             .parameters
                             .iter()
-                            .map(|p| self.engines.help_out(p.type_argument.type_id).to_string())
+                            .map(|p| self.engines.help_out(p.type_argument.type_id()).to_string())
                             .collect::<Vec<_>>()
                             .join(", "),
-                        self.engines.help_out(method.return_type.type_id),
+                        self.engines.help_out(method.return_type.type_id()),
                         if let Some(implementing_for_type_id) = method.implementing_for_typeid {
                             format!(" in {}", self.engines.help_out(implementing_for_type_id))
                         } else {
@@ -1229,7 +1230,7 @@ impl<'a> TypeCheckContext<'a> {
             return;
         };
 
-        let _ = src_mod.walk_scope_chain(|lexical_scope| {
+        let _ = src_mod.walk_scope_chain_early_return(|lexical_scope| {
             impls_to_insert.extend(
                 lexical_scope
                     .items
@@ -1289,8 +1290,9 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         trait_name: CallPath,
-        trait_type_args: Vec<TypeArgument>,
+        trait_type_args: Vec<GenericArgument>,
         type_id: TypeId,
+        mut impl_type_parameters: Vec<TypeParameter>,
         items: &[ty::TyImplItem],
         impl_span: &Span,
         trait_decl_span: Option<Span>,
@@ -1298,6 +1300,22 @@ impl<'a> TypeCheckContext<'a> {
         is_extending_existing_impl: IsExtendingExistingImpl,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
+
+        // Use trait name with full path, improves consistency between
+        // this inserting and getting in `get_methods_for_type_and_trait_name`.
+        for tc in impl_type_parameters
+            .iter_mut()
+            .filter_map(|x| x.as_type_parameter_mut())
+            .flat_map(|x| x.trait_constraints.iter_mut())
+        {
+            tc.trait_name = tc.trait_name.to_fullpath(self.engines(), self.namespace())
+        }
+
+        let impl_type_parameters_ids = impl_type_parameters
+            .iter()
+            .map(|type_parameter| engines.te().new_type_param(type_parameter.clone()))
+            .collect::<Vec<_>>();
+
         // CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
         // to the actual trait declaration. Since the path of the trait declaration is used as a key
         // in the trait map, we need to find the actual declaration path.
@@ -1316,6 +1334,7 @@ impl<'a> TypeCheckContext<'a> {
                 canonical_trait_path,
                 trait_type_args,
                 type_id,
+                impl_type_parameters_ids,
                 &items,
                 impl_span,
                 trait_decl_span,
@@ -1337,7 +1356,7 @@ impl<'a> TypeCheckContext<'a> {
         &self,
         type_id: TypeId,
         trait_name: &CallPath,
-        trait_type_args: &[TypeArgument],
+        trait_type_args: &[GenericArgument],
     ) -> Vec<ty::TyTraitItem> {
         // CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
         // to the actual trait declaration. Since the path of the trait declaration is used as a key

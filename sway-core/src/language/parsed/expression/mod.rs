@@ -6,7 +6,7 @@ use crate::{
     },
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
-    Engines, TypeArgument, TypeId,
+    Engines, GenericArgument, TypeId,
 };
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
@@ -228,7 +228,7 @@ impl Spanned for AmbiguousSuffix {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QualifiedPathType {
-    pub ty: TypeArgument,
+    pub ty: GenericArgument,
     pub as_trait: TypeId,
     pub as_trait_span: Span,
 }
@@ -684,7 +684,7 @@ impl OpVariant {
     /// For all the operators except [OpVariant::Or] and [OpVariant::And],
     /// returns the name of the method that can be found on the corresponding
     /// operator trait. E.g., for `+` that will be the method `add` defined in
-    /// `core::ops::Add::add`.
+    /// `std::ops::Add::add`.
     ///
     /// [OpVariant::Or] and [OpVariant::And] are lazy and must be handled
     /// internally by the compiler.

@@ -1,21 +1,16 @@
 [[package]]
-name = 'caller_context_test'
-source = 'member'
+name = "caller_context_test"
+source = "member"
 dependencies = [
-    'context_testing_abi',
-    'std',
+    "context_testing_abi",
+    "std",
 ]
 
 [[package]]
-name = 'context_testing_abi'
-source = 'path+from-root-D12893745757AE0B'
-dependencies = ['std']
+name = "context_testing_abi"
+source = "path+from-root-D12893745757AE0B"
+dependencies = ["std"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-D12893745757AE0B'
-
-[[package]]
-name = 'std'
-source = 'path+from-root-D12893745757AE0B'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-D12893745757AE0B"

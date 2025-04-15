@@ -147,6 +147,7 @@ This allows for a streamlined developer experience while maintaining clear separ
 The following fields can be provided with a dependency:
 
 * `version` - Desired version of the dependency
+* `namespace` - If the specified registry source (by its version) also has a namespace associated with it (optional)
 * `path` - The path of the dependency (if it is local)
 * `git` - The URL of the git repo hosting the dependency
 * `branch` - The desired branch to fetch from the git repo
@@ -238,7 +239,7 @@ In the example above, `std` is patched with the `test` branch from `std` repo. Y
 std = { path = "/path/to/local_std_version" }
 ```
 
-Just like `std` or `core` you can also patch dependencies you declared with a git repo.
+Just like `std` you can also patch dependencies you declared with a git repo.
 
 ```toml
 [project]

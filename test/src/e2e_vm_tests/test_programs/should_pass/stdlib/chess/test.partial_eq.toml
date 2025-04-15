@@ -1,6 +1,0 @@
-category = "run"
-expected_result = { action = "return_data", value = "0000000000000011" }
-validate_abi = false
-expected_warnings = 2
-
-experimental = { new_encoding = true, partial_eq = true }

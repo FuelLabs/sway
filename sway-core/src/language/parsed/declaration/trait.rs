@@ -41,7 +41,7 @@ impl PartialEqWithEngines for TraitItem {
 pub struct TraitDeclaration {
     pub name: Ident,
     pub(crate) type_parameters: Vec<TypeParameter>,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub interface_surface: Vec<TraitItem>,
     pub methods: Vec<ParsedDeclId<FunctionDeclaration>>,
     pub supertraits: Vec<Supertrait>,
@@ -113,10 +113,10 @@ impl HashWithEngines for Supertrait {
 pub struct TraitFn {
     pub name: Ident,
     pub span: Span,
-    pub attributes: transform::AttributesMap,
+    pub attributes: transform::Attributes,
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
-    pub return_type: TypeArgument,
+    pub return_type: GenericArgument,
 }
 
 impl Spanned for TraitFn {
@@ -128,8 +128,8 @@ impl Spanned for TraitFn {
 #[derive(Debug, Clone)]
 pub struct TraitTypeDeclaration {
     pub name: Ident,
-    pub attributes: transform::AttributesMap,
-    pub ty_opt: Option<TypeArgument>,
+    pub attributes: transform::Attributes,
+    pub ty_opt: Option<GenericArgument>,
     pub span: Span,
 }
 

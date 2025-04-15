@@ -141,39 +141,6 @@ impl b256 {
     ///     assert(x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20);
     /// }
     /// ```
-    #[cfg(experimental_try_from_bytes_for_b256 = false)]
-    pub fn from_be_bytes(bytes: Bytes) -> Self {
-        assert(bytes.len() == 32);
-        bytes.into()
-    }
-
-    /// Converts a sequence of big-endian bytes to a `b256`.
-    ///
-    /// # Arguments
-    ///
-    /// * `bytes`: [Bytes] - The 32 bytes that compose the `b256`.
-    ///
-    /// # Returns
-    ///
-    /// * [b256] - The resulting `b256` value.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// fn foo() {
-    ///     let mut bytes = Bytes::with_capacity(32);
-    ///     let mut i: u8 = 0;
-    ///     while i < 32_u8 {
-    ///         bytes.push(i + 1);
-    ///         i += 1_u8;
-    ///     }
-    ///
-    ///     let x = b256::from_be_bytes(bytes);
-    ///
-    ///     assert(x == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20);
-    /// }
-    /// ```
-    #[cfg(experimental_try_from_bytes_for_b256 = true)]
     pub fn from_be_bytes(bytes: Bytes) -> Self {
         assert(bytes.len() == 32);
         bytes.try_into().unwrap()

@@ -1,4 +1,4 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
+use fuels::{prelude::*, types::Bits256};
 use std::str::FromStr;
 
 abigen!(Contract(
@@ -6,7 +6,7 @@ abigen!(Contract(
     abi = "test_projects/option_in_abi/out/release/option_in_abi-abi.json"
 ));
 
-async fn get_option_in_abi_instance() -> (OptionInAbiTestContract<WalletUnlocked>, ContractId) {
+async fn get_option_in_abi_instance() -> (OptionInAbiTestContract<Wallet>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/option_in_abi/out/release/option_in_abi.bin",
@@ -15,7 +15,8 @@ async fn get_option_in_abi_instance() -> (OptionInAbiTestContract<WalletUnlocked
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = OptionInAbiTestContract::new(id.clone(), wallet);
 
     (instance, id.into())

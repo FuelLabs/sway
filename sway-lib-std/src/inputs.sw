@@ -17,8 +17,11 @@ use ::tx::{
     Transaction,
     tx_type,
 };
-use core::ops::Eq;
+use ::ops::*;
 use ::revert::revert;
+use ::primitive_conversions::u16::*;
+use ::codec::*;
+use ::raw_slice::*;
 
 // GTF Opcode const selectors
 pub const GTF_INPUT_TYPE = 0x200;
@@ -57,18 +60,6 @@ pub enum Input {
     Message: (),
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for Input {
-    fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (Input::Coin, Input::Coin) => true,
-            (Input::Contract, Input::Contract) => true,
-            (Input::Message, Input::Message) => true,
-            _ => false,
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for Input {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
@@ -79,7 +70,6 @@ impl PartialEq for Input {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for Input {}
 
 // General Inputs
@@ -295,8 +285,8 @@ where
     T: AbiDecode,
 {
     match input_type(index) {
-        Some(Input::Coin) => Some(core::codec::decode_predicate_data_by_index::<T>(index)),
-        Some(Input::Message) => Some(core::codec::decode_predicate_data_by_index::<T>(index)),
+        Some(Input::Coin) => Some(decode_predicate_data_by_index::<T>(index)),
+        Some(Input::Message) => Some(decode_predicate_data_by_index::<T>(index)),
         _ => None,
     }
 }

@@ -1,0 +1,225 @@
+---
+source: test/src/snapshot/mod.rs
+assertion_line: 125
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity
+   Compiling library attributes_invalid_args_multiplicity (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity)
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/unknown_attr.sw:3:3
+  |
+...
+3 | #[unknown]
+  |   ------- "unknown" attribute is unknown.
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/unknown_attr.sw:4:3
+  |
+...
+4 | #[unknown()]
+  |   ------- "unknown" attribute is unknown.
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/unknown_attr.sw:5:3
+  |
+...
+5 | #[unknown(arg_1)]
+  |   ------- "unknown" attribute is unknown.
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+warning: Attribute is unknown
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/unknown_attr.sw:6:3
+  |
+...
+6 | #[unknown(arg_1, arg_2)]
+  |   ------- "unknown" attribute is unknown.
+  |
+  = help: Unknown attributes are allowed and can be used by third-party tools,
+  = help: but the compiler ignores them.
+____
+
+error: Attribute can be applied only once
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/storage_attr.sw:14:7
+   |
+...
+12 |     #[storage]
+   |       ------- info: It is already applied here.
+13 |     #[storage()]
+   |       ------- info: And here.
+14 |     #[storage(read, write, read)]
+   |       ^^^^^^^ "storage" attribute can be applied only once, but is applied three times.
+   |
+____
+
+error: Number of attribute arguments is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/storage_attr.sw:12:7
+   |
+...
+12 |     #[storage]
+   |       ^^^^^^^ "storage" attribute must have one or two arguments, but has none.
+   |
+____
+
+error: Number of attribute arguments is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/storage_attr.sw:13:7
+   |
+...
+13 |     #[storage()]
+   |       ^^^^^^^ "storage" attribute must have one or two arguments, but has none.
+   |
+____
+
+error: Number of attribute arguments is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/storage_attr.sw:14:15
+   |
+...
+14 |     #[storage(read, write, read)]
+   |               ^^^^^^^^^^^^^^^^^ "storage" attribute must have one or two arguments, but has three.
+   |
+____
+
+error: Attribute can be applied only once
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/inline_attr.sw:11:7
+   |
+...
+ 9 |     #[inline]
+   |       ------ info: It is already applied here.
+10 |     #[inline()]
+   |       ------ info: And here.
+11 |     #[inline(always, never)]
+   |       ^^^^^^ "inline" attribute can be applied only once, but is applied three times.
+   |
+____
+
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/inline_attr.sw:9:7
+  |
+...
+9 |     #[inline]
+  |       ^^^^^^ "inline" attribute must have exactly one argument, but has none.
+  |
+____
+
+error: Number of attribute arguments is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/inline_attr.sw:10:7
+   |
+...
+10 |     #[inline()]
+   |       ^^^^^^ "inline" attribute must have exactly one argument, but has none.
+   |
+____
+
+error: Number of attribute arguments is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/inline_attr.sw:11:14
+   |
+...
+11 |     #[inline(always, never)]
+   |              ^^^^^^^^^^^^^ "inline" attribute must have exactly one argument, but has two.
+   |
+____
+
+error: Number of attribute arguments is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/test_attr.sw:12:8
+   |
+...
+12 | #[test(should_revert, should_revert)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "test" attribute must have none or one argument, but has two.
+   |
+____
+
+error: Number of attribute arguments is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/payable_attr.sw:10:15
+   |
+...
+10 |     #[payable(invalid)]
+   |               ^^^^^^^ "payable" attribute must not have any arguments, but has one.
+   |
+____
+
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/allow_attr.sw:9:3
+  |
+...
+9 | #[allow]
+  |   ^^^^^ "allow" attribute must have at least one argument, but has none.
+  |
+____
+
+error: Number of attribute arguments is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/allow_attr.sw:10:3
+   |
+...
+10 | #[allow()]
+   |   ^^^^^ "allow" attribute must have at least one argument, but has none.
+   |
+____
+
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/cfg_attr_no_args.sw:6:3
+  |
+...
+6 | #[cfg]
+  |   ^^^ "cfg" attribute must have exactly one argument, but has none.
+  |
+____
+
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/cfg_attr_two_args.sw:6:7
+  |
+...
+6 | #[cfg(target = "fuel", program_type = "library")]
+  |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "cfg" attribute must have exactly one argument, but has two.
+  |
+____
+
+error: Number of attribute arguments is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/deprecated_attr.sw:12:14
+   |
+...
+12 | #[deprecated(note = "note", note = "other note")]
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "deprecated" attribute must have none or one argument, but has two.
+   |
+____
+
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/fallback_attr.sw:9:12
+  |
+...
+9 | #[fallback(invalid)]
+  |            ^^^^^^^ "fallback" attribute must not have any arguments, but has one.
+  |
+____
+
+error: Number of attribute arguments is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/error_type_attr.sw:15:14
+   |
+...
+15 | #[error_type(invalid)]
+   |              ^^^^^^^ "error_type" attribute must not have any arguments, but has one.
+   |
+____
+
+error: Number of attribute arguments is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/error_attr.sw:11:7
+   |
+...
+11 |     #[error]
+   |       ^^^^^ "error" attribute must have exactly one argument, but has none.
+   |
+____
+
+  Aborting due to 18 errors.
+error: Failed to compile attributes_invalid_args_multiplicity

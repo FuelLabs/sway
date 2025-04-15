@@ -26,19 +26,11 @@ where
     T::trait_fn()
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl Eq for (u64, ) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0
-    }
-}
-#[cfg(experimental_partial_eq = true)]
 impl PartialEq for (u64, ) {
     fn eq(self, other: Self) -> bool {
         self.0 == other.0
     }
 }
-#[cfg(experimental_partial_eq = true)]
 impl Eq for (u64, ) {}
 
 fn main() -> bool {

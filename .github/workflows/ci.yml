@@ -21,11 +21,10 @@ env:
 jobs:
   verifications-complete:
     needs:
-      - build-sway-lib-core
+      - check-dependency-version-formats
       - build-sway-lib-std
       - build-sway-examples
       - build-reference-examples
-      - forc-fmt-check-sway-lib-core
       - forc-fmt-check-sway-lib-std
       - forc-fmt-check-sway-examples
       - forc-fmt-check-panic
@@ -35,8 +34,6 @@ jobs:
       - build-forc-test-project
       - cargo-build-workspace
       - cargo-clippy
-      - cargo-toml-fmt-check
-      - cargo-fmt-check
       - cargo-run-e2e-test-evm
       - cargo-test-lib-std
       - forc-run-benchmarks
@@ -56,6 +53,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "pass"
+
+  check-dependency-version-formats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache check-dep-versions build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: check-dep-versions-${{ runner.os }}-${{ hashFiles('.github/scripts/check-dep-versions/Cargo.lock') }}
+
+      - name: Check Workspace Dependency Version Formats
+        run: |
+          cargo run --manifest-path .github/workflows/scripts/check-dep-versions/Cargo.toml --release -- Cargo.toml
+
   get-fuel-core-version:
     runs-on: buildjet-4vcpu-ubuntu-2204
     outputs:
@@ -75,22 +93,6 @@ jobs:
           cargo install toml-cli
           version=$(toml get Cargo.toml workspace.dependencies.fuel-core-client.version | tr -d '"')
           echo "version=$version" >> "$GITHUB_OUTPUT"
-
-  build-sway-lib-core:
-    runs-on: buildjet-4vcpu-ubuntu-2204
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-provider: "buildjet"
-      - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
-      - name: Build sway-lib-core
-        run: forc build --path sway-lib-core
 
   build-sway-lib-std:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -135,20 +137,6 @@ jobs:
           cache-provider: "buildjet"
       - name: Build Sway examples workspace
         run: cargo run --locked -p forc -- build --locked --path ./docs/reference/src/code/Forc.toml
-
-  forc-fmt-check-sway-lib-core:
-    runs-on: buildjet-4vcpu-ubuntu-2204
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-provider: "buildjet"
-      - name: Check Sway sway-lib-core formatting
-        run: cargo run --locked -p forc-fmt -- --check --path ./sway-lib-core
 
   forc-fmt-check-sway-lib-std:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -471,23 +459,13 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build All Tests
         run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness
+      - name: Test All Tests
+        run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std
-        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
-      - name: Build All Tests - Experimental Feature 'storage_domains'
-        run: cargo run --locked --release -p forc -- build --experimental storage_domains --release --locked --path ./test/src/sdk-harness
-      - name: Cargo Test sway-lib-std - Experimental Feature 'storage_domains'
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
       - name: Build All Tests - Experimental Feature 'error_type'
         run: cargo run --locked --release -p forc -- build --experimental error_type --release --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std - Experimental Feature 'error_type'
-        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
-      - name: Build All Tests - Experimental Feature 'partial_eq'
-        run: cargo run --locked --release -p forc -- build --experimental partial_eq --release --locked --path ./test/src/sdk-harness
-      - name: Cargo Test sway-lib-std - Experimental Feature 'partial_eq'
-        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
-      - name: Build All Tests - Experimental Feature 'try_from_bytes_for_b256'
-        run: cargo run --locked --release -p forc -- build --experimental try_from_bytes_for_b256 --release --locked --path ./test/src/sdk-harness
-      - name: Cargo Test sway-lib-std - Experimental Feature 'try_from_bytes_for_b256'
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
@@ -551,36 +529,14 @@ jobs:
           cache-provider: "buildjet"
       - name: Install Forc
         run: cargo install --locked --debug --path ./forc
-      - name: Run Core Unit Tests
-        run: forc build --path sway-lib-core && forc test --path sway-lib-core
-      - name: Run Core Unit Tests - Experimental feature 'storage_domains'
-        run: forc build --experimental storage_domains --path sway-lib-core && forc test --experimental storage_domains --path sway-lib-core
-      - name: Run Core Unit Tests - Experimental feature 'error_type'
-        run: forc build --experimental error_type --path sway-lib-core && forc test --experimental error_type --path sway-lib-core
-      - name: Run Core Unit Tests - Experimental feature 'partial_eq'
-        run: forc build --experimental partial_eq --path sway-lib-core && forc test --experimental partial_eq --path sway-lib-core
-      - name: Run Core Unit Tests - Experimental feature 'try_from_bytes_for_b256'
-        run: forc build --experimental try_from_bytes_for_b256 --path sway-lib-core && forc test --experimental try_from_bytes_for_b256 --path sway-lib-core
       - name: Run Std Unit Tests
         run: forc build --path sway-lib-std && forc test --path sway-lib-std
-      - name: Run Std Unit Tests - Experimental feature 'storage_domains'
-        run: forc build --experimental storage_domains --path sway-lib-std && forc test --experimental storage_domains --path sway-lib-std
       - name: Run Std Unit Tests - Experimental feature 'error_type'
         run: forc build --experimental error_type --path sway-lib-std && forc test --experimental error_type --path sway-lib-std
-      - name: Run Std Unit Tests - Experimental feature 'partial_eq'
-        run: forc build --experimental partial_eq --path sway-lib-std && forc test --experimental partial_eq --path sway-lib-std
-      - name: Run Std Unit Tests - Experimental feature 'try_from_bytes_for_b256'
-        run: forc build --experimental try_from_bytes_for_b256 --path sway-lib-std && forc test --experimental try_from_bytes_for_b256 --path sway-lib-std
       - name: Run In Language Unit Tests
         run: forc build --path test/src/in_language_tests && forc test --path test/src/in_language_tests
-      - name: Run In Language Unit Tests - Experimental feature 'storage_domains'
-        run: forc build --experimental storage_domains --path test/src/in_language_tests && forc test --experimental storage_domains --path test/src/in_language_tests
       - name: Run In Language Unit Tests - Experimental feature 'error_type'
         run: forc build --experimental error_type --path test/src/in_language_tests && forc test --experimental error_type --path test/src/in_language_tests
-      - name: Run In Language Unit Tests - Experimental feature 'partial_eq'
-        run: forc build --experimental partial_eq --path test/src/in_language_tests && forc test --experimental partial_eq --path test/src/in_language_tests
-      - name: Run In Language Unit Tests - Experimental feature 'try_from_bytes_for_b256'
-        run: forc build --experimental try_from_bytes_for_b256 --path test/src/in_language_tests && forc test --experimental try_from_bytes_for_b256 --path test/src/in_language_tests
 
   forc-pkg-fuels-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -742,7 +698,6 @@ jobs:
       [
         build-forc-test-project,
         build-sway-examples,
-        build-sway-lib-core,
         build-sway-lib-std,
         cargo-build-workspace,
         cargo-clippy,
@@ -807,7 +762,6 @@ jobs:
       [
         build-forc-test-project,
         build-sway-examples,
-        build-sway-lib-core,
         build-sway-lib-std,
         cargo-build-workspace,
         cargo-clippy,
@@ -856,7 +810,6 @@ jobs:
       [
         build-forc-test-project,
         build-sway-examples,
-        build-sway-lib-core,
         build-sway-lib-std,
         cargo-build-workspace,
         cargo-clippy,
@@ -1039,13 +992,13 @@ jobs:
       - name: Strip release binaries x86_64-linux-gnu
         if: matrix.job.target == 'x86_64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node; do
             strip "target/${{ matrix.job.target }}/release/$BINARY"
           done
       - name: Strip release binaries aarch64-linux-gnu
         if: matrix.job.target == 'aarch64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node; do
             docker run --rm -v \
             "$PWD/target:/target:Z" \
             ghcr.io/cross-rs/${{ matrix.job.target }}:main \
@@ -1055,7 +1008,7 @@ jobs:
       - name: Strip release binaries mac
         if: matrix.job.os == 'macos-latest'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node; do
             strip -x "target/${{ matrix.job.target }}/release/$BINARY"
           done
 
@@ -1069,7 +1022,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node; do
             cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

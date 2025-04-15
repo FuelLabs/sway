@@ -1,8 +1,8 @@
 [[package]]
 name = "constant_struct"
 source = "member"
-dependencies = ["core"]
+dependencies = ["std"]
 
 [[package]]
-name = "core"
+name = "std"
 source = "path+from-root-169D5D6187F84EC8"

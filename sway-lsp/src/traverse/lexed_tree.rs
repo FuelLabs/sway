@@ -769,7 +769,8 @@ impl Parse for ElementAccess {
             | ElementAccess::TupleFieldProjection { target, .. } => {
                 target.parse(ctx);
             }
-            _ => {}
+            ElementAccess::Deref { target, .. } => target.parse(ctx),
+            ElementAccess::Var(_) => {}
         }
     }
 }

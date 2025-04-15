@@ -208,87 +208,7 @@ impl Huge {
     }
 }
 
-#[cfg(experimental_partial_eq = false)]
-impl core::ops::Eq for Huge {
-    fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (Huge::a1, Huge::a1) => true,
-            (Huge::a2, Huge::a2) => true,
-            (Huge::a3, Huge::a3) => true,
-            (Huge::a4, Huge::a4) => true,
-            (Huge::a5, Huge::a5) => true,
-            (Huge::a6, Huge::a6) => true,
-            (Huge::a7, Huge::a7) => true,
-            (Huge::a8, Huge::a8) => true,
-            //
-            (Huge::b1, Huge::b1) => true,
-            (Huge::b2, Huge::b2) => true,
-            (Huge::b3, Huge::b3) => true,
-            (Huge::b4, Huge::b4) => true,
-            (Huge::b5, Huge::b5) => true,
-            (Huge::b6, Huge::b6) => true,
-            (Huge::b7, Huge::b7) => true,
-            (Huge::b8, Huge::b8) => true,
-            //
-            (Huge::c1, Huge::c1) => true,
-            (Huge::c2, Huge::c2) => true,
-            (Huge::c3, Huge::c3) => true,
-            (Huge::c4, Huge::c4) => true,
-            (Huge::c5, Huge::c5) => true,
-            (Huge::c6, Huge::c6) => true,
-            (Huge::c7, Huge::c7) => true,
-            (Huge::c8, Huge::c8) => true,
-            //
-            (Huge::d1, Huge::d1) => true,
-            (Huge::d2, Huge::d2) => true,
-            (Huge::d3, Huge::d3) => true,
-            (Huge::d4, Huge::d4) => true,
-            (Huge::d5, Huge::d5) => true,
-            (Huge::d6, Huge::d6) => true,
-            (Huge::d7, Huge::d7) => true,
-            (Huge::d8, Huge::d8) => true,
-            //
-            (Huge::e1, Huge::e1) => true,
-            (Huge::e2, Huge::e2) => true,
-            (Huge::e3, Huge::e3) => true,
-            (Huge::e4, Huge::e4) => true,
-            (Huge::e5, Huge::e5) => true,
-            (Huge::e6, Huge::e6) => true,
-            (Huge::e7, Huge::e7) => true,
-            (Huge::e8, Huge::e8) => true,
-            //
-            (Huge::f1, Huge::f1) => true,
-            (Huge::f2, Huge::f2) => true,
-            (Huge::f3, Huge::f3) => true,
-            (Huge::f4, Huge::f4) => true,
-            (Huge::f5, Huge::f5) => true,
-            (Huge::f6, Huge::f6) => true,
-            (Huge::f7, Huge::f7) => true,
-            (Huge::f8, Huge::f8) => true,
-            //
-            (Huge::g1, Huge::g1) => true,
-            (Huge::g2, Huge::g2) => true,
-            (Huge::g3, Huge::g3) => true,
-            (Huge::g4, Huge::g4) => true,
-            (Huge::g5, Huge::g5) => true,
-            (Huge::g6, Huge::g6) => true,
-            (Huge::g7, Huge::g7) => true,
-            (Huge::g8, Huge::g8) => true,
-            //
-            (Huge::h1, Huge::h1) => true,
-            (Huge::h2, Huge::h2) => true,
-            (Huge::h3, Huge::h3) => true,
-            (Huge::h4, Huge::h4) => true,
-            (Huge::h5, Huge::h5) => true,
-            (Huge::h6, Huge::h6) => true,
-            (Huge::h7, Huge::h7) => true,
-            (Huge::h8, Huge::h8) => true,
-            _ => false,
-        }
-    }
-}
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::PartialEq for Huge {
+impl PartialEq for Huge {
     fn eq(self, other: Self) -> bool {
         match (self, other) {
             (Huge::a1, Huge::a1) => true,
@@ -359,5 +279,4 @@ impl core::ops::PartialEq for Huge {
         }
     }
 }
-#[cfg(experimental_partial_eq = true)]
-impl core::ops::Eq for Huge {}
+impl Eq for Huge {}
