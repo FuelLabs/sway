@@ -701,7 +701,9 @@ impl TraitMap {
                                 *type_id,
                                 *map_type_id,
                                 engines,
-                            ),
+                            )
+                            .map(|(name, item)| (name.to_string(), item))
+                            .collect(),
                             engines,
                         );
                     }
@@ -711,49 +713,51 @@ impl TraitMap {
         trait_map
     }
 
-    fn filter_dummy_methods(
-        map_trait_items: &TraitItems,
+    fn filter_dummy_methods<'a>(
+        map_trait_items: &'a TraitItems,
         type_id: TypeId,
         map_type_id: TypeId,
-        engines: &Engines,
-    ) -> TraitItems {
-        let mut insertable = true;
-        if let TypeInfo::UnknownGeneric {
-            is_from_type_parameter,
-            ..
-        } = *engines.te().get(map_type_id)
-        {
-            insertable = !is_from_type_parameter
-                || matches!(*engines.te().get(type_id), TypeInfo::UnknownGeneric { .. });
-        }
+        engines: &'a Engines,
+    ) -> impl Iterator<Item = (&'a str, ResolvedTraitImplItem)> + 'a {
+        let maybe_is_from_type_parameter = engines.te().map(map_type_id, |x| match x {
+            TypeInfo::UnknownGeneric {
+                is_from_type_parameter,
+                ..
+            } => Some(*is_from_type_parameter),
+            _ => None,
+        });
+        let insertable = if let Some(is_from_type_parameter) = maybe_is_from_type_parameter {
+            !is_from_type_parameter
+                || matches!(*engines.te().get(type_id), TypeInfo::UnknownGeneric { .. })
+        } else {
+            true
+        };
 
         map_trait_items
             .iter()
-            .filter_map(|(name, item)| match item {
+            .filter_map(move |(name, item)| match item {
                 ResolvedTraitImplItem::Parsed(_item) => todo!(),
                 ResolvedTraitImplItem::Typed(item) => match item {
-                    ty::TyTraitItem::Fn(decl_ref) => {
-                        let decl = (*engines.de().get(decl_ref.id())).clone();
+                    ty::TyTraitItem::Fn(decl_ref) => engines.de().map(decl_ref.id(), |decl| {
                         if decl.is_trait_method_dummy && !insertable {
                             None
                         } else {
                             Some((
-                                name.clone(),
+                                name.as_str(),
                                 ResolvedTraitImplItem::Typed(TyImplItem::Fn(decl_ref.clone())),
                             ))
                         }
-                    }
+                    }),
                     ty::TyTraitItem::Constant(decl_ref) => Some((
-                        name.clone(),
+                        name.as_str(),
                         ResolvedTraitImplItem::Typed(TyImplItem::Constant(decl_ref.clone())),
                     )),
                     ty::TyTraitItem::Type(decl_ref) => Some((
-                        name.clone(),
+                        name.as_str(),
                         ResolvedTraitImplItem::Typed(TyImplItem::Type(decl_ref.clone())),
                     )),
                 },
             })
-            .collect()
     }
 
     fn make_item_for_type_mapping(
@@ -859,9 +863,7 @@ impl TraitMap {
                             entry.key.type_id,
                             engines,
                         )
-                        .values()
-                        .cloned()
-                        .map(|i| (i, entry.key.clone()))
+                        .map(|(_, i)| (i, entry.key.clone()))
                         .collect::<Vec<_>>();
 
                         items.extend(trait_items);
@@ -1019,9 +1021,7 @@ impl TraitMap {
                             e.key.type_id,
                             engines,
                         )
-                        .values()
-                        .cloned()
-                        .map(|i| {
+                        .map(|(_, i)| {
                             Self::make_item_for_type_mapping(
                                 engines,
                                 i,
