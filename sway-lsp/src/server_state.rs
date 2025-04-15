@@ -13,7 +13,10 @@ use crossbeam_channel::{Receiver, Sender};
 use dashmap::{mapref::multiple::RefMulti, DashMap};
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::PackageManifestFile;
-use lsp_types::{Diagnostic, Url};
+use lsp_types::{
+    Diagnostic, DidChangeWatchedFilesRegistrationOptions, FileSystemWatcher, GlobPattern,
+    Registration, Url, WatchKind,
+};
 use parking_lot::{Mutex, RwLock};
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -261,6 +264,36 @@ impl ServerState {
             }
             // We are still compiling, lets wait to be notified.
             self.finished_compilation.notified().await;
+        }
+    }
+
+    /// Registers a file system watcher for Forc.toml files with the client.
+    pub async fn register_forc_toml_watcher(&self) {
+        let client = self
+            .client
+            .as_ref()
+            .expect("Client is guaranteed to be set by the time this is called");
+
+        let watchers = vec![FileSystemWatcher {
+            glob_pattern: GlobPattern::String("**/Forc.toml".to_string()),
+            kind: Some(WatchKind::Create | WatchKind::Change),
+        }];
+        let registration_options = DidChangeWatchedFilesRegistrationOptions { watchers };
+        let registration = Registration {
+            id: "forc-toml-watcher".to_string(),
+            method: "workspace/didChangeWatchedFiles".to_string(),
+            // Using expect here for brevity as in the original code,
+            // but consider proper error handling/mapping if serde_json can fail.
+            register_options: Some(
+                serde_json::to_value(registration_options)
+                    .expect("Failed to serialize registration options"),
+            ),
+        };
+
+        if let Err(err) = client.register_capability(vec![registration]).await {
+            tracing::error!("Failed to register Forc.toml file watcher: {}", err);
+        } else {
+            tracing::info!("Successfully registered Forc.toml file watcher");
         }
     }
 

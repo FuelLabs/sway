@@ -158,6 +158,10 @@ pub(crate) async fn handle_did_change_watched_files(
     state: &ServerState,
     params: DidChangeWatchedFilesParams,
 ) -> Result<(), LanguageServerError> {
+    eprintln!(
+        "Received did change watched files notification: {:#?}",
+        params
+    );
     for event in params.changes {
         let (uri, _) = state.uri_and_session_from_workspace(&event.uri).await?;
         if let FileChangeType::DELETED = event.typ {

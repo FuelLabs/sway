@@ -27,8 +27,8 @@ impl LanguageServer for ServerState {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        let _p = tracing::trace_span!("parse_text").entered();
         tracing::info!("Sway Language Server Initialized");
+        self.register_forc_toml_watcher().await;
     }
 
     async fn shutdown(&self) -> Result<()> {
