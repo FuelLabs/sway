@@ -31,3 +31,20 @@ pub(crate) trait TypeCheckFinalization {
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<(), ErrorEmitted>;
 }
+
+impl<T: TypeCheckFinalization + Clone> TypeCheckFinalization for std::sync::Arc<T> {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        if let Some(item) = std::sync::Arc::get_mut(self) {
+            item.type_check_finalize(handler, ctx)
+        } else {
+            let mut item = self.as_ref().clone();
+            item.type_check_finalize(handler, ctx)?;
+            *self = std::sync::Arc::new(item);
+            Ok(())
+        }
+    }
+}

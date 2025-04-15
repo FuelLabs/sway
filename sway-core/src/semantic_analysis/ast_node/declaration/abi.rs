@@ -203,7 +203,7 @@ impl ty::TyAbiDecl {
                     )
                     .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
                     error_on_shadowing_superabi_method(&method.name, ctx);
-                    for param in &method.parameters {
+                    for param in method.parameters.iter() {
                         if param.is_reference || param.is_mutable {
                             handler.emit_err(CompileError::RefMutableNotAllowedInContractAbi {
                                 param_name: param.name.clone(),
