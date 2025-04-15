@@ -29,7 +29,7 @@ use pkg::{
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     ops::Deref,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
     time::SystemTime,
 };
@@ -469,9 +469,9 @@ pub fn parse_project(
     let _p = tracing::trace_span!("parse_project").entered();
     let build_plan = session
         .build_plan_cache
-        .get_or_update(&session.sync, || build_plan(uri))?;
+        .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
 
-    eprintln!("👷 build_plan: {:#?}", build_plan);
+    eprintln!("👷 build_plan: {:#?}", build_plan.compilation_order().len());
     let results = compile(
         &build_plan,
         engines,
@@ -704,14 +704,12 @@ impl BuildPlanCache {
     /// Retrieves a BuildPlan from the cache or updates it if necessary.
     pub fn get_or_update<F>(
         &self,
-        sync: &SyncWorkspace,
+        manifest_path: &Option<PathBuf>,
         update_fn: F,
     ) -> Result<BuildPlan, LanguageServerError>
     where
         F: FnOnce() -> Result<BuildPlan, LanguageServerError>,
     {
-        let manifest_path = sync.manifest_path();
-        let temp_manifest_path = sync.temp_manifest_path();
         let should_update = {
             let cache = self.cache.read();
             manifest_path
@@ -723,11 +721,6 @@ impl BuildPlanCache {
         };
 
         if should_update {
-            // Process manifest file if needed
-            if let (Some(temp_path), Some(manifest_path)) = (temp_manifest_path, manifest_path) {
-                self.update_temp_manifest(sync, &manifest_path, &temp_path)?;
-            }
-
             let new_plan = update_fn()?;
             let mut cache = self.cache.write();
             *cache = Some((new_plan.clone(), SystemTime::now()));
@@ -739,88 +732,6 @@ impl BuildPlanCache {
                 .map(|(plan, _)| plan.clone())
                 .ok_or(LanguageServerError::BuildPlanCacheIsEmpty)
         }
-    }
-
-    /// Updates the temporary manifest file with absolute paths for dependencies
-    fn update_temp_manifest(
-        &self,
-        sync: &SyncWorkspace,
-        manifest_path: &Path,
-        temp_path: &Path,
-    ) -> Result<(), LanguageServerError> {
-        // Read and parse the original manifest
-        let manifest_content =
-            std::fs::read_to_string(manifest_path).map_err(|err| DocumentError::IOError {
-                path: manifest_path.to_string_lossy().to_string(),
-                error: err.to_string(),
-            })?;
-
-        let mut doc = manifest_content
-            .parse::<toml_edit::DocumentMut>()
-            .map_err(|err| DocumentError::IOError {
-                path: manifest_path.to_string_lossy().to_string(),
-                error: format!("Failed to parse TOML: {}", err),
-            })?;
-
-        let manifest =
-            ManifestFile::from_file(manifest_path).map_err(|err| DocumentError::IOError {
-                path: manifest_path.to_string_lossy().to_string(),
-                error: err.to_string(),
-            })?;
-
-        if let ManifestFile::Package(package) = manifest {
-            // Process dependencies if they exist
-            if let Some(deps) = &package.dependencies {
-                if let Some(deps_table) = doc.get_mut("dependencies").and_then(|v| v.as_table_mut())
-                {
-                    self.process_dependencies(sync, deps, deps_table)?;
-                }
-            }
-        }
-
-        // Write the updated manifest to the temp file
-        std::fs::write(temp_path, doc.to_string()).map_err(|err| {
-            DocumentError::UnableToWriteFile {
-                path: temp_path.to_string_lossy().to_string(),
-                err: err.to_string(),
-            }
-        })?;
-
-        Ok(())
-    }
-
-    /// Process dependencies and convert relative paths to absolute
-    fn process_dependencies(
-        &self,
-        sync: &SyncWorkspace,
-        deps: &std::collections::BTreeMap<String, forc_pkg::manifest::Dependency>,
-        deps_table: &mut toml_edit::Table,
-    ) -> Result<(), LanguageServerError> {
-        let project_dir = sync.manifest_dir()?;
-
-        for (name, dependency) in deps {
-            if let forc_pkg::manifest::Dependency::Detailed(details) = dependency {
-                if let Some(rel_path) = &details.path {
-                    // Convert relative path to absolute
-                    let abs_path = project_dir
-                        .join(rel_path)
-                        .canonicalize()
-                        .map_err(|_| DirectoryError::CanonicalizeFailed)?
-                        .to_string_lossy()
-                        .to_string();
-
-                    // Update the path in the TOML document
-                    if let Some(dep_item) = deps_table.get_mut(name) {
-                        let path_value = toml_edit::Value::from(abs_path);
-                        if let Some(table) = dep_item.as_inline_table_mut() {
-                            table.insert("path", path_value);
-                        }
-                    }
-                }
-            }
-        }
-
-        Ok(())
     }
 }
 
