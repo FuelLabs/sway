@@ -17,6 +17,7 @@ use crate::{
         VirtualImmediate18, VirtualImmediate24,
     },
     decl_engine::DeclRefFunction,
+    OptLevel,
 };
 use either::Either;
 use sway_error::error::CompileError;
@@ -82,10 +83,11 @@ impl AbstractProgram {
     pub(crate) fn into_allocated_program(
         mut self,
         fallback_fn: Option<crate::asm_lang::Label>,
+        opt_level: OptLevel,
     ) -> Result<AllocatedProgram, CompileError> {
         let mut prologue = self.build_prologue();
         self.append_globals_allocation(&mut prologue);
-        self.append_before_entries(&mut prologue)?;
+        self.append_before_entries(&mut prologue, opt_level)?;
 
         match (self.experimental.new_encoding, self.kind) {
             (true, ProgramKind::Contract) => {
@@ -120,7 +122,7 @@ impl AbstractProgram {
 
         // Optimize and then verify abstract functions.
         let abstract_functions = all_functions
-            .map(|instruction_set| instruction_set.optimize(&self.data_section))
+            .map(|instruction_set| instruction_set.optimize(&self.data_section, opt_level))
             .map(AbstractInstructionSet::verify)
             .collect::<Result<Vec<AbstractInstructionSet>, CompileError>>()?;
 
@@ -152,8 +154,12 @@ impl AbstractProgram {
     fn append_before_entries(
         &self,
         prologue: &mut AllocatedAbstractInstructionSet,
+        opt_level: OptLevel,
     ) -> Result<(), CompileError> {
-        let before_entries = self.before_entries.clone().optimize(&self.data_section);
+        let before_entries = self
+            .before_entries
+            .clone()
+            .optimize(&self.data_section, opt_level);
         let before_entries = before_entries.verify()?;
         let mut before_entries = before_entries.allocate_registers()?;
         prologue.ops.append(&mut before_entries.ops);

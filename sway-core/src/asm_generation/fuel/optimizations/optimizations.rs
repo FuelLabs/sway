@@ -5,10 +5,12 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     asm_generation::fuel::compiler_constants,
-    asm_lang::{ControlFlowOp, Label, VirtualImmediate12, VirtualOp, VirtualRegister},
+    asm_lang::{
+        ConstantRegister, ControlFlowOp, Label, VirtualImmediate12, VirtualOp, VirtualRegister,
+    },
 };
 
-use super::{
+use super::super::{
     abstract_instruction_set::AbstractInstructionSet, analyses::liveness_analysis,
     data_section::DataSection,
 };
@@ -31,6 +33,19 @@ impl AbstractInstructionSet {
         enum RegContents {
             Constant(u64),
             BaseOffset(VRegDef, u64),
+        }
+        impl RegContents {
+            /// If the value is statically known, return it.
+            fn const_value(&self) -> Option<u64> {
+                match self {
+                    RegContents::Constant(c) => Some(*c),
+                    RegContents::BaseOffset(base, offset) => match base.reg {
+                        VirtualRegister::Constant(ConstantRegister::Zero) => Some(*offset),
+                        VirtualRegister::Constant(ConstantRegister::One) => Some(*offset + 1),
+                        _ => None,
+                    },
+                }
+            }
         }
 
         // What is the latest version of a vreg definition.
@@ -217,6 +232,22 @@ impl AbstractInstructionSet {
                     }
                 }
                 either::Either::Right(ControlFlowOp::SaveRetAddr(..)) => {}
+                either::Either::Right(ControlFlowOp::JumpIfNotZero(reg, lab)) => {
+                    if let Some(known_condition) =
+                        reg_contents.get(reg).and_then(|r| r.const_value())
+                    {
+                        if known_condition != 0 {
+                            // We always jump here. Replace the instruction with unconditional jump.
+                            op.opcode = either::Either::Right(ControlFlowOp::Jump(*lab));
+                            clear_state = true;
+                        } else {
+                            // The jump is never performed, and can be removed.
+                            retain = false;
+                        }
+                    } else {
+                        clear_state = true;
+                    }
+                }
                 either::Either::Right(_) => {
                     clear_state = true;
                 }

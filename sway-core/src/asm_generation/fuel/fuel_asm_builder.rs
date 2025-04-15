@@ -210,6 +210,10 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
             ..
         } = self;
 
+        let opt_level = build_config
+            .map(|cfg| cfg.optimization_level)
+            .unwrap_or_default();
+
         let entries = entries
             .clone()
             .into_iter()
@@ -265,7 +269,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
         }
 
         let allocated_program = virtual_abstract_program
-            .into_allocated_program(fallback_fn)
+            .into_allocated_program(fallback_fn, opt_level)
             .map_err(|e| handler.emit_err(e))?;
 
         if build_config
