@@ -49,7 +49,7 @@ fn get_type_not_allowed_error(
 
 fn check_no_ref_main(engines: &Engines, handler: &Handler, main_function: &DeclId<TyFunctionDecl>) {
     let main_function = engines.de().get_function(main_function);
-    for param in &main_function.parameters {
+    for param in main_function.parameters.iter() {
         if param.is_reference && param.is_mutable {
             handler.emit_err(CompileError::RefMutableNotAllowedInMain {
                 param_name: param.name.clone(),
