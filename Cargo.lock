@@ -8018,7 +8018,6 @@ dependencies = [
  "forc-tracing 0.67.0",
  "forc-util",
  "futures",
- "indexmap 2.7.1",
  "lsp-types",
  "notify",
  "notify-debouncer-mini",
