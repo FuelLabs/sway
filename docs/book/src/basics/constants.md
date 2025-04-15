@@ -2,11 +2,13 @@
 
 <!-- This section should explain what constants are in Sway -->
 <!-- constants:example:start -->
+
 Constants are similar to variables; however, there are a few differences:
 
 - Constants are always evaluated at compile-time.
 - Constants can be declared both inside of a [function](../index.md) and at global / `impl` scope.
 - The `mut` keyword cannot be used with constants.
+- Constants must contain a [type annotation](./variables.md#type-annotations).
 <!-- constants:example:end -->
 
 ```sway
@@ -31,19 +33,21 @@ fn arr_wrapper(a: u64, b: u64, c: u64) -> [u64; 3] {
     [a, b, c]
 }
 
-const ARR2 = arr_wrapper(bool_to_num(1) + 42, 2, 3);
+const ARR2: [u64; 3] = arr_wrapper(bool_to_num(1) + 42, 2, 3);
 ```
 
 ## Associated Constants
 
 <!-- This section should explain what associated constants are -->
 <!-- assoc_constants:example:start -->
+
 Associated constants are constants associated with a type and can be declared in an `impl` block or in a `trait` definition.
 
 Associated constants declared inside a `trait` definition may omit their initializers to indicate that each implementation of the trait must specify those initializers.
 
 The identifier is the name of the constant used in the path. The type is the type that the
 definition has to implement.
+
 <!-- assoc_constants:example:end -->
 
 You can _define_ an associated `const` directly in the interface surface of a trait:
@@ -102,7 +106,9 @@ fn main() -> u64  {
 
 <!-- This section should explain what configurable constants are in Sway -->
 <!-- config_constants:example:start -->
+
 Configurable constants are special constants that behave like regular constants in the sense that they cannot change during program execution, but they can be configured _after_ the Sway program has been built. The Rust and TS SDKs allow updating the values of these constants by injecting new values for them directly in the bytecode without having to build the program again. These are useful for contract factories and behave somewhat similarly to `immutable` variables from languages like Solidity.
+
 <!-- config_constants:example:end -->
 
 Configurable constants are declared inside a `configurable` block and require a type ascription and an initializer as follows:

@@ -5,8 +5,8 @@ abi TestAbi {
     fn burn();
 }
 
-const AMOUNT_TO_BURN = 100;
-const ASSET_ID = b256::zero();
+const AMOUNT_TO_BURN: u64 = 100;
+const ASSET_ID: b256 = b256::zero();
 
 impl TestAbi for Contract {
     fn mint() {

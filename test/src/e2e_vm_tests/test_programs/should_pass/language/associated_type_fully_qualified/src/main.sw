@@ -25,7 +25,7 @@ impl TypeTrait2 for Struct {
 }
 
 impl ConstTrait for Struct2 {
-    const C = 42u64;
+    const C: u64 = 42u64;
 }
 
 fn main() -> u32 {

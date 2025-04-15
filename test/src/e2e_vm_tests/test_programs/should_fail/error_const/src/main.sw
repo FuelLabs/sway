@@ -1,3 +1,3 @@
 library;
 
-const p={/);
+const p:()={/);

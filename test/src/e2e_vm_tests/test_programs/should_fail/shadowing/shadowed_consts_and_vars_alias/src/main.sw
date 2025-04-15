@@ -4,7 +4,7 @@ mod lib;
 
 // const shadowing an imported const with alias
 use lib::X as Y;
-const Y = 7;
+const Y: u64 = 7;
 
 use lib::L as M;
 

@@ -5,14 +5,14 @@ mod lib;
 use ::lib::LIB_X;
 use ::lib::LIB_X as LIB_X_ALIAS;
 
-const LOCAL_X = 123;
+const LOCAL_X: u64 = 123;
 
 struct S {
     x: u8,
 }
 
 impl S {
-    const X = 0;
+    const X: u64 = 0;
 }
 
 struct S2 {
