@@ -7,12 +7,12 @@ use forc_util::{validate_name, validate_project_name};
 use semver::Version;
 use serde::{de, Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
+use sway_types::span::Source;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Display,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
 };
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
 use sway_error::handler::Handler;
@@ -417,10 +417,10 @@ impl PackageManifestFile {
     }
 
     /// Produces the string of the entry point file.
-    pub fn entry_string(&self) -> Result<Arc<str>> {
+    pub fn entry_string(&self) -> Result<Source> {
         let entry_path = self.entry_path();
         let entry_string = std::fs::read_to_string(entry_path)?;
-        Ok(Arc::from(entry_string))
+        Ok(entry_string.as_str().into())
     }
 
     /// Parse and return the associated project's program type.

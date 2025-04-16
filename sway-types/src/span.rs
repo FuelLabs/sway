@@ -9,7 +9,45 @@ use std::{
 };
 
 lazy_static! {
-    static ref DUMMY_SPAN: Span = Span::new(Arc::from(""), 0, 0, None).unwrap();
+    static ref DUMMY_SPAN: Span = Span::new(Source { text: Arc::from(""), line_starts: Arc::new(vec![]) }, 0, 0, None).unwrap();
+}
+
+#[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Source {
+    pub text: Arc<str>,
+    pub line_starts: Arc<Vec<usize>>
+}
+
+impl Source {
+    pub fn new(text: &str) -> Self {
+        Self {
+            text: Arc::from(text),
+            line_starts: Arc::new( 
+                text.char_indices().filter(|x| x.1 == '\n').map(|x| x.0).collect()
+            ),
+        }
+    }
+
+    pub fn line_col(&self, position: usize) -> LineCol {
+        if position > self.text.len() {
+            LineCol { line: 0, col: 0 }
+        } else {
+            if self.text.is_empty() {
+                LineCol { line: 0, col: 0 }
+            } else {
+                let (line, line_start) = match self.line_starts.binary_search(&position) {
+                    Ok(line) | Err(line) => (line, self.line_starts.get(line)),
+                };
+                line_start.map_or(LineCol { line: 0, col: 0 }, |line_start| LineCol { line, col: position - line_start })
+            }
+        }
+    }
+}
+
+impl From<&str> for Source {
+    fn from(value: &str) -> Self {
+        Self::new(value)
+    }
 }
 
 pub struct Position {
@@ -49,7 +87,7 @@ impl Position {
 #[derive(Clone, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct Span {
     // The original source code.
-    src: Arc<str>,
+    src: Source,
     // The byte position in the string of the start of the span.
     start: usize,
     // The byte position in the string of the end of the span.
@@ -88,8 +126,8 @@ impl Span {
         DUMMY_SPAN.clone()
     }
 
-    pub fn new(src: Arc<str>, start: usize, end: usize, source: Option<SourceId>) -> Option<Span> {
-        let _ = src.get(start..end)?;
+    pub fn new(src: Source, start: usize, end: usize, source: Option<SourceId>) -> Option<Span> {
+        let _ = src.text.get(start..end)?;
         Some(Span {
             src,
             start,
@@ -126,10 +164,10 @@ impl Span {
 
     pub fn from_string(source: String) -> Span {
         let len = source.len();
-        Span::new(Arc::from(source), 0, len, None).unwrap()
+        Span::new(Source::new(&source), 0, len, None).unwrap()
     }
 
-    pub fn src(&self) -> &Arc<str> {
+    pub fn src(&self) -> &Source {
         &self.src
     }
 
@@ -145,12 +183,12 @@ impl Span {
         self.end
     }
 
-    pub fn start_pos(&self) -> Position {
-        Position::new(&self.src, self.start).unwrap()
+    pub fn start_pos(&self) -> LineCol {
+        self.src.line_col(self.start)
     }
 
-    pub fn end_pos(&self) -> Position {
-        Position::new(&self.src, self.end).unwrap()
+    pub fn end_pos(&self) -> LineCol {
+        self.src.line_col(self.end)
     }
 
     /// Returns an empty [Span] that points to the start of `self`.
@@ -163,22 +201,16 @@ impl Span {
         Self::empty_at_end(self)
     }
 
-    pub fn split(&self) -> (Position, Position) {
-        let start = self.start_pos();
-        let end = self.end_pos();
-        (start, end)
-    }
-
     pub fn str(self) -> String {
         self.as_str().to_owned()
     }
 
     pub fn as_str(&self) -> &str {
-        &self.src[self.start..self.end]
+        &self.src.text[self.start..self.end]
     }
 
     pub fn input(&self) -> &str {
-        &self.src
+        &self.src.text
     }
 
     pub fn trim(self) -> Span {
@@ -200,7 +232,7 @@ impl Span {
     /// ^^^  <- original span
     /// ```
     pub fn next_char_utf8(&self) -> Option<Span> {
-        let char = self.src[self.end..].chars().next()?;
+        let char = self.src.text[self.end..].chars().next()?;
         Some(Span {
             src: self.src.clone(),
             source_id: self.source_id,
@@ -213,7 +245,7 @@ impl Span {
     /// only be used on spans that are actually next to each other.
     pub fn join(s1: Span, s2: &Span) -> Span {
         assert!(
-            Arc::ptr_eq(&s1.src, &s2.src) && s1.source_id == s2.source_id,
+            Arc::ptr_eq(&s1.src.text, &s2.src.text) && s1.source_id == s2.source_id,
             "Spans from different files cannot be joined.",
         );
 
@@ -235,8 +267,8 @@ impl Span {
     /// Returns the line and column start and end.
     pub fn line_col(&self) -> LineColRange {
         LineColRange {
-            start: self.start_pos().line_col(),
-            end: self.end_pos().line_col(),
+            start: self.start_pos(),
+            end: self.end_pos(),
         }
     }
 
@@ -250,7 +282,7 @@ impl Span {
 
     /// Returns true if `self` contains `other`.
     pub fn contains(&self, other: &Span) -> bool {
-        Arc::ptr_eq(&self.src, &other.src)
+        Arc::ptr_eq(&self.src.text, &other.src.text)
             && self.source_id == other.source_id
             && self.start <= other.start
             && self.end >= other.end
@@ -261,7 +293,7 @@ impl fmt::Debug for Span {
     #[cfg(not(feature = "no-span-debug"))]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("Span")
-            .field("src (ptr)", &self.src.as_ptr())
+            .field("src (ptr)", &self.src.text.as_ptr())
             .field("source_id", &self.source_id)
             .field("start", &self.start)
             .field("end", &self.end)

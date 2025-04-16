@@ -58,7 +58,7 @@ where
 
         let ts = sway_parse::lex(
             &handler,
-            &std::sync::Arc::from(input),
+            input.into(),
             0,
             input.len(),
             source_id,
