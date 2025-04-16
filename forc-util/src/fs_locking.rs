@@ -249,7 +249,6 @@ mod test {
 
     #[flaky]
     #[test]
-    #[ignore]
     fn test_cleanup_stale_files() {
         // First create some test files
         let test_lock = PidFileLocking::lsp("test_cleanup");
