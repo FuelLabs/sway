@@ -32,26 +32,35 @@ impl Source {
         Self {
             text: Arc::from(text),
             line_starts: Arc::new(
+                [0].into_iter().chain(
                 text.char_indices()
-                    .filter(|x| x.1 == '\n')
-                    .map(|x| x.0)
-                    .collect(),
+                    .filter_map(|x| if x.1 == '\n' {
+                        Some(x.0 + x.1.len_utf8())
+                    } else {
+                        None
+                    }))
+                    .collect()
             ),
         }
     }
 
     pub fn line_col(&self, position: usize) -> LineCol {
-        if position > self.text.len() || self.text.is_empty() {
+        let mut r = if position > self.text.len() || self.text.is_empty() {
             LineCol { line: 0, col: 0 }
         } else {
             let (line, line_start) = match self.line_starts.binary_search(&position) {
-                Ok(line) | Err(line) => (line, self.line_starts.get(line)),
+                Ok(line) => (line, self.line_starts.get(line)),
+                Err(0) => (0, None),
+                Err(line) => (line - 1, self.line_starts.get(line - 1)),
             };
             line_start.map_or(LineCol { line: 0, col: 0 }, |line_start| LineCol {
                 line,
                 col: position - line_start,
             })
-        }
+        };
+        r.line += 1;
+        r.col += 1;
+        r
     }
 }
 
