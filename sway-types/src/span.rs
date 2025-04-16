@@ -32,14 +32,15 @@ impl Source {
         Self {
             text: Arc::from(text),
             line_starts: Arc::new(
-                [0].into_iter().chain(
-                text.char_indices()
-                    .filter_map(|x| if x.1 == '\n' {
-                        Some(x.0 + x.1.len_utf8())
-                    } else {
-                        None
+                [0].into_iter()
+                    .chain(text.char_indices().filter_map(|x| {
+                        if x.1 == '\n' {
+                            Some(x.0 + x.1.len_utf8())
+                        } else {
+                            None
+                        }
                     }))
-                    .collect()
+                    .collect(),
             ),
         }
     }
