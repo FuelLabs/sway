@@ -604,7 +604,7 @@ impl ty::TyModule {
             }
 
             // Auto impl debug traits only if they are not explicitly implemented
-            if auto_impl_debug_traits {
+            if ctx.experimental.dbg_intrinsic && auto_impl_debug_traits {
                 match &node.content {
                     TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
                     | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {

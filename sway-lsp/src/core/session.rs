@@ -326,8 +326,11 @@ pub fn compile(
         engines,
         retrigger_compilation,
         &[],
-        &[sway_features::Feature::NewEncoding],
-        sway_core::DbgGeneration::Full,
+        &[
+            sway_features::Feature::NewEncoding,
+            sway_features::Feature::DbgIntrinsic,
+        ],
+        sway_core::DbgGeneration::None,
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
