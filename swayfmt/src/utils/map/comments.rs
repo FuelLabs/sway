@@ -1,3 +1,4 @@
+use super::byte_span;
 use crate::{formatter::FormatterError, parse::lex, utils::map::byte_span::ByteSpan};
 use std::{
     collections::BTreeMap,
@@ -8,7 +9,6 @@ use std::{
 };
 use sway_ast::token::{Comment, CommentedTokenTree, CommentedTree};
 use sway_types::span::Source;
-use super::byte_span;
 
 #[derive(Clone, Default, Debug)]
 pub struct CommentMap(pub BTreeMap<ByteSpan, Comment>);

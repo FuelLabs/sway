@@ -74,7 +74,7 @@ mod tests {
         let _res = parse_file(&Handler::default(), "script; fn main(256߄".into(), None);
         let _res = parse_file(
             &Handler::default(),
-                "script;
+            "script;
             fn karr() {
                 let c: f828 =  0x00000000000000000000000vncifxp;
             abi Zezybt {
@@ -87,7 +87,7 @@ mod tests {
         );
         let _res = parse_file(
             &Handler::default(),
-                "script;
+            "script;
 
             stdfn main() {
                 let a: b256 =  0x000>0000000scri s = \"flibrary I24;
@@ -96,13 +96,9 @@ mod tests {
             use std::assert::assert;
 
             ///\u{7eb}"
-            .into(),
+                .into(),
             None,
         );
-        let _res = parse_file(
-            &Handler::default(),
-            "script; \"\u{7eb}\u{7eb}".into(),
-            None,
-        );
+        let _res = parse_file(&Handler::default(), "script; \"\u{7eb}\u{7eb}".into(), None);
     }
 }

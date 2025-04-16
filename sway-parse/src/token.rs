@@ -1,7 +1,6 @@
 use core::mem;
 use extension_trait::extension_trait;
 use num_bigint::BigUint;
-use sway_types::span::Source;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
     Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, DocComment,
@@ -10,6 +9,7 @@ use sway_ast::token::{
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::lex_error::{LexError, LexErrorKind};
+use sway_types::span::Source;
 use sway_types::{
     ast::{Delimiter, PunctKind},
     Ident, SourceId, Span, Spanned,

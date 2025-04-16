@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use crate::{
     asm_generation::{
         asm_builder::AsmBuilder, from_ir::StateAccessType, fuel::data_section::DataSection,
@@ -7,14 +6,15 @@ use crate::{
     asm_lang::Label,
     metadata::MetadataManager,
 };
+use etk_asm::{asm::Assembler, ops::*};
 use etk_ops::london::*;
+use std::collections::HashMap;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_ir::{Context, *};
 use sway_types::Span;
-use etk_asm::{asm::Assembler, ops::*};
 
 /// A smart contract is created by sending a transaction with an empty "to" field.
 /// When this is done, the Ethereum virtual machine (EVM) runs the bytecode which is

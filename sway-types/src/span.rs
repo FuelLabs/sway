@@ -9,37 +9,48 @@ use std::{
 };
 
 lazy_static! {
-    static ref DUMMY_SPAN: Span = Span::new(Source { text: Arc::from(""), line_starts: Arc::new(vec![]) }, 0, 0, None).unwrap();
+    static ref DUMMY_SPAN: Span = Span::new(
+        Source {
+            text: Arc::from(""),
+            line_starts: Arc::new(vec![])
+        },
+        0,
+        0,
+        None
+    )
+    .unwrap();
 }
 
 #[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Source {
     pub text: Arc<str>,
-    pub line_starts: Arc<Vec<usize>>
+    pub line_starts: Arc<Vec<usize>>,
 }
 
 impl Source {
     pub fn new(text: &str) -> Self {
         Self {
             text: Arc::from(text),
-            line_starts: Arc::new( 
-                text.char_indices().filter(|x| x.1 == '\n').map(|x| x.0).collect()
+            line_starts: Arc::new(
+                text.char_indices()
+                    .filter(|x| x.1 == '\n')
+                    .map(|x| x.0)
+                    .collect(),
             ),
         }
     }
 
     pub fn line_col(&self, position: usize) -> LineCol {
-        if position > self.text.len() {
+        if position > self.text.len() || self.text.is_empty() {
             LineCol { line: 0, col: 0 }
         } else {
-            if self.text.is_empty() {
-                LineCol { line: 0, col: 0 }
-            } else {
-                let (line, line_start) = match self.line_starts.binary_search(&position) {
-                    Ok(line) | Err(line) => (line, self.line_starts.get(line)),
-                };
-                line_start.map_or(LineCol { line: 0, col: 0 }, |line_start| LineCol { line, col: position - line_start })
-            }
+            let (line, line_start) = match self.line_starts.binary_search(&position) {
+                Ok(line) | Err(line) => (line, self.line_starts.get(line)),
+            };
+            line_start.map_or(LineCol { line: 0, col: 0 }, |line_start| LineCol {
+                line,
+                col: position - line_start,
+            })
         }
     }
 }

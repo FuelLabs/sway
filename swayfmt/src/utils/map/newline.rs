@@ -1,8 +1,8 @@
 use anyhow::Result;
 use ropey::{str_utils::byte_to_char_idx, Rope};
-use sway_types::span::Source;
 use std::{collections::BTreeMap, fmt::Display, sync::Arc};
 use sway_ast::Module;
+use sway_types::span::Source;
 
 use crate::{
     constants::NEW_LINE,

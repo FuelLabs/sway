@@ -389,8 +389,8 @@ fn insert_after_span(
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::map::byte_span::ByteSpan;
     use super::*;
+    use crate::utils::map::byte_span::ByteSpan;
 
     /// For readability of the assertions, the comments written within these snippets will be the
     /// ByteSpan representations instead of some random comment,

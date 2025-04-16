@@ -38,7 +38,6 @@ use itertools::Itertools;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
 use semantic_analysis::program::TypeCheckFailed;
-use sway_types::span::Source;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -55,6 +54,7 @@ use sway_ir::{
     FN_INLINE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
     RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
+use sway_types::span::Source;
 use sway_types::{SourceEngine, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
 use transform::{ArgsExpectValues, Attribute, AttributeKind, Attributes, ExpectedArgs};
@@ -135,10 +135,7 @@ pub fn parse(
 /// Parses the tree kind in the input provided.
 ///
 /// This will lex the entire input, but parses only the module kind.
-pub fn parse_tree_type(
-    handler: &Handler,
-    src: Source,
-) -> Result<parsed::TreeType, ErrorEmitted> {
+pub fn parse_tree_type(handler: &Handler, src: Source) -> Result<parsed::TreeType, ErrorEmitted> {
     sway_parse::parse_module_kind(handler, src, None).map(|kind| convert_module_kind(&kind))
 }
 

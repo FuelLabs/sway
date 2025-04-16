@@ -7,7 +7,6 @@ use forc_util::{validate_name, validate_project_name};
 use semver::Version;
 use serde::{de, Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
-use sway_types::span::Source;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Display,
@@ -16,6 +15,7 @@ use std::{
 };
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
 use sway_error::handler::Handler;
+use sway_types::span::Source;
 use sway_utils::{
     constants, find_nested_manifest_dir, find_parent_manifest_dir,
     find_parent_manifest_dir_with_check,

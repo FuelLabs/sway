@@ -1,5 +1,5 @@
-use sway_error::handler::Handler;
 use crate::{priv_prelude::ParseToEnd, Parse, Parser};
+use sway_error::handler::Handler;
 
 pub fn parse<T>(input: &str) -> T
 where
