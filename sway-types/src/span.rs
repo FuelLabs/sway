@@ -12,31 +12,35 @@ lazy_static! {
     static ref DUMMY_SPAN: Span = Span::new(Arc::from(""), 0, 0, None).unwrap();
 }
 
-pub struct Position<'a> {
-    input: &'a str,
-    pos: usize,
+pub struct Position {
+    line_col: LineCol,
 }
 
-impl<'a> Position<'a> {
-    pub fn new(input: &'a str, pos: usize) -> Option<Position<'a>> {
-        input.get(pos..).map(|_| Position { input, pos })
+impl Position {
+    pub fn new(input: &str, pos: usize) -> Option<Position> {
+        let line_col = Self::calc_line_col(input, pos);
+        input.get(pos..).map(|_| Position { line_col })
     }
 
     pub fn line_col(&self) -> LineCol {
-        assert!(self.pos <= self.input.len(), "position out of bounds");
+        self.line_col
+    }
+
+    pub fn calc_line_col(input: &str, pos: usize) -> LineCol {
+        assert!(pos <= input.len(), "position out of bounds");
 
         // This is performance critical, so we use bytecount instead of a naive implementation.
-        let newlines_up_to_pos = bytecount::count(&self.input.as_bytes()[..self.pos], b'\n');
+        let newlines_up_to_pos = bytecount::count(&input.as_bytes()[..pos], b'\n');
         let line = newlines_up_to_pos + 1;
 
         // Find the last newline character before the position
-        let last_newline_pos = match self.input[..self.pos].rfind('\n') {
+        let last_newline_pos = match input[..pos].rfind('\n') {
             Some(pos) => pos + 1, // Start after the newline
             None => 0,            // If no newline, start is at the beginning
         };
 
         // Column number should start from 1, not 0
-        let col = self.pos - last_newline_pos + 1;
+        let col = pos - last_newline_pos + 1;
         LineCol { line, col }
     }
 }
