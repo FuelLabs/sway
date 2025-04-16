@@ -679,6 +679,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
                     }
                 },
                 |version| {
+                    eprintln!("Checking if the parse cache is up-to-date in LSP mode... | version: {:?}", version);
                     // Determine if the parse cache is up-to-date in LSP mode:
                     // - If there's no LSP file version (version is None), consider the cache up-to-date.
                     // - If there is an LSP file version:
@@ -956,7 +957,9 @@ pub fn compile_to_ast(
         let path = config.canonical_root_module();
         let include_tests = config.include_tests;
         // Check if we can re-use the data in the cache.
+        eprintln!("Checking if we can re-use the data in the cache...");
         if is_parse_module_cache_up_to_date(engines, &path, include_tests, build_config) {
+            eprintln!("Data in cache is up to date!!");
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
             entry.programs.metrics.reused_programs += 1;
 

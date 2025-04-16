@@ -16,7 +16,6 @@ fd-lock.workspace = true
 forc-pkg.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
-indexmap = { workspace = true, features = ["rayon"] }
 lsp-types = { workspace = true, features = ["proposed"] }
 notify.workspace = true
 notify-debouncer-mini.workspace = true

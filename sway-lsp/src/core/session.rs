@@ -470,6 +470,7 @@ pub fn parse_project(
         .build_plan_cache
         .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
 
+    eprintln!("👷 build_plan: {:#?}", build_plan.compilation_order().len());
     let results = compile(
         &build_plan,
         engines,

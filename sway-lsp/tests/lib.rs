@@ -165,26 +165,72 @@ fn did_change() {
     });
 }
 
-// TODO: Fix this test Issue #7002
-// #[test]
-// fn did_cache_test() {
-//     run_async!({
-//         let (mut service, _) = LspService::build(ServerState::new)
-//             .custom_method("sway/metrics", ServerState::metrics)
-//             .finish();
-//         let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-//         let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
-//         service.inner().wait_for_parsing().await;
-//         let metrics = lsp::metrics_request(&mut service, &uri).await;
-//         assert!(metrics.len() >= 2);
-//         for (path, metrics) in metrics {
-//             if path.contains("sway-lib-std") {
-//                 assert!(metrics.reused_programs >= 1);
-//             }
-//         }
-//         shutdown_and_exit(&mut service).await;
-//     });
-// }
+#[test]
+fn sync_with_updates_to_manifest_in_workspace() {
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let workspace_dir = test_fixtures_dir().join("workspace");
+        let path = workspace_dir.join("test-contract/src/main.sw");
+        eprintln!("compiling path: {:#?}", path);
+        let uri = init_and_open(&mut service, path).await;
+
+        // add test-library as a dependency to the test-contract manifest file
+        let test_lib_string = "test-library = { path = \"../test-library\" }";
+        let test_contract_manifest = workspace_dir.join("test-contract/Forc.toml");
+        let mut manifest_content = fs::read_to_string(&test_contract_manifest).unwrap();
+        manifest_content.push_str(&test_lib_string);
+        eprintln!("🖍️ adding test-library to test-contract manifest");
+        fs::write(&test_contract_manifest, &manifest_content).unwrap();
+
+        // wait for 500 milliseconds to give the debouncer time to pick up the change
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+        // Check that the build plan now has 3 items
+        let (_, session) = service
+            .inner()
+            .uri_and_session_from_workspace(&uri)
+            .await
+            .unwrap();
+        let build_plan = session
+            .build_plan_cache
+            .get_or_update(&session.sync.manifest_path(), || {
+                sway_lsp::core::session::build_plan(&uri)
+            })
+            .unwrap();
+        assert_eq!(build_plan.compilation_order().len(), 3);
+
+        eprintln!("\n 📷 📷 did change 📷 📷 \n");
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
+        service.inner().wait_for_parsing().await;
+        eprintln!("\n ✅ test complete \n");
+
+        // remove the test-library from the test-contract manifest file
+        manifest_content = manifest_content.replace(&test_lib_string, "");
+        fs::write(&test_contract_manifest, &manifest_content).unwrap();
+
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
+#[test]
+fn did_cache_test() {
+    run_async!({
+        let (mut service, _) = LspService::build(ServerState::new)
+            .custom_method("sway/metrics", ServerState::metrics)
+            .finish();
+        let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
+        service.inner().wait_for_parsing().await;
+        let metrics = lsp::metrics_request(&mut service, &uri).await;
+        assert!(metrics.len() >= 2);
+        for (path, metrics) in metrics {
+            if path.contains("sway-lib-std") {
+                assert!(metrics.reused_programs >= 1);
+            }
+        }
+        shutdown_and_exit(&mut service).await;
+    });
+}
 
 #[allow(dead_code)]
 // #[test]
@@ -259,29 +305,28 @@ fn did_change_stress_test_random_wait() {
     });
 }
 
-// TODO: Fix this test, it goes in circles (def_start_char is expected to be 5 when its 7, 7 when its 5) Issue #7002
-// #[test]
-// fn lsp_syncs_with_workspace_edits() {
-//     run_async!({
-//         let (mut service, _) = LspService::new(ServerState::new);
-//         let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-//         let mut go_to = GotoDefinition {
-//             req_uri: &uri,
-//             req_line: 44,
-//             req_char: 24,
-//             def_line: 19,
-//             def_start_char: 7,
-//             def_end_char: 11,
-//             def_path: uri.as_str(),
-//         };
-//         lsp::definition_check(service.inner(), &go_to).await;
-//         let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
-//         service.inner().wait_for_parsing().await;
-//         go_to.def_line = 20;
-//         lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24).await;
-//         shutdown_and_exit(&mut service).await;
-//     });
-// }
+#[test]
+fn lsp_syncs_with_workspace_edits() {
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+        let mut go_to = GotoDefinition {
+            req_uri: &uri,
+            req_line: 44,
+            req_char: 24,
+            def_line: 19,
+            def_start_char: 7,
+            def_end_char: 11,
+            def_path: uri.as_str(),
+        };
+        lsp::definition_check(service.inner(), &go_to).await;
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
+        service.inner().wait_for_parsing().await;
+        go_to.def_line = 20;
+        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24).await;
+        shutdown_and_exit(&mut service).await;
+    });
+}
 
 #[test]
 fn compilation_succeeds_when_triggered_from_module() {
