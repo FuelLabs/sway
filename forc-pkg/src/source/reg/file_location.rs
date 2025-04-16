@@ -48,7 +48,6 @@ pub fn location_from_root(chunk_size: usize, namespace: &Namespace, package_name
     }
 
     let char_count = chunk_size * NESTING_LEVELS;
-    // do not panic.
     let to_be_chunked_section = package_name
         .chars()
         .enumerate()
