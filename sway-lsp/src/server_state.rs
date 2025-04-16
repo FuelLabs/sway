@@ -104,7 +104,6 @@ pub enum TaskMessage {
 pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
     pub uri: Option<Url>,
-    pub version: Option<i32>,
     pub optimized_build: bool,
     pub gc_options: GarbageCollectionConfig,
     pub file_versions: BTreeMap<PathBuf, Option<u64>>,
@@ -133,6 +132,7 @@ impl ServerState {
             while let Ok(msg) = rx.recv() {
                 match msg {
                     TaskMessage::CompilationContext(ctx) => {
+                        eprintln!("Received new compilation request!!");
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = session.engines.read().clone();
@@ -174,7 +174,9 @@ impl ServerState {
                                             // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                             // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
                                             // as the engines_clone might have cleared some types that are still in use.
+                                            eprintln!("Metrics reused: {:?}", metrics.reused_programs);
                                             if metrics.reused_programs == 0 {
+                                                eprintln!("Committing engines...");
                                                 // Commit local changes in the programs, module, and function caches to the shared state.
                                                 // This ensures that any modifications made during compilation are preserved
                                                 // before we swap the engines.
@@ -201,6 +203,8 @@ impl ServerState {
                                 *last_compilation_state.write() = LastCompilationState::Failed;
                             }
                         }
+
+                        eprintln!("Compilation finished!! {:?}", last_compilation_state.read());
 
                         // Reset the flags to false
                         is_compiling.store(false, Ordering::SeqCst);

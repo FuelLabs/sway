@@ -33,7 +33,6 @@ pub async fn handle_did_open_text_document(
             .send(TaskMessage::CompilationContext(CompilationContext {
                 session: Some(session.clone()),
                 uri: Some(uri.clone()),
-                version: None,
                 optimized_build: false,
                 gc_options: state.config.read().garbage_collection.clone(),
                 file_versions: BTreeMap::new(),
@@ -51,7 +50,6 @@ fn send_new_compilation_request(
     state: &ServerState,
     session: Arc<Session>,
     uri: &Url,
-    version: Option<i32>,
     optimized_build: bool,
     file_versions: BTreeMap<PathBuf, Option<u64>>,
 ) {
@@ -74,7 +72,6 @@ fn send_new_compilation_request(
         .send(TaskMessage::CompilationContext(CompilationContext {
             session: Some(session.clone()),
             uri: Some(uri.clone()),
-            version,
             optimized_build,
             gc_options: state.config.read().garbage_collection.clone(),
             file_versions,
@@ -109,7 +106,6 @@ pub async fn handle_did_change_text_document(
         state,
         session.clone(),
         &uri,
-        Some(params.text_document.version),
         // TODO: Set this back to true once https://github.com/FuelLabs/sway/issues/6576 is fixed.
         false,
         file_versions,
@@ -146,7 +142,7 @@ pub(crate) async fn handle_did_save_text_document(
         .await?;
     session.sync.resync()?;
     let file_versions = file_versions(&state.documents, &uri, None);
-    send_new_compilation_request(state, session.clone(), &uri, None, false, file_versions);
+    send_new_compilation_request(state, session.clone(), &uri, false, file_versions);
     state.wait_for_parsing().await;
     state
         .publish_diagnostics(uri, params.text_document.uri, session)
@@ -163,10 +159,28 @@ pub(crate) async fn handle_did_change_watched_files(
         params
     );
     for event in params.changes {
-        let (uri, _) = state.uri_and_session_from_workspace(&event.uri).await?;
+        let (uri, session) = state.uri_and_session_from_workspace(&event.uri).await?;
         if let FileChangeType::DELETED = event.typ {
             state.pid_locked_files.remove_dirty_flag(&event.uri)?;
             let _ = state.documents.remove_document(&uri);
+        }
+
+        // Check for Forc.toml changes
+        if event.uri.path().ends_with("Forc.toml") && event.typ == FileChangeType::CHANGED {
+            session.sync.resync()?;
+            eprintln!("uri: {:?}", uri);
+            let file_versions = file_versions(&state.documents, &uri, None);
+            eprintln!("File versions: {:#?}", file_versions);
+            eprintln!("Sending new compilation request...");
+            send_new_compilation_request(state, session.clone(), &uri, false, file_versions);
+            eprintln!("Waiting for parsing...");
+            state.wait_for_parsing().await;
+            eprintln!("Parsing finished!!");
+
+            eprintln!("Publishing diagnostics...");
+            state
+                .publish_diagnostics(uri, event.uri, session)
+                .await;
         }
     }
     Ok(())
