@@ -20,6 +20,7 @@ use crate::{
     metadata::MetadataManager,
     type_system::*,
     types::*,
+    PanicLocation,
 };
 
 use indexmap::IndexMap;
@@ -88,8 +89,8 @@ macro_rules! return_on_termination_or_extract {
     }};
 }
 
-pub(crate) struct FnCompiler<'eng> {
-    engines: &'eng Engines,
+pub(crate) struct FnCompiler<'a> {
+    engines: &'a Engines,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
@@ -97,11 +98,12 @@ pub(crate) struct FnCompiler<'eng> {
     block_to_continue_to: Option<Block>,
     current_fn_param: Option<ty::TyFunctionParameter>,
     lexical_map: LexicalMap,
-    cache: &'eng mut CompiledFunctionCache,
-    // This is a map from the type IDs of a logged type and the ID of the corresponding log
-    logged_types_map: HashMap<TypeId, LogId>,
-    // This is a map from the type IDs of a message data type and the ID of the corresponding smo
-    messages_types_map: HashMap<TypeId, MessageId>,
+    cache: &'a mut CompiledFunctionCache,
+    /// Maps a [TypeId] of a logged type to the [LogId] of its corresponding log.
+    logged_types_map: &'a HashMap<TypeId, LogId>,
+    /// Maps a [TypeId] of a message data type to the [MessageId] of its corresponding SMO.
+    messages_types_map: &'a HashMap<TypeId, MessageId>,
+    panic_locations: &'a mut Vec<PanicLocation>,
 }
 
 fn to_constant(_s: &mut FnCompiler<'_>, context: &mut Context, value: u64) -> Value {
@@ -148,16 +150,17 @@ fn calc_addr_as_ptr(
     current_block.append(context).int_to_ptr(addr, ptr_to)
 }
 
-impl<'eng> FnCompiler<'eng> {
+impl<'a> FnCompiler<'a> {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
-        engines: &'eng Engines,
+        engines: &'a Engines,
         context: &mut Context,
         module: Module,
         function: Function,
-        logged_types_map: &HashMap<TypeId, LogId>,
-        messages_types_map: &HashMap<TypeId, MessageId>,
-        cache: &'eng mut CompiledFunctionCache,
+        logged_types_map: &'a HashMap<TypeId, LogId>,
+        messages_types_map: &'a HashMap<TypeId, MessageId>,
+        panic_locations: &'a mut Vec<PanicLocation>,
+        cache: &'a mut CompiledFunctionCache,
     ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
@@ -174,8 +177,9 @@ impl<'eng> FnCompiler<'eng> {
             lexical_map,
             cache,
             current_fn_param: None,
-            logged_types_map: logged_types_map.clone(),
-            messages_types_map: messages_types_map.clone(),
+            logged_types_map,
+            messages_types_map,
+            panic_locations,
         }
     }
 
@@ -2504,50 +2508,83 @@ impl<'eng> FnCompiler<'eng> {
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        // In predicates, we only revert and do not log.
-        if context.program_kind != Kind::Predicate {
-            // TODO: Currently, we log all the values.
-            //       In the next step, ABI generation, if the `ast_expr` const evaluates to
-            //       a string slice, we will neither log it, nor leave it in the generated
-            //       bytecode, but just create a "msg" entry in the ABI.
+        let mut panic_location = PanicLocation::default();
 
-            let panic_val = return_on_termination_or_extract!(
-                self.compile_expression_to_value(context, md_mgr, ast_expr)?
-            );
-            let logged_type_id =
-                TypeMetadata::get_logged_type_id(ast_expr, context.experimental.new_encoding)?;
-            let log_id = match self.logged_types_map.get(&logged_type_id) {
-                None => {
-                    return Err(CompileError::Internal(
-                        "Unable to determine log instance ID for `panic` expression.",
-                        ast_expr.span.clone(),
-                    ));
+        // If the `panic` argument can be const-evaluated to a string slice,
+        // we will not log it, but just create a "msg" entry in the ABI.
+        let logged_expression =
+            TypeMetadata::get_logged_expression(ast_expr, context.experimental.new_encoding)?;
+
+        let const_eval_string =
+            if logged_expression.return_type == self.engines.te().id_of_string_slice() {
+                let const_expr_val = compile_constant_expression_to_constant(
+                    self.engines,
+                    context,
+                    md_mgr,
+                    self.module,
+                    None,
+                    Some(self),
+                    logged_expression,
+                );
+
+                match const_expr_val {
+                    Ok(constant) => constant.get_content(context).as_string(),
+                    Err(_) => None,
                 }
-                Some(log_id) => convert_literal_to_value(context, &Literal::U64(log_id.hash_id)),
+            } else {
+                None
             };
 
-            match panic_val.get_type(context) {
-                None => {
-                    return Err(CompileError::Internal(
-                        "Unable to determine logged value type in the `panic` expression.",
-                        ast_expr.span.clone(),
-                    ))
-                }
-                Some(log_ty) => {
-                    let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
-
-                    // The `log` instruction
-                    self.current_block
-                        .append(context)
-                        .log(panic_val, log_ty, log_id)
-                        .add_metadatum(context, span_md_idx);
-                }
-            };
+        if let Some(const_eval_string) = const_eval_string {
+            panic_location.msg = Some(const_eval_string);
         } else {
-            // TODO: Consider using `__dbg` intrinsic in predicates, once it is implemented.
+            // If the `panic` argument is not a constant string slice, we will log it.
+            // Note that the argument can still be a string slice, but we cannot
+            // const-evaluate it at compile time.
+
+            // In predicates, we only revert and do not log.
+            if context.program_kind != Kind::Predicate {
+                let panic_val = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, ast_expr)?
+                );
+                let logged_type_id = logged_expression.return_type;
+                let log_id = match self.logged_types_map.get(&logged_type_id) {
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Unable to determine log instance ID for `panic` expression.",
+                            ast_expr.span.clone(),
+                        ));
+                    }
+                    Some(log_id) => {
+                        panic_location.log_id = Some(*log_id);
+                        convert_literal_to_value(context, &Literal::U64(log_id.hash_id))
+                    }
+                };
+
+                match panic_val.get_type(context) {
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Unable to determine logged value type in the `panic` expression.",
+                            ast_expr.span.clone(),
+                        ))
+                    }
+                    Some(log_ty) => {
+                        let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
+
+                        // The `log` instruction
+                        self.current_block
+                            .append(context)
+                            .log(panic_val, log_ty, log_id)
+                            .add_metadatum(context, span_md_idx);
+                    }
+                };
+            } else {
+                // TODO: Consider using `__dbg` intrinsic in predicates.
+            }
         }
 
         let revert_code = context.get_next_panic_revert_code();
+
         let revert_code_const = ConstantContent::new_uint(context, 64, revert_code);
         let revert_code_const = Constant::unique(context, revert_code_const);
         let revert_code_val = Value::new_constant(context, revert_code_const);
@@ -2558,6 +2595,17 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .revert(revert_code_val)
             .add_metadatum(context, span_md_idx);
+
+        panic_location.revert_code = revert_code;
+        // We want to set the location to the `panic` keyword.
+        panic_location.loc = self.engines.se().get_source_location(
+            md_mgr
+                .md_to_span(context, span_md_idx)
+                .as_ref()
+                .unwrap_or(&ast_expr.span),
+        );
+
+        self.panic_locations.push(panic_location);
 
         Ok(TerminatorValue::new(val, context))
     }
@@ -3043,8 +3091,9 @@ impl<'eng> FnCompiler<'eng> {
             self.module,
             md_mgr,
             callee,
-            &self.logged_types_map,
-            &self.messages_types_map,
+            self.logged_types_map,
+            self.messages_types_map,
+            self.panic_locations,
         )?;
 
         // Now actually call the new function.

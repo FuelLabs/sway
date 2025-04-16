@@ -348,7 +348,7 @@ impl<T: Spanned> Spanned for Box<T> {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct LineCol {
     pub line: usize,
     pub col: usize,

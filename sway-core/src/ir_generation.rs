@@ -24,7 +24,7 @@ use crate::{
     language::ty,
     metadata::MetadataManager,
     types::{LogId, MessageId},
-    Engines, TypeId,
+    Engines, PanicLocation, TypeId,
 };
 
 type FnKey = u64;
@@ -48,6 +48,7 @@ impl CompiledFunctionCache {
         decl: &ty::TyFunctionDecl,
         logged_types_map: &HashMap<TypeId, LogId>,
         messages_types_map: &HashMap<TypeId, MessageId>,
+        panic_locations: &mut Vec<PanicLocation>,
     ) -> Result<Function, CompileError> {
         // The compiler inlines everything very lazily.  Function calls include the body of the
         // callee (i.e., the callee_body arg above). Library functions are provided in an initial
@@ -97,6 +98,7 @@ impl CompiledFunctionCache {
                     &decl.name,
                     logged_types_map,
                     messages_types_map,
+                    panic_locations,
                     is_entry,
                     is_original_entry,
                     None,
@@ -117,12 +119,13 @@ impl CompiledFunctionCache {
     }
 }
 
-pub fn compile_program<'eng>(
+pub fn compile_program<'a>(
     program: &ty::TyProgram,
+    panic_locations: &'a mut Vec<PanicLocation>,
     include_tests: bool,
-    engines: &'eng Engines,
+    engines: &'a Engines,
     experimental: ExperimentalFeatures,
-) -> Result<Context<'eng>, Vec<CompileError>> {
+) -> Result<Context<'a>, Vec<CompileError>> {
     let declaration_engine = engines.de();
 
     let test_fns = match include_tests {
@@ -169,6 +172,7 @@ pub fn compile_program<'eng>(
             namespace,
             &logged_types,
             &messages_types,
+            panic_locations,
             &test_fns,
             &mut cache,
         ),
@@ -179,6 +183,7 @@ pub fn compile_program<'eng>(
             namespace,
             &logged_types,
             &messages_types,
+            panic_locations,
             &test_fns,
             &mut cache,
         ),
@@ -193,6 +198,7 @@ pub fn compile_program<'eng>(
             declarations,
             &logged_types,
             &messages_types,
+            panic_locations,
             &test_fns,
             engines,
             &mut cache,
@@ -203,6 +209,7 @@ pub fn compile_program<'eng>(
             namespace,
             &logged_types,
             &messages_types,
+            panic_locations,
             &test_fns,
             &mut cache,
         ),

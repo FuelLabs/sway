@@ -56,10 +56,10 @@ use sway_ir::{
     RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use sway_types::span::Source;
-use sway_types::{SourceEngine, Span};
+use sway_types::{SourceEngine, SourceLocation, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
 use transform::{ArgsExpectValues, Attribute, AttributeKind, Attributes, ExpectedArgs};
-use types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata};
+use types::{CollectTypesMetadata, CollectTypesMetadataContext, LogId, TypeMetadata};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -739,7 +739,18 @@ pub fn build_module_dep_graph(
     Ok(())
 }
 
-pub struct CompiledAsm(pub FinalizedAsm);
+#[derive(Default, Debug, Clone)]
+pub struct PanicLocation {
+    pub revert_code: u64,
+    pub loc: SourceLocation,
+    pub log_id: Option<LogId>,
+    pub msg: Option<String>,
+}
+
+pub struct CompiledAsm {
+    pub finalized_asm: FinalizedAsm,
+    pub panic_locations: Vec<PanicLocation>,
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn parsed_to_ast(
@@ -1068,6 +1079,7 @@ pub fn compile_to_asm(
         None,
         experimental,
     )?;
+
     ast_to_asm(handler, engines, &ast_res, build_config, experimental)
 }
 
@@ -1085,22 +1097,34 @@ pub fn ast_to_asm(
         Err(err) => return Err(err.error),
     };
 
-    let asm =
-        match compile_ast_to_ir_to_asm(handler, engines, typed_program, build_config, experimental)
-        {
-            Ok(res) => res,
-            Err(err) => {
-                handler.dedup();
-                return Err(err);
-            }
-        };
-    Ok(CompiledAsm(asm))
+    let mut panic_locations = vec![];
+
+    let asm = match compile_ast_to_ir_to_asm(
+        handler,
+        engines,
+        typed_program,
+        &mut panic_locations,
+        build_config,
+        experimental,
+    ) {
+        Ok(res) => res,
+        Err(err) => {
+            handler.dedup();
+            return Err(err);
+        }
+    };
+
+    Ok(CompiledAsm {
+        finalized_asm: asm,
+        panic_locations,
+    })
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
     handler: &Handler,
     engines: &Engines,
     program: &ty::TyProgram,
+    panic_locations: &mut Vec<PanicLocation>,
     build_config: &BuildConfig,
     experimental: ExperimentalFeatures,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
@@ -1117,6 +1141,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     let mut ir = match ir_generation::compile_program(
         program,
+        panic_locations,
         build_config.include_tests,
         engines,
         experimental,
@@ -1275,7 +1300,7 @@ pub fn asm_to_bytecode(
     build_config: &BuildConfig,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
     let compiled_bytecode =
-        asm.0
+        asm.finalized_asm
             .to_bytecode_mut(handler, source_map, source_engine, build_config)?;
     Ok(compiled_bytecode)
 }

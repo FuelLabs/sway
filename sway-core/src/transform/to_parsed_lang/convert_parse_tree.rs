@@ -2136,32 +2136,6 @@ fn expr_func_app_to_expression_kind(
                 is_mutable: true,
             });
 
-            fn get_current_file_from_span(engines: &Engines, span: &Span) -> String {
-                let Some(source_id) = span.source_id() else {
-                    return String::new();
-                };
-                let current_file = engines.se().get_path(source_id);
-
-                // find the manifest path of the current span
-                let program_id = engines
-                    .se()
-                    .get_program_id_from_manifest_path(&current_file)
-                    .unwrap();
-                let manifest_path = engines
-                    .se()
-                    .get_manifest_path_from_program_id(&program_id)
-                    .unwrap();
-                let current_file = current_file
-                    .display()
-                    .to_string()
-                    .replace(&manifest_path.display().to_string(), "");
-                if let Some(current_file) = current_file.strip_prefix("/") {
-                    current_file.to_string()
-                } else {
-                    current_file
-                }
-            }
-
             fn ast_node_to_print_str(f_ident: BaseIdent, s: &str, span: &Span) -> AstNode {
                 AstNode {
                     content: AstNodeContent::Expression(Expression {
@@ -2195,8 +2169,7 @@ fn expr_func_app_to_expression_kind(
                 }
             }
 
-            let current_file = get_current_file_from_span(engines, &span);
-            let start_line_col = span.start_line_col_one_index();
+            let source_location = engines.se().get_source_location(&span);
 
             let arg_id: String = format!("arg_{}", context.next_for_unique_suffix());
             let arg_ident = BaseIdent::new_no_span(arg_id.to_string());
@@ -2228,9 +2201,9 @@ fn expr_func_app_to_expression_kind(
                         f_ident.clone(),
                         &format!(
                             "[{}:{}:{}] {} = ",
-                            current_file,
-                            start_line_col.line,
-                            start_line_col.col,
+                            source_location.file,
+                            source_location.loc.line,
+                            source_location.loc.col,
                             match swayfmt::parse::parse_format::<Expr>(
                                 arguments[0].span.as_str(),
                                 context.experimental

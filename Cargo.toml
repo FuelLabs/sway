@@ -82,13 +82,13 @@ sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.68.2" }
 #
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.8"
+fuel-abi-types = "0.11"
 
 # Dependencies from the `fuel-core` repository:
 #
-# Although ALL verions are "X.Y", we need the complete semver for
+# Although ALL versions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
-# the correct tarball
+# the correct tarball.
 fuel-core-client = { version = "0.43.2", default-features = false }
 fuel-core-types = { version = "0.43", default-features = false }
 
@@ -254,3 +254,9 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+[patch.crates-io]
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-errors" }
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-errors" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-errors" }
+fuels-code-gen = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-errors" }

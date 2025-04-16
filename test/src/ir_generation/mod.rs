@@ -282,7 +282,8 @@ pub(super) async fn run(
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(typed_program, include_tests, &engines, experimental)
+                let mut panic_locations = vec![];
+                let mut ir = compile_program(typed_program, &mut panic_locations, include_tests, &engines, experimental)
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
                         let e = e[0].clone();
