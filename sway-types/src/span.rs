@@ -21,27 +21,52 @@ lazy_static! {
     .unwrap();
 }
 
+// remote="Self" is a serde pattern for post-deserialization code.
+// See https://github.com/serde-rs/serde/issues/1118#issuecomment-1320706758
 #[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent, remote = "Self")]
 pub struct Source {
     pub text: Arc<str>,
+    #[serde(skip)]
     pub line_starts: Arc<Vec<usize>>,
 }
 
+impl serde::Serialize for Source {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        Self::serialize(self, serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Source {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let mut src = Self::deserialize(deserializer)?;
+        src.line_starts = Self::calc_line_starts(&src.text);
+        Ok(src)
+    }
+}
+
 impl Source {
+    fn calc_line_starts(text: &str) -> Arc<Vec<usize>> {
+        Arc::new(
+            [0].into_iter()
+                .chain(text.char_indices().filter_map(|x| {
+                    if x.1 == '\n' {
+                        Some(x.0 + x.1.len_utf8())
+                    } else {
+                        None
+                    }
+                }))
+                .collect(),
+        )
+    }
+
     pub fn new(text: &str) -> Self {
         Self {
             text: Arc::from(text),
-            line_starts: Arc::new(
-                [0].into_iter()
-                    .chain(text.char_indices().filter_map(|x| {
-                        if x.1 == '\n' {
-                            Some(x.0 + x.1.len_utf8())
-                        } else {
-                            None
-                        }
-                    }))
-                    .collect(),
-            ),
+            line_starts: Self::calc_line_starts(text),
         }
     }
 
