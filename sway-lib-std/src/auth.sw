@@ -8,12 +8,12 @@ use ::option::Option::{self, *};
 use ::result::Result::{self, *};
 use ::inputs::{
     Input,
+    input_address,
     input_coin_owner,
     input_count,
     input_message_recipient,
     input_message_sender,
     input_type,
-    input_address,
 };
 use ::revert::revert;
 use ::vec::Vec;
@@ -217,7 +217,7 @@ pub fn caller_addresses() -> Vec<Address> {
             Some(address) => {
                 addresses.push(address);
             },
-            _ => { }
+            _ => {}
         }
 
         iter += 1;
