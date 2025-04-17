@@ -363,7 +363,8 @@ pub fn traverse(
             parsed,
             typed,
             metrics,
-        }) = value.as_ref() else {
+        }) = value.as_ref()
+        else {
             continue;
         };
 
@@ -417,15 +418,15 @@ pub fn traverse(
         if i == results_len - 1 {
             // First, populate our token_map with sway keywords.
             let lexed_tree = LexedTree::new(&ctx);
-            lexed_tree.collect_module_kinds(&lexed);
-            parse_lexed_program(&lexed, &ctx, &modified_file, |an, _ctx| {
+            lexed_tree.collect_module_kinds(lexed);
+            parse_lexed_program(lexed, &ctx, &modified_file, |an, _ctx| {
                 lexed_tree.traverse_node(an)
             });
 
             // Next, populate our token_map with un-typed yet parsed ast nodes.
             let parsed_tree = ParsedTree::new(&ctx);
-            parsed_tree.collect_module_spans(&parsed);
-            parse_ast_to_tokens(&parsed, &ctx, &modified_file, |an, _ctx| {
+            parsed_tree.collect_module_spans(parsed);
+            parse_ast_to_tokens(parsed, &ctx, &modified_file, |an, _ctx| {
                 parsed_tree.traverse_node(an)
             });
 
@@ -442,7 +443,7 @@ pub fn traverse(
             compiled_program.typed = typed.as_ref().map(|x| x.clone()).ok();
         } else {
             // Collect tokens from dependencies and the standard library prelude.
-            parse_ast_to_tokens(&parsed, &ctx, &modified_file, |an, ctx| {
+            parse_ast_to_tokens(parsed, &ctx, &modified_file, |an, ctx| {
                 dependency::collect_parsed_declaration(an, ctx);
             });
 

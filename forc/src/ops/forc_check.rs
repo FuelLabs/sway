@@ -7,7 +7,10 @@ use std::{path::PathBuf, sync::Arc};
 use sway_core::{language::ty, Engines};
 use sway_error::handler::Handler;
 
-pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<Arc<ty::TyProgram>>, Handler)> {
+pub fn check(
+    command: CheckCommand,
+    engines: &Engines,
+) -> Result<(Option<Arc<ty::TyProgram>>, Handler)> {
     let CheckCommand {
         build_target,
         path,

@@ -1014,10 +1014,10 @@ pub fn compile_to_ast(
     handler.dedup();
 
     let programs = Programs::new(
-        Arc::new(lexed_program), 
-        Arc::new(parsed_program), 
-        program.map(|x| Arc::new(x)),
-        metrics
+        Arc::new(lexed_program),
+        Arc::new(parsed_program),
+        program.map(Arc::new),
+        metrics,
     );
 
     if let Some(config) = build_config {
