@@ -23,7 +23,7 @@ lazy_static! {
 
 // remote="Self" is a serde pattern for post-deserialization code.
 // See https://github.com/serde-rs/serde/issues/1118#issuecomment-1320706758
-#[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(transparent, remote = "Self")]
 pub struct Source {
     pub text: Arc<str>,
@@ -102,41 +102,8 @@ impl From<&str> for Source {
     }
 }
 
-pub struct Position {
-    line_col: LineCol,
-}
-
-impl Position {
-    pub fn new(input: &str, pos: usize) -> Option<Position> {
-        let line_col = Self::calc_line_col(input, pos);
-        input.get(pos..).map(|_| Position { line_col })
-    }
-
-    pub fn line_col(&self) -> LineCol {
-        self.line_col
-    }
-
-    pub fn calc_line_col(input: &str, pos: usize) -> LineCol {
-        assert!(pos <= input.len(), "position out of bounds");
-
-        // This is performance critical, so we use bytecount instead of a naive implementation.
-        let newlines_up_to_pos = bytecount::count(&input.as_bytes()[..pos], b'\n');
-        let line = newlines_up_to_pos + 1;
-
-        // Find the last newline character before the position
-        let last_newline_pos = match input[..pos].rfind('\n') {
-            Some(pos) => pos + 1, // Start after the newline
-            None => 0,            // If no newline, start is at the beginning
-        };
-
-        // Column number should start from 1, not 0
-        let col = pos - last_newline_pos + 1;
-        LineCol { line, col }
-    }
-}
-
 /// Represents a span of the source code in a specific file.
-#[derive(Clone, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Span {
     // The original source code.
     src: Source,
@@ -146,6 +113,19 @@ pub struct Span {
     end: usize,
     // A reference counted pointer to the file from which this span originated.
     source_id: Option<SourceId>,
+}
+
+impl PartialOrd for Span {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        if !Arc::ptr_eq(&self.src.text, &other.src.text) {
+            None
+        } else {
+            match self.start.partial_cmp(&other.start) {
+                Some(core::cmp::Ordering::Equal) => self.end.partial_cmp(&other.end),
+                ord => ord,
+            }
+        }
+    }
 }
 
 impl Hash for Span {
