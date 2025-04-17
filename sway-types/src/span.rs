@@ -70,8 +70,9 @@ impl Source {
         }
     }
 
-    pub fn line_col(&self, position: usize) -> LineCol {
-        let mut r = if position > self.text.len() || self.text.is_empty() {
+    /// Both lines and columns start at index 0
+    pub fn line_col_zero_index(&self, position: usize) -> LineCol {
+        if position > self.text.len() || self.text.is_empty() {
             LineCol { line: 0, col: 0 }
         } else {
             let (line, line_start) = match self.line_starts.binary_search(&position) {
@@ -83,7 +84,12 @@ impl Source {
                 line,
                 col: position - line_start,
             })
-        };
+        }
+    }
+
+    /// Both lines and columns start at index 1
+    pub fn line_col_one_index(&self, position: usize) -> LineCol {
+        let mut r = self.line_col_zero_index(position);
         r.line += 1;
         r.col += 1;
         r
@@ -229,12 +235,14 @@ impl Span {
         self.end
     }
 
-    pub fn start_pos(&self) -> LineCol {
-        self.src.line_col(self.start)
+    /// Both lines and columns start at index 1
+    pub fn start_line_col_one_index(&self) -> LineCol {
+        self.src.line_col_one_index(self.start)
     }
 
-    pub fn end_pos(&self) -> LineCol {
-        self.src.line_col(self.end)
+    /// Both lines and columns start at index 1
+    pub fn end_line_col_one_index(&self) -> LineCol {
+        self.src.line_col_one_index(self.end)
     }
 
     /// Returns an empty [Span] that points to the start of `self`.
@@ -310,11 +318,11 @@ impl Span {
             .unwrap_or_else(Span::dummy)
     }
 
-    /// Returns the line and column start and end.
-    pub fn line_col(&self) -> LineColRange {
+    /// Returns the line and column start and end using index 1.
+    pub fn line_col_one_index(&self) -> LineColRange {
         LineColRange {
-            start: self.start_pos(),
-            end: self.end_pos(),
+            start: self.start_line_col_one_index(),
+            end: self.end_line_col_one_index(),
         }
     }
 
