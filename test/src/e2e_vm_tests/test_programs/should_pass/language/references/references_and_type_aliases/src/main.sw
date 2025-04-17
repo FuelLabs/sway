@@ -1,7 +1,7 @@
 script;
 
 type RefToU64 = &u64;
-// TODO-IG: Once https://github.com/FuelLabs/sway/issues/5401 is solved use the line below.
+// TODO: (REFERENCES) Once https://github.com/FuelLabs/sway/issues/5401 is solved use the line below.
 type RefToTupleOfRefs = &(&u64, &u64);
 //type RefToTupleOfRefs = &(&u64, RefToU64);
 type RefToMutU64 = &mut u64;

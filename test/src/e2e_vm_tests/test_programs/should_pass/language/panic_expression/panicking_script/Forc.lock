@@ -1,0 +1,16 @@
+[[package]]
+name = "panicking_lib"
+source = "path+from-root-CB30CBD426CE4A05"
+dependencies = ["std"]
+
+[[package]]
+name = "panicking_script"
+source = "member"
+dependencies = [
+    "panicking_lib",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-CB30CBD426CE4A05"

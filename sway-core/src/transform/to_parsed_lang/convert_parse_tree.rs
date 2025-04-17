@@ -1996,7 +1996,7 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
-    let arguments = args
+    let arguments: Vec<Expression> = args
         .into_inner()
         .into_iter()
         .map(|expr| expr_to_expression(context, handler, engines, expr))
@@ -2014,6 +2014,14 @@ fn expr_func_app_to_expression_kind(
         Some(Intrinsic::Log)
             if context.experimental.new_encoding && last.is_none() && !is_relative_to_root =>
         {
+            if arguments.len() != 1 {
+                return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+                    name: Intrinsic::Log.to_string(),
+                    expected: 1,
+                    span: span.clone(),
+                }));
+            }
+
             let span = name_args_span(span, type_arguments_span);
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
@@ -2021,29 +2029,15 @@ fn expr_func_app_to_expression_kind(
                     kind_binding: TypeBinding {
                         inner: Intrinsic::Log,
                         type_arguments: TypeArgs::Regular(vec![]),
-                        span: span.clone(),
+                        span,
                     },
-                    arguments: vec![Expression {
-                        kind: ExpressionKind::FunctionApplication(Box::new(
-                            FunctionApplicationExpression {
-                                call_path_binding: TypeBinding {
-                                    inner: CallPath {
-                                        prefixes: vec![],
-                                        suffix: Ident::new_no_span("encode".into()),
-                                        callpath_type: CallPathType::Ambiguous,
-                                    },
-                                    type_arguments: TypeArgs::Regular(type_arguments),
-                                    span: span.clone(),
-                                },
-                                resolved_call_path_binding: None,
-                                arguments,
-                            },
-                        )),
-                        span: span.clone(),
-                    }],
+                    arguments: vec![wrap_logged_expr_into_encode_call(
+                        arguments.into_iter().next().unwrap(),
+                    )],
                 },
             ));
         }
+
         Some(intrinsic) if last.is_none() && !is_relative_to_root => {
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
@@ -2229,6 +2223,26 @@ fn expr_to_expression(
             };
             Expression {
                 kind: ExpressionKind::Return(Box::new(expression)),
+                span,
+            }
+        }
+        Expr::Panic { expr_opt, .. } => {
+            let expression = match expr_opt {
+                Some(expr) => expr_to_expression(context, handler, engines, *expr)?,
+                None => Expression {
+                    kind: ExpressionKind::Tuple(Vec::new()),
+                    span: span.clone(),
+                },
+            };
+
+            let expression = if context.experimental.new_encoding {
+                wrap_logged_expr_into_encode_call(expression)
+            } else {
+                expression
+            };
+
+            Expression {
+                kind: ExpressionKind::Panic(Box::new(expression)),
                 span,
             }
         }
@@ -2607,6 +2621,29 @@ fn expr_to_expression(
         },
     };
     Ok(expression)
+}
+
+/// Wraps the `logged_expr` that needs to be logged into an `encode` call: `encode(<logged_expr>)`.
+/// Wrapping is needed in the `__log` intrinsic and the `revert` expression in the case of
+/// the new encoding.
+fn wrap_logged_expr_into_encode_call(logged_expr: Expression) -> Expression {
+    let expression_span = logged_expr.span();
+    Expression {
+        kind: ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
+            call_path_binding: TypeBinding {
+                inner: CallPath {
+                    prefixes: vec![],
+                    suffix: Ident::new_no_span("encode".into()),
+                    callpath_type: CallPathType::Ambiguous,
+                },
+                type_arguments: TypeArgs::Regular(vec![]),
+                span: expression_span.clone(),
+            },
+            resolved_call_path_binding: None,
+            arguments: vec![logged_expr],
+        })),
+        span: expression_span,
+    }
 }
 
 fn op_call(

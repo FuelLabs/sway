@@ -1,0 +1,88 @@
+category = "run"
+expected_result = { action = "return", value = 8193 }
+expected_result_new_encoding = { action = "return_data", value = "0000000000002001" }
+expected_warnings = 26
+
+#check: $()pub struct S
+#nextln: $()This struct field is never accessed.
+#nextln: $()pub enum Enum
+
+#check: $()pub struct S
+#nextln: $()This struct field is never accessed.
+#nextln: $()pub enum Enum
+
+#check: $()pub enum Enum
+#nextln: $()This enum is never used.
+
+#check: $()pub enum EnumMultivariant
+#nextln: $()This enum is never used.
+
+#check: $()045
+#nextln: $()This code is unreachable.
+
+#check: $()1450
+#nextln: $()This code is unreachable.
+
+#check: $()1451
+#nextln: $()This code is unreachable.
+
+#check: $()1452
+#nextln: $()This code is unreachable.
+
+#check: $()1453
+#nextln: $()This code is unreachable.
+
+#check: $()245
+#nextln: $()This code is unreachable.
+
+#check: $()345
+#nextln: $()This code is unreachable.
+
+#check: $()445
+#nextln: $()This code is unreachable.
+
+#check: $()545
+#nextln: $()This code is unreachable.
+
+#check: $()543
+#nextln: $()This code is unreachable.
+
+#check: $()345
+#nextln: $()This code is unreachable.
+
+#check: $()645
+#nextln: $()This code is unreachable.
+
+# check: $()while return 42
+# nextln: $()break;
+# nextln: $()This code is unreachable.
+
+# check: $()745
+# nextln: $()This code is unreachable.
+
+#check: $()845
+#nextln: $()This code is unreachable.
+
+#check: $()945
+#nextln: $()This code is unreachable.
+
+#check: $()fn helper_fun(x : u64, y : u64) -> u64
+#nextln: $()This function is never called.
+
+#check: $()1045
+#nextln: $()This code is unreachable.
+
+#check: $()1145
+#nextln: $()This code is unreachable.
+
+#check: $()1245
+#nextln: $()This code is unreachable.
+
+#check: $()let _ = match return 42 {
+#check: $()};
+#nextln: $()This code is unreachable.
+#nextln: $()
+#nextln: $()1345
+
+#check: $()1345
+#nextln: $()This code is unreachable.

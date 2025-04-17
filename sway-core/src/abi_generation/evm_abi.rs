@@ -140,7 +140,7 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
             referenced_type,
         } => {
             format!(
-                "__ref {}{}", // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
+                "__ref {}{}", // TODO: (REFERENCES) No references in ABIs according to the RFC. Or we want to have them?
                 if *to_mutable_value { "mut " } else { "" },
                 abi_str_type_arg(referenced_type, engines)
             )

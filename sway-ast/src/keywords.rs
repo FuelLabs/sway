@@ -84,6 +84,7 @@ define_keyword!(ConfigurableToken, "configurable");
 define_keyword!(TypeToken, "type");
 define_keyword!(PtrToken, "__ptr");
 define_keyword!(SliceToken, "__slice");
+define_keyword!(PanicToken, "panic");
 
 /// The type is a token.
 pub trait Token: Spanned + Sized {

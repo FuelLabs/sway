@@ -18,7 +18,7 @@ impl PartialEq for [Struct; 3] {
 }
 impl Eq for [Struct; 3] {}
 
-// TODO-IG: Add tests for other expressions.
+// TODO: (REFERENCES) Add tests for other expressions.
 
 #[inline(always)]
 fn if_expr<T>(input: u64, left: T, right: T)

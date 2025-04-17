@@ -48,8 +48,8 @@ impl C {
     }
 }
 
-// TODO-IG: Add tests for accessing via reference chains once dereferencing operator `.` is implemented.
-// TODO-IG: Add tests for references to mutable parts of aggregates once reassignment is implemented.
+// TODO: (REFERENCES) Add tests for accessing via reference chains once dereferencing operator `.` is implemented.
+// TODO: (REFERENCES) Add tests for references to mutable parts of aggregates once reassignment is implemented.
 
 #[inline(always)]
 fn struct_fields() {

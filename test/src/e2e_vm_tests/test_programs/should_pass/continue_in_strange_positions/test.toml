@@ -1,6 +1,0 @@
-category = "run"
-expected_result = { action = "return", value = 8193 }
-expected_result_new_encoding = { action = "return_data", value = "0000000000002001" }
-
-validate_abi = true
-expected_warnings = 36

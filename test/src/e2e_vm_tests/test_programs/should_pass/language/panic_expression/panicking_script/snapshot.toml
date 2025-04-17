@@ -1,0 +1,1 @@
+cmds = ["forc test --path {root} --release --experimental error_type --test-threads 1 --logs --revert-codes"]

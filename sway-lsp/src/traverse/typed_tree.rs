@@ -638,6 +638,7 @@ impl Parse for ty::TyExpression {
             }
             ty::TyExpressionVariant::ImplicitReturn(exp)
             | ty::TyExpressionVariant::Return(exp)
+            | ty::TyExpressionVariant::Panic(exp)
             | ty::TyExpressionVariant::Ref(exp)
             | ty::TyExpressionVariant::Deref(exp) => {
                 exp.parse(ctx);

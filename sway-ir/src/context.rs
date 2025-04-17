@@ -21,6 +21,8 @@ use crate::{
     Constant, ConstantContent, GlobalVarContent, Type, TypeContent,
 };
 
+const PANIC_REVERT_CODE_LOWER_BOUND: u64 = 0xffff_ffff_0000_0000;
+
 /// The main IR context handle.
 ///
 /// Every module, function, block and value is stored here.  Some aggregate metadata is also
@@ -44,9 +46,10 @@ pub struct Context<'eng> {
 
     pub program_kind: Kind,
 
-    next_unique_sym_tag: u64,
-
     pub experimental: ExperimentalFeatures,
+
+    next_unique_sym_tag: u64,
+    next_unique_panic_revert_code: u64,
 }
 
 impl<'eng> Context<'eng> {
@@ -65,6 +68,7 @@ impl<'eng> Context<'eng> {
             constants_map: Default::default(),
             metadata: Default::default(),
             next_unique_sym_tag: Default::default(),
+            next_unique_panic_revert_code: PANIC_REVERT_CODE_LOWER_BOUND,
             program_kind: Kind::Contract,
             experimental,
         };
@@ -85,13 +89,20 @@ impl<'eng> Context<'eng> {
     ///
     /// The name will be in the form `"anon_N"`, where `N` is an incrementing decimal.
     pub fn get_unique_name(&mut self) -> String {
-        format!("anon_{}", self.get_unique_id())
+        format!("anon_{}", self.get_unique_symbol_id())
     }
 
     /// Get a globally unique symbol id.
-    pub fn get_unique_id(&mut self) -> u64 {
+    pub fn get_unique_symbol_id(&mut self) -> u64 {
         let sym = self.next_unique_sym_tag;
         self.next_unique_sym_tag += 1;
+        sym
+    }
+
+    /// Get the next, unique, panic revert code.
+    pub fn get_next_panic_revert_code(&mut self) -> u64 {
+        let sym = self.next_unique_panic_revert_code;
+        self.next_unique_panic_revert_code += 1;
         sym
     }
 }

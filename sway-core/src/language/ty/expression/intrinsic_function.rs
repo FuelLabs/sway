@@ -1,7 +1,4 @@
-use crate::{
-    abi_generation::abi_str::AbiStrContext, engine_threading::*, has_changes, language::ty::*,
-    type_system::*, types::*,
-};
+use crate::{engine_threading::*, has_changes, language::ty::*, type_system::*, types::*};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -18,33 +15,6 @@ pub struct TyIntrinsicFunctionKind {
     pub arguments: Vec<TyExpression>,
     pub type_arguments: Vec<GenericArgument>,
     pub span: Span,
-}
-
-impl TyIntrinsicFunctionKind {
-    /// Returns the actual type being logged. When the "new_encoding" is off,
-    /// this is just the `__log` argument; but when it is on, it is actually the
-    /// type of the argument to fn `encode`.
-    pub fn get_logged_type(&self, new_encoding: bool) -> Option<TypeId> {
-        if new_encoding {
-            if matches!(self.kind, Intrinsic::Log) {
-                match &self.arguments[0].expression {
-                    TyExpressionVariant::FunctionApplication {
-                        call_path,
-                        arguments,
-                        ..
-                    } => {
-                        assert!(call_path.suffix.as_str() == "encode");
-                        Some(arguments[0].1.return_type)
-                    }
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        } else {
-            Some(self.arguments[0].return_type)
-        }
-    }
 }
 
 impl EqWithEngines for TyIntrinsicFunctionKind {}
@@ -114,20 +84,17 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
 
         match self.kind {
             Intrinsic::Log => {
-                let logged_type = self.get_logged_type(ctx.experimental.new_encoding).unwrap();
-                types_metadata.push(TypeMetadata::LoggedType(
-                    LogId::new(logged_type.get_abi_type_str(
-                        &AbiStrContext {
-                            program_name: ctx.program_name.clone(),
-                            abi_with_callpaths: true,
-                            abi_with_fully_specified_types: true,
-                            abi_root_type_without_generic_type_parameters: false,
-                        },
-                        ctx.engines,
-                        logged_type,
-                    )),
-                    logged_type,
-                ));
+                let logged_type_id = TypeMetadata::get_logged_type_id(
+                    &self.arguments[0],
+                    ctx.experimental.new_encoding,
+                )
+                .map_err(|err| handler.emit_err(err))?;
+                let logged_type = TypeMetadata::new_logged_type(
+                    ctx.engines,
+                    logged_type_id,
+                    ctx.program_name.clone(),
+                );
+                types_metadata.push(logged_type);
             }
             Intrinsic::Smo => {
                 types_metadata.push(TypeMetadata::MessageType(
