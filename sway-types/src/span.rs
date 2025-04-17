@@ -50,17 +50,14 @@ impl<'de> serde::Deserialize<'de> for Source {
 
 impl Source {
     fn calc_line_starts(text: &str) -> Arc<Vec<usize>> {
-        Arc::new(
-            [0].into_iter()
-                .chain(text.char_indices().filter_map(|x| {
-                    if x.1 == '\n' {
-                        Some(x.0 + x.1.len_utf8())
-                    } else {
-                        None
-                    }
-                }))
-                .collect(),
-        )
+        let mut lines_starts = Vec::with_capacity(text.len() / 80);
+        lines_starts.push(0);
+        for (idx, c) in text.char_indices() {
+            if c == '\n' {
+                lines_starts.push(idx + c.len_utf8())
+            }
+        }
+        Arc::new(lines_starts)
     }
 
     pub fn new(text: &str) -> Self {
@@ -89,10 +86,11 @@ impl Source {
 
     /// Both lines and columns start at index 1
     pub fn line_col_one_index(&self, position: usize) -> LineCol {
-        let mut r = self.line_col_zero_index(position);
-        r.line += 1;
-        r.col += 1;
-        r
+        let LineCol { line, col } = self.line_col_zero_index(position);
+        LineCol {
+            line: line + 1,
+            col: col + 1,
+        }
     }
 }
 
