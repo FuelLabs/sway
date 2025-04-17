@@ -1013,7 +1013,12 @@ pub fn compile_to_ast(
 
     handler.dedup();
 
-    let programs = Programs::new(lexed_program, parsed_program, program, metrics);
+    let programs = Programs::new(
+        Arc::new(lexed_program), 
+        Arc::new(parsed_program), 
+        program.map(|x| Arc::new(x)),
+        metrics
+    );
 
     if let Some(config) = build_config {
         let path = config.canonical_root_module();

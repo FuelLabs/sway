@@ -3,11 +3,11 @@ use anyhow::Result;
 use forc_pkg as pkg;
 use forc_pkg::manifest::GenericManifestFile;
 use pkg::manifest::ManifestFile;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 use sway_core::{language::ty, Engines};
 use sway_error::handler::Handler;
 
-pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyProgram>, Handler)> {
+pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<Arc<ty::TyProgram>>, Handler)> {
     let CheckCommand {
         build_target,
         path,
