@@ -8,10 +8,15 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+telemetry = []
+
 [dependencies]
 ansiterm.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["ansi", "env-filter", "json"] }
+fuel-telemetry.workspace = true
 
 [dev-dependencies]
 tracing-test.workspace = true
