@@ -10,147 +10,26 @@ use ::codec::*;
 use ::ops::*;
 use ::raw_slice::*;
 use ::clone::Clone;
-
-struct RawVec<T> {
-    ptr: raw_ptr,
-    cap: u64,
-}
-
-impl<T> RawVec<T> {
-    /// Create a new `RawVec` with zero capacity.
-    ///
-    /// # Returns
-    ///
-    /// * [RawVec] - A new `RawVec` with zero capacity.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::vec::RawVec;
-    ///
-    /// fn foo() {
-    ///     let vec = RawVec::new();
-    /// }
-    /// ```
-    pub fn new() -> Self {
-        Self {
-            ptr: alloc::<T>(0),
-            cap: 0,
-        }
-    }
-
-    /// Creates a `RawVec` (on the heap) with exactly the capacity for a
-    /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
-    /// `capacity` is zero.
-    ///
-    /// # Arguments
-    ///
-    /// * `capacity`: [u64] - The capacity of the `RawVec`.
-    ///
-    /// # Returns
-    ///
-    /// * [RawVec] - A new `RawVec` with zero capacity.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::vec::RawVec;
-    ///
-    /// fn foo() {
-    ///     let vec = RawVec::with_capacity(5);
-    /// }
-    /// ```
-    pub fn with_capacity(capacity: u64) -> Self {
-        Self {
-            ptr: alloc::<T>(capacity),
-            cap: capacity,
-        }
-    }
-
-    /// Gets the pointer of the allocation.
-    ///
-    /// # Returns
-    ///
-    /// * [raw_ptr] - The pointer of the allocation.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::vec::RawVec;
-    ///
-    /// fn foo() {
-    ///     let vec = RawVec::new();
-    ///     let ptr = vec.ptr();
-    ///     let end = ptr.add::<u64>(0);
-    ///     end.write(5);
-    ///     assert(end.read::<u64>() == 5);
-    /// }
-    pub fn ptr(self) -> raw_ptr {
-        self.ptr
-    }
-
-    /// Gets the capacity of the allocation.
-    ///
-    /// # Returns
-    ///
-    /// * [u64] - The capacity of the allocation.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::vec::RawVec;
-    ///
-    /// fn foo() {
-    ///     let vec = RawVec::with_capacity(5);
-    ///     let cap = vec.capacity();
-    ///     assert(cap == 5);
-    /// }
-    pub fn capacity(self) -> u64 {
-        self.cap
-    }
-
-    /// Grow the capacity of the vector by doubling its current capacity. The
-    /// `realloc` function allocates memory on the heap and copies the data
-    /// from the old allocation to the new allocation.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::vec::RawVec;
-    ///
-    /// fn foo() {
-    ///     let mut vec = RawVec::new();
-    ///     vec.grow();
-    ///     assert(vec.capacity() == 1);
-    ///     vec.grow();
-    ///     assert(vec.capacity() == 2);
-    /// }
-    pub fn grow(ref mut self) {
-        let new_cap = if self.cap == 0 { 1 } else { 2 * self.cap };
-
-        self.ptr = realloc::<T>(self.ptr, self.cap, new_cap);
-        self.cap = new_cap;
-    }
-}
-
-impl<T> From<raw_slice> for RawVec<T> {
-    fn from(slice: raw_slice) -> Self {
-        let cap = slice.len::<T>();
-        let ptr = alloc::<T>(cap);
-        if cap > 0 {
-            slice.ptr().copy_to::<T>(ptr, cap);
-        }
-        Self { ptr, cap }
-    }
-}
+use ::slice::*;
 
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'. It has ownership over its buffer.
 pub struct Vec<T> {
-    buf: RawVec<T>,
+    buf: &mut [T],
     len: u64,
 }
 
 impl<T> Vec<T> {
+    fn grow(ref mut self) {
+        let current_cap = self.buf.len();
+        let new_cap = if current_cap == 0 {
+            1
+        } else {
+            current_cap * 2
+        };
+
+        self.buf = realloc_slice(self.buf, new_cap);
+    }
+
     /// Constructs a new, empty `Vec<T>`.
     ///
     /// # Additional Information
@@ -174,7 +53,7 @@ impl<T> Vec<T> {
     /// ```
     pub fn new() -> Self {
         Self {
-            buf: RawVec::new(),
+            buf: zero_alloc_slice::<T>(),
             len: 0,
         }
     }
@@ -214,7 +93,7 @@ impl<T> Vec<T> {
     /// ```
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
-            buf: RawVec::with_capacity(capacity),
+            buf: alloc_slice::<T>(capacity),
             len: 0,
         }
     }
@@ -238,17 +117,17 @@ impl<T> Vec<T> {
     /// }
     ///```
     pub fn push(ref mut self, value: T) {
+        let new_item_idx = self.len;
+        let current_capacity = self.buf.len();
+
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.capacity() {
-            self.buf.grow();
+        if new_item_idx == current_capacity {
+            self.grow();
         };
 
-        // Get a pointer to the end of the buffer, where the new element will
-        // be inserted.
-        let end = self.buf.ptr().add::<T>(self.len);
-
-        // Write `value` at pointer `end`
-        end.write::<T>(value);
+        // Write `value` at `new_item_idx`
+        let v: &mut T = __elem_at(self.buf, new_item_idx);
+        *v = value;
 
         // Increment length.
         self.len += 1;
@@ -272,7 +151,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     pub fn capacity(self) -> u64 {
-        self.buf.capacity()
+        self.buf.len()
     }
 
     /// Clears the vector, removing all values.
@@ -329,10 +208,7 @@ impl<T> Vec<T> {
         };
 
         // Get a pointer to the desired element using `index`
-        let ptr = self.buf.ptr().add::<T>(index);
-
-        // Read from `ptr`
-        Some(ptr.read::<T>())
+        Some(*__elem_at(self.buf, index))
     }
 
     /// Returns the number of elements in the vector, also referred to
@@ -416,25 +292,26 @@ impl<T> Vec<T> {
     pub fn remove(ref mut self, index: u64) -> T {
         assert(index < self.len);
 
-        let buf_start = self.buf.ptr();
+        let mut index = index;
 
         // Read the value at `index`
-        let ptr = buf_start.add::<T>(index);
-        let ret = ptr.read::<T>();
+        let item: T = *__elem_at(self.buf, index);
 
         // Shift everything down to fill in that spot.
-        let mut i = index;
         if self.len > 1 {
-            while i < self.len - 1 {
-                let ptr = buf_start.add::<T>(i);
-                ptr.add::<T>(1).copy_to::<T>(ptr, 1);
-                i += 1;
+            while index < self.len - 1 {
+                let source: &mut T = __elem_at(self.buf, index + 1);
+                let target: &mut T = __elem_at(self.buf, index);
+                *target = *source;
+
+                index += 1;
             }
         }
 
         // Decrease length.
         self.len -= 1;
-        ret
+
+        item
     }
 
     /// Inserts an element at position `index` within the vector, shifting all
@@ -467,12 +344,12 @@ impl<T> Vec<T> {
     ///     assert(vec.get(2).unwrap() == 10);
     /// }
     /// ```
-    pub fn insert(ref mut self, index: u64, element: T) {
+    pub fn insert(ref mut self, index: u64, value: T) {
         assert(index <= self.len);
 
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.capacity() {
-            self.buf.grow();
+        if self.len == self.capacity() {
+            self.grow();
         }
 
         let buf_start = self.buf.ptr();
@@ -483,13 +360,15 @@ impl<T> Vec<T> {
         // Shift everything over to make space.
         let mut i = self.len;
         while i > index {
-            let ptr = buf_start.add::<T>(i);
-            ptr.sub::<T>(1).copy_to::<T>(ptr, 1);
+            let before_i: &mut T = __elem_at(self.buf, i - 1);
+            let at_i: &mut T = __elem_at(self.buf, i);
+            *at_i = *before_i;
             i -= 1;
         }
 
-        // Write `element` at pointer `index`
-        index_ptr.write::<T>(element);
+        // Write `value` at pointer `index`
+        let item: &mut T = __elem_at(self.buf, index);
+        *item = value;
 
         // Increment length.
         self.len += 1;
@@ -523,7 +402,7 @@ impl<T> Vec<T> {
             return None;
         }
         self.len -= 1;
-        Some(self.buf.ptr().add::<T>(self.len).read::<T>())
+        Some(*__elem_at(self.buf, self.len))
     }
 
     /// Swaps two elements.
@@ -561,12 +440,11 @@ impl<T> Vec<T> {
             return;
         }
 
-        let element1_ptr = self.buf.ptr().add::<T>(element1_index);
-        let element2_ptr = self.buf.ptr().add::<T>(element2_index);
-
-        let element1_val: T = element1_ptr.read::<T>();
-        element2_ptr.copy_to::<T>(element1_ptr, 1);
-        element2_ptr.write::<T>(element1_val);
+        let a: &mut T = __elem_at(self.buf, element1_index);
+        let temp = *a;
+        let b: &mut T = __elem_at(self.buf, element2_index);
+        *a = *b;
+        *b = temp;
     }
 
     /// Updates an element at position `index` with a new element `value`.
@@ -599,9 +477,8 @@ impl<T> Vec<T> {
     pub fn set(ref mut self, index: u64, value: T) {
         assert(index < self.len);
 
-        let index_ptr = self.buf.ptr().add::<T>(index);
-
-        index_ptr.write::<T>(value);
+        let a: &mut T = __elem_at(self.buf, index);
+        *a = value;
     }
 
     /// Returns an [Iterator] to iterate over this `Vec`.
@@ -741,16 +618,16 @@ impl<T> Vec<T> {
         }
 
         // If we don't have enough capacity, alloc more
-        if self.buf.cap < new_len {
-            self.buf.ptr = realloc::<T>(self.buf.ptr, self.buf.cap, new_len);
-            self.buf.cap = new_len;
+        if self.capacity() < new_len {
+            self.buf = realloc_slice(self.buf, new_len);
         }
 
         // Fill the new length with `value`
-        let mut i = 0;
-        let start_ptr = self.buf.ptr.add::<T>(self.len);
-        while i + self.len < new_len {
-            start_ptr.add::<T>(i).write::<T>(value);
+        let mut i = self.len;
+        while i < new_len {
+            let item: &mut T = __elem_at(self.buf, i);
+            *item = value;
+
             i += 1;
         }
 
@@ -779,50 +656,65 @@ impl<T> Vec<T> {
         if self.len == 0 {
             return None;
         }
+        Some(*__elem_at(self.buf, self.len - 1))
+    }
 
-        Some(self.buf.ptr().add::<T>(self.len - 1).read::<T>())
+    #[cfg(experimental_references = true)]
+    pub fn as_slice(self) -> &[T] {
+        __slice(self.buf, 0, self.len)
     }
 }
 
+#[cfg(experimental_references = false)]
 impl<T> AsRawSlice for Vec<T> {
     fn as_raw_slice(self) -> raw_slice {
         raw_slice::from_parts::<T>(self.buf.ptr(), self.len)
     }
 }
 
+#[cfg(experimental_references = false)]
 impl<T> From<raw_slice> for Vec<T> {
     fn from(slice: raw_slice) -> Self {
-        Self {
-            buf: RawVec::from(slice),
-            len: slice.len::<T>(),
-        }
+        let len = slice.len::<T>();
+        let buf = alloc_slice::<T>(len);
+        slice.ptr().copy_to::<T>(buf.ptr(), len);
+        Self { buf, len }
     }
 }
 
+#[cfg(experimental_references = false)]
 impl<T> From<Vec<T>> for raw_slice {
     fn from(vec: Vec<T>) -> Self {
-        asm(ptr: (vec.ptr(), vec.len())) {
-            ptr: raw_slice
-        }
+        raw_slice::from_parts::<T>(vec.ptr(), vec.len)
     }
 }
 
+impl<T> Clone for Vec<T> {
+    fn clone(self) -> Self {
+        let len = self.len();
+        let buf = alloc_slice::<T>(len);
+        self.ptr().copy_to::<T>(buf.ptr(), len);
+        Self { buf, len }
+    }
+}
+
+#[cfg(experimental_references = false)]
 impl<T> AbiEncode for Vec<T>
 where
     T: AbiEncode,
 {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let len = self.len();
-        let mut buffer = len.abi_encode(buffer);
+       self.as_raw_slice().abi_encode(buffer)
+    }
+}
 
-        let mut i = 0;
-        while i < len {
-            let item = self.get(i).unwrap();
-            buffer = item.abi_encode(buffer);
-            i += 1;
-        }
-
-        buffer
+#[cfg(experimental_references = true)]
+impl<T> AbiEncode for Vec<T>
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+       self.as_slice().abi_encode(buffer)
     }
 }
 
@@ -831,17 +723,13 @@ where
     T: AbiDecode,
 {
     fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
-        let len = u64::abi_decode(buffer);
-
+        let mut len = u64::abi_decode(buffer);
         let mut v = Vec::with_capacity(len);
-
-        let mut i = 0;
-        while i < len {
+        while len > 0 {
             let item = T::abi_decode(buffer);
             v.push(item);
-            i += 1;
+            len -= 1;
         }
-
         v
     }
 }
@@ -876,17 +764,6 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-impl<T> Clone for Vec<T> {
-    fn clone(self) -> Self {
-        let len = self.len();
-        let buf = RawVec::with_capacity(len);
-        if len > 0 {
-            self.ptr().copy_to::<T>(buf.ptr(), len);
-        }
-        Self { buf, len }
-    }
-}
-
 impl<T> PartialEq for Vec<T>
 where
     T: Eq,
@@ -904,4 +781,165 @@ where
         }
         true
     }
+}
+
+fn assert_vec_items(v: Vec<u8>, items: &[u8], capacity: u64) {
+    use ::assert::*;
+
+    let mut i = 0;
+    for e in v.iter() {
+        assert_eq(e, *__elem_at(items, i));
+        assert_eq(Some(e), v.get(i));
+        i += 1;
+    }
+
+    assert_eq(v.get(i), None);
+    assert_eq(v.capacity(), capacity);
+
+    if items.len() == 0 {
+        assert(v.is_empty());
+    } else {
+        assert(!v.is_empty());
+    }
+}
+
+#[test]
+fn ok_vec_tests() {
+    use ::assert::*;
+    let mut v: Vec<u8> = Vec::new();
+
+    // initial state
+    assert(v.ptr().is_null());
+    assert_vec_items(v, __slice(&[], 0, 0), 0);
+
+    // push and grow
+    v.push(1u8);
+    assert_vec_items(v, __slice(&[1u8], 0, 1), 1);
+
+    // push and grow
+    v.push(2u8);
+    assert_vec_items(v, __slice(&[1u8, 2u8], 0, 2), 2);
+
+    // push and grow
+    v.push(3u8);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 3u8], 0, 3), 4);
+
+    // push and don't grow
+    v.push(4u8);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 3u8, 4u8], 0, 4), 4);
+    let _ = v.remove(3);
+
+    // insert at front and don't grow
+    v.insert(0, 0);
+    assert_vec_items(v, __slice(&[0u8, 1u8, 2u8, 3u8], 0, 4), 4);
+    let _ = v.remove(0);
+
+    // insert at back and don't grow
+    v.insert(3, 0);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 3u8, 0u8], 0, 4), 4);
+    let _ = v.remove(3);
+
+    // insert at middle and don't grow
+    v.insert(2, 4);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 4u8, 3u8], 0, 4), 4);
+
+    // insert middle and grow
+    v.insert(2, 5);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 5u8, 4u8, 3u8], 0, 5), 8);
+
+    // insert front and grow
+    let mut v = v.clone();
+    v.insert(0, 0);
+    assert_vec_items(v, __slice(&[0u8, 1u8, 2u8, 5u8, 4u8, 3u8], 0, 5), 10);
+    
+    // insert back and grow
+    let mut v = v.clone();
+    v.insert(6, 6);
+    assert_vec_items(v, __slice(&[0u8, 1u8, 2u8, 5u8, 4u8, 3u8, 6u8], 0, 7), 12);
+
+    // pop
+    let item = v.pop();
+    assert_eq(item, Some(6));
+    assert_vec_items(v, __slice(&[0u8, 1u8, 2u8, 5u8, 4u8, 3u8], 0, 6), 12);
+
+    // remove front
+    let item = v.remove(0);
+    assert_eq(item, 0);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 5u8, 4u8, 3u8], 0, 5), 12);
+
+    // remove back
+    let item = v.remove(4);
+    assert_eq(item, 3);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 5u8, 4u8], 0, 4), 12);
+
+    // last
+    assert_eq(v.last(), Some(4));
+
+    // resize
+    v.resize(13, 7);
+    assert_vec_items(v, __slice(&[1u8, 2u8, 5u8, 4u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 13), 13);
+
+    // set
+    v.set(0, 7);
+    assert_vec_items(v, __slice(&[7u8, 2u8, 5u8, 4u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 13), 13);
+
+    // swap
+    v.swap(1, 3);
+    assert_vec_items(v, __slice(&[7u8, 4u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 13), 13);
+
+    // remove middle 
+    let item = v.remove(1);
+    assert_eq(item, 4);
+    assert_vec_items(v, __slice(&[7u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 12), 13);
+
+    let encoded_bytes = encode(v);
+    let mut v = abi_decode::<Vec<u8>>(encoded_bytes);
+    assert_vec_items(v, __slice(&[7u8, 5u8, 2u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8, 7u8], 0, 12), 12);
+
+    // clear
+    v.clear();
+    assert_vec_items(v, __slice(&[], 0, 0), 12);
+
+    // with_capacity()
+    let v = Vec::with_capacity(3);
+    assert_vec_items(v, __slice(&[], 0, 0), 3);
+
+    // Vec<Vec<u8>> -> &[Vec<u8>] -> Vec<Vec<u8>>
+    // use ::convert::*;
+    // let mut v: Vec<Vec<u8>> = Vec::new();
+
+    // let mut item = Vec::new();
+    // item.push(1);
+    // item.push(2);
+    // item.push(3);
+    // v.push(item);
+
+    //let v_as_slice = v.as_raw_slice();
+    //let mut v2: Vec<Vec<u8>> =  v_as_slice.into();
+
+    //let mut item = v2.get(0).unwrap();
+    //item.push(4);
+    //item.set(0, 7);
+
+    //assert_eq(v.get(0).unwrap().get(0).unwrap(), 7);
+    //assert_eq(v2.get(0).unwrap().len(), 3);
+}
+
+
+#[cfg(experimental_references = false)]
+#[test]
+fn ok_vec_as_raw_slice() {
+    use ::convert::Into;
+
+    let mut v = Vec::new();
+    v.push(1);
+    v.push(2);
+    v.push(3);
+
+    assert_vec_items(v, __slice(&[1u8, 2u8, 3u8], 0, 3), 4);
+
+    let v_as_slice: raw_slice = v.as_raw_slice();
+    let mut v2: Vec<u8> =  v_as_slice.into();
+
+    assert_vec_items(v2, __slice(&[1u8, 2u8, 3u8], 0, 3), 3);
 }
