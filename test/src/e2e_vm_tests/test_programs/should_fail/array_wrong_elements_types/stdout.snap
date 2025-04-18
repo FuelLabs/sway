@@ -1,5 +1,6 @@
 ---
-source: test/tests/tests.rs
+source: test/src/snapshot/mod.rs
+snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types
 exit status: 1
@@ -49,12 +50,12 @@ error
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:9:22
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:9:23
    |
  7 | fn main() {
  8 |     // unexpected u16
- 9 |     let a: [u8;1] = [1u16];
-   |                      ^^^^ Mismatched types.
+ 9 |     let a: [u8; 1] = [1u16];
+   |                       ^^^^ Mismatched types.
 expected: u8
 found:    u16.
 
@@ -283,7 +284,7 @@ error
 expected: Vec<u8>
 found:    Vec<u16>.
 
-38 |     
+38 | 
 39 |     // unexpected Option<u8>
    |
 ____

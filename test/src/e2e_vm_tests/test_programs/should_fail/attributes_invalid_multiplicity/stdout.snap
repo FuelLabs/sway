@@ -1,6 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 125
+snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity
 exit status: 1
@@ -77,14 +77,14 @@ error: Attribute can be applied only once
 ____
 
 error: Attribute can be applied only once
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/fallback_attr.sw:8:3
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/fallback_attr.sw:7:3
   |
 ...
-6 | #[fallback]
+5 | #[fallback]
   |   -------- info: It is already applied here.
-7 | #[fallback]
+6 | #[fallback]
   |   -------- info: And here.
-8 | #[fallback]
+7 | #[fallback]
   |   ^^^^^^^^ "fallback" attribute can be applied only once, but is applied three times.
   |
 ____
