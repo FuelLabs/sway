@@ -633,7 +633,7 @@ async fn can_get_predicate_address() {
 
     // If this test fails, it can be that the predicate address got changed.
     // Uncomment the next line, get the predicate address, and update it above.
-    dbg!(&predicate);
+    // dbg!(&predicate);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
