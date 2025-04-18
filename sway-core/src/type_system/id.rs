@@ -229,6 +229,28 @@ impl TypeId {
         found
     }
 
+    pub(crate) fn walk_any_including_self<F, WT, WTC>(
+        self,
+        engines: &Engines,
+        filter_fn: &F,
+        trait_constraints: Vec<TraitConstraint>,
+        depth: usize,
+        walk_type: &WT,
+        walk_tc: &WTC,
+    ) where
+        F: Fn(&TypeInfo) -> bool,
+        WT: Fn(&TypeId),
+        WTC: Fn(&TraitConstraint),
+    {
+        let type_engine = engines.te();
+        self.walk_any(engines, filter_fn, depth + 1, walk_type, walk_tc);
+        let type_info = type_engine.get(self);
+        if filter_fn(&type_info) {
+            walk_type(&self);
+            trait_constraints.iter().for_each(walk_tc);
+        }
+    }
+
     /// Returns all pairs of type parameters and its
     /// concrete types.
     /// This includes primitive types that have "implicit"
@@ -487,6 +509,300 @@ impl TypeId {
             }
             (_, TypeInfo::UnknownGeneric { .. }) => {}
             (_, _) => {}
+        }
+    }
+
+    pub(crate) fn walk_any<F, WT, WTC>(
+        self,
+        engines: &Engines,
+        filter_fn: &F,
+        depth: usize,
+        walk_type: &WT,
+        walk_tc: &WTC,
+    ) where
+        F: Fn(&TypeInfo) -> bool,
+        WT: Fn(&TypeId),
+        WTC: Fn(&TraitConstraint),
+    {
+        if depth >= EXTRACT_ANY_MAX_DEPTH {
+            panic!("Possible infinite recursion at walk_any");
+        }
+
+        let decl_engine = engines.de();
+        match &*engines.te().get(self) {
+            TypeInfo::Unknown
+            | TypeInfo::Never
+            | TypeInfo::Placeholder(_)
+            | TypeInfo::TypeParam(_)
+            | TypeInfo::StringArray(_)
+            | TypeInfo::StringSlice
+            | TypeInfo::UnsignedInteger(_)
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice
+            | TypeInfo::Boolean
+            | TypeInfo::B256
+            | TypeInfo::Numeric
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery(_)
+            | TypeInfo::TraitType { .. } => {}
+            TypeInfo::UntypedEnum(decl_id) => {
+                let enum_decl = engines.pe().get_enum(decl_id);
+                for type_param in &enum_decl.type_parameters {
+                    match type_param {
+                        TypeParameter::Type(type_param) => {
+                            type_param.type_id.walk_any_including_self(
+                                engines,
+                                filter_fn,
+                                type_param.trait_constraints.clone(),
+                                depth + 1,
+                                walk_type,
+                                walk_tc,
+                            )
+                        }
+                        TypeParameter::Const(type_param) => type_param.ty.walk_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                            walk_type,
+                            walk_tc,
+                        ),
+                    }
+                }
+                for variant in &enum_decl.variants {
+                    variant.type_argument.type_id().walk_any_including_self(
+                        engines,
+                        filter_fn,
+                        vec![],
+                        depth + 1,
+                        walk_type,
+                        walk_tc,
+                    );
+                }
+            }
+            TypeInfo::UntypedStruct(decl_id) => {
+                let struct_decl = engines.pe().get_struct(decl_id);
+                for type_param in &struct_decl.type_parameters {
+                    match type_param {
+                        TypeParameter::Type(type_param) => {
+                            type_param.type_id.walk_any_including_self(
+                                engines,
+                                filter_fn,
+                                type_param.trait_constraints.clone(),
+                                depth + 1,
+                                walk_type,
+                                walk_tc,
+                            )
+                        }
+                        TypeParameter::Const(type_param) => type_param.ty.walk_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                            walk_type,
+                            walk_tc,
+                        ),
+                    }
+                }
+                for field in &struct_decl.fields {
+                    field.type_argument.type_id().walk_any_including_self(
+                        engines,
+                        filter_fn,
+                        vec![],
+                        depth + 1,
+                        walk_type,
+                        walk_tc,
+                    );
+                }
+            }
+            TypeInfo::Enum(enum_ref) => {
+                let enum_decl = decl_engine.get_enum(enum_ref);
+                for type_param in &enum_decl.type_parameters {
+                    match type_param {
+                        TypeParameter::Type(type_param) => {
+                            type_param.type_id.walk_any_including_self(
+                                engines,
+                                filter_fn,
+                                type_param.trait_constraints.clone(),
+                                depth + 1,
+                                walk_type,
+                                walk_tc,
+                            )
+                        }
+                        TypeParameter::Const(type_param) => type_param.ty.walk_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                            walk_type,
+                            walk_tc,
+                        ),
+                    }
+                }
+                for variant in &enum_decl.variants {
+                    variant.type_argument.type_id().walk_any_including_self(
+                        engines,
+                        filter_fn,
+                        vec![],
+                        depth + 1,
+                        walk_type,
+                        walk_tc,
+                    );
+                }
+            }
+            TypeInfo::Struct(struct_id) => {
+                let struct_decl = decl_engine.get_struct(struct_id);
+                for type_param in &struct_decl.type_parameters {
+                    match type_param {
+                        TypeParameter::Type(type_param) => {
+                            type_param.type_id.walk_any_including_self(
+                                engines,
+                                filter_fn,
+                                type_param.trait_constraints.clone(),
+                                depth + 1,
+                                walk_type,
+                                walk_tc,
+                            )
+                        }
+                        TypeParameter::Const(type_param) => type_param.ty.walk_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                            walk_type,
+                            walk_tc,
+                        ),
+                    }
+                }
+                for field in &struct_decl.fields {
+                    field.type_argument.type_id().walk_any_including_self(
+                        engines,
+                        filter_fn,
+                        vec![],
+                        depth + 1,
+                        walk_type,
+                        walk_tc,
+                    );
+                }
+            }
+            TypeInfo::Tuple(elems) => {
+                for elem in elems {
+                    elem.type_id().walk_any_including_self(
+                        engines,
+                        filter_fn,
+                        vec![],
+                        depth + 1,
+                        walk_type,
+                        walk_tc,
+                    );
+                }
+            }
+            TypeInfo::ContractCaller {
+                abi_name: _,
+                address,
+            } => {
+                if let Some(address) = address {
+                    address.return_type.walk_any_including_self(
+                        engines,
+                        filter_fn,
+                        vec![],
+                        depth + 1,
+                        walk_type,
+                        walk_tc,
+                    );
+                }
+            }
+            TypeInfo::Custom {
+                qualified_call_path: _,
+                type_arguments,
+            } => {
+                if let Some(type_arguments) = type_arguments {
+                    for type_arg in type_arguments {
+                        type_arg.type_id().walk_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                            walk_type,
+                            walk_tc,
+                        );
+                    }
+                }
+            }
+            TypeInfo::Array(ty, _) => {
+                ty.type_id().walk_any_including_self(
+                    engines,
+                    filter_fn,
+                    vec![],
+                    depth + 1,
+                    walk_type,
+                    walk_tc,
+                );
+            }
+            TypeInfo::Alias { name: _, ty } => {
+                ty.type_id().walk_any_including_self(
+                    engines,
+                    filter_fn,
+                    vec![],
+                    depth + 1,
+                    walk_type,
+                    walk_tc,
+                );
+            }
+            TypeInfo::UnknownGeneric {
+                name: _,
+                trait_constraints,
+                parent: _,
+                is_from_type_parameter: _,
+            } => {
+                walk_type(&self);
+                for trait_constraint in trait_constraints.iter() {
+                    for type_arg in &trait_constraint.type_arguments {
+                        // In case type_id was already added skip it.
+                        // This is required because of recursive generic trait such as `T: Trait<T>`
+                        type_arg.type_id().walk_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                            walk_type,
+                            walk_tc,
+                        );
+                    }
+                }
+            }
+            TypeInfo::Ptr(ty) => {
+                ty.type_id().walk_any_including_self(
+                    engines,
+                    filter_fn,
+                    vec![],
+                    depth + 1,
+                    walk_type,
+                    walk_tc,
+                );
+            }
+            TypeInfo::Slice(ty) => {
+                ty.type_id().walk_any_including_self(
+                    engines,
+                    filter_fn,
+                    vec![],
+                    depth + 1,
+                    walk_type,
+                    walk_tc,
+                );
+            }
+            TypeInfo::Ref {
+                referenced_type, ..
+            } => {
+                referenced_type.type_id().walk_any_including_self(
+                    engines,
+                    filter_fn,
+                    vec![],
+                    depth + 1,
+                    walk_type,
+                    walk_tc,
+                );
+            }
         }
     }
 
@@ -781,6 +1097,25 @@ impl TypeId {
         }
 
         set
+    }
+
+    /// Given a `TypeId` `self`, analyze `self` and return all inner
+    /// `TypeId`'s of `self`.
+    pub(crate) fn walk_inner_types<WT, WTC>(
+        &self,
+        engines: &Engines,
+        include_self: IncludeSelf,
+        walk_type: &WT,
+        walk_tc: &WTC,
+    ) where
+        WT: Fn(&TypeId),
+        WTC: Fn(&TraitConstraint),
+    {
+        self.walk_any(engines, &|_| true, 0, walk_type, walk_tc);
+
+        if matches!(include_self, IncludeSelf::Yes) {
+            walk_type(self);
+        }
     }
 
     pub(crate) fn extract_inner_types_with_trait_constraints(

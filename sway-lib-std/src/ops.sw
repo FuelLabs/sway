@@ -721,13 +721,61 @@ impl PartialEq for u8 {
 
 impl Eq for u8 {}
 
-impl PartialEq for raw_ptr {
+impl PartialEq for () {
     fn eq(self, other: Self) -> bool {
-        __eq(self, other)
+        true
     }
 }
 
-impl Eq for raw_ptr {}
+impl Eq for () {}
+
+impl<T> PartialEq for (T, )
+where
+    T: PartialEq,
+{
+    fn eq(self, other: Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<T> Eq for (T, )
+where
+    T: Eq,
+{}
+
+impl<T1, T2> PartialEq for (T1, T2)
+where
+    T1: PartialEq,
+    T2: PartialEq,
+{
+    fn eq(self, other: Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+
+impl<T1, T2> Eq for (T1, T2)
+where
+    T1: Eq,
+    T2: Eq,
+{}
+
+impl<T1, T2, T3> PartialEq for (T1, T2, T3)
+where
+    T1: PartialEq,
+    T2: PartialEq,
+    T3: PartialEq,
+{
+    fn eq(self, other: Self) -> bool {
+        self.0 == other.0 && self.1 == other.1 && self.2 == other.2
+    }
+}
+
+impl<T1, T2, T3> Eq for (T1, T2, T3)
+where
+    T1: Eq,
+    T2: Eq,
+    T3: Eq,
+{}
 
 #[cfg(experimental_const_generics = true)]
 impl<T, const N: u64> PartialEq for [T; N]
