@@ -60,6 +60,8 @@ fn test_impl_traits_default() {
             "core/codec/fn.contract_call.html",
             "core/ops/trait.BitwiseXor.html",
             "core/primitive.str[61].html",
+        ],
+    );
     let doc_dir_name: &str = "impl_traits_no_deps";
     let project_name: &str = "impl_traits_generic";
     let command = Command {
