@@ -59,9 +59,7 @@ impl Format for Ty {
                 write!(formatted_code, "{}", BangToken::AS_STR)?;
                 Ok(())
             }
-            Self::Expr(expr) => {
-                expr.format(formatted_code, formatter)
-            }
+            Self::Expr(expr) => expr.format(formatted_code, formatter),
         }
     }
 }
