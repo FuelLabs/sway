@@ -1,0 +1,63 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names
+   Compiling library std (sway-lib-std)
+   Compiling contract attributes_invalid_abi_names (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names)
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:6:1
+  |
+4 | struct MyStruct {}
+5 | 
+6 | #[abi_name(name = "SameName")]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Duplicated name found for renamed ABI type.
+
+7 | struct MyStruct1 {}
+8 | 
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:9:1
+   |
+ 7 | struct MyStruct1 {}
+ 8 | 
+ 9 | #[abi_name(name = "SameName")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Duplicated name found for renamed ABI type.
+
+10 | struct MyStruct2 {}
+11 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:12:1
+   |
+10 | struct MyStruct2 {}
+11 | 
+12 | #[abi_name(name = "")]
+   | ^^^^^^^^^^^^^^^^^^^^^^ Invalid name found for renamed ABI type.
+
+13 | struct MyStruct3 {}
+14 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:15:1
+   |
+13 | struct MyStruct3 {}
+14 | 
+15 | #[abi_name(name = "this !s n0t an identif1er")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Invalid name found for renamed ABI type.
+
+16 | struct MyStruct4 {}
+17 | 
+   |
+____
+
+  Aborting due to 4 errors.
+error: Failed to compile attributes_invalid_abi_names

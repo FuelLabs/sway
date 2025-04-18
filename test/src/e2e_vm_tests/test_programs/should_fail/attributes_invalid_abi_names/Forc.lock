@@ -1,0 +1,8 @@
+[[package]]
+name = "attributes_invalid_abi_names"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-F9C5117675511A22"

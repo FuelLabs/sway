@@ -1773,6 +1773,7 @@ pub fn compile(
                         program: typed_program,
                         abi_with_callpaths: true,
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
+                        unique_names: HashSet::<String>::new(),
                     },
                     engines,
                     if experimental.new_encoding {
