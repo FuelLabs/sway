@@ -14,14 +14,7 @@ struct Foo {
 }
 
 impl Foo {
-    fn new(
-        a: u64,
-        b: u64,
-        c: u64,
-        d: u64,
-        e: u64,
-        f: u64,
-    ) -> Self {
+    fn new(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64) -> Self {
         Self {
             a,
             b,
@@ -35,8 +28,8 @@ impl Foo {
 
 impl MyContract for Contract {
     fn test_function() -> bool {
-        let bar1 = Foo::new(0,0,0,0,0,0);
-        let bar2 = Foo::new(0,0,0,0,0,0);
+        let bar1 = Foo::new(0, 0, 0, 0, 0, 0);
+        let bar2 = Foo::new(0, 0, 0, 0, 0, 0);
         true
     }
 }

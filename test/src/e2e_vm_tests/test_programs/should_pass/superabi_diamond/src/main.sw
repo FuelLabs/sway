@@ -5,7 +5,6 @@ contract;
 ///    Left     Right
 ///      \       /
 ///        Bottom
-
 abi Top {
     fn top();
 }
@@ -23,17 +22,17 @@ abi Bottom : Left + Right {
 }
 
 impl Top for Contract {
-    fn top() { }
+    fn top() {}
 }
 
 impl Left for Contract {
-    fn left() { }
+    fn left() {}
 }
 
 impl Right for Contract {
-    fn right() { }
+    fn right() {}
 }
 
 impl Bottom for Contract {
-    fn bottom() { }
+    fn bottom() {}
 }

@@ -1,6 +1,5 @@
 //! This is a module comment that also becomes an attribute.
 //! This line will also be an attribute.
-
 //! Having an empty line is allowed.
 library;
 

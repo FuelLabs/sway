@@ -20,7 +20,6 @@ fn main() -> bool {
     let u64_max_times_two: U128 = U128::from((1, 0));
     let u_128_max: U128 = U128::max();
 
-
     assert(u_128_2.log(u_128_2) == u_128_1);
     assert(u_128_1.log(u_128_3) == u_128_0);
     assert(u_128_8.log(u_128_2) == u_128_3);

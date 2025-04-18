@@ -16,8 +16,12 @@ struct GasCounts {
 
 fn get_gas() -> GasCounts {
     GasCounts {
-        global_gas: asm() { ggas },
-        context_gas: asm() { cgas },
+        global_gas: asm() {
+            ggas
+        },
+        context_gas: asm() {
+            cgas
+        },
     }
 }
 
@@ -26,44 +30,76 @@ fn main() -> u32 {
     let _remaining_gas = get_gas();
 
     // Test the spelling of all special registers
-    let zero = asm() { zero };
+    let zero = asm() {
+        zero
+    };
     assert(zero == 0);
 
-    let one = asm() { one };
+    let one = asm() {
+        one
+    };
     assert(one == 1);
 
-    let of = asm() { of };
+    let of = asm() {
+        of
+    };
     assert(of == 0);
 
-    let _pc = asm() { pc };
+    let _pc = asm() {
+        pc
+    };
 
-    let _ssp = asm() { ssp };
+    let _ssp = asm() {
+        ssp
+    };
 
-    let _sp = asm() { sp };
+    let _sp = asm() {
+        sp
+    };
 
-    let _fp = asm() { fp };
+    let _fp = asm() {
+        fp
+    };
 
-    let _hp = asm() { hp };
+    let _hp = asm() {
+        hp
+    };
 
-    let err = asm() { err };
+    let err = asm() {
+        err
+    };
     assert(err == 0);
 
-    let _ggas = asm() { ggas };
+    let _ggas = asm() {
+        ggas
+    };
 
-    let _cgas = asm() { cgas };
+    let _cgas = asm() {
+        cgas
+    };
 
-    let _bal = asm() { bal };
+    let _bal = asm() {
+        bal
+    };
 
-    let _is = asm() { is };
+    let _is = asm() {
+        is
+    };
 
-    let _ret = asm() { ret };
+    let _ret = asm() {
+        ret
+    };
 
-    let _retl = asm() { retl };
+    let _retl = asm() {
+        retl
+    };
 
-    let _flag = asm() { flag };
+    let _flag = asm() {
+        flag
+    };
 
     let _x = asm(r1, r2: 2, r3: 1) {
-        mod  r1 r2 r3;
+        mod r1 r2 r3;
         r1: u64
     };
 

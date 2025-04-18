@@ -10,7 +10,10 @@ impl MyAdd for u32 {
     }
 }
 
-struct MyPoint<T> where T: MyAdd {
+struct MyPoint<T>
+where
+    T: MyAdd,
+{
     x: T,
     y: T,
 }
@@ -50,18 +53,12 @@ fn add1<T>(point: MyPoint<T>, v: T) -> T {
 
 // Missing constraint T: MyAdd from return
 fn add2<T>(v: T) -> MyPoint<T> {
-    MyPoint {
-        x: v,
-        y: v,
-    }
+    MyPoint { x: v, y: v }
 }
 
 // Missing constraint T: MyAdd from variable
 fn add3<T>(v: T) -> T {
-    let p = MyPoint {
-        x: v,
-        y: v,
-    };
+    let p = MyPoint { x: v, y: v };
     v
 }
 

@@ -1,7 +1,7 @@
 library;
 
 pub struct Buffer {
-    buffer: u64
+    buffer: u64,
 }
 
 pub trait T {
@@ -11,7 +11,7 @@ pub trait T {
 impl T for str[10] {
     fn ar(buffer: Buffer) -> Buffer {
         Buffer {
-            buffer: __encode_buffer_append(buffer.buffer)
+            buffer: __encode_buffer_append(buffer.buffer),
         }
     }
 }

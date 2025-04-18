@@ -19,16 +19,15 @@ impl<T, E> Result2<T, E> {
 
 pub fn test_unwrap_or<T>(val: T, default: T)
 where
-    T: PartialEq
+    T: PartialEq,
 {
     assert(Result2::Ok::<T, T>(val).unwrap_or(default) == val);
     assert(Result2::Err::<T, T>(val).unwrap_or(default) == default);
 }
 
 fn main() -> bool {
-  test_unwrap_or(true, true);
-  test_unwrap_or(true, false);
+    test_unwrap_or(true, true);
+    test_unwrap_or(true, false);
 
-
-  true
+    true
 }

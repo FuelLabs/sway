@@ -17,6 +17,6 @@ fn test_success() {
     let data = 1u64;
     let slice = raw_slice::from_parts::<u64>(__addr_of(&data), 1);
     let result = caller.test_function(slice);
-    
+
     assert(result.len::<u8>() == slice.len::<u8>());
 }

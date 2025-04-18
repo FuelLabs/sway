@@ -41,7 +41,13 @@ impl Struct03 {
 
 storage {
     b: bool = true,
-    s_01: Struct01 = Struct01 { x: 0, second: Struct02 { x: 0, third: Struct03 { x: 0 } } },
+    s_01: Struct01 = Struct01 {
+        x: 0,
+        second: Struct02 {
+            x: 0,
+            third: Struct03 { x: 0 },
+        },
+    },
 }
 
 impl ReadStorage for Contract {
@@ -52,7 +58,7 @@ impl ReadStorage for Contract {
         let _ = storage.b.read();
 
         let _ = storage.b.prev_not_a_struct.read();
-        
+
         let s_01 = storage.s_01.read();
         let _ = storage.s_01.x.read();
 
@@ -61,13 +67,13 @@ impl ReadStorage for Contract {
 
         let s_02 = storage.s_01.second.read();
         let _ = storage.s_01.second.x.read();
-        
+
         let _ = storage.s_01.second.x.prev_not_a_struct.read();
         let _ = storage.s_01.second.non_existing_field.read();
 
         let s_03 = storage.s_01.second.third.read();
         let _ = storage.s_01.second.third.x.read();
-        
+
         let _ = storage.s_01.second.third.x.prev_not_a_struct.read();
         let _ = storage.s_01.second.third.non_existing_field.read();
 
@@ -77,4 +83,4 @@ impl ReadStorage for Contract {
     }
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

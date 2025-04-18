@@ -9,7 +9,7 @@ impl MyNever {
 
     fn match_me(self) -> Self {
         let e = self;
-        match e { }
+        match e {}
     }
 }
 

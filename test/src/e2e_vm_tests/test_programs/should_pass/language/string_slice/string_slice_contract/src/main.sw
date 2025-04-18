@@ -12,7 +12,7 @@ impl MyContract for Contract {
 
 #[test]
 fn test_success() {
-    let caller = abi(MyContract, CONTRACT_ID); 
+    let caller = abi(MyContract, CONTRACT_ID);
     let result = caller.test_function("a");
     assert(result == "a")
 }

@@ -1,3 +1,4 @@
 library;
 
-pub trait DuplicatedTrait {}
+pub trait DuplicatedTrait {
+}

@@ -6,4 +6,4 @@ library;
 #![storage(invalid)]
 #![unknown]
 #![allow(dead_code, deprecated), unknown, storage(invalid)]
-struct S { }
+struct S {}

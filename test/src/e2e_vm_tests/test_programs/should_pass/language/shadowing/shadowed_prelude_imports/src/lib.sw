@@ -10,4 +10,3 @@ pub trait Add {
 pub fn log<T>(value: T) -> u64 {
     112
 }
-   

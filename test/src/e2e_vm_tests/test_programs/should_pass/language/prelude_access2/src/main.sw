@@ -13,5 +13,4 @@ fn foo() {
     revert(0);
 }
 
-fn main() {
-}
+fn main() {}

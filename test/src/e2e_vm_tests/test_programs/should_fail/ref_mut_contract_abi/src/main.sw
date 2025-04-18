@@ -5,7 +5,5 @@ abi MyAbi {
 }
 
 impl MyAbi for Contract {
-    fn foo(ref mut x: u64) {
-
-    }
+    fn foo(ref mut x: u64) {}
 }

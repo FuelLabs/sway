@@ -26,31 +26,43 @@ fn main() {
     let s1 = Struct::new();
 
     let _x = match s1 {
-        Struct { x, y, z } | Struct { x: y, y: x, z: a } => if y { 0 } else { x },
+        Struct { x, y, z } | Struct {
+            x: y, y: x, z: a,
+        } => if y { 0 } else { x },
     };
 
     let s2 = Struct::new();
 
     let _x = match s2 {
-        Struct { x, y, z } | Struct { x: y, y: x, z: a } | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+        Struct { x, y, z } | Struct {
+            x: y, y: x, z: a,
+        } | Struct {
+            x: y, y: x, z: b,
+        } => if y { 0 } else { x },
     };
 
     let s3 = Struct::new();
 
     let _x = match s3 {
-        Struct { x, y, z } | true | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+        Struct { x, y, z } | true | Struct {
+            x: y, y: x, z: b,
+        } => if y { 0 } else { x },
     };
 
     let s4 = Struct::new();
 
     let _x = match s4 {
-        true | Struct { x, y, z } | Struct { x: y, y: x, z: b } => if y { 0 } else { x },
+        true | Struct { x, y, z } | Struct {
+            x: y, y: x, z: b,
+        } => if y { 0 } else { x },
     };
 
     let s5 = Struct::new();
 
     let _x = match s5 {
-        Struct { x, y, z } | Struct { x: y, y: x, z: b } | true => if y { 0 } else { x },
+        Struct { x, y, z } | Struct {
+            x: y, y: x, z: b,
+        } | true => if y { 0 } else { x },
     };
 
     let s6 = Struct::new();
@@ -62,4 +74,4 @@ fn main() {
     poke(Struct::new().use_me());
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

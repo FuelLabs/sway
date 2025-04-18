@@ -30,7 +30,7 @@ impl MyFrom<b256> for Bytes {
 impl MyFrom<u64> for Bytes {
     fn my_from(_b: u64) -> Self {
         let mut bytes = Self::with_capacity(32);
-        
+
         bytes
     }
 
@@ -38,7 +38,6 @@ impl MyFrom<u64> for Bytes {
         42
     }
 }
-
 
 fn implicit_return_into(bytes: Bytes) -> b256 {
     assert(bytes.len() == 32);

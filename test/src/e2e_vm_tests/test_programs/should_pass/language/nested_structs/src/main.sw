@@ -2,7 +2,7 @@ script;
 
 struct I {
     zero: u64,
-    one: u8
+    one: u8,
 }
 
 struct T6 {
@@ -10,34 +10,34 @@ struct T6 {
     one: u8,
     two: I,
     three: u16,
-    four: (u8, u8)
+    four: (u8, u8),
 }
 
 struct W {
     t5: u64,
-    t6: T6
+    t6: T6,
 }
 
 struct T3 {
     zero: u8,
-    one: u8
+    one: u8,
 }
 
 struct T {
     t3: T3,
-    t4: u16
+    t4: u16,
 }
 
 struct T1 {
     zero: u64,
-    one: u64
+    one: u64,
 }
 
 struct S {
     t0: W,
     t1: T1,
     t2: T,
-    t3: u16
+    t3: u16,
 }
 
 fn main() -> bool {
@@ -46,27 +46,27 @@ fn main() -> bool {
             t5: 5,
             t6: T6 {
                 zero: 6,
-                one: 7, 
+                one: 7,
                 two: I {
-                    zero: 8, 
-                    one: 9
+                    zero: 8,
+                    one: 9,
                 },
                 three: 10,
-                four: (11, 12)
-            }
+                four: (11, 12),
+            },
         },
         t1: T1 {
-            zero: 0, 
-            one: 1
+            zero: 0,
+            one: 1,
         },
         t2: T {
             t3: T3 {
-                zero: 2, 
-                one: 3
+                zero: 2,
+                one: 3,
             },
-            t4: 4
+            t4: 4,
         },
-        t3: 13
+        t3: 13,
     };
 
     assert(s.t1.zero == 0);

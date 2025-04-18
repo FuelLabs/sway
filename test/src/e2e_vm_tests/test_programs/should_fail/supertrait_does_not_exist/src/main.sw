@@ -9,4 +9,4 @@ trait B: C {
     fn b();
 }
 
-fn main() { } 
+fn main() {}

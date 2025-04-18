@@ -5,6 +5,6 @@ abi MySuperAbi {
 }
 
 // error: traits cannot have superABIs
-trait MyAbi : MySuperAbi {
+trait MyAbi: MySuperAbi {
     fn abi_method();
 }

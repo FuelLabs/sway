@@ -1,7 +1,6 @@
 script;
 
 fn main() -> u64 {
-    while false {
-    };
+    while false {};
     42
 }

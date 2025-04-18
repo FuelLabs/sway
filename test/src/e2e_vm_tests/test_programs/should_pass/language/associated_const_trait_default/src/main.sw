@@ -7,10 +7,10 @@ trait ConstantId {
 struct Struct {}
 
 impl ConstantId for Struct {
-  const ID: u32 = 5;
+    const ID: u32 = 5;
 }
 
-fn main() { }
+fn main() {}
 
 #[test]
 fn test() {

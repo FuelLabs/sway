@@ -2,4 +2,4 @@ library;
 
 use ::a::*;
 
-pub fn a() { }
+pub fn a() {}

@@ -8,4 +8,3 @@ enum MyEnum {
 fn main() {
     let _e = MyEnum::C;
 }
-

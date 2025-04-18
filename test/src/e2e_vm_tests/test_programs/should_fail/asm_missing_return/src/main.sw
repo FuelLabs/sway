@@ -1,11 +1,10 @@
 script;
 
 fn main() -> u64 {
-  foo()      
+    foo()
 }
 
 fn foo() -> u64 {
-  asm(r1: 5) {
-
-  }
+    asm(r1: 5) {
+    }
 }

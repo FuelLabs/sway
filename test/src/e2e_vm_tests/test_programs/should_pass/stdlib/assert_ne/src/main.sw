@@ -4,7 +4,6 @@ use std::bytes::Bytes;
 use std::b512::B512;
 
 fn main() -> bool {
-
     // test_assert_ne_u64
     let a = 42;
     let b = 40;

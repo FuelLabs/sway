@@ -1,4 +1,3 @@
-
 library;
 
 trait Cat {
@@ -18,7 +17,8 @@ impl S<u32, u64> {
 
 impl<Z, Y> S<Z, Y>
 where
-Z: Cat, Y: Cat
+    Z: Cat,
+    Y: Cat,
 {
     fn foo(self) -> u64 {
         1

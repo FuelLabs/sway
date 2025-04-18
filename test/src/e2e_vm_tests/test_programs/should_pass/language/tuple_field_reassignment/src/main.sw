@@ -45,24 +45,9 @@ fn main() -> u64 {
     foo3.tuple_of_pairs.1.y = 36;
 
     let ret = {
-        0
-        + foo0.1
-        + foo1.0.x
-        + foo1.0.y
-        + foo1.1
-        + foo2.1.x
-        + foo2.1.y
-        + foo3.tuple0.0
-        + foo3.tuple1.1
-        + foo3.pair.x
-        + foo3.pair.y
-        + foo3.tuple_of_pairs.0.x
-        + foo3.tuple_of_pairs.0.y
-        + foo3.tuple_of_pairs.1.x
-        + foo3.tuple_of_pairs.1.y
+        0 + foo0.1 + foo1.0.x + foo1.0.y + foo1.1 + foo2.1.x + foo2.1.y + foo3.tuple0.0 + foo3.tuple1.1 + foo3.pair.x + foo3.pair.y + foo3.tuple_of_pairs.0.x + foo3.tuple_of_pairs.0.y + foo3.tuple_of_pairs.1.x + foo3.tuple_of_pairs.1.y
     };
 
     // 320
     return ret;
 }
-

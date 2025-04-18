@@ -14,6 +14,6 @@ fn main() {
     let exchange_contract_id = amm_contract.pool();
 
     let exchange_contract = abi(Exchange, exchange_contract_id.unwrap().into());
-    
+
     exchange_contract.swap_exact_output();
 }

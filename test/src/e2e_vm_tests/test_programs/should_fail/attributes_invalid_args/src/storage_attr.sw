@@ -1,12 +1,12 @@
 library;
 
-pub struct S { }
+pub struct S {}
 
 impl S {
     #[storage(read, write)]
-    pub fn ok() { }
+    pub fn ok() {}
 
     #[storage(red, writte)]
     #[storage(unknown_arg)]
-    pub fn not_ok() { }
+    pub fn not_ok() {}
 }

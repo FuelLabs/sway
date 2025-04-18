@@ -1,3 +1,3 @@
 library;
 
-fn foo() { }
+fn foo() {}

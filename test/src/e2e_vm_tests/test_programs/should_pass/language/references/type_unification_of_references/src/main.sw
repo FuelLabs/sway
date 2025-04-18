@@ -30,7 +30,6 @@ fn test_referencing_numeric() {
     assert(*r == 123u64);
 
     // ----------------
-
     let r = &S { x: 123 };
     assert(r.x == 123);
 
@@ -56,7 +55,6 @@ fn test_referencing_numeric() {
     assert(r.x == 123u64);
 
     // ----------------
-
     let r = &S { x: &123 };
     assert(*r.x == 123);
 
@@ -82,7 +80,6 @@ fn test_referencing_numeric() {
     assert(*r.x == 123u64);
 
     // ----------------
-    
     let r = &Option::Some(123);
     match *r {
         Some(x) => assert(x == 123),
@@ -112,7 +109,7 @@ fn test_referencing_numeric() {
         Some(x) => assert(x == 123u64),
         None => assert(false),
     };
-    
+
     let r = &mut Option::Some(123);
     match *r {
         Some(x) => assert(x == 123),
@@ -144,62 +141,81 @@ fn test_referencing_numeric() {
     };
 
     // ----------------
-    
-    let r = &S { x: Option::Some(123) };
+    let r = &S {
+        x: Option::Some(123),
+    };
     match r.x {
         Some(x) => assert(x == 123),
         None => assert(false),
     };
 
-    let r = &S { x: Option::Some(123u8) };
+    let r = &S {
+        x: Option::Some(123u8),
+    };
     match r.x {
         Some(x) => assert(x == 123u8),
         None => assert(false),
     };
 
-    let r: &S<Option<u8>>  = &S { x: Option::Some(123) };
+    let r: &S<Option<u8>> = &S {
+        x: Option::Some(123),
+    };
     match r.x {
         Some(x) => assert(x == 123u8),
         None => assert(false),
     };
 
-    let r: &S<Option<u32>>  = &S { x: Option::Some(123) };
+    let r: &S<Option<u32>> = &S {
+        x: Option::Some(123),
+    };
     match r.x {
         Some(x) => assert(x == 123u32),
         None => assert(false),
     };
 
-    let r: &S<Option<u64>>  = &S { x: Option::Some(123u64) };
+    let r: &S<Option<u64>> = &S {
+        x: Option::Some(123u64),
+    };
     match r.x {
         Some(x) => assert(x == 123u64),
         None => assert(false),
     };
-    
-    let r = &mut S { x: Option::Some(123) };
+
+    let r = &mut S {
+        x: Option::Some(123),
+    };
     match r.x {
         Some(x) => assert(x == 123),
         None => assert(false),
     };
 
-    let r = &mut S { x: Option::Some(123u8) };
+    let r = &mut S {
+        x: Option::Some(123u8),
+    };
     match r.x {
         Some(x) => assert(x == 123u8),
         None => assert(false),
     };
 
-    let r: &mut S<Option<u8>>  = &mut S { x: Option::Some(123) };
+    let r: &mut S<Option<u8>> = &mut S {
+        x: Option::Some(123),
+    };
     match r.x {
         Some(x) => assert(x == 123u8),
         None => assert(false),
     };
 
-    let r: &mut S<Option<u32>>  = &mut S { x: Option::Some(123) };
+    let r: &mut S<Option<u32>> = &mut S {
+        x: Option::Some(123),
+    };
     match r.x {
         Some(x) => assert(x == 123u32),
         None => assert(false),
     };
 
-    let r: &mut S<Option<u64>>  = &mut S { x: Option::Some(123u64) };
+    let r: &mut S<Option<u64>> = &mut S {
+        x: Option::Some(123u64),
+    };
     match r.x {
         Some(x) => assert(x == 123u64),
         None => assert(false),

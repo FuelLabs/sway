@@ -9,11 +9,11 @@ trait Get2 {
 }
 
 struct Data1 {
-    value: u64
+    value: u64,
 }
 
 struct Data2 {
-    value: u64
+    value: u64,
 }
 
 impl Get1 for Data1 {
@@ -29,12 +29,8 @@ impl Get2 for Data2 {
 }
 
 fn main() -> u64 {
-    let a = Data1 {
-        value: 7
-    };
-    let _b = Data2 {
-        value: 8
-    };
+    let a = Data1 { value: 7 };
+    let _b = Data2 { value: 8 };
     let _c = a.get();
 
     0

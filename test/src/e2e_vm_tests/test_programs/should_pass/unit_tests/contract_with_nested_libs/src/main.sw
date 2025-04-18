@@ -7,9 +7,8 @@ abi MyContract {
 }
 
 impl MyContract for Contract {
-    fn foo() { }
+    fn foo() {}
 }
-
 
 #[test]
 fn test_meaning_of_life() {

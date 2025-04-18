@@ -1,8 +1,6 @@
 library;
 
-pub struct MyStruct {
-
-}
+pub struct MyStruct {}
 
 pub trait MyTrait {
     fn trait_method(self) -> bool;

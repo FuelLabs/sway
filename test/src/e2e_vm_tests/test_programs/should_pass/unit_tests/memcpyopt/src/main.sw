@@ -1,8 +1,6 @@
 script;
 
-pub fn main() {
-
-}
+pub fn main() {}
 
 pub struct S {
     ptr: raw_ptr,
@@ -16,7 +14,7 @@ impl S {
             aloc size;
             hp: raw_ptr
         };
-        S {ptr: ptr}
+        S { ptr: ptr }
     }
 
     #[inline(never)]
@@ -35,10 +33,10 @@ impl S {
 }
 
 #[inline(never)]
-fn side_effect(ref mut a: [S;2]) -> u64 {
+fn side_effect(ref mut a: [S; 2]) -> u64 {
     let mut b = S::new();
-    b.set(0,5);
-    b.set(1,6);
+    b.set(0, 5);
+    b.set(1, 6);
     a[1] = b;
     1
 }
@@ -47,11 +45,11 @@ fn side_effect(ref mut a: [S;2]) -> u64 {
 fn test() -> () {
     let mut v1 = S::new();
     let mut v2 = S::new();
-    v1.set(0,1);
-    v1.set(1,2);
-    v2.set(0,3);
-    v2.set(1,4);
-    let mut a: [S;2] = [v1, v2];
+    v1.set(0, 1);
+    v1.set(1, 2);
+    v2.set(0, 3);
+    v2.set(1, 4);
+    let mut a: [S; 2] = [v1, v2];
     let b = a[1].get(side_effect(a)); //ir is shown for this line
     assert(b == 4);
     ()
@@ -59,8 +57,8 @@ fn test() -> () {
 
 #[test]
 fn foo() -> u64 {
-   let mut x = 43;
-   x = x;
-   assert(x == 43);
-   x
+    let mut x = 43;
+    x = x;
+    assert(x == 43);
+    x
 }

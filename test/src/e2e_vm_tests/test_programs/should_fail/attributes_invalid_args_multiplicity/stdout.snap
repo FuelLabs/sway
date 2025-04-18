@@ -1,6 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 125
+snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity
 exit status: 1
@@ -195,10 +195,10 @@ error: Number of attribute arguments is invalid
 ____
 
 error: Number of attribute arguments is invalid
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/fallback_attr.sw:9:12
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/fallback_attr.sw:7:12
   |
 ...
-9 | #[fallback(invalid)]
+7 | #[fallback(invalid)]
   |            ^^^^^^^ "fallback" attribute must not have any arguments, but has one.
   |
 ____

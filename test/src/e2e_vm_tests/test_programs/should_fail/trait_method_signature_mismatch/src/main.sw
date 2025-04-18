@@ -3,10 +3,10 @@
 
 library;
 
-struct Dummy<T> { }
+struct Dummy<T> {}
 
 struct MyStruct<T> {
-    val: T
+    val: T,
 }
 
 trait MyTrait<T> {
@@ -15,9 +15,7 @@ trait MyTrait<T> {
 
 impl<T> MyTrait<T> for MyStruct<T> {
     // This implementation uses a Dummy, but the definition does not
-    fn set(self, val: Dummy<T>) {
-
-    }
+    fn set(self, val: Dummy<T>) {}
 }
 
 trait Foo {

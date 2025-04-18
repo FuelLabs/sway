@@ -13,11 +13,10 @@ pub trait StorageHelpers {
     fn set_owner(owner: b256);
 }
 
-pub trait Ownable : StorageHelpers {
+pub trait Ownable: StorageHelpers {
     // No methods in the interface. The user shouldn't need to implement anything manually.
 } {
     // These are all default-implemented ABI methods
-
     #[storage(read)]
     fn owner() -> b256 {
         Self::get_owner()

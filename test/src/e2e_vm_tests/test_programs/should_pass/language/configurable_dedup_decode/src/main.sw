@@ -8,7 +8,7 @@ struct Wrapped {
 // only one in the final IR
 configurable {
     WRAPPED: Wrapped = Wrapped { v: 1 },
-    TUPLE: (u64,) = (2,),
+    TUPLE: (u64, ) = (2, ),
 }
 
 fn main() -> u64 {

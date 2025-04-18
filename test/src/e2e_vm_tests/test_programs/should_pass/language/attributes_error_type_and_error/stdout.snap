@@ -1,6 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 125
+snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error --release --experimental error_type
 exit status: 0
@@ -11,7 +11,7 @@ warning: Empty error type enum cannot be used in `panic` expressions
  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error/src/main.sw:5:10
   |
 ...
-5 | pub enum EmptyErrorTypeEnum { }
+5 | pub enum EmptyErrorTypeEnum {}
   |          ------------------ Error type enum "EmptyErrorTypeEnum" is empty and can never be used in `panic` expressions.
   |
   = help: Empty enums with no enum variants can never be instantiated.

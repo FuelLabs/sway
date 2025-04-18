@@ -11,8 +11,8 @@ pub struct ThenAStruct {
 }
 
 pub enum TopLevelEnum {
-    first: (b256,
-    b256), second: ThenAStruct,
+    first: (b256, b256),
+    second: ThenAStruct,
 }
 
 fn main() -> TopLevelEnum {
@@ -27,8 +27,8 @@ fn main() -> TopLevelEnum {
     //  0000000000000000  #         ThenAStruct.LowerLevelEnum.padding
     //  0000000000000000  #         ThenAStruct.LowerLevelEnum.padding
     //  0000000000000042  #         ThenAStruct.LowerLevelEnum.second(66)
-
     TopLevelEnum::second(ThenAStruct {
-        first: 42, second: LowerLevelEnum::second(66)
+        first: 42,
+        second: LowerLevelEnum::second(66),
     })
 }

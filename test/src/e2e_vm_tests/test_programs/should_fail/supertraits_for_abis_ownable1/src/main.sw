@@ -15,7 +15,7 @@ abi MyAbi : Ownable {
 
 // error: no impl StorageHelpers for Contract
 
-impl Ownable for Contract { }
+impl Ownable for Contract {}
 
 impl MyAbi for Contract {
     #[storage(read, write)]

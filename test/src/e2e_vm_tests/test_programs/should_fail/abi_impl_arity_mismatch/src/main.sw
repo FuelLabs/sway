@@ -5,7 +5,7 @@ abi MyContract {
 }
 
 impl MyContract for Contract {
-    fn f(nondeclared_param : u64) -> bool {
+    fn f(nondeclared_param: u64) -> bool {
         true
     }
 }

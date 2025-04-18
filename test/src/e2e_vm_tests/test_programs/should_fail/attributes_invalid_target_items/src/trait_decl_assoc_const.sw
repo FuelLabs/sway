@@ -20,4 +20,4 @@ trait T {
     #[error_type(invalid)]
     #[error(invalid)]
     const TRAIT_CONST: u8 = 0;
-} 
+}

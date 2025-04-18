@@ -14,11 +14,15 @@ abi MyAbi : MySuperAbi {
 }
 
 impl MySuperAbi for Contract {
-    fn superabi_method() -> u64 { 42 }
+    fn superabi_method() -> u64 {
+        42
+    }
 }
 
 impl MyAbi for Contract {
-    fn abi_method() -> u64 { 43 }
+    fn abi_method() -> u64 {
+        43
+    }
 }
 
 #[test]

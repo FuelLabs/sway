@@ -1,6 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 125
+snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args
 exit status: 1
@@ -232,10 +232,10 @@ error: Attribute argument is invalid
 ____
 
 error: Number of attribute arguments is invalid
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/fallback_attr.sw:6:12
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/fallback_attr.sw:5:12
   |
 ...
-6 | #[fallback(invalid)] // Should be no invalid arg error or warning here.
+5 | #[fallback(invalid)] // Should be no invalid arg error or warning here.
   |            ^^^^^^^ "fallback" attribute must not have any arguments, but has one.
   |
 ____

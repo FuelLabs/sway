@@ -2,7 +2,7 @@ library;
 
 pub enum MyEnum {
     VariantA: (),
-    VariantB: u64
+    VariantB: u64,
 }
 
 pub fn func() -> bool {

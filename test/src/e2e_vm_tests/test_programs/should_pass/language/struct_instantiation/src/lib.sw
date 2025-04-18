@@ -1,5 +1,5 @@
 library;
 
 pub struct Struct<T> {
-  pub x: T,
+    pub x: T,
 }

@@ -4,7 +4,14 @@ use std::b512::*;
 
 // helper to prove contiguity of memory in B512 type's hi & lo fields.
 fn are_fields_contiguous(big_value: B512) -> bool {
-    asm(r1: (big_value.bits())[0], r2: (big_value.bits())[1], r3, r4, r5, r6) {
+    asm(
+        r1: (big_value.bits())[0],
+        r2: (big_value.bits())[1],
+        r3,
+        r4,
+        r5,
+        r6,
+    ) {
         move r3 sp; // Save a copy of SP in R3.
         cfei i64; // Reserve 512 bits of stack space.  SP is now R3+64.
         mcpi r3 r1 i64; // Copy 64 bytes *starting at* big_value.hi (includes big_value.lo)
@@ -43,10 +50,10 @@ fn main() -> bool {
     assert(one != three);
     assert(one != four);
 
-    let one_tuple:(b256,b256) = one.into();
-    let two_tuple:(b256,b256) = two.into();
-    let three_tuple:(b256,b256) = three.into();
-    let four_tuple:(b256,b256) = four.into();
+    let one_tuple: (b256, b256) = one.into();
+    let two_tuple: (b256, b256) = two.into();
+    let three_tuple: (b256, b256) = three.into();
+    let four_tuple: (b256, b256) = four.into();
 
     assert(one_tuple.0 == hi_bits);
     assert(one_tuple.1 == modified);

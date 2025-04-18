@@ -9,7 +9,6 @@ pub fn test() {
     let y = 0;
 
     // Shadowing a variable.
-
     let _ = asm(x) { // Not used.
         zero
     };
@@ -31,7 +30,6 @@ pub fn test() {
     };
 
     // Shadowing a configurable.
-
     let _ = asm(CONFIG) { // Not used.
         zero
     };
@@ -53,7 +51,6 @@ pub fn test() {
     };
 
     // Shadowing a non-local constant.
-
     let _ = asm(G_CONST) { // Not used.
         zero
     };
@@ -77,7 +74,6 @@ pub fn test() {
     const L_CONST: u64 = 0;
 
     // Shadowing a local constant.
-
     let _ = asm(L_CONST) { // Not used.
         zero
     };

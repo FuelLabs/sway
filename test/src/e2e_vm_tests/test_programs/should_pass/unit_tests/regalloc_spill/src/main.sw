@@ -1,7 +1,7 @@
 script;
 
 fn main() -> u64 {
-   fib_add()
+    fib_add()
 }
 
 fn fib_add() -> u64 {
@@ -47,11 +47,27 @@ fn fib_add() -> u64 {
     let v39 = add(v37, v38);
 
     let res = if t() {
-        add(add(add(add(add(v00, v01), v02), add(v03, v04)), add(add(add(v05, v06), v07), add(v08, v09))),
-            add(add(add(add(v10, v11), v12), add(v13, v14)), add(add(add(v15, v16), v17), add(v18, v19))))
+        add(
+            add(
+                add(add(add(v00, v01), v02), add(v03, v04)),
+                add(add(add(v05, v06), v07), add(v08, v09)),
+            ),
+            add(
+                add(add(add(v10, v11), v12), add(v13, v14)),
+                add(add(add(v15, v16), v17), add(v18, v19)),
+            ),
+        )
     } else {
-        add(add(add(add(add(v20, v21), v22), add(v23, v24)), add(add(add(v25, v26), v27), add(v28, v29))),
-            add(add(add(add(v30, v31), v32), add(v33, v34)), add(add(add(v35, v36), v37), add(v38, v39))))
+        add(
+            add(
+                add(add(add(v20, v21), v22), add(v23, v24)),
+                add(add(add(v25, v26), v27), add(v28, v29)),
+            ),
+            add(
+                add(add(add(v30, v31), v32), add(v33, v34)),
+                add(add(add(v35, v36), v37), add(v38, v39)),
+            ),
+        )
     };
 
     res

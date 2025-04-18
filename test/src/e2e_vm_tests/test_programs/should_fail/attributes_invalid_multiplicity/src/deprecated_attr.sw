@@ -1,8 +1,8 @@
 library;
 
 #[deprecated]
-pub struct Ok { }
+pub struct Ok {}
 
 #[deprecated]
 #[deprecated(note = "note")]
-pub struct NotOk { }
+pub struct NotOk {}

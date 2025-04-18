@@ -5,8 +5,8 @@ mod foo;
 use foo::*;
 
 struct Bar {
-  baz1: foo::Foo,
-  baz2: Foo,
+    baz1: foo::Foo,
+    baz2: Foo,
 }
 
 fn main() {
@@ -16,7 +16,10 @@ fn main() {
     };
 
     let b = match x {
-        Bar { baz1: ::foo::Foo::A(_), baz2: Foo::A(_) } => true,
+        Bar {
+            baz1: ::foo::Foo::A(_),
+            baz2: Foo::A(_),
+        } => true,
         _ => false,
     };
 

@@ -7,5 +7,4 @@ struct A {
 // Ensure shadowing is allowed.
 use std::address::Address;
 
-fn main() {
-}
+fn main() {}

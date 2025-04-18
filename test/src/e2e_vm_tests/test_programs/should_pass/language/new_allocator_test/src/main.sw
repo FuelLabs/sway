@@ -2,22 +2,18 @@ script;
 
 use std::*;
 
-fn sum_test(a:u64, b:u64, c:u64) -> u64 {
+fn sum_test(a: u64, b: u64, c: u64) -> u64 {
     let sum = a + b + c;
     sum
 }
 
 fn reassignment_test(cond: bool) -> u64 {
     let mut b = 2;
-    if cond {
-        b = 42;
-    } else {
-        b = 5;
-    };
+    if cond { b = 42; } else { b = 5; };
     b
 }
 
-fn loop_test(trip_count:u64) -> u64 {
+fn loop_test(trip_count: u64) -> u64 {
     let mut b = 0;
     while b < trip_count {
         b = b + 1;

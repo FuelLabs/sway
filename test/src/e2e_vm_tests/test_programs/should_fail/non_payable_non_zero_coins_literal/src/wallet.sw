@@ -2,12 +2,7 @@ contract;
 
 mod wallet_abi;
 
-use std::{
-    auth::AuthError,
-    call_frames::msg_asset_id,
-    context::msg_amount,
-    asset::transfer,
-};
+use std::{asset::transfer, auth::AuthError, call_frames::msg_asset_id, context::msg_amount};
 
 use wallet_abi::Wallet;
 const OWNER_ADDRESS = Address::from(0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
@@ -37,6 +32,10 @@ impl Wallet for Contract {
 
         storage.balance = current_balance - amount_to_send;
 
-        transfer(Identity::Address(recipient_address), AssetId::base(), amount_to_send);
+        transfer(
+            Identity::Address(recipient_address),
+            AssetId::base(),
+            amount_to_send,
+        );
     }
 }

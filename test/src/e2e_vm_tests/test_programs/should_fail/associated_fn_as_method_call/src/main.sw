@@ -3,13 +3,12 @@ script;
 struct Bar {}
 
 impl Bar {
-  fn associated() {}
+    fn associated() {}
 }
 
 fn main() -> u64 {
-  let bar = Bar {};
+    let bar = Bar {};
 
-  
-  bar.associated();
-  0
+    bar.associated();
+    0
 }

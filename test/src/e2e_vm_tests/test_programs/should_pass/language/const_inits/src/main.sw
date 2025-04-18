@@ -8,11 +8,7 @@ const ETH_ID1 = contract_id_wrapper(0x000000000000000000000000000000000000000000
 
 // test if-expressions
 fn bool_to_num(b: bool) -> u64 {
-    if b {
-        1
-    } else {
-        0
-    }
+    if b { 1 } else { 0 }
 }
 
 // test variable shadowing and local const
@@ -96,13 +92,15 @@ const CARR1 = [X_SIZE - Y_SIZE + 1; 4];
 // const CARR2 = [1; X_SIZE - Y_SIZE + 1];
 
 // Const init with Self
-struct WithSelf { value: u64 }
+struct WithSelf {
+    value: u64,
+}
 impl WithSelf {
     pub fn size() -> u64 {
         __transmute::<Self, u64>(Self { value: 1u64 })
     }
 }
-const WithSelfValue: u64 =  WithSelf::size();
+const WithSelfValue: u64 = WithSelf::size();
 
 fn main() -> u64 {
     const int1 = 1;
@@ -123,10 +121,10 @@ fn main() -> u64 {
     assert(a1[0] == ARR1[0] && a1[1] == ARR1[1] && a1[2] == ARR1[2]);
     assert(a1[0] == ARR2[0] && a1[1] == ARR2[1] && a1[2] == ARR2[2]);
     assert(
-        CARR1[0] == X_SIZE - Y_SIZE + 1 &&
-        CARR1[1] == X_SIZE - Y_SIZE + 1 &&
-        CARR1[2] == X_SIZE - Y_SIZE + 1 &&
-        CARR1[3] == X_SIZE - Y_SIZE + 1
+        CARR1[0] == X_SIZE - Y_SIZE + 1
+        && CARR1[1] == X_SIZE - Y_SIZE + 1
+        && CARR1[2] == X_SIZE - Y_SIZE + 1
+        && CARR1[3] == X_SIZE - Y_SIZE + 1,
     );
 
     // enum

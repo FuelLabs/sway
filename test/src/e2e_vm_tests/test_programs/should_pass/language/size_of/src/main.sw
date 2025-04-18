@@ -3,22 +3,22 @@ script;
 // 24 bytes
 // (8 bytes per element)
 struct Data {
-  one: u64,
-  two: u64,
-  three: u64,
+    one: u64,
+    two: u64,
+    three: u64,
 }
 
 // 24 bytes
 // (8 bytes per element)
 struct Point {
-  x: u8,
-  y: u8,
-  z: u8,
+    x: u8,
+    y: u8,
+    z: u8,
 }
 
 fn return_the_same<T>(elem: T) -> T {
-  let x: T = elem;
-  x
+    let x: T = elem;
+    x
 }
 
 fn main() -> u64 {
@@ -33,9 +33,9 @@ fn main() -> u64 {
         three: 30000,
     };
     let p = Point {
-      x: 0,
-      y: 1,
-      z: 2
+        x: 0,
+        y: 1,
+        z: 2,
     };
     let foo = return_the_same(7u64);
     assert(__size_of_val(x) == 24);

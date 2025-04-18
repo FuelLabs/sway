@@ -1,4 +1,3 @@
 library;
 
-pub fn color() {
-}
+pub fn color() {}

@@ -3,7 +3,7 @@ script;
 use std::constants::ZERO_B256;
 
 struct MyStruct<T> {
-    val: u64
+    val: u64,
 }
 
 trait From<T> {

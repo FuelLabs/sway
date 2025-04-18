@@ -5,5 +5,5 @@ abi ConstantId {
 }
 
 fn main() -> u32 {
-  ConstantId::ID
+    ConstantId::ID
 }

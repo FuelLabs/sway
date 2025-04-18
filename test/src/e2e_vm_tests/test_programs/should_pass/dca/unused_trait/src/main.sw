@@ -3,16 +3,12 @@ script;
 pub mod r#trait;
 mod utils;
 
-use r#trait::Trait;
+use trait::Trait;
 
-struct Foo {
+struct Foo {}
 
-}
-
-impl Trait for Foo {
-
-}
+impl Trait for Foo {}
 
 fn main() {
-    utils::uses_trait(Foo{});
+    utils::uses_trait(Foo {});
 }

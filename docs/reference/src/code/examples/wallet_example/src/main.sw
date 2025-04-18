@@ -10,11 +10,7 @@ abi Wallet {
 }
 // ANCHOR_END: abi
 // ANCHOR: implementation
-use std::{
-    call_frames::msg_asset_id,
-    context::msg_amount,
-    asset::transfer,
-};
+use std::{asset::transfer, call_frames::msg_asset_id, context::msg_amount};
 
 storage {
     balance: u64 = 0,

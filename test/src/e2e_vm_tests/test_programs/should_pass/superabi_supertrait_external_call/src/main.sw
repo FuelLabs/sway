@@ -9,7 +9,9 @@ abi MyAbi : MySuperTrait {
 }
 
 impl MySuperTrait for Contract {
-    fn method() -> u64 { 42 }
+    fn method() -> u64 {
+        42
+    }
 }
 
 impl MyAbi for Contract {}

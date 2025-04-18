@@ -24,7 +24,6 @@ use ::beta::gamma::bar as bar3;
 // Error: ::beta::gamma is private
 use ::beta::gamma::*;
 
-
 fn main() {
     ::alpha::foo();
 
@@ -43,5 +42,4 @@ fn main() {
     ::beta::gamma::bar();
 
     // ::beta::gamma_foo();
-    
 }

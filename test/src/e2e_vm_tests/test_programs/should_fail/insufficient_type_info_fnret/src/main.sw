@@ -7,8 +7,8 @@ fn main() {
 }
 
 fn foo<T>() -> T {
-   let x = 1;
-   asm(x: x) {
-      x: T
-   }
+    let x = 1;
+    asm(x: x) {
+        x: T
+    }
 }

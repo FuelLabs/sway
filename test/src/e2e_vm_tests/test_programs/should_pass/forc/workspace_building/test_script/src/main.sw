@@ -1,5 +1,3 @@
 script;
 
-fn main() {
-
-}
+fn main() {}

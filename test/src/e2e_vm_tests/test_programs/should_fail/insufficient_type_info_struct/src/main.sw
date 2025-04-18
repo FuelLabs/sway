@@ -1,7 +1,6 @@
 script;
 
-struct S<T> {
-}
+struct S<T> {}
 
 impl<T> S<T> {
     fn foo(self) -> u64 {

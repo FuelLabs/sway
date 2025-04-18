@@ -1,5 +1,4 @@
 script;
 
 #[fallback]
-fn fallback() {
-}
+fn fallback() {}

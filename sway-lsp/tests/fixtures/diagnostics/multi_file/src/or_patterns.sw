@@ -18,17 +18,16 @@ pub fn or_patterns_test() {
 
     let a = A { a: 1, b: 2 };
 
-
     match a {
         A { a, b: 2 } => (),
         A { a, b: 1 } => (),
-        A  { a: 1, b: _ } => (),
+        A { a: 1, b: _ } => (),
     }
 
     match a {
         A { a, b: 2 } | A { a, b: 1 } => (),
-        A  { a: 1, b: 0 } => (),
-        A  { a: 2, b: _ } => (),
+        A { a: 1, b: 0 } => (),
+        A { a: 2, b: _ } => (),
         A { a, b: 3 } => (),
     }
 
@@ -39,23 +38,17 @@ pub fn or_patterns_test() {
             a: A { a, b: 2 } | A { a, b: 1 },
             b: _,
         } => (),
-        B {
-            a: _,
-            b: 1,
-        } => (),
+        B { a: _, b: 1 } => (),
     }
 
     match b {
         B {
-            a: A { a, b: 2 } ,
+            a: A { a, b: 2 },
             b: _,
         } | B {
             a: A { a, b: 1 },
             b: _,
         } => (),
-        B {
-            a: _,
-            b: 1,
-        } => (),
+        B { a: _, b: 1 } => (),
     }
 }

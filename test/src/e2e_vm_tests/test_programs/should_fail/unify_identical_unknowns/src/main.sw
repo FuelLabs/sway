@@ -10,4 +10,4 @@ impl Foo for NonExistent {
     }
 }
 
-fn main() { }
+fn main() {}

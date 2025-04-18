@@ -12,11 +12,9 @@ fn main() {
     // 0x100000000 does not fit into a u32
     let _a = 0x100000000;
     Vec::<u32>::new().push(_a);
-
-    
 }
 
-fn insufficient_type_check(arg: u64) -> [u32;2] {
+fn insufficient_type_check(arg: u64) -> [u32; 2] {
     let res = [1u32, arg];
     res
 }

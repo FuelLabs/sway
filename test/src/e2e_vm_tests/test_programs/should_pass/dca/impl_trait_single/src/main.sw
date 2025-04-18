@@ -5,7 +5,7 @@ trait Get1 {
 }
 
 struct Data1 {
-    value: u64
+    value: u64,
 }
 
 impl Get1 for Data1 {
@@ -15,9 +15,7 @@ impl Get1 for Data1 {
 }
 
 fn main() -> u64 {
-    let a = Data1 {
-        value: 7
-    };
+    let a = Data1 { value: 7 };
     let _c = a.get();
     0
 }

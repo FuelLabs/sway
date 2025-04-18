@@ -7,7 +7,7 @@ pub struct U128_2 {
 }
 
 impl U128_2 {
-    fn associated_fn(){}
+    fn associated_fn() {}
 }
 impl From<u8> for U128_2 {
     fn from(val: u8) -> Self {

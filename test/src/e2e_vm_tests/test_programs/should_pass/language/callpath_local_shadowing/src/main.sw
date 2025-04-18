@@ -10,8 +10,8 @@ struct TestStruct {
 }
 
 fn main() {
-   let ts = TestStruct { x: 0, y: 0 };
-   poke(ts.x);
+    let ts = TestStruct { x: 0, y: 0 };
+    poke(ts.x);
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

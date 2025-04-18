@@ -1,6 +1,6 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
+implicit-std = false
 license = "Apache-2.0"
 name = "const_eval_bad_struct_with_return"
-implicit-std = false

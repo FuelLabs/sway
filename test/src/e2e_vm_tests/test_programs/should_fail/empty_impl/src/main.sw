@@ -1,9 +1,5 @@
 script;
 
-impl Coin {
+impl Coin {}
 
-}
-
-fn main() {
-
-}
+fn main() {}

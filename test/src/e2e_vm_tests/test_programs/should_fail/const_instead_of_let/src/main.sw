@@ -4,7 +4,7 @@ abi Abi1 {
     fn foo() -> b256;
 }
 
-abi Abi2{
+abi Abi2 {
     fn bar() -> u64;
 }
 

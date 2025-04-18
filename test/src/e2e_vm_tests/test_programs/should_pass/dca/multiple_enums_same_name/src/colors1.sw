@@ -1,6 +1,6 @@
 library;
 
 pub enum Colors {
-	Red: (),
-	Blue: ()
+    Red: (),
+    Blue: (),
 }

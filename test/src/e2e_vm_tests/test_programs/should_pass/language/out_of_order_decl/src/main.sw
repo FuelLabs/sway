@@ -17,10 +17,7 @@ fn main() -> bool {
     };
 
     // struct and enum with complex members, out of order
-    let u = FuelWrapper {
-        a: y,
-        b: z,
-    };
+    let u = FuelWrapper { a: y, b: z };
 
     let _v = WrapperEnum::Variant(u);
 
@@ -64,5 +61,4 @@ trait FuelTrait {
     fn foo() -> bool;
 }
 
-fn void() {
-}
+fn void() {}

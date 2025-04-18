@@ -4,18 +4,16 @@ script;
 // This file tests the correctness of that.
 
 enum Result<T, E> {
-  Ok: T,
-  Err: E,
+    Ok: T,
+    Err: E,
 }
 
-struct Product {
-}
+struct Product {}
 
-struct ItemDetails {
-}
+struct ItemDetails {}
 
 enum SaleError {
-    NotEnoughInventory: str, 
+    NotEnoughInventory: str,
 }
 
 fn main() -> u64 {
@@ -25,4 +23,3 @@ fn main() -> u64 {
     y = x;
     5
 }
-

@@ -1,14 +1,16 @@
 script;
 
-abi Abi { }
+abi Abi {
+}
 
 struct S {
     x: u8,
 }
 
-trait Trait {}
+trait Trait {
+}
 
-fn function() { }
+fn function() {}
 
 enum E {
     A: (),

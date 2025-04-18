@@ -1,16 +1,16 @@
 script;
 
 struct Foo<T> {
-  a: T,
+    a: T,
 }
 
 fn get_a<V>(foo: Foo<V>) -> V {
-  foo.a
+    foo.a
 }
 
 fn main() -> bool {
-  let foo = Foo { a: true };
-  let _bar = Foo { a: 10 };
+    let foo = Foo { a: true };
+    let _bar = Foo { a: 10 };
 
-  get_a(foo)
+    get_a(foo)
 }

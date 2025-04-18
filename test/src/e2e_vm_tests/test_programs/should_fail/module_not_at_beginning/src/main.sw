@@ -1,5 +1,5 @@
 library;
 
-fn main() { }
+fn main() {}
 
 mod a_module;

@@ -6,8 +6,7 @@ abi ContractCallsItsOwnMethod {
 }
 
 impl ContractCallsItsOwnMethod for Contract {
-    fn method1() {
-    }
+    fn method1() {}
     fn method2() {
         Self::method1()
     }

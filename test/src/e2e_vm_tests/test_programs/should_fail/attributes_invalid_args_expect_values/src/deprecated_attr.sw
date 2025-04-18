@@ -1,4 +1,4 @@
 library;
 
 #[deprecated(note)]
-pub struct NotOk { }
+pub struct NotOk {}

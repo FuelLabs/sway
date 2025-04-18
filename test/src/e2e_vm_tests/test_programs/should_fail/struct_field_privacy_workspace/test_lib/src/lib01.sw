@@ -28,10 +28,10 @@ impl Lib01PublicStruct {
 
 pub fn use_me() {
     let s = Lib01PrivateStruct { x: 0, y: 0 };
-    s. use_me();
+    s.use_me();
 
     let s = Lib01PublicStruct { x: 0, y: 0 };
-    s. use_me();
+    s.use_me();
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

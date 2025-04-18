@@ -35,4 +35,4 @@ fn main() {
     test_lib::use_me();
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

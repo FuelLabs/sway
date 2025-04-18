@@ -1,12 +1,12 @@
 script;
 
 struct T1 {
-    t1: u64, 
+    t1: u64,
 }
 
 struct T2 {
-    t1: u64, 
-    t2: u64
+    t1: u64,
+    t2: u64,
 }
 
 enum A {

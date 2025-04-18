@@ -1,6 +1,6 @@
 script;
 
-trait MyTrait{
+trait MyTrait {
     fn foo(ref mut self) -> u64;
 }
 
@@ -21,12 +21,15 @@ impl u64 {
     }
 }
 impl u32 {
-    fn baz(self) -> u64{
+    fn baz(self) -> u64 {
         32
     }
 }
 
-fn bar<T>(ref mut x: T) -> u64 where T: MyTrait {
+fn bar<T>(ref mut x: T) -> u64
+where
+    T: MyTrait,
+{
     x.foo()
 }
 
@@ -49,7 +52,7 @@ fn main() -> bool {
     assert_eq(a.baz(), 32);
     assert_eq(b.baz(), 32);
     assert_eq(c.baz(), 32);
-    {   // Test inside nested code block
+    { // Test inside nested code block
         let mut a = 0; // depth 1 type propagation
         let mut b = 0; // depth 2 type propagation
         let mut c = 0; // depth 3 type propagation

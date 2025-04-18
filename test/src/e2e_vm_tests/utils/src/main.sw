@@ -23,12 +23,11 @@ impl Dbg for str {
     }
 }
 
-
 impl Dbg for u64 {
     fn dbg(self) {
         let encoded = encode(self);
         asm(ra: u64::max(), ptr: encoded.ptr(), len: encoded.len::<u8>()) {
-           logd ra one ptr len;
+            logd ra one ptr len;
         }
     }
 }
@@ -36,7 +35,7 @@ impl Dbg for u64 {
 pub struct NewLine {}
 
 pub fn new_line() -> NewLine {
-    NewLine { }
+    NewLine {}
 }
 
 impl Dbg for NewLine {
@@ -77,7 +76,7 @@ where
     A: Dbg,
     B: Dbg,
     C: Dbg,
-    D: Dbg
+    D: Dbg,
 {
     fn dbg(self) {
         self.0.dbg();
@@ -86,7 +85,6 @@ where
         self.3.dbg();
     }
 }
-
 
 impl<A, B, C, D, E> Dbg for (A, B, C, D, E)
 where
@@ -132,7 +130,7 @@ where
     D: Dbg,
     E: Dbg,
     F: Dbg,
-    G: Dbg
+    G: Dbg,
 {
     fn dbg(self) {
         self.0.dbg();

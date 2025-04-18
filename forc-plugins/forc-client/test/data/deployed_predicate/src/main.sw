@@ -11,7 +11,7 @@ struct StructWithGeneric<D> {
     field_2: u64,
 }
 
-impl<D> PartialEq for EnumWithGeneric<D> 
+impl<D> PartialEq for EnumWithGeneric<D>
 where
     D: PartialEq,
 {

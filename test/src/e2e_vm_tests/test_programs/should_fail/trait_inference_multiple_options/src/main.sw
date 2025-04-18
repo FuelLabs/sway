@@ -4,11 +4,9 @@ pub trait MyFrom<T> {
     fn from(b: T) -> Self;
 }
 
-
 pub trait MyInto<T> {
     fn into(self) -> T;
 }
-
 
 impl<T, U> MyInto<U> for T
 where
@@ -35,6 +33,6 @@ fn main() -> bool {
     let (a, _b, _c, _d) = u256::min().into();
 
     assert_eq(a, 42);
-    
+
     true
 }

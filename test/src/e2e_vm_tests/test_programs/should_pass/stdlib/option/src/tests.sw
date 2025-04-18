@@ -7,8 +7,7 @@ use std::hash::*;
 /* Currently need to occasionally use `sha256` to compare generic types because
  * the correct implementation of `eq` for a type is not always detected
  * correctly. See https://github.com/FuelLabs/sway/issues/3351 and
- * https://github.com/FuelLabs/sway/issues/3326 */
-/////////////////////////////////////////////////////////////////////////////
+ * https://github.com/FuelLabs/sway/issues/3326 *//////////////////////////////////////////////////////////////////////////////
 // Generic Tests
 /////////////////////////////////////////////////////////////////////////////
 fn test_is_some<T>(val: T) {
@@ -23,7 +22,7 @@ fn test_is_none<T>(val: T) {
 
 fn test_unwrap<T>(val: T)
 where
-    T: Eq
+    T: Eq,
 {
     assert(Some(val).unwrap() == val);
 }
@@ -31,17 +30,16 @@ where
 fn test_unwrap_or<T>(val: T, default: T)
 where
     T: Eq,
-    T: Hash
+    T: Hash,
 {
     assert(sha256(Some(val).unwrap_or(default)) == sha256(val));
     assert(sha256(None::<T>.unwrap_or(default)) == sha256(default));
 }
 
 /* Currently not able to combine the two functions below due to
- * https://github.com/FuelLabs/sway/issues/3325 */
-fn test_some_ok_or<T, E>(val: T, default: E)
+ * https://github.com/FuelLabs/sway/issues/3325 */fn test_some_ok_or<T, E>(val: T, default: E)
 where
-    T: Eq
+    T: Eq,
 {
     match Some(val).ok_or(default) {
         Ok(inner) => assert(val == inner),

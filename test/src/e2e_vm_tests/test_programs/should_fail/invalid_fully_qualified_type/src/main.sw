@@ -3,12 +3,11 @@ script;
 mod foo;
 
 struct Bar {
-  baz: foo::foo::Foo
+    baz: foo::foo::Foo,
 }
 
 struct Bar2 {
-  baz: foo::Foo
+    baz: foo::Foo,
 }
 
-fn main() {
-}
+fn main() {}

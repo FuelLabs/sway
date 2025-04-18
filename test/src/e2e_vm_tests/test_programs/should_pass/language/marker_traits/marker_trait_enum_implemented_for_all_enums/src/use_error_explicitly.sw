@@ -2,7 +2,7 @@ library;
 
 use std::marker::Enum;
 
-use ::enums_01::{LibEnum01, EmptyLibEnum01};
+use ::enums_01::{EmptyLibEnum01, LibEnum01};
 
 // TODO: Remove one trait coherence and collecting of trait
 //       impls is implemented. See comment in `main.sw`.
@@ -12,10 +12,16 @@ enum LocalEnum {
     A: (),
 }
 
-enum LocalEmptyEnum { }
+enum LocalEmptyEnum {}
 
-fn implements_enum<T>(_t: T) where T: Enum { }
-fn implements_enum_no_args<T>() where T: Enum { }
+fn implements_enum<T>(_t: T)
+where
+    T: Enum,
+{}
+fn implements_enum_no_args<T>()
+where
+    T: Enum,
+{}
 
 pub fn test() {
     implements_enum(LocalEnum::A);

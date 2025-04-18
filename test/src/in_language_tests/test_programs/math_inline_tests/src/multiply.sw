@@ -73,7 +73,6 @@ fn math_u16_mul() {
     assert(max * one == max);
 }
 
-
 #[test(should_revert)]
 fn revert_math_u16_overflow_mul() {
     let a = u16::max();
@@ -242,4 +241,3 @@ fn math_u256_overflow_mul() {
 
     require(b == 0.as_u256(), b);
 }
-

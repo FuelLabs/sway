@@ -1,6 +1,6 @@
 script;
 
-struct Struct { }
+struct Struct {}
 
 impl Struct {
     const ID: u32 = 3;
@@ -10,7 +10,7 @@ impl Struct {
     }
 }
 
-struct StructOrder { }
+struct StructOrder {}
 
 impl StructOrder {
     fn foo(self) -> u32 {
@@ -22,8 +22,8 @@ impl StructOrder {
 }
 
 fn main() -> u32 {
-  let s = Struct {};
-  let so = StructOrder {};
+    let s = Struct {};
+    let so = StructOrder {};
 
-  s.foo() + so.foo()
+    s.foo() + so.foo()
 }

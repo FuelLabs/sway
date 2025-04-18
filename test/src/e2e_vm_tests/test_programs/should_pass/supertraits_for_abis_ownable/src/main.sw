@@ -25,7 +25,7 @@ impl StorageHelpers for Contract {
     }
 }
 
-impl Ownable for Contract { }
+impl Ownable for Contract {}
 
 impl MyAbi for Contract {
     #[storage(read, write)]

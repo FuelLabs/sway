@@ -46,6 +46,7 @@ impl Eq for S {}
 //    u8_parameter(p)
 // }
 
+
 impl PartialEq for [u64; 2] {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1]

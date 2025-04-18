@@ -8,7 +8,7 @@ trait Trait {
 
 impl Trait for u64 {
     #[inline(never)]
-    fn method(self) -> u64{
+    fn method(self) -> u64 {
         42
     }
 }
@@ -16,11 +16,17 @@ impl Trait for u64 {
 struct CallTrait<V> {}
 
 #[inline(never)]
-fn call_trait<T>(t: T) -> u64 where T: Trait {
+fn call_trait<T>(t: T) -> u64
+where
+    T: Trait,
+{
     t.method()
 }
 
-impl<K> CallTrait<K> where K: Trait {
+impl<K> CallTrait<K>
+where
+    K: Trait,
+{
     pub fn call_trait(self, key: K) -> u64 {
         let v = call_trait(key);
         v
@@ -28,7 +34,7 @@ impl<K> CallTrait<K> where K: Trait {
 }
 
 fn main() -> bool {
-    let _  = call_trait(1);
+    let _ = call_trait(1);
     let ct = CallTrait::<u64> {};
     assert(ct.call_trait(1) == 42);
     true

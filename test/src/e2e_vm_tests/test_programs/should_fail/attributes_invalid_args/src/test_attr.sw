@@ -1,8 +1,8 @@
 library;
 
 #[test(should_revert)]
-fn ok() { }
+fn ok() {}
 
 #[test(should_rvert)]
 #[test(unknown_arg)]
-fn not_ok() { }
+fn not_ok() {}

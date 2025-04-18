@@ -16,22 +16,20 @@ fn match_me(me: Foo) -> u32 {
     }
 }
 
-use std::ops::{Eq, Add};
+use std::ops::{Add, Eq};
 
-enum FooG<T>
-    where T: Eq
-{
+enum FooG<T> {
     Bar: ZoomG<T>,
 }
 
-enum ZoomG<T>
-    where T: Eq
-{
+enum ZoomG<T> {
     Wow: T,
 }
 
 fn match_generic<T>(me: FooG<T>) -> T
-where T: Eq + Add {
+where
+    T: Eq + Add,
+{
     match me {
         FooG::Bar(ZoomG::Wow(x)) => x + x,
     }

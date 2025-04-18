@@ -34,4 +34,4 @@ pub fn use_me() {
     s.use_me();
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

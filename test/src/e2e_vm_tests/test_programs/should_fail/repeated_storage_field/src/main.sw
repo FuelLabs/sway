@@ -1,6 +1,5 @@
 contract;
 
-
 storage {
     x: u64 = 0,
     x: b256 = b256::zero(),
@@ -12,6 +11,5 @@ abi Test {
 }
 
 impl Test for Contract {
-    fn foo() {
-    }
+    fn foo() {}
 }

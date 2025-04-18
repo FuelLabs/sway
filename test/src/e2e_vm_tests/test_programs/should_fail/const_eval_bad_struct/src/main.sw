@@ -27,7 +27,7 @@ impl MyContract for Contract {
         poke(s.x);
 
         poke(MY_CONST_STRUCT);
-        
+
         true
     }
 }

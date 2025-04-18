@@ -6,7 +6,10 @@ trait Build {
     fn build() -> Self;
 }
 
-fn produce<T>() -> T where T: Build {
+fn produce<T>() -> T
+where
+    T: Build,
+{
     T::build()
 }
 
@@ -44,7 +47,6 @@ fn main() -> (u8, u32, u64) {
     let a = produce_consume_u8();
     let b = produce_consume_u32();
     let c = produce_consume_u64();
-
     (a, b, c)
 }
 

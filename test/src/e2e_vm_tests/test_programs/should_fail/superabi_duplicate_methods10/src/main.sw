@@ -7,24 +7,20 @@
 
 contract;
 
-abi MySuperSuperAbi1
-{
-}
-{
+abi MySuperSuperAbi1 {
+} {
     fn method() {}
 }
 
-abi MySuperSuperAbi2
-{
-}
-{
+abi MySuperSuperAbi2 {
+} {
     fn method() {}
 }
 
-abi MySuperAbi1: MySuperSuperAbi1 {
+abi MySuperAbi1 : MySuperSuperAbi1 {
 }
 
-abi MySuperAbi2: MySuperSuperAbi2 {
+abi MySuperAbi2 : MySuperSuperAbi2 {
 }
 
 // For now we forbid ABIs to inherit methods with the same name

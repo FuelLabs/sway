@@ -1,7 +1,7 @@
 script;
 
 struct Data {
-    value: u64
+    value: u64,
 }
 
 impl Data {
@@ -15,5 +15,5 @@ impl Data {
 }
 
 fn main() {
-    fn bla() { }
+    fn bla() {}
 }

@@ -10,8 +10,8 @@ fn also_gimme_a_unit() -> () {
     x
 }
 
-fn gimme_a_single_value() -> (u32,) {
-    let x: (u32,) = (123u32,);
+fn gimme_a_single_value() -> (u32, ) {
+    let x: (u32, ) = (123u32, );
     x
 }
 

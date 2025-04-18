@@ -1,21 +1,21 @@
 script;
 
-struct S { }
+struct S {}
 
 impl<T> S {
-  fn f(self, value: T) {
-    __size_of::<T>();
-  }
+    fn f(self, value: T) {
+        __size_of::<T>();
+    }
 }
 
 enum Option<T> {
     Some: T,
-    None: ()
+    None: (),
 }
 
 enum OtherOption<T> {
     Some: T,
-    None: ()
+    None: (),
 }
 
 impl<T> Option<T> {
@@ -25,7 +25,7 @@ impl<T> Option<T> {
 }
 
 fn main() {
-    (S{}).f(true);
+    (S {}).f(true);
     let a = Option::Some(5u64);
     let b = OtherOption::Some(None(()));
     let c = a.return_false(b);

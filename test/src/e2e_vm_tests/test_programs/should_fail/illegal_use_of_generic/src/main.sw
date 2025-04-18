@@ -6,7 +6,7 @@ fn test_function<T>(value: T) {
 }
 
 struct Data<T> {
-    value: T
+    value: T,
 }
 
 impl<T> Data<T> {
@@ -15,6 +15,4 @@ impl<T> Data<T> {
     }
 }
 
-fn main() {
-
-}
+fn main() {}

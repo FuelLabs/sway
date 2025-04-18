@@ -1,11 +1,6 @@
 contract;
 
-use std::{
-    asset::*,
-    bytes::Bytes,
-    context::balance_of,
-    message::send_message,
-};
+use std::{asset::*, bytes::Bytes, context::balance_of, message::send_message,};
 
 abi TestFuelCoin {
     fn mint_coins(mint_amount: u64, sub_id: b256);

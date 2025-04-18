@@ -5,5 +5,5 @@ struct S<T> {
 }
 
 fn main() {
-    let x: <u8>::S::<u8> = S::<u8>{x: 8};
+    let x: <u8>::S::<u8> = S::<u8> { x: 8 };
 }

@@ -60,7 +60,7 @@ fn math_u8_log_unsafe_math() {
     let result_1 = 2_u8.log(0_u8);
     let result_2 = 2_u8.log(1_u8);
     let result_3 = 0_u8.log(2_u8);
-    
+
     assert(result_1 == 0);
     assert(result_2 == 0);
     assert(result_3 == 0);

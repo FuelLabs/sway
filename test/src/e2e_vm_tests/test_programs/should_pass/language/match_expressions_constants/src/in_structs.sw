@@ -27,10 +27,22 @@ struct StructWithConstNames {
 }
 
 pub fn test() {
-    let a = match return_me(S { x: NUMBER_3, b: true }) {
-        S { x: NUMBER_1, b: _ } => 1,
-        S { x: NUMBER_2, b: _ } => 2,
-        S { x: NUMBER_3, b: _ } => 42,
+    let a = match return_me(S {
+        x: NUMBER_3,
+        b: true,
+    }) {
+        S {
+            x: NUMBER_1,
+            b: _,
+        } => 1,
+        S {
+            x: NUMBER_2,
+            b: _,
+        } => 2,
+        S {
+            x: NUMBER_3,
+            b: _,
+        } => 42,
         _ => 1111,
     };
 
@@ -40,129 +52,193 @@ pub fn test() {
         S { x: _, b: TRUE } => 42,
         S { x: _, b: FALSE } => 3,
     };
-    
+
     assert_eq(b, 42);
 
     const LOCAL_X: u64 = 13;
 
-    let c = match return_me(S { x: MOD_X, b: true }) {
+    let c = match return_me(S {
+        x: MOD_X,
+        b: true,
+    }) {
         S { x: MOD_X, b: _ } => {
             42
         },
-        S { x: LOCAL_X, b: _ } => {
+        S {
+            x: LOCAL_X, b: _,
+        } => {
             4
         },
         S { x: LIB_X, b: _ } => {
             5
         },
-        S { x: ALIAS_LIB_Y, b: _ } => {
+        S {
+            x: ALIAS_LIB_Y,
+            b: _,
+        } => {
             6
         },
         _ => 2222,
     };
-    
+
     assert_eq(c, 42);
 
-    let c = match return_me(S { x: LOCAL_X, b: true }) {
+    let c = match return_me(S {
+        x: LOCAL_X,
+        b: true,
+    }) {
         S { x: MOD_X, b: _ } => {
             7
         },
-        S { x: LOCAL_X, b: _ } => {
+        S {
+            x: LOCAL_X, b: _,
+        } => {
             42
         },
         S { x: LIB_X, b: _ } => {
             8
         },
-        S { x: ALIAS_LIB_Y, b: _ } => {
+        S {
+            x: ALIAS_LIB_Y,
+            b: _,
+        } => {
             9
         },
         _ => 3333,
     };
-    
+
     assert_eq(c, 42);
 
-    let c = match return_me(S { x: LIB_X, b: true }) {
+    let c = match return_me(S {
+        x: LIB_X,
+        b: true,
+    }) {
         S { x: MOD_X, b: _ } => {
             10
         },
-        S { x: LOCAL_X, b: _ } => {
+        S {
+            x: LOCAL_X, b: _,
+        } => {
             11
         },
         S { x: LIB_X, b: _ } => {
             42
         },
-        S { x: ALIAS_LIB_Y, b: _ } => {
+        S {
+            x: ALIAS_LIB_Y,
+            b: _,
+        } => {
             12
         },
         _ => 4444,
     };
-    
+
     assert_eq(c, 42);
 
-    let c = match return_me(S { x: ALIAS_LIB_Y, b: true }) {
+    let c = match return_me(S {
+        x: ALIAS_LIB_Y,
+        b: true,
+    }) {
         S { x: MOD_X, b: _ } => {
             13
         },
-        S { x: LOCAL_X, b: _ } => {
+        S {
+            x: LOCAL_X, b: _,
+        } => {
             14
         },
         S { x: LIB_X, b: _ } => {
             15
         },
-        S { x: ALIAS_LIB_Y, b: _ } => {
+        S {
+            x: ALIAS_LIB_Y,
+            b: _,
+        } => {
             42
         },
         _ => 5555,
     };
-    
+
     assert_eq(c, 42);
 
-    let c = match return_me(S { x: MOD_X, b: true }) {
-        S { x: MOD_X, b: _ } | S { x: LOCAL_X, b: _ } | S { x: LIB_X, b: _ } => {
+    let c = match return_me(S {
+        x: MOD_X,
+        b: true,
+    }) {
+        S { x: MOD_X, b: _ } | S {
+            x: LOCAL_X, b: _,
+        } | S { x: LIB_X, b: _ } => {
             42
         },
-        S { x: ALIAS_LIB_Y, b: _ } => {
+        S {
+            x: ALIAS_LIB_Y,
+            b: _,
+        } => {
             16
         },
         _ => 6666,
     };
-    
+
     assert_eq(c, 42);
 
-    let c = match return_me(S { x: LOCAL_X, b: true }) {
-        S { x: MOD_X, b: _ } | S { x: LOCAL_X, b: _ } | S { x: LIB_X, b: _ } => {
+    let c = match return_me(S {
+        x: LOCAL_X,
+        b: true,
+    }) {
+        S { x: MOD_X, b: _ } | S {
+            x: LOCAL_X, b: _,
+        } | S { x: LIB_X, b: _ } => {
             42
         },
-        S { x: ALIAS_LIB_Y, b: _ } => {
+        S {
+            x: ALIAS_LIB_Y,
+            b: _,
+        } => {
             17
         },
         _ => 7777,
     };
-    
+
     assert_eq(c, 42);
 
-    let c = match return_me(S { x: LIB_X, b: true }) {
-        S { x: MOD_X, b: _ } | S { x: LOCAL_X, b: _ } | S { x: LIB_X, b: _ } => {
+    let c = match return_me(S {
+        x: LIB_X,
+        b: true,
+    }) {
+        S { x: MOD_X, b: _ } | S {
+            x: LOCAL_X, b: _,
+        } | S { x: LIB_X, b: _ } => {
             42
         },
-        S { x: ALIAS_LIB_Y, b: _ } => {
+        S {
+            x: ALIAS_LIB_Y,
+            b: _,
+        } => {
             18
         },
         _ => 8888,
     };
-    
+
     assert_eq(c, 42);
 
-    let c = match return_me(S { x: ALIAS_LIB_Y, b: true }) {
-        S { x: MOD_X, b: _ } | S { x: LOCAL_X, b: _ } | S { x: LIB_X, b: _ } => {
+    let c = match return_me(S {
+        x: ALIAS_LIB_Y,
+        b: true,
+    }) {
+        S { x: MOD_X, b: _ } | S {
+            x: LOCAL_X, b: _,
+        } | S { x: LIB_X, b: _ } => {
             19
         },
-        S { x: ALIAS_LIB_Y, b: _ } => {
+        S {
+            x: ALIAS_LIB_Y,
+            b: _,
+        } => {
             42
         },
         _ => 9999,
     };
-    
+
     assert_eq(c, 42);
 
     let s = StructWithConstNames {
@@ -173,10 +249,20 @@ pub fn test() {
     };
 
     let c = match return_me(s) {
-        StructWithConstNames { MOD_X: 0u64, LOCAL_X: _, LIB_X: _, ALIAS_LIB_Y: _ } => {
+        StructWithConstNames {
+            MOD_X: 0u64,
+            LOCAL_X: _,
+            LIB_X: _,
+            ALIAS_LIB_Y: _,
+        } => {
             20
         },
-        StructWithConstNames { MOD_X: MOD_X, LOCAL_X: LOCAL_X, LIB_X: LIB_X, ALIAS_LIB_Y: ALIAS_LIB_Y } => {
+        StructWithConstNames {
+            MOD_X: MOD_X,
+            LOCAL_X: LOCAL_X,
+            LIB_X: LIB_X,
+            ALIAS_LIB_Y: ALIAS_LIB_Y,
+        } => {
             42
         },
         _ => 9999,
@@ -190,14 +276,24 @@ pub fn test() {
     };
 
     let c = match return_me(s) {
-        StructWithConstNames { MOD_X: MOD_X, LOCAL_X: LOCAL_X, LIB_X: LIB_X, ALIAS_LIB_Y: ALIAS_LIB_Y } => {
+        StructWithConstNames {
+            MOD_X: MOD_X,
+            LOCAL_X: LOCAL_X,
+            LIB_X: LIB_X,
+            ALIAS_LIB_Y: ALIAS_LIB_Y,
+        } => {
             21
         },
-        StructWithConstNames { MOD_X: 0u64, LOCAL_X: 0u64, LIB_X: 0u64, ALIAS_LIB_Y: 0u64 } => {
+        StructWithConstNames {
+            MOD_X: 0u64,
+            LOCAL_X: 0u64,
+            LIB_X: 0u64,
+            ALIAS_LIB_Y: 0u64,
+        } => {
             42
         },
         _ => 10000,
     };
-    
+
     assert_eq(c, 42);
 }

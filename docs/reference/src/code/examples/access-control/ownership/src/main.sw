@@ -19,7 +19,16 @@ abi Ownership {
 impl Ownership for Contract {
     #[storage(read, write)]
     fn set_owner(owner: Option<Identity>) {
-        assert(storage.owner.read().is_none() || storage.owner.read().unwrap() == msg_sender().unwrap());
+        assert(
+            storage
+                .owner
+                .read()
+                .is_none() || storage
+                .owner
+                .read()
+                .unwrap() == msg_sender()
+                .unwrap(),
+        );
         storage.owner.write(owner);
     }
 

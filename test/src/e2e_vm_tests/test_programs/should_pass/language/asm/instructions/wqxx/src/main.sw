@@ -67,7 +67,7 @@ fn all_in_one() {
     let b: b256 = NINE;
 
     asm(res: res, a: a, b: b) {
-        wqop res a b i33; // a - b
+        wqop res a b i33;
     };
 
     assert_eq(res, ONE);
@@ -79,7 +79,7 @@ fn all_in_one() {
     let b: b256 = TWO;
 
     asm(res: res, a: a, b: b) {
-        wqml res a b i48; // 2 * 2
+        wqml res a b i48;
     }
 
     assert_eq(res, FOUR);
@@ -91,7 +91,7 @@ fn all_in_one() {
     let b: b256 = FIVE;
 
     asm(res: res, a: a, b: b) {
-        wqdv res a b i32; // 10 / 5
+        wqdv res a b i32;
     }
 
     assert_eq(res, TWO);
@@ -104,7 +104,7 @@ fn all_in_one() {
     let c: b256 = FIVE;
 
     asm(res: res, a: a, b: b, c: c) {
-        wqmd res a b c; // (10 * 2) / 5
+        wqmd res a b c;
     }
 
     assert_eq(res, FOUR);
@@ -117,7 +117,7 @@ fn all_in_one() {
     let c: b256 = FIVE;
 
     asm(res: res, a: a, b: b, c: c) {
-        wqam res a b c; // (10 + 2) % 5
+        wqam res a b c;
     }
 
     assert_eq(res, TWO);
@@ -130,7 +130,7 @@ fn all_in_one() {
     let c: b256 = THREE;
 
     asm(res: res, a: a, b: b, c: c) {
-        wqmm res a b c; // (10 * 2) % 3
+        wqmm res a b c;
     }
 
     assert_eq(res, TWO);

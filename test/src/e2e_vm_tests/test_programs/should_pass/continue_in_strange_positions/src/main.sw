@@ -4,7 +4,10 @@ script;
 // occurs in a non-statement position. This is allowed, but will often result in
 // unreachable code or similar warning situations.
 
-pub struct S { x : u64, y : u64, }
+pub struct S {
+    x: u64,
+    y: u64,
+}
 pub enum Enum {
     A: (u64, u64),
 }
@@ -36,67 +39,82 @@ fn in_length_1_array() -> u64 {
         let _ = [continue];
         i = 100;
     }
-    
+
     i
 }
- 
+
 // The first element of an array is treated differently
 fn in_length_2_array_first() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let x = [continue, { i = 90; 100 } ];
+        let x = [continue, {
+    i = 90;
+    100
+}];
         i = x[1];
     }
-    
+
     i
 }
- 
+
 // The first element of an array is treated differently
 fn in_length_2_array_second() -> u64 {
     let mut i = 31;
     while i < 32 {
         i = i + 1;
-        let x = [ { i = 42; 100 }, continue];
+        let x = [{
+    i = 42;
+    100
+}, continue];
         i = x[0];
     }
-    
+
     i
 }
- 
+
 fn in_array() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = [continue, { i = 90; continue }];
+        let _ = [continue, {
+    i = 90;
+    continue
+}];
         i = 100;
     }
-    
+
     i
 }
- 
+
 fn in_tuple() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = (continue, { i = 90; continue });
+        let _ = (continue, {
+            i = 90;
+            continue
+        });
         i = 100;
     }
-    
+
     i
 }
- 
+
 fn in_struct() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = S { x: continue, y: { i = 90; continue } };
+        let _ = S {
+            x: continue,
+            y: { i = 90;continue             },
+        };
         i = 100;
     }
-    
+
     i
 }
- 
+
 fn in_parentheses() -> u64 {
     let mut i = 31;
     while i < 42 {
@@ -104,7 +122,7 @@ fn in_parentheses() -> u64 {
         let _ = (continue);
         i = 100;
     }
-    
+
     i
 }
 
@@ -115,7 +133,7 @@ fn in_arithmetic() -> u64 {
         let _ = 1 + continue;
         i = 100;
     }
-    
+
     i
 }
 
@@ -123,17 +141,12 @@ fn in_if_condition() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = if continue {
-            i = 90;
-        }
-        else {
-            i = 100;
-        };
+        let _ = if continue { i = 90; } else { i = 100; };
     }
-    
+
     i
 }
- 
+
 fn in_while_condition() -> u64 {
     let mut i = 31;
     while i < 42 {
@@ -143,7 +156,7 @@ fn in_while_condition() -> u64 {
         }
         i = 100;
     }
-    
+
     i
 }
 
@@ -151,25 +164,31 @@ fn in_enum() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = Enum::A((continue, { i = 90; continue}));
+        let _ = Enum::A((continue, {
+            i = 90;
+            continue
+        }));
         i = 100;
     }
-    
+
     i
 }
- 
+
 fn in_enum_multivariant() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = Enum_multivariant::B((continue, { i = 90; continue}));
+        let _ = Enum_multivariant::B((continue, {
+            i = 90;
+            continue
+        }));
         i = 100;
     }
-    
+
     i
 }
 
-fn helper_fun(x : u64, y : u64) -> u64 {
+fn helper_fun(x: u64, y: u64) -> u64 {
     x + y
 }
 
@@ -177,10 +196,16 @@ fn in_fun_arg() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = helper_fun(continue, { i = 90; continue});
+        let _ = helper_fun(
+            continue,
+            {
+                i = 90;
+                continue
+            },
+        );
         i = 100;
     }
-    
+
     i
 }
 
@@ -188,10 +213,13 @@ fn in_lazy_and() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = (continue) && { i = 90; continue};
+        let _ = (continue) && {
+            i = 90;
+            continue
+        };
         i = 100;
     }
-    
+
     i
 }
 
@@ -199,10 +227,13 @@ fn in_lazy_or() -> u64 {
     let mut i = 31;
     while i < 42 {
         i = i + 1;
-        let _ = (continue) || { i = 90; continue};
+        let _ = (continue) || {
+            i = 90;
+            continue
+        };
         i = 100;
     }
-    
+
     i
 }
 
@@ -213,7 +244,7 @@ fn in_return() -> u64 {
         let _ = return continue;
         i = 100;
     }
-    
+
     i
 }
 
@@ -224,7 +255,7 @@ fn in_match_scrutinee_continue() -> u64 {
         match continue {
             _ => return 5411,
         }
-	i = i + 1;
+        i = i + 1;
     }
 
     i

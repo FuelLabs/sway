@@ -2,7 +2,7 @@ script;
 
 mod inner;
 
-fn main() { }
+fn main() {}
 
 #[test]
 fn test_meaning_of_life() {

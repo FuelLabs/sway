@@ -67,8 +67,8 @@ storage {
             /// Comment.
             #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
             x: u8 = 0,
-        }
-    }
+        },
+    },
 }
 
 /// Comment.

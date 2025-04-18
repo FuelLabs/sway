@@ -3,7 +3,6 @@ script;
 use std::u128::*;
 
 fn main() -> bool {
-
     let mut u_128 = U128::from((0, 7));
     let mut pow_of_u_128 = u_128.pow(U128::from((0, 2)));
     assert(pow_of_u_128 == U128::from((0, 49)));

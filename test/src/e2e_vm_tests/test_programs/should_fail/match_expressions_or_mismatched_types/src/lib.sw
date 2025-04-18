@@ -21,4 +21,4 @@ impl LibStruct {
 
 pub type LibStructAlias = LibStruct;
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

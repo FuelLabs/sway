@@ -1,7 +1,7 @@
 script;
 
 struct Foo {
-    value: u64
+    value: u64,
 }
 
 impl Foo {

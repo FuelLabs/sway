@@ -1,7 +1,7 @@
 contract;
 
 struct MyStruct {
-    val: u64
+    val: u64,
 }
 
 abi MyContract {

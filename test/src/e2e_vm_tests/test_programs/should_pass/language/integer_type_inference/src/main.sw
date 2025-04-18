@@ -1,7 +1,5 @@
 script;
-
-/* Test Constants */
-const X1: u8 = 4u8;
+ /* Test Constants */ const X1: u8 = 4u8;
 const X2: u8 = 4;
 
 const Y1: u16 = 4u16;
@@ -18,9 +16,7 @@ const V2 = 4u16;
 const V3 = 4u32;
 const V4 = 4u64;
 const V5 = 4;
-
-/* Traits Specific to Individual Integer Types */
-trait FooU8 {
+ /* Traits Specific to Individual Integer Types */ trait FooU8 {
     fn foo_u8(self);
 }
 
@@ -35,9 +31,7 @@ trait FooU32 {
 trait FooU64 {
     fn foo_u64(self);
 }
-
-/* Trait Impls */
-impl FooU8 for u8 {
+ /* Trait Impls */ impl FooU8 for u8 {
     fn foo_u8(self) {}
 }
 
@@ -55,8 +49,7 @@ impl FooU64 for u64 {
 
 use std::option::Option as OptionAlias;
 
-fn main() {
-    /* Make sure that the resulting types of constants are correct */
+fn main() { /* Make sure that the resulting types of constants are correct */
     X1.foo_u8();
     X2.foo_u8();
 
@@ -74,8 +67,7 @@ fn main() {
     V3.foo_u32();
     V4.foo_u64();
     V5.foo_u64();
-
-    /* Make sure that the resulting types of variables are correct */
+ /* Make sure that the resulting types of variables are correct */
     let x1: u8 = 4u8;
     let x2: u8 = 4u16.try_as_u8().unwrap();
     let x3: u8 = 4u32.try_as_u8().unwrap();

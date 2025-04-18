@@ -46,7 +46,7 @@ impl ty::TyEnumDecl {
         // create a namespace for the decl, used to create a scope for generics
         ctx.scoped(handler, Some(span.clone()), |ctx| {
             // Type check the type parameters.
-            let new_type_parameters = GenericTypeParameter::type_check_type_params(
+            let new_generic_parameters = GenericTypeParameter::type_check_type_params(
                 handler,
                 ctx.by_ref(),
                 type_parameters,
@@ -69,7 +69,7 @@ impl ty::TyEnumDecl {
             // create the enum decl
             let decl = ty::TyEnumDecl {
                 call_path,
-                type_parameters: new_type_parameters,
+                generic_parameters: new_generic_parameters,
                 variants: variants_buf,
                 span,
                 attributes,

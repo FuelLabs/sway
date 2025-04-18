@@ -46,7 +46,7 @@ fn scalar_bytes() {
     let zero_bytes = zero_scalar.bytes();
     assert(zero_bytes.len() == 32);
     assert(zero_bytes.capacity() == 32);
-    
+
     let scalar_1 = Scalar::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let scalar_1_bytes = scalar_1.bytes();
     assert(scalar_1_bytes.len() == 32);
@@ -63,17 +63,26 @@ fn scalar_from_u256() {
     let min = Scalar::from(0x0000000000000000000000000000000000000000000000000000000000000000_u256);
     assert(min.bytes().len() == 32);
     assert(min.bytes().capacity() == 32);
-    assert(b256::try_from(min.bytes()).unwrap() == 0x0000000000000000000000000000000000000000000000000000000000000000);
+    assert(
+        b256::try_from(min.bytes())
+            .unwrap() == 0x0000000000000000000000000000000000000000000000000000000000000000,
+    );
 
     let max = Scalar::from(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF_u256);
     assert(max.bytes().len() == 32);
     assert(max.bytes().capacity() == 32);
-    assert(b256::try_from(max.bytes()).unwrap() == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+    assert(
+        b256::try_from(max.bytes())
+            .unwrap() == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
+    );
 
     let other = Scalar::from(0x0000000000000000000000000000000000000000000000000000000000000000_u256);
     assert(other.bytes().len() == 32);
     assert(other.bytes().capacity() == 32);
-    assert(b256::try_from(other.bytes()).unwrap() == 0x0000000000000000000000000000000000000000000000000000000000000000);
+    assert(
+        b256::try_from(other.bytes())
+            .unwrap() == 0x0000000000000000000000000000000000000000000000000000000000000000,
+    );
 }
 
 #[test]
@@ -81,50 +90,86 @@ fn scalar_from_b256() {
     let min = Scalar::from(0x0000000000000000000000000000000000000000000000000000000000000000);
     assert(min.bytes().len() == 32);
     assert(min.bytes().capacity() == 32);
-    assert(b256::try_from(min.bytes()).unwrap() == 0x0000000000000000000000000000000000000000000000000000000000000000);
+    assert(
+        b256::try_from(min.bytes())
+            .unwrap() == 0x0000000000000000000000000000000000000000000000000000000000000000,
+    );
 
     let max = Scalar::from(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
     assert(max.bytes().len() == 32);
     assert(max.bytes().capacity() == 32);
-    assert(b256::try_from(max.bytes()).unwrap() == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+    assert(
+        b256::try_from(max.bytes())
+            .unwrap() == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
+    );
 
     let other = Scalar::from(0x1000000000000000000000000000000000000000000000000000000000000000);
     assert(other.bytes().len() == 32);
     assert(other.bytes().capacity() == 32);
-    assert(b256::try_from(other.bytes()).unwrap() == 0x1000000000000000000000000000000000000000000000000000000000000000);
+    assert(
+        b256::try_from(other.bytes())
+            .unwrap() == 0x1000000000000000000000000000000000000000000000000000000000000000,
+    );
 }
 
 #[test]
 fn scalar_from_u8_array() {
-    let min = Scalar::from([0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8]);
+    let min = Scalar::from([
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8,
+    ]);
     assert(min.bytes().len() == 32);
     assert(min.bytes().capacity() == 32);
-    assert(b256::try_from(min.bytes()).unwrap() == 0x0000000000000000000000000000000000000000000000000000000000000000);
+    assert(
+        b256::try_from(min.bytes())
+            .unwrap() == 0x0000000000000000000000000000000000000000000000000000000000000000,
+    );
 
-    let max = Scalar::from([255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8]);
+    let max = Scalar::from([
+        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+    ]);
     assert(max.bytes().len() == 32);
     assert(max.bytes().capacity() == 32);
-    assert(b256::try_from(max.bytes()).unwrap() == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+    assert(
+        b256::try_from(max.bytes())
+            .unwrap() == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
+    );
 
-    let other = Scalar::from([0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8]);
+    let other = Scalar::from([
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 1u8,
+    ]);
     assert(other.bytes().len() == 32);
     assert(other.bytes().capacity() == 32);
-    assert(b256::try_from(other.bytes()).unwrap() == 0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(
+        b256::try_from(other.bytes())
+            .unwrap() == 0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
 }
 
 #[test]
 fn scalar_u256_try_from() {
     let min = Scalar::from(0x0000000000000000000000000000000000000000000000000000000000000000_u256);
     let res_min = u256::try_from(min).unwrap();
-    assert(res_min == 0x0000000000000000000000000000000000000000000000000000000000000000_u256);
+    assert(
+        res_min == 0x0000000000000000000000000000000000000000000000000000000000000000_u256,
+    );
 
     let max = Scalar::from(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF_u256);
     let res_max = u256::try_from(max).unwrap();
-    assert(res_max == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF_u256);
+    assert(
+        res_max == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF_u256,
+    );
 
     let other = Scalar::from(0x1000000000000000000000000000000000000000000000000000000000000001_u256);
     let other_u256 = u256::try_from(other).unwrap();
-    assert(other_u256 == 0x1000000000000000000000000000000000000000000000000000000000000001_u256);
+    assert(
+        other_u256 == 0x1000000000000000000000000000000000000000000000000000000000000001_u256,
+    );
 }
 
 #[test]
@@ -139,7 +184,9 @@ fn scalar_b256_try_from() {
 
     let other = Scalar::from(0x1000000000000000000000000000000000000000000000000000000000000001_u256);
     let other_u256 = b256::try_from(other).unwrap();
-    assert(other_u256 == 0x1000000000000000000000000000000000000000000000000000000000000001);
+    assert(
+        other_u256 == 0x1000000000000000000000000000000000000000000000000000000000000001,
+    );
 }
 
 #[test]

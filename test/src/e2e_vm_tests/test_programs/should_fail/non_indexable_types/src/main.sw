@@ -10,7 +10,10 @@ fn main() {
     let _ = not_array[0];
     not_array[0] = 1;
 
-    let mut s = S { x: 0, u8_field: 0 };
+    let mut s = S {
+        x: 0,
+        u8_field: 0,
+    };
     let _ = s[0];
     s[0] = 1;
 
@@ -21,7 +24,7 @@ fn main() {
     let _ = array[0].x[0];
     array[0].x[0] = 1;
 
-    let _= array[0].u8_field[0];
+    let _ = array[0].u8_field[0];
     array[0].u8_field[0] = 1;
 
     let _ = array[0][0];

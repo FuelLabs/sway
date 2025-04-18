@@ -6,6 +6,6 @@ abi MyContract2 {
 
 impl MyContract2 for Contract {
     fn test_false() -> bool {
-    	false
+        false
     }
 }

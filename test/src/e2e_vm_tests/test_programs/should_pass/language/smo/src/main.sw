@@ -44,11 +44,15 @@ fn main() -> bool {
     __smo(recipient, b, coins);
     __smo(recipient, test_struct, coins);
     __smo(recipient, test_enum, coins);
-    __smo::<Option::<TestStruct<u64>>>(recipient, Option::Some(TestStruct {
-        field_1: true,
-        field_2: 42,
-        field_3: 42,
-    }), coins);
+    __smo::<Option::<TestStruct<u64>>>(
+        recipient,
+        Option::Some(TestStruct {
+            field_1: true,
+            field_2: 42,
+            field_3: 42,
+        }),
+        coins,
+    );
 
     // Make sure that logs don't clobber messages in the JSON ABI
     __log(a);

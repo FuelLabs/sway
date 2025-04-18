@@ -1,6 +1,6 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
+implicit-std = false
 license = "Apache-2.0"
 name = "trait_associated_const_missing_impl"
-implicit-std = false

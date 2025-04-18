@@ -13,7 +13,7 @@ fn arg_is_reference<T>(_a: T) -> bool {
 }
 
 fn main() -> bool {
-    assert(!__is_reference_type::<()>());        // Is Unit ref or not?
+    assert(!__is_reference_type::<()>()); // Is Unit ref or not?
     assert(!__is_reference_type::<bool>());
     assert(!__is_reference_type::<u64>());
 

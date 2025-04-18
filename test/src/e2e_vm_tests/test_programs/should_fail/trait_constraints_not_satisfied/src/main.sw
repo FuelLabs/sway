@@ -18,19 +18,30 @@ trait MyAdd {
 //     }
 // }
 
+
 struct MyPoint<T> {
     x: T,
     y: T,
 }
 
-fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyAdd {
+fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T>
+where
+    T: MyAdd,
+{
     MyPoint {
         x: a.x.my_add(b.x),
         y: a.y.my_add(b.y),
     }
 }
 
-fn add_points2<T, F>(a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyAdd, F: MyAdd {
+fn add_points2<T, F>(
+    a: MyPoint<T>,
+    b: MyPoint<F>,
+) -> MyPoint<F>
+where
+    T: MyAdd,
+    F: MyAdd,
+{
     MyPoint {
         x: b.x.my_add(b.x),
         y: b.y.my_add(b.y),
@@ -62,7 +73,7 @@ fn main() -> u64 {
     };
     let e = MyPoint {
         x: 100u8,
-        y: 10u8
+        y: 10u8,
     };
     let f = add_points2(d, e);
     assert(f.x == 200u8);

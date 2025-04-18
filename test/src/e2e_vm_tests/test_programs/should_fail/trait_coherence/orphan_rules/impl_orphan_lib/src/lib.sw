@@ -1,3 +1,4 @@
 library;
 
-pub trait Vec<T> {}
+pub trait Vec<T> {
+}

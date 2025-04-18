@@ -6,10 +6,10 @@ struct S {
 }
 
 enum E {
-    X: u64
+    X: u64,
 }
 
-fn main() { 
+fn main() {
     let mut array = [1, 2, 3];
 
     array[0u8] = 0;
@@ -20,9 +20,7 @@ fn main() {
 
     // Enough vertical space, so that the below line
     // does not appear in the output of the above error.
-
     array[0u64] = 0;
-
 
     array[true] = 0;
 
@@ -31,18 +29,14 @@ fn main() {
     array["test"] = 0;
 
     array[S { x: 0 }] = 0;
-    
+
     array[E::X(0)] = 0;
 
     poke(array[0u8]);
     poke(array[0u16]);
     poke(array[0u32]);
 
-
-
     poke(array[0u64]);
-
-
 
     poke(array[true]);
     poke(array[()]);
@@ -50,8 +44,8 @@ fn main() {
     poke(array[S { x: 0 }]);
     poke(array[E::X(0)]);
 
-    poke(S { x: 0}.x);
+    poke(S { x: 0 }.x);
 }
 
 #[inline(never)]
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

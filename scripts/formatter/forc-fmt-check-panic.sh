@@ -10,7 +10,7 @@ let panicked=0
 for f in $forc_manifests
 do
     dir="${f%/*}"
-    stderr="$(forc-fmt -p $dir 2>&1 > /dev/null)"
+    stderr="$(cargo r -p forc-fmt --release -- -p $dir 2>&1)"
 
     echo $dir
     if [[ $stderr == *"panicked at"* ]]

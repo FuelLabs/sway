@@ -5,5 +5,5 @@ abi TypeAbi {
 }
 
 fn main() -> u32 {
-  0
+    0
 }

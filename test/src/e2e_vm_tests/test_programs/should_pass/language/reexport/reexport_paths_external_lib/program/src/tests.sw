@@ -33,7 +33,6 @@ use ext_4_items::Items4_Variants;
 use ext_5_1_lib::*;
 use ext_5_2_lib::*;
 
-
 // Helper types
 
 struct TestStruct1 {
@@ -44,7 +43,6 @@ struct TestStruct2 {
     W: bool,
 }
 
-
 // ext_1_lib tests
 
 fn project_items_1_struct(input: Items1_Struct) -> u64 {
@@ -53,15 +51,15 @@ fn project_items_1_struct(input: Items1_Struct) -> u64 {
 
 fn project_items_1_enum(input: Items1_Enum) -> u64 {
     match input {
-	Items1_Enum::A(val) => val,
-	Items1_Enum::B(val) => val + 1000,
+        Items1_Enum::A(val) => val,
+        Items1_Enum::B(val) => val + 1000,
     }
 }
 
 fn project_items_1_variants(input: Items1_Variants) -> u64 {
     match input {
-	X(val) => val,
-	Y(val) => val + 1000,
+        X(val) => val,
+        Y(val) => val + 1000,
     }
 }
 
@@ -71,10 +69,9 @@ fn call_items_1_function() -> u64 {
 
 impl Items1Trait<TestStruct2> for TestStruct1 {
     fn items_1_trait_function(self, x: TestStruct2) -> bool {
-	self.Z == 64 && x.W
+        self.Z == 64 && x.W
     }
 }
-
 
 // ext_2_lib tests
 
@@ -84,15 +81,15 @@ fn project_items_2_struct(input: Items2_Struct) -> u64 {
 
 fn project_items_2_enum(input: Items2_Enum) -> u64 {
     match input {
-	Items2_Enum::C(val) => val,
-	Items2_Enum::D(val) => val + 1000,
+        Items2_Enum::C(val) => val,
+        Items2_Enum::D(val) => val + 1000,
     }
 }
 
 fn project_items_2_variants(input: Items2_Variants) -> u64 {
     match input {
-	Z(val) => val,
-	W(val) => val + 1000,
+        Z(val) => val,
+        W(val) => val + 1000,
     }
 }
 
@@ -102,10 +99,9 @@ fn call_items_2_function() -> u64 {
 
 impl Items2Trait<TestStruct2> for TestStruct1 {
     fn items_2_trait_function(self, x: TestStruct2) -> bool {
-	self.Z == 64 && x.W
+        self.Z == 64 && x.W
     }
 }
-
 
 // ext_3_lib tests
 
@@ -115,15 +111,15 @@ fn project_items_3_struct(input: Items3_Struct) -> u64 {
 
 fn project_items_3_enum(input: Items3_Enum) -> u64 {
     match input {
-	Items3_Enum::E(val) => val,
-	Items3_Enum::F(val) => val + 1000,
+        Items3_Enum::E(val) => val,
+        Items3_Enum::F(val) => val + 1000,
     }
 }
 
 fn project_items_3_variants(input: Items3_Variants) -> u64 {
     match input {
-	U(val) => val,
-	V(val) => val + 1000,
+        U(val) => val,
+        V(val) => val + 1000,
     }
 }
 
@@ -133,10 +129,9 @@ fn call_items_3_function() -> u64 {
 
 impl Items3Trait<TestStruct2> for TestStruct1 {
     fn items_3_trait_function(self, x: TestStruct2) -> bool {
-	self.Z == 64 && x.W
+        self.Z == 64 && x.W
     }
 }
-
 
 // ext_4_lib tests
 
@@ -146,15 +141,15 @@ fn project_items_4_struct(input: Items4_Struct) -> u64 {
 
 fn project_items_4_enum(input: Items4_Enum) -> u64 {
     match input {
-	Items4_Enum::G(val) => val,
-	Items4_Enum::H(val) => val + 1000,
+        Items4_Enum::G(val) => val,
+        Items4_Enum::H(val) => val + 1000,
     }
 }
 
 fn project_items_4_variants(input: Items4_Variants) -> u64 {
     match input {
-	S(val) => val,
-	T(val) => val + 1000,
+        S(val) => val,
+        T(val) => val + 1000,
     }
 }
 
@@ -164,10 +159,9 @@ fn call_items_4_function() -> u64 {
 
 impl Items4Trait<TestStruct2> for TestStruct1 {
     fn items_4_trait_function(self, x: TestStruct2) -> bool {
-	self.Z == 64 && x.W
+        self.Z == 64 && x.W
     }
 }
-
 
 // ext_5_lib tests
 
@@ -177,15 +171,15 @@ fn project_items_5_struct(input: Items5_Struct) -> u64 {
 
 fn project_items_5_enum(input: Items5_Enum) -> u64 {
     match input {
-	Items5_Enum::I(val) => val,
-	Items5_Enum::J(val) => val + 1000,
+        Items5_Enum::I(val) => val,
+        Items5_Enum::J(val) => val + 1000,
     }
 }
 
 fn project_items_5_variants(input: Items5_Variants) -> u64 {
     match input {
-	Q(val) => val,
-	R(val) => val + 1000,
+        Q(val) => val,
+        R(val) => val + 1000,
     }
 }
 
@@ -195,10 +189,9 @@ fn call_items_5_function() -> u64 {
 
 impl Items5Trait<TestStruct2> for TestStruct1 {
     fn items_5_trait_function(self, x: TestStruct2) -> bool {
-	self.Z == 64 && x.W
+        self.Z == 64 && x.W
     }
 }
-
 
 pub fn run_all_tests() -> u64 {
     let items_1_struct = Items1_Struct { a: 123 };
@@ -216,11 +209,10 @@ pub fn run_all_tests() -> u64 {
     let items_1_function_res = call_items_1_function();
     assert(items_1_function_res == ITEMS_1_FUNCTION_RES);
 
-    let teststruct_1 = TestStruct1 { Z : 64 };
-    let teststruct_2 = TestStruct2 { W : true };
+    let teststruct_1 = TestStruct1 { Z: 64 };
+    let teststruct_2 = TestStruct2 { W: true };
     let items_1_trait_teststruct_1_res = teststruct_1.items_1_trait_function(teststruct_2);
     assert(items_1_trait_teststruct_1_res);
-
 
     let items_2_struct = Items2_Struct { b: 223 };
     let items_2_struct_res = project_items_2_struct(items_2_struct);
@@ -237,11 +229,10 @@ pub fn run_all_tests() -> u64 {
     let items_2_function_res = call_items_2_function();
     assert(items_2_function_res == ITEMS_2_FUNCTION_RES);
 
-    let teststruct_1 = TestStruct1 { Z : 64 };
-    let teststruct_2 = TestStruct2 { W : true };
+    let teststruct_1 = TestStruct1 { Z: 64 };
+    let teststruct_2 = TestStruct2 { W: true };
     let items_2_trait_teststruct_1_res = teststruct_1.items_2_trait_function(teststruct_2);
     assert(items_2_trait_teststruct_1_res);
-
 
     let items_3_struct = Items3_Struct { c: 323 };
     let items_3_struct_res = project_items_3_struct(items_3_struct);
@@ -258,11 +249,10 @@ pub fn run_all_tests() -> u64 {
     let items_3_function_res = call_items_3_function();
     assert(items_3_function_res == ITEMS_3_FUNCTION_RES);
 
-    let teststruct_1 = TestStruct1 { Z : 64 };
-    let teststruct_2 = TestStruct2 { W : true };
+    let teststruct_1 = TestStruct1 { Z: 64 };
+    let teststruct_2 = TestStruct2 { W: true };
     let items_3_trait_teststruct_1_res = teststruct_1.items_3_trait_function(teststruct_2);
     assert(items_3_trait_teststruct_1_res);
-
 
     let items_4_struct = Items4_Struct { d: 424 };
     let items_4_struct_res = project_items_4_struct(items_4_struct);
@@ -279,11 +269,10 @@ pub fn run_all_tests() -> u64 {
     let items_4_function_res = call_items_4_function();
     assert(items_4_function_res == ITEMS_4_FUNCTION_RES);
 
-    let teststruct_1 = TestStruct1 { Z : 64 };
-    let teststruct_2 = TestStruct2 { W : true };
+    let teststruct_1 = TestStruct1 { Z: 64 };
+    let teststruct_2 = TestStruct2 { W: true };
     let items_4_trait_teststruct_1_res = teststruct_1.items_4_trait_function(teststruct_2);
     assert(items_4_trait_teststruct_1_res);
-
 
     let items_5_struct = Items5_Struct { e: 525 };
     let items_5_struct_res = project_items_5_struct(items_5_struct);
@@ -300,11 +289,10 @@ pub fn run_all_tests() -> u64 {
     let items_5_function_res = call_items_5_function();
     assert(items_5_function_res == ITEMS_5_FUNCTION_RES);
 
-    let teststruct_1 = TestStruct1 { Z : 64 };
-    let teststruct_2 = TestStruct2 { W : true };
+    let teststruct_1 = TestStruct1 { Z: 64 };
+    let teststruct_2 = TestStruct2 { W: true };
     let items_5_trait_teststruct_1_res = teststruct_1.items_5_trait_function(teststruct_2);
     assert(items_5_trait_teststruct_1_res);
-
 
     42
 }

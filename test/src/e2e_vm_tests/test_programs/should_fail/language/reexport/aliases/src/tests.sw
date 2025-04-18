@@ -40,7 +40,6 @@ use ::lib_4_2::Alias4Trait;
 use ::lib_5_1::*;
 use ::lib_5_2::*;
 
-
 // Helper types
 
 struct TestStruct1 {
@@ -51,7 +50,6 @@ struct TestStruct2 {
     W: bool,
 }
 
-
 // lib_2 tests
 
 fn project_items_2_struct(input: Items2_Struct) -> u64 {
@@ -60,15 +58,15 @@ fn project_items_2_struct(input: Items2_Struct) -> u64 {
 
 fn project_items_2_enum(input: Items2_Enum) -> u64 {
     match input {
-	Items2_Enum::A(val) => val,
-	Items2_Enum::B(val) => val + 1000,
+        Items2_Enum::A(val) => val,
+        Items2_Enum::B(val) => val + 1000,
     }
 }
 
 fn project_items_2_variants(input: Items2_Variants) -> u64 {
     match input {
-	Items2_X(val) => val,
-	Items2_Y(val) => val + 1000,
+        Items2_X(val) => val,
+        Items2_Y(val) => val + 1000,
     }
 }
 
@@ -78,10 +76,9 @@ fn call_items_2_function() -> u64 {
 
 impl Items2Trait<TestStruct2> for TestStruct1 {
     fn items_2_trait_function(self, x: TestStruct2) -> bool {
-	self.Z == 64 && x.W
+        self.Z == 64 && x.W
     }
 }
-
 
 // lib_3 tests
 
@@ -91,15 +88,15 @@ fn project_items_3_struct(input: Items3_Struct) -> u64 {
 
 fn project_items_3_enum(input: Items3_Enum) -> u64 {
     match input {
-	Items3_Enum::E(val) => val,
-	Items3_Enum::F(val) => val + 1000,
+        Items3_Enum::E(val) => val,
+        Items3_Enum::F(val) => val + 1000,
     }
 }
 
 fn project_items_3_variants(input: Items3_Variants) -> u64 {
     match input {
-	Items3_U(val) => val,
-	Items3_V(val) => val + 1000,
+        Items3_U(val) => val,
+        Items3_V(val) => val + 1000,
     }
 }
 
@@ -109,7 +106,7 @@ fn call_items_3_function() -> u64 {
 
 impl Items3Trait<TestStruct2> for TestStruct1 {
     fn items_3_trait_function(self, x: TestStruct2) -> bool {
-	self.Z == 64 && x.W
+        self.Z == 64 && x.W
     }
 }
 
@@ -119,18 +116,15 @@ impl Items3Trait<TestStruct2> for TestStruct1 {
 // impls of same trait for same type.
 impl Alias5Trait<TestStruct2> for TestStruct1 {
     fn items_5_trait_function(self, x: TestStruct2) -> bool {
-	self.Z == 64 && x.W
+        self.Z == 64 && x.W
     }
 }
 
 impl AltAlias5Trait<TestStruct2> for TestStruct1 {
     fn items_5_trait_function(self, x: TestStruct2) -> bool {
-	self.Z == 64 && x.W
+        self.Z == 64 && x.W
     }
 }
-
-
-
 
 pub fn run_all_tests() -> u64 {
     let items_2_struct = Items2_Struct { b: 123 };
@@ -148,11 +142,10 @@ pub fn run_all_tests() -> u64 {
     let items_2_function_res = call_items_2_function();
     assert(items_2_function_res == ITEMS_2_FUNCTION_RES);
 
-    let teststruct_1 = TestStruct1 { Z : 64 };
-    let teststruct_2 = TestStruct2 { W : true };
+    let teststruct_1 = TestStruct1 { Z: 64 };
+    let teststruct_2 = TestStruct2 { W: true };
     let items_2_trait_teststruct_1_res = teststruct_1.items_2_trait_function(teststruct_2);
     assert(items_2_trait_teststruct_1_res);
-
 
     let items_3_struct = Items3_Struct { c: 123 };
     let items_3_struct_res = project_items_3_struct(items_3_struct);
@@ -169,14 +162,13 @@ pub fn run_all_tests() -> u64 {
     let items_3_function_res = call_items_3_function();
     assert(items_3_function_res == ITEMS_3_FUNCTION_RES);
 
-    let teststruct_1 = TestStruct1 { Z : 64 };
-    let teststruct_2 = TestStruct2 { W : true };
+    let teststruct_1 = TestStruct1 { Z: 64 };
+    let teststruct_2 = TestStruct2 { W: true };
     let items_3_trait_teststruct_1_res = teststruct_1.items_3_trait_function(teststruct_2);
     assert(items_3_trait_teststruct_1_res);
 
-
-    let teststruct_1 = TestStruct1 { Z : 64 };
-    let teststruct_2 = TestStruct2 { W : true };
+    let teststruct_1 = TestStruct1 { Z: 64 };
+    let teststruct_2 = TestStruct2 { W: true };
     let items_5_trait_teststruct_1_res = teststruct_1.items_5_trait_function(teststruct_2);
     assert(items_5_trait_teststruct_1_res);
 

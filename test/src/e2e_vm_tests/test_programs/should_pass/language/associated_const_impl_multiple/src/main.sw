@@ -1,6 +1,6 @@
 script;
 
-struct Struct { }
+struct Struct {}
 
 impl Struct {
     const ID: u32 = 1;
@@ -14,6 +14,6 @@ fn main() {}
 
 #[test]
 fn test() {
-  assert_eq(1, Struct::ID);
-  assert_eq(2, Struct::ID2);
+    assert_eq(1, Struct::ID);
+    assert_eq(2, Struct::ID2);
 }

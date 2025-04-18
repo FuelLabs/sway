@@ -1,9 +1,9 @@
 [project]
-name = "multiple_supertraits_for_abis"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
-license = "Apache-2.0"
 implicit-std = false
+license = "Apache-2.0"
+name = "multiple_supertraits_for_abis"
 
 [dependencies]
 std = { path = "../../../reduced_std_libs/sway-lib-std-core" }

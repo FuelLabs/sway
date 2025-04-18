@@ -3,6 +3,7 @@ contract;
 // Correct path
 // use std::vm::evm::evm_address::EvmAddress;
 
+
 use std::vm::evm::EvmAddress;
 
 abi MyContract {

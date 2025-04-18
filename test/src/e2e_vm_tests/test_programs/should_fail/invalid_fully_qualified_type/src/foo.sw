@@ -1,6 +1,6 @@
 library;
 
 enum Foo {
-  A: (),
-  B: (),
+    A: (),
+    B: (),
 }

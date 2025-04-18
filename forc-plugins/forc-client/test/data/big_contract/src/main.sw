@@ -5,13 +5,13 @@ use std::hash::*;
 
 abi MyContract {
     fn large_blob() -> bool;
-    
+
     fn enum_input_output(loc: Location) -> Location;
-    
+
     fn struct_input_output(person: Person) -> Person;
-    
+
     fn array_of_enum_input_output(aoe: [Location; 2]) -> [Location; 2];
-    
+
     #[storage(read, write)]
     fn push_storage_u16(value: u16);
 
@@ -81,7 +81,14 @@ configurable {
     ARRAY_BOOL: [bool; 3] = [true, false, true],
     ARRAY_U64: [u64; 3] = [9, 8, 7],
     ARRAY_LOCATION: [Location; 2] = [Location::Earth(10), Location::Mars],
-    ARRAY_SIMPLE_STRUCT: [SimpleStruct; 3] = [ SimpleStruct { a: true, b: 5}, SimpleStruct { a: false, b: 0 }, SimpleStruct { a: true, b: u64::max() }],
+    ARRAY_SIMPLE_STRUCT: [SimpleStruct; 3] = [
+        SimpleStruct { a: true, b: 5 },
+        SimpleStruct { a: false, b: 0 },
+        SimpleStruct {
+            a: true,
+            b: u64::max(),
+        },
+    ],
     TUPLE_BOOL_U64: (bool, u64) = (true, 11),
     STR_4: str[4] = __to_str_array("abcd"),
 }
@@ -155,7 +162,7 @@ impl MyContract for Contract {
     fn get_storage_simple(index: u64) -> SimpleStruct {
         storage.my_simple_vec.get(index).unwrap().read()
     }
-    
+
     #[storage(read, write)]
     fn push_storage_location(value: Location) {
         storage.my_location_vec.push(value);

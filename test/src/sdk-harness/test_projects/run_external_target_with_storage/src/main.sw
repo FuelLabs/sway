@@ -18,7 +18,7 @@ impl RunExternalTest for Contract {
         foo * 2
     }
     fn large_value() -> b256 {
-       0x00000000000000000000000059F2f1fCfE2474fD5F0b9BA1E73ca90b143Eb8d0
+        0x00000000000000000000000059F2f1fCfE2474fD5F0b9BA1E73ca90b143Eb8d0
     }
 }
 

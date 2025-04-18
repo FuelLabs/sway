@@ -12,9 +12,10 @@ fn main() {
     let zero = 0;
     let coins = zero;
     // `coins:` is indirectly zero, this should pass
-    caller.send_funds {
-        gas: 10000,
-        coins: coins,
-        asset_id: b256::zero(),
-    }(amount_to_send, recipient_address);
+    caller
+        .send_funds {
+            gas: 10000,
+            coins: coins,
+            asset_id: b256::zero(),
+        }(amount_to_send, recipient_address);
 }

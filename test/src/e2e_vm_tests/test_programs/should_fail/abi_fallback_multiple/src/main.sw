@@ -5,9 +5,7 @@ abi ConstantId {
 }
 
 #[fallback]
-fn fallback_1() {
-}
+fn fallback_1() {}
 
 #[fallback]
-fn fallback_2() {
-}
+fn fallback_2() {}

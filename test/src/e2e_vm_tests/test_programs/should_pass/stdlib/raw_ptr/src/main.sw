@@ -25,7 +25,9 @@ fn main() -> bool {
 
     // Get a pointer to it
     let foo_ptr = __addr_of(foo);
-    assert(foo_ptr == asm(r1: foo) { r1: raw_ptr });
+    assert(foo_ptr == asm(r1: foo) {
+        r1: raw_ptr
+    });
 
     // Get another pointer to it and compare
     let foo_ptr_2 = __addr_of(foo);
@@ -34,10 +36,12 @@ fn main() -> bool {
     // Copy the struct into a buffer
     let buf_ptr = alloc::<u64>(2);
     foo_ptr.copy_to::<u64>(buf_ptr, 2);
-    assert(asm(r1: buf_ptr, r2: foo_ptr, r3: foo_len, res) {
-        meq res r1 r2 r3;
-        res: bool
-    });
+    assert(
+        asm(r1: buf_ptr, r2: foo_ptr, r3: foo_len, res) {
+            meq res r1 r2 r3;
+            res: bool
+        },
+    );
 
     // Read the pointer as a TestStruct
     let foo: TestStruct = buf_ptr.read();

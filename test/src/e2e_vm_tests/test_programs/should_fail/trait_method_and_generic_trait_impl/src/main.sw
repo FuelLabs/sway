@@ -1,7 +1,7 @@
 script;
 
 struct MyStruct<T> {
-    val: T
+    val: T,
 }
 
 trait MyTrait {
@@ -12,7 +12,10 @@ trait MyTrait {
     }
 }
 
-impl <T> MyTrait for MyStruct<T> where T: MyTrait {
+impl<T> MyTrait for MyStruct<T>
+where
+    T: MyTrait,
+{
     fn foo(self, other: Self) -> bool {
         self.val.foo(other.val)
     }

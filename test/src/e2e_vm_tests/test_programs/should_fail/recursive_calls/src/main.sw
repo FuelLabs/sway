@@ -29,8 +29,8 @@ fn f(n: u64) -> u64 {
 
 // Depends on symbols 'a' and 'b' but is not recursive.
 fn g(a: u64) -> u64 {
-  let b = a;
-  a + b
+    let b = a;
+    a + b
 }
 
 // main

@@ -12,24 +12,26 @@ abi A {
     fn a_common_1() -> u32;
     fn a_common_2() -> u32;
 } {
-    // TODO: Uncomment this case once `expression_variant::find_const_decl_from_impl` is implemented.
-    // fn a_implemented_with_default() -> u32 {
-    //     Self::A_WITH_DEFAULT
-    // }
 
-    // fn a_implemented_no_default() -> u32 {
-    //     Self::A_NO_DEFAULT
-    // }
+// TODO: Uncomment this case once `expression_variant::find_const_decl_from_impl` is implemented.
+// fn a_implemented_with_default() -> u32 {
+//     Self::A_WITH_DEFAULT
+// }
 
-    // fn a_implemented_common_1() -> u32 {
-    //     Self::COMMON_1
-    // }
+// fn a_implemented_no_default() -> u32 {
+//     Self::A_NO_DEFAULT
+// }
 
-    // fn a_implemented_common_2() -> u32 {
-    //     Self::COMMON_2
-    // }
+// fn a_implemented_common_1() -> u32 {
+//     Self::COMMON_1
+// }
+
+// fn a_implemented_common_2() -> u32 {
+//     Self::COMMON_2
+// }
+
 }
-    
+
 abi B {
     const COMMON_1: u32;
     const COMMON_2: u32 = 7;
@@ -37,14 +39,16 @@ abi B {
     fn b_common_1() -> u32;
     fn b_common_2() -> u32;
 } {
-    // TODO: Uncomment this case once `expression_variant::find_const_decl_from_impl` is implemented.
-    // fn b_implemented_common_1() -> u32 {
-    //     Self::COMMON_1
-    // }
 
-    // fn b_implemented_common_2() -> u32 {
-    //     Self::COMMON_2
-    // }
+// TODO: Uncomment this case once `expression_variant::find_const_decl_from_impl` is implemented.
+// fn b_implemented_common_1() -> u32 {
+//     Self::COMMON_1
+// }
+
+// fn b_implemented_common_2() -> u32 {
+//     Self::COMMON_2
+// }
+
 }
 
 impl A for Contract {
@@ -88,7 +92,6 @@ fn test() {
     let a = abi(A, CONTRACT_ID);
     // TODO: Enable these asserts once these bugs are fixed:
     //       https://github.com/FuelLabs/sway/issues/6306
-
     assert_eq(13, a.a_with_default());
     // assert_eq(13, a.a_implemented_with_default());
 

@@ -1,13 +1,11 @@
 contract;
 
-abi MyAbi
-{
+abi MyAbi {
     fn interface_method();
-}
-{
-    fn impl_method() { }
+} {
+    fn impl_method() {}
 }
 
 impl MyAbi for Contract {
-    fn interface_method() { }
+    fn interface_method() {}
 }

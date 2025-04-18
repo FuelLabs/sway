@@ -5,6 +5,5 @@ abi MyContract {
 }
 
 impl Contract { // self impl for a `Contract`?
-    fn foo() {
-    }
+    fn foo() {}
 }

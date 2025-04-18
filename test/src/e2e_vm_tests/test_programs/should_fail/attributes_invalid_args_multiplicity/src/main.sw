@@ -20,4 +20,4 @@ mod error_attr;
 /// Outer doc comment supports multiple.
 /// Outer doc comment supports multiple.
 /// Outer doc comment supports multiple.
-pub struct S { }
+pub struct S {}

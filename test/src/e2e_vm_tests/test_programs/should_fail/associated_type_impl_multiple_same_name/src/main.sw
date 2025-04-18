@@ -4,14 +4,13 @@ trait TypeTrait {
     type T;
 }
 
-struct Struct {
-}
+struct Struct {}
 
 impl TypeTrait for Struct {
-  type T = u64;
-  type T = u32;
+    type T = u64;
+    type T = u32;
 }
 
 fn main() -> u32 {
-  0
+    0
 }

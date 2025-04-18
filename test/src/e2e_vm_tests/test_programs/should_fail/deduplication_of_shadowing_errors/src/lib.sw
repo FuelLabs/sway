@@ -1,3 +1,3 @@
 library;
 
-pub struct Struct { }
+pub struct Struct {}

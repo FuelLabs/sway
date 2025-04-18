@@ -1,8 +1,8 @@
 library;
 
-struct S { }
+struct S {}
 
 impl S {
     #[inline(always = false)]
-    fn not_ok() { }
+    fn not_ok() {}
 }

@@ -9,6 +9,11 @@ pub struct LibStruct {
 
 impl LibStruct {
     pub fn new() -> Self {
-        Self { x_1: 0, x_2: 0, y_1: 0, y_2: 0 }
+        Self {
+            x_1: 0,
+            x_2: 0,
+            y_1: 0,
+            y_2: 0,
+        }
     }
 }

@@ -5,29 +5,29 @@ trait From2<T> {
 }
 
 struct S1 {
-    s1: u64
+    s1: u64,
 }
 
 struct S2 {
-    s2: u64
+    s2: u64,
 }
 
 impl From2<S1> for u64 {
     fn into2(self) -> S1 {
-        S1{s1: self}
+        S1 { s1: self }
     }
 }
 
 impl From2<S2> for u64 {
     fn into2(self) -> S2 {
-        S2{s2: self}
+        S2 { s2: self }
     }
 }
 
 fn main() -> bool {
-    let _s1: S1  = 42.into2();
-    
-    let _s2: S2  = 42.into2();
+    let _s1: S1 = 42.into2();
+
+    let _s2: S2 = 42.into2();
 
     true
 }

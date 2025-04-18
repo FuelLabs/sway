@@ -11,8 +11,9 @@ fn main() {
     let recipient_address = Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
     // `coins:` is missing (its default value is zero) and hence this is not an error
     // even that `send_funds` is not payable
-    caller.send_funds {
-        gas: 10000,
-        asset_id: b256::zero(),
-    }(amount_to_send, recipient_address);
+    caller
+        .send_funds {
+            gas: 10000,
+            asset_id: b256::zero(),
+        }(amount_to_send, recipient_address);
 }

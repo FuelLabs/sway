@@ -7,9 +7,9 @@ const VALUE: () = ();
 
 #[cfg(target = "fuel")]
 fn main() -> u64 {
-  VALUE
+    VALUE
 }
 #[cfg(target = "evm")]
 fn main() {
-  VALUE
+    VALUE
 }

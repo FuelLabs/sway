@@ -5,7 +5,7 @@ storage {
     my_storage_namespace {
         // ANCHOR_END: storage_namespace
         var: u64 = 0,
-    }
+    },
 }
 
 // ANCHOR: read
@@ -15,14 +15,15 @@ fn read() {
     // ANCHOR: storage_namespace_access
     let variable = storage::my_storage_namespace.var.read();
     // ANCHOR_END: storage_namespace_access
-
 }
 
 // ANCHOR: write
 #[storage(write)]
 // ANCHOR_END: write
 fn write() {
-    storage::my_storage_namespace.var.write(storage::my_storage_namespace.var.read() + 1);
+    storage::my_storage_namespace
+        .var
+        .write(storage::my_storage_namespace.var.read() + 1);
 }
 
 // ANCHOR: read_write

@@ -16,13 +16,14 @@ trait MyTrait2: MyTrait {
 // trait method due to incorrect trait constraint type checking ordering logic.
 
 
-impl<T1> MyTrait for (T1,)
+impl<T1> MyTrait for (T1, )
 where
     T1: MyTrait2,
 {
-    fn f(self) -> bool { self.0.f() }
-} 
-
+    fn f(self) -> bool {
+        self.0.f()
+    }
+}
 fn main() -> bool {
     true
 }

@@ -9,7 +9,7 @@ struct MainStruct {
     y: u64,
 }
 
-struct EmptyStruct { }
+struct EmptyStruct {}
 
 fn main() {
     let mut ls = LibStruct::new();

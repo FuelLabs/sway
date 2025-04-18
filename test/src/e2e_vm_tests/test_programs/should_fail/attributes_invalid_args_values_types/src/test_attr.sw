@@ -4,4 +4,4 @@ library;
 // to compile in the test mode. Keep it for completeness
 // of attributes.
 #[test(should_revert = true)]
-fn not_ok() { }
+fn not_ok() {}

@@ -1,7 +1,7 @@
 script;
 
 struct MyStruct {
-    a: u64
+    a: u64,
 }
 
 fn main() -> u32 {

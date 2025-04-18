@@ -8,8 +8,7 @@ use lib::L_A;
 
 // module const shadowing an imported const
 use lib::L_X;
-const L_X = 1; 
-
+const L_X = 1;
 // module const shadowing a module const
 const M_X = 2;
 const M_X = 3;
@@ -113,7 +112,9 @@ fn main() {
 
     // pattern variables shadowing different types of consts
     let _ = match s {
-        StructWithConstNames { M_X, L_Y, L_Z_ALIAS } => {
+        StructWithConstNames {
+            M_X, L_Y, L_Z_ALIAS,
+        } => {
             42
         },
     };
@@ -123,7 +124,7 @@ use lib::L_N;
 
 const M_M = 16;
 
-struct S { }
+struct S {}
 
 impl S {
     const S_X = 200;
@@ -140,7 +141,7 @@ impl S {
     }
 }
 
-enum E { }
+enum E {}
 
 impl E {
     const E_X = 300;

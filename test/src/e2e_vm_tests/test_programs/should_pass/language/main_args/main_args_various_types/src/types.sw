@@ -1,5 +1,5 @@
 library;
 
 pub struct S {
-    pub v: u64
+    pub v: u64,
 }

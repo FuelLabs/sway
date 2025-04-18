@@ -8,7 +8,7 @@ fn revert_01() -> u32 {
 
 fn revert_02() -> u32 {
     __revert(0);
- 
+
     return 2;
 }
 
@@ -16,11 +16,10 @@ fn revert_03(a: u64) -> u32 {
     if a > 0 {
         __revert(0);
         return 1;
-    }
-    else {
+    } else {
         return 0;
     }
- 
+
     return 3;
 }
 
@@ -30,7 +29,6 @@ fn std_revert_04() -> u32 {
     return 4;
 }
 
-
 fn main() -> u32 {
     let _ = revert_01();
     let _ = revert_02();
@@ -38,6 +36,3 @@ fn main() -> u32 {
     let _ = std_revert_04();
     0
 }
-
-
-

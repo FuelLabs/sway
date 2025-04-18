@@ -1,5 +1,6 @@
 script;
-trait T2 {}
+trait T2 {
+}
 trait T1: T2 {
     fn new() -> Self;
 }
@@ -14,19 +15,19 @@ impl T1 for S {
 
 fn bar<T>() -> T
 where
- T: T1,
+    T: T1,
 {
     T::new()
 }
 
 fn foo<T>() -> T
 where
- T: T2,
+    T: T2,
 {
     bar()
 }
 
 fn main() -> u64 {
-    let _:S = foo();
+    let _: S = foo();
     42
 }

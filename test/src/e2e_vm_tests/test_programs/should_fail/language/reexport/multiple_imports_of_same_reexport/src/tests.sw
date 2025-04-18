@@ -4,12 +4,12 @@ library;
 // Importing individual items from both lib_1_1 and lib_1_2 causes a name clash.
 // (The fact that they refer to the same item is irrelevant, since it is also an error to import the
 // same item twice from the same source)
-use ::lib_1_1::Items1_Struct; 
+use ::lib_1_1::Items1_Struct;
 use ::lib_1_1::Items1_Enum;
-use ::lib_1_1::Items1_Variants::X; 
-use ::lib_1_1::Items1_Variants::Y; 
-use ::lib_1_1::ITEMS_1_FUNCTION_RES; 
-use ::lib_1_1::items_1_function; 
+use ::lib_1_1::Items1_Variants::X;
+use ::lib_1_1::Items1_Variants::Y;
+use ::lib_1_1::ITEMS_1_FUNCTION_RES;
+use ::lib_1_1::items_1_function;
 use ::lib_1_1::Items1Trait;
 
 use ::lib_1_2::Items1_Struct;
@@ -40,15 +40,15 @@ fn project_items_1_struct(input: Items1_Struct) -> u64 {
 
 fn project_items_1_enum(input: Items1_Enum) -> u64 {
     match input {
-	Items1_Enum::A(val) => val,
-	Items1_Enum::B(val) => val + 1000,
+        Items1_Enum::A(val) => val,
+        Items1_Enum::B(val) => val + 1000,
     }
 }
 
 fn project_items_1_variants(input: Items1_Variants) -> u64 {
     match input {
-	X(val) => val,
-	Y(val) => val + 1000,
+        X(val) => val,
+        Y(val) => val + 1000,
     }
 }
 
@@ -58,10 +58,9 @@ fn call_items_1_function() -> u64 {
 
 impl Items1Trait<TestStruct2> for TestStruct1 {
     fn items_1_trait_function(self, x: TestStruct2) -> bool {
-	self.Z == 64 && x.W
+        self.Z == 64 && x.W
     }
 }
-
 
 pub fn run_all_tests() -> u64 {
     let items_1_struct = Items1_Struct { a: 123 };
@@ -79,8 +78,8 @@ pub fn run_all_tests() -> u64 {
     let items_1_function_res = call_items_1_function();
     assert(items_1_function_res == ITEMS_1_FUNCTION_RES);
 
-    let teststruct_1 = TestStruct1 { Z : 64 };
-    let teststruct_2 = TestStruct2 { W : true };
+    let teststruct_1 = TestStruct1 { Z: 64 };
+    let teststruct_2 = TestStruct2 { W: true };
     let items_1_trait_teststruct_1_res = teststruct_1.items_1_trait_function(teststruct_2);
     assert(items_1_trait_teststruct_1_res);
 

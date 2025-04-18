@@ -11,10 +11,7 @@ impl LibStruct {
         Self {
             x: 0,
             y: 0,
-            nested: LibNestedStruct {
-                x: 0,
-                y: 0,
-            }
+            nested: LibNestedStruct { x: 0, y: 0 },
         }
     }
 }

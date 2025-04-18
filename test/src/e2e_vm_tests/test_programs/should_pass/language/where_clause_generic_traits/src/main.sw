@@ -30,7 +30,10 @@ impl MyTraitGeneric<A> for u32 {
     }
 }
 
-trait MyTraitGeneric2<T> where T: MyTraitGeneric<u64> + MyTraitGeneric<A> {
+trait MyTraitGeneric2<T>
+where
+    T: MyTraitGeneric<u64> + MyTraitGeneric<A>,
+{
     fn method2(self) -> u64;
 }
 

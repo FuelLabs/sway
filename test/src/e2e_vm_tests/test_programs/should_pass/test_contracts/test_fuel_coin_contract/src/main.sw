@@ -1,6 +1,6 @@
 contract;
 
-use std::asset::{burn, transfer, mint};
+use std::asset::{burn, mint, transfer};
 use test_fuel_coin_abi::*;
 
 impl TestFuelCoin for Contract {

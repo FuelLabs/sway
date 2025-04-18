@@ -7,6 +7,5 @@ fn main() -> bool {
     let lo_bits: b256 = 0x5555555555555555555555555555555555555555555555555555555555555555;
 
     let b: B512 = B512::from((hi_bits, lo_bits));
-
     (b.bits())[1] == lo_bits && (b.bits())[0] == hi_bits
 }

@@ -25,7 +25,7 @@ impl MyTrait for B {
 }
 
 fn main() {
-    let struct_a = A { a: 1 }; 
+    let struct_a = A { a: 1 };
     let struct_b = B { a: 42 };
     assert(struct_a.extract_a() == 1);
     assert(struct_b.extract_a() == 42);

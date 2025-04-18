@@ -1,15 +1,13 @@
 script;
 
-fn main() {
-
-}
+fn main() {}
 
 #[test]
 fn test_bam() {
-  assert(1 == 1)
+    assert(1 == 1)
 }
 
 #[test]
 fn test_bum() {
-  assert(1 == 1)
+    assert(1 == 1)
 }

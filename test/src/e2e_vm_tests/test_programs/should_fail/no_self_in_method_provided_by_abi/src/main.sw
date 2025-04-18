@@ -3,7 +3,5 @@ contract;
 abi MyContract {
     fn foo();
 } {
-    fn bar(self) {
-    }
+    fn bar(self) {}
 }
-

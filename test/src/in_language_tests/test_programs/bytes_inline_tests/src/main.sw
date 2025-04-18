@@ -889,7 +889,7 @@ fn bytes_try_into_b256() {
     assert(small_result.is_none());
 
     let mut large_bytes = Bytes::new();
-        let mut i = 0;
+    let mut i = 0;
     while i < 33 {
         // 0x33 is 51 in decimal
         large_bytes.push(51u8);
@@ -924,7 +924,7 @@ fn bytes_b256_try_from() {
     assert(small_result.is_none());
 
     let mut large_bytes = Bytes::new();
-        let mut i = 0;
+    let mut i = 0;
     while i < 33 {
         // 0x33 is 51 in decimal
         large_bytes.push(51u8);

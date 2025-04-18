@@ -5,7 +5,7 @@ script;
 // https://doc.rust-lang.org/rust-by-example/trait/disambiguating.html
 
 struct Data<T> {
-    value: T
+    value: T,
 }
 
 trait MyAdd {
@@ -42,7 +42,7 @@ impl Data<u64> {
     // duplicate definition
     fn my_add(self, other: Self) -> Self {
         Data {
-            value: self.value + other.value
+            value: self.value + other.value,
         }
     }
 }
@@ -51,7 +51,7 @@ impl Data<u32> {
     // duplicate definition
     fn my_add(self, other: Self) -> Self {
         Data {
-            value: self.value + other.value
+            value: self.value + other.value,
         }
     }
 }
@@ -62,6 +62,4 @@ impl Data<u8> {
     }
 }
 
-fn main() {
-
-}
+fn main() {}

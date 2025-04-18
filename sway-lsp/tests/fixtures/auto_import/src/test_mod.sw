@@ -1,6 +1,6 @@
 library;
 
-pub fn test_fun(){}
+pub fn test_fun() {}
 
 pub struct A {}
 

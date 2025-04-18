@@ -17,7 +17,8 @@ impl Build for u64 {
 }
 
 fn produce<T>() -> T
-where T: Build,
+where
+    T: Build,
 {
     T::build()
 }

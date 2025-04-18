@@ -57,12 +57,16 @@ impl ExperimentalStorageTest for Contract {
         storage.nested_vec.push(StorageVec {});
         storage.nested_vec.push(StorageVec {});
 
-        let _ =storage.nested_vec.load_vec();
+        let _ = storage.nested_vec.load_vec();
     }
 }
 
 #[storage(read, write)]
-fn test_access(inner_vec0: StorageKey<StorageVec<u64>>, inner_vec1: StorageKey<StorageVec<u64>>, inner_vec2: StorageKey<StorageVec<u64>>) {
+fn test_access(
+    inner_vec0: StorageKey<StorageVec<u64>>,
+    inner_vec1: StorageKey<StorageVec<u64>>,
+    inner_vec2: StorageKey<StorageVec<u64>>,
+) {
     inner_vec0.push(0);
     inner_vec0.push(1);
 

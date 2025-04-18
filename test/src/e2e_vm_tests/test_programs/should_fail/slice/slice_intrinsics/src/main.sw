@@ -4,7 +4,7 @@ script;
 const GLOBAL_ARRAY: [u64; 5] = [1, 2, 3, 4, 5];
 const GLOBAL_SLICE: &__slice[u64] = __slice(&GLOBAL_ARRAY, 0, 5);
 
-fn main()  {
+fn main() {
     type_check();
 
     // slice cannot be consts
