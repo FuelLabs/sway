@@ -154,9 +154,10 @@ where
                             a.expr.to_ty_expression(engines),
                         );
                     }
-                    (TypeParameter::Const(_), GenericArgument::Type(_)) => {
+                    (TypeParameter::Const(_), GenericArgument::Type(_)) => {}
+                    _ => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                     }
-                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                 }
             }
 

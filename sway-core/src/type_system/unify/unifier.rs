@@ -429,14 +429,11 @@ impl<'a> Unifier<'a> {
                         TypeParameter::Const(received_parameter),
                         TypeParameter::Const(expected_parameter),
                     ) => {
-                        match (
-                            &received_parameter.expr,
-                            &expected_parameter.expr,
-                        ) {
+                        match (&received_parameter.expr, &expected_parameter.expr) {
                             (Some(received_expr), Some(expected_expr)) => {
                                 // We can unify if their are the same
-                                if received_expr.as_literal_val() == expected_expr.as_literal_val() {
-
+                                if received_expr.as_literal_val() == expected_expr.as_literal_val()
+                                {
                                 } else {
                                     todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                                 }

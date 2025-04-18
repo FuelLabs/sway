@@ -882,15 +882,12 @@ impl<'a> UnifyCheck<'a> {
                     r_types.push(r.type_id);
                 }
                 (TypeParameter::Const(l), TypeParameter::Const(r)) => {
-                    match (&l.expr, &r.expr) {
-                        (Some(l), Some(r)) => {
-                            // We can unify if their are the same
-                            if l.as_literal_val() == r.as_literal_val() {
-                            } else {
-                                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-                            }
+                    if let (Some(l), Some(r)) = (&l.expr, &r.expr) {
+                        // We can unify if their are the same
+                        if l.as_literal_val() == r.as_literal_val() {
+                        } else {
+                            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                         }
-                        _ => {}
                     }
                 }
                 _ => return false,

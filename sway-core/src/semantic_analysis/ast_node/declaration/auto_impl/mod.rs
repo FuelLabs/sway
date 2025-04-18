@@ -119,9 +119,9 @@ where
                     [extra_constraint].into_iter().chain(
                         p.trait_constraints
                             .iter()
-                            .map(|x| x.trait_name.suffix.as_str())
+                            .map(|x| x.trait_name.suffix.as_str()),
                     ),
-                    " + "
+                    " + ",
                 );
                 for constraint in constraints {
                     code.push_str(constraint);

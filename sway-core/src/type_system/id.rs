@@ -1,11 +1,5 @@
 #![allow(clippy::mutable_key_type)]
-use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
-use sway_types::{BaseIdent, Named, Span, Spanned};
+use super::ast_elements::type_parameter::ConstGenericExpr;
 use crate::{
     decl_engine::{DeclEngineGet, MaterializeConstGenerics},
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
@@ -16,11 +10,17 @@ use crate::{
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
     EnforceTypeArguments,
 };
+use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet, HashSet},
     fmt,
 };
-use super::ast_elements::type_parameter::ConstGenericExpr;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_types::{BaseIdent, Named, Span, Spanned};
 
 const EXTRACT_ANY_MAX_DEPTH: usize = 128;
 
@@ -303,13 +303,15 @@ impl TypeId {
                         .as_type_parameter()
                         .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
-                    type_param.type_id.extract_generic_parameter_to_concrete_mappings(
-                        engines,
-                        depth + 1,
-                        type_parameters,
-                        const_generic_parameters,
-                        orig_type_param.type_id,
-                    );
+                    type_param
+                        .type_id
+                        .extract_generic_parameter_to_concrete_mappings(
+                            engines,
+                            depth + 1,
+                            type_parameters,
+                            const_generic_parameters,
+                            orig_type_param.type_id,
+                        );
                 }
             }
             (TypeInfo::UntypedStruct(decl_id), TypeInfo::UntypedStruct(orig_decl_id)) => {
@@ -331,13 +333,15 @@ impl TypeId {
                         .as_type_parameter()
                         .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
-                    type_param.type_id.extract_generic_parameter_to_concrete_mappings(
-                        engines,
-                        depth + 1,
-                        type_parameters,
-                        const_generic_parameters,
-                        orig_type_param.type_id,
-                    );
+                    type_param
+                        .type_id
+                        .extract_generic_parameter_to_concrete_mappings(
+                            engines,
+                            depth + 1,
+                            type_parameters,
+                            const_generic_parameters,
+                            orig_type_param.type_id,
+                        );
                 }
             }
             (TypeInfo::Enum(enum_ref), TypeInfo::Enum(orig_enum_ref)) => {
@@ -359,13 +363,15 @@ impl TypeId {
                         .as_type_parameter()
                         .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
-                    type_param.type_id.extract_generic_parameter_to_concrete_mappings(
-                        engines,
-                        depth + 1,
-                        type_parameters,
-                        const_generic_parameters,
-                        orig_type_param.type_id,
-                    );
+                    type_param
+                        .type_id
+                        .extract_generic_parameter_to_concrete_mappings(
+                            engines,
+                            depth + 1,
+                            type_parameters,
+                            const_generic_parameters,
+                            orig_type_param.type_id,
+                        );
                 }
             }
             (TypeInfo::Struct(struct_id), TypeInfo::Struct(orig_struct_id)) => {
@@ -414,13 +420,14 @@ impl TypeId {
                 assert_eq!(elems.len(), orig_elems.len());
                 for (elem, orig_elem) in elems.iter().zip(orig_elems.iter()) {
                     type_parameters.push((elem.type_id(), orig_elem.type_id()));
-                    elem.type_id().extract_generic_parameter_to_concrete_mappings(
-                        engines,
-                        depth + 1,
-                        type_parameters,
-                        const_generic_parameters,
-                        orig_elem.type_id(),
-                    );
+                    elem.type_id()
+                        .extract_generic_parameter_to_concrete_mappings(
+                            engines,
+                            depth + 1,
+                            type_parameters,
+                            const_generic_parameters,
+                            orig_elem.type_id(),
+                        );
                 }
             }
             (
@@ -434,13 +441,15 @@ impl TypeId {
                 },
             ) => {
                 if let Some(address) = address {
-                    address.return_type.extract_generic_parameter_to_concrete_mappings(
-                        engines,
-                        depth + 1,
-                        type_parameters,
-                        const_generic_parameters,
-                        orig_address.clone().unwrap().return_type,
-                    );
+                    address
+                        .return_type
+                        .extract_generic_parameter_to_concrete_mappings(
+                            engines,
+                            depth + 1,
+                            type_parameters,
+                            const_generic_parameters,
+                            orig_address.clone().unwrap().return_type,
+                        );
                 }
             }
             (
@@ -458,13 +467,15 @@ impl TypeId {
                         .iter()
                         .zip(orig_type_arguments.clone().unwrap().iter())
                     {
-                        type_arg.type_id().extract_generic_parameter_to_concrete_mappings(
-                            engines,
-                            depth + 1,
-                            type_parameters,
-                            const_generic_parameters,
-                            orig_type_arg.type_id(),
-                        );
+                        type_arg
+                            .type_id()
+                            .extract_generic_parameter_to_concrete_mappings(
+                                engines,
+                                depth + 1,
+                                type_parameters,
+                                const_generic_parameters,
+                                orig_type_arg.type_id(),
+                            );
                     }
                 }
             }
@@ -531,13 +542,15 @@ impl TypeId {
                 },
             ) => {
                 type_parameters.push((referenced_type.type_id(), orig_referenced_type.type_id()));
-                referenced_type.type_id().extract_generic_parameter_to_concrete_mappings(
-                    engines,
-                    depth + 1,
-                    type_parameters,
-                    const_generic_parameters,
-                    orig_referenced_type.type_id(),
-                );
+                referenced_type
+                    .type_id()
+                    .extract_generic_parameter_to_concrete_mappings(
+                        engines,
+                        depth + 1,
+                        type_parameters,
+                        const_generic_parameters,
+                        orig_referenced_type.type_id(),
+                    );
             }
             (_, TypeInfo::UnknownGeneric { .. }) => {}
             (_, _) => {}

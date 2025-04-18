@@ -59,7 +59,9 @@ impl Format for Ty {
                 write!(formatted_code, "{}", BangToken::AS_STR)?;
                 Ok(())
             }
-            Self::Expr(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+            Self::Expr(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 }
@@ -254,7 +256,9 @@ impl LeafSpans for Ty {
                 collected_spans
             }
             Ty::Never { bang_token } => vec![ByteSpan::from(bang_token.span())],
-            Ty::Expr(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+            Ty::Expr(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 }

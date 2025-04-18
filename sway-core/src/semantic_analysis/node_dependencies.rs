@@ -815,7 +815,11 @@ impl Dependencies {
         })
     }
 
-    fn gather_from_generic_argument(self, engines: &Engines, type_argument: &GenericArgument) -> Self {
+    fn gather_from_generic_argument(
+        self,
+        engines: &Engines,
+        type_argument: &GenericArgument,
+    ) -> Self {
         match type_argument {
             GenericArgument::Type(a) => {
                 let type_engine = engines.te();
