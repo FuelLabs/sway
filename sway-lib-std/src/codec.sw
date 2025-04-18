@@ -710,6 +710,7 @@ impl AbiEncode for raw_slice {
     }
 }
 
+#[cfg(experimental_const_generics = true)]
 impl<T, const N: u64> AbiEncode for [T; N]
 where
     T: AbiEncode,
