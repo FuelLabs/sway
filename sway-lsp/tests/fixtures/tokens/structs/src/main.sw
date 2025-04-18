@@ -22,7 +22,5 @@ struct Simple {
 }
 
 fn func() {
-    let x = Simple { 
-        x: 7
-    };
+    let x = Simple { x: 7 };
 }

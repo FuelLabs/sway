@@ -2,4 +2,6 @@ library;
 
 use ::b::*;
 
-pub fn a() { b(); }
+pub fn a() {
+    b();
+}

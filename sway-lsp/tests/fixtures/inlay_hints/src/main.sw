@@ -48,4 +48,3 @@ fn main() {
     let a = [1, 2, 3];
     let _array_index = identity(a[1]);
 }
-

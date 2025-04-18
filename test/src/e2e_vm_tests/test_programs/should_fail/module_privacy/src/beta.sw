@@ -6,5 +6,6 @@ mod gamma;
 // Error: gamma::bar is private
 // pub use gamma::bar as gamma_bar;
 
+
 pub fn foo() {}
 fn bar() {}

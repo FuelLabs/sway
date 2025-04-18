@@ -8,14 +8,14 @@ trait T {
 struct S {}
 
 impl T for S {
-  const ID: u32 = 1;
+    const ID: u32 = 1;
 
-  fn foo() -> u32 {
-    Self::ID
-  }
+    fn foo() -> u32 {
+        Self::ID
+    }
 }
 
 fn main() -> u32 {
-  let s = S {};
-  S::foo()
+    let s = S {};
+    S::foo()
 }

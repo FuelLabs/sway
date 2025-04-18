@@ -10,6 +10,6 @@ fn main() -> BiggerThanAWord {
     BiggerThanAWord {
         field_1: 99999u64,
         field_2: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
-        field_3: [1, 2]
+        field_3: [1, 2],
     }
 }

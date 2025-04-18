@@ -20,13 +20,12 @@ pub struct Foo {
 }
 
 fn main() {
-    let f1 : MyEnum = MyEnum::V1(0u8);
-    let f2 : MyStruct = MyStruct { value: MyInnerStruct { x: 0, y: 0 } };
+    let f1: MyEnum = MyEnum::V1(0u8);
+    let f2: MyStruct = MyStruct {
+        value: MyInnerStruct { x: 0, y: 0 },
+    };
     // f1 and f2 are instantiated in the wrong order below. that shouldn't matter.
-    poke(Foo {
-        f2,
-        f1
-    });
+    poke(Foo { f2, f1 });
 }
 
 #[inline(never)]

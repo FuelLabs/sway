@@ -4,11 +4,13 @@ abi Abi {
     fn test();
 }
 
-struct S { }
+struct S {}
 
 impl S {
     fn read_intrinsics(self) -> Self {
-        let ptr = asm (p: 0) { p: raw_ptr };
+        let ptr = asm(p: 0) {
+            p: raw_ptr
+        };
         let _ = __state_load_word(b256::zero());
         let _ = __state_load_quad(b256::zero(), ptr, 1);
 
@@ -17,7 +19,9 @@ impl S {
 
     #[storage(read)]
     fn write_intrinsics(self) -> Self {
-        let ptr = asm (p: 0) { p: raw_ptr };
+        let ptr = asm(p: 0) {
+            p: raw_ptr
+        };
         let _ = __state_store_word(b256::zero(), 0);
         let _ = __state_store_quad(b256::zero(), ptr, 1);
 

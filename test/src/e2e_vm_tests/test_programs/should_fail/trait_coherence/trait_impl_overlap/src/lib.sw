@@ -13,17 +13,14 @@ trait TraitB {
 struct MyType {}
 
 impl TraitA for MyType {
-    fn do_something(self) {
-    }
+    fn do_something(self) {}
 }
 
 impl TraitB for MyType {
-    fn do_something_else(self) {
-    }
+    fn do_something_else(self) {}
 }
 
 // Blanket implementation that may cause overlap
 impl<T> TraitA for T {
-    fn do_something(self) {
-    }
+    fn do_something(self) {}
 }

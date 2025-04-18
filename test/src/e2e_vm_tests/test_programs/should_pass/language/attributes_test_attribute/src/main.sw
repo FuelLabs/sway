@@ -1,5 +1,4 @@
 library;
 
 #[test]
-fn foo() {
-}
+fn foo() {}

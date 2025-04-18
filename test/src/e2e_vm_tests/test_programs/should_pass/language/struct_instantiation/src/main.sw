@@ -50,35 +50,50 @@ fn check_5492_match() {
 }
 
 fn bar(b: bool) -> Struct<u8> {
-   if(b) {
-     Struct { x: 19 }
-   } else {
-     Struct { x: 91 }
-   }
+    if (b) {
+        Struct { x: 19 }
+    } else {
+        Struct { x: 91 }
+    }
 }
 
 fn generic_bar(b: bool) -> GenericStruct2<u8, bool> {
-   if(b) {
-     GenericStruct2 { a: 123, b: true }
-   } else {
-     GenericStruct2 { a: 111, b: false }
-   }
+    if (b) {
+        GenericStruct2 {
+            a: 123,
+            b: true,
+        }
+    } else {
+        GenericStruct2 {
+            a: 111,
+            b: false,
+        }
+    }
 }
 
 fn foo(b: bool) -> Struct<u8> {
-  match Some(b) {
-    Option::Some(true) => Struct { x: 17 },
-    Option::Some(false) => Struct { x: 71 },
-    Option::None => Struct { x: 71 },
-  }
+    match Some(b) {
+        Option::Some(true) => Struct { x: 17 },
+        Option::Some(false) => Struct { x: 71 },
+        Option::None => Struct { x: 71 },
+    }
 }
 
 fn generic_foo(b: bool) -> GenericStruct2<u8, bool> {
-  match Some(b) {
-    Option::Some(true) => GenericStruct2 { a: 123, b: true },
-    Option::Some(false) => GenericStruct2 { a: 111, b: false },
-    Option::None => GenericStruct2 { a: 111, b: false },
-  }
+    match Some(b) {
+        Option::Some(true) => GenericStruct2 {
+            a: 123,
+            b: true,
+        },
+        Option::Some(false) => GenericStruct2 {
+            a: 111,
+            b: false,
+        },
+        Option::None => GenericStruct2 {
+            a: 111,
+            b: false,
+        },
+    }
 }
 
 fn main() -> u64 {
@@ -94,42 +109,73 @@ fn main() -> u64 {
     let s: Struct<u8> = StructAlias { x: 123 };
     assert(s.x == 123u8);
 
-    let s: GenericStruct2<_, _> = GenericStruct2::<_, bool> { a: 123, b: true };
+    let s: GenericStruct2<_, _> = GenericStruct2::<_, bool> {
+        a: 123,
+        b: true,
+    };
     assert(s.a == 123u64);
     assert(s.b == true);
 
-    let s: GenericStruct2<_, _> = GenericStruct2::<u64, bool> { a: 123, b: true };
+    let s: GenericStruct2<_, _> = GenericStruct2::<u64, bool> {
+        a: 123,
+        b: true,
+    };
     assert(s.a == 123u64);
     assert(s.b == true);
 
-    let s: GenericStruct2<_, _> = GenericStruct2::<u8, bool> { a: 123, b: true };
+    let s: GenericStruct2<_, _> = GenericStruct2::<u8, bool> {
+        a: 123,
+        b: true,
+    };
     assert(s.a == 123u8);
     assert(s.b == true);
 
-    let s: GenericStruct2<u8, _> = GenericStruct2::<_, bool> { a: 123, b: true };
+    let s: GenericStruct2<u8, _> = GenericStruct2::<_, bool> {
+        a: 123,
+        b: true,
+    };
     assert(s.a == 123u8);
     assert(s.b == true);
 
-    let s: GenericStruct2<_, bool> = GenericStruct2::<u8, _> { a: 123, b: true };
+    let s: GenericStruct2<_, bool> = GenericStruct2::<u8, _> {
+        a: 123,
+        b: true,
+    };
     assert(s.a == 123u8);
     assert(s.b == true);
 
-    let s: GenericStruct3<_, _, _> = GenericStruct3::<u8, bool, u32> { a: 123, b: true, c: 456 };
+    let s: GenericStruct3<_, _, _> = GenericStruct3::<u8, bool, u32> {
+        a: 123,
+        b: true,
+        c: 456,
+    };
     assert(s.a == 123u8);
     assert(s.b == true);
     assert(s.c == 456u32);
 
-    let s: GenericStruct3<u8, bool, u32> = GenericStruct3::<_, _, _> { a: 123, b: true, c: 456 };
+    let s: GenericStruct3<u8, bool, u32> = GenericStruct3::<_, _, _> {
+        a: 123,
+        b: true,
+        c: 456,
+    };
     assert(s.a == 123u8);
     assert(s.b == true);
     assert(s.c == 456u32);
 
-    let s: GenericStruct3<_, _, _> = GenericStruct3::<u8, bool, u32> { a: 123u8, b: true, c: 456 };
+    let s: GenericStruct3<_, _, _> = GenericStruct3::<u8, bool, u32> {
+        a: 123u8,
+        b: true,
+        c: 456,
+    };
     assert(s.a == 123u8);
     assert(s.b == true);
     assert(s.c == 456u32);
 
-    let s: GenericStruct3<_, bool, _> = GenericStruct3::<u8, _, u32> { a: 123, b: true, c: 456 };
+    let s: GenericStruct3<_, bool, _> = GenericStruct3::<u8, _, u32> {
+        a: 123,
+        b: true,
+        c: 456,
+    };
     assert(s.a == 123u8);
     assert(s.b == true);
     assert(s.c == 456u32);

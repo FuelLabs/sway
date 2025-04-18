@@ -1,9 +1,9 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
+implicit-std = false
 license = "Apache-2.0"
 name = "associated_const_in_decls_of_other_constants"
-implicit-std = false
 
 
 [dependencies]

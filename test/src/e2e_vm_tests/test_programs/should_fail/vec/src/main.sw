@@ -10,8 +10,7 @@ struct SimpleStruct {
 enum SimpleEnum {
     X: (),
     Y: b256,
-    Z: (b256,
-    b256),
+    Z: (b256, b256),
 }
 
 fn main() -> bool {
@@ -48,7 +47,8 @@ fn test_vector_new_u8() {
     assert(vector.is_empty() == false);
 
     match vector.get(0) {
-        Some(val) => assert(val == number0), None => revert(0),
+        Some(val) => assert(val == number0),
+        None => revert(0),
     }
 
     // Push after get
@@ -59,11 +59,13 @@ fn test_vector_new_u8() {
     vector.push("this should break it 1");
 
     match vector.get(4) {
-        Some(val) => assert(val == number4), None => revert(0),
+        Some(val) => assert(val == number4),
+        None => revert(0),
     }
 
     match vector.get(number6) {
-        Some(val) => assert(val == number6), None => revert(0),
+        Some(val) => assert(val == number6),
+        None => revert(0),
     }
 
     assert(vector.len() == 9);
@@ -72,11 +74,13 @@ fn test_vector_new_u8() {
 
     // Test after capacity change
     match vector.get(4) {
-        Some(val) => assert(val == number4), None => revert(0),
+        Some(val) => assert(val == number4),
+        None => revert(0),
     }
 
     match vector.get(6) {
-        Some(val) => assert(val == number6), None => revert(0),
+        Some(val) => assert(val == number6),
+        None => revert(0),
     }
 
     vector.clear();
@@ -87,7 +91,8 @@ fn test_vector_new_u8() {
     assert(vector.is_empty() == true);
 
     match vector.get(0) {
-        Some(val) => revert(0), None => (),
+        Some(val) => revert(0),
+        None => (),
     }
 
     // Make sure pushing again after clear() works
@@ -103,11 +108,13 @@ fn test_vector_new_u8() {
     assert(vector.is_empty() == false);
 
     match vector.get(4) {
-        Some(val) => assert(val == number4), None => revert(0),
+        Some(val) => assert(val == number4),
+        None => revert(0),
     }
 
     // Out of bounds access
     match vector.get(5) {
-        Some(val) => revert(0), None => (),
+        Some(val) => revert(0),
+        None => (),
     }
 }

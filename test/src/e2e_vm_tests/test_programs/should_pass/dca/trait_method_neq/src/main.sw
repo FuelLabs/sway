@@ -17,9 +17,5 @@ fn main() -> u64 {
     }
     impl Eq for X {}
 
-    if X::Y(true) == X::Y(true) {
-        a
-    } else {
-        a
-    }
+if X::Y(true) == X::Y(true) { a } else { a }
 }

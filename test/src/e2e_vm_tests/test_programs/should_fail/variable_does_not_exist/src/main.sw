@@ -15,9 +15,7 @@ fn function(a: u64, b: u64, c: u64) -> u64 {
 fn main() {
     let _ = S::associated(x, y, z);
 
-
     let _ = function(x, y, z);
-
 
     let _ = x + y + z;
 }

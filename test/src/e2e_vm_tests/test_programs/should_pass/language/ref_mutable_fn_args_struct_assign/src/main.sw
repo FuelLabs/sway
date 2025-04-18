@@ -1,7 +1,7 @@
 script;
 
 struct Foo {
-    value: u64
+    value: u64,
 }
 
 fn mut_foo(ref mut foo: Foo) {

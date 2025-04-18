@@ -12,7 +12,10 @@ pub fn get_an_option<T>() -> Option<T> {
     None
 }
 
-pub fn assert_eq<T>(v1: T, v2: T) where T: Eq {
+pub fn assert_eq<T>(v1: T, v2: T)
+where
+    T: Eq,
+{
     if (v1 != v2) {
         revert(0xffff_ffff_ffff_0004);
     }

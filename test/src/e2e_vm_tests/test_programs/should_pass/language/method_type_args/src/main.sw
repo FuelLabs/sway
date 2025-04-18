@@ -3,7 +3,9 @@ script;
 struct A {}
 
 impl A {
-    fn generic<T>(self, x: T) -> T { x }
+    fn generic<T>(self, x: T) -> T {
+        x
+    }
 }
 
 fn foo() -> bool {

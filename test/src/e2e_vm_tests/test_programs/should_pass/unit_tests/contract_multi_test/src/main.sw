@@ -18,14 +18,14 @@ fn test_foo() {
 #[test(should_revert)]
 fn test_fail() {
     let caller = abi(MyContract, CONTRACT_ID);
-    let result = caller.test_function {}();
+    let result = caller.test_function {    }();
     assert(!result)
 }
 
 #[test]
 fn test_success() {
     let caller = abi(MyContract, CONTRACT_ID);
-    let result = caller.test_function {}();
+    let result = caller.test_function {    }();
     assert(result)
 }
 

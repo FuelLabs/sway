@@ -34,10 +34,7 @@ struct GenStruct<A, B> {
 
 impl<A, B> GenStruct<A, B> {
     fn new(a: A, b: B) -> Self {
-        Self {
-            x: a,
-            y: b,
-        }
+        Self { x: a, y: b }
     }
 
     fn use_me(self) -> () {
@@ -51,29 +48,32 @@ type GenStructAliasBool = GenStruct<bool, bool>;
 type Boolean = bool;
 type GenStructAliasBoolean = GenStruct<Boolean, Boolean>;
 
-trait Supertrait { }
-trait Subtrait: Supertrait { }
+trait Supertrait {
+}
+trait Subtrait: Supertrait {
+}
 
-impl Supertrait for Struct { }
-impl Subtrait for Struct { }
+impl Supertrait for Struct {}
+impl Subtrait for Struct {}
 
 enum Enum {
-    A: (bool),
-    B: (u64),
-    C: (Struct),
-    D: (StructAlias),
-    E: (GenStruct<bool, bool>),
-    F: (GenStructAliasBool),
-    G: (GenStructAliasBoolean),
-    H: (LibStruct),
-    I: (LibStructAlias),
-    J: (LibStructPlayAlias),
-    K: (LibStructAliasPlayAlias),
+    A: bool,
+    B: u64,
+    C: Struct,
+    D: StructAlias,
+    E: GenStruct<bool, bool>,
+    F: GenStructAliasBool,
+    G: GenStructAliasBoolean,
+    H: LibStruct,
+    I: LibStructAlias,
+    J: LibStructPlayAlias,
+    K: LibStructAliasPlayAlias,
 }
 
 fn generics<A, B>(a: A, b: B)
-    where A: Supertrait,
-          B: Subtrait
+where
+    A: Supertrait,
+    B: Subtrait,
 {
     let gen = (a, b);
 
@@ -218,9 +218,9 @@ fn main() {
     poke(Enum::B(0));
     poke(Enum::C(Struct::new()));
     poke(Enum::D(Struct::new()));
-    poke(Enum::E(GenStruct::new(true,true)));
-    poke(Enum::F(GenStruct::new(true,true)));
-    poke(Enum::G(GenStruct::new(true,true)));
+    poke(Enum::E(GenStruct::new(true, true)));
+    poke(Enum::F(GenStruct::new(true, true)));
+    poke(Enum::G(GenStruct::new(true, true)));
     poke(Enum::H(LibStruct::new()));
     poke(Enum::I(LibStruct::new()));
     poke(Enum::J(LibStruct::new()));
@@ -236,4 +236,4 @@ fn main() {
     poke(LibStructAliasPlayAlias::new().use_me());
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

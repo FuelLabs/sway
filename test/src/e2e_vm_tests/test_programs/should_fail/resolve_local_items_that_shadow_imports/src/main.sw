@@ -16,8 +16,8 @@ enum Enum {
 
 // TODO: Remove all the `pub`s from all the structs once https://github.com/FuelLabs/sway/issues/5500 is fixed.
 struct Struct {
-   pub x: u64,
-   pub y: u64,
+    pub x: u64,
+    pub y: u64,
 }
 
 impl Struct {
@@ -28,8 +28,8 @@ impl Struct {
 }
 
 pub struct PubStruct {
-   pub x: u64,
-   pub y: u64,
+    pub x: u64,
+    pub y: u64,
 }
 
 impl PubStruct {
@@ -70,4 +70,4 @@ fn main() {
     poke(Enum::A);
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

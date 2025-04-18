@@ -9,7 +9,7 @@ fn main() -> u64 {
 }
 
 struct A {
-  a: u64,
+    a: u64,
 }
 
 #[inline(never)]

@@ -1,13 +1,13 @@
 library;
 
 #[deprecated]
-pub struct Ok1 { }
+pub struct Ok1 {}
 
 #[deprecated()]
-pub struct Ok2 { }
+pub struct Ok2 {}
 
 #[deprecated(note = "note")]
-pub struct Ok3 { }
+pub struct Ok3 {}
 
 #[deprecated(note = "note", note = "other note")]
-pub struct NotOk1 { }
+pub struct NotOk1 {}

@@ -11,7 +11,11 @@ struct Type2 {
 }
 
 storage {
-    var1: Type1 = Type1 { x:0, y: false, z: Type2 { x:0 } },
+    var1: Type1 = Type1 {
+        x: 0,
+        y: false,
+        z: Type2 { x: 0 },
+    },
 }
 
 abi StorageExample {

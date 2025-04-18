@@ -1,11 +1,13 @@
 contract;
 
-abi MyAbi { }
-{
-    fn impl_method() -> u64 { 42 }
+abi MyAbi {
+} {
+    fn impl_method() -> u64 {
+        42
+    }
 }
 
-impl MyAbi for Contract { }
+impl MyAbi for Contract {}
 
 #[test]
 fn tests() {

@@ -29,8 +29,18 @@ impl TestStorageKeyCalculation for Contract {
         assert_eq(storage.b.slot(), sha256((0u8, "storage.b")));
         assert_eq(storage::ns1.a.slot(), sha256((0u8, "storage::ns1.a")));
         assert_eq(storage::ns1.b.slot(), sha256((0u8, "storage::ns1.b")));
-        assert_eq(storage::ns2::ns3.a.slot(), sha256((0u8, "storage::ns2::ns3.a")));
-        assert_eq(storage::ns2::ns3.b.slot(), sha256((0u8, "storage::ns2::ns3.b")));
+        assert_eq(
+            storage::ns2::ns3
+                .a
+                .slot(),
+            sha256((0u8, "storage::ns2::ns3.a")),
+        );
+        assert_eq(
+            storage::ns2::ns3
+                .b
+                .slot(),
+            sha256((0u8, "storage::ns2::ns3.b")),
+        );
     }
 }
 

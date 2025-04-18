@@ -2,9 +2,7 @@ script;
 // This test tests function declarations and applications.
 
 fn main() -> bool {
-    let my_struct = MyStruct {
-        a: 5,
-    };
+    let my_struct = MyStruct { a: 5 };
     let my_enum = MyEnum::Number(10);
     let my_struct_with_enum = MyStructWithEnum {
         a: my_struct,
@@ -41,6 +39,15 @@ struct MyStructWithEnum {
     b: MyEnum,
 }
 
-fn eight_args(_a: MyStruct, _b: MyEnum, _c: MyStructWithEnum, _d: str, _e: bool, _f: u64, _g: u8, _h: b256) {
+fn eight_args(
+    _a: MyStruct,
+    _b: MyEnum,
+    _c: MyStructWithEnum,
+    _d: str,
+    _e: bool,
+    _f: u64,
+    _g: u8,
+    _h: b256,
+) {
     return;
 }

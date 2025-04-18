@@ -1,8 +1,8 @@
 [project]
-name = "storage_slot_key_calculation"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
+name = "storage_slot_key_calculation"
 
 [dependencies]
 std = { path = "../../../../../../sway-lib-std" }

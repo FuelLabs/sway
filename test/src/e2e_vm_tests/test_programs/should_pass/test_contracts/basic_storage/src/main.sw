@@ -21,14 +21,13 @@ storage {
     str8: str[8] = __to_str_array("aaaaaaaa"),
     str9: str[9] = __to_str_array("aaaaaaaaa"),
     str10: str[10] = __to_str_array("aaaaaaaaaa"),
-
     const_u256: u256 = 0x0000000000000000000000000000000000000000000000000000000001234567u256,
     const_b256: b256 = 0x0000000000000000000000000000000000000000000000000000000001234567,
     ns1 {
         ns2 {
             c1: u64 = NS1_NS2_C1,
-        }
-    }
+        },
+    },
 }
 
 impl BasicStorage for Contract {
@@ -145,7 +144,12 @@ fn test_storage() {
     write(key, 0, s);
     let s_ = read::<S>(key, 0).unwrap();
     assert(s.x == s_.x && s.y == s_.y && s.z == s_.z);
-    assert(s.t.x == s_.t.x && s.t.y == s_.t.y && s.t.z == s_.t.z && s.t.boolean == s_.t.boolean); 
+    assert(
+        s.t.x == s_.t.x
+        && s.t.y == s_.t.y
+        && s.t.z == s_.t.z
+        && s.t.boolean == s_.t.boolean,
+    );
     assert(s.t.int8 == s_.t.int8 && s.t.int16 == s_.t.int16 && s.t.int32 == s_.t.int32);
 
     let boolean: bool = true;
@@ -177,7 +181,6 @@ fn test_storage() {
     let e_ = read::<E>(key, 0).unwrap();
     match (e, e_) {
         (
-
             E::B(T {
                 x: x1,
                 y: y1,
@@ -284,14 +287,38 @@ fn test_storage() {
     assert_eq(storage.c1.read(), C1);
     storage.c1.write(2);
     assert_eq(storage.c1.read(), 2);
-    
-    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567u256);
-    storage.const_u256.write(0x0000000000000000000000000000000000000000000000000000000012345678u256);
-    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678u256);
 
-    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567);
-    storage.const_b256.write(0x0000000000000000000000000000000000000000000000000000000012345678);
-    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678);
+    assert_eq(
+        storage
+            .const_u256
+            .read(),
+        0x0000000000000000000000000000000000000000000000000000000001234567u256,
+    );
+    storage
+        .const_u256
+        .write(0x0000000000000000000000000000000000000000000000000000000012345678u256);
+    assert_eq(
+        storage
+            .const_u256
+            .read(),
+        0x0000000000000000000000000000000000000000000000000000000012345678u256,
+    );
+
+    assert_eq(
+        storage
+            .const_b256
+            .read(),
+        0x0000000000000000000000000000000000000000000000000000000001234567,
+    );
+    storage
+        .const_b256
+        .write(0x0000000000000000000000000000000000000000000000000000000012345678);
+    assert_eq(
+        storage
+            .const_b256
+            .read(),
+        0x0000000000000000000000000000000000000000000000000000000012345678,
+    );
 
     assert_eq(storage::ns1::ns2.c1.read(), NS1_NS2_C1);
 

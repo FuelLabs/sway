@@ -10,7 +10,8 @@ pub fn test() {
     };
 
     // These cases prove that https://github.com/FuelLabs/sway/issues/6354 is fixed.
-    poke(asm() { });
+    poke(asm() {
+    });
 
     let arg_u8 = 11u8;
 
@@ -21,7 +22,7 @@ pub fn test() {
     let x = asm(a: arg_u8, b: arg_u8, res) {
         add res a b;
     };
-    
+
     poke(x);
 
     // Return the unit result of ASM block as function result.
@@ -31,4 +32,4 @@ pub fn test() {
 }
 
 #[inline(never)]
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

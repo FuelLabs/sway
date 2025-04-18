@@ -5,8 +5,8 @@ struct A {
 }
 
 enum B {
-  First: (),
-  Second: u64
+    First: (),
+    Second: u64,
 }
 
 fn main() {

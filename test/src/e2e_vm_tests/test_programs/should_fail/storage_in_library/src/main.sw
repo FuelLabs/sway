@@ -7,6 +7,5 @@ abi Test {
 }
 
 impl Test for Contract {
-    fn foo() {
-    }
+    fn foo() {}
 }

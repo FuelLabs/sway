@@ -2,8 +2,7 @@ library;
 
 trait T {
     type Type;
-} 
-
+}
 struct S {
     field: u8,
 }

@@ -9,9 +9,7 @@ abi MySuperAbi {
     fn method();
 }
 
-abi MyAbi : MySuperAbi
-{
-}
-{
+abi MyAbi : MySuperAbi {
+} {
     fn method() {}
 }

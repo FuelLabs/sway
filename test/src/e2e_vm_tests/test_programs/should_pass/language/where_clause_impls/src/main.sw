@@ -1,9 +1,6 @@
 script;
 
-use std::{
-    assert::assert,
-    logging::log,
-};
+use std::{assert::assert, logging::log,};
 
 pub trait MyAdd {
     fn my_add(self, other: Self) -> Self;
@@ -62,7 +59,6 @@ impl MyMul for u64 {
 }
 
 pub trait MyMath: MyAdd + MyMul {
-
 } {
     fn my_double(self) -> Self {
         self.my_add(self)
@@ -88,14 +84,14 @@ pub struct MyPoint<T> {
 
 impl<T> MyPoint<T> {
     pub fn new(x: T, y: T) -> MyPoint<T> {
-        MyPoint {
-            x,
-            y,
-        }
+        MyPoint { x, y }
     }
 }
 
-impl<T> MyAdd for MyPoint<T> where T: MyAdd {
+impl<T> MyAdd for MyPoint<T>
+where
+    T: MyAdd,
+{
     fn my_add(self, other: Self) -> Self {
         MyPoint {
             x: self.x.my_add(other.x),
@@ -104,7 +100,10 @@ impl<T> MyAdd for MyPoint<T> where T: MyAdd {
     }
 }
 
-impl<T> MyMul for MyPoint<T> where T: MyMul {
+impl<T> MyMul for MyPoint<T>
+where
+    T: MyMul,
+{
     fn my_mul(self, other: Self) -> Self {
         MyPoint {
             x: self.x.my_mul(other.x),
@@ -113,7 +112,10 @@ impl<T> MyMul for MyPoint<T> where T: MyMul {
     }
 }
 
-impl<T> MyMath for MyPoint<T> where T: MyMath { }
+impl<T> MyMath for MyPoint<T>
+where
+    T: MyMath,
+{}
 
 pub fn basic_unit_tests() {
     assert(100.my_add(99) == 199);

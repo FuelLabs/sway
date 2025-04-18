@@ -14,7 +14,14 @@ const USE_NON_MUT_REF_MUT_PARAMETER: u8 = 2;
 // All tests are arranged in a way that the value requested via `to_use`
 // parameter is changed from `T::new()` to `T::different()`.
 // This function asserts that only the requested change is properly done.
-fn check_changes<T>(to_use: u8, local: T, non_mut_ref_mut: T) where T: AbiEncode + TestInstance + Eq {
+fn check_changes<T>(
+    to_use: u8,
+    local: T,
+    non_mut_ref_mut: T,
+)
+where
+    T: AbiEncode + TestInstance + Eq,
+{
     if to_use == USE_LOCAL_VARIABLE {
         assert_eq(local, T::different());
         assert_eq(non_mut_ref_mut, T::new());
@@ -28,7 +35,10 @@ fn check_changes<T>(to_use: u8, local: T, non_mut_ref_mut: T) where T: AbiEncode
 }
 
 #[inline(always)]
-fn if_expr<T>(to_use: u8, r_m: &mut T) where T: AbiEncode + TestInstance + Eq {
+fn if_expr<T>(to_use: u8, r_m: &mut T)
+where
+    T: AbiEncode + TestInstance + Eq,
+{
     let mut x = T::new();
 
     assert_eq(*r_m, T::new());
@@ -47,7 +57,10 @@ fn if_expr<T>(to_use: u8, r_m: &mut T) where T: AbiEncode + TestInstance + Eq {
 }
 
 #[inline(always)]
-fn test_if_expr<T>(to_use: u8) where T: AbiEncode + TestInstance + Eq {
+fn test_if_expr<T>(to_use: u8)
+where
+    T: AbiEncode + TestInstance + Eq,
+{
     let mut t = T::new();
     if_expr(to_use, &mut t);
 
@@ -57,22 +70,34 @@ fn test_if_expr<T>(to_use: u8) where T: AbiEncode + TestInstance + Eq {
 }
 
 #[inline(never)]
-fn test_if_expr_not_inlined<T>(to_use: u8) where T: AbiEncode + TestInstance + Eq {
+fn test_if_expr_not_inlined<T>(to_use: u8)
+where
+    T: AbiEncode + TestInstance + Eq,
+{
     test_if_expr::<T>(to_use)
 }
 
 #[inline(always)]
-fn inlined_function<T>(r_m: &mut T) -> &mut T where T: AbiEncode + TestInstance + Eq {
+fn inlined_function<T>(r_m: &mut T) -> &mut T
+where
+    T: AbiEncode + TestInstance + Eq,
+{
     r_m
 }
 
 #[inline(never)]
-fn non_inlined_function<T>(r_m: &mut T) -> &mut T where T: AbiEncode + TestInstance + Eq {
+fn non_inlined_function<T>(r_m: &mut T) -> &mut T
+where
+    T: AbiEncode + TestInstance + Eq,
+{
     r_m
 }
 
 #[inline(always)]
-fn function_call<T>(to_use: u8, r_m: &mut T) where T: AbiEncode + TestInstance + Eq {
+fn function_call<T>(to_use: u8, r_m: &mut T)
+where
+    T: AbiEncode + TestInstance + Eq,
+{
     let mut x = T::new();
 
     assert_eq(*r_m, T::new());
@@ -107,7 +132,10 @@ fn function_call<T>(to_use: u8, r_m: &mut T) where T: AbiEncode + TestInstance +
 }
 
 #[inline(always)]
-fn test_function_call<T>(to_use: u8) where T: AbiEncode + TestInstance + Eq {
+fn test_function_call<T>(to_use: u8)
+where
+    T: AbiEncode + TestInstance + Eq,
+{
     let mut t = T::new();
     function_call(to_use, &mut t);
 
@@ -117,7 +145,10 @@ fn test_function_call<T>(to_use: u8) where T: AbiEncode + TestInstance + Eq {
 }
 
 #[inline(never)]
-fn test_function_call_not_inlined<T>(to_use: u8) where T: AbiEncode + TestInstance + Eq {
+fn test_function_call_not_inlined<T>(to_use: u8)
+where
+    T: AbiEncode + TestInstance + Eq,
+{
     test_function_call::<T>(to_use)
 }
 
@@ -130,8 +161,8 @@ fn test_all_inlined(to_use: u8) {
     test_if_expr::<u32>(to_use);
     test_if_expr::<u64>(to_use);
     test_if_expr::<u256>(to_use);
-    test_if_expr::<[u64;2]>(to_use);
-    test_if_expr::<[u64;0]>(to_use);
+    test_if_expr::<[u64; 2]>(to_use);
+    test_if_expr::<[u64; 0]>(to_use);
     test_if_expr::<Struct>(to_use);
     test_if_expr::<EmptyStruct>(to_use);
     test_if_expr::<str>(to_use);
@@ -149,8 +180,8 @@ fn test_all_inlined(to_use: u8) {
     test_function_call::<u32>(to_use);
     test_function_call::<u64>(to_use);
     test_function_call::<u256>(to_use);
-    test_function_call::<[u64;2]>(to_use);
-    test_function_call::<[u64;0]>(to_use);
+    test_function_call::<[u64; 2]>(to_use);
+    test_function_call::<[u64; 0]>(to_use);
     test_function_call::<Struct>(to_use);
     test_function_call::<EmptyStruct>(to_use);
     test_function_call::<str>(to_use);
@@ -171,8 +202,8 @@ fn test_not_inlined(to_use: u8) {
     test_if_expr_not_inlined::<u32>(to_use);
     test_if_expr_not_inlined::<u64>(to_use);
     test_if_expr_not_inlined::<u256>(to_use);
-    test_if_expr_not_inlined::<[u64;2]>(to_use);
-    test_if_expr_not_inlined::<[u64;0]>(to_use);
+    test_if_expr_not_inlined::<[u64; 2]>(to_use);
+    test_if_expr_not_inlined::<[u64; 0]>(to_use);
     test_if_expr_not_inlined::<Struct>(to_use);
     test_if_expr_not_inlined::<EmptyStruct>(to_use);
     test_if_expr_not_inlined::<str>(to_use);
@@ -190,8 +221,8 @@ fn test_not_inlined(to_use: u8) {
     test_function_call_not_inlined::<u32>(to_use);
     test_function_call_not_inlined::<u64>(to_use);
     test_function_call_not_inlined::<u256>(to_use);
-    test_function_call_not_inlined::<[u64;2]>(to_use);
-    test_function_call_not_inlined::<[u64;0]>(to_use);
+    test_function_call_not_inlined::<[u64; 2]>(to_use);
+    test_function_call_not_inlined::<[u64; 0]>(to_use);
     test_function_call_not_inlined::<Struct>(to_use);
     test_function_call_not_inlined::<EmptyStruct>(to_use);
     test_function_call_not_inlined::<str>(to_use);

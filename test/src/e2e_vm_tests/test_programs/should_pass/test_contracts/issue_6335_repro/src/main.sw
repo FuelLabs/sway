@@ -19,7 +19,7 @@ impl MyAbi for Contract {
 #[test]
 fn test() {
     let caller = abi(FakeAbi, CONTRACT_ID);
-    let res  = caller.test();
+    let res = caller.test();
     assert(res.len() == 64);
     let s: str[30] = abi_decode(res.as_raw_slice());
 }

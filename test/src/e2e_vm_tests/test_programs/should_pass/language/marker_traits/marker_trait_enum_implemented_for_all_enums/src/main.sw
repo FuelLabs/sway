@@ -5,7 +5,7 @@ pub mod enums_02;
 mod use_error_explicitly;
 mod use_error_via_glob;
 
-use enums_01::{LibEnum01, EmptyLibEnum01};
+use enums_01::{EmptyLibEnum01, LibEnum01};
 
 // TODO: Currently, trait impls will be imported into namespace
 //       only if the implemented for type is imported and they
@@ -21,11 +21,17 @@ enum MainEnum {
     A: (),
 }
 
-enum MainEmptyEnum { }
+enum MainEmptyEnum {}
 
 // Using `Enum` from std library prelude.
-fn implements_enum<T>(_t: T) where T: Enum { }
-fn implements_enum_no_args<T>() where T: Enum { }
+fn implements_enum<T>(_t: T)
+where
+    T: Enum,
+{}
+fn implements_enum_no_args<T>()
+where
+    T: Enum,
+{}
 
 pub fn main() {
     implements_enum(MainEnum::A);

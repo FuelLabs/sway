@@ -27,4 +27,4 @@ fn var_shadows_const_x() {
     let X = 3;
 }
 
-fn generic<T, T, T>(_x: T) { }
+fn generic<T, T, T>(_x: T) {}

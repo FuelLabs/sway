@@ -11,7 +11,7 @@ fn main() -> u64 {
 
     let mut i = 0;
 
-    for (_n,_m) in vector.iter() {
+    for (_n, _m) in vector.iter() {
         i += 1;
     }
 

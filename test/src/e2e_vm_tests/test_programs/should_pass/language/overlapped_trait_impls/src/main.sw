@@ -1,9 +1,6 @@
 script;
 
-use std::{
-    bytes::Bytes,
-    vec::Vec,
-};
+use std::{bytes::Bytes, vec::Vec,};
 
 pub trait FromBytesConvertible {
     fn _from_be_bytes(bytes: Bytes) -> Self;
@@ -37,7 +34,7 @@ impl Payload {
 
         data_points.push(DataPoint::from_bytes(bytes));
 
-        let a:DataPoint = DataPoint::from_bytes(bytes);
+        let a: DataPoint = DataPoint::from_bytes(bytes);
         data_points.push(a);
     }
 }

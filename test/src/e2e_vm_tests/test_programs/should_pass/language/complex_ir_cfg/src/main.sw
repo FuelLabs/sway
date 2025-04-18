@@ -9,5 +9,8 @@ pub enum Error {
 fn main() {
     let x = U128::from((0, 0));
     let cond = false;
-    require(cond || (x < U128::from((1, 1)) || x == U128::from((1, 1))), Error::Overflow);
+    require(
+        cond || (x < U128::from((1, 1)) || x == U128::from((1, 1))),
+        Error::Overflow,
+    );
 }

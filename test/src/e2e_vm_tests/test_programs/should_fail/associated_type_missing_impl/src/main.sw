@@ -6,9 +6,8 @@ trait TypeTrait {
 
 struct Struct {}
 
-impl TypeTrait for Struct {
-}
+impl TypeTrait for Struct {}
 
 fn main() -> u32 {
-  0
+    0
 }

@@ -59,8 +59,8 @@ impl Format for Ty {
                 write!(formatted_code, "{}", BangToken::AS_STR)?;
                 Ok(())
             }
-            Self::Expr(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            Self::Expr(expr) => {
+                expr.format(formatted_code, formatter)
             }
         }
     }

@@ -25,7 +25,8 @@ fn main() -> u64 {
 
     // Shadowing a variable is a warning
     let r5 = 0;
-    asm(r5) {};
+    asm(r5) {
+    };
 
     0
 }

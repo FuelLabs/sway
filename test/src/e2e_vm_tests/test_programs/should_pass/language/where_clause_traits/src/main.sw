@@ -4,17 +4,20 @@ trait MyTrait {
     fn new() -> Self;
 }
 
-trait MyTraitGeneric<T> where T : MyTrait {
+trait MyTraitGeneric<T>
+where
+    T: MyTrait,
+{
     fn get_value(self) -> T;
 }
 
 struct S1 {
-    s1: u64
+    s1: u64,
 }
 
 impl MyTrait for S1 {
     fn new() -> Self {
-        S1 {s1: 0}
+        S1 { s1: 0 }
     }
 }
 

@@ -13,7 +13,8 @@ fn example_function(variable: Result<Option<u32>, u32>) -> Result<Option<u32>, u
     variable
 }
 
-abi TestAbi {}
+abi TestAbi {
+}
 
 fn main() {
     // Variable usage: Variable Declarations
@@ -26,7 +27,9 @@ fn main() {
     let _ = example_function(variable2);
 
     // Variable usage: Struct fields
-    let _ = ExampleStruct { variable: variable1 };
+    let _ = ExampleStruct {
+        variable: variable1,
+    };
 
     // Variable usage: Enum variants
     let _ = ExampleEnum::Variants(variable1);
@@ -48,8 +51,7 @@ fn main() {
     let variable3 = if let Result::Ok(y) = x { y + 10 } else { 1 };
 
     // Variable usage: Shadowing
-    let variable5 = variable3; 
-
+    let variable5 = variable3;
     // Variable type ascriptions
     let variable6: ExampleEnum = ExampleEnum::Variants(101);
 

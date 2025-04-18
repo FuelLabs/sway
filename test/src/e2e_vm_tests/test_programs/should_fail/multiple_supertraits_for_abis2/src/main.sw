@@ -18,7 +18,7 @@ abi MyAbi : MyTrait1 + MyTrait2 {
 }
 
 impl MyTrait1 for Contract {
-    fn foo1() { }
+    fn foo1() {}
 }
 
 // missing impl MyTrait2 for Contract

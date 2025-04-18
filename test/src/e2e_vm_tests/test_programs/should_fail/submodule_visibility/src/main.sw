@@ -6,8 +6,7 @@ library;
 pub mod other;
 
 // lib is private, and not a direct submodule of the current module, so this should fail
-use other::lib::S; 
-
+use other::lib::S;
 pub fn foo() {
     let my_struct = S { val: 0 };
 

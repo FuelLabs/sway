@@ -21,6 +21,6 @@ fn standalone_function() {
 impl TestAbi for Contract {
     #[storage(write)]
     fn deposit() {
-      standalone_function();
+        standalone_function();
     }
 }

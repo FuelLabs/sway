@@ -16,11 +16,9 @@ impl Eq<u64> for u64 {
 
 fn main() -> u64 {
     // block const evaluation for `x` (it does not currently support asm-blocks)
-    let x = asm(x: 42u64) { x: u64 };
+    let x = asm(x: 42u64) {
+        x: u64
+    };
     let y = 1u64;
-    if x.neq2(y) {
-        2
-    } else {
-        101
-    }
+    if x.neq2(y) { 2 } else { 101 }
 }

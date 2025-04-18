@@ -1,7 +1,7 @@
 library;
 
 pub struct Inner {
-    pub foo: u64
+    pub foo: u64,
 }
 
 pub struct StructOne {

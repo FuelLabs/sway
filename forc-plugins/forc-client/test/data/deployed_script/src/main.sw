@@ -46,20 +46,19 @@ fn get_configurables() -> (bool, u8, u16, u32, u64, u256, b256, str[4], (u8, boo
 }
 
 fn basic_function_with_input(a: u32) -> bool {
-    if a % 2 == 0 {
-        true
-    }else {
-        false
-    }
+    if a % 2 == 0 { true } else { false }
 }
 
 fn basic_function_without_input() -> u64 {
     let a = 100;
     let b = 25;
-    a*b
+    a * b
 }
 
-fn main(a: u32, contract_addr: b256) -> ((bool, u8, u16, u32, u64, u256, b256, str[4], (u8, bool), [u32; 3], StructWithGeneric<u8>, EnumWithGeneric<bool>), bool, u64, u8) {
+fn main(
+    a: u32,
+    contract_addr: b256,
+) -> ((bool, u8, u16, u32, u64, u256, b256, str[4], (u8, bool), [u32; 3], StructWithGeneric<u8>, EnumWithGeneric<bool>), bool, u64, u8) {
     log(U8);
     let configs = get_configurables();
     let with_in = basic_function_with_input(a);

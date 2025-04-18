@@ -7,10 +7,8 @@
 
 contract;
 
-abi MySuperSuperAbi
-{
-}
-{
+abi MySuperSuperAbi {
+} {
     fn method1() {}
 }
 

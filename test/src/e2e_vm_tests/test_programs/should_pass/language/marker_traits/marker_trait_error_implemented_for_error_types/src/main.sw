@@ -45,8 +45,14 @@ enum Enum {
 // }
 
 // Using `Error` from the standard library prelude.
-fn implements_error<T>(_t: T) where T: Error { }
-fn implements_error_no_args<T>() where T: Error { }
+fn implements_error<T>(_t: T)
+where
+    T: Error,
+{}
+fn implements_error_no_args<T>()
+where
+    T: Error,
+{}
 
 pub fn main() {
     implements_error("str");

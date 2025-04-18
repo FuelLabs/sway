@@ -5,11 +5,7 @@ fn main() {
         42u64
     } else {
         // this should be a type error even though everything aborts
-        if true {
-            return 42;
-        } else {
-            return true;
-        };
+        if true { return 42; } else { return true; };
         revert(0)
     };
 }

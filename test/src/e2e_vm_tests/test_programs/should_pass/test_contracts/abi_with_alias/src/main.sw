@@ -8,8 +8,6 @@ abi MyContract {
 }
 
 impl MyContract for Contract {
-    fn tuple(_arg1: (u64, u64)) {
-    }
-    fn aliased_tuple(arg1: AliasedTuple) {
-    }
+    fn tuple(_arg1: (u64, u64)) {}
+    fn aliased_tuple(arg1: AliasedTuple) {}
 }

@@ -1,6 +1,6 @@
 library;
 
-use ::r#enum::AnEnum;
+use ::enum::AnEnum;
 
 pub fn uses_enum() -> AnEnum {
     AnEnum::Variant

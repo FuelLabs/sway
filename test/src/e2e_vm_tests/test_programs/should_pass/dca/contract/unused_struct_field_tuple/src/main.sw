@@ -5,11 +5,11 @@ struct S {
 }
 
 abi MyContract {
-    fn foo(s: S) -> (S);
+    fn foo(s: S) -> S;
 }
 
 impl MyContract for Contract {
-    fn foo(s: S) -> (S) {
+    fn foo(s: S) -> S {
         (s)
     }
 }

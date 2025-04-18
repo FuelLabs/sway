@@ -7,7 +7,7 @@ pub enum MyResult<T, E> {
 
 struct Data<T> {
     value: T,
-    other: u64
+    other: u64,
 }
 
 struct Item<I> {
@@ -15,9 +15,7 @@ struct Item<I> {
 }
 
 fn test<A, I>(arg: A) -> Item<I> {
-    Item {
-        item: arg,
-    }
+    Item { item: arg }
 }
 
 fn main() {
@@ -26,6 +24,9 @@ fn main() {
 }
 
 fn example() {
-    let foo = MyResult::Ok::<Data<bool>, str[4]>(Data { value: true, other: 1 });
+    let foo = MyResult::Ok::<Data<bool>, str[4]>(Data {
+        value: true,
+        other: 1,
+    });
     foo.does_not_exist();
 }

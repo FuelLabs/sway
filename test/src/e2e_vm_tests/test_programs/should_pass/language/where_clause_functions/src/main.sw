@@ -35,14 +35,24 @@ struct MyPoint<T> {
     y: T,
 }
 
-fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyAdd {
+fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T>
+where
+    T: MyAdd,
+{
     MyPoint {
         x: a.x.my_add(b.x),
         y: a.y.my_add(b.y),
     }
 }
 
-fn add_points2<T, F>(_a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyAdd, F: MyAdd {
+fn add_points2<T, F>(
+    _a: MyPoint<T>,
+    b: MyPoint<F>,
+) -> MyPoint<F>
+where
+    T: MyAdd,
+    F: MyAdd,
+{
     MyPoint {
         x: b.x.my_add(b.x),
         y: b.y.my_add(b.y),
@@ -77,28 +87,48 @@ impl MyMul for u64 {
     }
 }
 
-fn mul_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyMul {
+fn mul_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T>
+where
+    T: MyMul,
+{
     MyPoint {
         x: a.x.my_mul(b.x),
         y: a.y.my_mul(b.y),
     }
 }
 
-fn mul_points2<T, F>(_a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyMul, F: MyMul {
+fn mul_points2<T, F>(
+    _a: MyPoint<T>,
+    b: MyPoint<F>,
+) -> MyPoint<F>
+where
+    T: MyMul,
+    F: MyMul,
+{
     MyPoint {
         x: b.x.my_mul(b.x),
         y: b.y.my_mul(b.y),
     }
 }
 
-fn do_math<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyAdd + MyMul {
+fn do_math<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T>
+where
+    T: MyAdd + MyMul,
+{
     MyPoint {
         x: a.x.my_add(b.x),
         y: a.y.my_mul(b.y),
     }
 }
 
-fn do_math2<T, F>(_a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyAdd + MyMul, F: MyMul + MyAdd {
+fn do_math2<T, F>(
+    _a: MyPoint<T>,
+    b: MyPoint<F>,
+) -> MyPoint<F>
+where
+    T: MyAdd + MyMul,
+    F: MyMul + MyAdd,
+{
     MyPoint {
         x: b.x.my_add(b.x),
         y: b.y.my_mul(b.y),
@@ -106,7 +136,6 @@ fn do_math2<T, F>(_a: MyPoint<T>, b: MyPoint<F>) -> MyPoint<F> where T: MyAdd + 
 }
 
 trait MyMath: MyAdd + MyMul {
-
 } {
     fn my_double(self) -> Self {
         self.my_add(self)
@@ -125,7 +154,10 @@ impl MyMath for u32 {}
 
 impl MyMath for u64 {}
 
-fn do_math3<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyMath {
+fn do_math3<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T>
+where
+    T: MyMath,
+{
     MyPoint {
         x: a.x.my_double().my_mul(b.x.my_double()),
         y: a.y.my_pow_2().my_add(b.y.my_pow_2()),
@@ -134,7 +166,7 @@ fn do_math3<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyMath {
 
 enum MyOption<T> {
     Some: T,
-    None: ()
+    None: (),
 }
 
 impl<T> MyOption<T> {
@@ -146,7 +178,11 @@ impl<T> MyOption<T> {
     }
 }
 
-fn test_ok_or<T, E>(val: T, default: E) where T: PartialEq, E: PartialEq {
+fn test_ok_or<T, E>(val: T, default: E)
+where
+    T: PartialEq,
+    E: PartialEq,
+{
     match MyOption::Some(val).ok_or(default) {
         Ok(inner) => assert(val == inner),
         Err(_) => revert(0),
@@ -178,7 +214,7 @@ fn main() -> u64 {
     };
     let e = MyPoint {
         x: 5u8,
-        y: 10u8
+        y: 10u8,
     };
     let f = add_points2(d, e);
     assert(f.x == 10u8);

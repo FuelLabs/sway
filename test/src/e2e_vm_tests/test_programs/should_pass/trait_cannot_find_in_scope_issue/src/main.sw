@@ -16,7 +16,7 @@ mod trait_impls;
 
 use std::hash::sha256;
 
-use ::lib::{S, A, function};
+use ::lib::{A, function, S};
 use ::trait_impls::*;
 
 fn main() {

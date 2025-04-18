@@ -7,6 +7,5 @@ abi MyContract {
 
 impl MyContract for Contract {
     // missing #[payable] attribute
-    fn payable() {
-    }
+    fn payable() {}
 }

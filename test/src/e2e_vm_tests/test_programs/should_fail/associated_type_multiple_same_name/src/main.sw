@@ -6,5 +6,5 @@ trait ConstantId {
 }
 
 fn main() -> u32 {
-  0
+    0
 }

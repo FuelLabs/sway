@@ -1,13 +1,11 @@
 script;
 
 struct S {
-    t: (u64,)
+    t: (u64, ),
 }
 
 fn main() -> u64 {
-    let a = S {
-        t: (2,)
-    };
+    let a = S { t: (2, ) };
     let b = match a {
         S { t } => t,
     };

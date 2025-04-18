@@ -38,7 +38,7 @@ fn reassignment() {
 fn shadowing() {
     // ANCHOR: shadowing
     let foo = 5;
-     {
+    {
         let foo = 42;
     }
     assert(foo == 5);

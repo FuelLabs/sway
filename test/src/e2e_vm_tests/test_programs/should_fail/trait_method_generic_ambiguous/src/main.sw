@@ -5,11 +5,11 @@ trait Trait<T> {
 }
 
 struct S1 {
-    s1: u64
+    s1: u64,
 }
 
 struct S2 {
-    s2: u64
+    s2: u64,
 }
 
 impl Trait<S1> for u64 {

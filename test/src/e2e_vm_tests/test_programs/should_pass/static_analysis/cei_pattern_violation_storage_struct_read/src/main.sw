@@ -24,4 +24,3 @@ impl MyContract for Contract {
         storage.var1.read();
     }
 }
-

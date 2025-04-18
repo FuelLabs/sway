@@ -11,8 +11,8 @@ abi Test {
 }
 
 impl Test for Contract {
-     #[storage(read, write)]
-     fn foo() {
+    #[storage(read, write)]
+    fn foo() {
         storage.x.write(storage.x.read() + 1);
         storage.y.write(storage.y.read() + 1);
     }

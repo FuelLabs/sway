@@ -8,7 +8,7 @@ abi MyAbi {
 }
 
 impl MyAbi for Contract {
-    fn abi_method() { }
+    fn abi_method() {}
 }
 
 fn main() -> u64 {

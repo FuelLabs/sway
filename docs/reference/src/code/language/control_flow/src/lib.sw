@@ -76,7 +76,7 @@ fn example1() {
     // ANCHOR: if_let_example1
     let one = Foo::One;
     let mut result = 0;
-    
+
     if let Foo::One = one {
         result = 1;
     }
@@ -86,14 +86,9 @@ fn example1() {
 fn example2() {
     // ANCHOR: if_let_example2
     let one = Foo::One;
-    let result = if let Foo::One = one {
-        1
-    } else {
-        2
-    };
+    let result = if let Foo::One = one { 1 } else { 2 };
     // ANCHOR_END: if_let_example2
 }
-
 
 fn simple_match() {
     // ANCHOR: simple_match
@@ -170,7 +165,7 @@ impl PartialEq for Binary {
 // ANCHOR: complex_struct_unpacking_match
 struct Point {
     x: u64,
-    y: u64
+    y: u64,
 }
 
 fn struct_matching() {

@@ -10,5 +10,5 @@ abi MyAbi : MyTrait {
 
 // The implementation of MyAbi for Contract must also implement MyTrait
 impl MyAbi for Contract {
-    fn bar() { }
+    fn bar() {}
 }

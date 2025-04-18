@@ -1,6 +1,6 @@
 script;
 
-struct A { }
+struct A {}
 
 impl A {
     fn f(self) -> u64 {
@@ -9,6 +9,6 @@ impl A {
 }
 
 fn main() -> u64 {
-    let a = A { };
+    let a = A {};
     a.f()
 }

@@ -1,9 +1,6 @@
 script;
 
-use std::{
-    assert::assert,
-    logging::log,
-};
+use std::{assert::assert, logging::log,};
 
 trait MyAdd {
     fn my_add(self, other: Self) -> Self;
@@ -43,14 +40,21 @@ struct MyPoint<T> {
 }
 
 impl<T> MyPoint<T> {
-    fn add_points(self, b: MyPoint<T>) -> MyPoint<T> where T: MyAdd {
+    fn add_points(self, b: MyPoint<T>) -> MyPoint<T>
+    where
+        T: MyAdd,
+    {
         MyPoint {
             x: self.x.my_add(b.x),
             y: self.y.my_add(b.y),
         }
     }
 
-    fn add_points2<F>(self, b: MyPoint<F>) -> MyPoint<F> where T: MyAdd, F: MyAdd {
+    fn add_points2<F>(self, b: MyPoint<F>) -> MyPoint<F>
+    where
+        T: MyAdd,
+        F: MyAdd,
+    {
         MyPoint {
             x: b.x.my_add(b.x),
             y: b.y.my_add(b.y),
@@ -83,28 +87,45 @@ impl MyMul for u64 {
 }
 
 impl<T> MyPoint<T> {
-    fn mul_points(self, b: MyPoint<T>) -> MyPoint<T> where T: MyMul {
+    fn mul_points(self, b: MyPoint<T>) -> MyPoint<T>
+    where
+        T: MyMul,
+    {
         MyPoint {
             x: self.x.my_mul(b.x),
             y: self.y.my_mul(b.y),
         }
     }
 
-    fn mul_points2<F>(self, b: MyPoint<F>) -> MyPoint<F> where T: MyMul, F: MyMul {
+    fn mul_points2<F>(self, b: MyPoint<F>) -> MyPoint<F>
+    where
+        T: MyMul,
+        F: MyMul,
+    {
         MyPoint {
             x: b.x.my_mul(b.x),
             y: b.y.my_mul(b.y),
         }
     }
 
-    fn do_math(self, b: MyPoint<T>) -> MyPoint<T> where T: MyAdd + MyMul {
+    fn do_math(self, b: MyPoint<T>) -> MyPoint<T>
+    where
+        T: MyAdd + MyMul,
+    {
         MyPoint {
             x: self.x.my_add(b.x),
             y: self.y.my_mul(b.y),
         }
     }
 
-    fn do_math2<F>(self, b: MyPoint<F>) -> MyPoint<F> where T: MyAdd + MyMul, F: MyMul + MyAdd {
+    fn do_math2<F>(
+        self,
+        b: MyPoint<F>,
+) -> MyPoint<F>
+        where
+            T: MyAdd + MyMul,
+            F: MyMul + MyAdd,
+    {
         MyPoint {
             x: b.x.my_add(b.x),
             y: b.y.my_mul(b.y),
@@ -113,7 +134,6 @@ impl<T> MyPoint<T> {
 }
 
 trait MyMath: MyAdd + MyMul {
-
 } {
     fn my_double(self) -> Self {
         self.my_add(self)
@@ -133,14 +153,25 @@ impl MyMath for u32 {}
 impl MyMath for u64 {}
 
 impl<T> MyPoint<T> {
-    fn do_math3(self, b: MyPoint<T>) -> MyPoint<T> where T: MyMath{
+    fn do_math3(self, b: MyPoint<T>) -> MyPoint<T>
+    where
+        T: MyMath,
+    {
         MyPoint {
             x: self.x.my_double().my_mul(b.x.my_double()),
             y: self.y.my_pow_2().my_add(b.y.my_pow_2()),
         }
     }
 
-    fn do_math31<M>(self, b: MyPoint<T>, c: MyPoint<M>) -> MyPoint<T> where T: MyMath, M:MyMath{
+    fn do_math31<M>(
+        self,
+        b: MyPoint<T>,
+        c: MyPoint<M>,
+) -> MyPoint<T>
+        where
+            T: MyMath,
+            M: MyMath,
+    {
         MyPoint {
             x: self.x.my_double().my_mul(b.x.my_double()),
             y: self.y.my_pow_2().my_add(b.y.my_pow_2()),
@@ -148,7 +179,10 @@ impl<T> MyPoint<T> {
     }
 }
 
-impl<T> MyPoint<T> where T: MyMath {
+impl<T> MyPoint<T>
+where
+    T: MyMath,
+{
     fn do_math4(self, b: MyPoint<T>) -> MyPoint<T> {
         MyPoint {
             x: self.x.my_double().my_mul(b.x.my_double()),
@@ -157,8 +191,14 @@ impl<T> MyPoint<T> where T: MyMath {
     }
 }
 
-impl<T> MyPoint<T> where T: MyMath {
-    fn do_math5(self, b: MyPoint<T>) -> MyPoint<T> where T: MyMath {
+impl<T> MyPoint<T>
+where
+    T: MyMath,
+{
+    fn do_math5(self, b: MyPoint<T>) -> MyPoint<T>
+    where
+        T: MyMath,
+    {
         MyPoint {
             x: self.x.my_double().my_mul(b.x.my_double()),
             y: self.y.my_pow_2().my_add(b.y.my_pow_2()),
@@ -191,7 +231,7 @@ fn main() -> u64 {
     };
     let e = MyPoint {
         x: 5u8,
-        y: 10u8
+        y: 10u8,
     };
     let f = d.add_points2(e);
     assert(f.x == 10u8);

@@ -62,6 +62,6 @@ storage {
             #[error_type(invalid)]
             #[error(invalid)]
             x: u8 = 0,
-        }
-    }
+        },
+    },
 }

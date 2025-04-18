@@ -6,7 +6,6 @@ use std::storage::storage_map::*;
 use std::storage::storage_vec::*;
 use std::hash::*;
 
-
 abi ReproAttempt {
     #[storage(read, write)]
     fn bytes_foo_store(bytes: Bytes);

@@ -8,7 +8,7 @@ fn alloc_slice<T>(len: u64) -> &mut [T] {
         aloc size_in_bytes;
         hp: raw_ptr
     };
-    asm(buf: (ptr,  len)) {
+    asm(buf: (ptr, len)) {
         buf: &mut [T]
     }
 }
@@ -18,13 +18,17 @@ fn realloc_slice<T>(old: &mut [T], len: u64) -> &mut [T] {
     let old_len_in_bytes = old.len() * __size_of::<T>();
 
     let new_len_in_bytes = len * __size_of::<T>();
-    let new_ptr = asm(new_len_in_bytes: new_len_in_bytes, old_ptr: old_ptr, old_len_in_bytes: old_len_in_bytes) {
+    let new_ptr = asm(
+        new_len_in_bytes: new_len_in_bytes,
+        old_ptr: old_ptr,
+        old_len_in_bytes: old_len_in_bytes,
+    ) {
         aloc new_len_in_bytes;
         mcp hp old_ptr old_len_in_bytes;
         hp: raw_ptr
     };
 
-    asm(buf: (new_ptr,  len)) {
+    asm(buf: (new_ptr, len)) {
         buf: &mut [T]
     }
 }
@@ -38,22 +42,24 @@ impl<T> Dbg for Vec<T> {
     fn dbg(self) {
         (
             "Vec { buf: (ptr: ",
-            asm(v: self.buf.ptr()) { v: u64 },
+            asm(v: self.buf.ptr()) {
+                v: u64
+            },
             ", len: ",
             self.buf.len(),
             "), len: ",
             self.len,
-            ")"
-        ).dbg();
+            ")",
+        )
+            .dbg();
     }
 }
-
 
 impl<T> Vec<T> {
     pub fn new() -> Self {
         Self {
             buf: alloc_slice::<T>(0),
-            len: 0
+            len: 0,
         }
     }
 
@@ -75,13 +81,24 @@ impl<T> Vec<T> {
 
         let v: &mut T = __elem_at(self.buf, new_item_idx);
 
-        let buffer_addr = asm(v: self.buf.ptr()) { v: u64 };
-        let elem_addr = asm(v: v) { v: u64 };
-        ("    elem ", new_item_idx, " at ", elem_addr, " buffer offset (in bytes): ", elem_addr - buffer_addr).dbgln();
+        let buffer_addr = asm(v: self.buf.ptr()) {
+            v: u64
+        };
+        let elem_addr = asm(v: v) {
+            v: u64
+        };
+        (
+            "    elem ",
+            new_item_idx,
+            " at ",
+            elem_addr,
+            " buffer offset (in bytes): ",
+            elem_addr - buffer_addr,
+        )
+            .dbgln();
         *v = item;
 
         self.len += 1;
-
         ("    ", self).dbgln();
     }
 
@@ -91,9 +108,21 @@ impl<T> Vec<T> {
 
         let item: &mut T = __elem_at(self.buf, index);
 
-        let buffer_addr = asm(v: self.buf.ptr()) { v: u64 };
-        let elem_addr = asm(v: item) { v: u64 };
-        ("    element ", index, " at ", elem_addr, " buffer offset (in bytes): ", elem_addr - buffer_addr).dbgln();
+        let buffer_addr = asm(v: self.buf.ptr()) {
+            v: u64
+        };
+        let elem_addr = asm(v: item) {
+            v: u64
+        };
+        (
+            "    element ",
+            index,
+            " at ",
+            elem_addr,
+            " buffer offset (in bytes): ",
+            elem_addr - buffer_addr,
+        )
+            .dbgln();
 
         *item
     }
@@ -101,7 +130,7 @@ impl<T> Vec<T> {
 
 fn assert<T>(l: T, r: T)
 where
-    T: Eq + AbiEncode
+    T: Eq + AbiEncode,
 {
     if l != r {
         __log(l);
@@ -127,7 +156,7 @@ fn type_check() {
     let _: &u64 = __elem_at(mutable_slice, 0);
 }
 
-fn main()  {
+fn main() {
     type_check();
 
     // index arrays

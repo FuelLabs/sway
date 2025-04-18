@@ -14,7 +14,10 @@ struct MyPoint<T> {
     y: T,
 }
 
-fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: my_add::MyAdd {
+fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T>
+where
+    T: my_add::MyAdd,
+{
     MyPoint {
         x: a.x.my_add(b.x),
         y: a.y.my_add(b.y),
@@ -22,11 +25,8 @@ fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: my_add::My
 }
 
 trait B: my_a::A {
-
 } {
 
 }
 
-fn main() {
-
-}
+fn main() {}

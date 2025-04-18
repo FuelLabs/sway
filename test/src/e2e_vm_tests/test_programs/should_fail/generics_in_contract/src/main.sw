@@ -2,9 +2,15 @@ contract;
 
 use std::{hash::*, storage::storage_api::read};
 
-struct MyStorageMap<K, V> where K: Hash {}
+struct MyStorageMap<K, V>
+where
+    K: Hash,
+{}
 
-impl<K, V> StorageKey<MyStorageMap<K, V>> where K: Hash {
+impl<K, V> StorageKey<MyStorageMap<K, V>>
+where
+    K: Hash,
+{
     // This version puts the err on the `vec.push` statement because `vec` is
     // annotated with `Vec<V>`.
     #[storage(read)]
@@ -29,7 +35,7 @@ impl<K, V> StorageKey<MyStorageMap<K, V>> where K: Hash {
         let k = sha256((key, self.slot()));
         let len = read::<u64>(k, 0).unwrap_or(0);
         let mut i = 0;
-        let mut vec/*: Vec<V>*/ = Vec::new();
+        let mut vec /*: Vec<V>*/ = Vec::new();
         while len > i {
             let k = sha256((key, i, self.slot()));
             let item = read::<K>(k, 0).unwrap();

@@ -1,55 +1,87 @@
 script;
 
 enum Enum {
-    A: (u64),
-    B: (u64),
+    A: u64,
+    B: u64,
 }
 
 struct Struct {
     x: u64,
     y: u64,
-    z: u64
+    z: u64,
 }
- 
+
 // For testing side effects.
 fn inc_i(ref mut i: u64) -> Struct {
     i = i + 11;
- 
-    Struct { x: 21, y: 21, z: 1 }
+
+    Struct {
+        x: 21,
+        y: 21,
+        z: 1,
+    }
 }
 
 #[inline(never)]
 fn return_match_on_str_slice(param: str) -> u64 {
     match param {
-        "get_a" => { 1u64 },
-        "get_a_b" => { 2u64 },
-        "get_b" => { 3u64 },
-        _ => { 1000u64 },
+        "get_a" => {
+            1u64
+        },
+        "get_a_b" => {
+            2u64
+        },
+        "get_b" => {
+            3u64
+        },
+        _ => {
+            1000u64
+        },
     }
 }
 
 fn main() {
     let x = match 8 {
-        7 => { 4 },
-        9 => { 5 },
-        8 => { 42 },
-        _ => { 100 },
+        7 => {
+            4
+        },
+        9 => {
+            5
+        },
+        8 => {
+            42
+        },
+        _ => {
+            100
+        },
     };
     assert(x == 42);
 
     let a = 5;
     let x = match a {
-        7 => { 4 },
-        5 => { 42 },
-        _ => { 24 },
+        7 => {
+            4
+        },
+        5 => {
+            42
+        },
+        _ => {
+            24
+        },
     };
     assert(x == 42);
 
     let a = 5;
     let x = match a {
-        7 | 8 | 9 => { 4 },
-        3 | 4 | 5 => { 42 },
-        _ => { 24 },
+        7 | 8 | 9 => {
+            4
+        },
+        3 | 4 | 5 => {
+            42
+        },
+        _ => {
+            24
+        },
     };
     assert(x == 42);
 
@@ -97,8 +129,12 @@ fn main() {
     assert(i == 11);
 
     let r = match 42 {
-        0 => { 24 },
-        foo => { foo },
+        0 => {
+            24
+        },
+        foo => {
+            foo
+        },
     };
     assert(r == 42);
 
@@ -114,4 +150,3 @@ fn main() {
     assert(return_match_on_str_slice("get_b") == 3);
     assert(return_match_on_str_slice("get_c") == 1000);
 }
-

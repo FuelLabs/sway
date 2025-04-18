@@ -15,7 +15,7 @@ trait Returner<C> {
 }
 
 struct FooBarData<D> {
-    value: D
+    value: D,
 }
 
 // F is unconstrained
@@ -108,7 +108,7 @@ impl<T> Returner<T> for _ {
 }
 
 struct Data<T> {
-    value: T
+    value: T,
 }
 
 impl<T> Setter<T> for Data<T> {
@@ -117,7 +117,10 @@ impl<T> Setter<T> for Data<T> {
     }
 }
 
-fn set_it<T, F>(ref mut data: T, new_value: F) where T: Setter<F> {
+fn set_it<T, F>(ref mut data: T, new_value: F)
+where
+    T: Setter<F>,
+{
     data.set(new_value);
 }
 
@@ -142,9 +145,7 @@ impl<T, U> MyTrait2<T> for U {
 }
 
 fn main() -> u64 {
-    let a = FooBarData {
-        value: 1u8
-    };
+    let a = FooBarData { value: 1u8 };
     let b = a.set(42);
     let c = b.value;
     let d = b.return_it(true);

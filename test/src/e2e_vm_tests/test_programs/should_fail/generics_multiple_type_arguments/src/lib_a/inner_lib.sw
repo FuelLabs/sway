@@ -2,5 +2,5 @@ library;
 
 pub enum MyEnum<T> {
     VariantA: (),
-    VariantB: T
+    VariantB: T,
 }

@@ -5,16 +5,15 @@ contract;
 ///    Left     Right
 ///      \       /
 ///        MyAbi
-
 trait Top {
     fn top();
 }
 
-trait Left : Top {
+trait Left: Top {
     fn left();
 }
 
-trait Right : Top {
+trait Right: Top {
     fn right();
 }
 
@@ -23,15 +22,19 @@ abi MyAbi : Left + Right {
 }
 
 impl Top for Contract {
-    fn top() { }
+    fn top() {}
 }
 
 impl Left for Contract {
-    fn left() { Self::top() }
+    fn left() {
+        Self::top()
+    }
 }
 
 impl Right for Contract {
-    fn right() { Self::top() }
+    fn right() {
+        Self::top()
+    }
 }
 
 impl MyAbi for Contract {

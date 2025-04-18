@@ -1,5 +1,5 @@
 library;
 
 pub enum MyEnum {
-    A: ()
+    A: (),
 }

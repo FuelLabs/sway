@@ -4,6 +4,6 @@ trait ConstantId {
     const ID: u32;
 }
 
-struct Struct { }
+struct Struct {}
 
-impl ConstantId for Struct { }
+impl ConstantId for Struct {}

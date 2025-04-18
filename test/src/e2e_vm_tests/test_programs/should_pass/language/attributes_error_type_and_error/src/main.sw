@@ -2,7 +2,7 @@ library;
 
 #[allow(dead_code)]
 #[error_type]
-pub enum EmptyErrorTypeEnum { }
+pub enum EmptyErrorTypeEnum {}
 
 #[allow(dead_code)]
 #[error_type]

@@ -6,8 +6,8 @@ contract;
 // This is only relevant when using v0 encoding, since v1 encoding does not use
 // function selectors.
 abi MyContract {
-    fn way() -> (bool);
-    fn fpeu() -> (bool);
+    fn way() -> bool;
+    fn fpeu() -> bool;
 }
 
 impl MyContract for Contract {

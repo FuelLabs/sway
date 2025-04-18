@@ -3,8 +3,5 @@ library;
 pub struct MyType {}
 
 impl MyType {
-    fn do_something(self) {
-    }
+    fn do_something(self) {}
 }
-
-

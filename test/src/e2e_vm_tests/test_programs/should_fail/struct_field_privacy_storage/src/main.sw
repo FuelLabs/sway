@@ -31,8 +31,12 @@ impl MainOtherStruct {
 }
 
 storage {
-    ms: MainStruct = MainStruct { x: 0, y: 0, other: MainOtherStruct { x: 0, y: 0 } },
-    ls: LibStruct = LibStruct { },
+    ms: MainStruct = MainStruct {
+        x: 0,
+        y: 0,
+        other: MainOtherStruct { x: 0, y: 0 },
+    },
+    ls: LibStruct = LibStruct {},
 }
 
 abi AccessStorage {
@@ -48,17 +52,21 @@ impl AccessStorage for Contract {
         let _ = storage.ls.other.read();
         let _ = storage.ls.other.x.read();
         let _ = storage.ls.other.y.read();
-        
+
         let _ = storage.ms.x.read();
         let _ = storage.ms.y.read();
         let _ = storage.ms.other.read();
         let _ = storage.ms.other.x.read();
         let _ = storage.ms.other.y.read();
 
-        let ms = MainStruct { x: 0, y: 0, other: MainOtherStruct { x: 0, y: 0 } };
+        let ms = MainStruct {
+            x: 0,
+            y: 0,
+            other: MainOtherStruct { x: 0, y: 0 },
+        };
         ms.use_me();
         ms.other.use_me();
     }
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

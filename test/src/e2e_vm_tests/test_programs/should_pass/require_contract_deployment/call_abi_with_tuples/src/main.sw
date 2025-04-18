@@ -1,29 +1,19 @@
 script;
 
-use abi_with_tuples::{MyContract, Location, Person};
-
+use abi_with_tuples::{Location, MyContract, Person};
 
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0xfdc14550c8aee742cd556d0ab7f378b7be0d3b1e6e086c097352e94590d4ed02;
 #[cfg(experimental_new_encoding = true)]
 const CONTRACT_ID = 0xe77828cc9433f3714af73bad1198b5234542eedc1e616d5c26c1643f216ebdd4; // AUTO-CONTRACT-ID ../../test_contracts/abi_with_tuples_contract --release
-
 fn main() -> bool {
     let the_abi = abi(MyContract, CONTRACT_ID);
 
-    let param1 = (
-        Person {
-            age: 30
-        },
-        2u64,
-    );
+    let param1 = (Person { age: 30 }, 2u64);
     let foo = the_abi.bug1(param1);
     assert(foo);
 
-    let param2 = (
-        Location::Earth,
-        3u64
-    );
+    let param2 = (Location::Earth, 3u64);
     let bar = the_abi.bug2(param2);
     assert(bar);
 
@@ -39,6 +29,5 @@ fn main() -> bool {
     // But we should not be able to reference the type name,
     // because it is not bound.
     // let a = SomeStruct { data: 2 }; // This will fail
-
     true
 }

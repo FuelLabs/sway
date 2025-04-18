@@ -2,7 +2,7 @@ script;
 
 fn main() -> u64 {
     let mut a = 0;
-    
+
     a += 99;
     assert(a == 99);
 

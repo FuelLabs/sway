@@ -183,7 +183,6 @@ enum Enum11 {
     Variant4: u64,
 }
 
-
 /// I am a random doc comment.
 fn func_enum11(e: Enum11) -> u64 {
     match e {
@@ -404,95 +403,53 @@ fn func_enum20(e: Enum20) -> u8 {
 
 /// I am a random doc comment.
 fn func21(x: u64, y: u64) -> u64 {
-    if x - y > 10 {
-        x / y
-    } else {
-        y / x
-    }
+    if x - y > 10 { x / y } else { y / x }
 }
 
 /// I am a random doc comment.
 fn func22(x: u8, y: u8) -> u8 {
-    if x - y > 10 {
-        x / y
-    } else {
-        y / x
-    }
+    if x - y > 10 { x / y } else { y / x }
 }
 
 /// I am a random doc comment.
 fn func23(x: u16, y: u16) -> u16 {
-    if x - y > 10 {
-        x / y
-    } else {
-        y / x
-    }
+    if x - y > 10 { x / y } else { y / x }
 }
 
 /// I am a random doc comment.
 fn func24(x: u32, y: u32) -> u32 {
-    if x - y > 10 {
-        x / y
-    } else {
-        y / x
-    }
+    if x - y > 10 { x / y } else { y / x }
 }
 
 /// I am a random doc comment.
 fn func25(x: u64, y: u64) -> u64 {
-    if x - y > 10 {
-        x / y
-    } else {
-        y / x
-    }
+    if x - y > 10 { x / y } else { y / x }
 }
 
 /// I am a random doc comment.
 fn func26(x: u8, y: u8) -> u8 {
-    if x - y > 10 {
-        x / y
-    } else {
-        y / x
-    }
+    if x - y > 10 { x / y } else { y / x }
 }
 
 /// I am a random doc comment.
 fn func27(x: u16, y: u16) -> u16 {
-    if x - y > 10 {
-        x / y
-    } else {
-        y / x
-    }
+    if x - y > 10 { x / y } else { y / x }
 }
 
 /// I am a random doc comment.
 fn func28(x: u32, y: u32) -> u32 {
-    if x - y > 10 {
-        x / y
-    } else {
-        y / x
-    }
+    if x - y > 10 { x / y } else { y / x }
 }
 
 /// I am a random doc comment.
 fn func29(x: u16, y: u16) -> u16 {
-    if x - y > 10 {
-        x / y
-    } else {
-        y / x
-    }
+    if x - y > 10 { x / y } else { y / x }
 }
-
 
 /// I am a random doc comment.
 fn func30(x: u32, y: u32) -> u32 {
-    if x - y > 10 {
-        x + y
-    } else {
-        y - x
-    }
+    if x - y > 10 { x + y } else { y - x }
 }
-
 
 fn main() {
     let varb_u8: u8 = 1;
@@ -1695,17 +1652,67 @@ fn main() {
     let varo_u16: u16 = 300;
     let varo_u32: u32 = 300;
     let varo_u64: u64 = 300;
-    let s1 = Struct1 { field1: varb_u8, field2: varb_u16, field3: varb_u32, field4: varb_u64 };
+    let s1 = Struct1 {
+        field1: varb_u8,
+        field2: varb_u16,
+        field3: varb_u32,
+        field4: varb_u64,
+    };
     let a = func_struct1(s1);
-    let b = func_struct2(Struct2 { field1: varc_u8, field2: varc_u16, field3: varc_u32, field4: varc_u64 });
-    let c = func_struct3(Struct3 { field1: vard_u8, field2: vard_u16, field3: vard_u32, field4: vard_u64 });
-    let d = func_struct4(Struct4 { field1: vare_u8, field2: vare_u16, field3: vare_u32, field4: vare_u64 });
-    let e = func_struct5(Struct5 { field1: varf_u8, field2: varf_u16, field3: varf_u32, field4: varf_u64 });
-    let f = func_struct6(Struct6 { field1: varg_u8, field2: varg_u16, field3: varg_u32, field4: varg_u64 });
-    let g = func_struct7(Struct7 { field1: varh_u8, field2: varh_u16, field3: varh_u32, field4: varh_u64 });
-    let h = func_struct8(Struct8 { field1: vari_u8, field2: vari_u16, field3: vari_u32, field4: vari_u64 });
-    let i = func_struct9(Struct9 { field1: varj_u8, field2: varj_u16, field3: varj_u32, field4: varj_u64 });
-    let j = Struct10 { field1: vark_u8, field2: vark_u16, field3: vark_u32, field4: vark_u64 };
+    let b = func_struct2(Struct2 {
+        field1: varc_u8,
+        field2: varc_u16,
+        field3: varc_u32,
+        field4: varc_u64,
+    });
+    let c = func_struct3(Struct3 {
+        field1: vard_u8,
+        field2: vard_u16,
+        field3: vard_u32,
+        field4: vard_u64,
+    });
+    let d = func_struct4(Struct4 {
+        field1: vare_u8,
+        field2: vare_u16,
+        field3: vare_u32,
+        field4: vare_u64,
+    });
+    let e = func_struct5(Struct5 {
+        field1: varf_u8,
+        field2: varf_u16,
+        field3: varf_u32,
+        field4: varf_u64,
+    });
+    let f = func_struct6(Struct6 {
+        field1: varg_u8,
+        field2: varg_u16,
+        field3: varg_u32,
+        field4: varg_u64,
+    });
+    let g = func_struct7(Struct7 {
+        field1: varh_u8,
+        field2: varh_u16,
+        field3: varh_u32,
+        field4: varh_u64,
+    });
+    let h = func_struct8(Struct8 {
+        field1: vari_u8,
+        field2: vari_u16,
+        field3: vari_u32,
+        field4: vari_u64,
+    });
+    let i = func_struct9(Struct9 {
+        field1: varj_u8,
+        field2: varj_u16,
+        field3: varj_u32,
+        field4: varj_u64,
+    });
+    let j = Struct10 {
+        field1: vark_u8,
+        field2: vark_u16,
+        field3: vark_u32,
+        field4: vark_u64,
+    };
     let k = Enum11::Variant1(varl_u8);
     let l = func_enum12(Enum12::Variant1(varm_u8));
     let m = func_enum13(Enum13::Variant1(varn_u8));

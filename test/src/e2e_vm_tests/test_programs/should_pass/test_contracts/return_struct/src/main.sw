@@ -8,7 +8,7 @@ use data_structures::MyStruct;
 use std::hash::*;
 
 storage {
-    a: StorageMap<u64, MyStruct> = StorageMap::<u64, MyStruct> {}
+    a: StorageMap<u64, MyStruct> = StorageMap::<u64, MyStruct> {},
 }
 
 impl MyContract for Contract {

@@ -1,11 +1,11 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
+implicit-std = false
 license = "Apache-2.0"
 name = "dependency_package_field"
-implicit-std = false
 
 [dependencies]
 # Use `utils` package as `utils_alt` to test `package` field.
-utils-alt = { path = "../../../../../e2e_vm_tests/utils", package = "utils" }
 std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }
+utils-alt = { path = "../../../../../e2e_vm_tests/utils", package = "utils" }

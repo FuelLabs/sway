@@ -33,12 +33,10 @@ impl C {
 }
 
 fn main() -> bool {
-    let a = A {
-        a: 0,
-    };
+    let a = A { a: 0 };
 
     // Expecting error: Cannot call method "f" on variable "a" because "a" is not declared as mutable.
     a.f();
-    
+
     false
 }

@@ -9,14 +9,11 @@ abi MyContract {
 }
 
 impl MyContract for Contract {
-
     fn test_function(_b: u256) -> u256 {
         weird(_b);
         0x00u256
     }
 }
-
-
 
 #[test]
 fn test() {

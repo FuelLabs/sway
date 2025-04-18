@@ -12,7 +12,7 @@ configurable {
     C_S: S = S { x: 0 },
 }
 
-fn main() { 
+fn main() {
     C = 1;
     C_S.x = 1;
 

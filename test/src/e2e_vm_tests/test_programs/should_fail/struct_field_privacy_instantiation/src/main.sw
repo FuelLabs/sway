@@ -20,53 +20,82 @@ impl MainStruct {
 }
 
 fn main() {
-    let _ = LibOnlyPrivateFields { };
-    let _ = LibOnePrivateField { };
-    let _ = LibTwoPrivateFields { };
-    let _ = LibThreePrivateFields { };
+    let _ = LibOnlyPrivateFields {};
+    let _ = LibOnePrivateField {};
+    let _ = LibTwoPrivateFields {};
+    let _ = LibThreePrivateFields {};
 
-    let _ = LibStruct { };
+    let _ = LibStruct {};
 
     let _ = LibStruct { x: 0 };
 
-    let _ = LibStruct { x: 0, y: 0, z: 0 };
+    let _ = LibStruct {
+        x: 0,
+        y: 0,
+        z: 0,
+    };
 
     let _ = LibStruct { nn: 0 };
 
     let _ = LibStruct { nn: 0, x: 0 };
 
-    let _ = LibStruct { nn: 0, x: 0, y: 0, z: 0 };
+    let _ = LibStruct {
+        nn: 0,
+        x: 0,
+        y: 0,
+        z: 0,
+    };
 
-
-    let _ = LibStructAlias { };
+    let _ = LibStructAlias {};
 
     let _ = LibStructAlias { x: 0 };
 
-    let _ = LibStructAlias { x: 0, y: 0, z: 0 };
+    let _ = LibStructAlias {
+        x: 0,
+        y: 0,
+        z: 0,
+    };
 
     let _ = LibStructAlias { nn: 0 };
 
     let _ = LibStructAlias { nn: 0, x: 0 };
 
-    let _ = LibStructAlias { nn: 0, x: 0, y: 0, z: 0 };
+    let _ = LibStructAlias {
+        nn: 0,
+        x: 0,
+        y: 0,
+        z: 0,
+    };
 
-
-    let _ = MainStruct { };
+    let _ = MainStruct {};
 
     let _ = MainStruct { x: 0 };
 
     let _ = MainStruct { x: 0, y: 0 };
 
-    let _ = MainStruct { x: 0, y: 0, z: 0 };
+    let _ = MainStruct {
+        x: 0,
+        y: 0,
+        z: 0,
+    };
 
     let _ = MainStruct { nn: 0 };
 
     let _ = MainStruct { nn: 0, x: 0 };
 
-    let _ = MainStruct { nn: 0, x: 0, y: 0, z: 0 };
-    
-    
-    MainStruct { x: 0, y: 0, z: 0 }.use_me();
+    let _ = MainStruct {
+        nn: 0,
+        x: 0,
+        y: 0,
+        z: 0,
+    };
+
+    MainStruct {
+        x: 0,
+        y: 0,
+        z: 0,
+    }
+        .use_me();
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

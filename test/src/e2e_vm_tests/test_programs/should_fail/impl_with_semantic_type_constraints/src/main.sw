@@ -26,7 +26,7 @@ impl DoubleIdentity<u8, u8> {
 fn main() {
     let a = DoubleIdentity {
         first: 0u8,
-        second: 1u8
+        second: 1u8,
     };
     let b = DoubleIdentity {
         first: true,
@@ -34,7 +34,7 @@ fn main() {
     };
     let c = DoubleIdentity {
         first: 0u64,
-        second: "hi"
+        second: "hi",
     };
 
     let _d = a.get_first();

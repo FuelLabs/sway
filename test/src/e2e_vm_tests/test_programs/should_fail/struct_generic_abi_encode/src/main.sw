@@ -10,15 +10,13 @@ trait AbiEncode2 {
     fn abi_encode2(self, ref mut buffer: Buffer);
 }
 
-
-impl AbiEncode2 for u64
-{
-    fn abi_encode2(self, ref mut buffer: Buffer) {
-        
-    }
+impl AbiEncode2 for u64 {
+    fn abi_encode2(self, ref mut buffer: Buffer) {}
 }
 
-impl<T> AbiEncode2 for SomeStruct<T> where T: AbiEncode2
+impl<T> AbiEncode2 for SomeStruct<T>
+where
+    T: AbiEncode2,
 {
     #[allow(dead_code)]
     fn abi_encode2(self, ref mut buffer: Buffer) {
@@ -27,7 +25,4 @@ impl<T> AbiEncode2 for SomeStruct<T> where T: AbiEncode2
     }
 }
 
-
-fn main() {
-
-}
+fn main() {}

@@ -6,7 +6,7 @@ trait MySuperTrait {
     fn foo();
 }
 
-trait MyTrait : MySuperTrait {
+trait MyTrait: MySuperTrait {
     fn bar();
 } {
     // supertrait's methods are accessible in the default-implemented methods block
@@ -16,10 +16,12 @@ trait MyTrait : MySuperTrait {
 }
 
 impl MySuperTrait for S {
-    fn foo() { }
+    fn foo() {}
 }
 
 impl MyTrait for S {
     // supertrait's methods are accessible in contract methods' bodies
-    fn bar() { Self::foo() }
+    fn bar() {
+        Self::foo()
+    }
 }

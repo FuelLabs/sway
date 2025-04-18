@@ -1,9 +1,9 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
+implicit-std = false
 license = "Apache-2.0"
 name = "program"
-implicit-std = false
 
 [dependencies]
 ext_1_items = { path = "../ext_1_items/" }
@@ -14,7 +14,7 @@ ext_3_items = { path = "../ext_3_items/" }
 ext_3_lib = { path = "../ext_3_lib/" }
 ext_4_items = { path = "../ext_4_items/" }
 ext_4_lib = { path = "../ext_4_lib/" }
-ext_5_items = { path = "../ext_5_items/" }
 ext_5_1_lib = { path = "../ext_5_1_lib/" }
 ext_5_2_lib = { path = "../ext_5_2_lib/" }
+ext_5_items = { path = "../ext_5_items/" }
 std = { path = "../../../../../../../../../sway-lib-std" }

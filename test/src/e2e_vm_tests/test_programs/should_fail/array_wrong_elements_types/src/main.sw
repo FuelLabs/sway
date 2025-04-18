@@ -6,7 +6,7 @@ fn vec<T>() -> Vec<T> {
 
 fn main() {
     // unexpected u16
-    let a: [u8;1] = [1u16];
+    let a: [u8; 1] = [1u16];
 
     // unexpected u16
     let _ = [1u8, 1u16];
@@ -35,7 +35,7 @@ fn main() {
 
     // unexpected Vec<u16>
     let _ = [Vec::new(), vec::<u8>(), vec::<u16>()];
-    
+
     // unexpected Option<u8>
     let a = [None, Some(1), Some(1u8)];
     let _b: Option<u16> = a[1];
@@ -45,7 +45,7 @@ fn main() {
     let b: u32 = a[2];
 
     // Should not warn or error
-    let _ : [u8 ; 0] = [];
+    let _: [u8; 0] = [];
 
     // Literal too big
     let mut a = [8u8, 8, 18446744073709551615];

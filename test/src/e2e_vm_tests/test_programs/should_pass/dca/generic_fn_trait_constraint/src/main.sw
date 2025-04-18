@@ -5,14 +5,16 @@ pub trait MyEq {
 }
 
 impl MyEq for u64 {
-    fn my_eq(self, _other: Self) {
-    }
+    fn my_eq(self, _other: Self) {}
 }
 
-fn test_my_eq<T>(x: T, y: T) where T: MyEq {
-  x.my_eq(y)
+fn test_my_eq<T>(x: T, y: T)
+where
+    T: MyEq,
+{
+    x.my_eq(y)
 }
 
 fn main() {
-  test_my_eq(42, 42);
+    test_my_eq(42, 42);
 }

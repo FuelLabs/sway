@@ -43,7 +43,16 @@ fn complex_vec_test() {
     exp_vec_in_a_vec_in_a_struct_in_a_vec.push(SomeStruct { a: inner_vec_1 });
 
     assert(inner_vec_1.get(0).unwrap().get(1).unwrap() == 1);
-    assert(exp_vec_in_a_vec_in_a_struct_in_a_vec.get(0).unwrap().a.get(0).unwrap().get(2).unwrap() == 2);
+    assert(
+        exp_vec_in_a_vec_in_a_struct_in_a_vec
+            .get(0)
+            .unwrap()
+            .a
+            .get(0)
+            .unwrap()
+            .get(2)
+            .unwrap() == 2,
+    );
 }
 
 fn simple_option_generics_test() {
@@ -75,12 +84,10 @@ fn main() {
 
 fn sell_product() -> MyResult<bool, CustomType> {
     if false {
-        return MyResult::Err(CustomType {
-            name: "foo"
-        });
+        return MyResult::Err(CustomType { name: "foo" });
     };
 
     return MyResult::Ok(false);
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

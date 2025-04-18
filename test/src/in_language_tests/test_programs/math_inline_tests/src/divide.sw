@@ -219,7 +219,9 @@ fn math_u256_divide() {
     assert(two / one == two);
     assert(one / two == zero);
     assert(two / two == one);
-    assert(max / two == 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256);
+    assert(
+        max / two == 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256,
+    );
     assert(max / one == max);
 }
 
@@ -255,4 +257,3 @@ fn revert_math_u256_divide_by_zero_with_disabled_overflow() {
     let result = one / zero;
     assert(result == zero);
 }
-

@@ -3,17 +3,18 @@ script;
 mod foo;
 
 struct Bar {
-  baz: ::foo::Foo
+    baz: ::foo::Foo,
 }
-
 
 fn main() {
     let x = Bar {
-        baz: ::foo::Foo::A
+        baz: ::foo::Foo::A,
     };
 
     let b = match x {
-        Bar { baz: ::foo::Foo::A(_) } => true,
+        Bar {
+            baz: ::foo::Foo::A(_),
+        } => true,
         _ => false,
     };
 

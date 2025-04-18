@@ -3,7 +3,7 @@ contract;
 use increment_abi::Incrementor;
 
 storage {
-  value: u64 = 0,
+    value: u64 = 0,
 }
 
 impl Incrementor for Contract {

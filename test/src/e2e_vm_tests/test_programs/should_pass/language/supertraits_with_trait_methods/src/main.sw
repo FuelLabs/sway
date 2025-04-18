@@ -9,7 +9,6 @@ trait MyMul {
 }
 
 trait MyMath: MyAdd + MyMul {
-
 } {
     fn my_double(self) -> Self {
         self.my_add(self)
@@ -27,7 +26,7 @@ struct Data {
 impl MyAdd for Data {
     fn my_add(self, other: Self) -> Self {
         Data {
-            value: self.value + other.value
+            value: self.value + other.value,
         }
     }
 }
@@ -35,7 +34,7 @@ impl MyAdd for Data {
 impl MyMul for Data {
     fn my_mul(self, other: Self) -> Self {
         Data {
-            value: self.value * other.value
+            value: self.value * other.value,
         }
     }
 }
@@ -43,9 +42,7 @@ impl MyMul for Data {
 impl MyMath for Data {}
 
 fn main() -> bool {
-    let a = Data {
-        value: 3u64
-    };
+    let a = Data { value: 3u64 };
     let b = a.my_exp();
     let c = b.my_double();
     assert(c.value == 18);

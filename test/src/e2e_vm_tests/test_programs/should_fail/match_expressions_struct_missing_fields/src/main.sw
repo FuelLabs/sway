@@ -1,8 +1,8 @@
 script;
 
 struct Point {
-  x: u64,
-  y: u64
+    x: u64,
+    y: u64,
 }
 
 // this should fail because the pattern is missing the y field
@@ -14,7 +14,9 @@ fn main() -> u64 {
     };
 
     match p {
-        Point { x } => { x },
+        Point { x } => {
+            x
+        },
     };
 
     0

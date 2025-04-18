@@ -10,4 +10,4 @@ trait T {
     #[error_type(invalid)]
     #[error(invalid)]
     fn trait_method(self);
-} 
+}

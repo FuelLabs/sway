@@ -28,7 +28,7 @@ pub fn test() {
         TRUE => 42,
         FALSE => 3,
     };
-    
+
     assert_eq(b, 42);
 
     const LOCAL_X: u64 = 13;
@@ -48,7 +48,7 @@ pub fn test() {
         },
         _ => 1111,
     };
-    
+
     assert_eq(c, 42);
 
     let c = match return_me(LOCAL_X) {
@@ -66,7 +66,7 @@ pub fn test() {
         },
         _ => 2222,
     };
-    
+
     assert_eq(c, 42);
 
     let c = match return_me(LIB_X) {
@@ -84,7 +84,7 @@ pub fn test() {
         },
         _ => 3333,
     };
-    
+
     assert_eq(c, 42);
 
     let c = match return_me(ALIAS_LIB_Y) {
@@ -102,7 +102,7 @@ pub fn test() {
         },
         _ => 4444,
     };
-    
+
     assert_eq(c, 42);
 
     let c = match return_me(MOD_X) {
@@ -114,7 +114,7 @@ pub fn test() {
         },
         _ => 5555,
     };
-    
+
     assert_eq(c, 42);
 
     let c = match return_me(LOCAL_X) {
@@ -126,7 +126,7 @@ pub fn test() {
         },
         _ => 6666,
     };
-    
+
     assert_eq(c, 42);
 
     let c = match return_me(LIB_X) {
@@ -138,7 +138,7 @@ pub fn test() {
         },
         _ => 7777,
     };
-    
+
     assert_eq(c, 42);
 
     let c = match return_me(ALIAS_LIB_Y) {
@@ -150,6 +150,6 @@ pub fn test() {
         },
         _ => 8888,
     };
-    
+
     assert_eq(c, 42);
 }

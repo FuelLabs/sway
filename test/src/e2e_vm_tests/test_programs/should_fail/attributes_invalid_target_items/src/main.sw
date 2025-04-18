@@ -15,10 +15,8 @@ library;
 // TODO: Extend with testing nested items once https://github.com/FuelLabs/sway/issues/6932 is implemented.
 
 //! Invalid inner comment.
-
 //! Invalid inner comment.
 /// Invalid outer comment.
-
 /// Invalid outer comment.
 #[storage(invalid)]
 #[inline(invalid)]
@@ -27,7 +25,6 @@ library;
 #[payable(invalid)]
 /// Invalid outer comment.
 //! Invalid inner comment.
-
 //! Invalid inner comment.
 /// Invalid outer comment.
 #[allow(invalid)]

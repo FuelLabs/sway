@@ -11,5 +11,4 @@ impl<T, const N: u64> A for [T; N] {
     }
 }
 
-fn main() {
-}
+fn main() {}

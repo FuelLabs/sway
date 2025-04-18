@@ -2,11 +2,14 @@ library;
 // Logs every new type defined in the std lib to ensure codec is working for them
 
 use std::{
-    logging::log,
     address::Address,
-    bytes::{
-        Bytes
-    },
+    alias::SubId,
+    asset_id::AssetId,
+    auth::AuthError,
+    b512::B512,
+    block::BlockHashError,
+    bytes::Bytes,
+    contract_id::ContractId,
     crypto::{
         alt_bn128::AltBn128Error,
         ed25519::Ed25519,
@@ -16,40 +19,32 @@ use std::{
         scalar::Scalar,
         secp256k1::Secp256k1,
         secp256r1::Secp256r1,
-        signature_error::SignatureError,
         signature::Signature,
+        signature_error::SignatureError,
     },
+    ecr::EcRecoverError,
+    hash::Hasher,
+    identity::Identity,
+    inputs::Input,
+    logging::log,
+    low_level_call::CallParams,
+    option::Option,
+    outputs::Output,
+    result::Result,
     storage::{
         storage_bytes::StorageBytes,
         storage_key::StorageKey,
         storage_string::StorageString,
         storage_vec::StorageVec,
     },
-    vm::evm::evm_address::EvmAddress,
-    alias::SubId,
-    asset_id::AssetId,
-    auth::AuthError,
-    b512::B512,
-    block::BlockHashError,
-    contract_id::ContractId,
-    ecr::EcRecoverError,
-    hash::Hasher,
-    identity::Identity,
-    inputs::Input,
-    low_level_call::CallParams,
-    option::Option,
-    outputs::Output,
-    result::Result,
     string::String,
     tx::Transaction,
     u128::U128,
-    vec::{
-        Vec
-    },
+    vec::Vec,
+    vm::evm::evm_address::EvmAddress,
 };
-
-
 #[test]
+
 fn test_logging() {
     log(Address::zero());
     log(Bytes::new());
@@ -83,7 +78,11 @@ fn test_logging() {
     log(Hasher::new());
     log(Identity::Address(Address::zero()));
     log(Input::Coin);
-    log(CallParams{coins: 0, asset_id: AssetId::zero(), gas: 0});
+    log(CallParams {
+        coins: 0,
+        asset_id: AssetId::zero(),
+        gas: 0,
+    });
     let option: Option<u64> = Option::Some(0);
     log(option);
     log(Output::Coin);

@@ -1,9 +1,9 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
-license = "Apache-2.0"
-name = "retd_struct"
 entry = "main.sw"
 implicit-std = false
+license = "Apache-2.0"
+name = "retd_struct"
 
 [dependencies]
 std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }

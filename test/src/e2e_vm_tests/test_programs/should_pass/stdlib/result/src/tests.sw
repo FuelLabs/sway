@@ -18,7 +18,7 @@ fn test_is_err<T>(val: T) {
 
 fn test_unwrap<T>(val: T)
 where
-    T: Eq
+    T: Eq,
 {
     assert(Ok::<T, T>(val).unwrap() == val);
 }
@@ -27,13 +27,13 @@ where
 // https://github.com/FuelLabs/sway/issues/3623
 fn test_unwrap_or_ok<T>(val: T, default: T)
 where
-    T: Eq
+    T: Eq,
 {
     assert(Ok::<T, T>(val).unwrap_or(default) == val);
 }
 fn test_unwrap_or_err<T>(val: T, default: T)
 where
-    T: Eq
+    T: Eq,
 {
     assert(Err::<T, T>(val).unwrap_or(default) == default);
 }

@@ -1,6 +1,6 @@
 library;
 
-use ::foo::{Foo, Baz};
+use ::foo::{Baz, Foo};
 use ops::Add;
 
 pub struct Bar {}

@@ -2,7 +2,9 @@ script;
 
 mod inner;
 
-fn main() -> bool { true }
+fn main() -> bool {
+    true
+}
 
 #[test]
 fn test_meaning_of_life() {

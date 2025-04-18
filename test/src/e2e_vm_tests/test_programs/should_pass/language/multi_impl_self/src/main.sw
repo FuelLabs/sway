@@ -1,7 +1,6 @@
 script;
 
-struct MyStruct {
-}
+struct MyStruct {}
 
 impl MyStruct {
     pub fn my_fun() -> u64 {
@@ -9,8 +8,7 @@ impl MyStruct {
     }
 }
 
-impl MyStruct {
-}
+impl MyStruct {}
 
 fn fun() -> u64 {
     42

@@ -28,10 +28,7 @@ impl S {
     }
 }
 
-storage {
-    // TODO: Uncomment this once https://github.com/FuelLabs/sway/issues/6543 is fixed.
-    // s_a: u8 = S::S_A,
-}
+storage {}
 
 const MOD_S_A: u8 = S::S_A;
 

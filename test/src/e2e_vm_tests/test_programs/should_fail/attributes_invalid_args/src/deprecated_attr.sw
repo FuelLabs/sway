@@ -1,8 +1,8 @@
 library;
 
 #[deprecated(note = "note")]
-pub struct Ok { }
+pub struct Ok {}
 
 #[deprecated(noe = "note")]
 #[deprecated(unknown_arg = "note")]
-pub struct NotOk { }
+pub struct NotOk {}

@@ -10,7 +10,7 @@ struct S<T> {
 
 impl<Z> S<Z>
 where
-Z: Cat,
+    Z: Cat,
 {
     fn foo(self) -> u64 {
         1

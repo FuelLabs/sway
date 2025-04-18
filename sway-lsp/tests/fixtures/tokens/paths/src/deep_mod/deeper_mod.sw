@@ -1,6 +1,6 @@
 library;
 
-pub fn deep_fun(){}
+pub fn deep_fun() {}
 
 pub enum DeepEnum {
     Variant: (),

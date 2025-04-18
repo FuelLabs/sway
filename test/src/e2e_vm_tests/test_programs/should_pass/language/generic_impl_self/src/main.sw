@@ -128,7 +128,7 @@ impl<T> MyOption<T> {
 }
 
 pub struct MyResult2<T, E> {
-    res: Result<T, E>
+    res: Result<T, E>,
 }
 
 impl<T, E> MyResult2<T, E> {
@@ -219,11 +219,15 @@ fn generic_impl_self_test() {
 use std::vec::*;
 
 struct MyVec<T> {
-    vec: Vec<T>
+    vec: Vec<T>,
 }
 
 impl<T> MyVec<T> {
-    pub fn new() -> Self { MyVec{ vec: Vec::new() } }
+    pub fn new() -> Self {
+        MyVec {
+            vec: Vec::new(),
+        }
+    }
 
     pub fn with(ref mut self, with_value: T) -> Self {
         self.vec.push(with_value);

@@ -16,7 +16,7 @@ trait Setter<T> {
 }
 
 struct FooBarData<T> {
-    value: T
+    value: T,
 }
 
 impl<T> Setter<T> for FooBarData<T> {
@@ -53,17 +53,14 @@ impl<T> MyAdd<u8> for FooBarData<T> {
 //     }
 // }
 
+
 trait MySub<T> {
     fn my_sub(a: T, b: T) -> T;
 }
 
 impl<T> MySub<u8> for FooBarData<T> {
     fn my_sub(a: u8, b: u8) -> u8 {
-        if a >= b {
-            a - b
-        } else {
-            b - a
-        }
+        if a >= b { a - b } else { b - a }
     }
 }
 
@@ -76,6 +73,7 @@ impl<T> MySub<u8> for FooBarData<T> {
 //         }
 //     }
 // }
+
 
 struct OtherData<T> {
     a: T,
@@ -94,13 +92,10 @@ impl<T> MyAdd<u8> for OtherData<T> {
 //     }
 // }
 
+
 impl<T> MySub<u8> for OtherData<T> {
     fn my_sub(a: u8, b: u8) -> u8 {
-        if a >= b {
-            a - b
-        } else {
-            b - a
-        }
+        if a >= b { a - b } else { b - a }
     }
 }
 
@@ -114,19 +109,20 @@ impl<T> MySub<u8> for OtherData<T> {
 //     }
 // }
 
+
 impl MyTriple<u64> for MyPoint<u64> {
     fn my_triple(self, value: u64) -> u64 {
-        (self.x*3) + (self.y*3) + (value*3)
+        (self.x * 3) + (self.y * 3) + (value * 3)
     }
 }
 
 struct MyU64 {
-    inner: u64
+    inner: u64,
 }
 
 impl MyTriple<u64> for MyU64 {
     fn my_triple(self, value: u64) -> u64 {
-        (self.inner*3) + (value*3)
+        (self.inner * 3) + (value * 3)
     }
 }
 
@@ -148,31 +144,23 @@ pub trait Convert<T> {
 
 impl Convert<B> for A {
     fn convert(t: B) -> Self {
-        A {
-            a: t.b
-        }
+        A { a: t.b }
     }
 }
 
 impl Convert<C> for A {
     fn convert(t: C) -> Self {
-        A {
-            a: t.c
-        }
+        A { a: t.c }
     }
 }
 
 fn main() -> u64 {
-    let a = FooBarData {
-        value: 1u8
-    };
+    let a = FooBarData { value: 1u8 };
     let b = a.set(42);
     let c = b.value;
     let d = b.return_it(true);
     let e = b.return_it(9u64);
-    let f = FooBarData {
-        value: 1u64
-    };
+    let f = FooBarData { value: 1u64 };
     let g = f.my_add(a.my_add(1u8, 2u8), a.my_add(3u8, 4u8));
     let h = FooBarData::<u64>::my_sub(
         FooBarData::<u8>::my_sub(100, 10),
@@ -197,9 +185,7 @@ fn main() -> u64 {
     };
     let n = m.my_double(100);
     let o = m.my_triple(100);
-    let p = MyU64 {
-        inner: 30u64
-    };
+    let p = MyU64 { inner: 30u64 };
     let q = p.my_triple(1);
 
     let r_b = B { b: 42 };
@@ -216,7 +202,8 @@ fn main() -> u64 {
         && o == 360
         && q == 93
         && A::convert(r_b).a == 42
-        && A::convert(r_c).a == 42 {
+        && A::convert(r_c).a == 42
+    {
         42
     } else {
         7

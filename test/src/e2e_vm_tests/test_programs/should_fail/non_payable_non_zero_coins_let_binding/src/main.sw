@@ -14,9 +14,10 @@ fn main() {
     // we use a chain of let-bindings that ends in a non-zero literal
     let fortytwo = 42;
     let coins = fortytwo;
-    caller.send_funds {
-        gas: 10000,
-        coins: coins,
-        asset_id: b256::zero(),
-    }(amount_to_send, recipient_address);
+    caller
+        .send_funds {
+            gas: 10000,
+            coins: coins,
+            asset_id: b256::zero(),
+        }(amount_to_send, recipient_address);
 }

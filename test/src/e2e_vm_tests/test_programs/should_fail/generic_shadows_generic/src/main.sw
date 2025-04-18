@@ -1,19 +1,17 @@
 script;
 
 struct Data<T> {
-  value: T
+    value: T,
 }
 
 impl<T> Data<T> {
-  fn new(value: T) -> Data<T> {
-    Data {
-        value: value
+    fn new(value: T) -> Data<T> {
+        Data { value: value }
     }
-  }
 
-  fn get_value<T>(self) -> T {
-    self.value
-  }
+    fn get_value<T>(self) -> T {
+        self.value
+    }
 }
 
 fn main() -> bool {

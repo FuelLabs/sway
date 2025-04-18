@@ -4,7 +4,7 @@ mod traits;
 
 use traits::*;
 
-struct Struct { }
+struct Struct {}
 
 impl Struct {
     const ID: u32 = 3;
@@ -38,7 +38,7 @@ impl GenericConstantIdWithDefault<bool> for Struct {
     const ID: bool = true;
 }
 
-enum Enum { }
+enum Enum {}
 
 impl Enum {
     const ID: u32 = 3;
@@ -88,7 +88,6 @@ fn test_for_structs() {
 
     assert_eq(3, Struct::foo());
 }
-
 
 // TODO: Uncomment this test once https://github.com/FuelLabs/sway/issues/6344 is fixed.
 // #[test]

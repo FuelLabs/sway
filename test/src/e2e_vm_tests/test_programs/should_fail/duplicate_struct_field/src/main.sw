@@ -5,8 +5,5 @@ struct S {
 }
 
 pub fn main() {
-    let _ = S{
-        x:1,
-        x: "a",
-    };
+    let _ = S { x: 1, x: "a" };
 }

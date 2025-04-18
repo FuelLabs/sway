@@ -1,7 +1,7 @@
 script;
 
 struct Data {
-    value: u64
+    value: u64,
 }
 
 impl Data {
@@ -11,11 +11,7 @@ impl Data {
 }
 
 fn main() -> u64 {
-    let data1 = Data {
-        value: 42u64
-    };
-    let data2 = Data {
-        value: 1u64
-    };
+    let data1 = Data { value: 42u64 };
+    let data2 = Data { value: 1u64 };
     data1.add_values(data2, data2)
 }

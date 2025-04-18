@@ -11,4 +11,4 @@ trait T {
     #[error_type(invalid)]
     #[error(invalid)]
     type Type;
-} 
+}

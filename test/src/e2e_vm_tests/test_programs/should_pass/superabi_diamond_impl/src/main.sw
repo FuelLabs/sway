@@ -5,43 +5,34 @@ contract;
 ///    Left     Right
 ///      \       /
 ///        Bottom
-
-abi Top
-{
+abi Top {
     // no interface methods
-}
-{
+} {
     fn top() {}
 }
 
-abi Left : Top
-{
+abi Left : Top {
     // no interface methods
-}
-{
+} {
     fn left() {}
 }
 
-abi Right : Top
-{
+abi Right : Top {
     // no interface methods
-}
-{
+} {
     fn right() {}
 }
 
-abi Bottom : Left + Right
-{
+abi Bottom : Left + Right {
     // no interface methods
-}
-{
+} {
     fn bottom() {}
 }
 
-impl Top for Contract { }
+impl Top for Contract {}
 
-impl Left for Contract { }
+impl Left for Contract {}
 
-impl Right for Contract { }
+impl Right for Contract {}
 
-impl Bottom for Contract { }
+impl Bottom for Contract {}

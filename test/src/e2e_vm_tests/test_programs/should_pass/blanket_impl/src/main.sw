@@ -9,6 +9,4 @@ struct Bar {}
 fn main() -> u64 {
     let bar = Bar {};
     bar.foo()
-    
 }
-

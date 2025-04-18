@@ -10,7 +10,7 @@ struct S<T> {
 
 impl<Z> S<Z>
 where
-Z: Cat,
+    Z: Cat,
 {
     fn bar(self) -> u64 {
         1
@@ -28,5 +28,3 @@ impl Cat for u32 {
         1
     }
 }
-
-

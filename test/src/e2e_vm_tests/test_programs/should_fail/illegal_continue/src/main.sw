@@ -2,6 +2,5 @@ script;
 
 fn main() {
     continue;
-    while true {
-    }
+    while true {}
 }

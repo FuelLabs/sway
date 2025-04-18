@@ -20,7 +20,7 @@ impl & &mut u64 {
     fn ref_ref_mut_u64(self) {}
 }
 
-impl &mut & u64 {
+impl &mut &u64 {
     fn ref_mut_ref_u64(self) {}
 }
 
@@ -40,7 +40,7 @@ impl &mut & &mut u64 {
     fn ref_mut_ref_ref_mut_u64(self) {}
 }
 
-impl &mut &mut & u64 {
+impl &mut &mut &u64 {
     fn ref_mut_ref_mut_ref_u64(self) {}
 }
 

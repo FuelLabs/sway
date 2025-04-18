@@ -1,13 +1,13 @@
 library;
 
-struct S { }
+struct S {}
 
 impl S {
     #[inline(always)]
-    fn ok_1() { }
+    fn ok_1() {}
 
     #[inline]
     #[inline()]
     #[inline(always, never)]
-    fn not_ok() { }
+    fn not_ok() {}
 }

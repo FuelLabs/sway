@@ -9,10 +9,12 @@ abi MyAbi : MySuperAbi {
 }
 
 impl MySuperAbi for Contract {
-    fn super_abi_method() { }
+    fn super_abi_method() {}
 }
 
 impl MyAbi for Contract {
     // this must fail, because contract methods cannot call each other
-    fn abi_method() { Self::super_abi_method() }
+    fn abi_method() {
+        Self::super_abi_method()
+    }
 }

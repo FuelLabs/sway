@@ -6,35 +6,19 @@ enum Bool {
 }
 
 fn foo(b: bool) -> u64 {
-    if b {
-        101
-    } else {
-        102
-    }
+    if b { 101 } else { 102 }
 }
 
 fn bar(b: bool) -> u64 {
-    if b {
-        return 101;
-    } else {
-        return 102;
-    }
+    if b { return 101; } else { return 102; }
 }
 
 fn bell(b: bool) -> u64 {
-    if b {
-        return 101;
-    } else {
-        102
-    }
+    if b { return 101; } else { 102 }
 }
 
 fn moo(b: bool) -> u64 {
-    if b {
-        101
-    } else {
-        return 102;
-    }
+    if b { 101 } else { return 102; }
 }
 
 fn poo(b: Bool) -> u64 {
@@ -62,11 +46,7 @@ fn another_fn(b: Bool) -> u64 {
 }
 
 fn thats_all(b: Bool) -> u64 {
-    if let Bool::True = b {
-        101
-    } else {
-        102
-    }
+    if let Bool::True = b { 101 } else { 102 }
 }
 
 fn main() -> u64 {

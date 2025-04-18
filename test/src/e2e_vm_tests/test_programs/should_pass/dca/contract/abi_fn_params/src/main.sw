@@ -1,10 +1,8 @@
 contract;
 
-struct S {
-}
+struct S {}
 
-enum E {
-}
+enum E {}
 
 abi MyContract {
     fn get_struct(s: S) -> S;

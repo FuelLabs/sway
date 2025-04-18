@@ -1,5 +1,4 @@
 contract;
 
 #[fallback]
-fn fallback(a: u64) {
-}
+fn fallback(a: u64) {}

@@ -1,7 +1,7 @@
 library;
 
 pub enum LibEnum02 {
-    A: ()
+    A: (),
 }
 
-pub enum EmptyLibEnum02 { }
+pub enum EmptyLibEnum02 {}

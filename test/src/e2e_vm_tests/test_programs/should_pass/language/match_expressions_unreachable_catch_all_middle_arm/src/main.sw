@@ -3,7 +3,7 @@ script;
 struct Struct {
     x: bool,
     y: u64,
-    z: (u64, u64, u64)
+    z: (u64, u64, u64),
 }
 
 impl Struct {
@@ -20,8 +20,7 @@ impl Struct {
         poke(self.y);
         poke(self.z);
     }
-} 
-
+}
 enum Enum {
     A: (),
     B: (),
@@ -66,7 +65,7 @@ fn main() -> () {
     let e2_1 = Enum::A;
 
     let _x = match e2_1 {
-        x => { 
+        x => {
             poke(x);
             0
         },
@@ -82,18 +81,18 @@ fn main() -> () {
     let _x = match e2_2 {
         Enum::A => 0,
         Enum::B => 0,
-        x => { 
+        x => {
             poke(x);
             0
         },
         Enum::C => 0,
         Enum::D => 0,
-        x => { 
+        x => {
             poke(x);
             0
         },
         Enum::E(_) => 0,
-        x => { 
+        x => {
             poke(x);
             0
         },
@@ -107,7 +106,7 @@ fn main() -> () {
         Enum::B => 0,
         Enum::C => 0,
         Enum::D => 0,
-        x => { 
+        x => {
             poke(x);
             0
         },
@@ -121,7 +120,7 @@ fn main() -> () {
         Enum::B => 0,
         Enum::C => 0,
         Enum::D => 0,
-        y => { 
+        y => {
             poke(y);
             0
         },
@@ -133,7 +132,9 @@ fn main() -> () {
     let _x = match s1 {
         Struct { x: true, y, z } => y + z.0,
         _ => 0,
-        Struct { x: false, y:0, z } => z.0,
+        Struct {
+            x: false, y: 0, z,
+        } => z.0,
         _ => 0,
         Struct { x: false, y, z } => y + z.0,
         _ => 0,
@@ -148,7 +149,9 @@ fn main() -> () {
             poke(x);
             0
         },
-        Struct { x: false, y:0, z } => z.0,
+        Struct {
+            x: false, y: 0, z,
+        } => z.0,
         x => {
             poke(x);
             0
@@ -169,7 +172,9 @@ fn main() -> () {
 
     let _x = match s3 {
         Struct { x: true, y, z } => y + z.0,
-        Struct { x: false, y:0, z } => z.0,
+        Struct {
+            x: false, y: 0, z,
+        } => z.0,
         Struct { x, y, z } => if x { y } else { z.0 },
         Struct { x: false, y, z } => y + z.0,
         Struct { x, y, z } => if x { y } else { z.0 },
@@ -181,10 +186,16 @@ fn main() -> () {
 
     let _x = match s4 {
         Struct { x: true, y, z } => y + z.0,
-        Struct { x:_, y:_, z:_ } => 0,
+        Struct {
+            x: _, y: _, z: _,
+        } => 0,
         Struct { x: false, y, z } => y + z.0,
-        Struct { x:_, y:_, z:_ } => 0,
-        Struct { x:_, y:_, z:_ } => 0,
+        Struct {
+            x: _, y: _, z: _,
+        } => 0,
+        Struct {
+            x: _, y: _, z: _,
+        } => 0,
         _ => 0,
     };
 
@@ -192,10 +203,16 @@ fn main() -> () {
 
     let _x = match s5 {
         Struct { x: true, y, z } => y + z.0,
-        Struct { x: a, y: b, z: c } => if a { b } else { c.0 },
+        Struct {
+            x: a, y: b, z: c,
+        } => if a { b } else { c.0 },
         Struct { x: false, y, z } => y + z.0,
-        Struct { x: a, y: b, z: c } => if a { b } else { c.0 },
-        Struct { x: a, y: b, z: c } => if a { b } else { c.0 },
+        Struct {
+            x: a, y: b, z: c,
+        } => if a { b } else { c.0 },
+        Struct {
+            x: a, y: b, z: c,
+        } => if a { b } else { c.0 },
         _ => 0,
     };
 
@@ -204,23 +221,37 @@ fn main() -> () {
     let _x = match s6 {
         Struct { x: true, y, z } => y + z.0,
         Struct { x: false, y, z } => y + z.0,
-        Struct { x: a, y: b, z: (j, k, l) } => if a { b } else { j + k + l },
+        Struct {
+            x: a, y: b, z: (j, k, l),
+        } => if a { b } else { j + k + l },
         Struct { x: false, y, z } => y + z.0,
         Struct { x: false, y, z } => y + z.0,
-        Struct { x: a, y: b, z: (j, k, l) } => if a { b } else { j + k + l },
-        Struct { x: a, y: b, z: (j, k, l) } => if a { b } else { j + k + l },
+        Struct {
+            x: a, y: b, z: (j, k, l),
+        } => if a { b } else { j + k + l },
+        Struct {
+            x: a, y: b, z: (j, k, l),
+        } => if a { b } else { j + k + l },
         _ => 0,
     };
 
     let s7 = Struct::new();
 
     let _x = match s7 {
-        Struct { x: a, y: b, z: (_, _, _) } => if a { b } else { 0 },
+        Struct {
+            x: a, y: b, z: (_, _, _),
+        } => if a { b } else { 0 },
         Struct { x: true, y, z } => y + z.0,
-        Struct { x: a, y: b, z: (_, _, _) } => if a { b } else { 0 },
+        Struct {
+            x: a, y: b, z: (_, _, _),
+        } => if a { b } else { 0 },
         Struct { x: false, y, z } => y + z.0,
-        Struct { x: a, y: b, z: (_, _, _) } => if a { b } else { 0 },
-        Struct { x: a, y: b, z: (_, _, _) } => if a { b } else { 0 },
+        Struct {
+            x: a, y: b, z: (_, _, _),
+        } => if a { b } else { 0 },
+        Struct {
+            x: a, y: b, z: (_, _, _),
+        } => if a { b } else { 0 },
         _ => 0,
     };
 
@@ -239,7 +270,7 @@ fn main() -> () {
     //     Struct { .. } => 0,
     //     TODO
     // };
-    
+
     let t1 = (false, Enum::A, Struct::new(), 0u64);
 
     let _x = match t1 {
@@ -311,7 +342,9 @@ fn main() -> () {
     let t6 = (false, Enum::A, Struct::new(), 0u64);
 
     let _x = match t6 {
-        (_, _, Struct { x, y, z: (j , k, l)}, n) => {
+        (_, _, Struct {
+            x, y, z: (j, k, l),
+        }, n) => {
             poke(x);
             poke(y);
             poke(j);
@@ -321,7 +354,9 @@ fn main() -> () {
         },
         (true, _, s, n) => n + s.y,
         (false, _, s, n) => n + s.y,
-        (_, _, Struct { x, y, z: (j , k, l)}, n) => {
+        (_, _, Struct {
+            x, y, z: (j, k, l),
+        }, n) => {
             poke(x);
             poke(y);
             poke(j);
@@ -329,7 +364,9 @@ fn main() -> () {
             poke(l);
             n
         },
-        (_, _, Struct { x, y, z: (j , k, l)}, n) => {
+        (_, _, Struct {
+            x, y, z: (j, k, l),
+        }, n) => {
             poke(x);
             poke(y);
             poke(j);
@@ -345,16 +382,22 @@ fn main() -> () {
     let _x = match t7 {
         (true, _, s, n) => n + s.y,
         (false, _, s, n) => n + s.y,
-        (_, _, Struct { x: _, y: _, z: (_ , k, _)}, n) => {
+        (_, _, Struct {
+            x: _, y: _, z: (_, k, _),
+        }, n) => {
             poke(k);
             n
         },
         (false, _, s, n) => n + s.y,
-        (_, _, Struct { x: _, y: _, z: (_ , k, _)}, n) => {
+        (_, _, Struct {
+            x: _, y: _, z: (_, k, _),
+        }, n) => {
             poke(k);
             n
         },
-        (_, _, Struct { x: _, y: _, z: (_ , k, _)}, n) => {
+        (_, _, Struct {
+            x: _, y: _, z: (_, k, _),
+        }, n) => {
             poke(k);
             n
         },
@@ -409,16 +452,15 @@ fn main() -> () {
     //         n
     //     },
     // };
-    
+
     // TODO: Once internal compiler error is solved (https://github.com/FuelLabs/sway/issues/5106) add examples similar to this case: 
     // let e = EnumB::A;
- 
+
     // let _x = match e {
     //     EnumB::A | EnumB::B | _ => 0,
     //     EnumB::A => 0,
     //     EnumB::B => 0,
     // };
-
     poke(Enum::B);
     poke(Enum::C);
     poke(Enum::D);
@@ -426,4 +468,4 @@ fn main() -> () {
     poke(Struct::new().use_me());
 }
 
-fn poke<T>(_x: T) { }
+fn poke<T>(_x: T) {}

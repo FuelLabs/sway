@@ -22,7 +22,7 @@ fn main() -> u64 {
             }
             i += 1;
             if i == 1 {
-               continue
+                continue
             }
         }
         res
@@ -54,5 +54,5 @@ fn t() -> bool {
 }
 
 fn is_even(n: u64) -> bool {
-   n % 2 == 0
+    n % 2 == 0
 }

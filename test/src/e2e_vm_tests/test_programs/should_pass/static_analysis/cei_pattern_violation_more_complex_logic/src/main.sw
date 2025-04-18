@@ -12,7 +12,14 @@ abi EnglishAuction {
     fn bid(auction_id: u64, bid_asset: AuctionAsset);
 
     #[storage(read, write)]
-    fn create(bid_asset: AuctionAsset, duration: u64, initial_price: u64, reserve_price: Option<u64>, seller: Identity, sell_asset: AuctionAsset) -> u64;
+    fn create(
+        bid_asset: AuctionAsset,
+        duration: u64,
+        initial_price: u64,
+        reserve_price: Option<u64>,
+        seller: Identity,
+        sell_asset: AuctionAsset,
+    ) -> u64;
 }
 
 abi NFT {
@@ -20,13 +27,7 @@ abi NFT {
     fn transfer_from(from: Identity, to: Identity, token_id: u64);
 }
 
-use std::{
-    block::height,
-    call_frames::{
-        msg_asset_id,
-    },
-    context::msg_amount,
-};
+use std::{block::height, call_frames::{msg_asset_id,}, context::msg_amount,};
 
 struct DepositKey {
     sender: Identity,
@@ -66,7 +67,10 @@ impl EnglishAuction for Contract {
         let mut _auction = auction.unwrap();
         let sender = msg_sender().unwrap();
 
-        let sender_deposit = storage.deposits.get(DepositKey {sender, auction_id}).try_read();
+        let sender_deposit = storage.deposits.get(DepositKey {
+            sender,
+            auction_id,
+        }).try_read();
         let total_bid: AuctionAsset = match sender_deposit {
             Some(_) => {
                 AuctionAsset::TokenAsset(42)
@@ -85,7 +89,15 @@ impl EnglishAuction for Contract {
             }
         }
 
-        storage.deposits.insert(DepositKey {sender, auction_id}, Some(AuctionAsset::TokenAsset(42)));
+        storage
+            .deposits
+            .insert(
+                DepositKey {
+                    sender,
+                    auction_id,
+                },
+                Some(AuctionAsset::TokenAsset(42)),
+            );
     }
 
     #[storage(read, write)]
@@ -97,7 +109,13 @@ impl EnglishAuction for Contract {
         seller: Identity,
         sell_asset: AuctionAsset,
     ) -> u64 {
-        require(reserve_price.is_none() || (reserve_price.is_some() && reserve_price.unwrap() >= initial_price), 42);
+        require(
+            reserve_price
+                .is_none() || (reserve_price
+                    .is_some() && reserve_price
+                    .unwrap() >= initial_price),
+            42,
+        );
         require(duration != 0, 42);
 
         match bid_asset {
@@ -126,11 +144,20 @@ impl EnglishAuction for Contract {
         let auction = 42;
 
         let total_auctions = storage.total_auctions.read();
-        storage.deposits.insert(DepositKey {sender:seller, auction_id: total_auctions}, Some(sell_asset));
+        storage
+            .deposits
+            .insert(
+                DepositKey {
+                    sender: seller,
+                    auction_id: total_auctions,
+                },
+                Some(sell_asset),
+            );
         storage.auctions.insert(total_auctions, Some(auction));
 
-        storage.total_auctions.write(storage.total_auctions.read() + 1);
+        storage
+            .total_auctions
+            .write(storage.total_auctions.read() + 1);
         total_auctions
     }
-
 }

@@ -20,9 +20,9 @@ fn main() -> u64 {
         },
     };
 
-    if let ref v = x { };
+    if let ref v = x {};
 
-    if let mut v = x { };
+    if let mut v = x {};
 
-    if let ref mut v = x { };
+    if let ref mut v = x {};
 }

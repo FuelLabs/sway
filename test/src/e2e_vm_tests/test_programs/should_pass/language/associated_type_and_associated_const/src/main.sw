@@ -3,12 +3,11 @@ script;
 trait Trait {
     type E;
     const C: Self::E;
-}{
+} {
     fn get_value() -> Self::E {
-      Self::C
+        Self::C
     }
 }
-
 
 struct Struct1 {}
 struct Struct2 {}
@@ -24,9 +23,9 @@ impl Trait for Struct2 {
 }
 
 fn main() -> u32 {
-  let _i: u32 = Struct1::get_value();
-  let _c = Struct2::C;
-  let _c = Struct2::E::C;
+    let _i: u32 = Struct1::get_value();
+    let _c = Struct2::C;
+    let _c = Struct2::E::C;
 
-  Struct1::get_value()
+    Struct1::get_value()
 }

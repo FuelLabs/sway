@@ -32,16 +32,18 @@ fn main() {
 
     let _ = &mut LOCAL_X;
 
-    let _ = &mut { LOCAL_X }; // No error here.
+    let _ = &mut {
+        LOCAL_X
+    }; // No error here.
 
     // ------------------------
-
     let a = 123;
 
     let _ = &mut a;
 
-    let _ = &mut { a }; // No error here.
-
+    let _ = &mut {
+        a
+    }; // No error here.
     let S { x } = S { x: 0 };
 
     let _ = &mut x;
@@ -79,16 +81,16 @@ fn main() {
     function(0);
 
     // aggregates checking
-
     let _ = &mut s.x;
 
     let s2 = S2 { s: S { x: 0 } };
 
     let _ = &mut s2.s.x;
 
-    let t : (u32, u32) = (0, 0);
-    let _ : &mut u32 = &mut t.0;
+    let t: (u32, u32) = (0, 0);
+    let _: &mut u32 = &mut t.0;
 
-    let _ = &mut { t }; // No error here.
+    let _ = &mut {
+        t
+    }; // No error here.
 }
-

@@ -3,11 +3,11 @@ script;
 struct S {}
 
 impl S {
-    fn one_generic<T>(self) { }
-    fn two_generics<A, B>(self) { }
+    fn one_generic<T>(self) {}
+    fn two_generics<A, B>(self) {}
 }
 
-struct W<A> { }
+struct W<A> {}
 
 fn main() {
     let g: bool = three_generics(true, "foo", 10);
@@ -22,13 +22,13 @@ fn main() {
     two_generics::<u64>();
 
     // Should fail because compiler cannot infer generic argument T
-    S{}.one_generic();
+    S {}.one_generic();
 
     // Should fail because compiler cannot infer generic arguments A, B
-    S{}.two_generics();
+    S {}.two_generics();
 
     // Two generics arguments expected
-    S{}.two_generics::<u64>();
+    S {}.two_generics::<u64>();
 
     // Missing generic argument of W
     one_generic::<W>();
@@ -39,5 +39,5 @@ fn three_generics(a: A, b: B, c: C) -> A {
     new_a
 }
 
-fn one_generic<T>() { }
-fn two_generics<A, B>() { }
+fn one_generic<T>() {}
+fn two_generics<A, B>() {}

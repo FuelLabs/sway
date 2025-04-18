@@ -10,7 +10,7 @@ impl MyAdd for u32 {
     }
 }
 
-enum MyEnum<T> where T: MyAdd {
+enum MyEnum<T> {
     X: T,
 }
 
