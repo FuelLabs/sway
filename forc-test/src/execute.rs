@@ -1,19 +1,16 @@
-use crate::maxed_consensus_params;
-use crate::setup::TestSetup;
-use crate::TestResult;
-use crate::TEST_METADATA_SEED;
-use forc_pkg::PkgTestEntry;
+use crate::{
+    ecal::PredicateLoggingEcal, maxed_consensus_params, setup::TestSetup, TestResult,
+    TEST_METADATA_SEED,
+};
+use forc_pkg::{BuiltPackage, PkgTestEntry};
 use fuel_tx::{self as tx, output::contract::Contract, Chargeable, Finalizable};
 use fuel_vm::error::InterpreterError;
 use fuel_vm::fuel_asm;
 use fuel_vm::prelude::Instruction;
 use fuel_vm::prelude::RegId;
 use fuel_vm::{
-    self as vm,
-    checked_transaction::builder::TransactionBuilderExt,
-    interpreter::{Interpreter, NotSupportedEcal},
-    prelude::SecretKey,
-    storage::MemoryStorage,
+    self as vm, checked_transaction::builder::TransactionBuilderExt, interpreter::Interpreter,
+    prelude::SecretKey, storage::MemoryStorage,
 };
 use rand::{Rng, SeedableRng};
 
@@ -26,7 +23,7 @@ use vm::state::ProgramState;
 /// An interface for executing a test within a VM [Interpreter] instance.
 #[derive(Debug, Clone)]
 pub struct TestExecutor {
-    pub interpreter: Interpreter<MemoryInstance, MemoryStorage, tx::Script, NotSupportedEcal>,
+    pub interpreter: Interpreter<MemoryInstance, MemoryStorage, tx::Script, PredicateLoggingEcal>,
     pub tx: vm::checked_transaction::Ready<tx::Script>,
     pub test_entry: PkgTestEntry,
     pub name: String,
@@ -45,7 +42,7 @@ pub enum DebugResult {
 
 impl TestExecutor {
     pub fn build(
-        bytecode: &[u8],
+        built_pkg: &BuiltPackage,
         test_instruction_index: u32,
         test_setup: TestSetup,
         test_entry: &PkgTestEntry,
@@ -55,7 +52,7 @@ impl TestExecutor {
 
         // Find the instruction which we will jump into the
         // specified test
-        let jump_instruction_index = find_jump_instruction_index(bytecode);
+        let jump_instruction_index = find_jump_instruction_index(&built_pkg.bytecode.bytes);
 
         // Create a transaction to execute the test function.
         let script_input_data = vec![];
@@ -74,7 +71,8 @@ impl TestExecutor {
         let block_height = (u32::MAX >> 1).into();
         let gas_price = 0;
 
-        let mut tx_builder = tx::TransactionBuilder::script(bytecode.to_vec(), script_input_data);
+        let mut tx_builder =
+            tx::TransactionBuilder::script(built_pkg.bytecode.bytes.to_vec(), script_input_data);
 
         let params = maxed_consensus_params();
 
@@ -126,7 +124,12 @@ impl TestExecutor {
 
         let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
         let memory_instance = MemoryInstance::new();
-        let interpreter = Interpreter::with_storage(memory_instance, storage, interpreter_params);
+        let interpreter = Interpreter::with_storage_and_ecal(
+            memory_instance,
+            storage,
+            interpreter_params,
+            PredicateLoggingEcal,
+        );
 
         Ok(TestExecutor {
             interpreter,

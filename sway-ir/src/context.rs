@@ -43,6 +43,7 @@ pub struct Context<'eng> {
     pub(crate) metadata: SlotMap<DefaultKey, Metadatum>,
 
     pub program_kind: Kind,
+    pub enable_predicate_logs: bool,
 
     next_unique_sym_tag: u64,
 
@@ -66,6 +67,7 @@ impl<'eng> Context<'eng> {
             metadata: Default::default(),
             next_unique_sym_tag: Default::default(),
             program_kind: Kind::Contract,
+            enable_predicate_logs: false,
             experimental,
         };
         Type::create_basic_types(&mut def);

@@ -44,6 +44,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         hex_outfile: cmd.build.output.hex_file,
         build_target: cmd.build.build_target,
         tests: cmd.tests,
+        enable_predicate_logs: false,
         member_filter: MemberFilter::default(),
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,

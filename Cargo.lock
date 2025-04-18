@@ -3072,6 +3072,7 @@ dependencies = [
  "anyhow",
  "forc-pkg",
  "fuel-abi-types",
+ "fuel-asm",
  "fuel-tx",
  "fuel-vm",
  "rand",

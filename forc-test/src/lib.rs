@@ -1,9 +1,12 @@
+pub mod ecal;
 pub mod execute;
 pub mod setup;
 
-use crate::execute::TestExecutor;
-use crate::setup::{
-    ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
+use crate::{
+    execute::TestExecutor,
+    setup::{
+        ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
+    },
 };
 use forc_pkg::{self as pkg, BuildOpts};
 use fuel_abi_types::error_codes::ErrorSignal;
@@ -402,14 +405,8 @@ impl<'a> PackageTests {
                         .expect("test instruction offset out of range");
                     let name = entry.finalized.fn_name.clone();
                     let test_setup = self.setup()?;
-                    TestExecutor::build(
-                        &pkg_with_tests.bytecode.bytes,
-                        offset,
-                        test_setup,
-                        test_entry,
-                        name,
-                    )?
-                    .execute()
+                    TestExecutor::build(pkg_with_tests, offset, test_setup, test_entry, name)?
+                        .execute()
                 })
                 .collect::<anyhow::Result<_>>()
         })?;
@@ -458,6 +455,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             profile: val.profile,
             metrics_outfile: val.metrics_outfile,
             tests: true,
+            enable_predicate_logs: true,
             member_filter: Default::default(),
             experimental: val.experimental,
             no_experimental: val.no_experimental,
@@ -483,6 +481,7 @@ impl TestOpts {
             profile: self.profile,
             metrics_outfile: self.metrics_outfile,
             tests: true,
+            enable_predicate_logs: true,
             member_filter: Default::default(),
             experimental: self.experimental,
             no_experimental: self.no_experimental,
