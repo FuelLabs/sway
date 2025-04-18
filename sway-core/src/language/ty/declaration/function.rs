@@ -180,26 +180,26 @@ impl DeclRefFunction {
             if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
                 let impl_self_or_trait = &*engines.de().get(&t.decl_id);
 
-                let mut type_id_type_parameters = vec![];
-                let mut const_generic_parameters = BTreeMap::default();
-                type_id.extract_type_parameters(
+                let mut type_generics_mapping = vec![];
+                let mut const_generic_mapping = BTreeMap::default();
+                type_id.extract_generic_parameter_to_concrete_mappings(
                     engines,
                     0,
-                    &mut type_id_type_parameters,
-                    &mut const_generic_parameters,
+                    &mut type_generics_mapping,
+                    &mut const_generic_mapping,
                     impl_self_or_trait.implementing_for.type_id(),
                 );
 
                 type_id_type_subst_map
                     .const_generics_materialization
-                    .append(&mut const_generic_parameters);
+                    .append(&mut const_generic_mapping);
 
                 for p in impl_self_or_trait
                     .impl_type_parameters
                     .iter()
                     .filter_map(|x| x.as_type_parameter())
                 {
-                    let matches = type_id_type_parameters
+                    let matches = type_generics_mapping
                         .iter()
                         .filter(|(_, orig_tp)| {
                             engines.te().get(*orig_tp).eq(

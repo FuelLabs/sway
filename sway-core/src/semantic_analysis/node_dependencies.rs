@@ -332,7 +332,7 @@ impl Dependencies {
                     body,
                     ..
                 } = &*engines.pe().get_variable(decl_id);
-                self.gather_from_type_argument(engines, type_ascription)
+                self.gather_from_generic_argument(engines, type_ascription)
                     .gather_from_expr(engines, body)
             }
             Declaration::ConstantDeclaration(decl_id) => {
@@ -362,7 +362,7 @@ impl Dependencies {
                     ..
                 } = &*engines.pe().get_struct(decl_id);
                 self.gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_type_argument(engines, &field.type_argument)
+                    deps.gather_from_generic_argument(engines, &field.type_argument)
                 })
                 .gather_from_type_parameters(type_parameters)
             }
@@ -373,7 +373,7 @@ impl Dependencies {
                     ..
                 } = &*engines.pe().get_enum(decl_id);
                 self.gather_from_iter(variants.iter(), |deps, variant| {
-                    deps.gather_from_type_argument(engines, &variant.type_argument)
+                    deps.gather_from_generic_argument(engines, &variant.type_argument)
                 })
                 .gather_from_type_parameters(type_parameters)
             }
@@ -389,9 +389,9 @@ impl Dependencies {
                         TraitItem::TraitFn(decl_id) => {
                             let sig = engines.pe().get_trait_fn(decl_id);
                             deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                                deps.gather_from_type_argument(engines, &param.type_argument)
+                                deps.gather_from_generic_argument(engines, &param.type_argument)
                             })
-                            .gather_from_type_argument(engines, &sig.return_type)
+                            .gather_from_generic_argument(engines, &sig.return_type)
                         }
                         TraitItem::Constant(decl_id) => {
                             let const_decl = engines.pe().get_constant(decl_id);
@@ -421,7 +421,7 @@ impl Dependencies {
                     ..
                 } = &*engines.pe().get_impl_self_or_trait(decl_id);
                 self.gather_from_call_path(trait_name, false, false)
-                    .gather_from_type_argument(engines, implementing_for)
+                    .gather_from_generic_argument(engines, implementing_for)
                     .gather_from_type_parameters(impl_type_parameters)
                     .gather_from_iter(items.iter(), |deps, item| match item {
                         ImplItem::Fn(fn_decl_id) => {
@@ -453,9 +453,9 @@ impl Dependencies {
                     TraitItem::TraitFn(decl_id) => {
                         let sig = engines.pe().get_trait_fn(decl_id);
                         deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                            deps.gather_from_type_argument(engines, &param.type_argument)
+                            deps.gather_from_generic_argument(engines, &param.type_argument)
                         })
-                        .gather_from_type_argument(engines, &sig.return_type)
+                        .gather_from_generic_argument(engines, &sig.return_type)
                     }
                     TraitItem::Constant(decl_id) => {
                         let const_decl = engines.pe().get_constant(decl_id);
@@ -480,7 +480,7 @@ impl Dependencies {
             }
             Declaration::TypeAliasDeclaration(decl_id) => {
                 let TypeAliasDeclaration { ty, .. } = &*engines.pe().get_type_alias(decl_id);
-                self.gather_from_type_argument(engines, ty)
+                self.gather_from_generic_argument(engines, ty)
             }
             Declaration::ConstGenericDeclaration(_) => {
                 todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
@@ -495,7 +495,7 @@ impl Dependencies {
                     deps.gather_from_storage_entry(engines, entry)
                 }),
             StorageEntry::Field(field) => {
-                self.gather_from_type_argument(engines, &field.type_argument)
+                self.gather_from_generic_argument(engines, &field.type_argument)
             }
         }
     }
@@ -512,7 +512,7 @@ impl Dependencies {
         } = const_decl;
         match value {
             Some(value) => self
-                .gather_from_type_argument(engines, type_ascription)
+                .gather_from_generic_argument(engines, type_ascription)
                 .gather_from_expr(engines, value),
             None => self,
         }
@@ -530,7 +530,7 @@ impl Dependencies {
         } = const_decl;
         match value {
             Some(value) => self
-                .gather_from_type_argument(engines, type_ascription)
+                .gather_from_generic_argument(engines, type_ascription)
                 .gather_from_expr(engines, value),
             None => self,
         }
@@ -539,7 +539,7 @@ impl Dependencies {
     fn gather_from_type_decl(self, engines: &Engines, type_decl: &TraitTypeDeclaration) -> Self {
         let TraitTypeDeclaration { ty_opt, .. } = type_decl;
         match ty_opt {
-            Some(value) => self.gather_from_type_argument(engines, value),
+            Some(value) => self.gather_from_generic_argument(engines, value),
             None => self,
         }
     }
@@ -551,9 +551,9 @@ impl Dependencies {
             ..
         } = fn_decl;
         self.gather_from_iter(parameters.iter(), |deps, param| {
-            deps.gather_from_type_argument(engines, &param.type_argument)
+            deps.gather_from_generic_argument(engines, &param.type_argument)
         })
-        .gather_from_type_argument(engines, return_type)
+        .gather_from_generic_argument(engines, return_type)
     }
 
     fn gather_from_fn_decl(self, engines: &Engines, fn_decl: &FunctionDeclaration) -> Self {
@@ -565,9 +565,9 @@ impl Dependencies {
             ..
         } = fn_decl;
         self.gather_from_iter(parameters.iter(), |deps, param| {
-            deps.gather_from_type_argument(engines, &param.type_argument)
+            deps.gather_from_generic_argument(engines, &param.type_argument)
         })
-        .gather_from_type_argument(engines, return_type)
+        .gather_from_generic_argument(engines, return_type)
         .gather_from_block(engines, body)
         .gather_from_type_parameters(type_parameters)
     }
@@ -811,11 +811,11 @@ impl Dependencies {
         type_arguments: &[GenericArgument],
     ) -> Self {
         self.gather_from_iter(type_arguments.iter(), |deps, type_argument| {
-            deps.gather_from_type_argument(engines, type_argument)
+            deps.gather_from_generic_argument(engines, type_argument)
         })
     }
 
-    fn gather_from_type_argument(self, engines: &Engines, type_argument: &GenericArgument) -> Self {
+    fn gather_from_generic_argument(self, engines: &Engines, type_argument: &GenericArgument) -> Self {
         match type_argument {
             GenericArgument::Type(a) => {
                 let type_engine = engines.te();
@@ -848,19 +848,19 @@ impl Dependencies {
                 }
             }
             TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
-                deps.gather_from_type_argument(engines, elem)
+                deps.gather_from_generic_argument(engines, elem)
             }),
-            TypeInfo::Array(elem_type, _) => self.gather_from_type_argument(engines, elem_type),
-            TypeInfo::Slice(elem_type) => self.gather_from_type_argument(engines, elem_type),
+            TypeInfo::Array(elem_type, _) => self.gather_from_generic_argument(engines, elem_type),
+            TypeInfo::Slice(elem_type) => self.gather_from_generic_argument(engines, elem_type),
             TypeInfo::Struct(decl_ref) => self.gather_from_iter(
                 decl_engine.get_struct(decl_ref).fields.iter(),
-                |deps, field| deps.gather_from_type_argument(engines, &field.type_argument),
+                |deps, field| deps.gather_from_generic_argument(engines, &field.type_argument),
             ),
             TypeInfo::Enum(decl_ref) => self.gather_from_iter(
                 decl_engine.get_enum(decl_ref).variants.iter(),
-                |deps, variant| deps.gather_from_type_argument(engines, &variant.type_argument),
+                |deps, variant| deps.gather_from_generic_argument(engines, &variant.type_argument),
             ),
-            TypeInfo::Alias { ty, .. } => self.gather_from_type_argument(engines, ty),
+            TypeInfo::Alias { ty, .. } => self.gather_from_generic_argument(engines, ty),
             _ => self,
         }
     }

@@ -881,8 +881,17 @@ impl<'a> UnifyCheck<'a> {
                     l_types.push(l.type_id);
                     r_types.push(r.type_id);
                 }
-                (TypeParameter::Const(_), TypeParameter::Const(_)) => {
-                    // TODO
+                (TypeParameter::Const(l), TypeParameter::Const(r)) => {
+                    match (&l.expr, &r.expr) {
+                        (Some(l), Some(r)) => {
+                            // We can unify if their are the same
+                            if l.as_literal_val() == r.as_literal_val() {
+                            } else {
+                                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                            }
+                        }
+                        _ => {}
+                    }
                 }
                 _ => return false,
             }

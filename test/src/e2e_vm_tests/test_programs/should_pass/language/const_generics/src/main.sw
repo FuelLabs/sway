@@ -1,5 +1,6 @@
 script;
 
+// impl trait for arrays
 struct C {}
 
 trait A {
@@ -11,6 +12,8 @@ impl<T, const N: u64> A for [T; N] {
         N
     }
 }
+
+// structs 
 
 struct S<T, const N: u64> {
 }

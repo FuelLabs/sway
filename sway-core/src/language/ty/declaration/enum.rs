@@ -52,7 +52,7 @@ impl HashWithEngines for TyEnumDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyEnumDecl {
             call_path,
-            generic_parameters: type_parameters,
+            generic_parameters,
             variants,
             visibility,
             // these fields are not hashed because they aren't relevant/a
@@ -62,7 +62,7 @@ impl HashWithEngines for TyEnumDecl {
         } = self;
         call_path.hash(state);
         variants.hash(state, engines);
-        type_parameters.hash(state, engines);
+        generic_parameters.hash(state, engines);
         visibility.hash(state);
     }
 }

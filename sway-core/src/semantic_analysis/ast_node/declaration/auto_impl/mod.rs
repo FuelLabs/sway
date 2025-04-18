@@ -83,7 +83,7 @@ where
         &self,
         type_parameters: &[TypeParameter],
     ) -> String {
-        let mut code = String::new();
+        let mut code = String::with_capacity(type_parameters.len() * 5);
         code.push('<');
 
         for p in type_parameters {
@@ -104,28 +104,30 @@ where
         type_parameters: &[TypeParameter],
         extra_constraint: &str,
     ) -> String {
-        let mut code = String::new();
+        let mut code = String::with_capacity(type_parameters.len() * 16);
+
+        if !type_parameters.is_empty() {
+            code.push_str(" where ");
+        }
 
         for p in type_parameters.iter() {
             if let TypeParameter::Type(p) = p {
-                code.push_str(&format!(
-                    "{}: {},\n",
-                    p.name.as_str(),
-                    itertools::intersperse(
-                        [extra_constraint].into_iter().chain(
-                            p.trait_constraints
-                                .iter()
-                                .map(|x| x.trait_name.suffix.as_str())
-                        ),
-                        " + "
-                    )
-                    .collect::<String>()
-                ));
-            }
-        }
+                code.push_str(p.name.as_str());
+                code.push_str(": ");
 
-        if !code.is_empty() {
-            code = format!(" where {code}\n");
+                let constraints = itertools::intersperse(
+                    [extra_constraint].into_iter().chain(
+                        p.trait_constraints
+                            .iter()
+                            .map(|x| x.trait_name.suffix.as_str())
+                    ),
+                    " + "
+                );
+                for constraint in constraints {
+                    code.push_str(constraint);
+                }
+                code.push_str(",\n");
+            }
         }
 
         code

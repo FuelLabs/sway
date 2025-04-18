@@ -154,9 +154,9 @@ where
                             a.expr.to_ty_expression(engines),
                         );
                     }
-                    // TODO const generic was not materialized yet
-                    (TypeParameter::Const(_), GenericArgument::Type(_)) => {}
-                    x => todo!("{x:?}"),
+                    (TypeParameter::Const(_), GenericArgument::Type(_)) => {
+                    }
+                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                 }
             }
 

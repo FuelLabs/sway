@@ -430,25 +430,32 @@ impl<'a> Unifier<'a> {
                         TypeParameter::Const(expected_parameter),
                     ) => {
                         match (
-                            received_parameter.expr.is_some(),
-                            expected_parameter.expr.is_some(),
+                            &received_parameter.expr,
+                            &expected_parameter.expr,
                         ) {
-                            (true, true) => {}
-                            (true, false) => {
+                            (Some(received_expr), Some(expected_expr)) => {
+                                // We can unify if their are the same
+                                if received_expr.as_literal_val() == expected_expr.as_literal_val() {
+
+                                } else {
+                                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                                }
+                            }
+                            (Some(_), None) => {
                                 self.replace_expected_with_received(
                                     expected_type_id,
                                     &TypeInfo::Struct(*received_decl_id),
                                     span,
                                 );
                             }
-                            (false, true) => {
+                            (None, Some(_)) => {
                                 self.replace_received_with_expected(
                                     received_type_id,
                                     &TypeInfo::Struct(*expected_decl_id),
                                     span,
                                 );
                             }
-                            (false, false) => {}
+                            (None, None) => {}
                         }
                     }
                     _ => todo!(),

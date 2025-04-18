@@ -268,7 +268,7 @@ impl TypeSubstMap {
                     vec![type_parameter.type_id()],
                     vec![type_argument.type_id()],
                 );
-                match (&l.expr(), &r.expr()) {
+                match (l.expr(), r.expr()) {
                     (
                         ConstGenericExpr::AmbiguousVariableExpression { ident },
                         ConstGenericExpr::Literal { val, .. },

@@ -6,7 +6,6 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{BaseIdent, Named, Span, Spanned};
-
 use crate::{
     decl_engine::{DeclEngineGet, MaterializeConstGenerics},
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
@@ -17,12 +16,10 @@ use crate::{
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
     EnforceTypeArguments,
 };
-
 use std::{
     collections::{BTreeMap, BTreeSet, HashSet},
     fmt,
 };
-
 use super::ast_elements::type_parameter::ConstGenericExpr;
 
 const EXTRACT_ANY_MAX_DEPTH: usize = 128;
@@ -258,7 +255,7 @@ impl TypeId {
     /// concrete types.
     /// This includes primitive types that have "implicit"
     /// type parameters such as tuples, arrays and others...
-    pub(crate) fn extract_type_parameters(
+    pub(crate) fn extract_generic_parameter_to_concrete_mappings(
         self,
         engines: &Engines,
         depth: usize,
@@ -306,7 +303,7 @@ impl TypeId {
                         .as_type_parameter()
                         .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
-                    type_param.type_id.extract_type_parameters(
+                    type_param.type_id.extract_generic_parameter_to_concrete_mappings(
                         engines,
                         depth + 1,
                         type_parameters,
@@ -334,7 +331,7 @@ impl TypeId {
                         .as_type_parameter()
                         .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
-                    type_param.type_id.extract_type_parameters(
+                    type_param.type_id.extract_generic_parameter_to_concrete_mappings(
                         engines,
                         depth + 1,
                         type_parameters,
@@ -362,7 +359,7 @@ impl TypeId {
                         .as_type_parameter()
                         .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
-                    type_param.type_id.extract_type_parameters(
+                    type_param.type_id.extract_generic_parameter_to_concrete_mappings(
                         engines,
                         depth + 1,
                         type_parameters,
@@ -386,7 +383,7 @@ impl TypeId {
                     match (orig_type_param, type_param) {
                         (TypeParameter::Type(orig_type_param), TypeParameter::Type(type_param)) => {
                             type_parameters.push((type_param.type_id, orig_type_param.type_id));
-                            type_param.type_id.extract_type_parameters(
+                            type_param.type_id.extract_generic_parameter_to_concrete_mappings(
                                 engines,
                                 depth + 1,
                                 type_parameters,
@@ -398,15 +395,15 @@ impl TypeId {
                             TypeParameter::Const(orig_type_param),
                             TypeParameter::Const(type_param),
                         ) => match (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
-                            (None, None) => todo!(),
+                            (None, None) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                             (None, Some(expr)) => {
                                 const_generic_parameters.insert(
                                     orig_type_param.name.as_str().to_string(),
                                     expr.to_ty_expression(engines),
                                 );
                             }
-                            (Some(_), None) => todo!(),
-                            (Some(_), Some(_)) => todo!(),
+                            (Some(_), None) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                            (Some(_), Some(_)) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                         },
                         _ => {}
                     }
@@ -417,7 +414,7 @@ impl TypeId {
                 assert_eq!(elems.len(), orig_elems.len());
                 for (elem, orig_elem) in elems.iter().zip(orig_elems.iter()) {
                     type_parameters.push((elem.type_id(), orig_elem.type_id()));
-                    elem.type_id().extract_type_parameters(
+                    elem.type_id().extract_generic_parameter_to_concrete_mappings(
                         engines,
                         depth + 1,
                         type_parameters,
@@ -437,7 +434,7 @@ impl TypeId {
                 },
             ) => {
                 if let Some(address) = address {
-                    address.return_type.extract_type_parameters(
+                    address.return_type.extract_generic_parameter_to_concrete_mappings(
                         engines,
                         depth + 1,
                         type_parameters,
@@ -461,7 +458,7 @@ impl TypeId {
                         .iter()
                         .zip(orig_type_arguments.clone().unwrap().iter())
                     {
-                        type_arg.type_id().extract_type_parameters(
+                        type_arg.type_id().extract_generic_parameter_to_concrete_mappings(
                             engines,
                             depth + 1,
                             type_parameters,
@@ -474,7 +471,7 @@ impl TypeId {
             // Primitive types have "implicit" type parameters
             (TypeInfo::Array(ty, _), TypeInfo::Array(orig_ty, _)) => {
                 type_parameters.push((ty.type_id(), orig_ty.type_id()));
-                ty.type_id().extract_type_parameters(
+                ty.type_id().extract_generic_parameter_to_concrete_mappings(
                     engines,
                     depth + 1,
                     type_parameters,
@@ -483,7 +480,7 @@ impl TypeId {
                 );
             }
             (TypeInfo::Alias { name: _, ty }, _) => {
-                ty.type_id().extract_type_parameters(
+                ty.type_id().extract_generic_parameter_to_concrete_mappings(
                     engines,
                     depth + 1,
                     type_parameters,
@@ -492,7 +489,7 @@ impl TypeId {
                 );
             }
             (_, TypeInfo::Alias { name: _, ty }) => {
-                self.extract_type_parameters(
+                self.extract_generic_parameter_to_concrete_mappings(
                     engines,
                     depth + 1,
                     type_parameters,
@@ -504,7 +501,7 @@ impl TypeId {
             // Primitive types have "implicit" type parameters
             (TypeInfo::Ptr(ty), TypeInfo::Ptr(orig_ty)) => {
                 type_parameters.push((ty.type_id(), orig_ty.type_id()));
-                ty.type_id().extract_type_parameters(
+                ty.type_id().extract_generic_parameter_to_concrete_mappings(
                     engines,
                     depth + 1,
                     type_parameters,
@@ -515,7 +512,7 @@ impl TypeId {
             // Primitive types have "implicit" type parameters
             (TypeInfo::Slice(ty), TypeInfo::Slice(orig_ty)) => {
                 type_parameters.push((ty.type_id(), orig_ty.type_id()));
-                ty.type_id().extract_type_parameters(
+                ty.type_id().extract_generic_parameter_to_concrete_mappings(
                     engines,
                     depth + 1,
                     type_parameters,
@@ -534,7 +531,7 @@ impl TypeId {
                 },
             ) => {
                 type_parameters.push((referenced_type.type_id(), orig_referenced_type.type_id()));
-                referenced_type.type_id().extract_type_parameters(
+                referenced_type.type_id().extract_generic_parameter_to_concrete_mappings(
                     engines,
                     depth + 1,
                     type_parameters,
@@ -652,7 +649,7 @@ impl TypeId {
             }
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
-                for type_param in &enum_decl.type_parameters {
+                for type_param in &enum_decl.generic_parameters {
                     match type_param {
                         TypeParameter::Type(type_param) => {
                             type_param.type_id.walk_any_including_self(
@@ -687,7 +684,7 @@ impl TypeId {
             }
             TypeInfo::Struct(struct_id) => {
                 let struct_decl = decl_engine.get_struct(struct_id);
-                for type_param in &struct_decl.type_parameters {
+                for type_param in &struct_decl.generic_parameters {
                     match type_param {
                         TypeParameter::Type(type_param) => {
                             type_param.type_id.walk_any_including_self(

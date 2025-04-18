@@ -49,7 +49,7 @@ impl ty::TyStructDecl {
         // create a namespace for the decl, used to create a scope for generics
         ctx.scoped(handler, Some(span.clone()), |ctx| {
             // Type check the type parameters.
-            let new_type_parameters = GenericTypeParameter::type_check_type_params(
+            let new_generic_parameters = GenericTypeParameter::type_check_type_params(
                 handler,
                 ctx.by_ref(),
                 type_parameters,
@@ -67,7 +67,7 @@ impl ty::TyStructDecl {
             // create the struct decl
             let decl = ty::TyStructDecl {
                 call_path: path,
-                generic_parameters: new_type_parameters,
+                generic_parameters: new_generic_parameters,
                 fields: new_fields,
                 visibility,
                 span,
