@@ -820,7 +820,7 @@ impl Items {
             Some(storage) => Ok(storage.fields.clone()),
             None => {
                 let msg = "unknown source location";
-                let span = Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
+                let span = Span::new(msg.into(), 0, msg.len(), None).unwrap();
                 Err(handler.emit_err(CompileError::NoDeclaredStorage { span }))
             }
         }

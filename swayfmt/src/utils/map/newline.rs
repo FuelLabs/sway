@@ -2,6 +2,7 @@ use anyhow::Result;
 use ropey::{str_utils::byte_to_char_idx, Rope};
 use std::{collections::BTreeMap, fmt::Display, sync::Arc};
 use sway_ast::Module;
+use sway_types::span::Source;
 
 use crate::{
     constants::NEW_LINE,
@@ -107,7 +108,7 @@ fn newline_map_from_src(unformatted_input: &str) -> Result<NewlineMap, Formatter
 pub fn handle_newlines(
     unformatted_input: Arc<str>,
     unformatted_module: &Module,
-    formatted_input: Arc<str>,
+    formatted_input: Source,
     formatted_code: &mut FormattedCode,
     formatter: &Formatter,
 ) -> Result<(), FormatterError> {

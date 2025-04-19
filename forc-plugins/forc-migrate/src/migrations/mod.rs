@@ -15,7 +15,7 @@ mod references;
 mod storage_domains;
 mod try_from_bytes_for_b256;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
 use anyhow::{bail, Result};
 use duplicate::duplicate_item;
@@ -34,8 +34,8 @@ use sway_types::Span;
 use crate::internal_error;
 
 pub(crate) struct ProgramInfo<'a> {
-    pub lexed_program: LexedProgram,
-    pub ty_program: TyProgram,
+    pub lexed_program: Arc<LexedProgram>,
+    pub ty_program: Arc<TyProgram>,
     pub engines: &'a Engines,
 }
 
@@ -52,7 +52,7 @@ pub(crate) struct MutProgramInfo<'a> {
 impl ProgramInfo<'_> {
     pub(crate) fn as_mut(&mut self) -> MutProgramInfo {
         MutProgramInfo {
-            lexed_program: &mut self.lexed_program,
+            lexed_program: Arc::get_mut(&mut self.lexed_program).unwrap(),
             ty_program: &self.ty_program,
             engines: self.engines,
         }

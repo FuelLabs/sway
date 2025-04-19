@@ -13,7 +13,6 @@ use std::{
     default::Default,
     fs,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 use sway_utils::{constants, find_parent_manifest_dir, get_sway_files, is_sway_file};
 use swayfmt::Formatter;
@@ -141,8 +140,7 @@ fn format_file(app: &App, file: PathBuf, formatter: &mut Formatter) -> Result<bo
     }
     if let Ok(file_content) = fs::read_to_string(&file) {
         let mut edited = false;
-        let file_content: Arc<str> = Arc::from(file_content);
-        match Formatter::format(formatter, file_content.clone()) {
+        match Formatter::format(formatter, file_content.as_str().into()) {
             Ok(formatted_content) => {
                 if app.check {
                     if *file_content != formatted_content {
