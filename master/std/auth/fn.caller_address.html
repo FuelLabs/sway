@@ -2,15 +2,16 @@
 <code>TransactionScript</code> if they all share the same owner.</p>
 <h1>Returns</h1>
 <ul>
-<li>[Result&lt;Address, AuthError&gt;] - <code>Ok(Address)</code> if the owner can be determined, <code>Err(AuthError)</code> otherwise.</li>
+<li>[Result&lt;Address, AuthError&gt;] - <code>Ok(Address)</code> if the single owner can be determined, <code>Err(AuthError)</code> otherwise.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::auth::inputs_owner;
+<pre><code class="language-sway">use std::auth::caller_address;
 
 fn foo() {
-    match inputs_owner() {
+    match caller_address() {
         Ok(address) =&gt; log(address),
-        Err(AuthError::InputsNotAllOwnedBySameAddress) =&gt; log(&quot;Inputs not all owned by same address.&quot;),
+        Err(AuthError::InputsNotAllOwnedBySameAddress) =&gt; log(&quot;Inputs not all owned by the same address.&quot;),
+        Err(AuthError::CallerIsInternal) =&gt; log(&quot;Hell froze over.&quot;),
     }
 }
 </code></pre>
