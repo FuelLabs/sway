@@ -193,15 +193,10 @@ impl Into<Bytes> for Ed25519 {
 
 impl PartialEq for Ed25519 {
     fn eq(self, other: Self) -> bool {
-        let mut iter = 0;
-        while iter < 64 {
-            if self.bits[iter] != other.bits[iter] {
-                return false;
-            }
-            iter += 1;
+        asm(result, r2: self.bits, r3: other.bits, r4: 64) {
+            meq result r2 r3 r4;
+            result: bool
         }
-
-        true
     }
 }
 impl Eq for Ed25519 {}

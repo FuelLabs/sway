@@ -87,20 +87,7 @@ impl TryInto<b256> for Message {
 
 impl PartialEq for Message {
     fn eq(self, other: Self) -> bool {
-        if self.bytes.len() != other.bytes.len() {
-            return false;
-        }
-
-        let mut iter = 0;
-        while iter < self.bytes.len() {
-            if self.bytes.get(iter).unwrap() != other.bytes.get(iter).unwrap()
-            {
-                return false;
-            }
-            iter += 1;
-        }
-
-        true
+        self.bytes == other.bytes
     }
 }
 impl Eq for Message {}
