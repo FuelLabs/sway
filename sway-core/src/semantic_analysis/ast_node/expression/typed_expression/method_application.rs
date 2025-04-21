@@ -179,8 +179,8 @@ pub(crate) fn type_check_method_application(
 
         if let (Some(arg), _, false) = arg_opt {
             if let Some(param) = method.parameters.get(param_index) {
-                // If argument type is compcoerces to resolved method parameter type skip second type_check.
                 if coercion_check.check(arg.return_type, param.type_argument.type_id()) {
+                    // If argument type coerces to resolved method parameter type skip second type_check.
                     args_buf.push_back(arg);
                     continue;
                 }

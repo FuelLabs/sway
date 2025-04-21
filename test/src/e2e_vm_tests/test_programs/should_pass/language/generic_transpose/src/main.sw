@@ -4,12 +4,26 @@ struct GenericStruct<T> {
     x:T
 }
 
-impl<T, E> Option<Result<T, E>> {
-    pub fn transpose(self) -> Result<Option<T>, E> {
+pub enum MyResult<T, E> {
+    MyOk: T,
+    MyErr: E,
+}
+
+impl<T, E> MyResult<T, E> {
+    pub fn unwrap(self) -> T {
+        match self {
+            Self::MyOk(inner_value) => inner_value,
+            _ => revert(0),
+        }
+    }
+}
+
+impl<T, E> Option<MyResult<T, E>> {
+    pub fn transpose(self) -> MyResult<Option<T>, E> {
       match self {
-          Some(Ok(x)) => Ok(Some(x)),
-          Some(Err(e)) => Err(e),
-          None => Ok(None),
+          Some(MyResult::MyOk(x)) => MyResult::MyOk(Some(x)),
+          Some(MyResult::MyErr(e)) => MyResult::MyErr(e),
+          None => MyResult::MyOk(None),
       }
     }
 }
@@ -24,7 +38,7 @@ impl<T> GenericStruct<Option<T>> {
 }
 
 fn main() -> bool {
-    let y: Option<Result<u64, u8>> = Some(Ok(5));
+    let y: Option<MyResult<u64, u8>> = Some(MyResult::MyOk(5));
     assert(y.transpose().unwrap().unwrap() == 5);
 
     let y: GenericStruct<Option<u64>> = GenericStruct{ x: Some(5)};

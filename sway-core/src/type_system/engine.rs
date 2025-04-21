@@ -1987,6 +1987,10 @@ impl TypeEngine {
         self.slab.get(id.index()).type_info.clone()
     }
 
+    pub fn map<R>(&self, id: TypeId, f: impl FnOnce(&TypeInfo) -> R) -> R {
+        self.slab.map(id.index(), |x| f(x.type_info.as_ref()))
+    }
+
     /// Performs a lookup of `id` into the [TypeEngine] recursing when finding a
     /// [TypeInfo::Alias].
     pub fn get_unaliased(&self, id: TypeId) -> Arc<TypeInfo> {
