@@ -10,6 +10,7 @@ use ::codec::*;
 use ::ops::*;
 use ::raw_slice::*;
 use ::clone::Clone;
+use ::debug::{Debug, DebugList, Formatter};
 
 struct RawVec<T> {
     ptr: raw_ptr,
@@ -887,7 +888,6 @@ impl<T> Clone for Vec<T> {
     }
 }
 
-
 impl<T> PartialEq for Vec<T>
 where
     T: Eq,
@@ -907,13 +907,17 @@ where
     }
 }
 
-#[test]
-fn ok_vec_fmt() {
-    use core::debug::*;
-    let mut v = Vec::new();
-    v.push(1u8);
-    v.push(3u8);
+impl<T> Debug for Vec<T>
+where
+    T: Debug,
+{
+    fn fmt(self, ref mut f: Formatter) {
+        let mut l = f.debug_list();
 
-    let mut f = Formatter {};
-    v.fmt(f);
+        for elem in self.iter() {
+            l.entry(elem);
+        }
+
+        l.finish();
+    }
 }

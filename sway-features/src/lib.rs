@@ -173,8 +173,6 @@ features! {
     "https://github.com/FuelLabs/sway/issues/6765",
     const_generics = false,
     "https://github.com/FuelLabs/sway/issues/6860",
-    dbg_intrinsic = true,
-    "https://github.com/FuelLabs/sway/pull/7015"
 }
 
 #[derive(Clone, Debug, Default, Parser)]
