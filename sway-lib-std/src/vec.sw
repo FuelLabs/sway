@@ -915,7 +915,7 @@ where
         let mut l = f.debug_list();
 
         for elem in self.iter() {
-            l.entry(elem);
+            let _ = l.entry(elem);
         }
 
         l.finish();
