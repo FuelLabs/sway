@@ -2154,7 +2154,7 @@ fn expr_func_app_to_expression_kind(
             }
 
             let current_file = get_current_file_from_span(engines, &span);
-            let current_line_col = span.line_col();
+            let start_line_col = span.start_line_col_one_index();
 
             let arg_id: String = format!("arg_{}", context.next_for_unique_suffix());
             let arg_ident = BaseIdent::new_no_span(arg_id.to_string());
@@ -2186,7 +2186,7 @@ fn expr_func_app_to_expression_kind(
                         f_ident.clone(),
                         &format!(
                             "[{}:{}:{}] = ",
-                            current_file, current_line_col.start.line, current_line_col.start.col
+                            current_file, start_line_col.line, start_line_col.col
                         ),
                         &span,
                     ),
