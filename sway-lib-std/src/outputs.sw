@@ -284,7 +284,7 @@ pub fn output_asset_to(index: u64) -> Option<Address> {
 ///
 /// # Returns
 ///
-/// * [Option<Address>] - The asset id and the receiver of the output.
+/// * [Option<AssetId, Address>] - The asset id and the receiver of the output.
 ///
 /// # Examples
 ///
