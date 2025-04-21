@@ -50,8 +50,8 @@ fn bind_contract_id_in_root_module(
     // parser config
     let const_item = format!("pub const {CONTRACT_ID}: b256 = {contract_id_value};");
     let const_item_len = const_item.len();
-    let input_arc = std::sync::Arc::from(const_item);
-    let token_stream = lex(handler, &input_arc, 0, const_item_len, None).unwrap();
+    let src = const_item.as_str().into();
+    let token_stream = lex(handler, src, 0, const_item_len, None).unwrap();
     let mut parser = Parser::new(handler, &token_stream);
     // perform the parse
     let const_item: ItemConst = parser.parse()?;

@@ -1716,7 +1716,9 @@ mod tests {
         let r = crate::compile_to_ast(
             &handler,
             &engines,
-            std::sync::Arc::from(format!("library; {prefix} fn f() -> u64 {{ {expr}; 0 }}")),
+            format!("library; {prefix} fn f() -> u64 {{ {expr}; 0 }}")
+                .as_str()
+                .into(),
             core_lib,
             None,
             "test",

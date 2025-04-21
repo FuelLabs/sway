@@ -57,8 +57,8 @@ impl SourceMap {
                 SourceMapSpan {
                     path: PathIndex(path_index),
                     range: LocationRange {
-                        start: span.start_pos().line_col(),
-                        end: span.end_pos().line_col(),
+                        start: span.start_line_col_one_index(),
+                        end: span.end_line_col_one_index(),
                     },
                 },
             );

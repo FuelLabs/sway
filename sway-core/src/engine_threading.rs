@@ -173,7 +173,11 @@ impl DisplayWithEngines for Span {
         let file = self
             .source_id()
             .and_then(|id| engines.source_engine.get_file_name(id));
-        f.write_fmt(format_args!("Span {{ {:?}, {} }}", file, self.line_col()))
+        f.write_fmt(format_args!(
+            "Span {{ {:?}, {} }}",
+            file,
+            self.line_col_one_index()
+        ))
     }
 }
 

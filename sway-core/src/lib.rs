@@ -54,6 +54,7 @@ use sway_ir::{
     FN_INLINE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
     RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
+use sway_types::span::Source;
 use sway_types::{SourceEngine, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
 use transform::{ArgsExpectValues, Attribute, AttributeKind, Attributes, ExpectedArgs};
@@ -90,20 +91,20 @@ pub use engine_threading::Engines;
 /// # Panics
 /// Panics if the parser panics.
 pub fn parse(
-    input: Arc<str>,
+    src: Source,
     handler: &Handler,
     engines: &Engines,
     config: Option<&BuildConfig>,
     experimental: ExperimentalFeatures,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     match config {
-        None => parse_in_memory(handler, engines, input, experimental),
+        None => parse_in_memory(handler, engines, src, experimental),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
         Some(config) => parse_module_tree(
             handler,
             engines,
-            input,
+            src,
             config.canonical_root_module(),
             None,
             config.build_target,
@@ -134,11 +135,8 @@ pub fn parse(
 /// Parses the tree kind in the input provided.
 ///
 /// This will lex the entire input, but parses only the module kind.
-pub fn parse_tree_type(
-    handler: &Handler,
-    input: Arc<str>,
-) -> Result<parsed::TreeType, ErrorEmitted> {
-    sway_parse::parse_module_kind(handler, input, None).map(|kind| convert_module_kind(&kind))
+pub fn parse_tree_type(handler: &Handler, src: Source) -> Result<parsed::TreeType, ErrorEmitted> {
+    sway_parse::parse_module_kind(handler, src, None).map(|kind| convert_module_kind(&kind))
 }
 
 /// Converts `attribute_decls` to [Attributes].
@@ -362,11 +360,11 @@ pub(crate) fn attr_decls_to_attributes(
 fn parse_in_memory(
     handler: &Handler,
     engines: &Engines,
-    src: Arc<str>,
+    src: Source,
     experimental: ExperimentalFeatures,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     let mut hasher = DefaultHasher::new();
-    src.hash(&mut hasher);
+    src.text.hash(&mut hasher);
     let hash = hasher.finish();
     let module = sway_parse::parse_file(handler, src, None)?;
 
@@ -437,8 +435,8 @@ fn parse_submodules(
         // Read the source code from the dependency.
         // If we cannot, record as an error, but continue with other files.
         let submod_path = Arc::new(module_path(module_dir, module_name, submod));
-        let submod_str: Arc<str> = match std::fs::read_to_string(&*submod_path) {
-            Ok(s) => Arc::from(s),
+        let submod_src: Source = match std::fs::read_to_string(&*submod_path) {
+            Ok(s) => s.as_str().into(),
             Err(e) => {
                 handler.emit_err(CompileError::FileCouldNotBeRead {
                     span: submod.name.span(),
@@ -455,7 +453,7 @@ fn parse_submodules(
         }) = parse_module_tree(
             handler,
             engines,
-            submod_str.clone(),
+            submod_src.clone(),
             submod_path.clone(),
             Some(submod.name.as_str()),
             build_target,
@@ -465,7 +463,7 @@ fn parse_submodules(
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
                 let source_id = engines.se().get_source_id(submod_path.as_ref());
-                let span = span::Span::new(submod_str, 0, 0, Some(source_id)).unwrap();
+                let span = span::Span::new(submod_src, 0, 0, Some(source_id)).unwrap();
                 handler.emit_err(CompileError::ImportMustBeLibrary { span });
                 return;
             }
@@ -508,7 +506,7 @@ pub struct ParsedModuleTree {
 fn parse_module_tree(
     handler: &Handler,
     engines: &Engines,
-    src: Arc<str>,
+    src: Source,
     path: Arc<PathBuf>,
     module_name: Option<&str>,
     build_target: BuildTarget,
@@ -567,7 +565,7 @@ fn parse_module_tree(
     };
 
     let mut hasher = DefaultHasher::new();
-    src.hash(&mut hasher);
+    src.text.hash(&mut hasher);
     let hash = hasher.finish();
 
     let parsed_submodules = submodules
@@ -941,7 +939,7 @@ pub fn parsed_to_ast(
 pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
-    input: Arc<str>,
+    src: Source,
     initial_namespace: namespace::Package,
     build_config: Option<&BuildConfig>,
     package_name: &str,
@@ -972,7 +970,7 @@ pub fn compile_to_ast(
         package_name,
         "parse the program to a concrete syntax tree (CST)",
         "parse_cst",
-        parse(input, handler, engines, build_config, experimental),
+        parse(src, handler, engines, build_config, experimental),
         build_config,
         metrics
     );
@@ -1015,7 +1013,12 @@ pub fn compile_to_ast(
 
     handler.dedup();
 
-    let programs = Programs::new(lexed_program, parsed_program, program, metrics);
+    let programs = Programs::new(
+        Arc::new(lexed_program),
+        Arc::new(parsed_program),
+        program.map(Arc::new),
+        metrics,
+    );
 
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
@@ -1037,7 +1040,7 @@ pub fn compile_to_ast(
 pub fn compile_to_asm(
     handler: &Handler,
     engines: &Engines,
-    input: Arc<str>,
+    src: Source,
     initial_namespace: namespace::Package,
     build_config: &BuildConfig,
     package_name: &str,
@@ -1046,7 +1049,7 @@ pub fn compile_to_asm(
     let ast_res = compile_to_ast(
         handler,
         engines,
-        input,
+        src,
         initial_namespace,
         Some(build_config),
         package_name,
@@ -1204,7 +1207,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 pub fn compile_to_bytecode(
     handler: &Handler,
     engines: &Engines,
-    input: Arc<str>,
+    src: Source,
     initial_namespace: namespace::Package,
     build_config: &BuildConfig,
     source_map: &mut SourceMap,
@@ -1214,7 +1217,7 @@ pub fn compile_to_bytecode(
     let mut asm_res = compile_to_asm(
         handler,
         engines,
-        input,
+        src,
         initial_namespace,
         build_config,
         package_name,
