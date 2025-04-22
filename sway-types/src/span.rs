@@ -1,4 +1,4 @@
-use crate::eytzinger::{Eytzinger, Index};
+use crate::eytzinger::Eytzinger;
 use crate::SourceId;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
@@ -74,13 +74,16 @@ impl Source {
             LineCol { line: 0, col: 0 }
         } else {
             let (line, line_start) = match self.line_starts.binary_search(position) {
-                Ok(Index { original: line, .. }) => (line, self.line_starts.get(line)),
-                Err(Index { original: 0, .. }) => (0, None),
-                Err(Index { original: line, .. }) => (line - 1, self.line_starts.get(line - 1)),
+                Ok(idx) => (self.line_starts.get_original_index(idx).unwrap(), self.line_starts.get(idx)),
+                Err(0) => (0, None),
+                Err(idx) => (self.line_starts.get_original_index(idx).unwrap() - 1, self.line_starts.get_previous_value(idx)),
             };
-            line_start.map_or(LineCol { line: 0, col: 0 }, |line_start| LineCol {
-                line,
-                col: position - line_start,
+            
+            line_start.map_or(LineCol { line: 0, col: 0 }, |line_start| {
+                LineCol {
+                    line,
+                    col: position - line_start,
+                }
             })
         }
     }
