@@ -248,7 +248,14 @@ impl From<&TypeParameter> for GenericArgument {
                 span: p.name.span(),
                 call_path_tree: None,
             }),
-            TypeParameter::Const(_) => todo!(),
+            TypeParameter::Const(p) => GenericArgument::Const(GenericConstArgument {
+                expr: match p.expr.as_ref() {
+                    Some(expr) => expr.clone(),
+                    None => ConstGenericExpr::AmbiguousVariableExpression {
+                        ident: p.name.clone(),
+                    },
+                },
+            }),
         }
     }
 }

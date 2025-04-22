@@ -1235,8 +1235,12 @@ fn assign_type_to_token(
     token.type_def = Some(TypeDefinition::TypeId(type_id));
 }
 
-fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &GenericArgument) {
-    let type_info = ctx.engines.te().get(type_arg.type_id());
+fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, generic_arg: &GenericArgument) {
+    if generic_arg.as_type_argument().is_none() {
+        return;
+    }
+
+    let type_info = ctx.engines.te().get(generic_arg.type_id());
     collect_qualified_path_root(ctx, tree.qualified_call_path.qualified_path_root.clone());
     collect_call_path_prefixes(
         ctx,
@@ -1245,8 +1249,8 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ge
     );
     collect_type_id(
         ctx,
-        type_arg.type_id(),
-        &TypedAstToken::TypedArgument(type_arg.clone()),
+        generic_arg.type_id(),
+        &TypedAstToken::TypedArgument(generic_arg.clone()),
         tree.qualified_call_path.call_path.suffix.span(),
     );
     match &*type_info {
@@ -1304,7 +1308,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ge
                     .try_get_mut_with_retry(&ctx.ident(&abi_call_path.call_path.suffix))
                 {
                     token.ast_node =
-                        TokenAstNode::Typed(TypedAstToken::TypedArgument(type_arg.clone()));
+                        TokenAstNode::Typed(TypedAstToken::TypedArgument(generic_arg.clone()));
                     let full_path = mod_path_to_full_path(
                         &abi_call_path.call_path.prefixes,
                         false,
