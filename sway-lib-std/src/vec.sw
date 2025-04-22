@@ -11,6 +11,7 @@ use ::ops::*;
 use ::raw_slice::*;
 use ::clone::Clone;
 use ::slice::*;
+use ::debug::*;
 
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'. It has ownership over its buffer.
 pub struct Vec<T> {
@@ -767,6 +768,7 @@ where
 
         l.finish();
     }
+}
 
 
 impl<T> AbiEncode for Vec<T>
