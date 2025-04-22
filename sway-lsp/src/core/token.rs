@@ -316,8 +316,8 @@ pub fn type_info_to_symbol_kind(
 
 /// Given a [Span], convert into a [Range] and return.
 pub fn get_range_from_span(span: &Span) -> Range {
-    let start = span.start_pos().line_col();
-    let end = span.end_pos().line_col();
+    let start = span.start_line_col_one_index();
+    let end = span.end_line_col_one_index();
     Range {
         start: Position::new(start.line as u32 - 1, start.col as u32 - 1),
         end: Position::new(end.line as u32 - 1, end.col as u32 - 1),

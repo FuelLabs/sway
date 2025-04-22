@@ -9,7 +9,6 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-bytecount.workspace = true
 fuel-asm.workspace = true
 fuel-crypto.workspace = true
 fuel-tx.workspace = true

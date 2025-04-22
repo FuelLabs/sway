@@ -16,3 +16,4 @@ pub mod logging;
 pub mod revert;
 pub mod assert;
 pub mod prelude;
+pub mod debug;

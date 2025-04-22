@@ -2,7 +2,6 @@ use std::{
     fs,
     ops::Not,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use anyhow::Result;
@@ -237,6 +236,7 @@ pub(super) async fn run(
                     path.clone(),
                     PathBuf::from("/"),
                     build_target,
+                    sway_core::DbgGeneration::Full,
                 );
 
                 // Include unit tests in the build.
@@ -249,7 +249,7 @@ pub(super) async fn run(
                 let compile_res = compile_to_ast(
                     &handler,
                     &engines,
-                    Arc::from(sway_str),
+                    sway_str.as_ref().into(),
                     initial_namespace,
                     Some(&bld_cfg),
                     PACKAGE_NAME,

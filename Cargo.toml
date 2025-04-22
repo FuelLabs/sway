@@ -121,7 +121,6 @@ async-trait = "0.1"
 aws-config = "1.5"
 aws-sdk-kms = "1.44"
 byte-unit = "5.1"
-bytecount = "0.6"
 bytes = "1.7"
 chrono = { version = "0.4", default-features = false }
 cid = "0.11"

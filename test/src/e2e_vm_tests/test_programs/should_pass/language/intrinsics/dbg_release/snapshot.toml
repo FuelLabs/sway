@@ -1,0 +1,4 @@
+cmds = [
+    "forc build --path {root} --asm final | grep ecal",
+    "forc build --path {root} --release --asm final | grep ecal"
+]
