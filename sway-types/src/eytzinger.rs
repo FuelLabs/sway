@@ -20,8 +20,8 @@ fn eytzinger<T: Copy>(a: &[T], b: &mut [T], mut i: usize, k: usize) -> usize {
 impl<T: Copy + Default> From<&[T]> for Eytzinger<T> {
     fn from(input: &[T]) -> Self {
         let mut result = vec![T::default(); input.len() + 1];
-        eytzinger(&input[..], &mut result[..], 0, 1);
-        let original = (0..input.len()).into_iter().collect::<Vec<_>>();
+        eytzinger(input, &mut result[..], 0, 1);
+        let original = (0..input.len()).collect::<Vec<_>>();
         let mut order = vec![input.len(); input.len() + 1];
         eytzinger(&original[..], &mut order[..], 0, 1);
         Self(result, order)
