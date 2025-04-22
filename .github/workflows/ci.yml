@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -80,7 +80,7 @@ jobs:
       fuel_core_version: ${{steps.get_fuel_core_ver.outputs.version}}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -97,7 +97,7 @@ jobs:
   build-sway-lib-std:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -113,7 +113,7 @@ jobs:
   build-sway-examples:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -127,7 +127,7 @@ jobs:
   build-reference-examples:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -141,7 +141,7 @@ jobs:
   forc-fmt-check-sway-lib-std:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -155,7 +155,7 @@ jobs:
   forc-fmt-check-sway-examples:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -169,7 +169,7 @@ jobs:
   forc-fmt-check-panic:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -186,7 +186,7 @@ jobs:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -206,7 +206,7 @@ jobs:
   build-mdbook:
     runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -264,7 +264,7 @@ jobs:
   build-forc-doc-sway-lib-std:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -283,7 +283,7 @@ jobs:
   build-forc-test-project:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -320,7 +320,7 @@ jobs:
   cargo-build-workspace:
     runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -336,7 +336,7 @@ jobs:
   cargo-clippy:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -351,7 +351,7 @@ jobs:
   cargo-toml-fmt-check:
     runs-on: ubuntu-latest # Switching this runner to buildjet causes failure.
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -367,7 +367,7 @@ jobs:
   cargo-fmt-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -380,7 +380,7 @@ jobs:
     runs-on: buildjet-4vcpu-ubuntu-2204
     needs: get-fuel-core-version
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -405,7 +405,7 @@ jobs:
     runs-on: buildjet-4vcpu-ubuntu-2204
     needs: get-fuel-core-version
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -429,7 +429,7 @@ jobs:
   cargo-run-e2e-test-evm:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -445,7 +445,7 @@ jobs:
   cargo-test-lib-std:
     runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -474,7 +474,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -488,7 +488,7 @@ jobs:
         run: ./benchmark.sh
       - name: Checkout benchmark data
         if: github.event_name != 'push'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: FuelLabs/sway-performance-data
           path: performance-data
@@ -502,7 +502,7 @@ jobs:
           owner: FuelLabs
       - name: Checkout benchmark data
         if: github.event_name == 'push'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: FuelLabs/sway-performance-data
           path: performance-data
@@ -519,7 +519,7 @@ jobs:
   forc-unit-tests:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -541,7 +541,7 @@ jobs:
   forc-pkg-fuels-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -575,7 +575,7 @@ jobs:
     runs-on: buildjet-4vcpu-ubuntu-2204
     needs: get-fuel-core-version
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -596,7 +596,7 @@ jobs:
     runs-on: buildjet-4vcpu-ubuntu-2204
     needs: get-fuel-core-version
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -617,7 +617,7 @@ jobs:
     runs-on: buildjet-4vcpu-ubuntu-2204
     needs: get-fuel-core-version
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -637,7 +637,7 @@ jobs:
   cargo-test-sway-lsp:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Rust and cargo-nextest
         uses: moonrepo/setup-rust@v0
         with:
@@ -651,7 +651,7 @@ jobs:
   cargo-test-forc:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -666,7 +666,7 @@ jobs:
   cargo-test-workspace:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -679,7 +679,7 @@ jobs:
   cargo-unused-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -731,7 +731,7 @@ jobs:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -779,7 +779,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -829,7 +829,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Docker meta
         id: meta
@@ -891,7 +891,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Docker meta
         id: meta
@@ -966,7 +966,7 @@ jobs:
             svm_target_platform: macosx-aarch64
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
