@@ -770,7 +770,6 @@ where
     }
 }
 
-
 impl<T> AbiEncode for Vec<T>
 where
     T: AbiEncode,
