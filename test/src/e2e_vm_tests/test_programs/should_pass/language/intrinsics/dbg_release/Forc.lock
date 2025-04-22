@@ -1,0 +1,8 @@
+[[package]]
+name = "dbg_release"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-A3D53D8266747D89"

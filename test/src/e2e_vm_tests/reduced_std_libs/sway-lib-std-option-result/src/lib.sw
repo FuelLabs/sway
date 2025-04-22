@@ -18,3 +18,4 @@ pub mod result;
 pub mod option;
 pub mod assert;
 pub mod prelude;
+pub mod debug;

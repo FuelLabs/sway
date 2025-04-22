@@ -50,6 +50,7 @@ pub fn check(
         None,
         &experimental.experimental,
         &experimental.no_experimental,
+        sway_core::DbgGeneration::None,
     )?;
     let (res, handler) = v
         .pop()

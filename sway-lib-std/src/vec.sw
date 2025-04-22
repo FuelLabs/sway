@@ -10,6 +10,7 @@ use ::codec::*;
 use ::ops::*;
 use ::raw_slice::*;
 use ::clone::Clone;
+use ::debug::{Debug, DebugList, Formatter};
 
 struct RawVec<T> {
     ptr: raw_ptr,
@@ -903,5 +904,20 @@ where
             i += 1;
         }
         true
+    }
+}
+
+impl<T> Debug for Vec<T>
+where
+    T: Debug,
+{
+    fn fmt(self, ref mut f: Formatter) {
+        let mut l = f.debug_list();
+
+        for elem in self.iter() {
+            let _ = l.entry(elem);
+        }
+
+        l.finish();
     }
 }

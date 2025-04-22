@@ -150,6 +150,7 @@ impl Session {
         let path = uri.to_file_path().unwrap();
         let source_id = { engines.se().get_source_id(&path) };
         engines.clear_module(&source_id);
+
         Ok(())
     }
 
@@ -326,6 +327,7 @@ pub fn compile(
         retrigger_compilation,
         &[],
         &[sway_features::Feature::NewEncoding],
+        sway_core::DbgGeneration::None,
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
