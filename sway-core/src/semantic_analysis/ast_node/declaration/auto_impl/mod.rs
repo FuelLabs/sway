@@ -17,7 +17,7 @@ use crate::{
 };
 use sway_error::handler::Handler;
 use sway_parse::Parse;
-use sway_types::{Named, ProgramId, SourceId, Spanned};
+use sway_types::{SourceId, Spanned};
 
 /// Contains all information needed to auto-implement code for a certain feature.
 pub struct AutoImplContext<'a, 'b, I>

@@ -652,7 +652,7 @@ impl TypeId {
             }
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
-                for type_param in &enum_decl.type_parameters {
+                for type_param in &enum_decl.generic_parameters {
                     match type_param {
                         TypeParameter::Type(type_param) => {
                             type_param.type_id.walk_any_including_self(
@@ -687,7 +687,7 @@ impl TypeId {
             }
             TypeInfo::Struct(struct_id) => {
                 let struct_decl = decl_engine.get_struct(struct_id);
-                for type_param in &struct_decl.type_parameters {
+                for type_param in &struct_decl.generic_parameters {
                     match type_param {
                         TypeParameter::Type(type_param) => {
                             type_param.type_id.walk_any_including_self(
