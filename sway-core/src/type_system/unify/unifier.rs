@@ -429,29 +429,33 @@ impl<'a> Unifier<'a> {
                         TypeParameter::Const(received_parameter),
                         TypeParameter::Const(expected_parameter),
                     ) => {
-                        match (
-                            received_parameter.expr.is_some(),
-                            expected_parameter.expr.is_some(),
-                        ) {
-                            (true, true) => {}
-                            (true, false) => {
+                        match (received_parameter.expr.as_ref(), expected_parameter.expr.as_ref()) {
+                            (Some(r), Some(e)) => {
+                                match (r.as_literal_val(), e.as_literal_val()) {
+                                    (Some(r), Some(e)) if r == e => {},
+                                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                                }
+                            }
+                            (Some(_), None) => {
                                 self.replace_expected_with_received(
                                     expected_type_id,
                                     &TypeInfo::Struct(*received_decl_id),
                                     span,
                                 );
                             }
-                            (false, true) => {
+                            (None, Some(_)) => {
                                 self.replace_received_with_expected(
                                     received_type_id,
                                     &TypeInfo::Struct(*expected_decl_id),
                                     span,
                                 );
                             }
-                            (false, false) => {}
+                            (None, None) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                         }
                     }
-                    _ => todo!(),
+                    _ => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
                 }
             }
         } else {

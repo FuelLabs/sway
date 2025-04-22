@@ -1616,7 +1616,7 @@ fn ty_to_type_info(
             }
         }
         Ty::Never { .. } => TypeInfo::Never,
-        Ty::Expr(_) => todo!(),
+        Ty::Expr(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
     };
     Ok(type_info)
 }

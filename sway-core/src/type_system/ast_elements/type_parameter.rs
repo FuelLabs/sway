@@ -82,7 +82,9 @@ impl OrdWithEngines for TypeParameter {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         match (self, other) {
             (TypeParameter::Type(l), TypeParameter::Type(r)) => l.cmp(r, ctx),
-            (TypeParameter::Const(_), TypeParameter::Const(_)) => todo!(),
+            (TypeParameter::Const(_), TypeParameter::Const(_)) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
             _ => todo!(),
         }
     }
@@ -92,7 +94,9 @@ impl DebugWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         match self {
             TypeParameter::Type(p) => p.fmt(f, engines),
-            TypeParameter::Const(_) => todo!(),
+            TypeParameter::Const(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 }
@@ -115,7 +119,9 @@ impl TypeParameter {
     pub fn abi_str(&self, engines: &Engines, ctx: &AbiStrContext, is_root: bool) -> String {
         match self {
             TypeParameter::Type(p) => engines.te().get(p.type_id).abi_str(ctx, engines, is_root),
-            TypeParameter::Const(_) => todo!(),
+            TypeParameter::Const(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 
@@ -902,7 +908,9 @@ impl ConstGenericExpr {
                 return_type: engines.te().id_of_u64(),
                 span: span.clone(),
             },
-            ConstGenericExpr::AmbiguousVariableExpression { .. } => todo!(),
+            ConstGenericExpr::AmbiguousVariableExpression { .. } => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 
@@ -1025,6 +1033,6 @@ impl SubstTypes for ConstGenericParameter {
 
 impl IsConcrete for ConstGenericParameter {
     fn is_concrete(&self, _engines: &Engines) -> bool {
-        todo!()
+        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
     }
 }

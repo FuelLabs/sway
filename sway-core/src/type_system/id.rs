@@ -398,15 +398,13 @@ impl TypeId {
                             TypeParameter::Const(orig_type_param),
                             TypeParameter::Const(type_param),
                         ) => match (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
-                            (None, None) => todo!(),
                             (None, Some(expr)) => {
                                 const_generic_parameters.insert(
                                     orig_type_param.name.as_str().to_string(),
                                     expr.to_ty_expression(engines),
                                 );
                             }
-                            (Some(_), None) => todo!(),
-                            (Some(_), Some(_)) => todo!(),
+                            _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                         },
                         _ => {}
                     }
@@ -1251,7 +1249,9 @@ impl TypeId {
                 TypeParameter::Type(p) => {
                     structure_generics.insert(self, p.trait_constraints);
                 }
-                TypeParameter::Const(_) => todo!(),
+                TypeParameter::Const(_) => {
+                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                }
             }
         }
 
