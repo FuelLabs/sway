@@ -35,6 +35,13 @@ impl<T: Copy + Ord> Eytzinger<T> {
 
     #[inline]
     pub fn binary_search(&self, target: T) -> Result<Index, Index> {
+        if self.1.len() == 1 {
+            return Err(Index {
+                index: 0,
+                original: 0,
+            });
+        }
+
         let mut idx = 1;
 
         while idx < self.0.len() {
@@ -65,17 +72,43 @@ impl<T: Copy + Ord> Eytzinger<T> {
 
 #[test]
 fn ok_binary_search() {
-    let v = Eytzinger::from(vec![1, 5, 10].as_slice());
-    assert_eq!(v.binary_search(1).unwrap().original, 0);
-    assert_eq!(v.binary_search(5).unwrap().original, 1);
-    assert_eq!(v.binary_search(10).unwrap().original, 2);
-
+    let v = Eytzinger::from(vec![].as_slice());
     assert_eq!(v.binary_search(0).unwrap_err().original, 0);
+
+    let v = Eytzinger::from(vec![1].as_slice());
+    assert_eq!(v.binary_search(0).unwrap_err().original, 0);
+    assert_eq!(v.binary_search(1).unwrap().original, 0);
     assert_eq!(v.binary_search(2).unwrap_err().original, 1);
 
+    let v = Eytzinger::from(vec![1, 5, 10].as_slice());
+    assert_eq!(v.binary_search(0).unwrap_err().original, 0);
+    assert_eq!(v.binary_search(1).unwrap().original, 0);
+    assert_eq!(v.binary_search(2).unwrap_err().original, 1);
+    assert_eq!(v.binary_search(3).unwrap_err().original, 1);
     assert_eq!(v.binary_search(4).unwrap_err().original, 1);
+    assert_eq!(v.binary_search(5).unwrap().original, 1);
     assert_eq!(v.binary_search(6).unwrap_err().original, 2);
-
+    assert_eq!(v.binary_search(7).unwrap_err().original, 2);
+    assert_eq!(v.binary_search(8).unwrap_err().original, 2);
     assert_eq!(v.binary_search(9).unwrap_err().original, 2);
+    assert_eq!(v.binary_search(10).unwrap().original, 2);
     assert_eq!(v.binary_search(11).unwrap_err().original, 3);
+    assert_eq!(v.binary_search(12).unwrap_err().original, 3);
+
+    let v = Eytzinger::from(vec![1, 5, 10, 13].as_slice());
+    assert_eq!(v.binary_search(0).unwrap_err().original, 0);
+    assert_eq!(v.binary_search(1).unwrap().original, 0);
+    assert_eq!(v.binary_search(2).unwrap_err().original, 1);
+    assert_eq!(v.binary_search(3).unwrap_err().original, 1);
+    assert_eq!(v.binary_search(4).unwrap_err().original, 1);
+    assert_eq!(v.binary_search(5).unwrap().original, 1);
+    assert_eq!(v.binary_search(6).unwrap_err().original, 2);
+    assert_eq!(v.binary_search(7).unwrap_err().original, 2);
+    assert_eq!(v.binary_search(8).unwrap_err().original, 2);
+    assert_eq!(v.binary_search(9).unwrap_err().original, 2);
+    assert_eq!(v.binary_search(10).unwrap().original, 2);
+    assert_eq!(v.binary_search(11).unwrap_err().original, 3);
+    assert_eq!(v.binary_search(12).unwrap_err().original, 3);
+    assert_eq!(v.binary_search(13).unwrap().original, 3);
+    assert_eq!(v.binary_search(14).unwrap_err().original, 4);
 }
