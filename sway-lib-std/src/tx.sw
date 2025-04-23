@@ -79,13 +79,12 @@ impl PartialEq for Transaction {
 }
 impl Eq for Transaction {}
 
-const TX_TYPE_SCRIPT: u8 = 0u8;
-const TX_TYPE_CREATE: u8 = 1u8;
-#[allow(dead_code)]
-const TX_TYPE_MINT: u8 = 2u8;
-const TX_TYPE_UPGRADE: u8 = 3u8;
-const TX_TYPE_UPLOAD: u8 = 4u8;
-const TX_TYPE_BLOB: u8 = 5u8;
+pub const TX_TYPE_SCRIPT: u8 = 0u8;
+pub const TX_TYPE_CREATE: u8 = 1u8;
+pub const TX_TYPE_MINT: u8 = 2u8;
+pub const TX_TYPE_UPGRADE: u8 = 3u8;
+pub const TX_TYPE_UPLOAD: u8 = 4u8;
+pub const TX_TYPE_BLOB: u8 = 5u8;
 
 /// Get the type of the current transaction.
 ///
@@ -337,9 +336,9 @@ pub fn tx_script_data_length() -> Option<u64> {
 /// ```
 pub fn tx_witnesses_count() -> u64 {
     match __gtf::<u8>(0, GTF_TYPE) {
-        TX_TYPE_SCRIPT | TX_TYPE_UPGRADE | TX_TYPE_UPLOAD | TX_TYPE_BLOB => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
         TX_TYPE_CREATE => __gtf::<u64>(0, GTF_CREATE_WITNESSES_COUNT),
-        _ => revert(0),
+        TX_TYPE_MINT => revert(0),
+        _ => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
     }
 }
 
@@ -369,9 +368,9 @@ fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
     }
 
     match __gtf::<u8>(0, GTF_TYPE) {
-        TX_TYPE_SCRIPT | TX_TYPE_UPGRADE | TX_TYPE_UPLOAD | TX_TYPE_BLOB => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
         TX_TYPE_CREATE => Some(__gtf::<raw_ptr>(index, GTF_CREATE_WITNESS_AT_INDEX)),
-        _ => None,
+        TX_TYPE_MINT => None,
+        _ => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
     }
 }
 

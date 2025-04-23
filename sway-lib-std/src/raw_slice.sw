@@ -1,5 +1,6 @@
 library;
 
+use ::ops::*;
 use ::raw_ptr::*;
 
 /// Trait to return a type as a `raw_slice`.
@@ -160,3 +161,11 @@ impl raw_slice {
         into_parts(self).1
     }
 }
+
+impl PartialEq for raw_slice {
+    fn eq(self, other: Self) -> bool {
+        self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
+    }
+}
+
+impl Eq for raw_slice {}

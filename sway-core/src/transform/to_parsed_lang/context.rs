@@ -1,6 +1,7 @@
 use sway_features::ExperimentalFeatures;
 
 use crate::{
+    build_config::DbgGeneration,
     language::parsed::{Declaration, TreeType},
     BuildTarget,
 };
@@ -27,6 +28,9 @@ pub struct Context {
     /// The build target.
     build_target: BuildTarget,
 
+    /// Indicates whether the `__dbg` intrinsic generates code or not
+    dbg_generation: DbgGeneration,
+
     /// The program type.
     program_type: Option<TreeType>,
 
@@ -36,9 +40,14 @@ pub struct Context {
 
 impl Context {
     /// Create a new context.
-    pub fn new(build_target: BuildTarget, experimental: ExperimentalFeatures) -> Self {
+    pub fn new(
+        build_target: BuildTarget,
+        dbg_generation: DbgGeneration,
+        experimental: ExperimentalFeatures,
+    ) -> Self {
         Self {
             build_target,
+            dbg_generation,
             experimental,
             module_has_configurable_block: std::default::Default::default(),
             destructured_struct_unique_suffix: std::default::Default::default(),
@@ -88,6 +97,10 @@ impl Context {
     /// Returns the build target.
     pub fn build_target(&self) -> BuildTarget {
         self.build_target
+    }
+
+    pub fn is_dbg_generation_full(&self) -> bool {
+        matches!(self.dbg_generation, DbgGeneration::Full)
     }
 
     /// Returns the program type.

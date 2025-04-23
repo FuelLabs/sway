@@ -1,4 +1,4 @@
 category = "fail"
 
 # check: $()buffer: __encode_buffer_empty(self),
-# nextln: $()Call to "encode_buffer_empty" expects 0 arguments
+# nextln: $()Call to "encode_buffer_empty" expects 0 argument(s)
