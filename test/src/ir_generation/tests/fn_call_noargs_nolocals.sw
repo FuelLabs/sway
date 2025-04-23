@@ -42,7 +42,5 @@ fn main() {
 
 // Function returns unit.
 //
-// check: move $REG $$$$reta
 // check: move $$$$retv $$zero
-// check: move $$$$reta $REG
 // check: jmp $$$$reta

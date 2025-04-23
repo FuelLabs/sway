@@ -96,6 +96,10 @@ impl AbstractInstructionSet {
             // Keep the `match` for adding more ops in the future.
             let remove = match &op.opcode {
                 Either::Left(VirtualOp::NOOP) => true,
+                Either::Left(VirtualOp::MOVE(a, b)) => a == b,
+                Either::Left(VirtualOp::CFEI(_, imm)) | Either::Left(VirtualOp::CFSI(_, imm)) => {
+                    imm.value() == 0
+                }
                 _ => false,
             };
 

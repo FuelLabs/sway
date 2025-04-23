@@ -733,6 +733,13 @@ impl Op {
         }
     }
 
+    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut VirtualRegister> {
+        match &mut self.opcode {
+            Either::Left(virt_op) => virt_op.use_registers_mut(),
+            Either::Right(org_op) => org_op.use_registers_mut(),
+        }
+    }
+
     pub(crate) fn def_registers(&self) -> BTreeSet<&VirtualRegister> {
         match &self.opcode {
             Either::Left(virt_op) => virt_op.def_registers(),
@@ -1345,6 +1352,26 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
     }
 
     pub(crate) fn use_registers(&self) -> BTreeSet<&Reg> {
+        use ControlFlowOp::*;
+        (match self {
+            Label(_)
+            | Comment
+            | Jump(_)
+            | Call(_)
+            | SaveRetAddr(..)
+            | DataSectionOffsetPlaceholder
+            | ConfigurablesOffsetPlaceholder
+            | LoadLabel(..)
+            | PushAll(_)
+            | PopAll(_) => vec![],
+
+            JumpIfNotZero(r1, _) => vec![r1],
+        })
+        .into_iter()
+        .collect()
+    }
+
+    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut Reg> {
         use ControlFlowOp::*;
         (match self {
             Label(_)
