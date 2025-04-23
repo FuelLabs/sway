@@ -179,39 +179,39 @@ impl ReproAttempt for Contract {
     }
 }
 
-// #[test()]
-// fn test_read_write_bytes() {
-//     let repro = abi(ReproAttempt, CONTRACT_ID);
+#[test()]
+fn test_read_write_bytes() {
+    let repro = abi(ReproAttempt, CONTRACT_ID);
 
-//     let mut my_bytes = Bytes::new();
-//     my_bytes.push(1_u8);
-//     my_bytes.push(2_u8);
+    let mut my_bytes = Bytes::new();
+    my_bytes.push(1_u8);
+    my_bytes.push(2_u8);
 
-//     assert(repro.bytes_foo_get().is_none());
-//     assert(repro.bytes_bar_get().is_none());
-//     assert(repro.bytes_foo_len() == 0);
-//     assert(repro.bytes_bar_len() == 0);
+    assert(repro.bytes_foo_get().is_none());
+    assert(repro.bytes_bar_get().is_none());
+    assert(repro.bytes_foo_len() == 0);
+    assert(repro.bytes_bar_len() == 0);
 
-//     repro.bytes_foo_store(my_bytes);
+    repro.bytes_foo_store(my_bytes);
 
-//     assert(repro.bytes_foo_get().unwrap() == my_bytes);
-//     assert(repro.bytes_bar_get().is_none());
-//     assert(repro.bytes_foo_len() == 2);
-//     assert(repro.bytes_bar_len() == 0);
-// }
+    assert(repro.bytes_foo_get().unwrap() == my_bytes);
+    assert(repro.bytes_bar_get().is_none());
+    assert(repro.bytes_foo_len() == 2);
+    assert(repro.bytes_bar_len() == 0);
+}
 
-// #[test()]
-// fn test_read_write_map() {
-//     let repro = abi(ReproAttempt, CONTRACT_ID);
+#[test()]
+fn test_read_write_map() {
+    let repro = abi(ReproAttempt, CONTRACT_ID);
 
-//     assert(repro.map_foo_get(1).is_none());
-//     assert(repro.map_bar_get(1).is_none());
+    assert(repro.map_foo_get(1).is_none());
+    assert(repro.map_bar_get(1).is_none());
 
-//     repro.map_foo_insert(1, 2);
+    repro.map_foo_insert(1, 2);
 
-//     assert(repro.map_foo_get(1).unwrap() == 2);
-//     assert(repro.map_bar_get(1).is_none());
-// }
+    assert(repro.map_foo_get(1).unwrap() == 2);
+    assert(repro.map_bar_get(1).is_none());
+}
 
 #[test()]
 fn test_read_write_vec() {
