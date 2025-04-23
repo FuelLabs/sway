@@ -1,3 +1,4 @@
+use super::byte_span;
 use crate::{formatter::FormatterError, parse::lex, utils::map::byte_span::ByteSpan};
 use std::{
     collections::BTreeMap,
@@ -5,11 +6,9 @@ use std::{
         Bound::{Excluded, Included},
         Deref, DerefMut, Range,
     },
-    sync::Arc,
 };
 use sway_ast::token::{Comment, CommentedTokenTree, CommentedTree};
-
-use super::byte_span;
+use sway_types::span::Source;
 
 #[derive(Clone, Default, Debug)]
 pub struct CommentMap(pub BTreeMap<ByteSpan, Comment>);
@@ -35,9 +34,9 @@ impl CommentMap {
 
     /// Get the CommentedTokenStream and collect the spans -> Comment mapping for the input source
     /// code.
-    pub fn from_src(input: Arc<str>) -> Result<Self, FormatterError> {
+    pub fn from_src(input: Source) -> Result<Self, FormatterError> {
         // Pass the input through the lexer.
-        let tts = lex(&input)?;
+        let tts = lex(input)?;
         let tts = tts.token_trees().iter();
 
         let mut comment_map = CommentMap::new();
@@ -108,7 +107,7 @@ impl CommentRange for CommentMap {
 mod tests {
     use super::ByteSpan;
     use crate::utils::map::comments::{CommentMap, CommentRange};
-    use std::{ops::Bound::Included, sync::Arc};
+    use std::ops::Bound::Included;
 
     #[test]
     fn test_comment_span_map_standalone_comment() {
@@ -122,7 +121,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let map = CommentMap::from_src(Arc::from(input)).unwrap();
+        let map = CommentMap::from_src(input.into()).unwrap();
         assert!(!map.is_empty());
         let range_start_span = ByteSpan { start: 0, end: 32 };
         let range_end_span = ByteSpan { start: 33, end: 34 };
@@ -144,7 +143,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let map = CommentMap::from_src(Arc::from(input)).unwrap();
+        let map = CommentMap::from_src(input.into()).unwrap();
         assert!(!map.is_empty());
         let range_start_span = ByteSpan { start: 40, end: 54 };
         let range_end_span = ByteSpan {
@@ -169,7 +168,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let map = CommentMap::from_src(Arc::from(input)).unwrap();
+        let map = CommentMap::from_src(input.into()).unwrap();
         assert!(!map.is_empty());
         let range_start_span = ByteSpan {
             start: 110,
@@ -194,7 +193,7 @@ mod tests {
         let range_end_span = ByteSpan { start: 8, end: 16 };
         let input = r#"// test
 contract;"#;
-        let map = CommentMap::from_src(Arc::from(input)).unwrap();
+        let map = CommentMap::from_src(input.into()).unwrap();
         assert!(!map.is_empty());
         let found_comments = map.comments_in_range(&range_start_span, &range_end_span);
         assert_eq!(found_comments[0].1.span.as_str(), "// test");

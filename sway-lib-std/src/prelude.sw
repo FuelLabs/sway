@@ -50,3 +50,4 @@ pub use ::codec::*;
 pub use ::str::*;
 #[cfg(experimental_error_type = true)]
 pub use ::marker::*;
+pub use ::debug::*;

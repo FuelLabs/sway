@@ -77,40 +77,60 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                     let _ = writeln!(&mut snapshot, "> {}", cmd);
 
-                    // known commands
-                    let cmd = if let Some(cmd) = cmd.strip_prefix("forc doc ") {
-                        FORC_DOC_COMPILATION.call_once(|| {
-                            compile_forc_doc();
-                        });
-                        format!("target/release/forc-doc {cmd} 1>&2")
-                    } else if let Some(cmd) = cmd.strip_prefix("forc ") {
-                        FORC_COMPILATION.call_once(|| {
-                            compile_forc();
-                        });
-                        format!("target/release/forc {cmd} 1>&2")
-                    } else {
-                        panic!("Not supported. Possible commands: forc")
-                    };
+                    let mut last_output: Option<String> = None;
 
-                    let o = duct::cmd!("bash", "-c", cmd.clone())
-                        .dir(repo_root.clone())
-                        .stderr_to_stdout()
-                        .stdout_capture()
-                        .env("COLUMNS", "10")
-                        .unchecked()
-                        .start()
-                        .unwrap();
-                    let o = o.wait().unwrap();
+                    for cmd in cmd.split("|") {
+                        let cmd = cmd.trim();
 
-                    let _ = writeln!(
-                        &mut snapshot,
-                        "{}",
-                        clean_output(&format!(
+                        // known commands
+                        let cmd = if let Some(cmd) = cmd.strip_prefix("forc doc ") {
+                            FORC_DOC_COMPILATION.call_once(|| {
+                                compile_forc_doc();
+                            });
+                            format!("target/release/forc-doc {cmd} 1>&2")
+                        } else if let Some(cmd) = cmd.strip_prefix("forc ") {
+                            FORC_COMPILATION.call_once(|| {
+                                compile_forc();
+                            });
+                            format!("target/release/forc {cmd} 1>&2")
+                        } else if let Some(cmd) = cmd.strip_prefix("grep ") {
+                            let arg = cmd.trim();
+                            if let Some(l) = last_output.take() {
+                                let mut new_output = String::new();
+                                for line in l.lines() {
+                                    if line.contains(arg) {
+                                        new_output.push_str(line);
+                                        new_output.push('\n');
+                                    }
+                                }
+                                last_output = Some(new_output);
+                            }
+                            continue;
+                        } else {
+                            panic!("Not supported. Possible commands: forc")
+                        };
+
+                        let o = duct::cmd!("bash", "-c", cmd.clone())
+                            .dir(repo_root.clone())
+                            .stderr_to_stdout()
+                            .stdout_capture();
+
+                        let o = if let Some(last_output) = last_output.as_ref() {
+                            o.stdin_bytes(last_output.as_bytes())
+                        } else {
+                            o
+                        };
+
+                        let o = o.env("COLUMNS", "10").unchecked().start().unwrap();
+                        let o = o.wait().unwrap();
+                        last_output = Some(clean_output(&format!(
                             "exit status: {}\noutput:\n{}",
                             o.status.code().unwrap(),
                             std::str::from_utf8(&o.stdout).unwrap(),
-                        ))
-                    );
+                        )));
+                    }
+
+                    let _ = writeln!(&mut snapshot, "{}", last_output.unwrap_or_default());
                 }
 
                 fn stdout(root: &str, snapshot: &str) {

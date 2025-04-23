@@ -79,14 +79,24 @@ impl Namespace {
 
     pub fn current_module(&self) -> &Module {
         self.module_in_current_package(&self.current_mod_path)
-            .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Could not retrieve submodule for mod_path: {:?}",
+                    self.current_mod_path
+                );
+            })
     }
 
     pub fn current_module_mut(&mut self) -> &mut Module {
         let package_relative_path = Package::package_relative_path(&self.current_mod_path);
         self.current_package_root_module_mut()
             .submodule_mut(&package_relative_path)
-            .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Could not retrieve submodule for mod_path: {:?}",
+                    package_relative_path
+                );
+            })
     }
 
     pub(crate) fn current_module_has_submodule(&self, submod_name: &Ident) -> bool {
@@ -305,6 +315,7 @@ impl Namespace {
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
+        check_implicits: bool,
     ) -> Result<(), ErrorEmitted> {
         let mut import_implicits = false;
 
@@ -313,6 +324,7 @@ impl Namespace {
             .current_module()
             .submodules()
             .contains_key(&mod_name.to_string())
+            && check_implicits
         {
             // Entering a new module. Add a new one.
             self.current_module_mut()
@@ -339,8 +351,16 @@ impl Namespace {
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
+        check_implicits: bool,
     ) -> Result<(), ErrorEmitted> {
-        match self.enter_submodule(handler, engines, mod_name, visibility, module_span) {
+        match self.enter_submodule(
+            handler,
+            engines,
+            mod_name,
+            visibility,
+            module_span,
+            check_implicits,
+        ) {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }

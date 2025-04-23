@@ -7,6 +7,7 @@ use sway_parse::{lex, Parser};
 use sway_types::{constants::CONTRACT_ID, ProgramId, Spanned};
 
 use crate::{
+    build_config::DbgGeneration,
     language::{
         parsed::{AstNode, AstNodeContent, Declaration, ExpressionKind},
         ty::{TyAstNode, TyAstNodeContent},
@@ -25,17 +26,25 @@ pub fn package_with_contract_id(
     program_id: ProgramId,
     contract_id_value: String,
     experimental: crate::ExperimentalFeatures,
+    dbg_generation: DbgGeneration,
 ) -> Result<Package, vec1::Vec1<CompileError>> {
     let package = Package::new(package_name, None, program_id, true);
     let handler = <_>::default();
-    bind_contract_id_in_root_module(&handler, engines, contract_id_value, package, experimental)
-        .map_err(|_| {
-            let (errors, warnings) = handler.consume();
-            assert!(warnings.is_empty());
+    bind_contract_id_in_root_module(
+        &handler,
+        engines,
+        contract_id_value,
+        package,
+        experimental,
+        dbg_generation,
+    )
+    .map_err(|_| {
+        let (errors, warnings) = handler.consume();
+        assert!(warnings.is_empty());
 
-            // Invariant: `.value == None` => `!errors.is_empty()`.
-            vec1::Vec1::try_from_vec(errors).unwrap()
-        })
+        // Invariant: `.value == None` => `!errors.is_empty()`.
+        vec1::Vec1::try_from_vec(errors).unwrap()
+    })
 }
 
 fn bind_contract_id_in_root_module(
@@ -44,14 +53,15 @@ fn bind_contract_id_in_root_module(
     contract_id_value: String,
     package: Package,
     experimental: crate::ExperimentalFeatures,
+    dbg_generation: DbgGeneration,
 ) -> Result<Package, ErrorEmitted> {
     // this for loop performs a miniature compilation of each const item in the config
     // FIXME(Centril): Stop parsing. Construct AST directly instead!
     // parser config
     let const_item = format!("pub const {CONTRACT_ID}: b256 = {contract_id_value};");
     let const_item_len = const_item.len();
-    let input_arc = std::sync::Arc::from(const_item);
-    let token_stream = lex(handler, &input_arc, 0, const_item_len, None).unwrap();
+    let src = const_item.as_str().into();
+    let token_stream = lex(handler, src, 0, const_item_len, None).unwrap();
     let mut parser = Parser::new(handler, &token_stream);
     // perform the parse
     let const_item: ItemConst = parser.parse()?;
@@ -61,7 +71,7 @@ fn bind_contract_id_in_root_module(
     let attributes = Default::default();
     // convert to const decl
     let const_decl_id = to_parsed_lang::item_const_to_constant_declaration(
-        &mut to_parsed_lang::Context::new(crate::BuildTarget::EVM, experimental),
+        &mut to_parsed_lang::Context::new(crate::BuildTarget::EVM, dbg_generation, experimental),
         handler,
         engines,
         const_item,

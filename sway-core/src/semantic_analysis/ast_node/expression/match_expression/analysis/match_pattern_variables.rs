@@ -161,7 +161,10 @@ pub(crate) fn collect_duplicate_match_pattern_variables(
         }
     }
 
-    result.sort_by(|a, b| a.duplicate.1.cmp(&b.duplicate.1));
+    result.sort_by(|a, b| match a.duplicate.1.partial_cmp(&b.duplicate.1) {
+        Some(ord) => ord,
+        None => unreachable!(),
+    });
 
     return result;
 

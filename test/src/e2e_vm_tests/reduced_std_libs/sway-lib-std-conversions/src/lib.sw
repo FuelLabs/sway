@@ -31,5 +31,6 @@ pub mod math;
 pub mod array_conversions;
 pub mod bytes_conversions;
 pub mod clone;
+pub mod debug;
 
 pub mod prelude;

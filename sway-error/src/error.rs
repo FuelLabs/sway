@@ -917,7 +917,7 @@ pub enum CompileError {
         span: Span,
         hint: String,
     },
-    #[error("Call to \"{name}\" expects {expected} arguments")]
+    #[error("Call to \"{name}\" expects {expected} argument(s)")]
     IntrinsicIncorrectNumArgs {
         name: String,
         expected: u64,
@@ -1077,6 +1077,8 @@ pub enum CompileError {
     },
     #[error("This expression has type \"{argument_type}\", which does not implement \"std::marker::Error\". Panic expression arguments must implement \"Error\".")]
     PanicExpressionArgumentIsNotError { argument_type: String, span: Span },
+    #[error("Incoherent impl was found due to breaking orphan rule check.")]
+    IncoherentImplDueToOrphanRule { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1308,6 +1310,7 @@ impl Spanned for CompileError {
                 enum_variant_name, ..
             } => enum_variant_name.span(),
             PanicExpressionArgumentIsNotError { span, .. } => span.clone(),
+            IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
         }
     }
 }

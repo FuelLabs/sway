@@ -1,0 +1,4 @@
+category = "fail"
+
+#check: $()Type contains duplicate declarations
+#check: $()Method "do_something" already declared in type "MyType".

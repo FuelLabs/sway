@@ -539,6 +539,27 @@ impl TraitMap {
         }
     }
 
+    pub(crate) fn get_traits_types(
+        &self,
+        traits_types: &mut HashMap<CallPath, Vec<TypeId>>,
+    ) -> Result<(), ErrorEmitted> {
+        for key in self.trait_impls.keys() {
+            for self_entry in self.trait_impls[key].iter() {
+                let callpath = CallPath {
+                    prefixes: self_entry.key.name.prefixes.clone(),
+                    suffix: self_entry.key.name.suffix.name.clone(),
+                    callpath_type: self_entry.key.name.callpath_type,
+                };
+                if let Some(vec) = traits_types.get_mut(&callpath) {
+                    vec.push(self_entry.key.type_id);
+                } else {
+                    traits_types.insert(callpath, vec![self_entry.key.type_id]);
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Filters the entries in `self` and return a new [TraitMap] with all of
     /// the entries from `self` that implement a trait from the declaration with that span.
     pub(crate) fn filter_by_trait_decl_span(&self, trait_decl_span: Span) -> TraitMap {

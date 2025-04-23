@@ -1,0 +1,16 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --asm final | grep ecal
+ecal $r2 $r3 $r0 $r1          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r4 $r2 $r3 $r0          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --release --asm final | grep ecal
+ecal $r2 $r6 $r0 $r1          ; ecal id fd buf count
+ecal $r7 $r8 $r3 $r6          ; ecal id fd buf count
+ecal $r3 $r4 $r2 $r0          ; ecal id fd buf count
+ecal $r3 $r4 $r1 $r2          ; ecal id fd buf count
