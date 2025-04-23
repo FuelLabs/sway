@@ -222,7 +222,7 @@ fn input_pointer(index: u64) -> Option<raw_ptr> {
 /// ```
 pub fn input_amount(index: u64) -> Option<u64> {
     match input_type(index) {
-        Some(Input::Coin) | Some(Input::DataCoin | Some(Input::ReadOnly(_))) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT)),
+        Some(Input::Coin) | Some(Input::DataCoin) | Some(Input::ReadOnly(_)) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT)),
         Some(Input::Message) => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_AMOUNT)),
         _ => None,
     }
