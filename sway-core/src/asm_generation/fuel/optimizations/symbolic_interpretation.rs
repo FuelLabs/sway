@@ -127,7 +127,6 @@ impl AbstractInstructionSet {
             })
             .collect();
 
-        // TODO: make this a struct with helper functions
         let mut known_values = KnownValues::default();
 
         for op in &mut self.ops {
@@ -161,12 +160,21 @@ impl AbstractInstructionSet {
             // Some ops are known to produce certain results, interpret them here.
             let interpreted_op = match &op.opcode {
                 Either::Left(VirtualOp::MOVI(dst, imm)) => {
-                    known_values.assign(dst.clone(), KnownRegValue::Const(imm.value() as u64));
+                    let imm = KnownRegValue::Const(imm.value() as u64);
+                    if known_values.resolve(&dst) == Some(imm.clone()) {
+                        op.opcode = Either::Left(VirtualOp::NOOP);
+                    } else {
+                        known_values.assign(dst.clone(), imm);
+                    }
                     true
                 }
                 Either::Left(VirtualOp::MOVE(dst, src)) => {
                     if let Some(known) = known_values.resolve(src) {
-                        known_values.assign(dst.clone(), known);
+                        if known_values.resolve(&dst) == Some(known.clone()) {
+                            op.opcode = Either::Left(VirtualOp::NOOP);
+                        } else {
+                            known_values.assign(dst.clone(), known);
+                        }
                     } else {
                         known_values.assign(dst.clone(), KnownRegValue::Eq(src.clone()));
                     }
