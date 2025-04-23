@@ -68,7 +68,7 @@ pub(super) const DEFINE_BACKWARD_COMPATIBLE_STORAGE_SLOT_KEYS_STEP: MigrationSte
 fn review_storage_slot_keys_step(program_info: &ProgramInfo) -> Result<Vec<Span>> {
     let mut res = vec![];
 
-    let Some(storage_decl_id) = ty_match::storage_decl(&program_info.ty_program) else {
+    let Some(storage_decl_id) = ty_match::storage_decl(program_info.ty_program.as_ref()) else {
         return Ok(res);
     };
 
@@ -132,7 +132,7 @@ fn define_backward_compatible_storage_slot_keys_step_instruction(
 ) -> Result<Vec<Span>> {
     let mut res = vec![];
 
-    let Some(storage_decl_id) = ty_match::storage_decl(&program_info.ty_program) else {
+    let Some(storage_decl_id) = ty_match::storage_decl(program_info.ty_program.as_ref()) else {
         return Ok(res);
     };
 

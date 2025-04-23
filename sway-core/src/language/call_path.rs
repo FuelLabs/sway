@@ -296,7 +296,7 @@ impl<T: Spanned> Spanned for CallPath<T> {
                 // the span for the whole call path. Otherwise, we join
                 // the spans of all the parts.
                 .filter(|x| {
-                    Arc::ptr_eq(x.src(), suffix_span.src())
+                    Arc::ptr_eq(&x.src().text, &suffix_span.src().text)
                         && x.source_id() == suffix_span.source_id()
                 })
                 .peekable();

@@ -108,6 +108,7 @@ pub(crate) fn compile_package<'a>(
         None,
         &build_instructions.experimental.experimental,
         &build_instructions.experimental.no_experimental,
+        sway_core::DbgGeneration::Full,
     )?;
 
     let Some(programs) =
