@@ -367,7 +367,7 @@ impl CollectTypesMetadata for TyExpression {
                 res.append(&mut exp.collect_types_metadata(handler, ctx)?)
             }
             Panic(exp) => {
-                // Register the type of the `panic` argument as logged type.
+                // Register the type of the `panic` argument as a logged type.
                 let logged_type_id =
                     TypeMetadata::get_logged_type_id(exp, ctx.experimental.new_encoding)
                         .map_err(|err| handler.emit_err(err))?;

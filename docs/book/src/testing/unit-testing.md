@@ -71,7 +71,7 @@ fn test_meaning_of_life() {
 
 Tests with `#[test(should_revert)]` are considered to be passing if they are reverting.
 
-Revert codes are not shown by default in the passing test that have `should_revert`. To see the revert codes, use the `--revert-codes` flag, `forc test --revert-codes`:
+Revert codes are not shown by default in passing tests that have `should_revert`. To see revert codes, use the `--revert-codes` flag, `forc test --revert-codes`:
 
 ```console
       test test_meaning_of_life ... ok (23.099µs, 0 gas)

@@ -1,4 +1,4 @@
-// This test only shows that `panic` properly compiles in predicated.
+// This test only shows that `panic` properly compiles in predicates.
 // Testing for actual panicking is done in SDK harness tests.
 predicate;
 
