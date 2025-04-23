@@ -80,8 +80,8 @@ impl EcalSyscallHandler {
 }
 
 impl EcalHandler for EcalSyscallHandler {
-    fn ecal<M, S, Tx>(
-        vm: &mut Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, V>(
+        vm: &mut Interpreter<M, S, Tx, Self, V>,
         a: RegId,
         b: RegId,
         c: RegId,

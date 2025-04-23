@@ -45,7 +45,7 @@ pub async fn get_missing_contracts(
         {
             Ok(_) => return Ok(call.external_contracts),
             Err(fuels_core::types::errors::Error::Transaction(
-                fuels::types::errors::transaction::Reason::Reverted { receipts, .. },
+                fuels::types::errors::transaction::Reason::Failure { receipts, .. },
             )) => {
                 let contract_id = find_id_of_missing_contract(&receipts)?;
                 call.external_contracts.push(contract_id);
