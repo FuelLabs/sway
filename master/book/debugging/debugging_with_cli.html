@@ -1,0 +1,410 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Debugging with CLI - The Sway Programming Language</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="debugging-with-cli"><a class="header" href="#debugging-with-cli">Debugging with CLI</a></h1>
+<p>The <code>forc debug</code> CLI enables debugging a live transaction on a running Fuel Client node.</p>
+<h2 id="an-example-project"><a class="header" href="#an-example-project">An example project</a></h2>
+<p>First, we need a project to debug, so create a new project using</p>
+<pre><code class="language-bash">forc new --script dbg_example &amp;&amp; cd dbg_example
+</code></pre>
+<p>And then add some content to <code>src/main.sw</code>, for example:</p>
+<pre><code class="language-sway">script;
+
+use std::logging::log;
+
+fn factorial(n: u64) -&gt; u64 {
+    let mut result = 1;
+    let mut counter = 0;
+    while counter &lt; n {
+        counter = counter + 1;
+        result = result * counter;
+    }
+    return result;
+}
+
+fn main() {
+    log::&lt;u64&gt;(factorial(5)); // 120
+}
+</code></pre>
+<h2 id="building-and-bytecode-output"><a class="header" href="#building-and-bytecode-output">Building and bytecode output</a></h2>
+<p>Now we are ready to build the project.</p>
+<pre><code class="language-bash">forc build
+</code></pre>
+<p>After this the resulting binary should be located at <code>out/debug/dbg_example.bin</code>. Because we are interested in the resulting bytecode, we can read that with:</p>
+<pre><code class="language-bash">forc parse-bytecode out/debug/dbg_example.bin
+</code></pre>
+<p>We can recognize the main loop by observing the control flow. Looking around halfword 58-60, we can see:</p>
+<pre><code class="language-text">  half-word   byte    op                                                 raw
+          58   232    MOVI { dst: 0x11, val: 5 }                         72 44 00 05                                 
+          59   236    LT { dst: 0x10, lhs: 0x10, rhs: 0x11 }             16 41 04 40                                 
+          60   240    JNZF { cond_nz: 0x10, dynamic: 0x0, fixed: 81 }    76 40 00 51
+</code></pre>
+<p>Here we can see our <code>factorial(5)</code> being set up with <code>MOVI</code> setting the value 5, followed by the <code>LT</code> comparison and conditional jump <code>JNZF</code>. The multiplication for our factorial happens at halfword 147 with <code>MUL { dst: 0x10, lhs: 0x10, rhs: 0x11 }</code>. Finally, we can spot our log statement at halfword 139 with the <code>LOGD</code> instruction.</p>
+<h2 id="setting-up-the-debugging"><a class="header" href="#setting-up-the-debugging">Setting up the debugging</a></h2>
+<p>We can start up the debug infrastructure. On a new terminal session run <code>fuel-core run --db-type in-memory --debug</code>; we need to have that running because it actually executes the program. Now we can fire up the debugger itself: <code>forc-debug</code>. Now if everything is set up correctly, you should see the debugger prompt (<code>&gt;&gt;</code>). You can use <code>help</code> command to list available commands.</p>
+<p>The debugger supports tab completion to help you discover files in your current working directory (and its subdirectories):</p>
+<ul>
+<li>Type <code>tx</code> and press tab to recursively search for valid transaction JSON files</li>
+<li>After selecting a transaction file, press tab again to search for ABI files</li>
+<li>You can keep pressing tab to cycle through the found files</li>
+<li>Of course, you can also manually type the full path to any transaction or ABI file, they don't have to be in your current directory</li>
+</ul>
+<p>Now we would like to inspect the program while it's running. To do this, we first need to send the script to the executor, i.e. <code>fuel-core</code>. To do so, we need a <em>transaction specification</em>, <code>tx.json</code>. It looks something like this:</p>
+<pre><code class="language-json">{
+  "Script": {
+    "body": {
+      "script_gas_limit": 1000000,
+      "script": [
+        26, 240, 48, 0, 116, 0, 0, 2, 0, 0, 0, 0, 0, 0, 3, 96, 93, 255, 192, 1, 16, 255, 255, 0, 26, 236, 80, 0, 145, 0, 0, 184, 80, 67, 176, 80, 32, 248, 51, 0, 88, 251, 224, 2, 80, 251, 224, 4, 116, 0, 0, 37, 80, 71, 176, 40, 26, 233, 16, 0, 32, 248, 51, 0, 88, 251, 224, 2, 80, 251, 224, 4, 116, 0, 0, 136, 26, 71, 208, 0, 114, 72, 0, 24, 40, 237, 20, 128, 80, 79, 176, 120, 114, 68, 0, 24, 40, 79, 180, 64, 80, 71, 176, 160, 114, 72, 0, 24, 40, 69, 52, 128, 80, 71, 176, 96, 114, 72, 0, 24, 40, 69, 52, 128, 80, 75, 176, 64, 26, 233, 16, 0, 26, 229, 32, 0, 32, 248, 51, 0, 88, 251, 224, 2, 80, 251, 224, 4, 116, 0, 0, 144, 26, 71, 208, 0, 80, 75, 176, 24, 114, 76, 0, 16, 40, 73, 20, 192, 80, 71, 176, 144, 114, 76, 0, 16, 40, 69, 36, 192, 114, 72, 0, 16, 40, 65, 20, 128, 93, 69, 0, 1, 93, 65, 0, 0, 37, 65, 16, 0, 149, 0, 0, 63, 150, 8, 0, 0, 26, 236, 80, 0, 145, 0, 1, 88, 26, 87, 224, 0, 95, 236, 16, 42, 95, 236, 0, 41, 93, 67, 176, 41, 114, 68, 0, 5, 22, 65, 4, 64, 118, 64, 0, 81, 93, 67, 176, 42, 80, 71, 176, 200, 26, 233, 16, 0, 32, 248, 51, 0, 88, 251, 224, 2, 80, 251, 224, 4, 116, 0, 0, 87, 26, 71, 208, 0, 114, 72, 0, 24, 40, 237, 20, 128, 80, 71, 176, 160, 114, 72, 0, 24, 40, 71, 180, 128, 80, 75, 176, 24, 114, 76, 0, 24, 40, 73, 20, 192, 80, 71, 176, 88, 114, 76, 0, 24, 40, 69, 36, 192, 93, 83, 176, 11, 93, 79, 176, 12, 93, 71, 176, 13, 114, 72, 0, 8, 16, 73, 20, 128, 21, 73, 36, 192, 118, 72, 0, 1, 116, 0, 0, 7, 114, 72, 0, 2, 27, 73, 52, 128, 114, 76, 0, 8, 16, 77, 36, 192, 38, 76, 0, 0, 40, 29, 68, 64, 26, 80, 112, 0, 16, 73, 68, 64, 95, 73, 0, 0, 114, 64, 0, 8, 16, 65, 20, 0, 80, 71, 176, 112, 95, 237, 64, 14, 95, 237, 48, 15, 95, 237, 0, 16, 80, 67, 176, 48, 114, 72, 0, 24, 40, 65, 20, 128, 80, 71, 176, 136, 114, 72, 0, 24, 40, 69, 4, 128, 80, 67, 177, 8, 114, 72, 0, 24, 40, 65, 20, 128, 80, 71, 177, 48, 114, 72, 0, 24, 40, 69, 4, 128, 80, 67, 177, 48, 80, 71, 176, 240, 114, 72, 0, 24, 40, 69, 4, 128, 80, 67, 176, 224, 26, 233, 16, 0, 26, 229, 0, 0, 32, 248, 51, 0, 88, 251, 224, 2, 80, 251, 224, 4, 116, 0, 0, 56, 26, 67, 208, 0, 80, 71, 176, 72, 114, 72, 0, 16, 40, 69, 4, 128, 80, 67, 177, 32, 114, 72, 0, 16, 40, 65, 20, 128, 80, 71, 176, 184, 114, 72, 0, 16, 40, 69, 4, 128, 93, 67, 240, 0, 93, 71, 176, 23, 93, 75, 176, 24, 52, 1, 4, 82, 26, 244, 0, 0, 116, 0, 0, 8, 93, 67, 176, 41, 16, 65, 0, 64, 95, 237, 0, 41, 93, 67, 176, 42, 93, 71, 176, 41, 27, 65, 4, 64, 95, 237, 0, 42, 117, 0, 0, 91, 146, 0, 1, 88, 26, 249, 80, 0, 152, 8, 0, 0, 151, 0, 0, 63, 74, 248, 0, 0, 149, 0, 0, 15, 150, 8, 0, 0, 26, 236, 80, 0, 145, 0, 0, 72, 26, 67, 160, 0, 26, 71, 224, 0, 114, 72, 4, 0, 38, 72, 0, 0, 26, 72, 112, 0, 80, 79, 176, 24, 95, 237, 32, 3, 114, 72, 4, 0, 95, 237, 32, 4, 95, 236, 0, 5, 114, 72, 0, 24, 40, 237, 52, 128, 80, 75, 176, 48, 114, 76, 0, 24, 40, 75, 180, 192, 114, 76, 0, 24, 40, 65, 36, 192, 26, 245, 0, 0, 146, 0, 0, 72, 26, 249, 16, 0, 152, 8, 0, 0, 151, 0, 0, 15, 74, 248, 0, 0, 149, 0, 0, 63, 150, 8, 0, 0, 26, 236, 80, 0, 145, 0, 0, 104, 26, 67, 160, 0, 26, 71, 144, 0, 26, 75, 224, 0, 80, 79, 176, 80, 114, 80, 0, 24, 40, 77, 5, 0, 114, 64, 0, 24, 40, 237, 52, 0, 80, 67, 176, 40, 114, 76, 0, 24, 40, 67, 180, 192, 93, 79, 176, 5, 80, 65, 0, 16, 80, 83, 176, 64, 95, 237, 48, 8, 80, 77, 64, 8, 114, 84, 0, 8, 40, 77, 5, 64, 80, 67, 176, 24, 114, 76, 0, 16, 40, 65, 68, 192, 114, 76, 0, 16, 40, 69, 4, 192, 26, 245, 16, 0, 146, 0, 0, 104, 26, 249, 32, 0, 152, 8, 0, 0, 151, 0, 0, 63, 74, 248, 0, 0, 71, 0, 0, 0, 21, 6, 230, 244, 76, 29, 98, 145
+      ],
+      "script_data": [],
+      "receipts_root": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policies": {
+      "bits": "MaxFee",
+      "values": [0, 0, 0, 0]
+    },
+    "inputs": [
+      {
+        "CoinSigned": {
+          "utxo_id": {
+            "tx_id": "c49d65de61cf04588a764b557d25cc6c6b4bc0d7429227e2a21e61c213b3a3e2",
+            "output_index": 18
+          },
+          "owner": "f1e92c42b90934aa6372e30bc568a326f6e66a1a0288595e6e3fbd392a4f3e6e",
+          "amount": 10599410012256088000,
+          "asset_id": "2cafad611543e0265d89f1c2b60d9ebf5d56ad7e23d9827d6b522fd4d6e44bc3",
+          "tx_pointer": {
+            "block_height": 0,
+            "tx_index": 0
+          },
+          "witness_index": 0,
+          "maturity": 0,
+          "predicate_gas_used": null,
+          "predicate": null,
+          "predicate_data": null
+        }
+      }
+    ],
+    "outputs": [],
+    "witnesses": [
+      {
+        "data": [156, 254, 34, 102, 65, 96, 133, 170, 254, 105, 147, 35, 196, 199, 179, 133, 132, 240, 208, 149, 11, 46, 30, 96, 44, 91, 121, 195, 145, 184, 159, 235, 117, 82, 135, 41, 84, 154, 102, 61, 61, 16, 99, 123, 58, 173, 75, 226, 219, 139, 62, 33, 41, 176, 16, 18, 132, 178, 8, 125, 130, 169, 32, 108]
+      }
+    ]
+  }
+}
+</code></pre>
+<p>However, the key <code>script</code> should contain the actual bytecode to execute, i.e. the contents of <code>out/debug/dbg_example.bin</code> as a JSON array. The following command can be used to generate it:</p>
+<pre><code class="language-bash">python3 -c 'print(list(open("out/debug/dbg_example.bin", "rb").read()))'
+</code></pre>
+<p>So now we replace the script array with the result, and save it as <code>tx.json</code>.</p>
+<h2 id="using-the-debugger"><a class="header" href="#using-the-debugger">Using the debugger</a></h2>
+<p>Now we can actually execute the script with an ABI to decode the log values:</p>
+<pre><code class="language-text">&gt;&gt; start_tx tx.json out/debug/dbg_example-abi.json
+
+Receipt: LogData { id: 0000000000000000000000000000000000000000000000000000000000000000, ra: 0, rb: 1515152261580153489, ptr: 67107840, len: 8, digest: d2b80ebb9ce633ad49a9ccfcc58ac7ad33a9ab4741529ae4247a3b07e8fa1c74, pc: 10924, is: 10368, data: Some(0000000000000078) }
+Decoded log value: 120, from contract: 0000000000000000000000000000000000000000000000000000000000000000
+Receipt: ReturnData { id: 0000000000000000000000000000000000000000000000000000000000000000, ptr: 67106816, len: 0, digest: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, pc: 10564, is: 10368, data: Some() }
+Receipt: ScriptResult { result: Success, gas_used: 1273 }
+Terminated
+</code></pre>
+<p>Looking at the output, we can see our <code>factorial(5)</code> result as the decoded log value of 120. The ABI has helped us decode the raw bytes <code>(0000000000000078)</code> into a meaningful value. It also tells us that the execution terminated without hitting any breakpoints. That's unsurprising, because we haven't set up any. We can do so with <code>breakpoint</code> command:</p>
+<pre><code class="language-text">&gt;&gt; breakpoint 0
+
+&gt;&gt; start_tx tx.json out/debug/dbg_example-abi.json
+
+Receipt: ScriptResult { result: Success, gas_used: 0 }
+Stopped on breakpoint at address 0 of contract 0x0000000000000000000000000000000000000000000000000000000000000000
+</code></pre>
+<p>Now we have stopped execution at the breakpoint on entry (address <code>0</code>). We can now inspect the initial state of the VM.</p>
+<pre><code class="language-text">&gt;&gt; register ggas
+
+reg[0x9] = 1000000  # ggas
+
+&gt;&gt; memory 0x10 0x8
+
+ 000010: db f3 63 c9 1c 7f ec 95
+</code></pre>
+<p>However, that's not too interesting either, so let's just execute until the end, and then reset the VM to remove the breakpoints.</p>
+<pre><code class="language-text">&gt;&gt; continue
+
+Receipt: LogData { id: 0000000000000000000000000000000000000000000000000000000000000000, ra: 0, rb: 1515152261580153489, ptr: 67107840, len: 8, digest: d2b80ebb9ce633ad49a9ccfcc58ac7ad33a9ab4741529ae4247a3b07e8fa1c74, pc: 10924, is: 10368, data: Some(0000000000000078) }
+Decoded log value: 120, from contract: 0000000000000000000000000000000000000000000000000000000000000000
+Receipt: ReturnData { id: 0000000000000000000000000000000000000000000000000000000000000000, ptr: 67106816, len: 0, digest: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, pc: 10564, is: 10368, data: Some() }
+Terminated
+
+&gt;&gt; reset
+</code></pre>
+<p>Next, we will setup a breakpoint to check the state on each iteration of the <code>while</code> loop. For instance, if we'd like to see what numbers get multiplied together, we could set up a breakpoint before the operation. Looking at our bytecode we can see the main multiplication for our factorial happens at:</p>
+<pre><code class="language-text">  half-word   byte   op                                        raw
+        147   588    MUL { dst: 0x10, lhs: 0x10, rhs: 0x11 }   1b 41 04 40
+</code></pre>
+<p>We can set a breakpoint on its address, at halfword-offset <code>147</code>.</p>
+<pre><code class="language-text">&gt;&gt;&gt; breakpoint 147
+
+&gt;&gt; start_tx tx.json out/debug/dbg_example-abi.json
+
+Receipt: ScriptResult { result: Success, gas_used: 82 }
+Stopped on breakpoint at address 588 of contract 0x0000000000000000000000000000000000000000000000000000000000000000
+</code></pre>
+<p>Now we can inspect the inputs to multiply. Looking at <a href="https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#mul-multiply">the specification</a> tells us that the instruction <code>MUL { dst: 0x10, lhs: 0x10, rhs: 0x11 }</code> means <code>reg[0x10] = reg[0x10] * reg[0x11]</code>. So inspecting the inputs:</p>
+<pre><code class="language-text">&gt;&gt; r 0x10 0x11
+reg[0x10] = 1        # reg16
+reg[0x11] = 1        # reg17
+</code></pre>
+<p>So on the first round the numbers are 1 and 1, so we can continue to the next iteration with the <code>c</code> command:</p>
+<pre><code class="language-text">&gt;&gt; c
+Stopped on breakpoint at address 588 of contract 0x0000000000000000000000000000000000000000000000000000000000000000
+
+&gt;&gt; r 0x10 0x11
+reg[0x10] = 1        # reg16
+reg[0x11] = 2        # reg17
+</code></pre>
+<p>And the next one:</p>
+<pre><code class="language-text">&gt;&gt; c
+Stopped on breakpoint at address 588 of contract 0x0000000000000000000000000000000000000000000000000000000000000000
+
+&gt;&gt; r 0x10 0x11
+reg[0x10] = 2        # reg16
+reg[0x11] = 3        # reg17
+</code></pre>
+<p>And fourth one:</p>
+<pre><code class="language-text">&gt;&gt; c
+Stopped on breakpoint at address 588 of contract 0x0000000000000000000000000000000000000000000000000000000000000000
+
+&gt;&gt; r 0x10 0x11
+reg[0x10] = 6        # reg16
+reg[0x11] = 4        # reg17
+</code></pre>
+<p>And round 5:</p>
+<pre><code class="language-text">&gt;&gt; c
+Stopped on breakpoint at address 588 of contract 0x0000000000000000000000000000000000000000000000000000000000000000
+
+&gt;&gt; r 0x10 0x11
+reg[0x10] = 24       # reg16
+reg[0x11] = 5        # reg17
+</code></pre>
+<p>At this point we can look at the values</p>
+<div class="table-wrapper"><table><thead><tr><th>0x10</th><th>0x11</th></tr></thead><tbody>
+<tr><td>1</td><td>1</td></tr>
+<tr><td>1</td><td>2</td></tr>
+<tr><td>2</td><td>3</td></tr>
+<tr><td>6</td><td>4</td></tr>
+<tr><td>24</td><td>5</td></tr>
+</tbody></table>
+</div>
+<p>From this we can clearly see that the left side, register <code>0x10</code> is the <code>result</code> variable which accumulates the factorial calculation (1, 1, 2, 6, 24), and register <code>0x11</code> is the <code>counter</code> which increments from 1 to 5. Now the counter equals the given factorial function argument <code>5</code>, and the loop terminates. So when we continue, the program finishes without encountering any more breakpoints:</p>
+<pre><code class="language-text">&gt;&gt; c
+
+Receipt: LogData { id: 0000000000000000000000000000000000000000000000000000000000000000, ra: 0, rb: 1515152261580153489, ptr: 67107840, len: 8, digest: d2b80ebb9ce633ad49a9ccfcc58ac7ad33a9ab4741529ae4247a3b07e8fa1c74, pc: 10924, is: 10368, data: Some(0000000000000078) }
+Decoded log value: 120, from contract: 0000000000000000000000000000000000000000000000000000000000000000
+Receipt: ReturnData { id: 0000000000000000000000000000000000000000000000000000000000000000, ptr: 67106816, len: 0, digest: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, pc: 10564, is: 10368, data: Some() }
+Terminated
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../debugging/index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../debugging/debugging_with_ide.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../debugging/index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../debugging/debugging_with_ide.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
