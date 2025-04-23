@@ -197,8 +197,8 @@ impl AbstractInstructionSet {
                         ControlFlowOp::Jump(_) | ControlFlowOp::JumpIfNotZero(_, _) => {
                             ResetKnown::Defs
                         }
-                        // todo: support call property. currently `def_const_registers`
-                        //       doesn't contain return value, which seems incorrect
+                        // TODO: `def_const_registers` doesn't contain return value, which
+                        //       seems incorrect, so I'm clearing everything as a precaution
                         ControlFlowOp::Call(_) => ResetKnown::Full,
                         // These ops mark their outputs properly and cause no control-flow effects
                         ControlFlowOp::Comment
