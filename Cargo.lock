@@ -8050,6 +8050,7 @@ dependencies = [
  "tower-lsp",
  "tracing",
  "urlencoding",
+ "walkdir",
 ]
 
 [[package]]
