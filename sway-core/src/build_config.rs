@@ -263,6 +263,7 @@ impl BuildConfig {
             PathBuf::from("/"),
             PathBuf::from("/"),
             BuildTarget::default(),
+            DbgGeneration::None,
         )
     }
 
