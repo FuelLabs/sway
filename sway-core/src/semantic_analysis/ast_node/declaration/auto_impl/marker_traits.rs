@@ -57,13 +57,12 @@ where
             enum_decl.name()
         );
 
-        let impl_enum_node =
-            self.parse_impl_trait_to_ty_ast_node(
-                engines,
-                enum_decl.span().source_id(),
-                &impl_marker_trait_code,
-                crate::build_config::DbgGeneration::None,
-            );
+        let impl_enum_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            enum_decl.span().source_id(),
+            &impl_marker_trait_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         impl_enum_node.ok()
     }
