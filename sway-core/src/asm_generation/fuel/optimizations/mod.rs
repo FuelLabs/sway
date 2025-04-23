@@ -23,7 +23,7 @@ impl AbstractInstructionSet {
             // On debug builds do a single pass through the simple optimizations
             OptLevel::Opt0 => self
                 .const_indexing_aggregates_function(data_section)
-                .constant_register_propagation()
+                .interpret_propagate()
                 .dce()
                 .simplify_cfg()
                 .remove_sequential_jumps()

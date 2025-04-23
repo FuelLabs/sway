@@ -1,5 +1,5 @@
 ---
-source: test/tests/tests.rs
+source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
 exit status: 1
@@ -28,4 +28,4 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics)
-    Finished debug [unoptimized + fuel] target(s) [272 B] in ???
+    Finished debug [unoptimized + fuel] target(s) [264 B] in ???

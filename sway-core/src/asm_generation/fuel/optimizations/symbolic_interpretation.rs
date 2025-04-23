@@ -13,6 +13,58 @@ enum KnownRegValue {
     Eq(VirtualRegister),
 }
 
+impl KnownRegValue {
+    /// If the value can be represented as a constant, return it.
+    fn register(&self) -> Option<VirtualRegister> {
+        match self {
+            KnownRegValue::Const(0) => Some(VirtualRegister::Constant(ConstantRegister::Zero)),
+            KnownRegValue::Const(1) => Some(VirtualRegister::Constant(ConstantRegister::One)),
+            KnownRegValue::Eq(v) => Some(v.clone()),
+            _ => None,
+        }
+    }
+
+    /// If the value can be represented as a constant, return it.
+    fn value(&self) -> Option<u64> {
+        match self {
+            KnownRegValue::Const(v) => Some(*v),
+            KnownRegValue::Eq(VirtualRegister::Constant(ConstantRegister::Zero)) => Some(0),
+            KnownRegValue::Eq(VirtualRegister::Constant(ConstantRegister::One)) => Some(1),
+            KnownRegValue::Eq(_) => None,
+        }
+    }
+
+    /// Check if the value depends on value of another register.
+    fn depends_on(&self, reg: &VirtualRegister) -> bool {
+        match self {
+            KnownRegValue::Const(_) => false,
+            KnownRegValue::Eq(v) => v == reg,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct KnownValues {
+    values: FxHashMap<VirtualRegister, KnownRegValue>,
+}
+
+impl KnownValues {
+    /// Resolve a register to a known value.
+    fn resolve(&self, v: &VirtualRegister) -> Option<KnownRegValue> {
+        match v {
+            VirtualRegister::Constant(ConstantRegister::Zero) => Some(KnownRegValue::Const(0)),
+            VirtualRegister::Constant(ConstantRegister::One) => Some(KnownRegValue::Const(1)),
+            other => self.values.get(other).cloned(),
+        }
+    }
+
+    /// Insert a known value for a register.
+    fn assign(&mut self, dst: VirtualRegister, value: KnownRegValue) {
+        self.values.retain(|_, v| !v.depends_on(&dst));
+        self.values.insert(dst, value);
+    }
+}
+
 /// What knowledge is lost after an op we don't know how to interpret?
 #[derive(Clone, Debug)]
 enum ResetKnown {
@@ -42,11 +94,11 @@ impl ResetKnown {
             ResetKnown::Defs => {
                 for d in op.def_registers() {
                     known_values.remove(d);
-                    known_values.retain(|_, v| KnownRegValue::Eq(d.clone()) != *v);
+                    known_values.retain(|_, v| !v.depends_on(d));
                 }
                 for d in op.def_const_registers() {
                     known_values.remove(d);
-                    known_values.retain(|_, v| KnownRegValue::Eq(d.clone()) != *v);
+                    known_values.retain(|_, v| !v.depends_on(d));
                 }
             }
         }
@@ -54,8 +106,8 @@ impl ResetKnown {
 }
 
 impl AbstractInstructionSet {
-    /// Remove redundant temporary variable registers.
-    pub(crate) fn constant_register_propagation(mut self) -> AbstractInstructionSet {
+    /// Symbolically interpret code and propagate known register values.
+    pub(crate) fn interpret_propagate(mut self) -> AbstractInstructionSet {
         if self.ops.is_empty() {
             return self;
         }
@@ -76,7 +128,7 @@ impl AbstractInstructionSet {
             .collect();
 
         // TODO: make this a struct with helper functions
-        let mut known_values = FxHashMap::default();
+        let mut known_values = KnownValues::default();
 
         for op in &mut self.ops {
             // Perform constant propagation on the instruction.
@@ -86,36 +138,38 @@ impl AbstractInstructionSet {
                 if !reg.is_virtual() {
                     continue;
                 }
-                let val: Option<&KnownRegValue> = known_values.get(*reg);
-
-                match val {
-                    Some(KnownRegValue::Eq(equivalent)) => {
-                        **reg = equivalent.clone();
-                    }
-                    Some(KnownRegValue::Const(0)) => {
-                        **reg = VirtualRegister::Constant(ConstantRegister::Zero);
-                    }
-                    Some(KnownRegValue::Const(1)) => {
-                        **reg = VirtualRegister::Constant(ConstantRegister::One);
-                    }
-                    _ => {}
+                if let Some(r) = known_values.resolve(*reg).and_then(|r| r.register()) {
+                    **reg = r;
                 }
+            }
+
+            // Some instructions can be further simplified with the known values.
+            match &mut op.opcode {
+                // Conditional jumps can be simplified if we know the value of the register.
+                Either::Right(ControlFlowOp::JumpIfNotZero(reg, lab)) => {
+                    if let Some(con) = known_values.resolve(reg).and_then(|r| r.value()) {
+                        if con == 0 {
+                            op.opcode = Either::Left(VirtualOp::NOOP);
+                        } else {
+                            op.opcode = Either::Right(ControlFlowOp::Jump(lab.clone()));
+                        }
+                    }
+                }
+                _ => {}
             }
 
             // Some ops are known to produce certain results, interpret them here.
             let interpreted_op = match &op.opcode {
                 Either::Left(VirtualOp::MOVI(dst, imm)) => {
-                    known_values.insert(dst.clone(), KnownRegValue::Const(imm.value() as u64));
-                    known_values.retain(|_, v| KnownRegValue::Eq(dst.clone()) != *v);
+                    known_values.assign(dst.clone(), KnownRegValue::Const(imm.value() as u64));
                     true
                 }
                 Either::Left(VirtualOp::MOVE(dst, src)) => {
-                    if let Some(known) = known_values.get(src) {
-                        known_values.insert(dst.clone(), known.clone());
+                    if let Some(known) = known_values.resolve(src) {
+                        known_values.assign(dst.clone(), known);
                     } else {
-                        known_values.insert(dst.clone(), KnownRegValue::Eq(src.clone()));
+                        known_values.assign(dst.clone(), KnownRegValue::Eq(src.clone()));
                     }
-                    known_values.retain(|_, v| KnownRegValue::Eq(dst.clone()) != *v);
                     true
                 }
                 _ => false,
@@ -158,7 +212,7 @@ impl AbstractInstructionSet {
                     },
                 };
 
-                reset.apply(&op, &mut known_values);
+                reset.apply(&op, &mut known_values.values);
             }
         }
 
