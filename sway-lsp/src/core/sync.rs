@@ -294,7 +294,7 @@ pub(crate) fn edit_manifest_dependency_paths(
         // Process dependencies if they exist
         if let Some(deps) = &package.dependencies {
             if let Some(deps_table) = doc.get_mut("dependencies").and_then(|v| v.as_table_mut()) {
-                process_dependencies(&manifset_dir, deps, deps_table)?;
+                process_dependencies(manifset_dir, deps, deps_table)?;
             }
         }
     }
