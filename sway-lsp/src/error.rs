@@ -27,6 +27,8 @@ pub enum LanguageServerError {
     ProgramsIsNone,
     #[error("Unable to acquire a semaphore permit for parsing")]
     UnableToAcquirePermit,
+    #[error("Session not found")]
+    SessionNotFound,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]

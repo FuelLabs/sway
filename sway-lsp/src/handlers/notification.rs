@@ -3,7 +3,7 @@
 
 use crate::{
     core::{document::Documents, session::Session},
-    error::LanguageServerError,
+    error::{DocumentError, LanguageServerError},
     server_state::{CompilationContext, ServerState, TaskMessage},
 };
 use lsp_types::{
@@ -12,8 +12,10 @@ use lsp_types::{
 };
 use std::{
     collections::BTreeMap,
-    path::PathBuf,
+    fs,
+    path::{Path, PathBuf},
     sync::{atomic::Ordering, Arc},
+    time,
 };
 
 pub async fn handle_did_open_text_document(
@@ -155,9 +157,13 @@ pub(crate) async fn handle_did_change_watched_files(
     params: DidChangeWatchedFilesParams,
 ) -> Result<(), LanguageServerError> {
     eprintln!(
-        "Received did change watched files notification: {:#?}",
+        "Received did change watched files notification: {:?}",
         params
     );
+    // eprintln!(
+    //     "Received did change watched files notification: {:#?}",
+    //     params
+    // );
     for event in params.changes {
         let (uri, session) = state.uri_and_session_from_workspace(&event.uri).await?;
         if let FileChangeType::DELETED = event.typ {
@@ -167,21 +173,97 @@ pub(crate) async fn handle_did_change_watched_files(
 
         // Check for Forc.toml changes
         if event.uri.path().ends_with("Forc.toml") && event.typ == FileChangeType::CHANGED {
-            session.sync.resync()?;
-            eprintln!("uri: {:?}", uri);
-            let file_versions = file_versions(&state.documents, &uri, None);
-            eprintln!("File versions: {:#?}", file_versions);
-            eprintln!("Sending new compilation request...");
-            send_new_compilation_request(state, session.clone(), &uri, false, file_versions);
-            eprintln!("Waiting for parsing...");
-            state.wait_for_parsing().await;
-            eprintln!("Parsing finished!!");
+            // find the time of the last modified Forc.toml
+            let forc_toml_path = PathBuf::from(event.uri.path());
+            let forc_toml_time = forc_toml_path.metadata().unwrap().modified().unwrap();
 
-            eprintln!("Publishing diagnostics...");
-            state
-                .publish_diagnostics(uri, event.uri, session)
-                .await;
+            // get the current time
+            let current_time = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            eprintln!("Forc.toml time: {:?}", forc_toml_time);
+            eprintln!("Current time: {:?}", current_time);
+
+            //session.sync.resync()?;
+            eprintln!("Forc.toml changed!!");
+            let manifest_dir = session.sync.manifest_dir()?;
+
+            eprintln!("Garbage collecting program...");
+            let _ = session.garbage_collect_program(&mut session.engines.write());
+            eprintln!("manifest_dir: {:?}", manifest_dir);
+            // if let Ok(session) = state
+            //     .sessions
+            //     .reinitialize(&event.uri, &manifest_dir, &state.documents)
+            //     .await
+            // {
+
+                eprintln!("uri: {:?}", uri);
+                // let file_versions = file_versions(&state.documents, &uri, None);
+                let file_versions = BTreeMap::new();
+                eprintln!("File versions: {:#?}", file_versions);
+                eprintln!("Sending new compilation request...");
+                send_new_compilation_request(state, session.clone(), &uri, false, file_versions);
+                eprintln!("Waiting for parsing...");
+                state.wait_for_parsing().await;
+                eprintln!("Parsing finished!!");
+
+                eprintln!("Publishing diagnostics...");
+                state.publish_diagnostics(uri, event.uri, session).await;
+            // }
         }
     }
     Ok(())
+}
+
+/// Checks if any files in the given directory have been modified since the specified time.
+///
+/// # Arguments
+/// * `dir_path` - The directory path to check for modifications
+/// * `start_time` - The reference time to compare file modification times against
+///
+/// Returns true if any file was modified after start_time, false otherwise
+fn check_modifications_since<P: AsRef<Path>>(
+    dir_path: P,
+    start_time: time::SystemTime,
+) -> Result<bool, LanguageServerError> {
+    for entry in walkdir::WalkDir::new(dir_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if entry.file_type().is_file() {
+            let metadata = fs::metadata(entry.path()).map_err(|e| {
+                LanguageServerError::DocumentError(DocumentError::IOError {
+                    path: entry.path().to_string_lossy().to_string(),
+                    error: e.to_string(),
+                })
+            })?;
+
+            if let Ok(modified_time) = metadata.modified() {
+                if modified_time > start_time {
+                    // File was modified after start_time
+                    tracing::debug!("Modified file found: {}", entry.path().display());
+                    return Ok(true);
+                }
+            }
+        }
+    }
+    // No modified files found
+    Ok(false)
+}
+
+#[test]
+fn test_check_modifications_since() {
+    let dir_path = "/Users/josh/Documents/rust/fuel/test_projects/lsp-issue/test-contract";
+    let one_hour_ago = time::SystemTime::now()
+        .checked_sub(time::Duration::from_secs(3600))
+        .expect("Time calculation error");
+    let now = time::SystemTime::now();
+    let modified = check_modifications_since(dir_path, one_hour_ago).unwrap();
+    eprintln!("time: {:?}", now.elapsed());
+    if modified {
+        println!("At least one file was modified after the start time.");
+    } else {
+        println!("No files were modified after the start time.");
+    }
 }

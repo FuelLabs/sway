@@ -679,7 +679,10 @@ pub(crate) fn is_parse_module_cache_up_to_date(
                     }
                 },
                 |version| {
-                    eprintln!("Checking if the parse cache is up-to-date in LSP mode... | version: {:?}", version);
+                    eprintln!(
+                        "Checking if the parse cache is up-to-date in LSP mode... | version: {:?}",
+                        version
+                    );
                     // Determine if the parse cache is up-to-date in LSP mode:
                     // - If there's no LSP file version (version is None), consider the cache up-to-date.
                     // - If there is an LSP file version:

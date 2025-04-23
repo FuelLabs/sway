@@ -51,6 +51,7 @@ toml_edit.workspace = true
 tower-lsp = { workspace = true, features = ["proposed"] }
 tracing.workspace = true
 urlencoding.workspace = true
+walkdir.workspace = true
 
 [dev-dependencies]
 assert-json-diff.workspace = true

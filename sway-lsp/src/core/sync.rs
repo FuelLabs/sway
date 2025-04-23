@@ -192,41 +192,41 @@ impl SyncWorkspace {
                 error!("Failed to edit manifest dependency paths: {}", err);
             }
 
-            let handle = tokio::spawn(async move {
-                let (tx, mut rx) = tokio::sync::mpsc::channel(10);
-                // Setup debouncer. No specific tickrate, max debounce time 500 milliseconds
-                let mut debouncer = new_debouncer(Duration::from_millis(500), move |event| {
-                    if let Ok(e) = event {
-                        eprintln!("new event from the debouncer");
-                        let _ = tx.blocking_send(e);
-                    }
-                })
-                .unwrap();
+            // let handle = tokio::spawn(async move {
+            //     let (tx, mut rx) = tokio::sync::mpsc::channel(10);
+            //     // Setup debouncer. No specific tickrate, max debounce time 500 milliseconds
+            //     let mut debouncer = new_debouncer(Duration::from_millis(500), move |event| {
+            //         if let Ok(e) = event {
+            //             eprintln!("new event from the debouncer");
+            //             let _ = tx.blocking_send(e);
+            //         }
+            //     })
+            //     .unwrap();
 
-                debouncer
-                    .watcher()
-                    .watch(&manifest_dir, RecursiveMode::NonRecursive)
-                    .unwrap();
-                eprintln!("thread spawned and waiting for events");
-                while let Some(_events) = rx.recv().await {
-                    eprintln!("👷 watch_and_sync_manifest: received event");
-                    // Rescan the Forc.toml and convert
-                    // relative paths to absolute. Save into our temp directory.
-                    if let Err(err) = edit_manifest_dependency_paths(
-                        &manifest_dir,
-                        &manifest_path,
-                        &temp_manifest_path,
-                    ) {
-                        error!("Failed to edit manifest dependency paths: {}", err);
-                    }
-                }
-            });
+            //     debouncer
+            //         .watcher()
+            //         .watch(&manifest_dir, RecursiveMode::NonRecursive)
+            //         .unwrap();
+            //     eprintln!("thread spawned and waiting for events");
+            //     while let Some(_events) = rx.recv().await {
+            //         eprintln!("👷 watch_and_sync_manifest: received event");
+            //         // Rescan the Forc.toml and convert
+            //         // relative paths to absolute. Save into our temp directory.
+            //         if let Err(err) = edit_manifest_dependency_paths(
+            //             &manifest_dir,
+            //             &manifest_path,
+            //             &temp_manifest_path,
+            //         ) {
+            //             error!("Failed to edit manifest dependency paths: {}", err);
+            //         }
+            //     }
+            // });
 
-            // Store the join handle so we can clean up the thread on shutdown
-            {
-                let mut join_handle = self.notify_join_handle.write();
-                *join_handle = Some(handle);
-            }
+            // // Store the join handle so we can clean up the thread on shutdown
+            // {
+            //     let mut join_handle = self.notify_join_handle.write();
+            //     *join_handle = Some(handle);
+            // }
         }
     }
 

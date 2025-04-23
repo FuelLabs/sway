@@ -174,7 +174,10 @@ impl ServerState {
                                             // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                             // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
                                             // as the engines_clone might have cleared some types that are still in use.
-                                            eprintln!("Metrics reused: {:?}", metrics.reused_programs);
+                                            eprintln!(
+                                                "Metrics reused: {:?}",
+                                                metrics.reused_programs
+                                            );
                                             if metrics.reused_programs == 0 {
                                                 eprintln!("Committing engines...");
                                                 // Commit local changes in the programs, module, and function caches to the shared state.
@@ -382,27 +385,7 @@ impl ServerState {
     }
 
     async fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
-        // Try to get the manifest directory from the cache
-        let manifest_dir = if let Some(cached_dir) = self.manifest_cache.get(uri) {
-            cached_dir.clone()
-        } else {
-            // Otherwise, find the manifest directory from the uri and cache it
-            let path = PathBuf::from(uri.path());
-            let manifest = PackageManifestFile::from_dir(&path).map_err(|_| {
-                DocumentError::ManifestFileNotFound {
-                    dir: path.to_string_lossy().to_string(),
-                }
-            })?;
-            let dir = Arc::new(
-                manifest
-                    .path()
-                    .parent()
-                    .ok_or(DirectoryError::ManifestDirNotFound)?
-                    .to_path_buf(),
-            );
-            self.manifest_cache.insert(uri.clone(), dir.clone());
-            dir
-        };
+        let manifest_dir = self.get_or_find_manifest_dir(uri)?;
 
         // If the session is already in the cache, return it
         if let Some(session) = self.sessions.get(&manifest_dir) {
@@ -416,6 +399,34 @@ impl ServerState {
             .insert((*manifest_dir).clone(), session.clone());
 
         Ok(session)
+    }
+
+    /// Retrieves the manifest directory for a given URI, using a cached value if available
+    /// or finding and caching it if not.
+    pub fn get_or_find_manifest_dir(&self, uri: &Url) -> Result<Arc<PathBuf>, LanguageServerError> {
+        // Try to get the manifest directory from the cache
+        if let Some(cached_dir) = self.manifest_cache.get(uri) {
+            return Ok(cached_dir.clone());
+        }
+
+        // Otherwise, find the manifest directory from the uri and cache it
+        let path = PathBuf::from(uri.path());
+        let manifest = PackageManifestFile::from_dir(&path).map_err(|_| {
+            DocumentError::ManifestFileNotFound {
+                dir: path.to_string_lossy().to_string(),
+            }
+        })?;
+
+        let dir = Arc::new(
+            manifest
+                .path()
+                .parent()
+                .ok_or(DirectoryError::ManifestDirNotFound)?
+                .to_path_buf(),
+        );
+
+        self.manifest_cache.insert(uri.clone(), dir.clone());
+        Ok(dir)
     }
 }
 
@@ -440,6 +451,34 @@ impl LruSessionCache {
         }
     }
 
+    // Removes the session at the specified path and replaces it with a new one.
+    /// If a session already exists at the path, calls shutdown() on it first.
+    /// Returns the new session if successful, or an error if initialization fails.
+    pub async fn reinitialize(
+        &self,
+        workspace_uri: &Url,
+        path: &PathBuf,
+        documents: &Documents,
+    ) -> Result<Arc<Session>, LanguageServerError> {
+        eprintln!("Reinitializing session for path: {:?}", path);
+        // Get the existing session if it exists
+        if let Some(existing_session) = self.sessions.get(path) {
+            eprintln!("Session found!!");
+            // Call shutdown on the existing session
+            existing_session.shutdown();
+
+            // Create and insert the new session
+            let new_session = Session::new();
+            new_session.init(workspace_uri, documents).await?;
+            let new_session = Arc::new(new_session);
+            self.insert(path.clone(), new_session.clone());
+            Ok(new_session)
+        } else {
+            eprintln!("Session not found!!");
+            Err(LanguageServerError::SessionNotFound)
+        }
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = RefMulti<'_, PathBuf, Arc<Session>>> {
         self.sessions.iter()
     }
@@ -460,6 +499,7 @@ impl LruSessionCache {
     /// If at capacity and inserting a new session, evicts the least recently used one.
     /// For existing sessions, updates their position in the usage order if at capacity.
     pub fn insert(&self, path: PathBuf, session: Arc<Session>) {
+        eprintln!("Inserting session into cache: {:?}", path);
         if let Some(mut entry) = self.sessions.get_mut(&path) {
             // Session already exists, update it
             *entry = session;
