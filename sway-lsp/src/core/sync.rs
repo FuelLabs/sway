@@ -185,7 +185,6 @@ impl SyncWorkspace {
             self.manifest_path(),
             self.temp_manifest_path(),
         ) {
-            eprintln!("👷 watch_and_sync_manifest");
             if let Err(err) =
                 edit_manifest_dependency_paths(&manifest_dir, &manifest_path, &temp_manifest_path)
             {
@@ -197,7 +196,6 @@ impl SyncWorkspace {
                 // Setup debouncer. No specific tickrate, max debounce time 500 milliseconds
                 let mut debouncer = new_debouncer(Duration::from_millis(500), move |event| {
                     if let Ok(e) = event {
-                        eprintln!("new event from the debouncer");
                         let _ = tx.blocking_send(e);
                     }
                 })
@@ -207,9 +205,7 @@ impl SyncWorkspace {
                     .watcher()
                     .watch(&manifest_dir, RecursiveMode::NonRecursive)
                     .unwrap();
-                eprintln!("thread spawned and waiting for events");
                 while let Some(_events) = rx.recv().await {
-                    eprintln!("👷 watch_and_sync_manifest: received event");
                     // Rescan the Forc.toml and convert
                     // relative paths to absolute. Save into our temp directory.
                     if let Err(err) = edit_manifest_dependency_paths(
@@ -274,7 +270,6 @@ pub(crate) fn edit_manifest_dependency_paths(
     manifest_path: &Path,
     temp_manifest_path: &Path,
 ) -> Result<(), LanguageServerError> {
-    eprintln!("👷 edit_manifest_dependency_paths");
     // Read and parse the original manifest
     let manifest_content =
         std::fs::read_to_string(manifest_path).map_err(|err| DocumentError::IOError {
