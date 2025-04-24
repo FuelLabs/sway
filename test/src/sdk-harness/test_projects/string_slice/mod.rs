@@ -67,7 +67,7 @@ async fn create_predicate(
 
     tx.add_signer(wallet.signer().clone()).unwrap();
     let tx = tx.build(provider).await.unwrap();
-    provider.send_transaction(tx).await.unwrap();
+    provider.send_transaction_and_await_commit(tx).await.unwrap();
 }
 
 async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {
@@ -121,7 +121,7 @@ async fn submit_to_predicate(
     .await
     .unwrap();
 
-    let _call_result = provider.send_transaction(new_tx).await;
+    let _call_result = provider.send_transaction_and_await_commit(new_tx).await;
 }
 
 #[tokio::test]

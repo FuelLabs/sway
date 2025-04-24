@@ -6,7 +6,7 @@ use fuels::{
     accounts::{predicate::Predicate, signers::private_key::PrivateKeySigner},
     prelude::*,
     tx::StorageSlot,
-    types::{input::Input as SdkInput, output::Output as SdkOutput, Bits256},
+    types::{input::Input as SdkInput, output::Output as SdkOutput, Bits256, ChainId},
 };
 use std::fs;
 
@@ -403,11 +403,8 @@ mod tx {
         let witnesses = tx.witnesses().clone();
 
         let provider = wallet.provider();
-        let tx_id = provider.send_transaction(tx).await.unwrap();
-        let receipts = provider
-            .tx_status(&tx_id)
-            .await
-            .unwrap()
+        let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+        let receipts = tx_status
             .take_receipts_checked(None)
             .unwrap();
 
@@ -449,15 +446,12 @@ mod tx {
         let tx = handler.build_tx().await.unwrap();
 
         let provider = wallet.provider();
-        let tx_id = provider.send_transaction(tx).await.unwrap();
-        let receipts = provider
-            .tx_status(&tx_id)
-            .await
-            .unwrap()
+        let tx_status = provider.send_transaction_and_await_commit(tx.clone()).await.unwrap();
+        let receipts = tx_status
             .take_receipts_checked(None)
             .unwrap();
 
-        let byte_array: [u8; 32] = tx_id.into();
+        let byte_array: [u8; 32] = *tx.id(ChainId::new(0));
 
         assert_eq!(receipts[1].data().unwrap(), byte_array);
     }
@@ -548,7 +542,7 @@ mod tx {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
         }
 
         // The predicate has spent it's funds
@@ -647,7 +641,7 @@ mod tx {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -838,7 +832,7 @@ mod tx {
 
         let tx = builder.build(provider.clone()).await.unwrap();
 
-        provider.send_transaction(tx).await.unwrap();
+        provider.send_transaction_and_await_commit(tx).await.unwrap();
 
         // The predicate has spent it's funds
         let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1051,7 +1045,7 @@ mod inputs {
 
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
-                provider.send_transaction(tx).await.unwrap();
+                provider.send_transaction_and_await_commit(tx).await.unwrap();
 
                 // The predicate has spent it's funds
                 let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1140,7 +1134,7 @@ mod inputs {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1328,11 +1322,8 @@ mod inputs {
                 builder.add_signer(wallet.signer().clone()).unwrap();
                 let tx = builder.build(provider).await.unwrap();
 
-                let tx_id = provider.send_transaction(tx).await.unwrap();
-                let receipts = provider
-                    .tx_status(&tx_id)
-                    .await
-                    .unwrap()
+                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let receipts = tx_status
                     .take_receipts_checked(None)
                     .unwrap();
 
@@ -1673,7 +1664,7 @@ mod outputs {
 
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
-                provider.send_transaction(tx).await.unwrap();
+                provider.send_transaction_and_await_commit(tx).await.unwrap();
 
                 // The predicate has spent it's funds
                 let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1758,7 +1749,7 @@ mod outputs {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
