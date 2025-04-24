@@ -80,6 +80,30 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             writeln!(s, "  Time:          {utc}")?;
             writeln!(s, "  Program State: {program_state:?}")?;
         }
+        TransactionStatus::PreconfirmationSuccess {
+            total_gas,
+            transaction_id,
+            receipts,
+            ..
+        } => {
+            writeln!(s, "Transaction Preconfirmatino Succeeded")?;
+            writeln!(s, "  Total Gas:      {total_gas}")?;
+            writeln!(s, "  Transaction Id:          {transaction_id}",)?;
+            writeln!(s, "  Receipts: {receipts:?}")?;
+        }
+        TransactionStatus::PreconfirmationFailure {
+            total_gas,
+            transaction_id,
+            receipts,
+            reason,
+            ..
+        } => {
+            writeln!(s, "Transaction Preconfirmation Failed")?;
+            writeln!(s, "  Total Gas:      {total_gas}")?;
+            writeln!(s, "  Transaction Id:          {transaction_id}",)?;
+            writeln!(s, "  Receipts: {receipts:?}")?;
+            writeln!(s, "  Reason: {reason:?}")?;
+        }
     }
     Ok(())
 }
