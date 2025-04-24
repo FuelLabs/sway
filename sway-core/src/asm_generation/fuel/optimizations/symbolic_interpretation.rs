@@ -58,9 +58,14 @@ impl KnownValues {
         }
     }
 
+    /// Clear values that depend on a register having a specific value.
+    fn clear_dependent_on(&mut self, reg: &VirtualRegister) {
+        self.values.retain(|_, v| !v.depends_on(reg));
+    }
+
     /// Insert a known value for a register.
     fn assign(&mut self, dst: VirtualRegister, value: KnownRegValue) {
-        self.values.retain(|_, v| !v.depends_on(&dst));
+        self.clear_dependent_on(&dst);
         self.values.insert(dst, value);
     }
 }
@@ -76,23 +81,27 @@ enum ResetKnown {
     Defs,
 }
 impl ResetKnown {
-    fn apply(&self, op: &Op, known_values: &mut FxHashMap<VirtualRegister, KnownRegValue>) {
+    fn apply(&self, op: &Op, known_values: &mut KnownValues) {
         match self {
             ResetKnown::Full => {
-                known_values.clear();
+                println!(" removing registers");
+                known_values.values.clear();
             }
             ResetKnown::NonVirtual => {
+                println!(" removing all non-virtual registers");
                 Self::Defs.apply(op, known_values);
-                known_values.retain(|k, _| matches!(k, VirtualRegister::Virtual(_)));
+                known_values.values.retain(|k, _| matches!(k, VirtualRegister::Virtual(_)));
             }
             ResetKnown::Defs => {
                 for d in op.def_registers() {
-                    known_values.remove(d);
-                    known_values.retain(|_, v| !v.depends_on(d));
+                    println!(" removing {d} and all deps");
+                    known_values.clear_dependent_on(d);
+                    known_values.values.remove(d);
                 }
                 for d in op.def_const_registers() {
-                    known_values.remove(d);
-                    known_values.retain(|_, v| !v.depends_on(d));
+                    println!(" removing {d} and all deps");
+                    known_values.clear_dependent_on(d);
+                    known_values.values.remove(d);
                 }
             }
         }
@@ -124,6 +133,8 @@ impl AbstractInstructionSet {
         let mut known_values = KnownValues::default();
 
         for op in &mut self.ops {
+            println!("Processing {op}");
+
             // Perform constant propagation on the instruction.
             let mut uses_regs: Vec<_> = op.use_registers_mut().into_iter().collect();
             for reg in uses_regs.iter_mut() {
@@ -132,6 +143,7 @@ impl AbstractInstructionSet {
                     continue;
                 }
                 if let Some(r) = known_values.resolve(reg).and_then(|r| r.register()) {
+                    println!(" replace {reg} with {r}");
                     **reg = r;
                 }
             }
@@ -171,6 +183,7 @@ impl AbstractInstructionSet {
                         }
                     } else {
                         known_values.assign(dst.clone(), KnownRegValue::Eq(src.clone()));
+                        println!(" equate {dst} = {src}");
                     }
                     true
                 }
@@ -182,7 +195,8 @@ impl AbstractInstructionSet {
                 let reset = match &op.opcode {
                     Either::Left(op) => match op {
                         VirtualOp::ECAL(_, _, _, _) => ResetKnown::Full,
-                        _ if op.has_side_effect() => ResetKnown::NonVirtual,
+                        // TOOD: this constraint can be relaxed
+                        _ if op.has_side_effect() => ResetKnown::Full,
                         _ => ResetKnown::Defs,
                     },
                     Either::Right(op) => match op {
@@ -207,14 +221,15 @@ impl AbstractInstructionSet {
                         | ControlFlowOp::SaveRetAddr(_, _)
                         | ControlFlowOp::ConfigurablesOffsetPlaceholder
                         | ControlFlowOp::DataSectionOffsetPlaceholder
-                        | ControlFlowOp::LoadLabel(_, _)
-                        | ControlFlowOp::PushAll(_) => ResetKnown::Defs,
+                        | ControlFlowOp::LoadLabel(_, _) => ResetKnown::Defs,
+                        // This changes the stack pointer
+                        ControlFlowOp::PushAll(_) => ResetKnown::NonVirtual,
                         // This can be considered to destroy all known values
                         ControlFlowOp::PopAll(_) => ResetKnown::Full,
                     },
                 };
 
-                reset.apply(op, &mut known_values.values);
+                reset.apply(op, &mut known_values);
             }
         }
 
