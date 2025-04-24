@@ -83,13 +83,7 @@ impl ResetKnown {
             }
             ResetKnown::NonVirtual => {
                 Self::Defs.apply(op, known_values);
-                known_values.retain(|k, _| {
-                    if let VirtualRegister::Virtual(_) = k {
-                        true
-                    } else {
-                        false
-                    }
-                });
+                known_values.retain(|k, _| matches!(k, VirtualRegister::Virtual(_)));
             }
             ResetKnown::Defs => {
                 for d in op.def_registers() {
@@ -122,7 +116,7 @@ impl AbstractInstructionSet {
                     ControlFlowOp::Jump(label)
                     | ControlFlowOp::JumpIfNotZero(_, label)
                     | ControlFlowOp::Call(label),
-                ) => Some(label.clone()),
+                ) => Some(label),
                 _ => None,
             })
             .collect();
@@ -137,7 +131,7 @@ impl AbstractInstructionSet {
                 if !reg.is_virtual() {
                     continue;
                 }
-                if let Some(r) = known_values.resolve(*reg).and_then(|r| r.register()) {
+                if let Some(r) = known_values.resolve(reg).and_then(|r| r.register()) {
                     **reg = r;
                 }
             }
@@ -150,7 +144,7 @@ impl AbstractInstructionSet {
                         if con == 0 {
                             op.opcode = Either::Left(VirtualOp::NOOP);
                         } else {
-                            op.opcode = Either::Right(ControlFlowOp::Jump(lab.clone()));
+                            op.opcode = Either::Right(ControlFlowOp::Jump(*lab));
                         }
                     }
                 }
@@ -161,7 +155,7 @@ impl AbstractInstructionSet {
             let interpreted_op = match &op.opcode {
                 Either::Left(VirtualOp::MOVI(dst, imm)) => {
                     let imm = KnownRegValue::Const(imm.value() as u64);
-                    if known_values.resolve(&dst) == Some(imm.clone()) {
+                    if known_values.resolve(dst) == Some(imm.clone()) {
                         op.opcode = Either::Left(VirtualOp::NOOP);
                     } else {
                         known_values.assign(dst.clone(), imm);
@@ -170,7 +164,7 @@ impl AbstractInstructionSet {
                 }
                 Either::Left(VirtualOp::MOVE(dst, src)) => {
                     if let Some(known) = known_values.resolve(src) {
-                        if known_values.resolve(&dst) == Some(known.clone()) {
+                        if known_values.resolve(dst) == Some(known.clone()) {
                             op.opcode = Either::Left(VirtualOp::NOOP);
                         } else {
                             known_values.assign(dst.clone(), known);
@@ -220,7 +214,7 @@ impl AbstractInstructionSet {
                     },
                 };
 
-                reset.apply(&op, &mut known_values.values);
+                reset.apply(op, &mut known_values.values);
             }
         }
 

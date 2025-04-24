@@ -4,6 +4,8 @@ mod reachability;
 mod symbolic_interpretation;
 mod verify;
 
+use std::cmp::Ordering;
+
 use super::abstract_instruction_set::AbstractInstructionSet;
 
 use crate::OptLevel;
@@ -37,12 +39,13 @@ impl AbstractInstructionSet {
                     // it will be applied at least once
                     self = self.optimize(data_section, OptLevel::Opt0);
                     self = self.optimize(data_section, OptLevel::Opt0);
-                    if self.ops.len() == old.ops.len() {
-                        // Not changed at all, we're done
-                        break;
-                    } else if old.ops.len() < self.ops.len() {
+                    match self.ops.len().cmp(&old.ops.len()) {
+                        // Not able to optimize anything, stop here
+                        Ordering::Equal => break,
                         // Never accept worse results
-                        return old;
+                        Ordering::Greater => return old,
+                        // We reduced the number of ops, so continue
+                        Ordering::Less => {}
                     }
                 }
                 self
