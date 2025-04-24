@@ -1995,8 +1995,9 @@ fn expr_func_app_to_expression_kind(
 
     let (type_arguments, type_arguments_span) = convert_ty_args(context, call_seg.generics_opt)?;
 
-    // Route intrinsic calls to different AST node.
+    // Transform the AST of some intrinsics
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
+        // "__log(arg)" becomes "__log(encode(arg))"
         Some(Intrinsic::Log)
             if context.experimental.new_encoding && last.is_none() && !is_relative_to_root =>
         {
@@ -2029,6 +2030,214 @@ fn expr_func_app_to_expression_kind(
                     }],
                 },
             ));
+        }
+        // "__dbg(arg)" in debug becomes "{
+        //      let mut f = Formatter { };
+        //      f.print_str("[{current_file}:{current_line}:{current_col}] = ");
+        //      let arg = arg;
+        //      arg.fmt(f);
+        //      arg
+        // }"
+        Some(Intrinsic::Dbg)
+            if context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root =>
+        {
+            if arguments.len() != 1 {
+                return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+                    name: Intrinsic::Dbg.to_string(),
+                    expected: 1,
+                    span,
+                }));
+            }
+
+            let f_id: String = format!("f_{}", context.next_for_unique_suffix());
+            let f_ident = BaseIdent::new_no_span(f_id.to_string());
+
+            let f_tid = engines.te().new_unknown();
+            let f_decl_pid = engines.pe().insert(VariableDeclaration {
+                name: f_ident.clone(),
+                type_ascription: GenericArgument::Type(GenericTypeArgument {
+                    type_id: f_tid,
+                    initial_type_id: f_tid,
+                    span: span.clone(),
+                    call_path_tree: None,
+                }),
+                body: Expression {
+                    kind: ExpressionKind::Struct(Box::new(StructExpression {
+                        resolved_call_path_binding: None,
+                        call_path_binding: TypeBinding {
+                            inner: CallPath {
+                                prefixes: vec![],
+                                suffix: BaseIdent::new_no_span("Formatter".into()),
+                                callpath_type: CallPathType::Ambiguous,
+                            },
+                            type_arguments: TypeArgs::Regular(vec![]),
+                            span: span.clone(),
+                        },
+                        fields: vec![],
+                    })),
+                    span: span.clone(),
+                },
+                is_mutable: true,
+            });
+
+            fn get_current_file_from_span(engines: &Engines, span: &Span) -> String {
+                let Some(source_id) = span.source_id() else {
+                    return String::new();
+                };
+                let current_file = engines.se().get_path(source_id);
+
+                // find the manifest path of the current span
+                let program_id = engines
+                    .se()
+                    .get_program_id_from_manifest_path(&current_file)
+                    .unwrap();
+                let manifest_path = engines
+                    .se()
+                    .get_manifest_path_from_program_id(&program_id)
+                    .unwrap();
+                let current_file = current_file
+                    .display()
+                    .to_string()
+                    .replace(&manifest_path.display().to_string(), "");
+                if let Some(current_file) = current_file.strip_prefix("/") {
+                    current_file.to_string()
+                } else {
+                    current_file
+                }
+            }
+
+            fn ast_node_to_print_str(f_ident: BaseIdent, s: &str, span: &Span) -> AstNode {
+                AstNode {
+                    content: AstNodeContent::Expression(Expression {
+                        kind: ExpressionKind::MethodApplication(Box::new(
+                            MethodApplicationExpression {
+                                method_name_binding: TypeBinding {
+                                    inner: MethodName::FromModule {
+                                        method_name: BaseIdent::new_no_span("print_str".into()),
+                                    },
+                                    type_arguments: TypeArgs::Regular(vec![]),
+                                    span: span.clone(),
+                                },
+                                contract_call_params: vec![],
+                                arguments: vec![
+                                    Expression {
+                                        kind: ExpressionKind::Variable(f_ident.clone()),
+                                        span: span.clone(),
+                                    },
+                                    Expression {
+                                        kind: ExpressionKind::Literal(Literal::String(
+                                            Span::from_string(s.to_string()),
+                                        )),
+                                        span: span.clone(),
+                                    },
+                                ],
+                            },
+                        )),
+                        span: span.clone(),
+                    }),
+                    span: span.clone(),
+                }
+            }
+
+            let current_file = get_current_file_from_span(engines, &span);
+            let start_line_col = span.start_line_col_one_index();
+
+            let arg_id: String = format!("arg_{}", context.next_for_unique_suffix());
+            let arg_ident = BaseIdent::new_no_span(arg_id.to_string());
+
+            let block = CodeBlock {
+                contents: vec![
+                    // let arg = arguments[0];
+                    statement_let_to_ast_nodes_unfold(
+                        context,
+                        handler,
+                        engines,
+                        Pattern::AmbiguousSingleIdent(arg_ident.clone()),
+                        None,
+                        arguments[0].clone(),
+                        Span::dummy(),
+                    )
+                    .unwrap()
+                    .pop()
+                    .unwrap(),
+                    // let mut f = Formatter { };
+                    AstNode {
+                        content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                            f_decl_pid,
+                        )),
+                        span: Span::dummy(),
+                    },
+                    // f.print_str("[" + <current file> + ":" + <current line> + ":" + <current col> + "] = ");
+                    ast_node_to_print_str(
+                        f_ident.clone(),
+                        &format!(
+                            "[{}:{}:{}] = ",
+                            current_file, start_line_col.line, start_line_col.col
+                        ),
+                        &span,
+                    ),
+                    // arg.fmt(f);
+                    AstNode {
+                        content: AstNodeContent::Expression(Expression {
+                            kind: ExpressionKind::MethodApplication(Box::new(
+                                MethodApplicationExpression {
+                                    method_name_binding: TypeBinding {
+                                        inner: MethodName::FromModule {
+                                            method_name: BaseIdent::new_no_span("fmt".into()),
+                                        },
+                                        type_arguments: TypeArgs::Regular(vec![]),
+                                        span: Span::dummy(),
+                                    },
+                                    contract_call_params: vec![],
+                                    arguments: vec![
+                                        Expression {
+                                            kind: ExpressionKind::Variable(arg_ident.clone()),
+                                            span: Span::dummy(),
+                                        },
+                                        Expression {
+                                            kind: ExpressionKind::Variable(f_ident.clone()),
+                                            span: Span::dummy(),
+                                        },
+                                    ],
+                                },
+                            )),
+                            span: Span::dummy(),
+                        }),
+                        span: Span::dummy(),
+                    },
+                    // f.print_str(<newline>);
+                    ast_node_to_print_str(f_ident.clone(), "\n", &span),
+                    // arg
+                    AstNode {
+                        content: AstNodeContent::Expression(Expression {
+                            kind: ExpressionKind::ImplicitReturn(Box::new(Expression {
+                                kind: ExpressionKind::AmbiguousVariableExpression(
+                                    arg_ident.clone(),
+                                ),
+                                span: Span::dummy(),
+                            })),
+                            span: Span::dummy(),
+                        }),
+                        span: Span::dummy(),
+                    },
+                ],
+                whole_block_span: Span::dummy(),
+            };
+
+            return Ok(ExpressionKind::CodeBlock(block));
+        }
+        // ... and in release becomes "arg"
+        Some(Intrinsic::Dbg)
+            if !context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root =>
+        {
+            if arguments.len() != 1 {
+                return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+                    name: Intrinsic::Dbg.to_string(),
+                    expected: 1,
+                    span,
+                }));
+            }
+            return Ok(arguments[0].kind.clone());
         }
         Some(intrinsic) if last.is_none() && !is_relative_to_root => {
             return Ok(ExpressionKind::IntrinsicFunction(

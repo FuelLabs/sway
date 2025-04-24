@@ -23,95 +23,95 @@ pub fn list_contract_functions<W: Write>(
 
     if unified_program_abi.functions.is_empty() {
         writeln!(writer, "No functions found in the contract ABI.")?;
-    } else {
-        let type_lookup = unified_program_abi
-            .types
-            .iter()
-            .map(|decl| (decl.type_id, decl.clone()))
-            .collect::<HashMap<_, _>>();
+        return Ok(());
+    }
 
-        for func in &unified_program_abi.functions {
-            let func_args = func
-                .inputs
-                .iter()
-                .map(|input| {
-                    let Ok(param_type) = ParamType::try_from_type_application(input, &type_lookup)
-                    else {
-                        return Err(anyhow!("Failed to convert input type application"));
-                    };
-                    let func_args =
-                        format!("{}: {}", input.name, param_to_function_arg(&param_type));
-                    let func_args_input = {
-                        let token =
-                            param_type_val_to_token(&param_type, &get_default_value(&param_type))
-                                .map_err(|err| {
+    let type_lookup = unified_program_abi
+        .types
+        .iter()
+        .map(|decl| (decl.type_id, decl.clone()))
+        .collect::<HashMap<_, _>>();
+
+    for func in &unified_program_abi.functions {
+        let func_args = func
+            .inputs
+            .iter()
+            .map(|input| {
+                let Ok(param_type) = ParamType::try_from_type_application(input, &type_lookup)
+                else {
+                    return Err(anyhow!("Failed to convert input type application"));
+                };
+                let func_args = format!("{}: {}", input.name, param_to_function_arg(&param_type));
+                let func_args_input = {
+                    let token =
+                        param_type_val_to_token(&param_type, &get_default_value(&param_type))
+                            .map_err(|err| {
                                 anyhow!(
                                     "Failed to generate example call for {}: {}",
                                     func.name,
                                     err
                                 )
                             })?;
-                        token_to_string(&token).map_err(|err| {
-                            anyhow!(
-                                "Failed to convert token to string for {}: {}",
-                                func.name,
-                                err
-                            )
-                        })?
-                    };
-                    Ok((func_args, func_args_input, param_type))
-                })
-                .collect::<Result<Vec<_>>>()?;
+                    token_to_string(&token).map_err(|err| {
+                        anyhow!(
+                            "Failed to convert token to string for {}: {}",
+                            func.name,
+                            err
+                        )
+                    })?
+                };
+                Ok((func_args, func_args_input, param_type))
+            })
+            .collect::<Result<Vec<_>>>()?;
 
-            let func_args_types = func_args
-                .iter()
-                .map(|(func_args, _, _)| func_args.to_owned())
-                .collect::<Vec<String>>()
-                .join(", ");
+        let func_args_types = func_args
+            .iter()
+            .map(|(func_args, _, _)| func_args.to_owned())
+            .collect::<Vec<String>>()
+            .join(", ");
 
-            let func_args_inputs = func_args
-                .iter()
-                .map(|(_, func_args_input, param_type)| match param_type {
-                    ParamType::Array(_, _)
-                    | ParamType::Unit
-                    | ParamType::Tuple(_)
-                    | ParamType::Struct { .. }
-                    | ParamType::Enum { .. }
-                    | ParamType::RawSlice
-                    | ParamType::Vector(_) => format!("\"{}\"", func_args_input),
-                    _ => func_args_input.to_owned(),
-                })
-                .collect::<Vec<String>>()
-                .join(" ");
+        let func_args_inputs = func_args
+            .iter()
+            .map(|(_, func_args_input, param_type)| match param_type {
+                ParamType::Array(_, _)
+                | ParamType::Unit
+                | ParamType::Tuple(_)
+                | ParamType::Struct { .. }
+                | ParamType::Enum { .. }
+                | ParamType::RawSlice
+                | ParamType::Vector(_) => format!("\"{}\"", func_args_input),
+                _ => func_args_input.to_owned(),
+            })
+            .collect::<Vec<String>>()
+            .join(" ");
 
-            let return_type = ParamType::try_from_type_application(&func.output, &type_lookup)
-                .map(|param_type| param_to_function_arg(&param_type))
-                .map_err(|err| {
-                    anyhow!(
-                        "Failed to convert output type application for {}: {}",
-                        func.name,
-                        err
-                    )
-                })?;
+        let return_type = ParamType::try_from_type_application(&func.output, &type_lookup)
+            .map(|param_type| param_to_function_arg(&param_type))
+            .map_err(|err| {
+                anyhow!(
+                    "Failed to convert output type application for {}: {}",
+                    func.name,
+                    err
+                )
+            })?;
 
-            // Get the ABI path or URL as a string
-            let raw_abi_input = match abi {
-                Either::Left(path) => path.to_str().unwrap_or("").to_owned(),
-                Either::Right(url) => url.to_string(),
-            };
+        // Get the ABI path or URL as a string
+        let raw_abi_input = match abi {
+            Either::Left(path) => path.to_str().unwrap_or("").to_owned(),
+            Either::Right(url) => url.to_string(),
+        };
 
-            let painted_name = forc_util::ansiterm::Colour::Blue.paint(func.name.clone());
-            writeln!(
-                writer,
-                "{}({}) -> {}",
-                painted_name, func_args_types, return_type
-            )?;
-            writeln!(
-                writer,
-                "  forc call \\\n      --abi {} \\\n      {} \\\n      {} {}\n",
-                raw_abi_input, contract_id, func.name, func_args_inputs,
-            )?;
-        }
+        let painted_name = forc_util::ansiterm::Colour::Blue.paint(func.name.clone());
+        writeln!(
+            writer,
+            "{}({}) -> {}",
+            painted_name, func_args_types, return_type
+        )?;
+        writeln!(
+            writer,
+            "  forc call \\\n      --abi {} \\\n      {} \\\n      {} {}\n",
+            raw_abi_input, contract_id, func.name, func_args_inputs,
+        )?;
     }
 
     Ok(())
@@ -127,7 +127,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_list_contract_functions() {
-        let (_, id, _) = get_contract_instance().await;
+        let (_, id, _, _) = get_contract_instance().await;
 
         // Load a test ABI
         let abi_path_str = "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json";

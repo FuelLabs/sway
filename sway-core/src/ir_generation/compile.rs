@@ -356,8 +356,7 @@ pub(crate) fn compile_configurables(
                 Some(module_ns),
                 None,
                 decl.value.as_ref().unwrap(),
-            )
-            .unwrap();
+            )?;
 
             let opt_metadata = md_mgr.span_to_md(context, &decl.span);
 

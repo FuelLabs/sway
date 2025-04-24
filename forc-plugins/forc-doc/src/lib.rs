@@ -15,6 +15,7 @@ use forc_pkg::{
 use forc_tracing::println_action_green;
 use forc_util::default_output_directory;
 use render::RenderedDocumentation;
+use std::sync::Arc;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -46,7 +47,7 @@ impl<'e> RenderPlan<'e> {
 }
 
 pub struct ProgramInfo<'a> {
-    pub ty_program: TyProgram,
+    pub ty_program: Arc<TyProgram>,
     pub engines: &'a Engines,
     pub manifest: &'a ManifestFile,
     pub pkg_manifest: &'a PackageManifestFile,
@@ -109,6 +110,7 @@ pub fn compile_html(
         None,
         &build_instructions.experimental.experimental,
         &build_instructions.experimental.no_experimental,
+        sway_core::DbgGeneration::Full,
     )?;
 
     let raw_docs = if build_instructions.no_deps {
@@ -197,7 +199,7 @@ fn build_docs(
         document_private_items,
     )?;
     let root_attributes = (!ty_program.root_module.attributes.is_empty())
-        .then_some(ty_program.root_module.attributes);
+        .then_some(ty_program.root_module.attributes.clone());
     let forc_version = pkg_manifest
         .project
         .forc_version

@@ -1,5 +1,5 @@
 ---
-source: test/tests/tests.rs
+source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract
 exit status: 1
@@ -81,20 +81,40 @@ error: Attribute cannot annotate item
 ____
 
 error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:15:7
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:14:3
    |
 ...
-15 |     #[test(invalid)]
+14 | #[error_type(invalid)]
+   |   ^^^^^^^^^^ "error_type" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "error_type" attribute can only annotate enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:15:3
+   |
+...
+15 | #[error(invalid)]
+   |   ^^^^^ "error" attribute cannot annotate an ABI or trait implementation.
+   |
+   = help: "error" attribute can only annotate enum variants of enums annotated with the "error_type" attribute.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:17:7
+   |
+...
+17 |     #[test(invalid)]
    |       ^^^^ "test" attribute cannot annotate a contract method.
    |
    = help: "test" attribute can only annotate module functions.
 ____
 
 error: Inner doc comment (`//!`) cannot document item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:16:5
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:18:5
    |
 ...
-16 |     //! Invalid inner comment.
+18 |     //! Invalid inner comment.
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a contract method.
    |
    = help: Inner doc comments (`//!`) can only document modules and must be
@@ -102,14 +122,34 @@ error: Inner doc comment (`//!`) cannot document item
 ____
 
 error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:17:7
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:19:7
    |
 ...
-17 |     #[fallback(invalid)]
+19 |     #[fallback(invalid)]
    |       ^^^^^^^^ "fallback" attribute cannot annotate a contract method.
    |
    = help: "fallback" attribute can only annotate module functions in a contract module.
 ____
 
-  Aborting due to 10 errors.
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:20:7
+   |
+...
+20 |     #[error_type(invalid)]
+   |       ^^^^^^^^^^ "error_type" attribute cannot annotate a contract method.
+   |
+   = help: "error_type" attribute can only annotate enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract/src/main.sw:21:7
+   |
+...
+21 |     #[error(invalid)]
+   |       ^^^^^ "error" attribute cannot annotate a contract method.
+   |
+   = help: "error" attribute can only annotate enum variants of enums annotated with the "error_type" attribute.
+____
+
+  Aborting due to 14 errors.
 error: Failed to compile attributes_invalid_target_contract

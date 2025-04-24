@@ -437,7 +437,7 @@ impl TyFunctionDecl {
         TyFunctionDecl {
             purity: *purity,
             name: name.clone(),
-            body: TyCodeBlock::default(),
+            body: <_>::default(),
             implementing_type: None,
             implementing_for_typeid: None,
             span: span.clone(),

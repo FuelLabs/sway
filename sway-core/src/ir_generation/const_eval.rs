@@ -1677,6 +1677,9 @@ fn const_eval_intrinsic(
             let c = transmute_bytes(lookup.context, &mut cursor, &dst_ir_type)?;
             Ok(Some(Constant::unique(lookup.context, c)))
         }
+        Intrinsic::Dbg => {
+            unreachable!("__dbg should not exist in the typed tree")
+        }
     }
 }
 
@@ -1716,7 +1719,9 @@ mod tests {
         let r = crate::compile_to_ast(
             &handler,
             &engines,
-            std::sync::Arc::from(format!("library; {prefix} fn f() -> u64 {{ {expr}; 0 }}")),
+            format!("library; {prefix} fn f() -> u64 {{ {expr}; 0 }}")
+                .as_str()
+                .into(),
             core_lib,
             None,
             "test",

@@ -389,10 +389,8 @@ fn insert_after_span(
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::map::byte_span::ByteSpan;
-    use std::sync::Arc;
-
     use super::*;
+    use crate::utils::map::byte_span::ByteSpan;
 
     /// For readability of the assertions, the comments written within these snippets will be the
     /// ByteSpan representations instead of some random comment,
@@ -409,7 +407,7 @@ pub fn main() -> bool {
 }
 "#;
         let mut comments_ctx = CommentsContext::new(
-            CommentMap::from_src(Arc::from(commented_code)).unwrap(),
+            CommentMap::from_src(commented_code.into()).unwrap(),
             commented_code.to_string(),
         );
         assert_eq!(
@@ -432,7 +430,7 @@ pub fn main() -> bool {
 "#;
 
         comments_ctx = CommentsContext::new(
-            CommentMap::from_src(Arc::from(multiline_comment)).unwrap(),
+            CommentMap::from_src(multiline_comment.into()).unwrap(),
             multiline_comment.to_string(),
         );
 
@@ -457,7 +455,7 @@ pub fn main() -> bool {
 "#;
 
         comments_ctx = CommentsContext::new(
-            CommentMap::from_src(Arc::from(multi_newline_comments)).unwrap(),
+            CommentMap::from_src(multi_newline_comments.into()).unwrap(),
             multi_newline_comments.to_string(),
         );
 

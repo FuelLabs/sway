@@ -79,6 +79,13 @@ impl PartialEq for Transaction {
 }
 impl Eq for Transaction {}
 
+pub const TX_TYPE_SCRIPT: u8 = 0u8;
+pub const TX_TYPE_CREATE: u8 = 1u8;
+pub const TX_TYPE_MINT: u8 = 2u8;
+pub const TX_TYPE_UPGRADE: u8 = 3u8;
+pub const TX_TYPE_UPLOAD: u8 = 4u8;
+pub const TX_TYPE_BLOB: u8 = 5u8;
+
 /// Get the type of the current transaction.
 ///
 /// # Returns
@@ -120,11 +127,11 @@ impl Eq for Transaction {}
 /// ```
 pub fn tx_type() -> Transaction {
     match __gtf::<u8>(0, GTF_TYPE) {
-        0u8 => Transaction::Script,
-        1u8 => Transaction::Create,
-        3u8 => Transaction::Upgrade,
-        4u8 => Transaction::Upload,
-        5u8 => Transaction::Blob,
+        TX_TYPE_SCRIPT => Transaction::Script,
+        TX_TYPE_CREATE => Transaction::Create,
+        TX_TYPE_UPGRADE => Transaction::Upgrade,
+        TX_TYPE_UPLOAD => Transaction::Upload,
+        TX_TYPE_BLOB => Transaction::Blob,
         _ => revert(0),
     }
 }
@@ -276,9 +283,10 @@ pub fn tx_max_fee() -> Option<u64> {
 /// }
 /// ```
 pub fn tx_script_length() -> Option<u64> {
-    match tx_type() {
-        Transaction::Script => Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH)),
-        _ => None,
+    if __gtf::<u8>(0, GTF_TYPE) == TX_TYPE_SCRIPT {
+        Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH))
+    } else {
+        None
     }
 }
 
@@ -299,9 +307,10 @@ pub fn tx_script_length() -> Option<u64> {
 /// }
 /// ```
 pub fn tx_script_data_length() -> Option<u64> {
-    match tx_type() {
-        Transaction::Script => Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH)),
-        _ => None,
+    if __gtf::<u8>(0, GTF_TYPE) == TX_TYPE_SCRIPT {
+        Some(__gtf::<u64>(0, GTF_SCRIPT_SCRIPT_DATA_LENGTH))
+    } else {
+        None
     }
 }
 
@@ -326,13 +335,10 @@ pub fn tx_script_data_length() -> Option<u64> {
 /// }
 /// ```
 pub fn tx_witnesses_count() -> u64 {
-    match tx_type() {
-        Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
-        Transaction::Create => __gtf::<u64>(0, GTF_CREATE_WITNESSES_COUNT),
-        Transaction::Upgrade => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
-        Transaction::Upload => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
-        Transaction::Blob => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
-        _ => revert(0),
+    match __gtf::<u8>(0, GTF_TYPE) {
+        TX_TYPE_CREATE => __gtf::<u64>(0, GTF_CREATE_WITNESSES_COUNT),
+        TX_TYPE_MINT => revert(0),
+        _ => __gtf::<u64>(0, GTF_SCRIPT_WITNESSES_COUNT),
     }
 }
 
@@ -361,13 +367,10 @@ fn tx_witness_pointer(index: u64) -> Option<raw_ptr> {
         return None
     }
 
-    match tx_type() {
-        Transaction::Script => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
-        Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_WITNESS_AT_INDEX)),
-        Transaction::Upgrade => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
-        Transaction::Upload => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
-        Transaction::Blob => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
-        _ => None,
+    match __gtf::<u8>(0, GTF_TYPE) {
+        TX_TYPE_CREATE => Some(__gtf::<raw_ptr>(index, GTF_CREATE_WITNESS_AT_INDEX)),
+        TX_TYPE_MINT => None,
+        _ => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_WITNESS_AT_INDEX)),
     }
 }
 
@@ -429,13 +432,9 @@ pub fn tx_witness_data<T>(index: u64) -> Option<T> {
         return None
     }
 
-    let length = match tx_witness_data_length(index) {
-        Some(len) => len,
-        None => return None,
-    };
-
+    let witness_data_ptr = __gtf::<raw_ptr>(index, GTF_WITNESS_DATA);
     if __is_reference_type::<T>() {
-        let witness_data_ptr = __gtf::<raw_ptr>(index, GTF_WITNESS_DATA);
+        let length = __gtf::<u64>(index, GTF_WITNESS_DATA_LENGTH);
         let new_ptr = alloc_bytes(length);
         witness_data_ptr.copy_bytes_to(new_ptr, length);
 
@@ -445,56 +444,10 @@ pub fn tx_witness_data<T>(index: u64) -> Option<T> {
     } else {
         // u8 is the only value type that is less than 8 bytes and should be handled separately
         if __size_of::<T>() == 1 {
-            Some(__gtf::<raw_ptr>(index, GTF_WITNESS_DATA).add::<u8>(7).read::<T>())
+            Some(witness_data_ptr.add::<u8>(7).read::<T>())
         } else {
-            Some(__gtf::<raw_ptr>(index, GTF_WITNESS_DATA).read::<T>())
+            Some(witness_data_ptr.read::<T>())
         }
-    }
-}
-
-/// Get the transaction script start pointer.
-///
-/// # Returns
-///
-/// * [Option<raw_ptr>] - The transaction script start pointer.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::tx::tx_script_start_pointer;
-///
-/// fn foo() {
-///     let script_start_pointer = tx_script_start_pointer().unwrap();
-///     log(script_start_pointer);
-/// }
-/// ```
-fn tx_script_start_pointer() -> Option<raw_ptr> {
-    match tx_type() {
-        Transaction::Script => Some(__gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT)),
-        _ => None,
-    }
-}
-
-/// Get the transaction script data start pointer.
-///
-/// # Returns
-///
-/// * [Option<raw_ptr>] - The transaction script data start pointer.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::tx::tx_script_data_start_pointer;
-///
-/// fn foo() {
-///     let script_data_start_pointer = tx_script_data_start_pointer().unwrap();
-///     log(script_data_start_pointer);
-/// }
-/// ```
-fn tx_script_data_start_pointer() -> Option<raw_ptr> {
-    match tx_type() {
-        Transaction::Script => Some(__gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT_DATA)),
-        _ => None,
     }
 }
 
@@ -520,13 +473,12 @@ fn tx_script_data_start_pointer() -> Option<raw_ptr> {
 /// }
 /// ```
 pub fn tx_script_data<T>() -> Option<T> {
-    let ptr = tx_script_data_start_pointer();
-    if ptr.is_none() {
-        return None
+    if __gtf::<u8>(0, GTF_TYPE) == TX_TYPE_SCRIPT {
+        // TODO some safety checks on the input data? We are going to assume it is the right type for now.
+        Some(__gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT_DATA).read::<T>())
+    } else {
+        None
     }
-
-    // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    Some(ptr.unwrap().read::<T>())
 }
 
 /// Get the script bytecode.
@@ -551,9 +503,10 @@ pub fn tx_script_data<T>() -> Option<T> {
 /// }
 /// ```
 pub fn tx_script_bytecode<T>() -> Option<T> {
-    match tx_type() {
-        Transaction::Script => Some(tx_script_start_pointer().unwrap().read::<T>()),
-        _ => None,
+    if __gtf::<u8>(0, GTF_TYPE) == TX_TYPE_SCRIPT {
+        Some(__gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT).read::<T>())
+    } else {
+        None
     }
 }
 
@@ -574,22 +527,21 @@ pub fn tx_script_bytecode<T>() -> Option<T> {
 /// }
 /// ```
 pub fn tx_script_bytecode_hash() -> Option<b256> {
-    match tx_type() {
-        Transaction::Script => {
-            // Get the script memory details
-            let mut result_buffer = b256::zero();
-            let script_length = tx_script_length().unwrap();
-            let script_ptr = tx_script_start_pointer().unwrap();
+    if __gtf::<u8>(0, GTF_TYPE) == TX_TYPE_SCRIPT {
+        // Get the script memory details
+        let mut result_buffer = b256::zero();
+        let script_length = __gtf::<u64>(0, GTF_SCRIPT_SCRIPT_LENGTH);
+        let script_ptr = __gtf::<raw_ptr>(0, GTF_SCRIPT_SCRIPT);
 
-            // Run the hash opcode for the script in memory
-            Some(
-                asm(hash: result_buffer, ptr: script_ptr, len: script_length) {
-                    s256 hash ptr len;
-                    hash: b256
-                },
-            )
-        },
-        _ => None,
+        // Run the hash opcode for the script in memory
+        Some(
+            asm(hash: result_buffer, ptr: script_ptr, len: script_length) {
+                s256 hash ptr len;
+                hash: b256
+            },
+        )
+    } else {
+        None
     }
 }
 

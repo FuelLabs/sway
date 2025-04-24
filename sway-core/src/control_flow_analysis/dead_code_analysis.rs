@@ -1099,7 +1099,7 @@ fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
     fn_decl_entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     let type_engine = engines.te();
-    for fn_param in &fn_decl.parameters {
+    for fn_param in fn_decl.parameters.iter() {
         let ty = type_engine.to_typeinfo(
             fn_param.type_argument.type_id(),
             &fn_param.type_argument.span(),

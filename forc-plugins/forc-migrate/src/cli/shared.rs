@@ -37,7 +37,7 @@ pub(crate) struct Compile {
     pub locked: bool,
     /// The IPFS Node to use for fetching IPFS sources.
     ///
-    /// Possible values: PUBLIC, LOCAL, <GATEWAY_URL>
+    /// Possible values: FUEL, PUBLIC, LOCAL, <GATEWAY_URL>
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
     #[clap(flatten)]
@@ -108,6 +108,7 @@ pub(crate) fn compile_package<'a>(
         None,
         &build_instructions.experimental.experimental,
         &build_instructions.experimental.no_experimental,
+        sway_core::DbgGeneration::Full,
     )?;
 
     let Some(programs) =

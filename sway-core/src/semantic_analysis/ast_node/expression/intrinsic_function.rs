@@ -110,6 +110,9 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Transmute => {
                 type_check_transmute(arguments, handler, kind, type_arguments, span, ctx)
             }
+            Intrinsic::Dbg => {
+                unreachable!("__dbg should not exist in the typed tree")
+            }
         }
     }
 }

@@ -90,7 +90,7 @@ impl SymbolCollectionContext {
         with_submod_ctx: impl FnOnce(&mut SymbolCollectionContext) -> T,
     ) -> Result<T, ErrorEmitted> {
         self.namespace
-            .push_submodule(handler, engines, mod_name, visibility, module_span)?;
+            .push_submodule(handler, engines, mod_name, visibility, module_span, true)?;
         //let Self { namespace, .. } = self;
         //let mut submod_ns = namespace.enter_submodule(mod_name, visibility, module_span);
         let ret = with_submod_ctx(self);

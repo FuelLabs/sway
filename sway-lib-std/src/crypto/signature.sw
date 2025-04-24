@@ -13,6 +13,7 @@ use ::option::Option::{self, *};
 use ::result::Result::{self, *};
 use ::vm::evm::evm_address::EvmAddress;
 use ::codec::*;
+use ::ops::*;
 
 /// An ECDSA signature.
 pub enum Signature {
@@ -485,3 +486,21 @@ impl Signature {
         }
     }
 }
+
+impl PartialEq for Signature {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Self::Secp256k1(sig_1), Self::Secp256k1(sig_2)) => {
+                sig_1 == sig_2
+            },
+            (Self::Secp256r1(sig_1), Self::Secp256r1(sig_2)) => {
+                sig_1 == sig_2
+            },
+            (Self::Ed25519(sig_1), Self::Ed25519(sig_2)) => {
+                sig_1 == sig_2
+            },
+            _ => false,
+        }
+    }
+}
+impl Eq for Signature {}

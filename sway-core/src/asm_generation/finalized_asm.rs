@@ -251,7 +251,7 @@ fn to_bytecode_mut(
                         last_span = match (last_span, &span) {
                             (None, Some(span)) => {
                                 indentation = 4;
-                                let line_col = span.start_pos().line_col();
+                                let line_col = span.start_line_col_one_index();
                                 println!(
                                     "{} @ {}:{}:{}",
                                     span.as_str(),
@@ -266,7 +266,7 @@ fn to_bytecode_mut(
                             }
                             (Some(last), Some(span)) if last != *span => {
                                 indentation = 4;
-                                let line_col = span.start_pos().line_col();
+                                let line_col = span.start_line_col_one_index();
                                 println!(
                                     "{} @ {}:{}:{}",
                                     span.as_str(),

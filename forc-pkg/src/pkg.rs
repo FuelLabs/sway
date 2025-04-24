@@ -47,7 +47,7 @@ use sway_core::{
     source_map::SourceMap,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
-use sway_core::{set_bytecode_configurables_offset, PrintAsm, PrintIr};
+use sway_core::{set_bytecode_configurables_offset, DbgGeneration, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
 use sway_types::{Ident, ProgramId, Span, Spanned};
@@ -285,6 +285,8 @@ pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
     pub minify: MinifyOpts,
+    /// If set, generates a JSON file containing the hex-encoded script binary.
+    pub hex_outfile: Option<String>,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,
     /// If set, outputs debug info to the provided file.
@@ -427,6 +429,15 @@ impl BuiltPackage {
         Ok(())
     }
 
+    pub fn write_hexcode(&self, path: &Path) -> Result<()> {
+        let hex_file = serde_json::json!({
+            "hex": format!("0x{}", hex::encode(&self.bytecode.bytes)),
+        });
+
+        fs::write(path, hex_file.to_string())?;
+        Ok(())
+    }
+
     /// Writes debug_info (source_map) of the BuiltPackage to the given `out_file`.
     pub fn write_debug_info(&self, out_file: &Path) -> Result<()> {
         if matches!(out_file.extension(), Some(ext) if ext == "json") {
@@ -505,6 +516,7 @@ impl BuiltPackage {
             self.bytecode.bytes.len(),
             format_bytecode_size(self.bytecode.bytes.len())
         );
+
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -1194,7 +1206,7 @@ impl FromStr for PinnedId {
 }
 
 /// The `pkg::Graph` is of *a -> b* where *a* depends on *b*. We can determine compilation order by
-/// performing a toposort of the graph with reversed weights. The resulting order ensures all
+/// performing a toposort of the graph with reversed edges. The resulting order ensures all
 /// dependencies are always compiled before their dependents.
 pub fn compilation_order(graph: &Graph) -> Result<Vec<NodeIx>> {
     let rev_pkg_graph = petgraph::visit::Reversed(&graph);
@@ -1545,6 +1557,7 @@ pub fn sway_build_config(
     entry_path: &Path,
     build_target: BuildTarget,
     build_profile: &BuildProfile,
+    dbg_generation: sway_core::DbgGeneration,
 ) -> Result<sway_core::BuildConfig> {
     // Prepare the build config to pass through to the compiler.
     let file_name = find_file_name(manifest_dir, entry_path)?;
@@ -1552,6 +1565,7 @@ pub fn sway_build_config(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
         build_target,
+        dbg_generation,
     )
     .with_print_dca_graph(build_profile.print_dca_graph.clone())
     .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
@@ -1591,6 +1605,7 @@ pub fn dependency_namespace(
     contract_id_value: Option<ContractIdConst>,
     program_id: ProgramId,
     experimental: ExperimentalFeatures,
+    dbg_generation: sway_core::DbgGeneration,
 ) -> Result<namespace::Package, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
@@ -1602,6 +1617,7 @@ pub fn dependency_namespace(
             program_id,
             contract_id_value,
             experimental,
+            dbg_generation,
         )?
     } else {
         Package::new(name.clone(), None, program_id, false)
@@ -1634,6 +1650,7 @@ pub fn dependency_namespace(
                     program_id,
                     contract_id_value,
                     experimental,
+                    dbg_generation,
                 )?
             }
         };
@@ -1668,12 +1685,18 @@ pub fn compile(
     namespace: namespace::Package,
     source_map: &mut SourceMap,
     experimental: ExperimentalFeatures,
+    dbg_generation: DbgGeneration,
 ) -> Result<CompiledPackage> {
     let mut metrics = PerformanceData::default();
 
     let entry_path = pkg.manifest_file.entry_path();
-    let sway_build_config =
-        sway_build_config(pkg.manifest_file.dir(), &entry_path, pkg.target, profile)?;
+    let sway_build_config = sway_build_config(
+        pkg.manifest_file.dir(),
+        &entry_path,
+        pkg.target,
+        profile,
+        dbg_generation,
+    )?;
     let terse_mode = profile.terse;
     let reverse_results = profile.reverse_results;
     let fail = |handler: Handler| {
@@ -2156,6 +2179,7 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
 /// Builds a project with given BuildOptions.
 pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
     let BuildOpts {
+        hex_outfile,
         minify,
         binary_outfile,
         debug_outfile,
@@ -2248,6 +2272,12 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
                 .unwrap_or_else(|| output_dir.join("debug_symbols.obj"));
             built_package.write_debug_info(&debug_path)?;
         }
+
+        if let Some(hex_path) = hex_outfile {
+            let hexfile_path = output_dir.join(hex_path);
+            built_package.write_hexcode(&hexfile_path)?;
+        }
+
         built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
         built_workspace.push(Arc::new(built_package));
     }
@@ -2355,6 +2385,10 @@ pub fn build(
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let program_ty = manifest.program_type().ok();
+        let dbg_generation = match (profile.is_release(), manifest.project.force_dbg_in_release) {
+            (true, Some(true)) | (false, _) => DbgGeneration::Full,
+            (true, _) => DbgGeneration::None,
+        };
 
         print_compiling(
             program_ty.as_ref(),
@@ -2420,6 +2454,7 @@ pub fn build(
                 None,
                 program_id,
                 experimental,
+                dbg_generation,
             ) {
                 Ok(o) => o,
                 Err(errs) => return fail(&[], &errs),
@@ -2432,6 +2467,7 @@ pub fn build(
                 dep_namespace,
                 &mut source_map,
                 experimental,
+                dbg_generation,
             )?;
 
             if let Some(outfile) = profile.metrics_outfile {
@@ -2490,6 +2526,7 @@ pub fn build(
             contract_id_value.clone(),
             program_id,
             experimental,
+            dbg_generation,
         ) {
             Ok(o) => o,
             Err(errs) => {
@@ -2511,6 +2548,7 @@ pub fn build(
             dep_namespace,
             &mut source_map,
             experimental,
+            dbg_generation,
         )?;
 
         if let Some(outfile) = profile.metrics_outfile {
@@ -2558,6 +2596,7 @@ pub fn check(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     experimental: &[sway_features::Feature],
     no_experimental: &[sway_features::Feature],
+    dbg_generation: sway_core::DbgGeneration,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = HashMap::default();
     let mut source_map = SourceMap::new();
@@ -2606,6 +2645,7 @@ pub fn check(
             contract_id_value,
             program_id,
             experimental,
+            dbg_generation,
         )
         .expect("failed to create dependency namespace");
 
@@ -2619,6 +2659,7 @@ pub fn check(
             &manifest.entry_path(),
             build_target,
             &profile,
+            dbg_generation,
         )?
         .with_include_tests(include_tests)
         .with_lsp_mode(lsp_mode.clone());
@@ -2721,6 +2762,7 @@ pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
 mod test {
     use super::*;
     use regex::Regex;
+    use tempfile::NamedTempFile;
 
     fn setup_build_plan() -> BuildPlan {
         let current_dir = env!("CARGO_MANIFEST_DIR");
@@ -2789,5 +2831,61 @@ mod test {
 }
 "#;
         assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_write_hexcode() -> Result<()> {
+        // Create a temporary file for testing
+        let temp_file = NamedTempFile::new()?;
+        let path = temp_file.path();
+
+        let current_dir = env!("CARGO_MANIFEST_DIR");
+        let manifest_dir = PathBuf::from(current_dir).parent().unwrap().join(
+            "test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/test_contract",
+        );
+
+        // Create a test BuiltPackage with some bytecode
+        let test_bytecode = vec![0x01, 0x02, 0x03, 0x04];
+        let built_package = BuiltPackage {
+            descriptor: PackageDescriptor {
+                name: "test_package".to_string(),
+                target: BuildTarget::Fuel,
+                pinned: Pinned {
+                    name: "built_test".to_owned(),
+                    source: source::Pinned::MEMBER,
+                },
+                manifest_file: PackageManifestFile::from_dir(manifest_dir)?,
+            },
+            program_abi: ProgramABI::Fuel(fuel_abi_types::abi::program::ProgramABI {
+                program_type: "".to_owned(),
+                spec_version: "".into(),
+                encoding_version: "".into(),
+                concrete_types: vec![],
+                metadata_types: vec![],
+                functions: vec![],
+                configurables: None,
+                logged_types: None,
+                messages_types: None,
+            }),
+            storage_slots: vec![],
+            warnings: vec![],
+            source_map: SourceMap::new(),
+            tree_type: TreeType::Script,
+            bytecode: BuiltPackageBytecode {
+                bytes: test_bytecode,
+                entries: vec![],
+            },
+            bytecode_without_tests: None,
+        };
+
+        // Write the hexcode
+        built_package.write_hexcode(path)?;
+
+        // Read the file and verify its contents
+        let contents = fs::read_to_string(path)?;
+        let expected = r#"{"hex":"0x01020304"}"#;
+        assert_eq!(contents, expected);
+
+        Ok(())
     }
 }

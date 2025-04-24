@@ -1,6 +1,6 @@
 ---
-source: test/tests/tests.rs
-assertion_line: 115
+source: test/src/snapshot/mod.rs
+assertion_line: 125
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_expect_values
 exit status: 1
@@ -120,5 +120,15 @@ error: Attribute argument must have a value
   |
 ____
 
-  Aborting due to 9 errors.
+error: Attribute argument must have a value
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_expect_values/src/error_attr.sw:5:13
+  |
+...
+5 |     #[error(m)]
+  |             ^ "m" argument of the attribute "error" must have a value.
+  |             - help: To set the value, use the `=` operator: `m = <value>`.
+  |
+____
+
+  Aborting due to 10 errors.
 error: Failed to compile attributes_invalid_args_expect_values

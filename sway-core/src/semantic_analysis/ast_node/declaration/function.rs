@@ -163,7 +163,7 @@ impl ty::TyFunctionDecl {
 
                 let function_decl = ty::TyFunctionDecl {
                     name: name.clone(),
-                    body: TyCodeBlock::default(),
+                    body: <_>::default(),
                     parameters: new_parameters,
                     implementing_type: None,
                     implementing_for_typeid,
@@ -220,7 +220,7 @@ impl ty::TyFunctionDecl {
                 }
 
                 // Insert the previously type checked function parameters into the current namespace.
-                for p in parameters {
+                for p in parameters.iter() {
                     p.insert_into_namespace(handler, ctx.by_ref());
                 }
 

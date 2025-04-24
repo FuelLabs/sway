@@ -165,6 +165,10 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
                     info!("Decoded log value: {}, log rb: {}", var_value, rb);
                 }
             }
+
+            for captured in test.ecal.captured.iter() {
+                captured.apply();
+            }
         }
 
         if test_print_opts.raw_logs {
@@ -257,6 +261,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         error_on_warnings: cmd.build.profile.error_on_warnings,
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
+        hex_outfile: cmd.build.output.hex_file,
         build_target: cmd.build.build_target,
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,

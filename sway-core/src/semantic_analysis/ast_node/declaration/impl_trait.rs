@@ -1318,7 +1318,7 @@ fn type_check_impl_method(
         for (impl_method_signature_param, impl_method_param) in impl_method_signature
             .parameters
             .iter_mut()
-            .zip(&mut impl_method.parameters)
+            .zip(impl_method.parameters.iter_mut())
         {
             // TODO use trait constraints as part of the type here to
             // implement trait constraint solver */

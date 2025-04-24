@@ -1,5 +1,5 @@
 use fuel_vm::consts::VM_MAX_RAM;
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
+use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestRegistersContract",
@@ -10,7 +10,7 @@ abigen!(Contract(
 // TO DO :
 //    -  Ability to return any type of Contract.
 //    -  Return a result
-async fn deploy_test_registers_instance() -> TestRegistersContract<WalletUnlocked> {
+async fn deploy_test_registers_instance() -> TestRegistersContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/registers/out/release/registers.bin",
@@ -19,7 +19,8 @@ async fn deploy_test_registers_instance() -> TestRegistersContract<WalletUnlocke
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestRegistersContract::new(id.clone(), wallet)
 }

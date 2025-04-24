@@ -183,21 +183,6 @@ impl PartialEq for IdentUnique {
     }
 }
 
-impl Ord for IdentUnique {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0
-            .span()
-            .cmp(&other.0.span())
-            .then(self.0.as_str().cmp(other.0.as_str()))
-    }
-}
-
-impl PartialOrd for IdentUnique {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 impl Eq for IdentUnique {}
 
 impl Spanned for IdentUnique {

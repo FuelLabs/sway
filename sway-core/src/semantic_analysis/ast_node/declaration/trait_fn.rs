@@ -103,7 +103,7 @@ impl ty::TyTraitFn {
         ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
-            body: ty::TyCodeBlock::default(),
+            body: <_>::default(),
             parameters: self.parameters.clone(),
             implementing_type: match abi_mode.clone() {
                 AbiMode::ImplAbiFn(_abi_name, abi_decl_id) => {

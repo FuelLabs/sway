@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+entry = "main.sw"
+name = "dbg_release"
+force-dbg-in-release = true
+
+[dependencies]
+std = { path = "../../../../../reduced_std_libs/sway-lib-std-core" }
