@@ -8,7 +8,11 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
     let wallet_coins = wallet
         .get_asset_inputs_for_amount(
             AssetId::default(),
-            wallet.get_asset_balance(&AssetId::default()).await.unwrap(),
+            wallet
+                .get_asset_balance(&AssetId::default())
+                .await
+                .unwrap()
+                .into(),
             None,
         )
         .await
@@ -27,11 +31,8 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
     let tx = tx.build(provider).await?;
 
     let provider = wallet.provider();
-    let tx_id = provider.send_transaction(tx).await.unwrap();
-    provider
-        .tx_status(&tx_id)
-        .await
-        .unwrap()
+    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    tx_status
         .take_receipts_checked(None)
 }
 
