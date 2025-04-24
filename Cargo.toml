@@ -94,9 +94,9 @@ fuel-core-types = { version = "0.43", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = { git = "https://github.com/FuelLabs/fuels-rs/", branch = "master" }
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs/", branch = "master" }
-fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs/", branch = "master" }
+fuels = "0.72"
+fuels-core = "0.72"
+fuels-accounts = "0.72"
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.60"
@@ -106,7 +106,7 @@ fuel-tx = "0.60"
 fuel-vm = "0.60"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "kayagokalp/bump-to-fuels-0.72" }
+forc-wallet = "0.14"
 
 #
 # External dependencies
