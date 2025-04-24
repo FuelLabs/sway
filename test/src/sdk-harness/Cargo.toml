@@ -10,15 +10,15 @@ publish = false
 assert_matches = "1.5"
 
 # Dependencies from the `fuel-core` repository:
-fuel-core = { version = "0.41", default-features = false }
+fuel-core = { version = "0.43", default-features = false }
 # Using full semver as the workspace Cargo.toml (see the comment there) 
-fuel-core-client = { version = "0.41.9", default-features = false }
+fuel-core-client = { version = "0.43.1", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-vm = { version = "0.59", features = ["random"] }
+fuel-vm = { version = "0.60", features = ["random"] }
 
 # Dependencies from the `fuels-rs` repository:
-fuels = { version = "0.71", features = ["fuel-core-lib"] }
+fuels = { version = "0.72", features = ["fuel-core-lib"] }
 
 hex = "0.4"
 paste = "1.0"

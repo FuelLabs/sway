@@ -4,7 +4,7 @@ use crate::{
         call::{FuncType, Verbosity},
     },
     op::call::{
-        missing_contracts::get_missing_contracts,
+        missing_contracts::determine_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
         CallResponse, Either,
     },
@@ -99,14 +99,13 @@ pub async fn call_function(
             .collect(),
         None => {
             // Automatically retrieve missing contract addresses from the call
-            let external_contracts = get_missing_contracts(
-                call.clone(),
+            let external_contracts = determine_missing_contracts(
+                &call,
                 wallet.provider(),
                 &tx_policies,
                 &variable_output_policy,
                 &log_decoder,
                 &wallet,
-                None,
             )
             .await?;
             if !external_contracts.is_empty() {
@@ -151,7 +150,7 @@ pub async fn call_function(
             let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
             let tx_status = wallet
                 .provider()
-                .dry_run_opt(tx.clone(), false, gas_price)
+                .dry_run_opt(tx.clone(), false, gas_price, None)
                 .await
                 .map_err(|e| anyhow!("Failed to simulate transaction: {e}"))?;
             (tx, tx_status)
