@@ -49,10 +49,10 @@ fn test_forc_test_raw_logs() -> Result<(), rexpect::error::Error> {
     // Assert that the output is correct
     process.exp_string("      test test_log_4")?;
     process.exp_string("Raw logs:")?;
-    process.exp_string(r#"[{"LogData":{"data":"0000000000000004","digest":"8005f02d43fa06e7d0585fb64c961d57e318b27a145c857bcd3a6bdb413ff7fc","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":12288,"ptr":67107840,"ra":0,"rb":1515152261580153489}}]"#)?;
+    process.exp_string(r#"[{"LogData":{"data":"0000000000000004","digest":"8005f02d43fa06e7d0585fb64c961d57e318b27a145c857bcd3a6bdb413ff7fc","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":12300,"ptr":67107840,"ra":0,"rb":1515152261580153489}}]"#)?;
     process.exp_string("      test test_log_2")?;
     process.exp_string("Raw logs:")?;
-    process.exp_string(r#"[{"LogData":{"data":"0000000000000002","digest":"cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":12288,"ptr":67107840,"ra":0,"rb":1515152261580153489}}]"#)?;
+    process.exp_string(r#"[{"LogData":{"data":"0000000000000002","digest":"cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":12300,"ptr":67107840,"ra":0,"rb":1515152261580153489}}]"#)?;
 
     process.process.exit()?;
     Ok(())
@@ -74,11 +74,11 @@ fn test_forc_test_both_logs() -> Result<(), rexpect::error::Error> {
     process.exp_string("      test test_log_4")?;
     process.exp_string("Decoded log value: 4, log rb: 1515152261580153489")?;
     process.exp_string("Raw logs:")?;
-    process.exp_string(r#"[{"LogData":{"data":"0000000000000004","digest":"8005f02d43fa06e7d0585fb64c961d57e318b27a145c857bcd3a6bdb413ff7fc","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":12288,"ptr":67107840,"ra":0,"rb":1515152261580153489}}]"#)?;
+    process.exp_string(r#"[{"LogData":{"data":"0000000000000004","digest":"8005f02d43fa06e7d0585fb64c961d57e318b27a145c857bcd3a6bdb413ff7fc","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":12300,"ptr":67107840,"ra":0,"rb":1515152261580153489}}]"#)?;
     process.exp_string("      test test_log_2")?;
     process.exp_string("Decoded log value: 2, log rb: 1515152261580153489")?;
     process.exp_string("Raw logs:")?;
-    process.exp_string(r#"[{"LogData":{"data":"0000000000000002","digest":"cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":12288,"ptr":67107840,"ra":0,"rb":1515152261580153489}}]"#)?;
+    process.exp_string(r#"[{"LogData":{"data":"0000000000000002","digest":"cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":12300,"ptr":67107840,"ra":0,"rb":1515152261580153489}}]"#)?;
     process.process.exit()?;
     Ok(())
 }
