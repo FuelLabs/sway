@@ -84,22 +84,20 @@ impl ResetKnown {
     fn apply(&self, op: &Op, known_values: &mut KnownValues) {
         match self {
             ResetKnown::Full => {
-                println!(" removing registers");
                 known_values.values.clear();
             }
             ResetKnown::NonVirtual => {
-                println!(" removing all non-virtual registers");
                 Self::Defs.apply(op, known_values);
-                known_values.values.retain(|k, _| matches!(k, VirtualRegister::Virtual(_)));
+                known_values
+                    .values
+                    .retain(|k, _| matches!(k, VirtualRegister::Virtual(_)));
             }
             ResetKnown::Defs => {
                 for d in op.def_registers() {
-                    println!(" removing {d} and all deps");
                     known_values.clear_dependent_on(d);
                     known_values.values.remove(d);
                 }
                 for d in op.def_const_registers() {
-                    println!(" removing {d} and all deps");
                     known_values.clear_dependent_on(d);
                     known_values.values.remove(d);
                 }
@@ -133,8 +131,6 @@ impl AbstractInstructionSet {
         let mut known_values = KnownValues::default();
 
         for op in &mut self.ops {
-            println!("Processing {op}");
-
             // Perform constant propagation on the instruction.
             let mut uses_regs: Vec<_> = op.use_registers_mut().into_iter().collect();
             for reg in uses_regs.iter_mut() {
@@ -143,7 +139,6 @@ impl AbstractInstructionSet {
                     continue;
                 }
                 if let Some(r) = known_values.resolve(reg).and_then(|r| r.register()) {
-                    println!(" replace {reg} with {r}");
                     **reg = r;
                 }
             }
@@ -183,7 +178,6 @@ impl AbstractInstructionSet {
                         }
                     } else {
                         known_values.assign(dst.clone(), KnownRegValue::Eq(src.clone()));
-                        println!(" equate {dst} = {src}");
                     }
                     true
                 }
