@@ -151,7 +151,7 @@ pub async fn call_function(
             let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
             let tx_status = wallet
                 .provider()
-                .dry_run_opt(tx.clone(), false, gas_price)
+                .dry_run_opt(tx.clone(), false, gas_price, None)
                 .await
                 .map_err(|e| anyhow!("Failed to simulate transaction: {e}"))?;
             (tx, tx_status)
