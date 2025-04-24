@@ -468,7 +468,7 @@ async fn test_deploy_fresh_proxy() {
     node.kill().unwrap();
     let impl_contract = DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "57a5ac7d952df0dd7e72812509fd373260bee5dac54cca48c4d0b2841e9bcee3",
+            "51f7873f41a474b826ba8fe96007b69e7e3a828bb3cd49003e9e2b8175ce1b79",
         )
         .unwrap(),
         proxy: Some(
