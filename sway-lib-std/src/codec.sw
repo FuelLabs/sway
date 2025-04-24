@@ -153,8 +153,8 @@ impl BufferReader {
                 BufferReader { ptr }
             },
             INPUT_READ_ONLY_DATA_COIN_PREDICATE => {
-                let ptr = __gtf::<raw_ptr>(data_coin_index, GTF_INPUT_COIN_PREDICATE_DATA);
-                let _len = __gtf::<u64>(data_coin_index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH);
+                let ptr = __gtf::<raw_ptr>(data_coin_index, GTF_INPUT_DATA_COIN_DATA);
+                let _len = __gtf::<u64>(data_coin_index, GTF_INPUT_DATA_COIN_DATA_LENGTH);
                 BufferReader { ptr }
             },
             _ => __revert(0),
