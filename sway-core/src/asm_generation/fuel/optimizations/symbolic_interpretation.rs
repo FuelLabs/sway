@@ -189,7 +189,7 @@ impl AbstractInstructionSet {
                 let reset = match &op.opcode {
                     Either::Left(op) => match op {
                         VirtualOp::ECAL(_, _, _, _) => ResetKnown::Full,
-                        // TOOD: this constraint can be relaxed
+                        // TODO: this constraint can be relaxed
                         _ if op.has_side_effect() => ResetKnown::Full,
                         _ => ResetKnown::Defs,
                     },
