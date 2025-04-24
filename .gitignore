@@ -35,3 +35,6 @@ docs/reference/src/code/examples/**/*/Forc.lock
 
 # Insta files
 *.snap.new
+
+# Rust Rover IDE configurations
+.idea

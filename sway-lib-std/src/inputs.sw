@@ -62,6 +62,15 @@ pub enum Input {
     Contract: (),
     /// A message input.
     Message: (),
+    /// A read-only input.
+    ReadOnly: ReadOnlyInput,
+}
+
+pub enum ReadOnlyInput {
+    Coin: (),
+    DataCoin: (),
+    CoinPredicate: (),
+    DataCoinPredicate: (),
 }
 
 impl PartialEq for Input {
@@ -71,6 +80,10 @@ impl PartialEq for Input {
             (Input::DataCoin, Input::DataCoin) => true,
             (Input::Contract, Input::Contract) => true,
             (Input::Message, Input::Message) => true,
+            (Input::ReadOnly(ReadOnlyInput::Coin), Input::ReadOnly(ReadOnlyInput::Coin)) => true,
+            (Input::ReadOnly(ReadOnlyInput::DataCoin), Input::ReadOnly(ReadOnlyInput::DataCoin)) => true,
+            (Input::ReadOnly(ReadOnlyInput::CoinPredicate), Input::ReadOnly(ReadOnlyInput::CoinPredicate)) => true,
+            (Input::ReadOnly(ReadOnlyInput::DataCoinPredicate), Input::ReadOnly(ReadOnlyInput::DataCoinPredicate)) => true,
             _ => false,
         }
     }
@@ -113,6 +126,10 @@ pub fn input_type(index: u64) -> Option<Input> {
         1u8 => Some(Input::Contract),
         2u8 => Some(Input::Message),
         3u8 => Some(Input::DataCoin),
+        4u8 => Some(Input::ReadOnly(ReadOnlyInput::Coin)),
+        5u8 => Some(Input::ReadOnly(ReadOnlyInput::DataCoin)),
+        6u8 => Some(Input::ReadOnly(ReadOnlyInput::CoinPredicate)),
+        7u8 => Some(Input::ReadOnly(ReadOnlyInput::DataCoinPredicate)),
         _ => None,
     }
 }
@@ -205,7 +222,7 @@ fn input_pointer(index: u64) -> Option<raw_ptr> {
 /// ```
 pub fn input_amount(index: u64) -> Option<u64> {
     match input_type(index) {
-        Some(Input::Coin) | Some(Input::DataCoin) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT)),
+        Some(Input::Coin) | Some(Input::DataCoin) | Some(Input::ReadOnly(_)) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT)),
         Some(Input::Message) => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_AMOUNT)),
         _ => None,
     }
@@ -302,7 +319,7 @@ where
     T: AbiDecode,
 {
     match input_type(index) {
-        Some(Input::DataCoin) => Some(decode_data_coin_data_by_index::<T>(index)),
+        Some(Input::DataCoin) | Some(Input::ReadOnly(ReadOnlyInput::DataCoin)) | Some(Input::ReadOnly(ReadOnlyInput::DataCoinPredicate)) => Some(decode_data_coin_data_by_index::<T>(index)),
         _ => None,
     }
 }
@@ -329,7 +346,7 @@ where
 /// ```
 pub fn input_asset_id(index: u64) -> Option<AssetId> {
     match input_type(index) {
-        Some(Input::Coin) | Some(Input::DataCoin) => Some(AssetId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
+        Some(Input::Coin) | Some(Input::DataCoin) | Some(Input::ReadOnly(_)) => Some(AssetId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
         Some(Input::Message) => Some(AssetId::base()),
         _ => None,
     }
@@ -357,7 +374,7 @@ pub fn input_asset_id(index: u64) -> Option<AssetId> {
 /// ```
 pub fn input_witness_index(index: u64) -> Option<u16> {
     match input_type(index) {
-        Some(Input::Coin) | Some(Input::DataCoin) => Some(__gtf::<u16>(index, GTF_INPUT_COIN_WITNESS_INDEX)),
+        Some(Input::Coin) | Some(Input::DataCoin) | Some(Input::ReadOnly(ReadOnlyInput::CoinPredicate)) | Some(Input::ReadOnly(ReadOnlyInput::DataCoinPredicate)) => Some(__gtf::<u16>(index, GTF_INPUT_COIN_WITNESS_INDEX)),
         Some(Input::Message) => Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)),
         _ => None,
     }
@@ -385,7 +402,7 @@ pub fn input_witness_index(index: u64) -> Option<u16> {
 /// ```
 pub fn input_predicate_length(index: u64) -> Option<u64> {
     match input_type(index) {
-        Some(Input::Coin) | Some(Input::DataCoin) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_LENGTH)),
+        Some(Input::Coin) | Some(Input::DataCoin) | Some(Input::ReadOnly(ReadOnlyInput::CoinPredicate)) | Some(Input::ReadOnly(ReadOnlyInput::DataCoinPredicate)) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_LENGTH)),
         Some(Input::Message) => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH)),
         _ => None,
     }
@@ -413,7 +430,7 @@ pub fn input_predicate_length(index: u64) -> Option<u64> {
 /// ```
 fn input_predicate_pointer(index: u64) -> Option<raw_ptr> {
     match input_type(index) {
-        Some(Input::Coin) | Some(Input::DataCoin) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE)),
+        Some(Input::Coin) | Some(Input::DataCoin) | Some(Input::ReadOnly(ReadOnlyInput::CoinPredicate)) | Some(Input::ReadOnly(ReadOnlyInput::DataCoinPredicate)) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_COIN_PREDICATE)),
         Some(Input::Message) => Some(__gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_PREDICATE)),
         _ => None,
     }
@@ -478,7 +495,7 @@ pub fn input_predicate(index: u64) -> Option<Bytes> {
 /// ```
 pub fn input_predicate_data_length(index: u64) -> Option<u64> {
     match input_type(index) {
-        Some(Input::Coin) | Some(Input::DataCoin) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH)),
+        Some(Input::Coin) | Some(Input::DataCoin) | Some(Input::ReadOnly(ReadOnlyInput::CoinPredicate)) | Some(Input::ReadOnly(ReadOnlyInput::DataCoinPredicate)) => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH)),
         Some(Input::Message) => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)),
         _ => None,
     }
@@ -486,7 +503,7 @@ pub fn input_predicate_data_length(index: u64) -> Option<u64> {
 
 pub fn input_data_coin_data_length(index: u64) -> Option<u64> {
     match input_type(index) {
-        Some(Input::DataCoin) => Some(__gtf::<u64>(index, GTF_INPUT_DATA_COIN_DATA_LENGTH)),
+        Some(Input::DataCoin) | Some(Input::ReadOnly(ReadOnlyInput::DataCoin)) | Some(Input::ReadOnly(ReadOnlyInput::DataCoinPredicate)) => Some(__gtf::<u64>(index, GTF_INPUT_DATA_COIN_DATA_LENGTH)),
         _ => None,
     }
 }

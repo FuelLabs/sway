@@ -9,6 +9,11 @@ const GTF_INPUT_TYPE = 0x200;
 const INPUT_COIN = 0u8;
 const INPUT_MESSAGE = 2u8;
 const INPUT_DATA_COIN = 3u8;
+const INPUT_READ_ONLY_COIN = 4u8;
+const INPUT_READ_ONLY_DATA_COIN = 5u8;
+const INPUT_READ_ONLY_COIN_PREDICATE = 6u8;
+const INPUT_READ_ONLY_DATA_COIN_PREDICATE = 7u8;
+
 const GTF_OUTPUT_TYPE = 0x300;
 const OUTPUT_DATA_COIN = 5u8;
 const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x20A;
@@ -121,6 +126,16 @@ impl BufferReader {
                 let _len = __gtf::<u64>(predicate_index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH);
                 BufferReader { ptr }
             },
+            INPUT_READ_ONLY_COIN_PREDICATE => {
+                let ptr = __gtf::<raw_ptr>(predicate_index, GTF_INPUT_COIN_PREDICATE_DATA);
+                let _len = __gtf::<u64>(predicate_index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH);
+                BufferReader { ptr }
+            },
+            INPUT_READ_ONLY_DATA_COIN_PREDICATE => {
+                let ptr = __gtf::<raw_ptr>(predicate_index, GTF_INPUT_COIN_PREDICATE_DATA);
+                let _len = __gtf::<u64>(predicate_index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH);
+                BufferReader { ptr }
+            },
             _ => __revert(0),
         }
     }
@@ -128,6 +143,16 @@ impl BufferReader {
     pub fn from_data_coin_data_by_index (data_coin_index: u64) -> BufferReader {
         match __gtf::<u8>(data_coin_index, GTF_INPUT_TYPE) {
             INPUT_DATA_COIN => {
+                let ptr = __gtf::<raw_ptr>(data_coin_index, GTF_INPUT_DATA_COIN_DATA);
+                let _len = __gtf::<u64>(data_coin_index, GTF_INPUT_DATA_COIN_DATA_LENGTH);
+                BufferReader { ptr }
+            },
+            INPUT_READ_ONLY_DATA_COIN => {
+                let ptr = __gtf::<raw_ptr>(data_coin_index, GTF_INPUT_DATA_COIN_DATA);
+                let _len = __gtf::<u64>(data_coin_index, GTF_INPUT_DATA_COIN_DATA_LENGTH);
+                BufferReader { ptr }
+            },
+            INPUT_READ_ONLY_DATA_COIN_PREDICATE => {
                 let ptr = __gtf::<raw_ptr>(data_coin_index, GTF_INPUT_DATA_COIN_DATA);
                 let _len = __gtf::<u64>(data_coin_index, GTF_INPUT_DATA_COIN_DATA_LENGTH);
                 BufferReader { ptr }
