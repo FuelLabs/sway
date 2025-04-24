@@ -2,7 +2,7 @@
 source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --asm final | grep ecal
-ecal $r2 $r3 $r0 $r1          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
