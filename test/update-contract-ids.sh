@@ -25,7 +25,7 @@ BOLD_YELLOW='\033[1;33m'
 BOLD_WHITE='\033[1;97m'
 NC='\033[0m'
 
-# macOS compatibility: ggrep aand gsed from `brew install gnu-sed grep`
+# macOS compatibility: ggrep and gsed from `brew install gnu-sed grep`
 if [ -x "$(command -v ggrep)" ]; then
   grep="ggrep"
 else
