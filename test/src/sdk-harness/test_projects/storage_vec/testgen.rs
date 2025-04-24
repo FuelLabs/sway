@@ -589,7 +589,7 @@ macro_rules! testgen {
                 };
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 0")]
+                #[should_panic(expected = "revert_id: Some(0)")]
                 async fn cant_pop() {
                     let instance = get_contract_instance().await;
 
@@ -597,7 +597,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 0")]
+                #[should_panic(expected = "revert_id: Some(0)")]
                 async fn cant_get() {
                     let instance = get_contract_instance().await;
 
@@ -605,7 +605,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 18446744073709486084")]
+                #[should_panic(expected = "revert_id: Some(18446744073709486084)")]
                 async fn cant_remove() {
                     let instance = get_contract_instance().await;
 
@@ -613,7 +613,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 18446744073709486084")]
+                #[should_panic(expected = "revert_id: Some(18446744073709486084)")]
                 async fn cant_swap_remove() {
                     let instance = get_contract_instance().await;
 
@@ -621,7 +621,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 18446744073709486084")]
+                #[should_panic(expected = "revert_id: Some(18446744073709486084)")]
                 async fn cant_set() {
                     let instance = get_contract_instance().await;
 
@@ -629,7 +629,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 18446744073709486084")]
+                #[should_panic(expected = "revert_id: Some(18446744073709486084)")]
                 async fn cant_insert() {
                     let instance = get_contract_instance().await;
 
@@ -637,7 +637,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 0")]
+                #[should_panic(expected = "revert_id: Some(0)")]
                 async fn cant_get_first() {
                     let instance = get_contract_instance().await;
 
@@ -645,7 +645,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 0")]
+                #[should_panic(expected = "revert_id: Some(0)")]
                 async fn cant_get_last() {
                     let instance = get_contract_instance().await;
 
@@ -654,7 +654,7 @@ macro_rules! testgen {
 
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 18446744073709486084")]
+                #[should_panic(expected = "revert_id: Some(18446744073709486084)")]
                 async fn cant_swap() {
                     let instance = get_contract_instance().await;
 
