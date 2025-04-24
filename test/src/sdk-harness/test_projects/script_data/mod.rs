@@ -8,7 +8,11 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
     let wallet_coins = wallet
         .get_asset_inputs_for_amount(
             AssetId::default(),
-            wallet.get_asset_balance(&AssetId::default()).await.unwrap(),
+            wallet
+                .get_asset_balance(&AssetId::default())
+                .await
+                .unwrap()
+                .into(),
             None,
         )
         .await

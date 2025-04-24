@@ -139,7 +139,7 @@ async fn generate_predicate_inputs(amount: u64, wallet: &Wallet) -> (Vec<u8>, Sd
         .unwrap();
 
     let predicate_input = predicate
-        .get_asset_inputs_for_amount(AssetId::default(), amount, None)
+        .get_asset_inputs_for_amount(AssetId::default(), amount.into(), None)
         .await
         .unwrap()
         .first()
@@ -1518,7 +1518,7 @@ mod outputs {
 
             // Inputs
             let inputs = predicate
-                .get_asset_inputs_for_amount(*base_asset_id, predicate_coin_amount, None)
+                .get_asset_inputs_for_amount(*base_asset_id, predicate_coin_amount.into(), None)
                 .await
                 .unwrap();
 
@@ -1803,9 +1803,9 @@ mod outputs {
             let mut tb = call_handler.transaction_builder().await.unwrap();
 
             // Inputs for predicate
-            let transfer_amount = 50;
+            let transfer_amount = 50u64;
             let predicate_inputs = predicate
-                .get_asset_inputs_for_amount(asset_id, transfer_amount, None)
+                .get_asset_inputs_for_amount(asset_id, transfer_amount.into(), None)
                 .await
                 .unwrap();
 
