@@ -43,7 +43,7 @@ async fn create_predicate(
     let wallet_coins = wallet
         .get_asset_inputs_for_amount(
             asset_id,
-            wallet.get_asset_balance(&asset_id).await.unwrap(),
+            wallet.get_asset_balance(&asset_id).await.unwrap().into(),
             None,
         )
         .await
@@ -77,7 +77,7 @@ async fn submit_to_predicate(
     let filter = ResourceFilter {
         from: predicate_address.into(),
         asset_id: Some(asset_id),
-        amount: amount_to_predicate,
+        amount: amount_to_predicate.into(),
         ..Default::default()
     };
 
