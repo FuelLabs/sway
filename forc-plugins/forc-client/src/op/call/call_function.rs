@@ -4,7 +4,7 @@ use crate::{
         call::{FuncType, Verbosity},
     },
     op::call::{
-        missing_contracts::get_missing_contracts,
+        missing_contracts::determine_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
         CallResponse, Either,
     },
@@ -99,14 +99,13 @@ pub async fn call_function(
             .collect(),
         None => {
             // Automatically retrieve missing contract addresses from the call
-            let external_contracts = get_missing_contracts(
-                call.clone(),
+            let external_contracts = determine_missing_contracts(
+                &call,
                 wallet.provider(),
                 &tx_policies,
                 &variable_output_policy,
                 &log_decoder,
                 &wallet,
-                None,
             )
             .await?;
             if !external_contracts.is_empty() {
