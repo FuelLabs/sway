@@ -65,7 +65,7 @@ impl AllocatedRegister {
 /// so here it is.
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug)]
-pub(crate) enum AllocatedOpcode {
+pub(crate) enum AllocatedInstruction {
     /* Arithmetic/Logic (ALU) Instructions */
     ADD(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     ADDI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
@@ -300,10 +300,10 @@ pub(crate) enum AllocatedOpcode {
     Undefined,
 }
 
-impl AllocatedOpcode {
+impl AllocatedInstruction {
     /// Returns a list of all registers *written* by instruction `self`.
     pub(crate) fn def_registers(&self) -> BTreeSet<&AllocatedRegister> {
-        use AllocatedOpcode::*;
+        use AllocatedInstruction::*;
         (match self {
             /* Arithmetic/Logic (ALU) Instructions */
             ADD(r1, _r2, _r3) => vec![r1],
@@ -432,9 +432,9 @@ impl AllocatedOpcode {
     }
 }
 
-impl fmt::Display for AllocatedOpcode {
+impl fmt::Display for AllocatedInstruction {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use AllocatedOpcode::*;
+        use AllocatedInstruction::*;
         match self {
             /* Arithmetic/Logic (ALU) Instructions */
             ADD(a, b, c) => write!(fmtr, "add  {a} {b} {c}"),
@@ -572,7 +572,7 @@ impl fmt::Display for AllocatedOpcode {
 
 #[derive(Clone, Debug)]
 pub struct AllocatedOp {
-    pub(crate) opcode: AllocatedOpcode,
+    pub(crate) opcode: AllocatedInstruction,
     /// A descriptive comment for ASM readability
     pub(crate) comment: String,
     pub(crate) owning_span: Option<Span>,
@@ -607,7 +607,7 @@ impl AllocatedOp {
         offset_from_instr_start: u64,
         data_section: &DataSection,
     ) -> FuelAsmData {
-        use AllocatedOpcode::*;
+        use AllocatedInstruction::*;
         FuelAsmData::Instructions(vec![match &self.opcode {
             /* Arithmetic/Logic (ALU) Instructions */
             ADD(a, b, c) => op::ADD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),

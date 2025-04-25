@@ -7,7 +7,7 @@ use sway_error::{
 };
 use sway_types::Span;
 
-use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
+use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedInstruction};
 
 /// Checks if an opcode is one that cannot be executed from within a script.
 /// If so, throw an error.
@@ -23,7 +23,7 @@ pub(crate) fn check_script_opcodes(
     handler: &Handler,
     ops: &[AllocatedOp],
 ) -> Result<(), ErrorEmitted> {
-    use AllocatedOpcode::*;
+    use AllocatedInstruction::*;
     // Abort compilation because the finalized asm contains opcodes invalid to a script.
     // Preemptively avoids the creation of scripts with opcodes not allowed at runtime.
     handler.scope(|handler| {
@@ -77,7 +77,7 @@ pub(crate) fn check_predicate_opcodes(
     handler: &Handler,
     ops: &[AllocatedOp],
 ) -> Result<(), ErrorEmitted> {
-    use AllocatedOpcode::*;
+    use AllocatedInstruction::*;
 
     // Abort compilation because the finalized asm contains opcodes invalid to a predicate.
     // Preemptively avoids the creation of predicates with opcodes not allowed at runtime.

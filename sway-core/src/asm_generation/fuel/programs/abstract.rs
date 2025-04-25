@@ -12,7 +12,7 @@ use crate::{
         ProgramKind,
     },
     asm_lang::{
-        allocated_ops::{AllocatedOpcode, AllocatedRegister},
+        allocated_ops::{AllocatedInstruction, AllocatedRegister},
         AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, VirtualImmediate12,
         VirtualImmediate18, VirtualImmediate24,
     },
@@ -190,7 +190,7 @@ impl AbstractProgram {
         AllocatedAbstractInstructionSet {
             ops: [
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::MOVE(
+                    opcode: Either::Left(AllocatedInstruction::MOVE(
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
                         AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
                     )),
@@ -222,7 +222,7 @@ impl AbstractProgram {
                 },
                 // word 4 -- load the data offset into $ds
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::LW(
+                    opcode: Either::Left(AllocatedInstruction::LW(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
                         VirtualImmediate12::new_unchecked(1, "1 doesn't fit in 12 bits"),
@@ -232,7 +232,7 @@ impl AbstractProgram {
                 },
                 // word 4.5 -- add $ds $ds $is
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::ADD(
+                    opcode: Either::Left(AllocatedInstruction::ADD(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
@@ -278,7 +278,7 @@ impl AbstractProgram {
 
         // Load the selector from the call frame.
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::LW(
+            opcode: Either::Left(AllocatedInstruction::LW(
                 INPUT_SELECTOR_REG,
                 AllocatedRegister::Constant(ConstantRegister::FramePointer),
                 VirtualImmediate12::new_unchecked(
@@ -307,7 +307,7 @@ impl AbstractProgram {
 
             // Load the data into a register for comparison.
             asm.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedOpcode::LoadDataId(PROG_SELECTOR_REG, data_label)),
+                opcode: Either::Left(AllocatedInstruction::LoadDataId(PROG_SELECTOR_REG, data_label)),
                 comment: format!(
                     "[function selection]: load function {} selector for comparison",
                     entry.name
@@ -317,7 +317,7 @@ impl AbstractProgram {
 
             // Compare with the input selector.
             asm.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedOpcode::EQ(
+                opcode: Either::Left(AllocatedInstruction::EQ(
                     CMP_RESULT_REG,
                     INPUT_SELECTOR_REG,
                     PROG_SELECTOR_REG,
@@ -347,7 +347,7 @@ impl AbstractProgram {
         }
 
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::MOVI(
+            opcode: Either::Left(AllocatedInstruction::MOVI(
                 AllocatedRegister::Constant(ConstantRegister::Scratch),
                 VirtualImmediate18::new_unchecked(
                     compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE.into(),
@@ -359,7 +359,7 @@ impl AbstractProgram {
             owning_span: None,
         });
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::RVRT(AllocatedRegister::Constant(
+            opcode: Either::Left(AllocatedInstruction::RVRT(AllocatedRegister::Constant(
                 ConstantRegister::Scratch,
             ))),
             comment: "[function selection]: revert if no selectors have matched".into(),
@@ -370,7 +370,7 @@ impl AbstractProgram {
     fn append_globals_allocation(&self, asm: &mut AllocatedAbstractInstructionSet) {
         let len_in_bytes = self.globals_section.len_in_bytes();
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::CFEI(VirtualImmediate24::new_unchecked(
+            opcode: Either::Left(AllocatedInstruction::CFEI(VirtualImmediate24::new_unchecked(
                 len_in_bytes,
                 "length (bytes) must fit in 24 bits",
             ))),
