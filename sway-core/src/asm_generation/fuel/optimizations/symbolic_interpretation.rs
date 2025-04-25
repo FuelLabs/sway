@@ -14,7 +14,7 @@ enum KnownRegValue {
 }
 
 impl KnownRegValue {
-    /// If the value can be represented as a constant, return it.
+    /// If the value can be represented as a register, return it.
     fn register(&self) -> Option<VirtualRegister> {
         match self {
             KnownRegValue::Const(0) => Some(VirtualRegister::Constant(ConstantRegister::Zero)),
