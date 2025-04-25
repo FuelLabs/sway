@@ -1,5 +1,3 @@
-//! Symbolic fuel-vm interpreter.
-
 use std::collections::hash_map::Entry;
 
 use either::Either;
@@ -110,7 +108,7 @@ impl ResetKnown {
 
 impl AbstractInstructionSet {
     /// Symbolically interpret code and propagate known register values.
-    pub(crate) fn interpret_propagate(mut self) -> AbstractInstructionSet {
+    pub(crate) fn constant_propagate(mut self) -> AbstractInstructionSet {
         if self.ops.is_empty() {
             return self;
         }
