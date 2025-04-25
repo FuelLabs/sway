@@ -1,7 +1,9 @@
 //! Symbolic fuel-vm interpreter.
 
+use std::collections::hash_map::Entry;
+
 use either::Either;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::asm_lang::{ConstantRegister, ControlFlowOp, Label, Op, VirtualOp, VirtualRegister};
 
@@ -113,20 +115,19 @@ impl AbstractInstructionSet {
             return self;
         }
 
-        // The set of labels that are jump targets
+        // The set of labels that are jump targets, and how many places jump to them.
         // todo: build proper control flow graph instead
-        let jump_target_labels: FxHashSet<Label> = self
-            .ops
-            .iter()
-            .filter_map(|op| match op.opcode {
-                Either::Right(
-                    ControlFlowOp::Jump(label)
-                    | ControlFlowOp::JumpIfNotZero(_, label)
-                    | ControlFlowOp::Call(label),
-                ) => Some(label),
-                _ => None,
-            })
-            .collect();
+        let mut jump_target_labels = FxHashMap::<Label, usize>::default();
+        for op in &self.ops {
+            if let Either::Right(
+                ControlFlowOp::Jump(label)
+                | ControlFlowOp::JumpIfNotZero(_, label)
+                | ControlFlowOp::Call(label),
+            ) = &op.opcode
+            {
+                *jump_target_labels.entry(label.clone()).or_default() += 1;
+            }
+        }
 
         let mut known_values = KnownValues::default();
 
@@ -149,6 +150,14 @@ impl AbstractInstructionSet {
                 Either::Right(ControlFlowOp::JumpIfNotZero(reg, lab)) => {
                     if let Some(con) = known_values.resolve(reg).and_then(|r| r.value()) {
                         if con == 0 {
+                            let Entry::Occupied(mut count) = jump_target_labels.entry(*lab) else {
+                                unreachable!("Jump target label not found in jump_target_labels");
+                            };
+                            *count.get_mut() -= 1;
+                            if *count.get() == 0 {
+                                // Nobody jumps to this label anymore
+                                jump_target_labels.remove(lab);
+                            }
                             op.opcode = Either::Left(VirtualOp::NOOP);
                         } else {
                             op.opcode = Either::Right(ControlFlowOp::Jump(*lab));
@@ -194,10 +203,10 @@ impl AbstractInstructionSet {
                         _ => ResetKnown::Defs,
                     },
                     Either::Right(op) => match op {
-                        // If this is a jump target, then multiple jumps can reach it, and we can't
-                        // assume to know register values.
+                        // If this is a jump target, then multiple execution paths can lead to it,
+                        // and we can't assume to know register values.
                         ControlFlowOp::Label(label) => {
-                            if jump_target_labels.contains(label) {
+                            if jump_target_labels.contains_key(label) {
                                 ResetKnown::Full
                             } else {
                                 ResetKnown::Defs
