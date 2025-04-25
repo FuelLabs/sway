@@ -123,7 +123,7 @@ impl AbstractInstructionSet {
                 | ControlFlowOp::Call(label),
             ) = &op.opcode
             {
-                *jump_target_labels.entry(label.clone()).or_default() += 1;
+                *jump_target_labels.entry(*label).or_default() += 1;
             }
         }
 
