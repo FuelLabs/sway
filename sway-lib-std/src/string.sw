@@ -238,7 +238,7 @@ impl String {
     pub fn ptr(self) -> raw_ptr {
         self.bytes.ptr()
     }
-    
+
     /// Converts the `String` into a string slice.
     ///
     /// # Returns
