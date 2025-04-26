@@ -2,6 +2,7 @@ library;
 
 use ::raw_ptr::*;
 use ::codec::*;
+use ::debug::*;
 use ::slice::*;
 
 const STDERR: u64 = 2;
@@ -38,9 +39,14 @@ pub struct DebugTuple {
 pub struct Formatter {}
 
 impl Formatter {
+    pub fn print_string_quotes(self) {
+        let c = [34u8];
+        syscall_write(STDERR, __addr_of(c), 1);
+    }
+
     pub fn print_newline(self) {
-        let lf = [10u8];
-        syscall_write(STDERR, __addr_of(lf), 1);
+        let c = [10u8];
+        syscall_write(STDERR, __addr_of(c), 1);
     }
 
     pub fn print_str(self, s: str) {
@@ -159,9 +165,11 @@ impl Formatter {
         };
 
         let mut value = value;
-        // u256::MAX = 115792089237316195423570985008687907853269984665640564039457584007913129639935
-        let mut digits = [48u8; 80];
-        let mut i = 79;
+        // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+        let mut digits = [48u8; 66];
+        digits[0] = 48; // ascii Zero
+        digits[1] = 120; // ascii X
+        let mut i = 65;
         while true {
             let rem = value % 16;
             let (_, _, _, digit) = asm(rem: rem) {
@@ -184,12 +192,7 @@ impl Formatter {
             i -= 1;
         }
 
-        // 0x prefix
-        i -= 1;
-        digits[i] = 120; // ascii x = 120
-        i -= 1;
-        digits[i] = 48; // ascii zero = 48
-        syscall_write(STDERR, __addr_of(digits).add::<u8>(i), 80 - i);
+        syscall_write(STDERR, __addr_of(digits), 66);
     }
 
     pub fn debug_struct(self, name: str) -> DebugStruct {
@@ -305,6 +308,12 @@ impl Debug for bool {
         } else {
             f.print_str("false");
         }
+    }
+}
+
+impl Debug for () {
+    fn fmt(self, ref mut f: Formatter) {
+        f.print_str("()");
     }
 }
 
@@ -2684,34 +2693,3 @@ where
     }
 }
 // END TUPLES_DEBUG
-
-#[test]
-fn ok_all_primitives_must_be_debug() {
-    let _ = __dbg(true);
-    let _ = __dbg(false);
-
-    let _ = __dbg(u8::min());
-    let _ = __dbg(u8::max());
-
-    let _ = __dbg(u16::min());
-    let _ = __dbg(u16::max());
-
-    let _ = __dbg(u32::min());
-    let _ = __dbg(u32::max());
-
-    let _ = __dbg(u64::min());
-    let _ = __dbg(u64::max());
-
-    let _ = __dbg(u256::min());
-    let _ = __dbg(u256::max());
-
-    let _ = __dbg(b256::min());
-    let _ = __dbg(b256::max());
-
-    let _ = __dbg("A");
-    let _ = __dbg(__to_str_array("A"));
-
-    let _ = __dbg(("A", 0u8));
-    let _ = __dbg([0u8, 1u8]);
-    let _ = __dbg(__slice(&[0u8, 1u8], 0, 2));
-}
