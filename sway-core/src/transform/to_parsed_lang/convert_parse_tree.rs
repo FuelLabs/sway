@@ -2088,7 +2088,7 @@ fn expr_func_app_to_expression_kind(
         }
         // "__dbg(arg)" in debug becomes "{
         //      let mut f = Formatter { };
-        //      f.print_str("[{current_file}:{current_line}:{current_col}] = ");
+        //      f.print_str("[{current_file}:{current_line}:{current_col}] {span} = ");
         //      let arg = arg;
         //      arg.fmt(f);
         //      f.flush();
@@ -2223,12 +2223,19 @@ fn expr_func_app_to_expression_kind(
                         )),
                         span: Span::dummy(),
                     },
-                    // f.print_str("[" + <current file> + ":" + <current line> + ":" + <current col> + "] = ");
+                    // f.print_str("[{current_file}:{current_line}:{current_col}] {span} = ");
                     ast_node_to_print_str(
                         f_ident.clone(),
                         &format!(
-                            "[{}:{}:{}] = ",
-                            current_file, start_line_col.line, start_line_col.col
+                            "[{}:{}:{}] {} = ",
+                            current_file,
+                            start_line_col.line,
+                            start_line_col.col,
+                            match swayfmt::parse::parse_format::<Expr>(arguments[0].span.as_str(),)
+                            {
+                                Ok(s) => s,
+                                _ => arguments[0].span.as_str().to_string(),
+                            }
                         ),
                         &span,
                     ),
