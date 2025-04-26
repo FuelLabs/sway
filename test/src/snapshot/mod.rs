@@ -220,8 +220,8 @@ fn clean_output(output: &str) -> String {
     let result = r.replace_all(&result, "$1???");
 
     // remove each test time
-    let r = Regex::new("(\\().*?(,.*?gas\\))").unwrap();
-    let result = r.replace_all(&result, "$1???$2");
+    let r = Regex::new("(\\().*?(,.*?)(gas\\))").unwrap();
+    let result = r.replace_all(&result, "$1???, ??? $3");
 
     // Remove forc test time
     let r = Regex::new("((F|f)inished in )(.*?s)").unwrap();
