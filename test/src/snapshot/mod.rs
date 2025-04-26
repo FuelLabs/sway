@@ -217,7 +217,15 @@ fn clean_output(output: &str) -> String {
     // Remove compilation time
     let r = Regex::new("(Finished (debug|release) \\[.*?\\] target\\(s\\) \\[.*?\\] in )(.*?s)")
         .unwrap();
-    let result = r.replace(&result, "$1???");
+    let result = r.replace_all(&result, "$1???");
+
+    // remove each test time
+    let r = Regex::new("(\\().*?(,.*?gas\\))").unwrap();
+    let result = r.replace_all(&result, "$1???$2");
+
+    // Remove forc test time
+    let r = Regex::new("((F|f)inished in )(.*?s)").unwrap();
+    let result = r.replace_all(&result, "$1???");
 
     // Remove individual test duration time
     let r = Regex::new("(test .+ \\()(.*?s)(, .+ gas\\))").unwrap();

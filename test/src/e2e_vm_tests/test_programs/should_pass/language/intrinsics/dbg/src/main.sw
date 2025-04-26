@@ -64,7 +64,7 @@ fn main() -> u64 {
 
     // all std library types must be debug
     let _ = __dbg(std::address::Address::zero());
-    let _ = __dbg(std::asset_id::AssetId::default());
+    let _ = __dbg(std::asset_id::AssetId::zero());
     let _ = __dbg(std::auth::AuthError::InputsNotAllOwnedBySameAddress);
     let _ = __dbg(std::b512::B512::zero());
     use std::block::*;
@@ -85,7 +85,7 @@ fn main() -> u64 {
     use std::low_level_call::*;
     let _ = __dbg(std::low_level_call::CallParams {
         coins: 1,
-        asset_id: std::asset_id::AssetId::default(),
+        asset_id: std::asset_id::AssetId::zero(),
         gas: 2,
     });
     let _ = __dbg(std::option::Option::Some(1u8));
