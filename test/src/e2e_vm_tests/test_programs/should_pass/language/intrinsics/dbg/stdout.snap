@@ -2,12 +2,90 @@
 source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --asm final | grep ecal
-ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
-ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
-ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
-ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 ecal $r4 $r2 $r3 $r0          ; ecal id fd buf count
 ecal $r2 $r1 $zero $zero      ; ecal id fd zero zero
 ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r2 $r0 $r1 $r3          ; ecal id fd buf count
+ecal $r3 $r1 $r2 $r4          ; ecal id fd buf count
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --release --asm final | grep ecal
+
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --logs
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg
+   Compiling library std (sway-lib-std)
+   Compiling script dbg (test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg)
+    Finished debug [unoptimized + fuel] target(s) [34.392 KB] in ???
+     Running 1 test, filtered 0 tests
+
+tested -- dbg
+
+      test call_main ... ok (3.17355ms, 0 gas)
+[src/main.sw:13:13] = ()
+[src/main.sw:15:13] = true
+[src/main.sw:16:13] = false
+[src/main.sw:18:13] = 0
+[src/main.sw:19:13] = 1
+[src/main.sw:20:13] = 10
+[src/main.sw:21:13] = 100
+[src/main.sw:22:13] = 255
+[src/main.sw:24:13] = 0
+[src/main.sw:25:13] = 1
+[src/main.sw:26:13] = 10
+[src/main.sw:27:13] = 100
+[src/main.sw:28:13] = 65535
+[src/main.sw:30:13] = 0
+[src/main.sw:31:13] = 1
+[src/main.sw:32:13] = 10
+[src/main.sw:33:13] = 100
+[src/main.sw:34:13] = 4294967295
+[src/main.sw:36:13] = 0
+[src/main.sw:37:13] = 1
+[src/main.sw:38:13] = 10
+[src/main.sw:39:13] = 100
+[src/main.sw:40:13] = 18446744073709551615
+[src/main.sw:42:13] = 0
+[src/main.sw:43:13] = 1
+[src/main.sw:44:13] = 10
+[src/main.sw:45:13] = 100
+[src/main.sw:46:13] = 115792089237316195423570985008687907853269984665640564039457584007913129639935
+[src/main.sw:48:13] = 0x0000000000000000000000000000000000000000000000000000000000000000
+[src/main.sw:49:13] = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+[src/main.sw:52:13] = "A"
+[src/main.sw:53:13] = "A"
+[src/main.sw:56:13] = ("A", 0)
+[src/main.sw:57:13] = [0, 1]
+[src/main.sw:58:13] = [0, 1]
+[src/main.sw:61:13] = S { }
+[src/main.sw:62:13] = None
+[src/main.sw:63:13] = E(S { })
+[src/main.sw:66:13] = Address { bits: 0x0000000000000000000000000000000000000000000000000000000000000000 }
+[src/main.sw:67:13] = AssetId { bits: 0x46CAF24A2B995ED9CA3F41360B3C83BF1E4B5BE48DC1CAF187BCCEAF7C493F09 }
+[src/main.sw:68:13] = InputsNotAllOwnedBySameAddress
+[src/main.sw:69:13] = B512 { bits: [0x0000000000000000000000000000000000000000000000000000000000000000, 0x0000000000000000000000000000000000000000000000000000000000000000] }
+[src/main.sw:71:13] = BlockHeightTooHigh
+[src/main.sw:72:13] = [1, 2, 3]
+[src/main.sw:79:13] = ContractId { bits: 0x0000000000000000000000000000000000000000000000000000000000000000 }
+[src/main.sw:81:13] = ZeroLengthMessage
+[src/main.sw:82:13] = Identity(Address { bits: 0x0000000000000000000000000000000000000000000000000000000000000000 })
+[src/main.sw:84:13] = Coin
+[src/main.sw:86:13] = CallParams { coins: 1, asset_id: AssetId { bits: 0x46CAF24A2B995ED9CA3F41360B3C83BF1E4B5BE48DC1CAF187BCCEAF7C493F09 }, gas: 2 }
+[src/main.sw:91:13] = Option(1)
+[src/main.sw:93:13] = Coin
+[src/main.sw:94:13] = Result(1)
+[src/main.sw:96:13] = "hello"
+[src/main.sw:97:13] = Script
+[src/main.sw:99:13] = U128 { upper: 0, lower: 0 }
+[src/main.sw:100:13] = LossOfPrecision
+[src/main.sw:101:13] = [1, 2, 3]
+[src/main.sw:108:13] = VecIter { values: [1, 2, 3], index: 0 }
+[src/main.sw:117:5] = 11
+
+test result: OK. 1 passed; 0 failed; finished in 3.17355ms
+
+    Finished in 5.512143ms

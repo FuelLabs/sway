@@ -301,6 +301,12 @@ pub trait Debug {
     fn fmt(self, ref mut f: Formatter);
 }
 
+impl Debug for () {
+    fn fmt(self, ref mut f: Formatter) {
+        f.print_str("()");
+    }
+}
+
 impl Debug for bool {
     fn fmt(self, ref mut f: Formatter) {
         if self {
@@ -308,12 +314,6 @@ impl Debug for bool {
         } else {
             f.print_str("false");
         }
-    }
-}
-
-impl Debug for () {
-    fn fmt(self, ref mut f: Formatter) {
-        f.print_str("()");
     }
 }
 
@@ -366,14 +366,9 @@ impl Debug for raw_ptr {
 
 impl Debug for str {
     fn fmt(self, ref mut f: Formatter) {
-        let quote = [34u8];
-        f.print_str(asm(s: (__addr_of(quote), 1)) {
-            s: str
-        });
+        f.print_string_quotes();
         f.print_str(self);
-        f.print_str(asm(s: (__addr_of(quote), 1)) {
-            s: str
-        });
+        f.print_string_quotes();
     }
 }
 
