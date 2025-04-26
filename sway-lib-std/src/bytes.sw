@@ -1216,8 +1216,7 @@ impl Iterator for BytesIter {
     }
 }
 
-impl Debug for Bytes
-{
+impl Debug for Bytes {
     fn fmt(self, ref mut f: Formatter) {
         let mut l = f.debug_list();
         for elem in self.iter() {

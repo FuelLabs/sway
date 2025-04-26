@@ -25,7 +25,7 @@ output:
 
 tested -- dbg
 
-      test call_main ... ok (???, 0 gas)
+      test call_main ... ok (???, ??? gas)
 [src/main.sw:13:13] = ()
 [src/main.sw:15:13] = true
 [src/main.sw:16:13] = false

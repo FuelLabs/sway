@@ -391,7 +391,7 @@ fn go_to_definition_for_fields() {
             req_uri: &uri,
             req_line: 5,
             req_char: 8,
-            def_line: 84,
+            def_line: 85,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -448,7 +448,7 @@ fn go_to_definition_inside_turbofish() {
             req_uri: &uri,
             req_line: 15,
             req_char: 12,
-            def_line: 84,
+            def_line: 85,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -468,7 +468,7 @@ fn go_to_definition_inside_turbofish() {
             req_uri: &uri,
             req_line: 20,
             req_char: 19,
-            def_line: 64,
+            def_line: 65,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/result.sw",
@@ -528,7 +528,7 @@ fn go_to_definition_for_matches() {
             req_uri: &uri,
             req_line: 25,
             req_char: 19,
-            def_line: 84,
+            def_line: 85,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -546,7 +546,7 @@ fn go_to_definition_for_matches() {
             req_uri: &uri,
             req_line: 25,
             req_char: 27,
-            def_line: 88,
+            def_line: 89,
             def_start_char: 4,
             def_end_char: 8,
             def_path: "sway-lib-std/src/option.sw",
@@ -561,7 +561,7 @@ fn go_to_definition_for_matches() {
             req_uri: &uri,
             req_line: 26,
             req_char: 17,
-            def_line: 86,
+            def_line: 87,
             def_start_char: 4,
             def_end_char: 8,
             def_path: "sway-lib-std/src/option.sw",
@@ -683,7 +683,7 @@ fn go_to_definition_for_paths() {
             req_uri: &uri,
             req_line: 10,
             req_char: 27,
-            def_line: 84,
+            def_line: 85,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -732,7 +732,7 @@ fn go_to_definition_for_paths() {
             req_uri: &uri,
             req_line: 12,
             req_char: 42,
-            def_line: 13,
+            def_line: 14,
             def_start_char: 11,
             def_end_char: 21,
             def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
@@ -1122,14 +1122,14 @@ fn go_to_definition_for_variables() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 53, 21).await;
 
         // Complex type ascriptions
-        go_to.def_line = 64;
+        go_to.def_line = 65;
         go_to.def_start_char = 9;
         go_to.def_end_char = 15;
         go_to.def_path = "sway-lib-std/src/result.sw";
         lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 22).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 31).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 60).await;
-        go_to.def_line = 84;
+        go_to.def_line = 85;
         go_to.def_path = "sway-lib-std/src/option.sw";
         lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 28).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 39).await;
@@ -1163,7 +1163,7 @@ fn go_to_definition_for_consts() {
             req_uri: &uri,
             req_line: 9,
             req_char: 24,
-            def_line: 12,
+            def_line: 13,
             def_start_char: 11,
             def_end_char: 21,
             def_path: "sway-lib-std/src/contract_id.sw",
@@ -1172,7 +1172,7 @@ fn go_to_definition_for_consts() {
 
         // value: `from`
         contract_go_to.req_char = 34;
-        contract_go_to.def_line = 62;
+        contract_go_to.def_line = 63;
         contract_go_to.def_start_char = 7;
         contract_go_to.def_end_char = 11;
         lsp::definition_check(&server, &contract_go_to).await;
@@ -1216,7 +1216,7 @@ fn go_to_definition_for_consts() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 10, 17).await;
 
         // Complex type ascriptions
-        go_to.def_line = 84;
+        go_to.def_line = 85;
         go_to.def_start_char = 9;
         go_to.def_end_char = 15;
         go_to.def_path = "sway-lib-std/src/option.sw";
