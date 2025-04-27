@@ -25,6 +25,18 @@ BOLD_YELLOW='\033[1;33m'
 BOLD_WHITE='\033[1;97m'
 NC='\033[0m'
 
+# macOS compatibility: ggrep and gsed from `brew install gnu-sed grep`
+if [ -x "$(command -v ggrep)" ]; then
+  grep="ggrep"
+else
+  grep="grep"
+fi
+if [ -x "$(command -v gsed)" ]; then
+  sed="gsed"
+else
+  sed="sed"
+fi
+
 function join_by {
   local d=${1-} f=${2-}
   if shift 2; then
@@ -45,14 +57,14 @@ ask_confirmation() {
     fi
 }
 
-grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
-    PARTS=($(echo $line | sed 's/:/ /g'))
+$grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
+    PARTS=($(echo $line | $sed 's/:/ /g'))
     FOLDER=$(dirname ${PARTS[0]})
     FILE=${PARTS[0]}
     LINE=${PARTS[1]}
 
     SED_COMMAND="${LINE}"'!d'
-    CONTRACT_ARGS=($(sed "$SED_COMMAND" $FILE))
+    CONTRACT_ARGS=($($sed "$SED_COMMAND" $FILE))
     CONTRACT_ARGS=$(join_by " " ${CONTRACT_ARGS[@]:6})
 
     if [[ $CONTRACT_ARGS ]]; then 
@@ -60,7 +72,7 @@ grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
         echo -e "${BOLD_WHITE}$PROJ${NC}"
 
         pushd "$FOLDER/.." >> /dev/null
-        CONTRACT_ID=$(cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS 2> /dev/null | grep -oP '0x[a-zA-Z0-9]{64}')
+        CONTRACT_ID=$(cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS 2> /dev/null | $grep -oP '0x[a-zA-Z0-9]{64}')
 
         if [[ $CONTRACT_ID ]]; then 
             popd >> /dev/null
@@ -68,7 +80,7 @@ grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
             SED_EXPR="${LINE}s/0x[a-zA-Z0-9]*/$CONTRACT_ID/g"
 
             # check if there is a diff
-            diff -s --color <(cat $FILE) <(cat $FILE | sed --expression="$SED_EXPR") > /dev/null
+            diff -s --color <(cat $FILE) <(cat $FILE | $sed --expression="$SED_EXPR") > /dev/null
             if [ $? -eq 0 ]; then
               # no diff, continue
               echo -e "    ${BOLD_GREEN}no changes needed${NC} ($CONTRACT_ID)"
@@ -79,15 +91,15 @@ grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
                 if [ "$CHANGES" != "0" ]; then
                   echo -e "    ${BOLD_RED}Aborting${NC} This contract id needs update, but git state is not clean. commit, restore first or run with \"-i\"."
                   echo $FILE
-                  diff -s --color <(cat $FILE) <(cat $FILE | sed --expression="$SED_EXPR")
+                  diff -s --color <(cat $FILE) <(cat $FILE | $sed --expression="$SED_EXPR")
                   exit
                 fi
                 # we are clean and can update files
-                sed -i "$SED_EXPR" $FILE
+                $sed -i "$SED_EXPR" $FILE
               else
                 # ask confirmation before applying the change
-                diff -s --color <(cat $FILE) <(cat $FILE | sed --expression="$SED_EXPR")
-                ask_confirmation "sed -i \"$SED_EXPR\" $FILE" "Update contract id"
+                diff -s --color <(cat $FILE) <(cat $FILE | $sed --expression="$SED_EXPR")
+                ask_confirmation "$sed -i \"$SED_EXPR\" $FILE" "Update contract id"
               fi
               echo -e "    ${BOLD_GREEN}updated${NC} ($CONTRACT_ID)"
             fi
