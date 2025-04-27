@@ -148,6 +148,7 @@ pub enum Warning {
         last_occurrence: Span,
         previous_occurrences: Vec<Span>,
     },
+    ExpectedTypeAnnotationForConstants,
 }
 
 /// Elements that can be deprecated.
@@ -319,6 +320,10 @@ impl fmt::Display for Warning {
                         format!(" {} times", num_to_str(previous_occurrences.len()))
                     }
                 ),
+            ExpectedTypeAnnotationForConstants => write!(
+                f,
+                "This constant lacks a type annotation."
+            ),
         }
     }
 }

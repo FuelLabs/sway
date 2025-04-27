@@ -1,6 +1,0 @@
-category = "fail"
-
-# check: $()const X;
-# nextln: $()Expected type annotation for constants.
-
-# check: $()1 error.

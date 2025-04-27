@@ -27,8 +27,11 @@ use sway_ast::{
     PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
     Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause,
 };
-use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::CompileError};
+use sway_error::{
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
+};
 use sway_features::ExperimentalFeatures;
 use sway_types::{integer_bits::IntegerBits, BaseIdent};
 use sway_types::{Ident, Span, Spanned};
@@ -1030,9 +1033,27 @@ pub(crate) fn item_const_to_constant_declaration(
         }
     };
 
+    let type_ascription = match item_const.ty_opt {
+        Some((_colon_token, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
+        None => {
+            handler.emit_warn(CompileWarning {
+                span: span.clone(),
+                warning_content: Warning::ExpectedTypeAnnotationForConstants,
+            });
+            if expr.is_none() {
+                let err =
+                    ConvertParseTreeError::ConstantRequiresTypeAscription { span: span.clone() };
+                if let Some(errors) = emit_all(handler, vec![err]) {
+                    return Err(errors);
+                }
+            }
+            engines.te().new_unknown().into()
+        }
+    };
+
     let const_decl = ConstantDeclaration {
         name: item_const.name,
-        type_ascription: ty_to_type_argument(context, handler, engines, item_const.ty)?,
+        type_ascription,
         value: expr,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
         attributes,

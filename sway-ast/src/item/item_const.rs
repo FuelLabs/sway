@@ -5,7 +5,7 @@ pub struct ItemConst {
     pub visibility: Option<PubToken>,
     pub const_token: ConstToken,
     pub name: Ident,
-    pub ty: Ty,
+    pub ty_opt: Option<(ColonToken, Ty)>,
     pub eq_token_opt: Option<EqToken>,
     pub expr_opt: Option<Expr>,
     pub semicolon_token: SemicolonToken,
@@ -19,7 +19,10 @@ impl Spanned for ItemConst {
         };
         let end = match &self.expr_opt {
             Some(expr) => expr.span(),
-            None => self.ty.span(),
+            None => match &self.ty_opt {
+                Some((_colon, ty)) => ty.span(),
+                None => self.name.span(),
+            },
         };
         Span::join(start, &end)
     }
