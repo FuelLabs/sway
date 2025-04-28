@@ -318,7 +318,7 @@ fn test_sourcemap_build() {
         (3, 2, "main function parameters"), // Should have 4 instructions
         (4, 2, "addition operation"),       // Should have 2 instructions (add operation)
         // Helper function and its contents
-        (11, 2, "helper function parameters"), // Should have 4 instructions
+        (11, 2, "helper function parameters"), // Should have 2 instructions
         (12, 2, "helper addition operation"),  // Should have 2 instructions
         // Test functions (identical patterns)
         (21, 1, "test_1 first line"),  // Each test line should have
