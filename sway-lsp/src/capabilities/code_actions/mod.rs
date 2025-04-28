@@ -50,8 +50,7 @@ pub fn code_actions(
     temp_uri: &Url,
     diagnostics: &Vec<Diagnostic>,
 ) -> Option<CodeActionResponse> {
-    let t = token_map
-        .token_at_position(temp_uri, range.start)?;
+    let t = token_map.token_at_position(temp_uri, range.start)?;
     let token = t.value();
 
     let ctx = CodeActionContext {

@@ -2,7 +2,8 @@ use crate::{
     config::InlayHintsConfig,
     core::{
         session::Session,
-        token::{get_range_from_span, TypedAstToken}, token_map::TokenMap,
+        token::{get_range_from_span, TypedAstToken},
+        token_map::TokenMap,
     },
 };
 use lsp_types::{self, Range, Url};

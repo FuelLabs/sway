@@ -142,7 +142,12 @@ impl Session {
         Some(token_references)
     }
 
-    pub fn token_ranges(&self, token_map: &TokenMap, url: &Url, position: Position) -> Option<Vec<Range>> {
+    pub fn token_ranges(
+        &self,
+        token_map: &TokenMap,
+        url: &Url,
+        position: Position,
+    ) -> Option<Vec<Range>> {
         let _p = tracing::trace_span!("token_ranges").entered();
         let mut token_ranges: Vec<_> = token_map
             .tokens_for_file(url)
@@ -195,9 +200,7 @@ impl Session {
         let t = token_map.token_at_position(uri, shifted_position)?;
         let ident_to_complete = t.key();
         let engines = self.engines.read();
-        let fn_tokens =
-            token_map
-                .tokens_at_position(&engines, uri, shifted_position, Some(true));
+        let fn_tokens = token_map.tokens_at_position(&engines, uri, shifted_position, Some(true));
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
