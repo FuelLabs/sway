@@ -315,7 +315,7 @@ fn test_sourcemap_build() {
     // Verify essential source locations are mapped correctly
     let key_locations = [
         // Main function and its contents
-        (3, 2, "main function parameters"), // Should have 4 instructions
+        (3, 2, "main function parameters"), // Should have 2 instructions
         (4, 2, "addition operation"),       // Should have 2 instructions (add operation)
         // Helper function and its contents
         (11, 2, "helper function parameters"), // Should have 2 instructions
