@@ -21,6 +21,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_core::{language::ty::TyProgram, BuildTarget, Engines};
+use sway_features::ExperimentalFeatures;
 
 pub const ASSETS_DIR_NAME: &str = "static.files";
 
@@ -174,14 +175,22 @@ fn build_docs(
     let Command {
         document_private_items,
         no_deps,
+        experimental,
         ..
-    } = *build_instructions;
+    } = build_instructions;
     let ProgramInfo {
         ty_program,
         engines,
         manifest,
         pkg_manifest,
     } = program_info;
+
+    let experimental = ExperimentalFeatures::new(
+        &pkg_manifest.project.experimental,
+        &experimental.experimental,
+        &experimental.no_experimental,
+    )
+    .map_err(|err| anyhow::anyhow!("{err}"))?;
 
     println_action_green(
         "Building",
@@ -196,7 +205,8 @@ fn build_docs(
         engines,
         pkg_manifest.project_name(),
         &ty_program,
-        document_private_items,
+        *document_private_items,
+        experimental,
     )?;
     let root_attributes = (!ty_program.root_module.attributes.is_empty())
         .then_some(ty_program.root_module.attributes.clone());
@@ -208,7 +218,7 @@ fn build_docs(
     // render docs to HTML
     let rendered_docs = RenderedDocumentation::from_raw_docs(
         raw_docs.clone(),
-        RenderPlan::new(no_deps, document_private_items, engines),
+        RenderPlan::new(*no_deps, *document_private_items, engines),
         root_attributes,
         &ty_program.kind,
         forc_version,

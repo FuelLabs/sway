@@ -33,16 +33,18 @@ use sway_ast::{
     Module, ModuleKind,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_features::ExperimentalFeatures;
 use sway_types::{span::Source, SourceId};
 
 pub fn parse_file(
     handler: &Handler,
     src: Source,
     source_id: Option<SourceId>,
+    experimental: ExperimentalFeatures,
 ) -> Result<Annotated<Module>, ErrorEmitted> {
     let end = src.text.len();
     let ts = lex(handler, src, 0, end, source_id)?;
-    let (m, _) = Parser::new(handler, &ts).parse_to_end()?;
+    let (m, _) = Parser::new(handler, &ts, experimental).parse_to_end()?;
     Ok(m)
 }
 
@@ -50,10 +52,11 @@ pub fn parse_module_kind(
     handler: &Handler,
     src: Source,
     source_id: Option<SourceId>,
+    experimental: ExperimentalFeatures,
 ) -> Result<ModuleKind, ErrorEmitted> {
     let end = src.text.len();
     let ts = lex(handler, src, 0, end, source_id)?;
-    let mut parser = Parser::new(handler, &ts);
+    let mut parser = Parser::new(handler, &ts, experimental);
     while let Some(DocComment {
         doc_style: DocStyle::Inner,
         ..
@@ -71,7 +74,12 @@ mod tests {
     #[test]
     fn parse_invalid() {
         // just make sure these do not panic
-        let _res = parse_file(&Handler::default(), "script; fn main(256߄".into(), None);
+        let _res = parse_file(
+            &Handler::default(),
+            "script; fn main(256߄".into(),
+            None,
+            ExperimentalFeatures::default(),
+        );
         let _res = parse_file(
             &Handler::default(),
             "script;
@@ -84,6 +92,7 @@ mod tests {
             cug"
             .into(),
             None,
+            ExperimentalFeatures::default(),
         );
         let _res = parse_file(
             &Handler::default(),
@@ -98,7 +107,13 @@ mod tests {
             ///\u{7eb}"
                 .into(),
             None,
+            ExperimentalFeatures::default(),
         );
-        let _res = parse_file(&Handler::default(), "script; \"\u{7eb}\u{7eb}".into(), None);
+        let _res = parse_file(
+            &Handler::default(),
+            "script; \"\u{7eb}\u{7eb}".into(),
+            None,
+            ExperimentalFeatures::default(),
+        );
     }
 }

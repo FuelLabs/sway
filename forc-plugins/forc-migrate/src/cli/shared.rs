@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{bail, Ok, Result};
 use clap::Parser;
-use forc_pkg as pkg;
+use forc_pkg::{self as pkg, PackageManifestFile};
 use forc_pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     source::IPFSNode,
@@ -10,7 +10,7 @@ use forc_pkg::{
 use forc_tracing::println_action_green;
 use sway_core::{BuildTarget, Engines};
 use sway_error::diagnostic::*;
-use sway_features::Feature;
+use sway_features::{ExperimentalFeatures, Feature};
 use sway_types::{SourceEngine, Span};
 
 use crate::migrations::{MigrationStepKind, MigrationStepsWithOccurrences};
@@ -56,6 +56,35 @@ impl Compile {
             std::env::current_dir()
         }
     }
+
+    /// Returns the cumulative [ExperimentalFeatures], from the package manifest
+    /// file and the CLI experimental flag.
+    pub(crate) fn experimental_features(&self) -> Result<ExperimentalFeatures> {
+        let manifest = ManifestFile::from_dir(self.manifest_dir()?)?;
+        let pkg_manifest = get_pkg_manifest_file(&manifest)?;
+
+        Ok(ExperimentalFeatures::new(
+            &pkg_manifest.project.experimental,
+            &self.experimental.experimental,
+            &self.experimental.no_experimental,
+        )
+        .map_err(|err| anyhow::anyhow!("{err}"))?)
+    }
+}
+
+// Clippy issue. It erroneously assumes that `vec!`s in `instructive_error` calls are not needed.
+#[allow(clippy::useless_vec)]
+fn get_pkg_manifest_file(manifest: &ManifestFile) -> Result<&PackageManifestFile> {
+    match manifest {
+        ManifestFile::Package(pkg_manifest) => Ok(pkg_manifest),
+        ManifestFile::Workspace(_) => Err(anyhow::anyhow!(instructive_error(
+            "`forc migrate` does not support migrating workspaces.",
+            &vec![
+                &format!("\"{}\" is a workspace.", manifest.dir().to_string_lossy()),
+                "Please migrate each workspace member individually.",
+            ]
+        ))),
+    }
 }
 
 // Clippy issue. It erroneously assumes that `vec!`s in `instructive_error` calls are not needed.
@@ -66,15 +95,7 @@ pub(crate) fn compile_package<'a>(
 ) -> Result<ProgramInfo<'a>> {
     let manifest_dir = build_instructions.manifest_dir()?;
     let manifest = ManifestFile::from_dir(manifest_dir.clone())?;
-    let ManifestFile::Package(pkg_manifest) = &manifest else {
-        bail!(instructive_error(
-            "`forc migrate` does not support migrating workspaces.",
-            &vec![
-                &format!("\"{}\" is a workspace.", manifest.dir().to_string_lossy()),
-                "Please migrate each workspace member individually.",
-            ]
-        ));
-    };
+    let pkg_manifest = get_pkg_manifest_file(&manifest)?;
 
     println_action_green(
         "Compiling",
