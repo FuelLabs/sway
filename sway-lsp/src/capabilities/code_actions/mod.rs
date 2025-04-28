@@ -44,19 +44,19 @@ pub(crate) struct CodeActionContext<'a> {
 
 pub fn code_actions(
     session: Arc<Session>,
+    token_map: &TokenMap,
     range: &Range,
     uri: &Url,
     temp_uri: &Url,
     diagnostics: &Vec<Diagnostic>,
 ) -> Option<CodeActionResponse> {
-    let t = session
-        .token_map()
+    let t = token_map
         .token_at_position(temp_uri, range.start)?;
     let token = t.value();
 
     let ctx = CodeActionContext {
         engines: &session.engines.read(),
-        tokens: session.token_map(),
+        tokens: token_map,
         token,
         uri,
         temp_uri,

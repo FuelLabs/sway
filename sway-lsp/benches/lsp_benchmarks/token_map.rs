@@ -10,36 +10,41 @@ fn benchmarks(c: &mut Criterion) {
     let engines = session.engines.read();
     let position = Position::new(1716, 24);
 
-    c.bench_function("tokens_for_file", |b| {
+    let path = uri.to_file_path().unwrap();
+    let program_id = sway_lsp::core::session::program_id_from_path(&path, &engines).unwrap();
+    c.bench_function("tokens_for_program", |b| {
         b.iter(|| {
-            let _: Vec<_> = session.token_map().tokens_for_file(&uri).collect();
+            let _: Vec<_> = token_map.tokens_for_program(program_id).collect();
         })
     });
 
+    c.bench_function("tokens_for_file", |b| {
+        b.iter(|| {
+            let _: Vec<_> = token_map.tokens_for_file(&uri).collect();
+        })
+    });    
+
     c.bench_function("idents_at_position", |b| {
         b.iter(|| {
-            session
-                .token_map()
-                .idents_at_position(position, session.token_map().iter())
+            token_map
+                .idents_at_position(position, token_map.iter())
         })
     });
 
     c.bench_function("tokens_at_position", |b| {
         b.iter(|| {
-            session
-                .token_map()
+            token_map
                 .tokens_at_position(&engines, &uri, position, None)
         })
     });
 
     c.bench_function("token_at_position", |b| {
-        b.iter(|| session.token_map().token_at_position(&uri, position))
+        b.iter(|| token_map.token_at_position(&uri, position))
     });
 
     c.bench_function("parent_decl_at_position", |b| {
         b.iter(|| {
-            session
-                .token_map()
+            token_map
                 .parent_decl_at_position(&engines, &uri, position)
         })
     });

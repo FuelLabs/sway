@@ -2,7 +2,7 @@ use crate::{
     config::InlayHintsConfig,
     core::{
         session::Session,
-        token::{get_range_from_span, TypedAstToken},
+        token::{get_range_from_span, TypedAstToken}, token_map::TokenMap,
     },
 };
 use lsp_types::{self, Range, Url};
@@ -29,6 +29,7 @@ pub struct InlayHint {
 /// Generates inlay hints for the provided range.
 pub fn inlay_hints(
     session: Arc<Session>,
+    token_map: &TokenMap,
     uri: &Url,
     range: &Range,
     config: &InlayHintsConfig,
@@ -47,8 +48,7 @@ pub fn inlay_hints(
     //       - Look up the type information
     //       - Generate a type hint
     // 4. Collect all generated hints into a single vector
-    let hints: Vec<lsp_types::InlayHint> = session
-        .token_map()
+    let hints: Vec<lsp_types::InlayHint> = token_map
         .tokens_for_file(uri)
         .filter_map(|item| {
             let token = item.value();

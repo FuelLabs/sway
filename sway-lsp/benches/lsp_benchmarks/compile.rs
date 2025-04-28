@@ -49,6 +49,7 @@ fn benchmarks(c: &mut Criterion) {
                     results.clone(),
                     &engines,
                     session.clone(),
+                    &token_map,
                     lsp_mode.as_ref(),
                 )
                 .unwrap(),

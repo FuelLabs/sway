@@ -6,6 +6,7 @@ use crate::{
         document::{Documents, PidLockedFiles},
         session::{self, Session},
         sync::SyncWorkspace,
+        token_map::TokenMap,
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::{debug, keyword_docs::KeywordDocs},
@@ -42,6 +43,7 @@ pub struct ServerState {
     pub(crate) client: Option<Client>,
     pub config: Arc<RwLock<Config>>,
     pub sync_workspace: OnceLock<Arc<SyncWorkspace>>,
+    pub token_map: Arc<TokenMap>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
     /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
@@ -64,6 +66,7 @@ impl Default for ServerState {
         let (cb_tx, cb_rx) = crossbeam_channel::bounded(1);
         let state = ServerState {
             client: None,
+            token_map: Arc::new(TokenMap::new()),
             config: Arc::new(RwLock::new(Config::default())),
             sync_workspace: OnceLock::new(),
             keyword_docs: Arc::new(KeywordDocs::new()),
@@ -107,6 +110,7 @@ pub enum TaskMessage {
 pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
     pub sync: Option<Arc<SyncWorkspace>>,
+    pub token_map: Arc<TokenMap>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
     pub optimized_build: bool,
@@ -197,6 +201,7 @@ impl ServerState {
                             Some(retrigger_compilation.clone()),
                             lsp_mode,
                             session.clone(),
+                            ctx.token_map.clone(),
                             &sync,
                         ) {
                             Ok(()) => {
@@ -344,7 +349,7 @@ impl ServerState {
     fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
         let mut diagnostics_to_publish = vec![];
         let config = &self.config.read();
-        let tokens = session.token_map().tokens_for_file(uri);
+        let tokens = self.token_map.tokens_for_file(uri);
         match config.debug.show_collected_tokens_as_warnings {
             // If collected_tokens_as_warnings is Parsed or Typed,
             // take over the normal error and warning display behavior

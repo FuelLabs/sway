@@ -24,33 +24,57 @@ pub async fn handle_did_open_text_document(
     // Initialize the SyncWorkspace if it doesn't exist.
     let _ = state.get_or_init_global_sync_workspace(file_uri).await?;
 
+    // eprintln!("version: {:?}", params.text_document.version);
+    
     // Get or create a session for the original file URI.
     let (uri, session) = state
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     state.documents.handle_open_file(&uri).await;
 
+    send_new_compilation_request(
+        state,
+        session.clone(),
+        &uri,
+        None, //Some(params.text_document.version -1),
+        false,
+    );
+    state.is_compiling.store(true, Ordering::SeqCst);
+    state.wait_for_parsing().await;
+    state
+        .publish_diagnostics(uri, params.text_document.uri, session)
+        .await;
+
+    // dbg!();
     // If the token map is empty, then we need to parse the project.
     // Otherwise, don't recompile the project when a new file in the project is opened
     // as the workspace is already compiled.
-    if session.token_map().is_empty() {
-        let _ = state
-            .cb_tx
-            .send(TaskMessage::CompilationContext(CompilationContext {
-                session: Some(session.clone()),
-                uri: Some(uri.clone()),
-                version: None,
-                optimized_build: false,
-                gc_options: state.config.read().garbage_collection.clone(),
-                file_versions: BTreeMap::new(),
-                sync: Some(state.sync_workspace.get().unwrap().clone()),
-            }));
-        state.is_compiling.store(true, Ordering::SeqCst);
-        state.wait_for_parsing().await;
-        state
-            .publish_diagnostics(uri, params.text_document.uri, session)
-            .await;
-    }
+    // dbg!();
+    // let path = uri.to_file_path().unwrap();
+    // dbg!(path.clone());
+    // let program_id = crate::core::session::program_id_from_path(&path, &session.engines.read())?;
+    // dbg!(state.token_map.tokens_for_program(program_id).count());
+    // if state.token_map.tokens_for_program(program_id).count() == 0 {
+    //     dbg!();
+    //     let _ = state
+    //         .cb_tx
+    //         .send(TaskMessage::CompilationContext(CompilationContext {
+    //             session: Some(session.clone()),
+    //             token_map: state.token_map.clone(),
+    //             uri: Some(uri.clone()),
+    //             version: None,
+    //             optimized_build: false,
+    //             gc_options: state.config.read().garbage_collection.clone(),
+    //             file_versions: BTreeMap::new(),
+    //         }));
+    //     state.is_compiling.store(true, Ordering::SeqCst);
+    //     state.wait_for_parsing().await;
+    //     state
+    //         .publish_diagnostics(uri, params.text_document.uri, session)
+    //         .await;
+    //     dbg!();
+    // // }
+    // dbg!();
     Ok(())
 }
 
@@ -60,8 +84,13 @@ fn send_new_compilation_request(
     uri: &Url,
     version: Option<i32>,
     optimized_build: bool,
-    file_versions: BTreeMap<PathBuf, Option<u64>>,
 ) {
+    let file_versions = file_versions(
+        &state.documents,
+        &uri,
+        version.map(|v| v as u64),
+    );
+
     if state.is_compiling.load(Ordering::SeqCst) {
         // If we are already compiling, then we need to retrigger compilation
         state.retrigger_compilation.store(true, Ordering::SeqCst);
@@ -80,6 +109,7 @@ fn send_new_compilation_request(
         .cb_tx
         .send(TaskMessage::CompilationContext(CompilationContext {
             session: Some(session.clone()),
+            token_map: state.token_map.clone(),
             uri: Some(uri.clone()),
             version,
             optimized_build,
@@ -108,11 +138,6 @@ pub async fn handle_did_change_text_document(
         .write_changes_to_file(&uri, &params.content_changes)
         .await?;
 
-    let file_versions = file_versions(
-        &state.documents,
-        &uri,
-        Some(params.text_document.version as u64),
-    );
     send_new_compilation_request(
         state,
         session.clone(),
@@ -120,7 +145,6 @@ pub async fn handle_did_change_text_document(
         Some(params.text_document.version),
         // TODO: Set this back to true once https://github.com/FuelLabs/sway/issues/6576 is fixed.
         false,
-        file_versions,
     );
     Ok(())
 }
@@ -152,8 +176,7 @@ pub(crate) async fn handle_did_save_text_document(
     let (uri, session) = state
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
-    let file_versions = file_versions(&state.documents, &uri, None);
-    send_new_compilation_request(state, session.clone(), &uri, None, false, file_versions);
+    send_new_compilation_request(state, session.clone(), &uri, None, false);
     state.wait_for_parsing().await;
     state
         .publish_diagnostics(uri, params.text_document.uri, session)

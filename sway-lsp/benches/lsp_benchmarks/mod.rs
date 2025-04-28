@@ -31,6 +31,7 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState) {
         lsp_mode,
         session.clone(),
         &sync,
+        &state.token_map,
     )
     .unwrap();
     (temp_uri, session, state)
