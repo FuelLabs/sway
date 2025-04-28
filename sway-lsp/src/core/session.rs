@@ -120,11 +120,6 @@ impl Session {
         self.sync.remove_temp_dir();
     }
 
-    // /// Return a reference to the [TokenMap] of the current session.
-    // pub fn token_map(&self) -> &TokenMap {
-    //     &self.token_map
-    // }
-
     /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
     pub fn garbage_collect_program(
         &self,
