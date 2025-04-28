@@ -7,9 +7,11 @@ use std::{path::PathBuf, sync::Arc};
 use sway_lsp::core::{
     document::Documents,
     session::{self, Session},
+    token_map::TokenMap,
 };
 
-pub async fn compile_test_project() -> (Url, Arc<Session>, Documents) {
+pub async fn compile_test_project() -> (Url, Arc<Session>, Documents, Arc<TokenMap>) {
+    let token_map = Arc::new(TokenMap::new());
     let session = Arc::new(Session::new());
     let documents = Documents::new();
     let lsp_mode = Some(sway_core::LspConfig {
@@ -26,9 +28,10 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, Documents) {
         None,
         lsp_mode,
         session.clone(),
+        token_map.clone(),
     )
     .unwrap();
-    (uri, session, documents)
+    (uri, session, documents, token_map)
 }
 
 pub fn sway_workspace_dir() -> PathBuf {

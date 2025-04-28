@@ -4,7 +4,7 @@ use crate::{
     config::{Config, GarbageCollectionConfig, Warnings},
     core::{
         document::{Documents, PidLockedFiles},
-        session::{self, Session},
+        session::{self, Session}, token_map::TokenMap,
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::{debug, keyword_docs::KeywordDocs},
@@ -37,6 +37,7 @@ const DEFAULT_SESSION_CACHE_CAPACITY: usize = 4;
 pub struct ServerState {
     pub(crate) client: Option<Client>,
     pub config: Arc<RwLock<Config>>,
+    pub(crate) token_map: Arc<TokenMap>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
     /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
@@ -59,6 +60,7 @@ impl Default for ServerState {
         let (cb_tx, cb_rx) = crossbeam_channel::bounded(1);
         let state = ServerState {
             client: None,
+            token_map: Arc::new(TokenMap::new()),
             config: Arc::new(RwLock::new(Config::default())),
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: LruSessionCache::new(DEFAULT_SESSION_CACHE_CAPACITY),
@@ -100,6 +102,7 @@ pub enum TaskMessage {
 #[derive(Debug, Default)]
 pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
+    pub token_map: Arc<TokenMap>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
     pub optimized_build: bool,
@@ -160,6 +163,7 @@ impl ServerState {
                             Some(retrigger_compilation.clone()),
                             lsp_mode,
                             session.clone(),
+                            ctx.token_map.clone(),
                         ) {
                             Ok(()) => {
                                 let path = uri.to_file_path().unwrap();
@@ -305,7 +309,7 @@ impl ServerState {
     fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
         let mut diagnostics_to_publish = vec![];
         let config = &self.config.read();
-        let tokens = session.token_map().tokens_for_file(uri);
+        let tokens = self.token_map.tokens_for_file(uri);
         match config.debug.show_collected_tokens_as_warnings {
             // If collected_tokens_as_warnings is Parsed or Typed,
             // take over the normal error and warning display behavior

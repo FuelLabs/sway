@@ -7,7 +7,7 @@ use tokio::runtime::Runtime;
 const NUM_DID_CHANGE_ITERATIONS: usize = 10;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, _) = Runtime::new()
+    let (uri, session, _, token_map) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
 
@@ -41,6 +41,7 @@ fn benchmarks(c: &mut Criterion) {
                     results.clone(),
                     &engines,
                     session.clone(),
+                    &token_map,
                     lsp_mode.as_ref(),
                 )
                 .unwrap(),

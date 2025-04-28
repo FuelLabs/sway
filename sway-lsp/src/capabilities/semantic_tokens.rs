@@ -1,35 +1,31 @@
 use crate::core::{
-    session::Session,
     token::{SymbolKind, Token, TokenIdent},
+    token_map::TokenMap,
 };
 use dashmap::mapref::multiple::RefMulti;
 use lsp_types::{
     Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
     SemanticTokensRangeResult, SemanticTokensResult, Url,
 };
-use std::sync::{
-    atomic::{AtomicU32, Ordering},
-    Arc,
-};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
 
 /// Get the semantic tokens for the entire file.
-pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<SemanticTokensResult> {
-    let tokens: Vec<_> = session.token_map().tokens_for_file(url).collect();
+pub fn semantic_tokens_full(token_map: &TokenMap, url: &Url) -> Option<SemanticTokensResult> {
+    let tokens: Vec<_> = token_map.tokens_for_file(url).collect();
     let sorted_tokens_refs = sort_tokens(&tokens);
     Some(semantic_tokens(&sorted_tokens_refs[..]).into())
 }
 
 /// Get the semantic tokens within a range.
 pub fn semantic_tokens_range(
-    session: Arc<Session>,
+    token_map: &TokenMap,
     url: &Url,
     range: &Range,
 ) -> Option<SemanticTokensRangeResult> {
     let _p = tracing::trace_span!("semantic_tokens_range").entered();
-    let tokens: Vec<_> = session
-        .token_map()
+    let tokens: Vec<_> = token_map
         .tokens_for_file(url)
         .filter(|item| {
             // make sure the token_ident range is within the range that was passed in

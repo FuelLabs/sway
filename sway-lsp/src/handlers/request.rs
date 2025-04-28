@@ -67,7 +67,7 @@ pub async fn handle_document_symbol(
         .await
     {
         Ok((uri, session)) => Ok(session
-            .document_symbols(&uri)
+            .document_symbols(&uri, &state.token_map)
             .map(DocumentSymbolResponse::Nested)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -86,7 +86,7 @@ pub async fn handle_goto_definition(
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
-            Ok(session.token_definition_response(&uri, position))
+            Ok(session.token_definition_response(&state.token_map, &uri, position))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -110,7 +110,7 @@ pub async fn handle_completion(
         .await
     {
         Ok((uri, session)) => Ok(session
-            .completion_items(&uri, position, trigger_char)
+            .completion_items(&uri, position, trigger_char, &state.token_map)
             .map(CompletionResponse::Array)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -131,6 +131,7 @@ pub async fn handle_hover(
             let position = params.text_document_position_params.position;
             Ok(capabilities::hover::hover_data(
                 session,
+                &state.token_map,
                 &state.keyword_docs,
                 &uri,
                 position,
@@ -153,7 +154,7 @@ pub async fn handle_prepare_rename(
         .await
     {
         Ok((uri, session)) => {
-            match capabilities::rename::prepare_rename(session, &uri, params.position) {
+            match capabilities::rename::prepare_rename(session, &state.token_map, &uri, params.position) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -179,7 +180,7 @@ pub async fn handle_rename(
         Ok((uri, session)) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
-            match capabilities::rename::rename(session, new_name, &uri, position) {
+            match capabilities::rename::rename(session, &state.token_map, new_name, &uri, position) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -206,7 +207,7 @@ pub async fn handle_document_highlight(
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::highlight::get_highlights(
-                session, &uri, position,
+                session, &state.token_map, &uri, position,
             ))
         }
         Err(err) => {
@@ -227,7 +228,7 @@ pub async fn handle_references(
     {
         Ok((uri, session)) => {
             let position = params.text_document_position.position;
-            Ok(session.token_references(&uri, position))
+            Ok(session.token_references(&state.token_map, &uri, position))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -264,6 +265,7 @@ pub async fn handle_code_action(
     {
         Ok((temp_uri, session)) => Ok(capabilities::code_actions(
             session,
+            &state.token_map,
             &params.range,
             &params.text_document.uri,
             &temp_uri,
@@ -302,8 +304,8 @@ pub async fn handle_semantic_tokens_range(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
-            session,
+        Ok((uri, _session)) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
+            &state.token_map,
             &uri,
             &params.range,
         )),
@@ -323,8 +325,8 @@ pub async fn handle_semantic_tokens_full(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
-            session, &uri,
+        Ok((uri, _session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
+            &state.token_map, &uri,
         )),
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -346,6 +348,7 @@ pub async fn handle_inlay_hints(
             let config = &state.config.read().inlay_hints;
             Ok(capabilities::inlay_hints::inlay_hints(
                 session,
+                &state.token_map,
                 &uri,
                 &params.range,
                 config,

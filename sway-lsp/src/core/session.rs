@@ -64,7 +64,6 @@ pub struct CompiledProgram {
 /// The API provides methods for responding to LSP requests from the server.
 #[derive(Debug)]
 pub struct Session {
-    token_map: TokenMap,
     pub runnables: RunnableMap,
     pub build_plan_cache: BuildPlanCache,
     pub compiled_program: RwLock<CompiledProgram>,
@@ -84,7 +83,6 @@ impl Default for Session {
 impl Session {
     pub fn new() -> Self {
         Session {
-            token_map: TokenMap::new(),
             runnables: DashMap::new(),
             build_plan_cache: BuildPlanCache::default(),
             metrics: DashMap::new(),
@@ -122,10 +120,10 @@ impl Session {
         self.sync.remove_temp_dir();
     }
 
-    /// Return a reference to the [TokenMap] of the current session.
-    pub fn token_map(&self) -> &TokenMap {
-        &self.token_map
-    }
+    // /// Return a reference to the [TokenMap] of the current session.
+    // pub fn token_map(&self) -> &TokenMap {
+    //     &self.token_map
+    // }
 
     /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
     pub fn garbage_collect_program(
@@ -154,13 +152,12 @@ impl Session {
         Ok(())
     }
 
-    pub fn token_references(&self, url: &Url, position: Position) -> Option<Vec<Location>> {
+    pub fn token_references(&self, token_map: &TokenMap, url: &Url, position: Position) -> Option<Vec<Location>> {
         let _p = tracing::trace_span!("token_references").entered();
-        let token_references: Vec<_> = self
-            .token_map
+        let token_references: Vec<_> = token_map
             .iter()
             .all_references_of_token(
-                self.token_map.token_at_position(url, position)?.value(),
+                token_map.token_at_position(url, position)?.value(),
                 &self.engines.read(),
             )
             .filter_map(|item| {
@@ -174,13 +171,12 @@ impl Session {
         Some(token_references)
     }
 
-    pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
+    pub fn token_ranges(&self, token_map: &TokenMap, url: &Url, position: Position) -> Option<Vec<Range>> {
         let _p = tracing::trace_span!("token_ranges").entered();
-        let mut token_ranges: Vec<_> = self
-            .token_map
+        let mut token_ranges: Vec<_> = token_map
             .tokens_for_file(url)
             .all_references_of_token(
-                self.token_map.token_at_position(url, position)?.value(),
+                token_map.token_at_position(url, position)?.value(),
                 &self.engines.read(),
             )
             .map(|item| item.key().range)
@@ -192,11 +188,12 @@ impl Session {
 
     pub fn token_definition_response(
         &self,
+        token_map: &TokenMap,
         uri: &Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
         let _p = tracing::trace_span!("token_definition_response").entered();
-        self.token_map
+        token_map
             .token_at_position(uri, position)
             .and_then(|item| item.value().declared_token_ident(&self.engines.read()))
             .and_then(|decl_ident| {
@@ -216,17 +213,18 @@ impl Session {
         uri: &Url,
         position: Position,
         trigger_char: &str,
+        token_map: &TokenMap,
     ) -> Option<Vec<CompletionItem>> {
         let _p = tracing::trace_span!("completion_items").entered();
         let shifted_position = Position {
             line: position.line,
             character: position.character - trigger_char.len() as u32 - 1,
         };
-        let t = self.token_map.token_at_position(uri, shifted_position)?;
+        let t = token_map.token_at_position(uri, shifted_position)?;
         let ident_to_complete = t.key();
         let engines = self.engines.read();
         let fn_tokens =
-            self.token_map
+            token_map
                 .tokens_at_position(&engines, uri, shifted_position, Some(true));
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
@@ -255,7 +253,7 @@ impl Session {
     }
 
     /// Generate hierarchical document symbols for the given file.
-    pub fn document_symbols(&self, url: &Url) -> Option<Vec<DocumentSymbol>> {
+    pub fn document_symbols(&self, url: &Url, token_map: &TokenMap) -> Option<Vec<DocumentSymbol>> {
         let _p = tracing::trace_span!("document_symbols").entered();
         let path = url.to_file_path().ok()?;
         self.compiled_program
@@ -268,7 +266,7 @@ impl Session {
                     &path,
                     ty_program,
                     &self.engines.read(),
-                    &self.token_map,
+                    token_map,
                 )
             })
     }
@@ -338,6 +336,7 @@ pub fn traverse(
     results: Vec<(Option<Programs>, Handler)>,
     engines_clone: &Engines,
     session: Arc<Session>,
+    token_map: &TokenMap,
     lsp_mode: Option<&LspConfig>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     let _p = tracing::trace_span!("traverse").entered();
@@ -347,9 +346,9 @@ pub fn traverse(
             .find_map(|(path, version)| version.map(|_| path.clone()))
     });
     if let Some(path) = &modified_file {
-        session.token_map.remove_tokens_for_file(path);
+        token_map.remove_tokens_for_file(path);
     } else {
-        session.token_map.clear();
+        token_map.clear();
     }
 
     session.metrics.clear();
@@ -414,7 +413,7 @@ pub fn traverse(
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
-        let ctx = ParseContext::new(&session.token_map, engines, &root);
+        let ctx = ParseContext::new(token_map, engines, &root);
 
         // The final element in the results is the main program.
         if i == results_len - 1 {
@@ -465,6 +464,7 @@ pub fn parse_project(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
+    token_map: Arc<TokenMap>,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
     let build_plan = session
@@ -485,7 +485,7 @@ pub fn parse_project(
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
-    let diagnostics = traverse(results, engines, session.clone(), lsp_mode.as_ref())?;
+    let diagnostics = traverse(results, engines, session.clone(), &token_map, lsp_mode.as_ref())?;
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {
@@ -668,7 +668,7 @@ fn create_runnables(
 }
 
 /// Resolves a `ProgramId` from a given `path` using the manifest directory.
-pub(crate) fn program_id_from_path(
+pub fn program_id_from_path(
     path: &PathBuf,
     engines: &Engines,
 ) -> Result<ProgramId, DirectoryError> {
@@ -745,7 +745,8 @@ mod tests {
         let uri = get_url(&dir);
         let engines = Engines::default();
         let session = Arc::new(Session::new());
-        let result = parse_project(&uri, &engines, None, None, session)
+        let token_map = Arc::new(TokenMap::new());
+        let result = parse_project(&uri, &engines, None, None, session, token_map)
             .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
