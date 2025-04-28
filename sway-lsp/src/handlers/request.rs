@@ -154,7 +154,12 @@ pub async fn handle_prepare_rename(
         .await
     {
         Ok((uri, session)) => {
-            match capabilities::rename::prepare_rename(session, &state.token_map, &uri, params.position) {
+            match capabilities::rename::prepare_rename(
+                session,
+                &state.token_map,
+                &uri,
+                params.position,
+            ) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -180,7 +185,8 @@ pub async fn handle_rename(
         Ok((uri, session)) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
-            match capabilities::rename::rename(session, &state.token_map, new_name, &uri, position) {
+            match capabilities::rename::rename(session, &state.token_map, new_name, &uri, position)
+            {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -207,7 +213,10 @@ pub async fn handle_document_highlight(
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::highlight::get_highlights(
-                session, &state.token_map, &uri, position,
+                session,
+                &state.token_map,
+                &uri,
+                position,
             ))
         }
         Err(err) => {
@@ -326,7 +335,8 @@ pub async fn handle_semantic_tokens_full(
         .await
     {
         Ok((uri, _session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
-            &state.token_map, &uri,
+            &state.token_map,
+            &uri,
         )),
         Err(err) => {
             tracing::error!("{}", err.to_string());

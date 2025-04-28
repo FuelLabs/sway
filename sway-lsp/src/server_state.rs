@@ -4,7 +4,8 @@ use crate::{
     config::{Config, GarbageCollectionConfig, Warnings},
     core::{
         document::{Documents, PidLockedFiles},
-        session::{self, Session}, token_map::TokenMap,
+        session::{self, Session},
+        token_map::TokenMap,
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::{debug, keyword_docs::KeywordDocs},

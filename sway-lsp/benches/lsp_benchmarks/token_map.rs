@@ -21,20 +21,14 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             let _: Vec<_> = token_map.tokens_for_file(&uri).collect();
         })
-    });    
+    });
 
     c.bench_function("idents_at_position", |b| {
-        b.iter(|| {
-            token_map
-                .idents_at_position(position, token_map.iter())
-        })
+        b.iter(|| token_map.idents_at_position(position, token_map.iter()))
     });
 
     c.bench_function("tokens_at_position", |b| {
-        b.iter(|| {
-            token_map
-                .tokens_at_position(&engines, &uri, position, None)
-        })
+        b.iter(|| token_map.tokens_at_position(&engines, &uri, position, None))
     });
 
     c.bench_function("token_at_position", |b| {
@@ -42,10 +36,7 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("parent_decl_at_position", |b| {
-        b.iter(|| {
-            token_map
-                .parent_decl_at_position(&engines, &uri, position)
-        })
+        b.iter(|| token_map.parent_decl_at_position(&engines, &uri, position))
     });
 }
 

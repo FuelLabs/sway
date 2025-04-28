@@ -147,7 +147,12 @@ impl Session {
         Ok(())
     }
 
-    pub fn token_references(&self, token_map: &TokenMap, url: &Url, position: Position) -> Option<Vec<Location>> {
+    pub fn token_references(
+        &self,
+        token_map: &TokenMap,
+        url: &Url,
+        position: Position,
+    ) -> Option<Vec<Location>> {
         let _p = tracing::trace_span!("token_references").entered();
         let token_references: Vec<_> = token_map
             .iter()
@@ -166,7 +171,12 @@ impl Session {
         Some(token_references)
     }
 
-    pub fn token_ranges(&self, token_map: &TokenMap, url: &Url, position: Position) -> Option<Vec<Range>> {
+    pub fn token_ranges(
+        &self,
+        token_map: &TokenMap,
+        url: &Url,
+        position: Position,
+    ) -> Option<Vec<Range>> {
         let _p = tracing::trace_span!("token_ranges").entered();
         let mut token_ranges: Vec<_> = token_map
             .tokens_for_file(url)
@@ -218,9 +228,7 @@ impl Session {
         let t = token_map.token_at_position(uri, shifted_position)?;
         let ident_to_complete = t.key();
         let engines = self.engines.read();
-        let fn_tokens =
-            token_map
-                .tokens_at_position(&engines, uri, shifted_position, Some(true));
+        let fn_tokens = token_map.tokens_at_position(&engines, uri, shifted_position, Some(true));
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
@@ -480,7 +488,13 @@ pub fn parse_project(
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
-    let diagnostics = traverse(results, engines, session.clone(), &token_map, lsp_mode.as_ref())?;
+    let diagnostics = traverse(
+        results,
+        engines,
+        session.clone(),
+        &token_map,
+        lsp_mode.as_ref(),
+    )?;
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {

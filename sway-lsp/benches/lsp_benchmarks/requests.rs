@@ -52,7 +52,9 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("highlight", |b| {
-        b.iter(|| capabilities::highlight::get_highlights(session.clone(), &token_map, &uri, position))
+        b.iter(|| {
+            capabilities::highlight::get_highlights(session.clone(), &token_map, &uri, position)
+        })
     });
 
     c.bench_function("find_all_references", |b| {
@@ -94,7 +96,14 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("code_action", |b| {
         let range = Range::new(Position::new(4, 10), Position::new(4, 10));
         b.iter(|| {
-            capabilities::code_actions::code_actions(session.clone(), &token_map, &range, &uri, &uri, &vec![])
+            capabilities::code_actions::code_actions(
+                session.clone(),
+                &token_map,
+                &range,
+                &uri,
+                &uri,
+                &vec![],
+            )
         })
     });
 
