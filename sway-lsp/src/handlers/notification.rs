@@ -69,6 +69,7 @@ fn send_new_compilation_request(
         .cb_tx
         .send(TaskMessage::CompilationContext(CompilationContext {
             session: Some(session.clone()),
+            engines: state.engines.clone(),
             token_map: state.token_map.clone(),
             uri: Some(uri.clone()),
             version,

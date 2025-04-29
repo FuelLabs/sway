@@ -9,6 +9,7 @@ fn benchmarks(c: &mut Criterion) {
     let sync = state.sync_workspace.get().unwrap();
     let engines = session.engines.read();
     let position = Position::new(1716, 24);
+    let engines = state.engines.read();
 
     let path = uri.to_file_path().unwrap();
     let program_id = sway_lsp::core::session::program_id_from_path(&path, &engines).unwrap();

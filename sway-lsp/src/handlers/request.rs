@@ -66,7 +66,7 @@ pub async fn handle_document_symbol(
         .await
     {
         Ok((uri, session)) => Ok(session
-            .document_symbols(&uri, &state.token_map)
+            .document_symbols(&uri, &state.token_map, &state.engines.read())
             .map(DocumentSymbolResponse::Nested)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -86,7 +86,7 @@ pub async fn handle_goto_definition(
         Ok((uri, session)) => {
             let sync = state.sync_workspace();
             let position = params.text_document_position_params.position;
-            Ok(session.token_definition_response(&uri, position, &state.token_map, &sync))
+            Ok(session.token_definition_response(&uri, position, &state.engines.read(), &state.token_map, &sync))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -110,7 +110,7 @@ pub async fn handle_completion(
         .await
     {
         Ok((uri, session)) => Ok(session
-            .completion_items(&uri, position, trigger_char, &state.token_map)
+            .completion_items(&uri, position, trigger_char, &state.token_map, &state.engines.read())
             .map(CompletionResponse::Array)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -132,6 +132,7 @@ pub async fn handle_hover(
             let sync = state.sync_workspace();
             Ok(capabilities::hover::hover_data(
                 session,
+                &state.engines.read(),
                 &state.token_map,
                 &state.keyword_docs,
                 &uri,
@@ -157,7 +158,7 @@ pub async fn handle_prepare_rename(
     {
         Ok((uri, session)) => {
             let sync = state.sync_workspace();
-            match capabilities::rename::prepare_rename(session, &state.token_map, &uri, params.position, &sync) {
+            match capabilities::rename::prepare_rename(session, &state.engines.read(), &state.token_map, &uri, params.position, &sync) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -184,7 +185,7 @@ pub async fn handle_rename(
             let new_name = params.new_name;
             let position = params.text_document_position.position;
             let sync = state.sync_workspace();
-            match capabilities::rename::rename(session, &state.token_map, new_name, &uri, position, &sync) {
+            match capabilities::rename::rename(session, &state.engines.read(), &state.token_map, new_name, &uri, position, &sync) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -212,6 +213,7 @@ pub async fn handle_document_highlight(
             let position = params.text_document_position_params.position;
             Ok(capabilities::highlight::get_highlights(
                 session,
+                &state.engines.read(),
                 &state.token_map,
                 &uri,
                 position,
@@ -236,7 +238,7 @@ pub async fn handle_references(
         Ok((uri, session)) => {
             let position = params.text_document_position.position;
             let sync = state.sync_workspace();
-            Ok(session.token_references(&state.token_map, &uri, position, &sync))
+            Ok(session.token_references(&uri, position, &state.token_map, &state.engines.read(), &sync))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -273,6 +275,7 @@ pub async fn handle_code_action(
     {
         Ok((temp_uri, session)) => Ok(capabilities::code_actions(
             session,
+            &state.engines.read(),
             &state.token_map,
             &params.range,
             &params.text_document.uri,
@@ -353,10 +356,10 @@ pub async fn handle_inlay_hints(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((uri, session)) => {
+        Ok((uri, _)) => {
             let config = &state.config.read().inlay_hints;
             Ok(capabilities::inlay_hints::inlay_hints(
-                session,
+                &state.engines.read(),
                 &state.token_map,
                 &uri,
                 &params.range,
@@ -412,7 +415,7 @@ pub async fn handle_show_ast(
                 ident
                     .span()
                     .source_id()
-                    .map(|p| session.engines.read().se().get_path(p))
+                    .map(|p| state.engines.read().se().get_path(p))
                     == *path
             };
 
@@ -452,14 +455,14 @@ pub async fn handle_show_ast(
                             // Initialize the string with the AST from the root
                             let mut formatted_ast = debug::print_decl_engine_types(
                                 &typed_program.root_module.all_nodes,
-                                session.engines.read().de(),
+                                state.engines.read().de(),
                             );
                             for (ident, submodule) in &typed_program.root_module.submodules {
                                 if path_is_submodule(ident, &path) {
                                     // overwrite the root AST with the submodule AST
                                     formatted_ast = debug::print_decl_engine_types(
                                         &submodule.module.all_nodes,
-                                        session.engines.read().de(),
+                                        state.engines.read().de(),
                                     );
                                 }
                             }
@@ -533,7 +536,7 @@ pub(crate) async fn metrics(
         Ok((_, session)) => {
             let mut metrics = vec![];
             for kv in session.metrics.iter() {
-                let path = session
+                let path = state
                     .engines
                     .read()
                     .se()

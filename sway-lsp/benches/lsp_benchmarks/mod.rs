@@ -3,6 +3,8 @@ pub mod requests;
 pub mod token_map;
 
 use lsp_types::Url;
+use parking_lot::lock_api::RwLock;
+use sway_core::Engines;
 use std::{path::PathBuf, sync::Arc};
 use sway_lsp::{
     core::session::{self, Session},
@@ -26,7 +28,7 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState) {
     // Compile the project
     session::parse_project(
         &temp_uri,
-        &session.engines.read(),
+        &state.engines.read(),
         None,
         lsp_mode,
         session.clone(),

@@ -25,7 +25,7 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("document_symbol", |b| {
         b.iter(|| {
             session
-                .document_symbols(&uri, &token_map)
+                .document_symbols(&uri, &token_map, &state.engines.read())
                 .map(DocumentSymbolResponse::Nested)
         })
     });
@@ -34,7 +34,7 @@ fn benchmarks(c: &mut Criterion) {
         let position = Position::new(1698, 28);
         b.iter(|| {
             session
-                .completion_items(&uri, position, ".", &token_map)
+                .completion_items(&uri, position, ".", &token_map, &engines.read())
                 .map(CompletionResponse::Array)
         })
     });
@@ -43,7 +43,8 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             capabilities::hover::hover_data(
                 session.clone(),
-                &token_map,
+                &state.engines.read()
+                &state.token_map,
                 &keyword_docs,
                 &uri,
                 position,
@@ -54,7 +55,7 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("highlight", |b| {
-        b.iter(|| capabilities::highlight::get_highlights(session.clone(), &state.token_map, &uri, position))
+        b.iter(|| capabilities::highlight::get_highlights(session.clone(), &state.engines.read(),&state.token_map, &uri, position))
     });
 
     c.bench_function("find_all_references", |b| {
@@ -68,7 +69,7 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("inlay_hints", |b| {
         b.iter(|| {
             capabilities::inlay_hints::inlay_hints(
-                session.clone(),
+                &engines.read(),
                 &token_map,
                 &uri,
                 &range,
@@ -78,13 +79,14 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("prepare_rename", |b| {
-        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &state.token_map, &uri, position, sync))
+        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &state.engines.read(), &state.token_map, &uri, position, sync))
     });
 
     c.bench_function("rename", |b| {
         b.iter(|| {
             capabilities::rename::rename(
                 session.clone(),
+                &engines.read(),
                 &token_map,
                 "new_token_name".to_string(),
                 &uri,
@@ -99,6 +101,7 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             capabilities::code_actions::code_actions(
                 session.clone(),
+                &engines.read(),
                 &token_map,
                 &range,
                 &uri,
