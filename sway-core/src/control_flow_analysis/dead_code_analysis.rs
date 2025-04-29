@@ -44,7 +44,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
                 _ => false,
             }
         }
-        TreeType::Contract | TreeType::Library { .. } => match node {
+        TreeType::Contract | TreeType::Library => match node {
             TyAstNode {
                 content:
                     TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl { decl_id })),
@@ -707,7 +707,7 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
     //
     // this is important because if the struct is public, you want to be able to signal that all
     // fields are accessible by just adding an edge to the struct declaration node
-    if matches!(tree_type, TreeType::Contract | TreeType::Library { .. })
+    if matches!(tree_type, TreeType::Contract | TreeType::Library)
         && *visibility == Visibility::Public
     {
         for (_name, node) in &field_nodes {
@@ -791,7 +791,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                         if let Some(trait_entry) = trait_entry.clone() {
                             matches!(
                                 trait_entry.module_tree_type,
-                                TreeType::Library { .. } | TreeType::Contract
+                                TreeType::Library | TreeType::Contract
                             )
                         } else {
                             // trait_entry not found which means it is an external trait.
@@ -800,7 +800,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                             true
                         }
                     } else {
-                        matches!(tree_type, TreeType::Library { .. } | TreeType::Contract)
+                        matches!(tree_type, TreeType::Library | TreeType::Contract)
                     };
                 if add_edge_to_fn_decl {
                     graph.add_edge(entry_node, fn_decl_entry_node, "".into());
@@ -925,7 +925,7 @@ fn get_struct_type_info_from_type_id(
     match type_info {
         TypeInfo::Enum(decl_ref) => {
             let decl = decl_engine.get_enum(&decl_ref);
-            for p in decl.type_parameters.iter() {
+            for p in decl.generic_parameters.iter() {
                 let p = p
                     .as_type_parameter()
                     .expect("only works with type parameters");
@@ -2506,7 +2506,7 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(enum_idx) = enum_idx.cloned() {
                 graph.add_edge(entry_node, enum_idx, "".into());
             }
-            for p in &decl.type_parameters {
+            for p in &decl.generic_parameters {
                 let p = p
                     .as_type_parameter()
                     .expect("only works with type parameters");
@@ -2519,10 +2519,11 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(struct_idx) = struct_idx.cloned() {
                 graph.add_edge(entry_node, struct_idx, "".into());
             }
-            for p in &decl.type_parameters {
-                let p = p
-                    .as_type_parameter()
-                    .expect("only works with type parameters");
+            for p in decl
+                .generic_parameters
+                .iter()
+                .filter_map(|x| x.as_type_parameter())
+            {
                 connect_type_id(engines, p.type_id, graph, entry_node)?;
             }
         }

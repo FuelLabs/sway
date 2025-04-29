@@ -22,7 +22,7 @@ impl PathExpr {
         self.suffix
             .iter()
             .map(|s| &s.1)
-            .last()
+            .next_back()
             .unwrap_or(&self.prefix)
     }
 
@@ -30,7 +30,7 @@ impl PathExpr {
         self.suffix
             .iter_mut()
             .map(|s| &mut s.1)
-            .last()
+            .next_back()
             .unwrap_or(&mut self.prefix)
     }
 }
@@ -87,7 +87,7 @@ impl PathType {
         self.suffix
             .iter()
             .map(|s| &s.1)
-            .last()
+            .next_back()
             .unwrap_or(&self.prefix)
     }
 
@@ -95,7 +95,7 @@ impl PathType {
         self.suffix
             .iter_mut()
             .map(|s| &mut s.1)
-            .last()
+            .next_back()
             .unwrap_or(&mut self.prefix)
     }
 }

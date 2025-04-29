@@ -138,7 +138,12 @@ pub fn parse(
 ///
 /// This will lex the entire input, but parses only the module kind.
 pub fn parse_tree_type(handler: &Handler, src: Source) -> Result<parsed::TreeType, ErrorEmitted> {
-    sway_parse::parse_module_kind(handler, src, None).map(|kind| convert_module_kind(&kind))
+    // Parsing only the module kind does not depend on any
+    // experimental feature. So, we can just pass the default
+    // experimental features here.
+    let experimental = ExperimentalFeatures::default();
+    sway_parse::parse_module_kind(handler, src, None, experimental)
+        .map(|kind| convert_module_kind(&kind))
 }
 
 /// Converts `attribute_decls` to [Attributes].
@@ -369,7 +374,7 @@ fn parse_in_memory(
     let mut hasher = DefaultHasher::new();
     src.text.hash(&mut hasher);
     let hash = hasher.finish();
-    let module = sway_parse::parse_file(handler, src, None)?;
+    let module = sway_parse::parse_file(handler, src, None, experimental)?;
 
     let (attributes_handler, attributes) = attr_decls_to_attributes(
         &module.attributes,
@@ -525,7 +530,7 @@ fn parse_module_tree(
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
-    let module = sway_parse::parse_file(handler, src.clone(), Some(source_id))?;
+    let module = sway_parse::parse_file(handler, src.clone(), Some(source_id), experimental)?;
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
@@ -640,7 +645,7 @@ pub(crate) fn is_ty_module_cache_up_to_date(
                 .and_then(|x| x.lsp_mode.as_ref())
                 .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
                 .is_none_or(|version| {
-                    version.map_or(true, |v| typed.version.is_some_and(|tv| v <= tv))
+                    version.is_none_or(|v| typed.version.is_some_and(|tv| v <= tv))
                 });
 
             // If the cache is up to date, recursively check all dependencies
@@ -690,7 +695,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
                     //   - If there's no cached version (entry.parsed.version is None), the cache is outdated.
                     //   - If there's a cached version, compare them: cache is up-to-date if the LSP file version
                     //     is not greater than the cached version.
-                    version.map_or(true, |v| entry.parsed.version.is_some_and(|ev| v <= ev))
+                    version.is_none_or(|v| entry.parsed.version.is_some_and(|ev| v <= ev))
                 },
             );
 

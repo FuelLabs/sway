@@ -11,7 +11,10 @@ use crate::{
     type_system::*,
     BuildTarget, Engines,
 };
-use ast_elements::{type_argument::GenericTypeArgument, type_parameter::GenericTypeParameter};
+use ast_elements::{
+    type_argument::{GenericConstArgument, GenericTypeArgument},
+    type_parameter::{ConstGenericExpr, GenericTypeParameter},
+};
 use itertools::Itertools;
 use sway_ast::{
     assignable::ElementAccess,
@@ -1356,6 +1359,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
                             ty: type_engine.id_of_u64(),
                             is_from_parent,
                             id: None,
+                            expr: None,
                         })
                     }
                 }
@@ -1581,7 +1585,12 @@ fn ty_to_type_info(
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
                 ty_to_type_argument(context, handler, engines, *ty_array_descriptor.ty)?,
-                expr_to_length(context, engines, handler, *ty_array_descriptor.length)?,
+                Length(expr_to_const_generic_expr(
+                    context,
+                    engines,
+                    handler,
+                    ty_array_descriptor.length.as_ref(),
+                )?),
             )
         }
         Ty::StringSlice(..) => TypeInfo::StringSlice,
@@ -1607,6 +1616,7 @@ fn ty_to_type_info(
             }
         }
         Ty::Never { .. } => TypeInfo::Never,
+        Ty::Expr(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
     };
     Ok(type_info)
 }
@@ -1690,20 +1700,28 @@ fn ty_to_type_argument(
 ) -> Result<GenericArgument, ErrorEmitted> {
     let type_engine = engines.te();
     let span = ty.span();
-    let call_path_tree = ty_to_call_path_tree(context, handler, engines, ty.clone())?;
-    let initial_type_id = type_engine.insert(
-        engines,
-        ty_to_type_info(context, handler, engines, ty.clone())?,
-        ty.span().source_id(),
-    );
 
-    let type_argument = GenericArgument::Type(GenericTypeArgument {
-        type_id: initial_type_id,
-        initial_type_id,
-        call_path_tree,
-        span,
-    });
-    Ok(type_argument)
+    match ty {
+        Ty::Expr(expr) => Ok(GenericArgument::Const(GenericConstArgument {
+            expr: expr_to_const_generic_expr(context, engines, handler, expr.as_ref())?,
+        })),
+        ty => {
+            let call_path_tree = ty_to_call_path_tree(context, handler, engines, ty.clone())?;
+            let initial_type_id = type_engine.insert(
+                engines,
+                ty_to_type_info(context, handler, engines, ty.clone())?,
+                ty.span().source_id(),
+            );
+
+            let type_argument = GenericArgument::Type(GenericTypeArgument {
+                type_id: initial_type_id,
+                initial_type_id,
+                call_path_tree,
+                span,
+            });
+            Ok(type_argument)
+        }
+    }
 }
 
 fn fn_signature_to_trait_fn(
@@ -3086,23 +3104,23 @@ fn fn_arg_to_function_parameter(
     Ok(function_parameter)
 }
 
-fn expr_to_length(
+fn expr_to_const_generic_expr(
     context: &mut Context,
     engines: &Engines,
     handler: &Handler,
-    expr: Expr,
-) -> Result<Length, ErrorEmitted> {
+    expr: &Expr,
+) -> Result<ConstGenericExpr, ErrorEmitted> {
     let span = expr.span();
     match &expr {
-        Expr::Literal(..) => Ok(Length::literal(
-            expr_to_usize(context, handler, expr)?,
+        Expr::Literal(..) => Ok(ConstGenericExpr::literal(
+            expr_to_usize(context, handler, expr.clone())?,
             Some(span),
         )),
         _ => {
-            let expr = expr_to_expression(context, handler, engines, expr)?;
+            let expr = expr_to_expression(context, handler, engines, expr.clone())?;
             match expr.kind {
                 ExpressionKind::AmbiguousVariableExpression(ident) => {
-                    Ok(Length::AmbiguousVariableExpression { ident })
+                    Ok(ConstGenericExpr::AmbiguousVariableExpression { ident })
                 }
                 _ => Err(handler.emit_err(CompileError::LengthExpressionNotSupported { span })),
             }
@@ -4690,6 +4708,7 @@ fn ty_to_type_parameter(
                 is_from_parent: false,
             }));
         }
+        Ty::Expr(_) => panic!("expr are not allowed in this position"),
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
         Ty::StringSlice(..) => panic!("str slice types are not allowed in this position"),
