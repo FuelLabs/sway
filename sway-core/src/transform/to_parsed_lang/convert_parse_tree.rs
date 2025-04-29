@@ -2231,8 +2231,10 @@ fn expr_func_app_to_expression_kind(
                             current_file,
                             start_line_col.line,
                             start_line_col.col,
-                            match swayfmt::parse::parse_format::<Expr>(arguments[0].span.as_str(),)
-                            {
+                            match swayfmt::parse::parse_format::<Expr>(
+                                arguments[0].span.as_str(),
+                                context.experimental
+                            ) {
                                 Ok(s) => s,
                                 _ => arguments[0].span.as_str().to_string(),
                             }
