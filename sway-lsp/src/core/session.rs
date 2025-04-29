@@ -300,6 +300,7 @@ type CompileResults = (Vec<CompileError>, Vec<CompileWarning>);
 pub fn traverse(
     member_path: PathBuf,
     results: Vec<(Option<Programs>, Handler)>,
+    engines_original: Arc<RwLock<Engines>>,
     engines_clone: &Engines,
     session: Arc<Session>,
     token_map: &TokenMap,
@@ -350,7 +351,7 @@ pub fn traverse(
         //
         // This is due to the garbage collector removing types from the engines_clone
         // and they have not been re-added due to compilation being skipped.
-        let engines_ref = session.engines.read();
+        let engines_ref = engines_original.read();
         let engines = if program_path == member_path && metrics.reused_programs > 0 {
             &*engines_ref
         } else {
@@ -437,7 +438,8 @@ pub fn traverse(
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
 pub fn parse_project(
     uri: &Url,
-    engines: &Engines,
+    engines_original: Arc<RwLock<Engines>>,
+    engines_clone: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
@@ -452,7 +454,7 @@ pub fn parse_project(
 
     let results = compile(
         &build_plan,
-        engines,
+        engines_clone,
         retrigger_compilation,
         lsp_mode.as_ref(),
     )?;
@@ -495,7 +497,8 @@ pub fn parse_project(
     let diagnostics = traverse(
         member_path,
         results,
-        engines,
+        engines_original.clone(),
+        engines_clone,
         session.clone(),
         &token_map,
         lsp_mode.as_ref(),
@@ -505,21 +508,21 @@ pub fn parse_project(
         if !config.optimized_build {
             if let Some((errors, warnings)) = &diagnostics {
                 *session.diagnostics.write() =
-                    capabilities::diagnostic::get_diagnostics(warnings, errors, engines.se());
+                    capabilities::diagnostic::get_diagnostics(warnings, errors, engines_clone.se());
             }
         }
     }
 
     session.runnables.clear();
     let path = uri.to_file_path().unwrap();
-    let program_id = program_id_from_path(&path, engines)?;
+    let program_id = program_id_from_path(&path, engines_clone)?;
     if let Some(metrics) = session.metrics.get(&program_id) {
         // Check if the cached AST was returned by the compiler for the users workspace.
         // If it was, then we need to use the original engines.
         let engines = if metrics.reused_programs > 0 {
-            &*session.engines.read()
+            &*engines_original.read()
         } else {
-            engines
+            engines_clone
         };
         let compiled_program = session.compiled_program.read();
         create_runnables(
@@ -757,11 +760,12 @@ mod tests {
     fn parse_project_returns_manifest_file_not_found() {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
+        let engines_original = Arc::new(RwLock::new(Engines::default()));
         let engines = Engines::default();
         let session = Arc::new(Session::new());
         let sync = SyncWorkspace::new();
         let token_map = Arc::new(TokenMap::new());
-        let result = parse_project(&uri, &engines, None, None, session, token_map, &sync)
+        let result = parse_project(&uri, engines_original, &engines, None, None, session, token_map)
             .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,

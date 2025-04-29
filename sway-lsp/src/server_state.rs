@@ -176,6 +176,7 @@ impl ServerState {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
                         let sync = ctx.sync.as_ref().unwrap().clone();
+                        let engines_original = ctx.engines.clone();
                         let mut engines_clone = ctx.engines.read().clone();
 
                         // Perform garbage collection if enabled to manage memory usage.
@@ -200,6 +201,7 @@ impl ServerState {
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(
                             &uri,
+                            engines_original,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
                             lsp_mode,

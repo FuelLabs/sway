@@ -3,7 +3,7 @@ pub mod requests;
 pub mod token_map;
 
 use lsp_types::Url;
-use parking_lot::lock_api::RwLock;
+use parking_lot::RwLock;
 use sway_core::Engines;
 use std::{path::PathBuf, sync::Arc};
 use sway_lsp::{
@@ -18,6 +18,7 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState) {
     let session = Arc::new(Session::new());
     let sync = state.get_or_init_global_sync_workspace(&uri).await.unwrap();
     let temp_uri = sync.workspace_to_temp_url(&uri).unwrap();
+    let engines_clone = state.engines.read().clone();
 
     let lsp_mode = Some(sway_core::LspConfig {
         optimized_build: false,
@@ -29,6 +30,7 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState) {
     session::parse_project(
         &temp_uri,
         &state.engines.read(),
+        engines_clone,
         None,
         lsp_mode,
         session.clone(),
