@@ -1,6 +1,7 @@
 use crate::keywords::RESERVED_KEYWORDS;
 use crate::{ParseResult, Parser, ParserConsumed, Peeker};
 
+use sway_ast::keywords::{Keyword, PanicToken};
 use sway_ast::Intrinsic;
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::{ast::Delimiter, Ident, Spanned};
@@ -144,7 +145,7 @@ impl Parse for Ident {
                     ));
                 }
 
-                if !ident.is_raw_ident() && RESERVED_KEYWORDS.contains(ident_str) {
+                if !ident.is_raw_ident() && (RESERVED_KEYWORDS.contains(ident_str) || (parser.experimental.error_type && ident_str == PanicToken::AS_STR)) {
                     return Err(parser.emit_error_with_span(
                         ParseErrorKind::ReservedKeywordIdentifier,
                         ident.span(),

@@ -192,5 +192,7 @@ pub const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "continue",
     "configurable",
     "type",
-    "panic",
+    // TODO: Add `panic` to the list of reserved keywords,
+    //       once `error_type` feature is not experimental anymore.
+    // "panic",
 };
