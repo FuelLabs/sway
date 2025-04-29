@@ -405,7 +405,7 @@ impl Parse for ty::TyExpression {
             ty::TyExpressionVariant::CodeBlock(code_block) => {
                 adaptive_iter(&code_block.contents, |node| node.parse(ctx));
             }
-            ty::TyExpressionVariant::FunctionParameter { .. } => {}
+            ty::TyExpressionVariant::FunctionParameter => {}
             ty::TyExpressionVariant::MatchExp {
                 desugared,
                 scrutinees,

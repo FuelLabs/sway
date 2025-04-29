@@ -640,7 +640,7 @@ pub(crate) fn is_ty_module_cache_up_to_date(
                 .and_then(|x| x.lsp_mode.as_ref())
                 .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
                 .is_none_or(|version| {
-                    version.map_or(true, |v| typed.version.is_some_and(|tv| v <= tv))
+                    version.is_none_or(|v| typed.version.is_some_and(|tv| v <= tv))
                 });
 
             // If the cache is up to date, recursively check all dependencies
@@ -690,7 +690,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
                     //   - If there's no cached version (entry.parsed.version is None), the cache is outdated.
                     //   - If there's a cached version, compare them: cache is up-to-date if the LSP file version
                     //     is not greater than the cached version.
-                    version.map_or(true, |v| entry.parsed.version.is_some_and(|ev| v <= ev))
+                    version.is_none_or(|v| entry.parsed.version.is_some_and(|ev| v <= ev))
                 },
             );
 

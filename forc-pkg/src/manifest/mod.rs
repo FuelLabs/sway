@@ -881,7 +881,7 @@ fn implicit_std_dep() -> Dependency {
 
     if let Some((_, build_metadata)) = det.tag.as_ref().and_then(|tag| tag.split_once('+')) {
         // Nightlies are in the format v<version>+nightly.<date>.<hash>
-        let rev = build_metadata.split('.').last().map(|r| r.to_string());
+        let rev = build_metadata.split('.').next_back().map(|r| r.to_string());
 
         // If some revision is available and parsed from the 'nightly' build metadata,
         // we always prefer the revision over the tag.
