@@ -42,6 +42,7 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             capabilities::hover::hover_data(
                 session.clone(),
+                &engines.read(),
                 &token_map,
                 &keyword_docs,
                 &uri,
