@@ -138,7 +138,12 @@ pub fn parse(
 ///
 /// This will lex the entire input, but parses only the module kind.
 pub fn parse_tree_type(handler: &Handler, src: Source) -> Result<parsed::TreeType, ErrorEmitted> {
-    sway_parse::parse_module_kind(handler, src, None).map(|kind| convert_module_kind(&kind))
+    // Parsing only the module kind does not depend on any
+    // experimental feature. So, we can just pass the default
+    // experimental features here.
+    let experimental = ExperimentalFeatures::default();
+    sway_parse::parse_module_kind(handler, src, None, experimental)
+        .map(|kind| convert_module_kind(&kind))
 }
 
 /// Converts `attribute_decls` to [Attributes].
@@ -369,7 +374,7 @@ fn parse_in_memory(
     let mut hasher = DefaultHasher::new();
     src.text.hash(&mut hasher);
     let hash = hasher.finish();
-    let module = sway_parse::parse_file(handler, src, None)?;
+    let module = sway_parse::parse_file(handler, src, None, experimental)?;
 
     let (attributes_handler, attributes) = attr_decls_to_attributes(
         &module.attributes,
@@ -525,7 +530,7 @@ fn parse_module_tree(
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
-    let module = sway_parse::parse_file(handler, src.clone(), Some(source_id))?;
+    let module = sway_parse::parse_file(handler, src.clone(), Some(source_id), experimental)?;
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
