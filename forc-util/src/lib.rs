@@ -379,10 +379,10 @@ pub fn path_lock<X: AsRef<Path>>(path: X) -> Result<fd_lock::RwLock<File>> {
 
 pub fn program_type_str(ty: &TreeType) -> &'static str {
     match ty {
-        TreeType::Script {} => "script",
-        TreeType::Contract {} => "contract",
-        TreeType::Predicate {} => "predicate",
-        TreeType::Library { .. } => "library",
+        TreeType::Script => "script",
+        TreeType::Contract => "contract",
+        TreeType::Predicate => "predicate",
+        TreeType::Library => "library",
     }
 }
 
