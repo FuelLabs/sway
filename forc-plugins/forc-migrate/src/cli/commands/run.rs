@@ -14,7 +14,7 @@ use sway_core::{
     Engines,
 };
 use sway_error::formatting::*;
-use sway_features::Feature;
+use sway_features::{ExperimentalFeatures, Feature};
 use sway_types::{SourceEngine, Span};
 use swayfmt::Formatter;
 
@@ -98,6 +98,8 @@ pub(crate) fn exec(command: Command) -> Result<()> {
     let engines = Engines::default();
     let build_instructions = command.run;
 
+    let experimental = build_instructions.experimental_features()?;
+
     let mut program_info = compile_package(&engines, &build_instructions)?;
 
     // For migrations, we go with the following workflow.
@@ -160,6 +162,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                         &build_instructions.manifest_dir()?,
                         &program_info,
                         &occurrences_spans,
+                        experimental,
                     )?;
 
                     let stop_migration_process = print_modification_result(
@@ -205,6 +208,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                             &build_instructions.manifest_dir()?,
                             &program_info,
                             &interaction_occurrences_spans,
+                            experimental,
                         )?;
 
                         let stop_migration_process = print_modification_result(
@@ -341,6 +345,7 @@ fn output_modified_modules(
     manifest_dir: &Path,
     program_info: &ProgramInfo,
     occurrences_spans: &[Span],
+    experimental: ExperimentalFeatures,
 ) -> Result<()> {
     if occurrences_spans.is_empty() {
         return Ok(());
@@ -350,7 +355,12 @@ fn output_modified_modules(
 
     check_that_modified_modules_are_not_dirty(&modified_modules)?;
 
-    output_changed_lexed_program(manifest_dir, &modified_modules, &program_info.lexed_program)?;
+    output_changed_lexed_program(
+        manifest_dir,
+        &modified_modules,
+        &program_info.lexed_program,
+        experimental,
+    )?;
 
     Ok(())
 }
@@ -375,14 +385,16 @@ fn output_changed_lexed_program(
     manifest_dir: &Path,
     modified_modules: &ModifiedModules,
     lexed_program: &LexedProgram,
+    experimental: ExperimentalFeatures,
 ) -> Result<()> {
     fn output_modules_rec(
         manifest_dir: &Path,
         modified_modules: &ModifiedModules,
         lexed_module: &LexedModule,
+        experimental: ExperimentalFeatures,
     ) -> Result<()> {
         if let Some(path) = modified_modules.get_path_if_modified(&lexed_module.tree.value) {
-            let mut formatter = Formatter::from_dir(manifest_dir)?;
+            let mut formatter = Formatter::from_dir(manifest_dir, experimental)?;
 
             let code = formatter.format_module(&lexed_module.tree.clone())?;
 
@@ -390,13 +402,23 @@ fn output_changed_lexed_program(
         }
 
         for (_, lexed_submodule) in lexed_module.submodules.iter() {
-            output_modules_rec(manifest_dir, modified_modules, &lexed_submodule.module)?;
+            output_modules_rec(
+                manifest_dir,
+                modified_modules,
+                &lexed_submodule.module,
+                experimental,
+            )?;
         }
 
         Ok(())
     }
 
-    output_modules_rec(manifest_dir, modified_modules, &lexed_program.root)
+    output_modules_rec(
+        manifest_dir,
+        modified_modules,
+        &lexed_program.root,
+        experimental,
+    )
 }
 
 fn print_migrating_action(migration_steps: MigrationSteps) {

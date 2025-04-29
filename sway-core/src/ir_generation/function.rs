@@ -729,7 +729,7 @@ impl<'eng> FnCompiler<'eng> {
                     }),
                 }
             }
-            ty::TyExpressionVariant::Continue { .. } => match self.block_to_continue_to {
+            ty::TyExpressionVariant::Continue => match self.block_to_continue_to {
                 // If `self.block_to_continue_to` is not None, then it has been set inside
                 // a loop and the use of `continue` here is legal, so create a branch
                 // instruction. Error out otherwise.

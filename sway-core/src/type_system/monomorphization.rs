@@ -187,18 +187,18 @@ where
 /// There are 4 cases that are handled in this function:
 ///
 /// 1. `value` does not have type parameters + `type_arguments` is empty:
-///     1a. return ok
+///    1a. return ok
 /// 2. `value` has type parameters + `type_arguments` is empty:
-///     2a. if the [EnforceTypeArguments::Yes] variant is provided, then
-///         error
-///     2b. refresh the generic types with a [TypeSubstMapping]
+///    2a. if the [EnforceTypeArguments::Yes] variant is provided, then
+///    error
+///    2b. refresh the generic types with a [TypeSubstMapping]
 /// 3. `value` does have type parameters + `type_arguments` is nonempty:
-///     3a. error
+///    3a. error
 /// 4. `value` has type parameters + `type_arguments` is nonempty:
-///     4a. check to see that the type parameters and `type_arguments` have
-///         the same length
-///     4b. for each type argument in `type_arguments`, resolve the type
-///     4c. refresh the generic types with a [TypeSubstMapping]
+///    4a. check to see that the type parameters and `type_arguments` have
+///    the same length
+///    4b. for each type argument in `type_arguments`, resolve the type
+///    4c. refresh the generic types with a [TypeSubstMapping]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn monomorphize_with_modpath<T>(
     handler: &Handler,

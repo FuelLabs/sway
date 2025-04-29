@@ -175,7 +175,8 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     let mut offset = 0;
     let mut to_rewrite = formatted_code[last_formatted..].to_string();
 
-    let formatted_leaf_spans = parse_snippet::<T>(&formatted_code[last_formatted..])?.leaf_spans();
+    let formatted_leaf_spans =
+        parse_snippet::<T>(&formatted_code[last_formatted..], formatter.experimental)?.leaf_spans();
 
     let mut previous_unformatted_leaf_span = unformatted_leaf_spans
         .first()

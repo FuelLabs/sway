@@ -787,12 +787,9 @@ impl TyImplSelfOrTrait {
             );
 
             // Do a topological sort to compute an ordered list of nodes (by function calls).
-            let sorted = match petgraph::algo::toposort(&sub_graph, None) {
-                Ok(value) => Some(value),
-                // If the dependency graph contains cycles, then this means there are recursive
-                // function calls, which we will report later.
-                Err(_) => None,
-            };
+            // If the dependency graph contains cycles, then this means there are recursive
+            // function calls, which we will report later.
+            let sorted = petgraph::algo::toposort(&sub_graph, None).ok();
 
             Ok(sorted)
         })

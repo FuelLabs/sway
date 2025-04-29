@@ -15,6 +15,7 @@ num-traits.workspace = true
 phf = { workspace = true, features = ["macros"] }
 sway-ast.workspace = true
 sway-error.workspace = true
+sway-features.workspace = true
 sway-types.workspace = true
 thiserror.workspace = true
 unicode-bidi.workspace = true
