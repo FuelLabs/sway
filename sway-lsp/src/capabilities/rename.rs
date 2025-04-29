@@ -16,6 +16,7 @@ const RAW_IDENTIFIER: &str = "r#";
 
 pub fn rename(
     session: Arc<Session>,
+    engines: &Engines,
     token_map: &TokenMap,
     new_name: String,
     url: &Url,
@@ -53,12 +54,12 @@ pub fn rename(
     // If the token is a function, find the parent declaration
     // and collect idents for all methods of ABI Decl, Trait Decl, and Impl Trait
     let map_of_changes: HashMap<Url, Vec<TextEdit>> = (if token.kind == SymbolKind::Function {
-        find_all_methods_for_decl(&token_map, &session.engines.read(), url, position)?
+        find_all_methods_for_decl(&token_map, engines, url, position)?
     } else {
         // otherwise, just find all references of the token in the token map
         token_map
             .iter()
-            .all_references_of_token(token, &session.engines.read())
+            .all_references_of_token(token, engines)
             .map(|item| item.key().clone())
             .collect::<Vec<TokenIdent>>()
     })
@@ -99,6 +100,7 @@ pub fn rename(
 
 pub fn prepare_rename(
     session: Arc<Session>,
+    engines: &Engines,
     token_map: &TokenMap,
     url: &Url,
     position: Position,
@@ -110,7 +112,7 @@ pub fn prepare_rename(
 
     // Only let through tokens that are in the users workspace.
     // tokens that are external to the users workspace cannot be renamed.
-    let _ = is_token_in_workspace(&session, &session.engines.read(), token)?;
+    let _ = is_token_in_workspace(&session, engines, token)?;
 
     // Make sure we don't allow renaming of tokens that
     // are keywords or intrinsics.

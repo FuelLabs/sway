@@ -28,7 +28,7 @@ use std::{
         Arc,
     },
 };
-use sway_core::LspConfig;
+use sway_core::{Engines, LspConfig};
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -39,6 +39,7 @@ pub struct ServerState {
     pub(crate) client: Option<Client>,
     pub config: Arc<RwLock<Config>>,
     pub(crate) token_map: Arc<TokenMap>,
+    pub(crate) engines: Arc<RwLock<Engines>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
     /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
@@ -62,6 +63,7 @@ impl Default for ServerState {
         let state = ServerState {
             client: None,
             token_map: Arc::new(TokenMap::new()),
+            engines: Arc::new(RwLock::new(Engines::default())),
             config: Arc::new(RwLock::new(Config::default())),
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: LruSessionCache::new(DEFAULT_SESSION_CACHE_CAPACITY),
@@ -103,6 +105,7 @@ pub enum TaskMessage {
 #[derive(Debug, Default)]
 pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
+    pub engines: Arc<RwLock<Engines>>,
     pub token_map: Arc<TokenMap>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
@@ -136,7 +139,7 @@ impl ServerState {
                     TaskMessage::CompilationContext(ctx) => {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
-                        let mut engines_clone = session.engines.read().clone();
+                        let mut engines_clone = ctx.engines.read().clone();
 
                         // Perform garbage collection if enabled to manage memory usage.
                         if ctx.gc_options.gc_enabled {
@@ -184,7 +187,7 @@ impl ServerState {
                                                 // The compiler did not reuse the workspace AST.
                                                 // We need to overwrite the old engines with the engines clone.
                                                 mem::swap(
-                                                    &mut *session.engines.write(),
+                                                    &mut *ctx.engines.write(),
                                                     &mut engines_clone,
                                                 );
                                             }

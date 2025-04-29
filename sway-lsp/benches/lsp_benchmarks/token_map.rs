@@ -3,10 +3,10 @@ use lsp_types::Position;
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, _, token_map) = Runtime::new()
+    let (uri, session, _, token_map, engines) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
-    let engines = session.engines.read();
+    let engines = engines.read();
     let position = Position::new(1716, 24);
 
     let path = uri.to_file_path().unwrap();

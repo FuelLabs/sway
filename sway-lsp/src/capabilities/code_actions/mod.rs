@@ -44,6 +44,7 @@ pub(crate) struct CodeActionContext<'a> {
 
 pub fn code_actions(
     session: Arc<Session>,
+    engines: &Engines,
     token_map: &TokenMap,
     range: &Range,
     uri: &Url,
@@ -54,7 +55,7 @@ pub fn code_actions(
     let token = t.value();
 
     let ctx = CodeActionContext {
-        engines: &session.engines.read(),
+        engines,
         tokens: token_map,
         token,
         uri,

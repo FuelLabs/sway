@@ -67,7 +67,6 @@ pub struct Session {
     pub runnables: RunnableMap,
     pub build_plan_cache: BuildPlanCache,
     pub compiled_program: RwLock<CompiledProgram>,
-    pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
@@ -87,7 +86,6 @@ impl Session {
             build_plan_cache: BuildPlanCache::default(),
             metrics: DashMap::new(),
             compiled_program: RwLock::new(CompiledProgram::default()),
-            engines: <_>::default(),
             sync: SyncWorkspace::new(),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }
@@ -149,6 +147,7 @@ impl Session {
 
     pub fn token_references(
         &self,
+        engines: &Engines,
         token_map: &TokenMap,
         url: &Url,
         position: Position,
@@ -158,7 +157,7 @@ impl Session {
             .iter()
             .all_references_of_token(
                 token_map.token_at_position(url, position)?.value(),
-                &self.engines.read(),
+                engines,
             )
             .filter_map(|item| {
                 let path = item.key().path.as_ref()?;
@@ -173,6 +172,7 @@ impl Session {
 
     pub fn token_ranges(
         &self,
+        engines: &Engines,
         token_map: &TokenMap,
         url: &Url,
         position: Position,
@@ -182,7 +182,7 @@ impl Session {
             .tokens_for_file(url)
             .all_references_of_token(
                 token_map.token_at_position(url, position)?.value(),
-                &self.engines.read(),
+                engines,
             )
             .map(|item| item.key().range)
             .collect();
@@ -193,6 +193,7 @@ impl Session {
 
     pub fn token_definition_response(
         &self,
+        engines: &Engines,
         token_map: &TokenMap,
         uri: &Url,
         position: Position,
@@ -200,7 +201,7 @@ impl Session {
         let _p = tracing::trace_span!("token_definition_response").entered();
         token_map
             .token_at_position(uri, position)
-            .and_then(|item| item.value().declared_token_ident(&self.engines.read()))
+            .and_then(|item| item.value().declared_token_ident(engines))
             .and_then(|decl_ident| {
                 decl_ident.path.and_then(|path| {
                     // We use ok() here because we don't care about propagating the error from from_file_path
@@ -219,6 +220,7 @@ impl Session {
         position: Position,
         trigger_char: &str,
         token_map: &TokenMap,
+        engines: &Engines,
     ) -> Option<Vec<CompletionItem>> {
         let _p = tracing::trace_span!("completion_items").entered();
         let shifted_position = Position {
@@ -227,13 +229,11 @@ impl Session {
         };
         let t = token_map.token_at_position(uri, shifted_position)?;
         let ident_to_complete = t.key();
-        let engines = self.engines.read();
         let fn_tokens = token_map.tokens_at_position(&engines, uri, shifted_position, Some(true));
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
             if let Some(program) = &compiled_program.typed {
-                let engines = self.engines.read();
                 return Some(capabilities::completion::to_completion_items(
                     &program.namespace,
                     &engines,
@@ -256,7 +256,7 @@ impl Session {
     }
 
     /// Generate hierarchical document symbols for the given file.
-    pub fn document_symbols(&self, url: &Url, token_map: &TokenMap) -> Option<Vec<DocumentSymbol>> {
+    pub fn document_symbols(&self, url: &Url, token_map: &TokenMap, engines: &Engines) -> Option<Vec<DocumentSymbol>> {
         let _p = tracing::trace_span!("document_symbols").entered();
         let path = url.to_file_path().ok()?;
         self.compiled_program
@@ -268,7 +268,7 @@ impl Session {
                     url,
                     &path,
                     ty_program,
-                    &self.engines.read(),
+                    engines,
                     token_map,
                 )
             })
