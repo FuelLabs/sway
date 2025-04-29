@@ -373,8 +373,8 @@ impl TypeSubstMap {
     /// A match is potentially created (i.e. a new [TypeId] is created) in these
     /// circumstances:
     /// - `type_id` is one of the following: [TypeInfo::Struct], [TypeInfo::Enum],
-    ///    [TypeInfo::Array], [TypeInfo::Tuple], [TypeInfo::Alias], [TypeInfo::Ptr],
-    ///    [TypeInfo::Slice], or [TypeInfo::Ref],
+    ///   [TypeInfo::Array], [TypeInfo::Tuple], [TypeInfo::Alias], [TypeInfo::Ptr],
+    ///   [TypeInfo::Slice], or [TypeInfo::Ref],
     /// - and one of the contained types (e.g. a struct field, or a referenced type)
     ///   finds a match in a recursive call to `find_match`.
     ///
