@@ -238,6 +238,29 @@ impl String {
     pub fn ptr(self) -> raw_ptr {
         self.bytes.ptr()
     }
+
+    /// Converts the `String` into a string slice.
+    ///
+    /// # Returns
+    ///
+    /// [str] - The `String` as a string slice.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let string = String::from_ascii_str("Fuel");
+    ///     assert(string.as_str() == "Fuel");
+    /// }
+    /// ```
+    pub fn as_str(self) -> str {
+        let ptr = self.bytes.ptr();
+        let str_size = self.bytes.len();
+
+        asm(s: (ptr, str_size)) {
+            s: str
+        }
+    }
 }
 
 impl From<Bytes> for String {
@@ -252,6 +275,24 @@ impl From<String> for Bytes {
     fn from(s: String) -> Bytes {
         s.as_bytes()
     }
+}
+
+impl From<str> for String {
+    fn from(s: str) -> String {
+        String::from_ascii_str(s)
+    }
+}
+
+impl From<String> for str {
+    fn from(s: String) -> str {
+        s.as_str()
+    }
+}
+
+#[test]
+fn test_string_str() {
+    let string = String::from_ascii_str("Fuel");
+    assert(string.as_str() == "Fuel");
 }
 
 impl AsRawSlice for String {
