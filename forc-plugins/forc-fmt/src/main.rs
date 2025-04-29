@@ -10,10 +10,12 @@ use forc_tracing::{init_tracing_subscriber, println_error, println_green, printl
 use forc_util::fs_locking::is_file_dirty;
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
+    collections::HashMap,
     default::Default,
     fs,
     path::{Path, PathBuf},
 };
+use sway_features::ExperimentalFeatures;
 use sway_utils::{constants, find_parent_manifest_dir, get_sway_files, is_sway_file};
 use swayfmt::Formatter;
 use taplo::formatter as taplo_fmt;
@@ -54,6 +56,9 @@ pub struct App {
     /// If not specified, current working directory will be formatted using a Forc.toml
     /// configuration.
     pub file: Option<String>,
+
+    #[command(flatten)]
+    experimental: sway_features::CliFields,
 }
 
 fn main() {
@@ -73,7 +78,14 @@ fn run() -> Result<()> {
         None => std::env::current_dir()?,
     };
 
-    let mut formatter = Formatter::from_dir(&dir)?;
+    let experimental = ExperimentalFeatures::new(
+        &HashMap::default(),
+        &app.experimental.experimental,
+        &app.experimental.no_experimental,
+    )
+    .map_err(|err| anyhow::anyhow!("{err}"))?;
+
+    let mut formatter = Formatter::from_dir(&dir, experimental)?;
     if let Some(f) = app.file.as_ref() {
         let file_path = &PathBuf::from(f);
 
@@ -91,7 +103,7 @@ fn run() -> Result<()> {
     let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&dir)?;
     match manifest_file {
         ManifestFile::Workspace(ws) => {
-            format_workspace_at_dir(&app, &ws, &dir)?;
+            format_workspace_at_dir(&app, &ws, &dir, experimental)?;
         }
         ManifestFile::Package(_) => {
             format_pkg_at_dir(&app, &dir, &mut formatter)?;
@@ -171,9 +183,14 @@ fn format_file(app: &App, file: PathBuf, formatter: &mut Formatter) -> Result<bo
 }
 
 /// Format the workspace at the given directory.
-fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &Path) -> Result<()> {
+fn format_workspace_at_dir(
+    app: &App,
+    workspace: &WorkspaceManifestFile,
+    dir: &Path,
+    experimental: ExperimentalFeatures,
+) -> Result<()> {
     let mut contains_edits = false;
-    let mut formatter = Formatter::from_dir(dir)?;
+    let mut formatter = Formatter::from_dir(dir, experimental)?;
     let mut members = vec![];
 
     for member_path in workspace.member_paths()? {
@@ -200,7 +217,7 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
             // if there is no swayfmt.toml in the sub directory because we still want
             // to use the swayfmt.toml at the workspace root (if any).
             // In order of priority: member > workspace > default.
-            formatter = Formatter::from_dir(&sub_dir)?;
+            formatter = Formatter::from_dir(&sub_dir, experimental)?;
         }
         format_pkg_at_dir(app, &sub_dir, &mut formatter)?;
     }

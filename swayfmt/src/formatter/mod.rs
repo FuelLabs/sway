@@ -10,6 +10,7 @@ pub use crate::{
 use std::{borrow::Cow, fmt::Write, path::Path, sync::Arc};
 use sway_ast::attribute::Annotated;
 use sway_ast::Module;
+use sway_features::ExperimentalFeatures;
 use sway_types::span::Source;
 use sway_types::{SourceEngine, Spanned};
 
@@ -21,6 +22,7 @@ pub struct Formatter {
     pub shape: Shape,
     pub config: Config,
     pub comments_context: CommentsContext,
+    pub experimental: ExperimentalFeatures,
 }
 
 pub type FormattedCode = String;
@@ -34,7 +36,7 @@ pub trait Format {
 }
 
 impl Formatter {
-    pub fn from_dir(dir: &Path) -> Result<Self, ConfigError> {
+    pub fn from_dir(dir: &Path, experimental: ExperimentalFeatures) -> Result<Self, ConfigError> {
         let config = match Config::from_dir(dir) {
             Ok(config) => config,
             Err(ConfigError::NotFound) => Config::default(),
@@ -43,6 +45,7 @@ impl Formatter {
 
         Ok(Self {
             config,
+            experimental,
             ..Default::default()
         })
     }
@@ -83,7 +86,7 @@ impl Formatter {
     }
 
     pub fn format(&mut self, src: Source) -> Result<FormattedCode, FormatterError> {
-        let annotated_module = parse_file(src)?;
+        let annotated_module = parse_file(src, self.experimental)?;
         self.format_module(&annotated_module)
     }
 
