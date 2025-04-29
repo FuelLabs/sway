@@ -21,6 +21,7 @@ use sway_core::{
     language::ty::{TyAstNodeContent, TyDecl, TyImplSelfOrTrait, TyModule, TyProgram, TySubmodule},
     Engines,
 };
+use sway_features::ExperimentalFeatures;
 use sway_types::BaseIdent;
 use sway_types::Spanned;
 
@@ -37,6 +38,7 @@ impl Documentation {
         project_name: &str,
         typed_program: &TyProgram,
         document_private_items: bool,
+        experimental: ExperimentalFeatures,
     ) -> Result<Documentation> {
         // the first module prefix will always be the project name
         let mut docs = Documentation::default();
@@ -49,6 +51,7 @@ impl Documentation {
             &mut docs,
             &mut impl_traits,
             document_private_items,
+            experimental,
         )?;
 
         // this is the same process as before but for submodules
@@ -64,6 +67,7 @@ impl Documentation {
                 &mut impl_traits,
                 &module_prefix,
                 document_private_items,
+                experimental,
             )?;
         }
         let trait_decls = docs
@@ -152,6 +156,7 @@ impl Documentation {
         docs: &mut Documentation,
         impl_traits: &mut Vec<(TyImplSelfOrTrait, ModuleInfo)>,
         document_private_items: bool,
+        experimental: ExperimentalFeatures,
     ) -> Result<()> {
         for ast_node in &ty_module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
@@ -166,6 +171,7 @@ impl Documentation {
                         decl,
                         module_info.clone(),
                         document_private_items,
+                        experimental,
                     )?;
 
                     if let Descriptor::Documentable(doc) = desc {
@@ -184,6 +190,7 @@ impl Documentation {
         impl_traits: &mut Vec<(TyImplSelfOrTrait, ModuleInfo)>,
         module_info: &ModuleInfo,
         document_private_items: bool,
+        experimental: ExperimentalFeatures,
     ) -> Result<()> {
         let mut module_info = module_info.to_owned();
         module_info
@@ -196,6 +203,7 @@ impl Documentation {
             docs,
             impl_traits,
             document_private_items,
+            experimental,
         )?;
 
         for (_, submodule) in &typed_submodule.module.submodules {
@@ -206,6 +214,7 @@ impl Documentation {
                 impl_traits,
                 &module_info,
                 document_private_items,
+                experimental,
             )?;
         }
 

@@ -890,7 +890,7 @@ impl<T> Clone for Vec<T> {
 
 impl<T> PartialEq for Vec<T>
 where
-    T: Eq,
+    T: PartialEq,
 {
     fn eq(self, other: Self) -> bool {
         if self.len() != other.len() {
