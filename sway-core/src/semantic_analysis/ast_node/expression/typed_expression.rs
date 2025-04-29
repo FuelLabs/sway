@@ -49,7 +49,6 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_features::Feature;
 use sway_types::{integer_bits::IntegerBits, u256::U256, BaseIdent, Ident, Named, Span, Spanned};
 use symbol_collection_context::SymbolCollectionContext;
 use type_resolve::{resolve_call_path, VisibilityCheck};
@@ -3121,14 +3120,6 @@ fn type_check_panic(
     expr: &Expression,
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
-    if !ctx.experimental.error_type {
-        return Err(handler.emit_err(CompileError::FeatureIsDisabled {
-            feature: Feature::ErrorType.name().to_string(),
-            url: Feature::ErrorType.url().to_string(),
-            span,
-        }));
-    }
-
     let mut ctx = ctx.with_type_annotation(engines.te().new_unknown());
     let expr_span = expr.span();
     let expr = ty::TyExpression::type_check(handler, ctx.by_ref(), expr)

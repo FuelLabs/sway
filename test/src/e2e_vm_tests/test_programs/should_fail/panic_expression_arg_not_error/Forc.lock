@@ -1,8 +1,0 @@
-[[package]]
-name = "panic_expression_arg_not_error"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-935D9F4ED34261DA"
