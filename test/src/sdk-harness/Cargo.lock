@@ -2007,7 +2007,7 @@ dependencies = [
  "fuel-core-storage",
  "fuel-core-tx-status-manager",
  "fuel-core-txpool",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "fuel-core-upgradable-executor",
  "futures",
  "hex",
@@ -2044,7 +2044,7 @@ dependencies = [
  "bech32",
  "educe",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "itertools 0.12.1",
  "postcard",
  "rand",
@@ -2056,16 +2056,16 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-client"
-version = "0.43.1"
+version = "0.43.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b97080b375fc94144018b6e868108d18adcbf9cfd401acec423eee93a74c4312"
+checksum = "f45d2baedb11cbf2d9f74c11dae0a4fc0f5edaf5d9e0ee62781f8d9f1abba74f"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
  "cynic",
  "derive_more 0.99.18",
  "eventsource-client",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "futures",
  "hex",
  "hyper-rustls 0.24.2",
@@ -2087,7 +2087,7 @@ checksum = "47bdf74db7a1d8f7aba7e30fd4a1388a31266a3227bdf8e321a962b2e36fe66c"
 dependencies = [
  "anyhow",
  "enum_dispatch",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "paste",
  "serde",
  "strum 0.25.0",
@@ -2107,7 +2107,7 @@ dependencies = [
  "fuel-core-metrics",
  "fuel-core-services",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "futures",
  "paste",
  "serde",
@@ -2128,7 +2128,7 @@ dependencies = [
  "fuel-core-chain-config",
  "fuel-core-poa",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
 ]
 
 [[package]]
@@ -2140,7 +2140,7 @@ dependencies = [
  "anyhow",
  "derive_more 0.99.18",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
 ]
 
 [[package]]
@@ -2151,7 +2151,7 @@ checksum = "f2fa27c20577d1246f1675eee58fe08c59fca87fcf720bc660919aa4fda5d60f"
 dependencies = [
  "anyhow",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "parking_lot",
  "serde",
  "tracing",
@@ -2169,7 +2169,7 @@ dependencies = [
  "fuel-core-metrics",
  "fuel-core-services",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "fuel-gas-price-algorithm",
  "futures",
  "num_enum",
@@ -2196,7 +2196,7 @@ dependencies = [
  "derive_more 0.99.18",
  "fuel-core-metrics",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "mockall",
  "rayon",
  "tokio",
@@ -2231,7 +2231,7 @@ dependencies = [
  "fuel-core-metrics",
  "fuel-core-services",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "futures",
  "hex",
  "hickory-resolver",
@@ -2261,7 +2261,7 @@ dependencies = [
  "fuel-core-chain-config",
  "fuel-core-services",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "serde",
  "serde_json",
  "thiserror",
@@ -2280,7 +2280,7 @@ dependencies = [
  "async-trait",
  "derive_more 0.99.18",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "tokio",
  "tokio-rayon",
  "tracing",
@@ -2315,7 +2315,7 @@ dependencies = [
  "cosmos-sdk-proto",
  "cosmrs",
  "fuel-core-services",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "fuel-sequencer-proto",
  "futures",
  "postcard",
@@ -2338,7 +2338,7 @@ dependencies = [
  "anyhow",
  "derive_more 0.99.18",
  "enum-iterator",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "fuel-vm 0.60.2",
  "impl-tools",
  "itertools 0.12.1",
@@ -2363,7 +2363,7 @@ dependencies = [
  "async-trait",
  "fuel-core-metrics",
  "fuel-core-services",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "futures",
  "parking_lot",
  "postcard",
@@ -2384,7 +2384,7 @@ dependencies = [
  "fuel-core-metrics",
  "fuel-core-services",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "futures",
  "lru 0.13.0",
  "num-rational",
@@ -2412,9 +2412,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-types"
-version = "0.43.1"
+version = "0.43.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2a1ea90ca38af241b4b5872012c5496aa62f2c42409e73c63a9dc59a0e1ee21"
+checksum = "d4b15e20116e60f626107b85ec1826a10535a3101163e67471cc66fa20f393df"
 dependencies = [
  "anyhow",
  "bs58",
@@ -2441,7 +2441,7 @@ dependencies = [
  "derive_more 0.99.18",
  "fuel-core-executor",
  "fuel-core-storage",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "fuel-core-wasm-executor",
  "futures",
  "parking_lot",
@@ -2460,7 +2460,7 @@ dependencies = [
  "fuel-core-executor",
  "fuel-core-storage",
  "fuel-core-types 0.35.0",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "futures",
  "postcard",
  "serde",
@@ -2754,7 +2754,7 @@ dependencies = [
  "chrono",
  "cynic",
  "fuel-core-client",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "fuel-crypto 0.60.2",
  "fuel-tx 0.60.2",
  "fuel-types 0.60.2",
@@ -2800,7 +2800,7 @@ dependencies = [
  "fuel-asm 0.60.2",
  "fuel-core-chain-config",
  "fuel-core-client",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "fuel-crypto 0.60.2",
  "fuel-tx 0.60.2",
  "fuel-types 0.60.2",
@@ -2860,7 +2860,7 @@ dependencies = [
  "fuel-core-client",
  "fuel-core-poa",
  "fuel-core-services",
- "fuel-core-types 0.43.1",
+ "fuel-core-types 0.43.2",
  "fuel-crypto 0.60.2",
  "fuel-tx 0.60.2",
  "fuel-types 0.60.2",
