@@ -27,7 +27,7 @@ pub(crate) fn render_type_anchor(
                 render_plan,
                 current_module_info,
             )?;
-            let len_string = format!("{:?}", render_plan.engines.help_out(len));
+            let len_string = format!("{:?}", render_plan.engines.help_out(len.expr()));
             Ok(box_html! {
                 : "[";
                 : inner;

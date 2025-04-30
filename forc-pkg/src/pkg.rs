@@ -397,7 +397,7 @@ impl MemberFilter {
                         TreeType::Predicate => self.build_predicates,
                         TreeType::Script => self.build_scripts,
                         TreeType::Contract => self.build_contracts,
-                        TreeType::Library { .. } => self.build_libraries,
+                        TreeType::Library => self.build_libraries,
                     },
                     Err(_) => true,
                 }
@@ -1035,7 +1035,7 @@ fn validate_dep_manifest(
     // Check if the dependency is either a library or a contract declared as a contract dependency
     match (&dep_program_type, &dep_edge.kind) {
         (TreeType::Contract, DepKind::Contract { salt: _ })
-        | (TreeType::Library { .. }, DepKind::Library) => {}
+        | (TreeType::Library, DepKind::Library) => {}
         _ => bail!(
             "\"{}\" is declared as a {} dependency, but is actually a {}",
             dep.name,

@@ -70,16 +70,16 @@ use sway_types::{Span, Spanned};
 /// Each of these 4 examples generates a valid struct expression for `Data`
 /// and passes type checking. But each does so in a unique way:
 /// - `data1` has no type ascription and no type arguments in the `TypeBinding`,
-///     so both are inferred from the value passed to `value`
+///   so both are inferred from the value passed to `value`
 /// - `data2` has no type ascription but does have type arguments in the
-///     `TypeBinding`, so the type ascription and type of the value passed to
-///     `value` are both unified to the `TypeBinding`
+///   `TypeBinding`, so the type ascription and type of the value passed to
+///   `value` are both unified to the `TypeBinding`
 /// - `data3` has a type ascription but no type arguments in the `TypeBinding`,
-///     so the type arguments in the `TypeBinding` and the type of the value
-///     passed to `value` are both unified to the type ascription
+///   so the type arguments in the `TypeBinding` and the type of the value
+///   passed to `value` are both unified to the type ascription
 /// - `data4` has a type ascription and has type arguments in the `TypeBinding`,
-///     so, with the type from the value passed to `value`, all three are unified
-///     together
+///   so, with the type from the value passed to `value`, all three are unified
+///   together
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeBinding<T> {
     pub inner: T,

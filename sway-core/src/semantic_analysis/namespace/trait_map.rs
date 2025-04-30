@@ -839,11 +839,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    ///   entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type(
         module: &Module,
         engines: &Engines,
@@ -901,11 +901,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    ///   entries that qualify as hits are equivalents of `type_id`
     pub fn get_impl_spans_for_type(
         module: &Module,
         engines: &Engines,
@@ -994,11 +994,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    ///   entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
         module: &Module,
         engines: &Engines,
@@ -1066,11 +1066,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    //    entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
         module: &Module,
         engines: &Engines,

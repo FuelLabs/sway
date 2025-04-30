@@ -17,7 +17,7 @@ use crate::{
 };
 use sway_error::handler::Handler;
 use sway_parse::Parse;
-use sway_types::{Named, SourceId, Spanned};
+use sway_types::{SourceId, Spanned};
 
 /// Contains all information needed to auto-implement code for a certain feature.
 pub struct AutoImplContext<'a, 'b, I>
@@ -77,23 +77,27 @@ where
         r.unwrap()
     }
 
-    /// Generates code like: `<A, B, u64>`.
+    /// Generates code like: `<A, B, u64, N>`.
     fn generate_type_parameters_declaration_code(
         &self,
         type_parameters: &[TypeParameter],
     ) -> String {
-        if type_parameters.is_empty() {
-            String::new()
-        } else {
-            format!(
-                "<{}>",
-                itertools::intersperse(type_parameters.iter().map(|p| { p.name().as_str() }), ", ")
-                    .collect::<String>()
-            )
+        let mut code = String::new();
+        code.push('<');
+
+        for p in type_parameters {
+            match p {
+                TypeParameter::Type(p) => code.push_str(p.name.as_str()),
+                TypeParameter::Const(p) => code.push_str(p.name.as_str()),
+            }
+            code.push_str(", ");
         }
+
+        code.push('>');
+        code
     }
 
-    /// Generates code like: `T: Eq + Hash,\n`.
+    /// Generates code like: `T: Eq + Hash\n`.
     fn generate_type_parameters_constraints_code(
         &self,
         type_parameters: &[TypeParameter],
@@ -102,22 +106,21 @@ where
         let mut code = String::new();
 
         for p in type_parameters.iter() {
-            let p = p
-                .as_type_parameter()
-                .expect("only works with type parameters");
-            code.push_str(&format!(
-                "{}: {},\n",
-                p.name.as_str(),
-                itertools::intersperse(
-                    [extra_constraint].into_iter().chain(
-                        p.trait_constraints
-                            .iter()
-                            .map(|x| x.trait_name.suffix.as_str())
-                    ),
-                    " + "
-                )
-                .collect::<String>()
-            ));
+            if let TypeParameter::Type(p) = p {
+                code.push_str(&format!(
+                    "{}: {},\n",
+                    p.name.as_str(),
+                    itertools::intersperse(
+                        [extra_constraint].into_iter().chain(
+                            p.trait_constraints
+                                .iter()
+                                .map(|x| x.trait_name.suffix.as_str())
+                        ),
+                        " + "
+                    )
+                    .collect::<String>()
+                ));
+            }
         }
 
         if !code.is_empty() {

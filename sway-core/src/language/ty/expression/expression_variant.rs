@@ -1197,9 +1197,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
             match self {
-                TyExpressionVariant::ConstGenericExpression { .. } => {
-                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-                }
+                TyExpressionVariant::ConstGenericExpression { .. } => {}
                 TyExpressionVariant::Literal(_) => {}
                 TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for (_, arg) in arguments.iter_mut() {
