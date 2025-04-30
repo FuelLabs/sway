@@ -19,8 +19,8 @@ impl Format for ItemConst {
         // Required for comment formatting
         let start_len = formatted_code.len();
 
-        // Check if visibility token exists if so add it.
-        if self.visibility.is_some() {
+        // Check if pub token exists, if so add it.
+        if self.pub_token.is_some() {
             write!(formatted_code, "{} ", PubToken::AS_STR)?;
         }
 
@@ -63,7 +63,7 @@ impl Format for ItemConst {
 impl LeafSpans for ItemConst {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
-        if let Some(visibility) = &self.visibility {
+        if let Some(visibility) = &self.pub_token {
             collected_spans.push(ByteSpan::from(visibility.span()));
         }
         collected_spans.push(ByteSpan::from(self.const_token.span()));
