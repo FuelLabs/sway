@@ -12,6 +12,13 @@ fn syscall_write(fd: u64, buf: raw_ptr, count: u64) {
     }
 }
 
+// int fflush(FILE *_Nullable stream);
+fn syscall_fflush(fd: u64) {
+    asm(id: 1001, fd: fd) {
+        ecal id fd zero zero;
+    }
+}
+
 pub struct DebugStruct {
     f: Formatter,
     has_fields: bool,
@@ -45,7 +52,7 @@ impl Formatter {
         let mut i = 63;
         while value > 0 {
             let digit = value % 10;
-            digits[i] = digit + 48; // ascii zero = 48 
+            digits[i] = digit + 48; // ascii zero = 48
             i -= 1;
             value = value / 10;
         }
@@ -61,7 +68,7 @@ impl Formatter {
             let digit = asm(v: value % 10) {
                 v: u8
             };
-            digits[i] = digit + 48; // ascii zero = 48 
+            digits[i] = digit + 48; // ascii zero = 48
             i -= 1;
             value = value / 10;
         }
@@ -77,7 +84,7 @@ impl Formatter {
             let digit = asm(v: value % 10) {
                 v: u8
             };
-            digits[i] = digit + 48; // ascii zero = 48 
+            digits[i] = digit + 48; // ascii zero = 48
             i -= 1;
             value = value / 10;
         }
@@ -93,7 +100,7 @@ impl Formatter {
             let digit = asm(v: value % 10) {
                 v: u8
             };
-            digits[i] = digit + 48; // ascii zero = 48 
+            digits[i] = digit + 48; // ascii zero = 48
             i -= 1;
             value = value / 10;
         }
@@ -114,7 +121,7 @@ impl Formatter {
             let digit = asm(v: digit % 10) {
                 v: u8
             };
-            digits[i] = digit + 48; // ascii zero = 48 
+            digits[i] = digit + 48; // ascii zero = 48
             i -= 1;
             value = value / 10;
         }
@@ -149,6 +156,10 @@ impl Formatter {
             f: self,
             has_fields: false,
         }
+    }
+
+    pub fn flush(self) {
+        syscall_fflush(STDERR);
     }
 }
 
