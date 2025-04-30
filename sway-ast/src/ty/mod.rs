@@ -30,6 +30,7 @@ pub enum Ty {
     Never {
         bang_token: BangToken,
     },
+    Expr(Box<Expr>),
 }
 
 impl Spanned for Ty {
@@ -54,6 +55,7 @@ impl Spanned for Ty {
                 ty,
             } => Span::join(ampersand_token.span(), &ty.span()),
             Ty::Never { bang_token } => bang_token.span(),
+            Ty::Expr(expr) => expr.span(),
         }
     }
 }

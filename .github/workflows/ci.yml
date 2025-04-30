@@ -221,15 +221,16 @@ jobs:
         run: cargo install --locked --debug --path ./forc
       - name: Install Forc plugins
         run: |
-          cargo install --locked --debug --path ./forc-plugins/forc-fmt
-          cargo install --locked --debug --path ./forc-plugins/forc-lsp
           cargo install --locked --debug --path ./forc-plugins/forc-client
+          cargo install --locked --debug --path ./forc-plugins/forc-crypto
           cargo install --locked --debug --path ./forc-plugins/forc-debug
           cargo install --locked --debug --path ./forc-plugins/forc-doc
-          cargo install --locked --debug --path ./forc-plugins/forc-tx
-          cargo install --locked --debug --path ./forc-plugins/forc-crypto
-          cargo install --locked --debug --path ./forc-plugins/forc-node
+          cargo install --locked --debug --path ./forc-plugins/forc-fmt
+          cargo install --locked --debug --path ./forc-plugins/forc-lsp
           cargo install --locked --debug --path ./forc-plugins/forc-migrate
+          cargo install --locked --debug --path ./forc-plugins/forc-node
+          cargo install --locked --debug --path ./forc-plugins/forc-publish
+          cargo install --locked --debug --path ./forc-plugins/forc-tx
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
@@ -992,13 +993,13 @@ jobs:
       - name: Strip release binaries x86_64-linux-gnu
         if: matrix.job.target == 'x86_64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node forc-publish; do
             strip "target/${{ matrix.job.target }}/release/$BINARY"
           done
       - name: Strip release binaries aarch64-linux-gnu
         if: matrix.job.target == 'aarch64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node forc-publish; do
             docker run --rm -v \
             "$PWD/target:/target:Z" \
             ghcr.io/cross-rs/${{ matrix.job.target }}:main \
@@ -1008,7 +1009,7 @@ jobs:
       - name: Strip release binaries mac
         if: matrix.job.os == 'macos-latest'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node forc-publish; do
             strip -x "target/${{ matrix.job.target }}/release/$BINARY"
           done
 
@@ -1022,7 +1023,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node forc-publish; do
             cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

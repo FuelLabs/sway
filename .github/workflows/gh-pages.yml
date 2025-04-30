@@ -25,14 +25,15 @@ jobs:
           args: --locked --debug --path ./forc
       - name: Install Forc plugins
         run: |
-          cargo install --locked --debug --path ./forc-plugins/forc-fmt
-          cargo install --locked --debug --path ./forc-plugins/forc-lsp
           cargo install --locked --debug --path ./forc-plugins/forc-client
-          cargo install --locked --debug --path ./forc-plugins/forc-debug
-          cargo install --locked --debug --path ./forc-plugins/forc-doc
           cargo install --locked --debug --path ./forc-plugins/forc-crypto
+          cargo install --locked --debug --path ./forc-plugins/forc-debug
+          cargo install --locked --debug --path ./forc-plugins/forc-fmt
+          cargo install --locked --debug --path ./forc-plugins/forc-doc
+          cargo install --locked --debug --path ./forc-plugins/forc-lsp
           cargo install --locked --debug --path ./forc-plugins/forc-migrate
           cargo install --locked --debug --path ./forc-plugins/forc-node
+          cargo install --locked --debug --path ./forc-plugins/forc-publish
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1

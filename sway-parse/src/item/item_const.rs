@@ -4,7 +4,7 @@ use sway_ast::ItemConst;
 
 impl Parse for ItemConst {
     fn parse(parser: &mut Parser) -> ParseResult<ItemConst> {
-        let visibility = parser.take();
+        let pub_token = parser.take();
         let const_token = parser.parse()?;
         let name = parser.parse()?;
         let ty_opt = match parser.take() {
@@ -24,7 +24,7 @@ impl Parse for ItemConst {
         // between associated consts and module-level consts.
         let semicolon_token = parser.peek().unwrap_or_default();
         Ok(ItemConst {
-            visibility,
+            pub_token,
             const_token,
             name,
             ty_opt,

@@ -57,7 +57,7 @@ impl Parse for ItemKind {
         } else if let Some(item) = parser.guarded_parse::<AbiToken, _>()? {
             ItemKind::Abi(item)
         } else if let Some(mut item) = parser.guarded_parse::<ConstToken, ItemConst>()? {
-            item.visibility = visibility.take();
+            item.pub_token = visibility.take();
             parser.take::<SemicolonToken>().ok_or_else(|| {
                 parser.emit_error(ParseErrorKind::ExpectedPunct {
                     kinds: vec![sway_types::ast::PunctKind::Semicolon],
