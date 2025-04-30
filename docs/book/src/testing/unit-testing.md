@@ -71,9 +71,16 @@ fn test_meaning_of_life() {
 
 Tests with `#[test(should_revert)]` are considered to be passing if they are reverting.
 
+Revert codes are not shown by default in passing tests that have `should_revert`. To see revert codes, use the `--revert-codes` flag, `forc test --revert-codes`:
+
+```console
+      test test_meaning_of_life ... ok (23.099µs, 0 gas)
+Revert code: ffffffffffff0004
+```
+
 ## Calling Contracts
 
-Unit tests can call contract functions an example for such calls can be seen below.
+Unit tests can call contract functions. An example for such calls can be seen below.
 
 ```sway
 contract;
@@ -96,7 +103,7 @@ To test the `test_function()`, a unit test like the following can be written.
 fn test_success() {
     let caller = abi(MyContract, CONTRACT_ID);
     let result = caller.test_function {}();
-    assert(result == true)
+    assert(result == true);
 }
 ```
 
@@ -107,7 +114,7 @@ It is also possible to test failure with contract calls as well.
 fn test_fail() {
     let caller = abi(MyContract, CONTRACT_ID);
     let result = caller.test_function {}();
-    assert(result == false)
+    assert(result == false);
 }
 ```
 
@@ -154,37 +161,58 @@ fn main() {}
 
 #[test]
 fn test_fn() {
-let a = 10;
+    let a = 10;
     log(a);
     let b = 30;
     log(b);
-    assert_eq(a, 10)
-    assert_eq(b, 30)
+    assert_eq(a, 10);
+    assert_eq(b, 30);
 }
 ```
 
-The example shown above is logging two different variables, `a` and `b` and their values are `10` and `30`, respectively. Without log decoding printed log for this test with `forc test --logs` (`--logs` flag is required to see the logs for this example since the test is passing. Logs are silenced by default in passing tests, and can be enabled using the `--logs` flag.):
+The above example shows a passing test that is logging two different variables, `a` and `b`, and their values are `10` and `30`, respectively. Logs are silenced by default in passing tests, and can be enabled using the `--logs` flag, `forc test --logs`:
 
 ```console
-Finished debug [unoptimized + fuel] target(s) in 5.23s
-      Bytecode hash: 0x1cb1edc031691c5c08b50fd0f07b02431848ab81b325b72eb3fd233c67d6b548
-   Running 1 test, filtered 0 tests
-      test test_fn ... ok (38.875µs, 232 gas)
-[{"LogData":{"data":"000000000000000a","digest":"8d85f8467240628a94819b26bee26e3a9b2804334c63482deacec8d64ab4e1e7","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11032,"ptr":67107840,"ra":0,"rb":0}},{"LogData":{"data":"000000000000001e","digest":"48a97e421546f8d4cae1cf88c51a459a8c10a88442eed63643dd263cef880c1c","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11516,"ptr":67106816,"ra":0,"rb":1}}]
+     Running 1 test, filtered 0 tests
+      test test_fn ... ok (58.842µs, 0 gas)
+Decoded log value: 10, log rb: 1515152261580153489
+Decoded log value: 30, log rb: 1515152261580153489
 ```
 
-This is not very easy to understand, it is possible to decode these logs with `--decode` flag, executing `forc test --logs --decode`:
+The `--logs` flag prints decoded log values. If you want to see pretty-printed raw log receipts you can use the `--raw-logs --pretty` flags, `forc test --raw-logs --pretty`:
 
 ```console
-Finished debug [unoptimized + fuel] target(s) in 5.23s
-      Bytecode hash: 0x1cb1edc031691c5c08b50fd0f07b02431848ab81b325b72eb3fd233c67d6b548
-   Running 1 test, filtered 0 tests
-      test test_fn ... ok (38.875µs, 232 gas)
-Decoded log value: 10, log rb: 0
-Decoded log value: 30, log rb: 1
+      test test_fn ... ok (54.042µs, 0 gas)
+Raw logs:
+[
+  {
+    "LogData": {
+      "data": "000000000000000a",
+      "digest": "8d85f8467240628a94819b26bee26e3a9b2804334c63482deacec8d64ab4e1e7",
+      "id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "is": 10368,
+      "len": 8,
+      "pc": 11212,
+      "ptr": 67107840,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "000000000000001e",
+      "digest": "48a97e421546f8d4cae1cf88c51a459a8c10a88442eed63643dd263cef880c1c",
+      "id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "is": 10368,
+      "len": 8,
+      "pc": 11212,
+      "ptr": 67106816,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  }
+]
 ```
 
-As it can be seen, the values are human readable and easier to understand which makes debugging much more easier.
-
-**Note**: This is an experimental feature and we are actively working on reporting variable names next to their values.
+The `--logs` and `--raw-logs` flags can be combined to print both the decoded and raw logs.
 <!-- unit_test_log::example::end -->

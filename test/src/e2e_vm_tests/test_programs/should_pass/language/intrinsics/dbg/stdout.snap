@@ -7,6 +7,7 @@ ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 ecal $r4 $r2 $r3 $r0          ; ecal id fd buf count
+ecal $r2 $r1 $zero $zero      ; ecal id fd zero zero
 ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --release --asm final | grep ecal

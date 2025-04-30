@@ -2953,6 +2953,7 @@ dependencies = [
  "forc-util",
  "prettydiff",
  "sway-core",
+ "sway-features",
  "sway-utils",
  "swayfmt",
  "taplo",
@@ -3277,9 +3278,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-client"
-version = "0.43.1"
+version = "0.43.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b97080b375fc94144018b6e868108d18adcbf9cfd401acec423eee93a74c4312"
+checksum = "f45d2baedb11cbf2d9f74c11dae0a4fc0f5edaf5d9e0ee62781f8d9f1abba74f"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3376,9 +3377,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-core-types"
-version = "0.43.1"
+version = "0.43.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2a1ea90ca38af241b4b5872012c5496aa62f2c42409e73c63a9dc59a0e1ee21"
+checksum = "d4b15e20116e60f626107b85ec1826a10535a3101163e67471cc66fa20f393df"
 dependencies = [
  "anyhow",
  "bs58",
@@ -8119,6 +8120,7 @@ dependencies = [
  "phf",
  "sway-ast",
  "sway-error",
+ "sway-features",
  "sway-types",
  "thiserror 1.0.69",
  "unicode-bidi",
@@ -8166,6 +8168,7 @@ dependencies = [
  "similar",
  "sway-ast",
  "sway-error",
+ "sway-features",
  "sway-parse",
  "sway-types",
  "sway-utils",

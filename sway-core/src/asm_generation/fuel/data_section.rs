@@ -3,7 +3,7 @@ use sway_ir::{
     size_bytes_round_up_to_word_alignment, ConstantContent, ConstantValue, Context, Padding,
 };
 
-use std::{fmt, iter::repeat};
+use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub enum EntryName {
@@ -178,8 +178,12 @@ impl Entry {
 
         let final_padding = self.padding.target_size().saturating_sub(bytes.len());
         match self.padding {
-            Padding::Left { .. } => [repeat(0u8).take(final_padding).collect(), bytes].concat(),
-            Padding::Right { .. } => [bytes, repeat(0u8).take(final_padding).collect()].concat(),
+            Padding::Left { .. } => {
+                [std::iter::repeat_n(0u8, final_padding).collect(), bytes].concat()
+            }
+            Padding::Right { .. } => {
+                [bytes, std::iter::repeat_n(0u8, final_padding).collect()].concat()
+            }
         }
     }
 

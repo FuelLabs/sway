@@ -634,6 +634,9 @@ impl __ProgramVisitor {
                     Self::visit_expr(ctx, lexed_returned.__as_ref(), ty_returned, visitor, output)?;
                 }
             }
+            Expr::Panic { expr_opt: _, .. } => {
+                // TODO: Implement visiting `panic`.
+            }
             Expr::If(if_expr) => {
                 Self::visit_if(ctx, if_expr, ty_expr, visitor, output)?;
             }

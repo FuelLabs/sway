@@ -793,9 +793,7 @@ impl AllocatedOp {
             /* Non-VM Instructions */
             BLOB(a) => {
                 return FuelAsmData::Instructions(
-                    std::iter::repeat(op::NOOP::new().into())
-                        .take(a.value() as usize)
-                        .collect(),
+                    std::iter::repeat_n(op::NOOP::new().into(), a.value() as usize).collect(),
                 )
             }
             ConfigurablesOffsetPlaceholder => {

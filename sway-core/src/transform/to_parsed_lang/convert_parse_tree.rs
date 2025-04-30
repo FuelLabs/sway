@@ -11,7 +11,10 @@ use crate::{
     type_system::*,
     BuildTarget, Engines,
 };
-use ast_elements::{type_argument::GenericTypeArgument, type_parameter::GenericTypeParameter};
+use ast_elements::{
+    type_argument::{GenericConstArgument, GenericTypeArgument},
+    type_parameter::{ConstGenericExpr, GenericTypeParameter},
+};
 use itertools::Itertools;
 use sway_ast::{
     assignable::ElementAccess,
@@ -185,7 +188,13 @@ pub fn item_to_ast_nodes(
         }
         ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration({
             item_const_to_constant_declaration(
-                context, handler, engines, item_const, attributes, true,
+                context,
+                handler,
+                engines,
+                item_const,
+                Visibility::Private,
+                attributes,
+                true,
             )?
         })),
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
@@ -650,7 +659,13 @@ fn item_trait_to_trait_declaration(
                         .map(TraitItem::TraitFn)
                 }
                 ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
-                    context, handler, engines, const_decl, attributes, false,
+                    context,
+                    handler,
+                    engines,
+                    const_decl,
+                    Visibility::Public,
+                    attributes,
+                    false,
                 )
                 .map(TraitItem::Constant),
                 ItemTraitItem::Type(trait_type, _) => trait_type_to_trait_type_declaration(
@@ -763,7 +778,13 @@ pub fn item_impl_to_declaration(
                 )
                 .map(ImplItem::Fn),
                 sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
-                    context, handler, engines, const_item, attributes, false,
+                    context,
+                    handler,
+                    engines,
+                    const_item,
+                    Visibility::Private,
+                    attributes,
+                    false,
                 )
                 .map(ImplItem::Constant),
                 sway_ast::ItemImplItem::Type(type_item) => trait_type_to_trait_type_declaration(
@@ -932,7 +953,13 @@ fn item_abi_to_abi_declaration(
                             Ok(TraitItem::TraitFn(trait_fn))
                         }
                         ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
-                            context, handler, engines, const_decl, attributes, false,
+                            context,
+                            handler,
+                            engines,
+                            const_decl,
+                            Visibility::Public,
+                            attributes,
+                            false,
                         )
                         .map(TraitItem::Constant),
                         ItemTraitItem::Type(type_decl, _) => trait_type_to_trait_type_declaration(
@@ -1012,6 +1039,7 @@ pub(crate) fn item_const_to_constant_declaration(
     handler: &Handler,
     engines: &Engines,
     item_const: ItemConst,
+    default_visibility: Visibility,
     attributes: Attributes,
     require_expression: bool,
 ) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
@@ -1044,11 +1072,16 @@ pub(crate) fn item_const_to_constant_declaration(
         }
     };
 
+    let visibility = match item_const.pub_token {
+        Some(pub_token) => pub_token_opt_to_visibility(Some(pub_token)),
+        None => default_visibility,
+    };
+
     let const_decl = ConstantDeclaration {
         name: item_const.name,
         type_ascription,
         value: expr,
-        visibility: pub_token_opt_to_visibility(item_const.visibility),
+        visibility,
         attributes,
         span,
     };
@@ -1356,6 +1389,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
                             ty: type_engine.id_of_u64(),
                             is_from_parent,
                             id: None,
+                            expr: None,
                         })
                     }
                 }
@@ -1581,7 +1615,12 @@ fn ty_to_type_info(
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
                 ty_to_type_argument(context, handler, engines, *ty_array_descriptor.ty)?,
-                expr_to_length(context, engines, handler, *ty_array_descriptor.length)?,
+                Length(expr_to_const_generic_expr(
+                    context,
+                    engines,
+                    handler,
+                    ty_array_descriptor.length.as_ref(),
+                )?),
             )
         }
         Ty::StringSlice(..) => TypeInfo::StringSlice,
@@ -1607,6 +1646,7 @@ fn ty_to_type_info(
             }
         }
         Ty::Never { .. } => TypeInfo::Never,
+        Ty::Expr(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
     };
     Ok(type_info)
 }
@@ -1690,20 +1730,28 @@ fn ty_to_type_argument(
 ) -> Result<GenericArgument, ErrorEmitted> {
     let type_engine = engines.te();
     let span = ty.span();
-    let call_path_tree = ty_to_call_path_tree(context, handler, engines, ty.clone())?;
-    let initial_type_id = type_engine.insert(
-        engines,
-        ty_to_type_info(context, handler, engines, ty.clone())?,
-        ty.span().source_id(),
-    );
 
-    let type_argument = GenericArgument::Type(GenericTypeArgument {
-        type_id: initial_type_id,
-        initial_type_id,
-        call_path_tree,
-        span,
-    });
-    Ok(type_argument)
+    match ty {
+        Ty::Expr(expr) => Ok(GenericArgument::Const(GenericConstArgument {
+            expr: expr_to_const_generic_expr(context, engines, handler, expr.as_ref())?,
+        })),
+        ty => {
+            let call_path_tree = ty_to_call_path_tree(context, handler, engines, ty.clone())?;
+            let initial_type_id = type_engine.insert(
+                engines,
+                ty_to_type_info(context, handler, engines, ty.clone())?,
+                ty.span().source_id(),
+            );
+
+            let type_argument = GenericArgument::Type(GenericTypeArgument {
+                type_id: initial_type_id,
+                initial_type_id,
+                call_path_tree,
+                span,
+            });
+            Ok(type_argument)
+        }
+    }
 }
 
 fn fn_signature_to_trait_fn(
@@ -1996,7 +2044,7 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
-    let arguments = args
+    let arguments: Vec<Expression> = args
         .into_inner()
         .into_iter()
         .map(|expr| expr_to_expression(context, handler, engines, expr))
@@ -2015,6 +2063,14 @@ fn expr_func_app_to_expression_kind(
         Some(Intrinsic::Log)
             if context.experimental.new_encoding && last.is_none() && !is_relative_to_root =>
         {
+            if arguments.len() != 1 {
+                return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+                    name: Intrinsic::Log.to_string(),
+                    expected: 1,
+                    span: span.clone(),
+                }));
+            }
+
             let span = name_args_span(span, type_arguments_span);
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
@@ -2022,26 +2078,11 @@ fn expr_func_app_to_expression_kind(
                     kind_binding: TypeBinding {
                         inner: Intrinsic::Log,
                         type_arguments: TypeArgs::Regular(vec![]),
-                        span: span.clone(),
+                        span,
                     },
-                    arguments: vec![Expression {
-                        kind: ExpressionKind::FunctionApplication(Box::new(
-                            FunctionApplicationExpression {
-                                call_path_binding: TypeBinding {
-                                    inner: CallPath {
-                                        prefixes: vec![],
-                                        suffix: Ident::new_no_span("encode".into()),
-                                        callpath_type: CallPathType::Ambiguous,
-                                    },
-                                    type_arguments: TypeArgs::Regular(type_arguments),
-                                    span: span.clone(),
-                                },
-                                resolved_call_path_binding: None,
-                                arguments,
-                            },
-                        )),
-                        span: span.clone(),
-                    }],
+                    arguments: vec![wrap_logged_expr_into_encode_call(
+                        arguments.into_iter().next().unwrap(),
+                    )],
                 },
             ));
         }
@@ -2050,6 +2091,7 @@ fn expr_func_app_to_expression_kind(
         //      f.print_str("[{current_file}:{current_line}:{current_col}] = ");
         //      let arg = arg;
         //      arg.fmt(f);
+        //      f.flush();
         //      arg
         // }"
         Some(Intrinsic::Dbg)
@@ -2221,6 +2263,29 @@ fn expr_func_app_to_expression_kind(
                     },
                     // f.print_str(<newline>);
                     ast_node_to_print_str(f_ident.clone(), "\n", &span),
+                    // f.flush();
+                    AstNode {
+                        content: AstNodeContent::Expression(Expression {
+                            kind: ExpressionKind::MethodApplication(Box::new(
+                                MethodApplicationExpression {
+                                    method_name_binding: TypeBinding {
+                                        inner: MethodName::FromModule {
+                                            method_name: BaseIdent::new_no_span("flush".into()),
+                                        },
+                                        type_arguments: TypeArgs::Regular(vec![]),
+                                        span: span.clone(),
+                                    },
+                                    contract_call_params: vec![],
+                                    arguments: vec![Expression {
+                                        kind: ExpressionKind::Variable(f_ident.clone()),
+                                        span: span.clone(),
+                                    }],
+                                },
+                            )),
+                            span: span.clone(),
+                        }),
+                        span: span.clone(),
+                    },
                     // arg
                     AstNode {
                         content: AstNodeContent::Expression(Expression {
@@ -2438,6 +2503,26 @@ fn expr_to_expression(
             };
             Expression {
                 kind: ExpressionKind::Return(Box::new(expression)),
+                span,
+            }
+        }
+        Expr::Panic { expr_opt, .. } => {
+            let expression = match expr_opt {
+                Some(expr) => expr_to_expression(context, handler, engines, *expr)?,
+                None => Expression {
+                    kind: ExpressionKind::Tuple(Vec::new()),
+                    span: span.clone(),
+                },
+            };
+
+            let expression = if context.experimental.new_encoding {
+                wrap_logged_expr_into_encode_call(expression)
+            } else {
+                expression
+            };
+
+            Expression {
+                kind: ExpressionKind::Panic(Box::new(expression)),
                 span,
             }
         }
@@ -2818,6 +2903,29 @@ fn expr_to_expression(
     Ok(expression)
 }
 
+/// Wraps the `logged_expr` that needs to be logged into an `encode` call: `encode(<logged_expr>)`.
+/// Wrapping is needed in the `__log` intrinsic and the `revert` expression in the case of
+/// the new encoding.
+fn wrap_logged_expr_into_encode_call(logged_expr: Expression) -> Expression {
+    let expression_span = logged_expr.span();
+    Expression {
+        kind: ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
+            call_path_binding: TypeBinding {
+                inner: CallPath {
+                    prefixes: vec![],
+                    suffix: Ident::new_no_span("encode".into()),
+                    callpath_type: CallPathType::Ambiguous,
+                },
+                type_arguments: TypeArgs::Regular(vec![]),
+                span: expression_span.clone(),
+            },
+            resolved_call_path_binding: None,
+            arguments: vec![logged_expr],
+        })),
+        span: expression_span,
+    }
+}
+
 fn op_call(
     name: &'static str,
     op_span: Span,
@@ -3062,23 +3170,23 @@ fn fn_arg_to_function_parameter(
     Ok(function_parameter)
 }
 
-fn expr_to_length(
+fn expr_to_const_generic_expr(
     context: &mut Context,
     engines: &Engines,
     handler: &Handler,
-    expr: Expr,
-) -> Result<Length, ErrorEmitted> {
+    expr: &Expr,
+) -> Result<ConstGenericExpr, ErrorEmitted> {
     let span = expr.span();
     match &expr {
-        Expr::Literal(..) => Ok(Length::literal(
-            expr_to_usize(context, handler, expr)?,
+        Expr::Literal(..) => Ok(ConstGenericExpr::literal(
+            expr_to_usize(context, handler, expr.clone())?,
             Some(span),
         )),
         _ => {
-            let expr = expr_to_expression(context, handler, engines, expr)?;
+            let expr = expr_to_expression(context, handler, engines, expr.clone())?;
             match expr.kind {
                 ExpressionKind::AmbiguousVariableExpression(ident) => {
-                    Ok(Length::AmbiguousVariableExpression { ident })
+                    Ok(ConstGenericExpr::AmbiguousVariableExpression { ident })
                 }
                 _ => Err(handler.emit_err(CompileError::LengthExpressionNotSupported { span })),
             }
@@ -4666,6 +4774,7 @@ fn ty_to_type_parameter(
                 is_from_parent: false,
             }));
         }
+        Ty::Expr(_) => panic!("expr are not allowed in this position"),
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
         Ty::StringSlice(..) => panic!("str slice types are not allowed in this position"),
