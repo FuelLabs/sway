@@ -20,6 +20,7 @@ pub(crate) use trait_coherence::check_orphan_rules_for_impls;
 pub(crate) use trait_map::IsExtendingExistingImpl;
 pub(crate) use trait_map::IsImplSelf;
 pub(super) use trait_map::ResolvedTraitImplItem;
+pub(crate) use trait_map::TraitEntry;
 pub use trait_map::TraitMap;
 pub use trait_map::TryInsertingTraitImplOnFailure;
 

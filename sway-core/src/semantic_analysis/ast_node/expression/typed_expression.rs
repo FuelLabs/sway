@@ -28,7 +28,7 @@ use crate::{
         },
         *,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, TraitMap},
     semantic_analysis::{expression::ReachableReport, *},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
@@ -275,6 +275,9 @@ impl ty::TyExpression {
             }
             ExpressionKind::ImplicitReturn(expr) => Self::collect(handler, engines, ctx, expr)?,
             ExpressionKind::Return(expr) => {
+                Self::collect(handler, engines, ctx, expr)?;
+            }
+            ExpressionKind::Panic(expr) => {
                 Self::collect(handler, engines, ctx, expr)?;
             }
             ExpressionKind::Ref(expr) => {
@@ -569,6 +572,9 @@ impl ty::TyExpression {
                     span,
                 };
                 Ok(typed_expr)
+            }
+            ExpressionKind::Panic(expr) => {
+                type_check_panic(handler, ctx.by_ref(), engines, expr, span)
             }
             ExpressionKind::Ref(RefExpression {
                 to_mutable_value,
@@ -3096,6 +3102,66 @@ impl ty::TyExpression {
             }
         }
     }
+}
+
+fn type_check_panic(
+    handler: &Handler,
+    ctx: TypeCheckContext<'_>,
+    engines: &Engines,
+    expr: &Expression,
+    span: Span,
+) -> Result<ty::TyExpression, ErrorEmitted> {
+    let mut ctx = ctx.with_type_annotation(engines.te().new_unknown());
+    let expr_span = expr.span();
+    let expr = ty::TyExpression::type_check(handler, ctx.by_ref(), expr)
+        .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+
+    let expr_type_id = if ctx.experimental.new_encoding {
+        // The type checked expression is either an `encode` call or an error.
+        match &expr.expression {
+            ty::TyExpressionVariant::FunctionApplication {
+                call_path,
+                arguments,
+                ..
+            } => {
+                if !(call_path.suffix.as_str() == "encode" && arguments.len() == 1) {
+                    return Err(handler.emit_err(CompileError::Internal(
+                        "In case of the new encoding, the `panic` expression argument must be a call to an \"encode\" function.",
+                        expr_span
+                    )));
+                } else {
+                    arguments[0].1.return_type
+                }
+            }
+            _ => expr.return_type, // Error. We just pass the type id through.
+        }
+    } else {
+        expr.return_type
+    };
+
+    // TODO: (REFERENCES) Once we continue work on references, implement support for panicking on references
+    //       of types that implement `std::marker::Error`.
+
+    if !TraitMap::type_implements_trait(
+        ctx.namespace().current_module(),
+        engines,
+        expr_type_id,
+        |trait_entry| trait_entry.is_std_marker_error_trait(),
+    ) {
+        return Err(
+            handler.emit_err(CompileError::PanicExpressionArgumentIsNotError {
+                argument_type: engines.help_out(expr_type_id).to_string(),
+                span: expr.span.clone(),
+            }),
+        );
+    }
+
+    let typed_expr = ty::TyExpression {
+        expression: ty::TyExpressionVariant::Panic(Box::new(expr)),
+        return_type: engines.te().id_of_never(),
+        span,
+    };
+    Ok(typed_expr)
 }
 
 fn check_asm_block_validity(

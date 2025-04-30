@@ -76,7 +76,7 @@ where
         let type_parameters_declaration =
             self.generate_type_parameters_declaration_code(type_parameters);
         let type_parameters_constraints =
-            self.generate_type_parameters_constraints_code(type_parameters, "Debug");
+            self.generate_type_parameters_constraints_code(type_parameters, Some("Debug"));
 
         let name = name.as_str();
 

@@ -3,12 +3,12 @@ script;
 mod impls;
 use impls::*;
 
-// TODO-IG: Add tests for other expressions.
+// TODO: (REFERENCES) Add tests for other expressions.
 
 const USE_LOCAL_VARIABLE: u8 = 0;
 const USE_TEMPORARY_VALUE: u8 = 1;
 const USE_NON_MUT_REF_MUT_PARAMETER: u8 = 2;
-// TODO-IG: Once implemented, add tests for `mut` parameters.
+// TODO: (REFERENCES) Once implemented, add tests for `mut` parameters.
 // const USE_MUT_PARAMETER: u8 = 3;
 
 // All tests are arranged in a way that the value requested via `to_use`

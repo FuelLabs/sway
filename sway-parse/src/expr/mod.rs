@@ -703,7 +703,6 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         return Ok(Expr::AbiCast { abi_token, args });
     }
     if let Some(return_token) = parser.take() {
-        // TODO: how to handle this properly?
         if parser.is_empty()
             || parser.peek::<CommaToken>().is_some()
             || parser.peek::<SemicolonToken>().is_some()
@@ -718,6 +717,24 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
             return_token,
             expr_opt: Some(expr),
         });
+    }
+    if parser.experimental.error_type {
+        if let Some(panic_token) = parser.take() {
+            if parser.is_empty()
+                || parser.peek::<CommaToken>().is_some()
+                || parser.peek::<SemicolonToken>().is_some()
+            {
+                return Ok(Expr::Panic {
+                    panic_token,
+                    expr_opt: None,
+                });
+            }
+            let expr = parser.parse()?;
+            return Ok(Expr::Panic {
+                panic_token,
+                expr_opt: Some(expr),
+            });
+        }
     }
     if let Some(if_expr) = parser.guarded_parse::<IfToken, _>()? {
         return Ok(Expr::If(if_expr));
