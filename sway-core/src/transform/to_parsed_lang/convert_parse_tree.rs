@@ -2091,6 +2091,7 @@ fn expr_func_app_to_expression_kind(
         //      f.print_str("[{current_file}:{current_line}:{current_col}] = ");
         //      let arg = arg;
         //      arg.fmt(f);
+        //      f.flush();
         //      arg
         // }"
         Some(Intrinsic::Dbg)
@@ -2262,6 +2263,29 @@ fn expr_func_app_to_expression_kind(
                     },
                     // f.print_str(<newline>);
                     ast_node_to_print_str(f_ident.clone(), "\n", &span),
+                    // f.flush();
+                    AstNode {
+                        content: AstNodeContent::Expression(Expression {
+                            kind: ExpressionKind::MethodApplication(Box::new(
+                                MethodApplicationExpression {
+                                    method_name_binding: TypeBinding {
+                                        inner: MethodName::FromModule {
+                                            method_name: BaseIdent::new_no_span("flush".into()),
+                                        },
+                                        type_arguments: TypeArgs::Regular(vec![]),
+                                        span: span.clone(),
+                                    },
+                                    contract_call_params: vec![],
+                                    arguments: vec![Expression {
+                                        kind: ExpressionKind::Variable(f_ident.clone()),
+                                        span: span.clone(),
+                                    }],
+                                },
+                            )),
+                            span: span.clone(),
+                        }),
+                        span: span.clone(),
+                    },
                     // arg
                     AstNode {
                         content: AstNodeContent::Expression(Expression {
