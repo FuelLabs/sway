@@ -21,11 +21,11 @@ impl PartialEq for S {
 }
 impl Eq for S {}
 
-// TODO-IG: Extend with `mut` parameters once declaring `mut` parameters is implemented.
+// TODO: (REFERENCES) Extend with `mut` parameters once declaring `mut` parameters is implemented.
 
-// TODO-IG: Extend with `&` and `&mut` parameters once proper referencing of copy type parameters is implemented.
+// TODO: (REFERENCES) Extend with `&` and `&mut` parameters once proper referencing of copy type parameters is implemented.
 
-// TODO-IG: Uncomment once proper referencing of copy type parameters is implemented.
+// TODO: (REFERENCES) Uncomment once proper referencing of copy type parameters is implemented.
 // #[inline(always)]
 // fn u8_parameter(p: u8) {
 //    let r_p_1 = &p;
@@ -231,7 +231,7 @@ fn enum_parameter_not_inlined(p: E) {
 
 #[inline(always)]
 fn generic_parameter() {
-    // TODO-IG: Uncomment once referencing copy type function parameters is implemented.
+    // TODO: (REFERENCES) Uncomment once referencing copy type function parameters is implemented.
     //generic_parameter_test(123u8);
     //generic_parameter_test(123u64);
     //generic_parameter_test(true);

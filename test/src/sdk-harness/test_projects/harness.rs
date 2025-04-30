@@ -26,6 +26,8 @@ mod option_in_abi;
 mod parsing_logs;
 mod predicate_data_simple;
 mod predicate_data_struct;
+// TODO: Enable this test once `error_type` feature is not experimental anymore.
+// mod predicate_panic_expression;
 mod private_struct_fields_in_storage_and_abi;
 mod registers;
 mod result_in_abi;
