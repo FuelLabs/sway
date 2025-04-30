@@ -307,7 +307,10 @@ impl AbstractProgram {
 
             // Load the data into a register for comparison.
             asm.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedInstruction::LoadDataId(PROG_SELECTOR_REG, data_label)),
+                opcode: Either::Left(AllocatedInstruction::LoadDataId(
+                    PROG_SELECTOR_REG,
+                    data_label,
+                )),
                 comment: format!(
                     "[function selection]: load function {} selector for comparison",
                     entry.name
@@ -370,10 +373,12 @@ impl AbstractProgram {
     fn append_globals_allocation(&self, asm: &mut AllocatedAbstractInstructionSet) {
         let len_in_bytes = self.globals_section.len_in_bytes();
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedInstruction::CFEI(VirtualImmediate24::new_unchecked(
-                len_in_bytes,
-                "length (bytes) must fit in 24 bits",
-            ))),
+            opcode: Either::Left(AllocatedInstruction::CFEI(
+                VirtualImmediate24::new_unchecked(
+                    len_in_bytes,
+                    "length (bytes) must fit in 24 bits",
+                ),
+            )),
             comment: "allocate stack space for globals".into(),
             owning_span: None,
         });

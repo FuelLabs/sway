@@ -7,7 +7,7 @@ use sway_error::{
 };
 use sway_types::Span;
 
-use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedInstruction};
+use crate::asm_lang::allocated_ops::{AllocatedInstruction, AllocatedOp};
 
 /// Checks if an opcode is one that cannot be executed from within a script.
 /// If so, throw an error.

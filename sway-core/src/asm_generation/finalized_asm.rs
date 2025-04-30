@@ -4,7 +4,7 @@ use super::{
     ProgramABI, ProgramKind,
 };
 use crate::asm_generation::fuel::data_section::{Datum, Entry, EntryName};
-use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedInstruction, FuelAsmData};
+use crate::asm_lang::allocated_ops::{AllocatedInstruction, AllocatedOp, FuelAsmData};
 use crate::decl_engine::DeclRefFunction;
 use crate::source_map::SourceMap;
 use crate::BuildConfig;
