@@ -35,7 +35,7 @@ use crate::{
     Engines,
 };
 
-use ast_elements::type_argument::GenericTypeArgument;
+use ast_elements::{type_argument::GenericTypeArgument, type_parameter::ConstGenericExpr};
 use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
 use either::Either;
 use indexmap::IndexMap;
@@ -2073,18 +2073,7 @@ impl ty::TyExpression {
             .with_type_annotation(type_engine.id_of_u64());
         let length_expr = Self::type_check(handler, length_ctx, length)
             .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
-        let length = match &length_expr.expression {
-            TyExpressionVariant::Literal(Literal::U64(val)) => Length::Literal {
-                val: *val as usize,
-                span: span.clone(),
-            },
-            TyExpressionVariant::ConstGenericExpression { call_path, .. } => {
-                Length::AmbiguousVariableExpression {
-                    ident: call_path.suffix.clone(),
-                }
-            }
-            _ => return Err(handler.emit_err(CompileError::ConstGenericNotSupportedHere { span })),
-        };
+        let length = Length(ConstGenericExpr::from_ty_expression(handler, &length_expr)?);
 
         let return_type = type_engine.insert_array(engines, elem_type_arg, length);
         Ok(ty::TyExpression {
@@ -2756,9 +2745,10 @@ impl ty::TyExpression {
                 }
                 (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, index_span }) => {
                     let field_type_opt = {
-                        fields.get(*index).map(
-                            |GenericArgument::Type(GenericTypeArgument { type_id, .. })| type_id,
-                        )
+                        fields
+                            .get(*index)
+                            .and_then(|x| x.as_type_argument())
+                            .map(|GenericTypeArgument { type_id, .. }| type_id)
                     };
                     let field_type = match field_type_opt {
                         Some(field_type) => field_type,
@@ -2786,7 +2776,7 @@ impl ty::TyExpression {
                     }
                     match actually {
                         TypeInfo::Array(elem_ty, array_length)
-                            if array_length.as_literal_val().is_some() =>
+                            if array_length.expr().as_literal_val().is_some() =>
                         {
                             parent_rover = symbol;
                             symbol = elem_ty.type_id();
@@ -2799,6 +2789,7 @@ impl ty::TyExpression {
                             {
                                 // SAFETY: safe by the guard above
                                 let array_length = array_length
+                                    .expr()
                                     .as_literal_val()
                                     .expect("unexpected non literal array length")
                                     as u64;

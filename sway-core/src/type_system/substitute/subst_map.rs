@@ -1,4 +1,5 @@
 use crate::{
+    ast_elements::type_parameter::ConstGenericExpr,
     decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert},
     engine_threading::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
@@ -193,7 +194,7 @@ impl TypeSubstMap {
                 let decl_params = decl_engine.get_enum(decl_ref_params);
                 let decl_args = decl_engine.get_enum(decl_ref_args);
                 let type_parameters = decl_params
-                    .type_parameters
+                    .generic_parameters
                     .iter()
                     .map(|x| {
                         let x = x
@@ -203,7 +204,7 @@ impl TypeSubstMap {
                     })
                     .collect::<Vec<_>>();
                 let type_arguments = decl_args
-                    .type_parameters
+                    .generic_parameters
                     .iter()
                     .map(|x| {
                         let x = x
@@ -223,7 +224,7 @@ impl TypeSubstMap {
                 let decl_args = decl_engine.get_struct(decl_ref_args);
 
                 let type_parameters = decl_params
-                    .type_parameters
+                    .generic_parameters
                     .iter()
                     .map(|x| {
                         let x = x
@@ -233,7 +234,7 @@ impl TypeSubstMap {
                     })
                     .collect::<Vec<_>>();
                 let type_arguments = decl_args
-                    .type_parameters
+                    .generic_parameters
                     .iter()
                     .map(|x| {
                         let x = x
@@ -267,10 +268,10 @@ impl TypeSubstMap {
                     vec![type_parameter.type_id()],
                     vec![type_argument.type_id()],
                 );
-                match (&l, &r) {
+                match (&l.expr(), &r.expr()) {
                     (
-                        Length::AmbiguousVariableExpression { ident },
-                        Length::Literal { val, .. },
+                        ConstGenericExpr::AmbiguousVariableExpression { ident },
+                        ConstGenericExpr::Literal { val, .. },
                     ) => {
                         map.const_generics_materialization.insert(
                             ident.as_str().into(),
@@ -351,8 +352,26 @@ impl TypeSubstMap {
         }
     }
 
-    pub(crate) fn extend(&mut self, subst_map: &TypeSubstMap) {
-        self.mapping.extend(subst_map.mapping.iter());
+    pub(crate) fn from_type_parameters_and_type_arguments_and_const_generics(
+        type_parameters: Vec<SourceType>,
+        type_arguments: Vec<DestinationType>,
+        const_generics_materialization: BTreeMap<String, crate::language::ty::TyExpression>,
+    ) -> TypeSubstMap {
+        let mapping = type_parameters.into_iter().zip(type_arguments).collect();
+        TypeSubstMap {
+            mapping,
+            const_generics_materialization,
+        }
+    }
+
+    pub(crate) fn extend(&mut self, other: &TypeSubstMap) {
+        self.mapping.extend(other.mapping.iter());
+        self.const_generics_materialization.extend(
+            other
+                .const_generics_materialization
+                .iter()
+                .map(|x| (x.0.clone(), x.1.clone())),
+        );
     }
 
     pub(crate) fn insert(&mut self, source: SourceType, destination: DestinationType) {
@@ -461,10 +480,11 @@ impl TypeSubstMap {
                         *field.type_argument.type_id_mut() = type_id;
                     }
                 }
-                for type_param in &mut decl.type_parameters {
-                    let type_param = type_param
-                        .as_type_parameter_mut()
-                        .expect("only works with type parameters");
+                for type_param in &mut decl
+                    .generic_parameters
+                    .iter_mut()
+                    .filter_map(|x| x.as_type_parameter_mut())
+                {
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -490,7 +510,7 @@ impl TypeSubstMap {
                     }
                 }
 
-                for type_param in &mut decl.type_parameters {
+                for type_param in &mut decl.generic_parameters {
                     let type_param = type_param
                         .as_type_parameter_mut()
                         .expect("only works with type parameters");

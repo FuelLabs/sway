@@ -781,7 +781,7 @@ impl Parse for ty::StructDecl {
         adaptive_iter(&struct_decl.fields, |field| {
             field.parse(ctx);
         });
-        adaptive_iter(&struct_decl.type_parameters, |type_param| {
+        adaptive_iter(&struct_decl.generic_parameters, |type_param| {
             if let Some(type_id) = type_param.as_type_parameter().map(|x| x.type_id) {
                 if let Some(mut token) = ctx
                     .tokens
@@ -1236,8 +1236,12 @@ fn assign_type_to_token(
     token.type_def = Some(TypeDefinition::TypeId(type_id));
 }
 
-fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &GenericArgument) {
-    let type_info = ctx.engines.te().get(type_arg.type_id());
+fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, generic_arg: &GenericArgument) {
+    if generic_arg.as_type_argument().is_none() {
+        return;
+    }
+
+    let type_info = ctx.engines.te().get(generic_arg.type_id());
     collect_qualified_path_root(ctx, tree.qualified_call_path.qualified_path_root.clone());
     collect_call_path_prefixes(
         ctx,
@@ -1246,15 +1250,15 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ge
     );
     collect_type_id(
         ctx,
-        type_arg.type_id(),
-        &TypedAstToken::TypedArgument(type_arg.clone()),
+        generic_arg.type_id(),
+        &TypedAstToken::TypedArgument(generic_arg.clone()),
         tree.qualified_call_path.call_path.suffix.span(),
     );
     match &*type_info {
         TypeInfo::Enum(decl_ref) => {
             let decl = ctx.engines.de().get_enum(decl_ref);
             let child_type_args: Vec<_> = decl
-                .type_parameters
+                .generic_parameters
                 .iter()
                 .map(GenericArgument::from)
                 .collect();
@@ -1268,7 +1272,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ge
         TypeInfo::Struct(decl_ref) => {
             let decl = ctx.engines.de().get_struct(decl_ref);
             let child_type_args: Vec<_> = decl
-                .type_parameters
+                .generic_parameters
                 .iter()
                 .map(GenericArgument::from)
                 .collect();
@@ -1305,7 +1309,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ge
                     .try_get_mut_with_retry(&ctx.ident(&abi_call_path.call_path.suffix))
                 {
                     token.ast_node =
-                        TokenAstNode::Typed(TypedAstToken::TypedArgument(type_arg.clone()));
+                        TokenAstNode::Typed(TypedAstToken::TypedArgument(generic_arg.clone()));
                     let full_path = mod_path_to_full_path(
                         &abi_call_path.call_path.prefixes,
                         false,
@@ -1447,7 +1451,7 @@ fn collect_type_id(
             {
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
             }
-            adaptive_iter(&decl.type_parameters, |param| {
+            adaptive_iter(&decl.generic_parameters, |param| {
                 if let Some(type_id) = param.as_type_parameter().map(|x| x.type_id) {
                     collect_type_id(
                         ctx,
@@ -1469,7 +1473,7 @@ fn collect_type_id(
             {
                 assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
             }
-            adaptive_iter(&decl.type_parameters, |param| {
+            adaptive_iter(&decl.generic_parameters, |param| {
                 if let Some(type_id) = param.as_type_parameter().map(|x| x.type_id) {
                     collect_type_id(
                         ctx,
@@ -1582,7 +1586,7 @@ fn collect_enum(ctx: &ParseContext, decl_id: &DeclId<ty::TyEnumDecl>, declaratio
         token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedDeclaration(declaration.clone()));
         token.type_def = Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
     }
-    adaptive_iter(&enum_decl.type_parameters, |type_param| {
+    adaptive_iter(&enum_decl.generic_parameters, |type_param| {
         if let Some(mut token) = ctx
             .tokens
             .try_get_mut_with_retry(&ctx.ident(type_param.name()))

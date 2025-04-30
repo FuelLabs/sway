@@ -63,7 +63,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
         } else {
             // Otherwise, generate the impl block with the `new` function inside.
             self.impl_string(
-                self.type_param_string(&self.decl.type_parameters),
+                self.type_param_string(&self.decl.generic_parameters),
                 format!("\n{new_fn}\n"),
                 None,
             )

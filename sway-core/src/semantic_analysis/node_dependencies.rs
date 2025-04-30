@@ -817,8 +817,15 @@ impl Dependencies {
     }
 
     fn gather_from_type_argument(self, engines: &Engines, type_argument: &GenericArgument) -> Self {
-        let type_engine = engines.te();
-        self.gather_from_typeinfo(engines, &type_engine.get(type_argument.type_id()))
+        match type_argument {
+            GenericArgument::Type(a) => {
+                let type_engine = engines.te();
+                self.gather_from_typeinfo(engines, &type_engine.get(a.type_id))
+            }
+            GenericArgument::Const(_) => Dependencies {
+                deps: HashSet::default(),
+            },
+        }
     }
 
     fn gather_from_typeinfo(mut self, engines: &Engines, type_info: &TypeInfo) -> Self {
