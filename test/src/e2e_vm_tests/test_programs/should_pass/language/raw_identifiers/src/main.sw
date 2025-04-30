@@ -42,6 +42,18 @@ fn simple_function() -> u64 {
 }
 
 fn main() -> u64 {
+    // This proves that https://github.com/FuelLabs/sway/issues/7066 is fixed.
+    let r#return = 42;
+    if r#return != 42 {
+        assert(false);
+    }
+
+    let mut r#let = 0;
+    while r#let < r#return {
+        r#let += 1;
+    }
+    assert_eq(r#let, 42);
+
     // A non-keyword identifier can be used as a raw identifier, interchangeably.
     let mut r#not_an_identifier = 0;
     r#not_an_identifier = 24;
