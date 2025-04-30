@@ -188,7 +188,13 @@ pub fn item_to_ast_nodes(
         }
         ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration({
             item_const_to_constant_declaration(
-                context, handler, engines, item_const, attributes, true,
+                context,
+                handler,
+                engines,
+                item_const,
+                Visibility::Private,
+                attributes,
+                true,
             )?
         })),
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
@@ -653,7 +659,13 @@ fn item_trait_to_trait_declaration(
                         .map(TraitItem::TraitFn)
                 }
                 ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
-                    context, handler, engines, const_decl, attributes, false,
+                    context,
+                    handler,
+                    engines,
+                    const_decl,
+                    Visibility::Public,
+                    attributes,
+                    false,
                 )
                 .map(TraitItem::Constant),
                 ItemTraitItem::Type(trait_type, _) => trait_type_to_trait_type_declaration(
@@ -766,7 +778,13 @@ pub fn item_impl_to_declaration(
                 )
                 .map(ImplItem::Fn),
                 sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
-                    context, handler, engines, const_item, attributes, false,
+                    context,
+                    handler,
+                    engines,
+                    const_item,
+                    Visibility::Private,
+                    attributes,
+                    false,
                 )
                 .map(ImplItem::Constant),
                 sway_ast::ItemImplItem::Type(type_item) => trait_type_to_trait_type_declaration(
@@ -935,7 +953,13 @@ fn item_abi_to_abi_declaration(
                             Ok(TraitItem::TraitFn(trait_fn))
                         }
                         ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
-                            context, handler, engines, const_decl, attributes, false,
+                            context,
+                            handler,
+                            engines,
+                            const_decl,
+                            Visibility::Public,
+                            attributes,
+                            false,
                         )
                         .map(TraitItem::Constant),
                         ItemTraitItem::Type(type_decl, _) => trait_type_to_trait_type_declaration(
@@ -1015,6 +1039,7 @@ pub(crate) fn item_const_to_constant_declaration(
     handler: &Handler,
     engines: &Engines,
     item_const: ItemConst,
+    default_visibility: Visibility,
     attributes: Attributes,
     require_expression: bool,
 ) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
@@ -1047,11 +1072,16 @@ pub(crate) fn item_const_to_constant_declaration(
         }
     };
 
+    let visibility = match item_const.pub_token {
+        Some(pub_token) => pub_token_opt_to_visibility(Some(pub_token)),
+        None => default_visibility,
+    };
+
     let const_decl = ConstantDeclaration {
         name: item_const.name,
         type_ascription,
         value: expr,
-        visibility: pub_token_opt_to_visibility(item_const.visibility),
+        visibility,
         attributes,
         span,
     };

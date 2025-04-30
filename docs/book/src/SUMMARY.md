@@ -107,3 +107,4 @@
     - [forc lsp](./forc/plugins/forc_lsp.md)
     - [forc migrate](./forc/plugins/forc_migrate.md)
     - [forc node](./forc/plugins/forc_node.md)
+    - [forc publish](./forc/plugins/forc_publish.md)
