@@ -46,9 +46,9 @@ where
         }
 
         let type_parameters_declaration =
-            self.generate_type_parameters_declaration_code(&enum_decl.type_parameters);
+            self.generate_type_parameters_declaration_code(&enum_decl.generic_parameters);
         let type_parameters_constraints = self.generate_type_parameters_constraints_code(
-            &enum_decl.type_parameters,
+            &enum_decl.generic_parameters,
             extra_constraint,
         );
 
