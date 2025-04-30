@@ -105,7 +105,7 @@ impl AssetId {
     /// # Additional Information
     ///
     /// **WARNING** If called in an external context, this will **not** return a correct AssetId.
-    /// If called externally, will actually use the Transaction Id as a the ContractId.
+    /// If called externally, will actually use the Transaction Id as the ContractId.
     ///
     /// # Returns
     ///

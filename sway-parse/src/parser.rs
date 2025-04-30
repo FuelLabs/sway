@@ -21,7 +21,7 @@ pub struct Parser<'a, 'e> {
     full_span: Span,
     handler: &'e Handler,
     pub check_double_underscore: bool,
-    experimental: ExperimentalFeatures,
+    pub experimental: ExperimentalFeatures,
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
