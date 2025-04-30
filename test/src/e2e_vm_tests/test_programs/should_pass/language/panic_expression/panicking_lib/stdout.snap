@@ -1,0 +1,72 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib --release --experimental error_type --test-threads 1 --logs --revert-codes
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
+    Finished release [optimized + fuel] target(s) [6.2 KB] in ???
+     Running 18 tests, filtered 0 tests
+
+tested -- panicking_lib
+
+      test test_nested_panic_inlined ... ok (???, 833 gas)
+Decoded log value: E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
+Revert code: ffffffff00000000
+      test test_nested_panic_inlined_same_revert_code ... ok (???, 833 gas)
+Decoded log value: E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
+Revert code: ffffffff00000000
+      test test_nested_panic_not_inlined ... ok (???, 813 gas)
+Decoded log value: E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 2721958641300806892
+Revert code: ffffffff00000001
+      test test_nested_panic_not_inlined_same_revert_code ... ok (???, 813 gas)
+Decoded log value: E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 2721958641300806892
+Revert code: ffffffff00000001
+      test test_generic_panic_with_unit ... ok (???, 193 gas)
+Decoded log value: (), log rb: 3330666440490685604
+Revert code: ffffffff00000002
+      test test_generic_panic_with_unit_same_revert_code ... ok (???, 193 gas)
+Decoded log value: (), log rb: 3330666440490685604
+Revert code: ffffffff00000002
+      test test_generic_panic_with_str ... ok (???, 311 gas)
+Decoded log value: AsciiString { data: "generic panic with string" }, log rb: 10098701174489624218
+Revert code: ffffffff00000003
+      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 311 gas)
+Decoded log value: AsciiString { data: "generic panic different string" }, log rb: 10098701174489624218
+Revert code: ffffffff00000003
+      test test_generic_panic_with_error_type_enum_variant ... ok (???, 334 gas)
+Decoded log value: A, log rb: 2721958641300806892
+Revert code: ffffffff00000004
+      test test_generic_panic_with_error_type_enum_different_variant_same_revert_code ... ok (???, 334 gas)
+Decoded log value: A, log rb: 2721958641300806892
+Revert code: ffffffff00000004
+      test test_panic_without_arg ... ok (???, 193 gas)
+Decoded log value: (), log rb: 3330666440490685604
+Revert code: ffffffff00000005
+      test test_panic_with_unit ... ok (???, 193 gas)
+Decoded log value: (), log rb: 3330666440490685604
+Revert code: ffffffff00000006
+      test test_panic_with_str ... ok (???, 311 gas)
+Decoded log value: AsciiString { data: "panic with string" }, log rb: 10098701174489624218
+Revert code: ffffffff00000007
+      test test_panic_with_error_type_enum ... ok (???, 440 gas)
+Decoded log value: C(true), log rb: 2721958641300806892
+Revert code: ffffffff00000008
+      test test_panic_with_generic_error_type_enum ... ok (???, 354 gas)
+Decoded log value: A(42), log rb: 12408470889216862137
+Revert code: ffffffff00000009
+      test test_panic_with_nested_generic_error_type ... ok (???, 633 gas)
+Decoded log value: B(B(C(true))), log rb: 14988555917426256081
+Revert code: ffffffff0000000a
+      test test_panic_with_generic_error_type_enum_with_abi_encode ... ok (???, 354 gas)
+Decoded log value: A(42), log rb: 17388243649088655852
+Revert code: ffffffff0000000b
+      test test_panic_with_nested_generic_error_type_enum_with_abi_encode ... ok (???, 633 gas)
+Decoded log value: B(B(C(true))), log rb: 3755100321495500961
+Revert code: ffffffff0000000c
+
+test result: OK. 18 passed; 0 failed; finished in ???
+
+    Finished in ???

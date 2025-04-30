@@ -1,0 +1,329 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions --experimental error_type --logs --test-threads 1
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling library panic_in_non_statement_positions (test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions)
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:7:12
+  |
+5 | // unreachable code or similar warning situations.
+6 | 
+7 | struct S { x : u64, y : u64, }
+  |            - This struct field is never accessed.
+8 | enum Enum {
+9 |     A: (u64, u64),
+  |
+____
+
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:7:21
+  |
+5 | // unreachable code or similar warning situations.
+6 | 
+7 | struct S { x : u64, y : u64, }
+  |                     - This struct field is never accessed.
+8 | enum Enum {
+9 |     A: (u64, u64),
+  |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:120:4
+    |
+118 | }
+119 | 
+120 | fn helper_fun(x : u64, y : u64) -> u64 {
+    |    ---------- This function is never called.
+121 |     x + y
+122 | }
+    |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:30:5
+   |
+28 |     let _ = panic E::E(42);
+29 |     
+30 |     045
+   |     --- This code is unreachable.
+31 | }
+32 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:37:5
+   |
+35 |     let _ = [panic E::E(42), panic E::E(43)];
+36 |     
+37 |     1450
+   |     ---- This code is unreachable.
+38 | }
+39 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:45:5
+   |
+43 |     let _ = [panic E::E(42)];
+44 |     
+45 |     1451
+   |     ---- This code is unreachable.
+46 | }
+47 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:53:5
+   |
+51 |     let _ = [panic E::E(42), 0];
+52 |     
+53 |     1452
+   |     ---- This code is unreachable.
+54 | }
+55 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:61:5
+   |
+59 |     let _ = [0, panic E::E(42)];
+60 |     
+61 |     1453
+   |     ---- This code is unreachable.
+62 | }
+63 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:68:5
+   |
+66 |     let _ = (panic E::E(42), panic E::E(43));
+67 |     
+68 |     245
+   |     --- This code is unreachable.
+69 | }
+70 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:75:5
+   |
+73 |     let _ = S { x: panic E::E(42), y: panic E::E(43) };
+74 |     
+75 |     345
+   |     --- This code is unreachable.
+76 | }
+77 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:82:5
+   |
+80 |     let _ = (panic E::E(42));
+81 | 
+82 |     445
+   |     --- This code is unreachable.
+83 | }
+84 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:88:9
+   |
+86 | fn in_if_condition() -> u64 {
+87 |     let _ = if panic E::E(42) {
+88 |         543
+   |         --- This code is unreachable.
+89 |     }
+90 |     else {
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:91:9
+   |
+89 |     }
+90 |     else {
+91 |         345
+   |         --- This code is unreachable.
+92 |     };
+93 |     
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:94:5
+   |
+92 |     };
+93 |     
+94 |     645
+   |     --- This code is unreachable.
+95 | }
+96 | 
+   |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:100:9
+    |
+ 98 | fn in_while_condition() -> u64 {
+ 99 |     while panic E::E(42) {
+100 |         break;
+    |         ----- This code is unreachable.
+101 |     };
+102 |     
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:103:5
+    |
+101 |     };
+102 |     
+103 |     745
+    |     --- This code is unreachable.
+104 | }
+105 | 
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:110:5
+    |
+108 |     let _ = Enum::A((panic E::E(42), panic E::E(43)));
+109 |     
+110 |     845
+    |     --- This code is unreachable.
+111 | }
+112 | 
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:117:5
+    |
+115 |     let _ = EnumMultivariant::B((panic E::E(42), panic E::E(43)));
+116 |     
+117 |     945
+    |     --- This code is unreachable.
+118 | }
+119 | 
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:128:5
+    |
+126 |     let _ = helper_fun(panic E::E(42), panic E::E(43));
+127 | 
+128 |     1045
+    |     ---- This code is unreachable.
+129 | }
+130 | 
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:135:5
+    |
+133 |     let _ = (panic E::E(42)) && panic E::E(43);
+134 | 
+135 |     1145
+    |     ---- This code is unreachable.
+136 | }
+137 | 
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:142:5
+    |
+140 |     let _ = (panic E::E(42)) || panic E::E(43);
+141 | 
+142 |     1245
+    |     ---- This code is unreachable.
+143 | }
+144 | 
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:147:13
+    |
+145 |   #[test(should_revert)]
+146 |   fn in_match_scrutinee() -> u64 {
+147 |       let _ = match panic E::E(42) {
+    |  _____________-
+148 | |         _ => 5411,
+149 | |     };
+    | |_____- This code is unreachable.
+150 |   
+151 |       1345
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:151:5
+    |
+149 |     };
+150 | 
+151 |     1345
+    |     ---- This code is unreachable.
+152 | }
+    |
+____
+
+  Compiled library "panic_in_non_statement_positions" with 23 warnings.
+    Finished debug [unoptimized + fuel] target(s) [2.352 KB] in ???
+     Running 16 tests, filtered 0 tests
+
+tested -- panic_in_non_statement_positions
+
+      test in_init ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_array ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_length_1_array ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_length_2_array_first ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_length_2_array_second ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_tuple ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_struct ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_parentheses ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_if_condition ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_while_condition ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_enum ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_enum_multivariant ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_fun_arg ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_lazy_and ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_lazy_or ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+      test in_match_scrutinee ... ok (???, 338 gas)
+Decoded log value: E(42), log rb: 5087777005172090899
+
+test result: OK. 16 passed; 0 failed; finished in ???
+
+    Finished in ???

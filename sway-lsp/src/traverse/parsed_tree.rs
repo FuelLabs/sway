@@ -372,6 +372,7 @@ impl Parse for Expression {
             }
             ExpressionKind::ImplicitReturn(expr)
             | ExpressionKind::Return(expr)
+            | ExpressionKind::Panic(expr)
             | ExpressionKind::Ref(RefExpression { value: expr, .. })
             | ExpressionKind::Deref(expr) => {
                 expr.parse(ctx);

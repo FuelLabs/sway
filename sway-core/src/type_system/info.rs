@@ -1103,8 +1103,8 @@ impl TypeInfo {
                 );
                 name?
             }
-            // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
-            // TODO-IG: Depending on that, we need to handle `Ref` here as well.
+            // TODO: (REFERENCES) No references in ABIs according to the RFC. Or we want to have them?
+            // TODO: (REFERENCES) Depending on that, we need to handle `Ref` here as well.
             _ => {
                 return Err(handler.emit_err(CompileError::InvalidAbiType {
                     span: error_msg_span.clone(),
@@ -1232,7 +1232,7 @@ impl TypeInfo {
         }
     }
 
-    // TODO-IG: Check all the usages of `is_copy_type`.
+    // TODO: (REFERENCES) Check all the usages of `is_copy_type`.
     pub fn is_copy_type(&self) -> bool {
         // XXX This is FuelVM specific.  We need to find the users of this method and determine
         // whether they're actually asking 'is_aggregate()` or something else.
@@ -1244,7 +1244,7 @@ impl TypeInfo {
                 | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
                 | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 | TypeInfo::RawUntypedPtr
-                | TypeInfo::Numeric // TODO-IG: Should Ptr and Ref also be a copy type?
+                | TypeInfo::Numeric // TODO: (REFERENCES) Should `Ptr` and `Ref` also be a copy type?
                 | TypeInfo::Never
         ) || self.is_unit()
     }
@@ -1423,7 +1423,7 @@ impl TypeInfo {
                 span: span.clone(),
             })),
             TypeInfo::Ref { .. } => Err(handler.emit_err(CompileError::Unimplemented {
-                // TODO-IG: Implement.
+                // TODO: (REFERENCES) Implement.
                 feature: "Using references in match expressions".to_string(),
                 help: vec![],
                 span: span.clone(),
