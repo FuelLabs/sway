@@ -78,7 +78,7 @@ where
         let type_parameters_constraints =
             self.generate_type_parameters_constraints_code(type_parameters, Some("Debug"));
 
-        let name = name.as_str();
+        let name = name.as_raw_ident_str();
 
         format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} Debug for {name}{type_parameters_declaration}{type_parameters_constraints} {{
             #[allow(dead_code, deprecated)]
@@ -94,13 +94,13 @@ where
         for field in decl.fields.iter() {
             fields.push_str(&format!(
                 ".field(\"{field_name}\", self.{field_name})\n",
-                field_name = field.name.as_str(),
+                field_name = field.name.as_raw_ident_str(),
             ));
         }
 
         format!(
             "_f.debug_struct(\"{}\"){fields}.finish();",
-            decl.name().as_str()
+            decl.name().as_raw_ident_str()
         )
     }
 
@@ -126,13 +126,13 @@ where
     }
 
     fn generate_fmt_enum_body(&self, engines: &Engines, decl: &TyEnumDecl) -> String {
-        let enum_name = decl.call_path.suffix.as_str();
+        let enum_name = decl.call_path.suffix.as_raw_ident_str();
 
         let arms = decl
             .variants
             .iter()
             .map(|variant| {
-                let variant_name = variant.name.as_str();
+                let variant_name = variant.name.as_raw_ident_str();
                 if engines.te().get(variant.type_argument.type_id()).is_unit() {
                     format!(
                         "{enum_name}::{variant_name} => {{
