@@ -85,6 +85,13 @@ impl<'a, 'e> Parser<'a, 'e> {
         Peeker::with(self.token_trees).map(|(v, _)| v)
     }
 
+    /// Tries to peek a `P` as the second token in its canonical way.
+    ///
+    /// Either way, on success or failure, the parser is not advanced.
+    pub fn peek_next<P: Peek>(&self) -> Option<P> {
+        Peeker::with(&self.token_trees[1..]).map(|(v, _)| v)
+    }
+
     /// This function will fork the current parse, and call the parsing function.
     /// If it succeeds it will sync the original parser with the forked one;
     ///
