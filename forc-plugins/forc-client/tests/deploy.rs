@@ -151,7 +151,7 @@ fn update_main_sw(tmp_dir: &Path) -> anyhow::Result<()> {
 async fn assert_big_contract_calls(wallet: Wallet, contract_id: ContractId) {
     abigen!(Contract(
         name = "BigContract",
-        abi = "forc-plugins/forc-client/test/data/big_contract/big_contract-abi.json"
+        abi = "forc-plugins/forc-client/tests/data/big_contract/big_contract-abi.json"
     ));
 
     let instance = BigContract::new(contract_id, wallet);
@@ -530,7 +530,7 @@ async fn test_proxy_contract_re_routes_call() {
 
     abigen!(Contract(
         name = "ImplementationContract",
-        abi = "forc-plugins/forc-client/test/data/standalone_contract/standalone_contract-abi.json"
+        abi = "forc-plugins/forc-client/tests/data/standalone_contract/standalone_contract-abi.json"
     ));
 
     let impl_contract_a = ImplementationContract::new(proxy_contract_id, wallet_unlocked.clone());
@@ -943,7 +943,7 @@ async fn deploy_script_calls() {
 
     abigen!(Script(
         name = "MyScript",
-        abi = "forc-plugins/forc-client/test/data/deployed_script/deployed_script-abi.json"
+        abi = "forc-plugins/forc-client/tests/data/deployed_script/deployed_script-abi.json"
     ));
 
     let provider = Provider::connect(&node_url).await.unwrap();
@@ -1070,7 +1070,7 @@ async fn deployed_predicate_call() {
 
     abigen!(Predicate(
         name = "MyPredicate",
-        abi = "forc-plugins/forc-client/test/data/deployed_predicate/deployed_predicate-abi.json"
+        abi = "forc-plugins/forc-client/tests/data/deployed_predicate/deployed_predicate-abi.json"
     ));
 
     let provider = Provider::connect(&node_url).await.unwrap();
@@ -1133,7 +1133,7 @@ async fn call_with_sdk_generated_overrides(node_url: &str, contract_id: Contract
     let project_dir = test_data_path().join("deployed_script");
     abigen!(Script(
         name = "MyScript",
-        abi = "forc-plugins/forc-client/test/data/deployed_script/deployed_script-abi.json"
+        abi = "forc-plugins/forc-client/tests/data/deployed_script/deployed_script-abi.json"
     ));
     let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
@@ -1236,7 +1236,7 @@ async fn call_with_forc_generated_overrides(node_url: &str, contract_id: Contrac
     let generated_loader_bin = tmp_dir.path().join("out/deployed_script-loader.bin");
     abigen!(Script(
         name = "MyScript",
-        abi = "forc-plugins/forc-client/test/data/deployed_script/deployed_script-loader-abi.json"
+        abi = "forc-plugins/forc-client/tests/data/deployed_script/deployed_script-loader-abi.json"
     ));
     let forc_generated_script_instance = MyScript::new(
         wallet_unlocked,

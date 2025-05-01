@@ -130,7 +130,7 @@ mod tests {
         let (_, id, _, _) = get_contract_instance().await;
 
         // Load a test ABI
-        let abi_path_str = "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json";
+        let abi_path_str = "../../forc-plugins/forc-client/tests/data/contract_with_types/contract_with_types-abi.json";
         let abi_path = Path::new(abi_path_str);
         let abi = Either::Left(abi_path.to_path_buf());
 
