@@ -49,7 +49,7 @@ fn send_new_compilation_request(
     version: Option<i32>,
     optimized_build: bool,
 ) {
-    let file_versions = file_versions(&state.documents, &uri, version.map(|v| v as u64));
+    let file_versions = file_versions(&state.documents, uri, version.map(|v| v as u64));
 
     if state.is_compiling.load(Ordering::SeqCst) {
         // If we are already compiling, then we need to retrigger compilation

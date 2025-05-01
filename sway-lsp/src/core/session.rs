@@ -194,14 +194,14 @@ impl Session {
         };
         let t = token_map.token_at_position(uri, shifted_position)?;
         let ident_to_complete = t.key();
-        let fn_tokens = token_map.tokens_at_position(&engines, uri, shifted_position, Some(true));
+        let fn_tokens = token_map.tokens_at_position(engines, uri, shifted_position, Some(true));
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
             if let Some(program) = &compiled_program.typed {
                 return Some(capabilities::completion::to_completion_items(
                     &program.namespace,
-                    &engines,
+                    engines,
                     ident_to_complete,
                     fn_decl,
                     position,
