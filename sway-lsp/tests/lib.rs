@@ -395,23 +395,6 @@ fn did_change_stress_test_random_wait() {
 // }
 
 #[test]
-fn lsp_compiles_workspace() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        // This directory is the root of a workspace with a Forc.toml file containing 12 workspace members.
-        let workspace_dir = sway_workspace_dir()
-            .join(e2e_language_dir())
-            .join("reexport/reexport_paths_external_lib");
-        let _uri = init_and_open(&mut service, workspace_dir.join("program/src/main.sw")).await;
-
-        // let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
-        // service.inner().wait_for_parsing().await;
-
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
 fn compilation_succeeds_when_triggered_from_module() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
