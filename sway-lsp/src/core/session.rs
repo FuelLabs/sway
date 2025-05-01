@@ -58,7 +58,6 @@ pub struct CompiledProgram {
 }
 
 /// A `Session` is used to store information about a single member in a workspace.
-/// It stores the parsed and typed Tokens, as well as the [TypeEngine] associated with the project.
 ///
 /// The API provides methods for responding to LSP requests from the server.
 #[derive(Debug)]
@@ -127,10 +126,7 @@ impl Session {
         let _p = tracing::trace_span!("token_references").entered();
         let token_references: Vec<_> = token_map
             .iter()
-            .all_references_of_token(
-                token_map.token_at_position(url, position)?.value(),
-                engines,
-            )
+            .all_references_of_token(token_map.token_at_position(url, position)?.value(), engines)
             .filter_map(|item| {
                 let path = item.key().path.as_ref()?;
                 let uri = Url::from_file_path(path).ok()?;
@@ -151,10 +147,7 @@ impl Session {
         let _p = tracing::trace_span!("token_ranges").entered();
         let mut token_ranges: Vec<_> = token_map
             .tokens_for_file(url)
-            .all_references_of_token(
-                token_map.token_at_position(url, position)?.value(),
-                engines,
-            )
+            .all_references_of_token(token_map.token_at_position(url, position)?.value(), engines)
             .map(|item| item.key().range)
             .collect();
 
@@ -228,7 +221,12 @@ impl Session {
     }
 
     /// Generate hierarchical document symbols for the given file.
-    pub fn document_symbols(&self, url: &Url, token_map: &TokenMap, engines: &Engines) -> Option<Vec<DocumentSymbol>> {
+    pub fn document_symbols(
+        &self,
+        url: &Url,
+        token_map: &TokenMap,
+        engines: &Engines,
+    ) -> Option<Vec<DocumentSymbol>> {
         let _p = tracing::trace_span!("document_symbols").entered();
         let path = url.to_file_path().ok()?;
         self.compiled_program
@@ -237,11 +235,7 @@ impl Session {
             .as_ref()
             .map(|ty_program| {
                 capabilities::document_symbol::to_document_symbols(
-                    url,
-                    &path,
-                    ty_program,
-                    engines,
-                    token_map,
+                    url, &path, ty_program, engines, token_map,
                 )
             })
     }
@@ -765,8 +759,16 @@ mod tests {
         let session = Arc::new(Session::new());
         let sync = SyncWorkspace::new();
         let token_map = Arc::new(TokenMap::new());
-        let result = parse_project(&uri, engines_original, &engines, None, None, session, token_map)
-            .expect_err("expected ManifestFileNotFound");
+        let result = parse_project(
+            &uri,
+            engines_original,
+            &engines,
+            None,
+            None,
+            session,
+            token_map,
+        )
+        .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

@@ -55,15 +55,15 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("highlight", |b| {
-        b.iter(|| capabilities::highlight::get_highlights(session.clone(), &state.engines.read(),&state.token_map, &uri, position))
+        b.iter(|| capabilities::highlight::get_highlights(session.clone(), &state.engines.read(), &state.token_map, &uri, position))
     });
 
     c.bench_function("find_all_references", |b| {
-        b.iter(|| session.token_references(&uri, position, &state.token_map, sync))
+        b.iter(|| session.token_references(&uri, position, &state.token_map, &state.engines.read(), sync))
     });
 
     c.bench_function("goto_definition", |b| {
-        b.iter(|| session.token_definition_response(&uri, position, &state.token_map, sync))
+        b.iter(|| session.token_definition_response(&uri, position, &state.engines.read(), &state.token_map, sync))
     });
 
     c.bench_function("inlay_hints", |b| {

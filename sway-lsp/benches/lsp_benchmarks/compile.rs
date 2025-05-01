@@ -39,8 +39,9 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("traverse", |b| {
         let engines_original = Arc::new(RwLock::new(Engines::default()));
         let engines_clone = engines_original.read().clone();
-        let results =
-            black_box(session::compile(&build_plan, &engines_clone, None, lsp_mode.as_ref()).unwrap());
+        let results = black_box(
+            session::compile(&build_plan, &engines_clone, None, lsp_mode.as_ref()).unwrap(),
+        );
         let session = Arc::new(session::Session::new());
         let member_path = sync.member_path(&uri).unwrap();
 

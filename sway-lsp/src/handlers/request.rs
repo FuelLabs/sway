@@ -110,7 +110,13 @@ pub async fn handle_completion(
         .await
     {
         Ok((uri, session)) => Ok(session
-            .completion_items(&uri, position, trigger_char, &state.token_map, &state.engines.read())
+            .completion_items(
+                &uri,
+                position,
+                trigger_char,
+                &state.token_map,
+                &state.engines.read(),
+            )
             .map(CompletionResponse::Array)),
         Err(err) => {
             tracing::error!("{}", err.to_string());

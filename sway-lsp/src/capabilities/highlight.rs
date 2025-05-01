@@ -1,7 +1,7 @@
 use crate::core::{session::Session, token_map::TokenMap};
 use lsp_types::{DocumentHighlight, Position, Url};
-use sway_core::Engines;
 use std::sync::Arc;
+use sway_core::Engines;
 
 pub fn get_highlights(
     session: Arc<Session>,

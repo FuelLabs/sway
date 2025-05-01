@@ -8,7 +8,8 @@ use crate::{
 use lsp_types::{self, Range, Url};
 use sway_core::{
     language::ty::{TyDecl, TyExpression, TyExpressionVariant},
-    type_system::TypeInfo, Engines,
+    type_system::TypeInfo,
+    Engines,
 };
 use sway_types::{Ident, Spanned};
 
@@ -74,9 +75,7 @@ pub fn inlay_hints(
 
             // Variable declaration hints
             if var.type_ascription.call_path_tree().is_none() {
-                let type_info = engines
-                    .te()
-                    .get(var.type_ascription.type_id());
+                let type_info = engines.te().get(var.type_ascription.type_id());
                 if !matches!(
                     *type_info,
                     TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. }
