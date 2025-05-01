@@ -54,7 +54,13 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("highlight", |b| {
         b.iter(|| {
-            capabilities::highlight::get_highlights(session.clone(), &engines.read(), &token_map, &uri, position)
+            capabilities::highlight::get_highlights(
+                session.clone(),
+                &engines.read(),
+                &token_map,
+                &uri,
+                position,
+            )
         })
     });
 
@@ -79,7 +85,15 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("prepare_rename", |b| {
-        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &engines.read(), &token_map, &uri, position))
+        b.iter(|| {
+            capabilities::rename::prepare_rename(
+                session.clone(),
+                &engines.read(),
+                &token_map,
+                &uri,
+                position,
+            )
+        })
     });
 
     c.bench_function("rename", |b| {
