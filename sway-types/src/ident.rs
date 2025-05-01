@@ -1,6 +1,7 @@
 use crate::{span::Span, Spanned};
 use serde::{Deserialize, Serialize};
 use std::{
+    borrow::Cow,
     cmp::{Ord, Ordering},
     fmt,
     hash::{Hash, Hasher},
@@ -24,6 +25,15 @@ impl BaseIdent {
             .as_deref()
             .map(|x| x.as_str())
             .unwrap_or_else(|| self.span.as_str())
+    }
+
+    /// Returns the identifier as a string, prefixed with `r#` if it is a raw identifier.
+    pub fn as_raw_ident_str(&self) -> Cow<str> {
+        if self.is_raw_ident {
+            Cow::Owned(format!("r#{}", self.as_str()))
+        } else {
+            Cow::Borrowed(self.as_str())
+        }
     }
 
     pub fn is_raw_ident(&self) -> bool {
