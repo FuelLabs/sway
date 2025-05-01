@@ -3,7 +3,7 @@ use lsp_types::Position;
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, _, token_map, engines) = Runtime::new()
+    let (uri, _, _, token_map, engines) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
     let engines = engines.read();
