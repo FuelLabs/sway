@@ -1075,6 +1075,8 @@ pub enum CompileError {
         enum_name: IdentUnique,
         enum_variant_name: IdentUnique,
     },
+    #[error("This expression has type \"{argument_type}\", which does not implement \"std::marker::Error\". Panic expression arguments must implement \"Error\".")]
+    PanicExpressionArgumentIsNotError { argument_type: String, span: Span },
     #[error("Incoherent impl was found due to breaking orphan rule check.")]
     IncoherentImplDueToOrphanRule { span: Span },
 }
@@ -1307,6 +1309,7 @@ impl Spanned for CompileError {
             ErrorAttributeInNonErrorEnum {
                 enum_variant_name, ..
             } => enum_variant_name.span(),
+            PanicExpressionArgumentIsNotError { span, .. } => span.clone(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
         }
     }
@@ -1811,7 +1814,7 @@ impl ToDiagnostic for CompileError {
                     },
                 }
             },
-            // TODO-IG: Extend error messages to pointers, once typed pointers are defined and can be dereferenced.
+            // TODO: (REFERENCES) Extend error messages to pointers, once typed pointers are defined and can be dereferenced.
             ExpressionCannotBeDereferenced { expression_type, span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Expression cannot be dereferenced".to_string())),
                 issue: Issue::error(
@@ -2333,7 +2336,7 @@ impl ToDiagnostic for CompileError {
                 ],
                 help: vec![
                     "Consider:".to_string(),
-                    // TODO-IG: Once desugaring information becomes available, do not show the first suggestion if declaring variable as mutable is not possible.
+                    // TODO: (REFERENCES) Once desugaring information becomes available, do not show the first suggestion if declaring variable as mutable is not possible.
                     format!("{}- declaring \"{decl_name}\" as mutable.", Indent::Single),
                     format!("{}- taking a reference without `mut`: `&{decl_name}`.", Indent::Single),
                     format!("{}- referencing a mutable copy of \"{decl_name}\", by returning it from a block: `&mut {{ {decl_name} }}`.", Indent::Single)
@@ -2404,10 +2407,7 @@ impl ToDiagnostic for CompileError {
                 ),
                 hints: vec![],
                 help: match marker_trait_name(marker_trait_full_name) {
-                    "Error" => vec![
-                        "\"Error\" marker trait is automatically implemented by the compiler for string slices".to_string(),
-                        "and enums annotated with the `#[error_type]` attribute.".to_string(),
-                    ],
+                    "Error" => error_marker_trait_help_msg(),
                     "Enum" => vec![
                         "\"Enum\" marker trait is automatically implemented by the compiler for all enum types.".to_string(),
                     ],
@@ -2443,7 +2443,7 @@ impl ToDiagnostic for CompileError {
                     ),
                 ],
                 help: vec![
-                    // TODO-IG: Once desugaring information becomes available, do not show this suggestion if declaring variable as mutable is not possible.
+                    // TODO: (DESUGARING) Once desugaring information becomes available, do not show this suggestion if declaring variable as mutable is not possible.
                     format!("Consider declaring \"{decl_name}\" as mutable."),
                 ],
             },
@@ -3064,6 +3064,23 @@ impl ToDiagnostic for CompileError {
                     "Enum variants can be marked as `#[error]` only if their parent enum is annotated with the `#[error_type]` attribute.".to_string(),
                 ]
             },
+            PanicExpressionArgumentIsNotError { argument_type, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Panic expression arguments must implement \"Error\" marker trait".into())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("This expression has type \"{argument_type}\", which does not implement \"std::marker::Error\" trait."),
+                ),
+                hints: vec![],
+                help: {
+                    let mut help = vec![
+                        "Panic expression accepts only arguments that implement \"std::marker::Error\" trait.".to_string(),
+                        Diagnostic::help_empty_line(),
+                    ];
+                    help.append(&mut error_marker_trait_help_msg());
+                    help
+                },
+            },
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting
@@ -3233,4 +3250,11 @@ fn marker_trait_name(marker_trait_full_name: &str) -> &str {
     let upper_boundary = lower_boundary + only_name_len;
 
     &marker_trait_full_name[lower_boundary..upper_boundary]
+}
+
+fn error_marker_trait_help_msg() -> Vec<String> {
+    vec![
+        "\"Error\" marker trait is automatically implemented by the compiler for the unit type `()`,".to_string(),
+        "string slices, and enums annotated with the `#[error_type]` attribute.".to_string(),
+    ]
 }

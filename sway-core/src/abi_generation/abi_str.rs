@@ -199,7 +199,7 @@ impl TypeInfo {
                 referenced_type,
             } => {
                 format!(
-                    "__ref {}{}", // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
+                    "__ref {}{}", // TODO: (REFERENCES) No references in ABIs according to the RFC. Or we want to have them?
                     if *to_mutable_value { "mut " } else { "" },
                     referenced_type.abi_str(ctx, engines, false)
                 )

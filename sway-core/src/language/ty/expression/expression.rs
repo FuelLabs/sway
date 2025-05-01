@@ -370,6 +370,21 @@ impl CollectTypesMetadata for TyExpression {
             ImplicitReturn(exp) | Return(exp) => {
                 res.append(&mut exp.collect_types_metadata(handler, ctx)?)
             }
+            Panic(exp) => {
+                // Register the type of the `panic` argument as a logged type.
+                let logged_type_id =
+                    TypeMetadata::get_logged_type_id(exp, ctx.experimental.new_encoding)
+                        .map_err(|err| handler.emit_err(err))?;
+                res.push(TypeMetadata::new_logged_type(
+                    ctx.engines,
+                    logged_type_id,
+                    ctx.program_name.clone(),
+                ));
+
+                // We still need to dive into the expression because it can have additional types to collect.
+                // E.g., `revert some_function_that_returns_error_enum_and_internally_logs_some_types()`;
+                res.append(&mut exp.collect_types_metadata(handler, ctx)?)
+            }
             Ref(exp) | Deref(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
@@ -803,6 +818,9 @@ impl TyExpression {
                 expr.check_deprecated(engines, handler, allow_deprecated);
             }
             TyExpressionVariant::Return(expr) => {
+                expr.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::Panic(expr) => {
                 expr.check_deprecated(engines, handler, allow_deprecated);
             }
             TyExpressionVariant::Ref(expr) => {
