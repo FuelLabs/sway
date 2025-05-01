@@ -71,10 +71,10 @@ impl<'a> TokenMap {
     }
 
     /// Return an Iterator of tokens belonging to the provided [ProgramId].
-    pub fn tokens_for_program<'s>(
-        &'s self,
+    pub fn tokens_for_program(
+        &self,
         program_id: ProgramId,
-    ) -> impl Iterator<Item = RefMulti<'s, TokenIdent, Token>> + 's {
+    ) -> impl Iterator<Item = RefMulti<'_, TokenIdent, Token>> {
         self.iter().filter_map(move |entry| {
             entry
                 .key()

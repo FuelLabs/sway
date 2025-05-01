@@ -223,7 +223,7 @@ pub struct TokenIdent {
 
 impl TokenIdent {
     pub fn new(ident: &Ident, se: &SourceEngine) -> Self {
-        let source_id = ident.span().source_id().map(|source_id| source_id.clone());
+        let source_id = ident.span().source_id().copied();
         let path = source_id.as_ref().map(|source_id| se.get_path(source_id));
         Self {
             name: ident.span().str(),
