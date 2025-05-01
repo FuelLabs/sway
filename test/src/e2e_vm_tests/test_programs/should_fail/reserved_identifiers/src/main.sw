@@ -33,5 +33,5 @@ fn main() {
     let mut deref = 0;
     let mut true = 0;
     let mut false = 0;
+    let mut panic = 0;
 }
-
