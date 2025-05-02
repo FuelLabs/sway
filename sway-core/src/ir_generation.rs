@@ -230,6 +230,15 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
         use_instr: sway_ir::Value,
         use_idx: usize,
     }
+    // This is a copy of sway_core::asm_generation::fuel::fuel_asm_builder::FuelAsmBuilder::is_copy_type.
+    fn is_copy_type(ty: &Type, context: &Context) -> bool {
+        ty.is_unit(context)
+            || ty.is_never(context)
+            || ty.is_bool(context)
+            || ty.is_ptr(context)
+            || ty.get_uint_width(context).map(|x| x < 256).unwrap_or(false)
+    }
+
     let mut instrs_to_fix = Vec::new();
     for module in ctx.module_iter() {
         for function in module.function_iter(ctx) {
@@ -248,6 +257,26 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                                     expected_ty: formal_ty,
                                     use_instr: instr,
                                     use_idx: param_idx,
+                                });
+                            }
+                        }
+                    }
+                    InstOp::AsmBlock(_block, _args) => {
+                        // Non copy type args to asm blocks are passed by reference.
+                        let op = &instr.get_instruction(ctx).unwrap().op;
+                        let args = op
+                            .get_operands()
+                            .iter()
+                            .enumerate()
+                            .map(|(idx, init)| (idx, init.get_type(ctx).unwrap()))
+                            .collect::<Vec<_>>();
+                        for (arg_idx, arg_ty) in args {
+                            if !is_copy_type(&arg_ty, ctx) {
+                                instrs_to_fix.push(TypeCorrection {
+                                    actual_ty: arg_ty,
+                                    expected_ty: Type::new_ptr(ctx, arg_ty),
+                                    use_instr: instr,
+                                    use_idx: arg_idx,
                                 });
                             }
                         }
@@ -351,7 +380,8 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
             // If the actual value was just loaded, then we go to the source of the load,
             // otherwise, we store it to a new local and pass the address of that local.
             let actual_use = use_instr.get_instruction(ctx).unwrap().op.get_operands()[use_idx];
-            if let InstOp::Load(src_ptr) = actual_use.get_instruction(ctx).unwrap().op {
+            if let Some(InstOp::Load(src_ptr)) = actual_use.get_instruction(ctx).map(|i| &i.op) {
+                let src_ptr = *src_ptr;
                 use_instr
                     .get_instruction_mut(ctx)
                     .unwrap()

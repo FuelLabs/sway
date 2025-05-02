@@ -489,10 +489,17 @@ impl InstOp {
     pub fn set_operand(&mut self, replacement: Value, idx: usize) {
         match self {
             InstOp::AsmBlock(_, args) => {
-                if idx < args.len() {
-                    args[idx].initializer = Some(replacement);
-                } else {
-                    panic!("Invalid index for AsmBlock");
+                // Because get_operand only returns operands that have an
+                // initializer, we also iterate over only those, to match indices.
+                let mut cur_idx = 0;
+                for arg in args.iter_mut() {
+                    if let Some(_asm_arg) = arg.initializer {
+                        if cur_idx == idx {
+                            arg.initializer = Some(replacement);
+                            return;
+                        }
+                        cur_idx += 1;
+                    }
                 }
             }
             InstOp::BitCast(v, _) | InstOp::UnaryOp { arg: v, .. } => {
