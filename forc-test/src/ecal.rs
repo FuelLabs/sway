@@ -31,6 +31,9 @@ impl Syscall {
             Syscall::Fflush { fd } => {
                 let mut f = unsafe { std::fs::File::from_raw_fd(*fd as i32) };
                 let _ = f.flush();
+
+                // Dont close the fd
+                std::mem::forget(f);
             }
             Syscall::Unknown { ra, rb, rc, rd } => {
                 println!("Unknown ecal: {} {} {} {}", ra, rb, rc, rd);

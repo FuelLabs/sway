@@ -7982,6 +7982,7 @@ dependencies = [
  "sway-parse",
  "sway-types",
  "sway-utils",
+ "swayfmt",
  "sysinfo",
  "thiserror 1.0.69",
  "tracing",
