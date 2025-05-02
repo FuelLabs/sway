@@ -649,6 +649,7 @@ impl ResolveSymbols for ExpressionKind {
             }
             ExpressionKind::ImplicitReturn(expr) => expr.resolve_symbols(handler, ctx),
             ExpressionKind::Return(expr) => expr.resolve_symbols(handler, ctx.by_ref()),
+            ExpressionKind::Panic(expr) => expr.resolve_symbols(handler, ctx.by_ref()),
             ExpressionKind::Ref(expr) => expr.value.resolve_symbols(handler, ctx.by_ref()),
             ExpressionKind::Deref(expr) => expr.resolve_symbols(handler, ctx.by_ref()),
         }

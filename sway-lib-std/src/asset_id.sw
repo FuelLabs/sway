@@ -10,6 +10,7 @@ use ::primitives::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
 use ::codec::*;
+use ::debug::*;
 /// An AssetId is used for interacting with an asset on the network.
 ///
 /// # Additional Information
@@ -105,7 +106,7 @@ impl AssetId {
     /// # Additional Information
     ///
     /// **WARNING** If called in an external context, this will **not** return a correct AssetId.
-    /// If called externally, will actually use the Transaction Id as a the ContractId.
+    /// If called externally, will actually use the Transaction Id as the ContractId.
     ///
     /// # Returns
     ///

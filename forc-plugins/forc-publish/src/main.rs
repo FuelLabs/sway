@@ -9,7 +9,7 @@ use forc_tracing::{
 use tempfile::tempdir;
 use url::Url;
 
-const FORC_PUB_URL: &str = "https://forc-pub-dev.swayswap.io";
+const FORC_PUB_URL: &str = "https://api.forc.pub";
 
 #[derive(Parser, Debug)]
 #[clap(name = "forc-publish", version)]

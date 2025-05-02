@@ -925,7 +925,7 @@ fn get_struct_type_info_from_type_id(
     match type_info {
         TypeInfo::Enum(decl_ref) => {
             let decl = decl_engine.get_enum(&decl_ref);
-            for p in decl.type_parameters.iter() {
+            for p in decl.generic_parameters.iter() {
                 let p = p
                     .as_type_parameter()
                     .expect("only works with type parameters");
@@ -2117,8 +2117,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 options,
             )
         }
-        ImplicitReturn(exp) | Return(exp) => {
-            let this_index = graph.add_node("return entry".into());
+        ImplicitReturn(exp) | Return(exp) | Panic(exp) => {
+            let return_type = match expr_variant {
+                ImplicitReturn(_) => "implicit return",
+                Return(_) => "return",
+                Panic(_) => "panic",
+                _ => unreachable!(
+                    "the `expr_variant` is checked to be `ImplicitReturn`, `Return`, or `Panic`"
+                ),
+            };
+
+            let this_index = graph.add_node(format!("{return_type} entry").into());
             for leaf in leaves {
                 graph.add_edge(*leaf, this_index, "".into());
             }
@@ -2133,14 +2142,14 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 exp.span.clone(),
                 options,
             )?;
-            if let Return(_) = expr_variant {
+            if let Return(_) | Panic(_) = expr_variant {
                 // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
                 // node?
                 for leaf in return_contents {
                     graph.add_edge(this_index, leaf, "".into());
                 }
                 if let Some(exit_node) = exit_node {
-                    graph.add_edge(this_index, exit_node, "return".into());
+                    graph.add_edge(this_index, exit_node, return_type.into());
                 }
                 Ok(vec![])
             } else {
@@ -2506,7 +2515,7 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(enum_idx) = enum_idx.cloned() {
                 graph.add_edge(entry_node, enum_idx, "".into());
             }
-            for p in &decl.type_parameters {
+            for p in &decl.generic_parameters {
                 let p = p
                     .as_type_parameter()
                     .expect("only works with type parameters");
@@ -2519,10 +2528,11 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(struct_idx) = struct_idx.cloned() {
                 graph.add_edge(entry_node, struct_idx, "".into());
             }
-            for p in &decl.type_parameters {
-                let p = p
-                    .as_type_parameter()
-                    .expect("only works with type parameters");
+            for p in decl
+                .generic_parameters
+                .iter()
+                .filter_map(|x| x.as_type_parameter())
+            {
                 connect_type_id(engines, p.type_id, graph, entry_node)?;
             }
         }

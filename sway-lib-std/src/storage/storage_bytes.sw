@@ -5,6 +5,7 @@ use ::option::Option::{self, *};
 use ::storage::storable_slice::*;
 use ::storage::{storage_api::*, storage_key::StorageKey};
 use ::codec::*;
+use ::debug::*;
 
 /// A persistent storage type to store a collection of tightly packed bytes.
 pub struct StorageBytes {}

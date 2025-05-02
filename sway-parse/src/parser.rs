@@ -21,7 +21,7 @@ pub struct Parser<'a, 'e> {
     full_span: Span,
     handler: &'e Handler,
     pub check_double_underscore: bool,
-    experimental: ExperimentalFeatures,
+    pub experimental: ExperimentalFeatures,
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
@@ -83,6 +83,13 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// Either way, on success or failure, the parser is not advanced.
     pub fn peek<P: Peek>(&self) -> Option<P> {
         Peeker::with(self.token_trees).map(|(v, _)| v)
+    }
+
+    /// Tries to peek a `P` as the second token in its canonical way.
+    ///
+    /// Either way, on success or failure, the parser is not advanced.
+    pub fn peek_next<P: Peek>(&self) -> Option<P> {
+        Peeker::with(&self.token_trees[1..]).map(|(v, _)| v)
     }
 
     /// This function will fork the current parse, and call the parsing function.

@@ -2098,7 +2098,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     // ---------------------------------------------------------------------------------------------
 
-    // TODO-IG: Reassess all the places we use `is_copy_type`.
+    // TODO: (REFERENCES) Reassess all the places where we use `is_copy_type`.
     pub(crate) fn is_copy_type(&self, ty: &Type) -> bool {
         ty.is_unit(self.context)
             || ty.is_never(self.context)

@@ -23,6 +23,8 @@ members = [
   "test_projects/parsing_logs",
   "test_projects/predicate_data_simple",
   "test_projects/predicate_data_struct",
+# TODO: Enable this test once `error_type` feature is not experimental anymore.
+#  "test_projects/predicate_panic_expression",
   "test_projects/private_struct_fields_in_storage_and_abi",
   "test_projects/registers",
   "test_projects/result_in_abi",
