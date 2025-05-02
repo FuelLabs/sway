@@ -8,7 +8,7 @@ enum ExampleEnum {
     Variants: u32,
 }
 
-const EXAMPLE_CONST = 0;
+const EXAMPLE_CONST: u64 = 0;
 
 fn main() {
     let _ = match 0 {

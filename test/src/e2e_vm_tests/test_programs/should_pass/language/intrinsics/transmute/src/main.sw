@@ -20,21 +20,21 @@ pub struct SomeStruct {
 
 fn const_transmute() {
     // u16 needs 8 bytes as u64
-    const U8ARRAY_U16 = __transmute::<[u8; 8], u16>([0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8]);
+    const U8ARRAY_U16: u16 = __transmute::<[u8; 8], u16>([0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8]);
     assert(U8ARRAY_U16 == 0x0102u16);
 
     // u32 needs 8 bytes as u64
-    const U8ARRAY_U32 = __transmute::<[u8; 8], u32>([0u8, 0u8, 0u8, 0u8, 1u8, 2u8, 3u8, 4u8]);
+    const U8ARRAY_U32: u32 = __transmute::<[u8; 8], u32>([0u8, 0u8, 0u8, 0u8, 1u8, 2u8, 3u8, 4u8]);
     assert(U8ARRAY_U32 == 0x01020304u32);
 
-    const U8ARRAY_U64 = __transmute::<[u8; 8], u64>([1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8]);
+    const U8ARRAY_U64: u64 = __transmute::<[u8; 8], u64>([1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8]);
     assert(U8ARRAY_U64 == 0x0102030405060708u64);
 
     // u32 <-> u64
-    const U32_U64 = __transmute::<u32, u64>(1u32);
+    const U32_U64: u64 = __transmute::<u32, u64>(1u32);
     assert(U32_U64 == 0x0000000000000001u64);
 
-    const U64_U32 = __transmute::<u64, u32>(1u64);
+    const U64_U32: u32 = __transmute::<u64, u32>(1u64);
     assert(U64_U32 == 0x00000001u32);
 }
 

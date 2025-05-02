@@ -1,0 +1,6 @@
+category = "compile"
+
+# check: $()const X = 0;
+# nextln: $()This constant lacks a type annotation.
+
+expected_warnings = 2

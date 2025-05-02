@@ -13,11 +13,11 @@ const Z2: u32 = 4;
 const W1: u64 = 4u64;
 const W2: u64 = 4;
 
-const V1 = 4u8;
-const V2 = 4u16;
-const V3 = 4u32;
-const V4 = 4u64;
-const V5 = 4;
+const V1: u8 = 4u8;
+const V2: u16 = 4u16;
+const V3: u32 = 4u32;
+const V4: u64 = 4u64;
+const V5: u64 = 4;
 
 /* Traits Specific to Individual Integer Types */
 trait FooU8 {

@@ -14,7 +14,7 @@ pub enum Items2_Variants {
     W: u64,
 }
 
-pub const ITEMS_2_FUNCTION_RES = 324;
+pub const ITEMS_2_FUNCTION_RES: u64 = 324;
 
 pub fn items_2_function() -> u64 {
     ITEMS_2_FUNCTION_RES

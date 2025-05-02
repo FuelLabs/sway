@@ -11,7 +11,7 @@ impl MyContract for Contract {
     }
 }
 
-const NOT_USED_NUM = 15;
+const NOT_USED_NUM: u64 = 15;
 const NOT_USED_WITH_TYPE: bool = true;
 struct NotUsedStruct {
     a: bool,

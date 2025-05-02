@@ -10,7 +10,7 @@ use std::{
 };
 
 use wallet_abi::Wallet;
-const OWNER_ADDRESS = Address::from(0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
+const OWNER_ADDRESS: Address = Address::from(0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
 
 storage {
     balance: u64 = 0,

@@ -7,7 +7,7 @@ use lib::Struct;
 use lib::Struct;
 use lib::Struct;
 
-const X = 0;
+const X: u64 = 0;
 
 fn main() -> () {
     let X = 1;
@@ -15,11 +15,11 @@ fn main() -> () {
     let y = 3;
 
     {
-        const y = 4;
+        const y: u64 = 4;
     }
 
     {
-        const y = 6;
+        const y: u64 = 6;
     }
 }
 

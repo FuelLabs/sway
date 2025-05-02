@@ -2,7 +2,7 @@
 library;
 // ANCHOR_END: module
 // ANCHOR: const
-const MAXIMUM_DEPOSIT = 10;
+const MAXIMUM_DEPOSIT: u64 = 10;
 // ANCHOR_END: const
 // ANCHOR: structures
 struct MultiSignatureWallet {

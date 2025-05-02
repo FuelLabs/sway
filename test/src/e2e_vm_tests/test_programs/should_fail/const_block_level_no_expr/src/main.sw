@@ -1,6 +1,6 @@
 library;
 
 fn main() -> u64 {
-    const X;
+    const X: u64;
     0
 }

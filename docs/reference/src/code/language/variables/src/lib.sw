@@ -47,6 +47,6 @@ fn shadowing() {
 
 fn constants() {
     // ANCHOR: constants
-    const FOO = 5;
+    const FOO: u64 = 5;
     // ANCHOR_END: constants
 }

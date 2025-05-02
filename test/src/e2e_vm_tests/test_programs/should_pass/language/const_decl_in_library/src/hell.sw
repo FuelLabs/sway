@@ -1,3 +1,3 @@
 library;
 
-pub const THE_DEVIL = 6;
+pub const THE_DEVIL: u64 = 6;

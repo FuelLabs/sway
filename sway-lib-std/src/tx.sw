@@ -9,40 +9,40 @@ use ::codec::*;
 
 // GTF Opcode const selectors
 //
-pub const GTF_TYPE = 0x001;
-pub const GTF_SCRIPT_GAS_LIMIT = 0x002;
-pub const GTF_SCRIPT_SCRIPT_LENGTH = 0x003;
-pub const GTF_SCRIPT_SCRIPT_DATA_LENGTH = 0x004;
-pub const GTF_SCRIPT_INPUTS_COUNT = 0x005;
-pub const GTF_SCRIPT_OUTPUTS_COUNT = 0x006;
-pub const GTF_SCRIPT_WITNESSES_COUNT = 0x007;
-pub const GTF_SCRIPT_SCRIPT = 0x009;
-pub const GTF_SCRIPT_SCRIPT_DATA = 0x00A;
-pub const GTF_SCRIPT_INPUT_AT_INDEX = 0x00B;
-pub const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00C;
-pub const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00D;
+pub const GTF_TYPE: u64 = 0x001;
+pub const GTF_SCRIPT_GAS_LIMIT: u64 = 0x002;
+pub const GTF_SCRIPT_SCRIPT_LENGTH: u64 = 0x003;
+pub const GTF_SCRIPT_SCRIPT_DATA_LENGTH: u64 = 0x004;
+pub const GTF_SCRIPT_INPUTS_COUNT: u64 = 0x005;
+pub const GTF_SCRIPT_OUTPUTS_COUNT: u64 = 0x006;
+pub const GTF_SCRIPT_WITNESSES_COUNT: u64 = 0x007;
+pub const GTF_SCRIPT_SCRIPT: u64 = 0x009;
+pub const GTF_SCRIPT_SCRIPT_DATA: u64 = 0x00A;
+pub const GTF_SCRIPT_INPUT_AT_INDEX: u64 = 0x00B;
+pub const GTF_SCRIPT_OUTPUT_AT_INDEX: u64 = 0x00C;
+pub const GTF_SCRIPT_WITNESS_AT_INDEX: u64 = 0x00D;
 
-pub const GTF_TX_LENGTH = 0x00E;
+pub const GTF_TX_LENGTH: u64 = 0x00E;
 
-// pub const GTF_CREATE_BYTECODE_WITNESS_INDEX = 0x101;
-// pub const GTF_CREATE_STORAGE_SLOTS_COUNT = 0x102;
-pub const GTF_CREATE_INPUTS_COUNT = 0x103;
-pub const GTF_CREATE_OUTPUTS_COUNT = 0x104;
-pub const GTF_CREATE_WITNESSES_COUNT = 0x105;
-// pub const GTF_CREATE_SALT = 0x106;
-// pub const GTF_CREATE_STORAGE_SLOT_AT_INDEX = 0x107;
-pub const GTF_CREATE_INPUT_AT_INDEX = 0x108;
-pub const GTF_CREATE_OUTPUT_AT_INDEX = 0x109;
-pub const GTF_CREATE_WITNESS_AT_INDEX = 0x10A;
+// pub const GTF_CREATE_BYTECODE_WITNESS_INDEX: u64 = 0x101;
+// pub const GTF_CREATE_STORAGE_SLOTS_COUNT: u64 = 0x102;
+pub const GTF_CREATE_INPUTS_COUNT: u64 = 0x103;
+pub const GTF_CREATE_OUTPUTS_COUNT: u64 = 0x104;
+pub const GTF_CREATE_WITNESSES_COUNT: u64 = 0x105;
+// pub const GTF_CREATE_SALT: u64 = 0x106;
+// pub const GTF_CREATE_STORAGE_SLOT_AT_INDEX: u64 = 0x107;
+pub const GTF_CREATE_INPUT_AT_INDEX: u64 = 0x108;
+pub const GTF_CREATE_OUTPUT_AT_INDEX: u64 = 0x109;
+pub const GTF_CREATE_WITNESS_AT_INDEX: u64 = 0x10A;
 
-pub const GTF_WITNESS_DATA_LENGTH = 0x400;
-pub const GTF_WITNESS_DATA = 0x401;
+pub const GTF_WITNESS_DATA_LENGTH: u64 = 0x400;
+pub const GTF_WITNESS_DATA: u64 = 0x401;
 
-pub const GTF_POLICY_TYPES = 0x500;
-pub const GTF_POLICY_TIP = 0x501;
-pub const GTF_POLICY_WITNESS_LIMIT = 0x502;
-pub const GTF_POLICY_MATURITY = 0x503;
-pub const GTF_POLICY_MAX_FEE = 0x504;
+pub const GTF_POLICY_TYPES: u64 = 0x500;
+pub const GTF_POLICY_TIP: u64 = 0x501;
+pub const GTF_POLICY_WITNESS_LIMIT: u64 = 0x502;
+pub const GTF_POLICY_MATURITY: u64 = 0x503;
+pub const GTF_POLICY_MAX_FEE: u64 = 0x504;
 
 /// A transaction type.
 pub enum Transaction {
@@ -545,7 +545,7 @@ pub fn tx_script_bytecode_hash() -> Option<b256> {
     }
 }
 
-const TX_ID_OFFSET = 0;
+const TX_ID_OFFSET: u64 = 0;
 
 /// Get the Transaction ID of the current transaction.
 ///

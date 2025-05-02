@@ -19,7 +19,7 @@ use ::primitives::*;
 /// }
 /// ```
 #[deprecated(note = "Please use `b256::zero()`.")]
-pub const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+pub const ZERO_B256: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 /// A u256 of zero value.
 ///
@@ -37,7 +37,7 @@ pub const ZERO_B256 = 0x00000000000000000000000000000000000000000000000000000000
 /// }
 /// ```
 #[deprecated(note = "Please use `u256::zero()`.")]
-pub const ZERO_U256 = 0x00u256;
+pub const ZERO_U256: u256 = 0x00u256;
 
 /// The default Sub Id for assets.
 ///
@@ -51,4 +51,4 @@ pub const ZERO_U256 = 0x00u256;
 ///     assert(AssetId::new(contract_id(), DEFAULT_SUB_ID) == msg_asset_id());
 /// }
 /// ```
-pub const DEFAULT_SUB_ID = b256::zero();
+pub const DEFAULT_SUB_ID: b256 = b256::zero();

@@ -1,18 +1,18 @@
 category = "fail"
 
-# check: $()const p={/);
+# check: $()const p:()={/);
 # nextln: $()Constant "p" should be SCREAMING_SNAKE_CASE.
 
-# check: $()const p={/);
+# check: $()const p:()={/);
 # nextln: $()This declaration is never used.
 
-# check: $()const p={/);
+# check: $()const p:()={/);
 # nextln: $()mismatched delimiters
 
-# check: $()const p={/);
+# check: $()const p:()={/);
 # nextln: $()Expected an expression.
 
-# check: $()const p={/);
+# check: $()const p:()={/);
 # nextln: $()Could not evaluate initializer to a const declaration.
 
 # check: $()Aborting due to 3 errors.

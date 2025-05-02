@@ -9,7 +9,7 @@ use std::context::msg_amount;
 // ANCHOR_END: import_amount
 
 // ANCHOR: access_control
-const OWNER = Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000000));
+const OWNER: Identity = Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000000));
 
 fn update() {
     require(msg_sender().unwrap() == OWNER, "Owner Only");
