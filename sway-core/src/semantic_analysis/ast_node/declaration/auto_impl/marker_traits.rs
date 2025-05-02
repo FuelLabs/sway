@@ -54,7 +54,7 @@ where
 
         let impl_marker_trait_code = format!(
             "#[allow(dead_code, deprecated)] impl{type_parameters_declaration} {marker_trait_name} for {}{type_parameters_declaration}{type_parameters_constraints} {{ }}",
-            enum_decl.name()
+            enum_decl.name().as_raw_ident_str()
         );
 
         let impl_enum_node = self.parse_impl_trait_to_ty_ast_node(
