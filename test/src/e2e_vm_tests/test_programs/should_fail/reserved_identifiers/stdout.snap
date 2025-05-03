@@ -1,0 +1,406 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers --release --experimental error_type
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling script reserved_identifiers (test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers)
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:33:13
+   |
+31 |     let mut where = 0;
+32 |     let mut ref = 0;
+33 |     let mut deref = 0;
+   |             ----- This declaration is never used.
+34 |     let mut true = 0;
+35 |     let mut false = 0;
+   |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:4:13
+  |
+2 | 
+3 | fn main() {
+4 |     let mut script = 0;
+  |             ^^^^^^ Identifier cannot be a reserved keyword.
+5 |     let mut contract = 0;
+6 |     let mut predicate = 0;
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:5:13
+  |
+3 | fn main() {
+4 |     let mut script = 0;
+5 |     let mut contract = 0;
+  |             ^^^^^^^^ Identifier cannot be a reserved keyword.
+6 |     let mut predicate = 0;
+7 |     let mut library = 0;
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:6:13
+  |
+4 |     let mut script = 0;
+5 |     let mut contract = 0;
+6 |     let mut predicate = 0;
+  |             ^^^^^^^^^ Identifier cannot be a reserved keyword.
+7 |     let mut library = 0;
+8 |     let mut mod = 0;
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:7:13
+  |
+5 |     let mut contract = 0;
+6 |     let mut predicate = 0;
+7 |     let mut library = 0;
+  |             ^^^^^^^ Identifier cannot be a reserved keyword.
+8 |     let mut mod = 0;
+9 |     let mut pub = 0;
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:8:13
+   |
+ 6 |     let mut predicate = 0;
+ 7 |     let mut library = 0;
+ 8 |     let mut mod = 0;
+   |             ^^^ Identifier cannot be a reserved keyword.
+ 9 |     let mut pub = 0;
+10 |     let mut use = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:9:13
+   |
+ 7 |     let mut library = 0;
+ 8 |     let mut mod = 0;
+ 9 |     let mut pub = 0;
+   |             ^^^ Identifier cannot be a reserved keyword.
+10 |     let mut use = 0;
+11 |     let mut as = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:10:13
+   |
+ 8 |     let mut mod = 0;
+ 9 |     let mut pub = 0;
+10 |     let mut use = 0;
+   |             ^^^ Identifier cannot be a reserved keyword.
+11 |     let mut as = 0;
+12 |     let mut struct = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:11:13
+   |
+ 9 |     let mut pub = 0;
+10 |     let mut use = 0;
+11 |     let mut as = 0;
+   |             ^^ Identifier cannot be a reserved keyword.
+12 |     let mut struct = 0;
+13 |     let mut enum = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:12:13
+   |
+10 |     let mut use = 0;
+11 |     let mut as = 0;
+12 |     let mut struct = 0;
+   |             ^^^^^^ Identifier cannot be a reserved keyword.
+13 |     let mut enum = 0;
+14 |     let mut self = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:13:13
+   |
+11 |     let mut as = 0;
+12 |     let mut struct = 0;
+13 |     let mut enum = 0;
+   |             ^^^^ Identifier cannot be a reserved keyword.
+14 |     let mut self = 0;
+15 |     let mut fn = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:14:13
+   |
+12 |     let mut struct = 0;
+13 |     let mut enum = 0;
+14 |     let mut self = 0;
+   |             ^^^^ Identifier cannot be a reserved keyword.
+15 |     let mut fn = 0;
+16 |     let mut trait = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:15:13
+   |
+13 |     let mut enum = 0;
+14 |     let mut self = 0;
+15 |     let mut fn = 0;
+   |             ^^ Identifier cannot be a reserved keyword.
+16 |     let mut trait = 0;
+17 |     let mut impl = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:16:13
+   |
+14 |     let mut self = 0;
+15 |     let mut fn = 0;
+16 |     let mut trait = 0;
+   |             ^^^^^ Identifier cannot be a reserved keyword.
+17 |     let mut impl = 0;
+18 |     let mut for = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:17:13
+   |
+15 |     let mut fn = 0;
+16 |     let mut trait = 0;
+17 |     let mut impl = 0;
+   |             ^^^^ Identifier cannot be a reserved keyword.
+18 |     let mut for = 0;
+19 |     let mut abi = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:18:13
+   |
+16 |     let mut trait = 0;
+17 |     let mut impl = 0;
+18 |     let mut for = 0;
+   |             ^^^ Identifier cannot be a reserved keyword.
+19 |     let mut abi = 0;
+20 |     let mut const = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:19:13
+   |
+17 |     let mut impl = 0;
+18 |     let mut for = 0;
+19 |     let mut abi = 0;
+   |             ^^^ Identifier cannot be a reserved keyword.
+20 |     let mut const = 0;
+21 |     let mut storage = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:20:13
+   |
+18 |     let mut for = 0;
+19 |     let mut abi = 0;
+20 |     let mut const = 0;
+   |             ^^^^^ Identifier cannot be a reserved keyword.
+21 |     let mut storage = 0;
+22 |     let mut str = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:21:13
+   |
+19 |     let mut abi = 0;
+20 |     let mut const = 0;
+21 |     let mut storage = 0;
+   |             ^^^^^^^ Identifier cannot be a reserved keyword.
+22 |     let mut str = 0;
+23 |     let mut asm = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:22:13
+   |
+20 |     let mut const = 0;
+21 |     let mut storage = 0;
+22 |     let mut str = 0;
+   |             ^^^ Identifier cannot be a reserved keyword.
+23 |     let mut asm = 0;
+24 |     let mut return = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:23:13
+   |
+21 |     let mut storage = 0;
+22 |     let mut str = 0;
+23 |     let mut asm = 0;
+   |             ^^^ Identifier cannot be a reserved keyword.
+24 |     let mut return = 0;
+25 |     let mut if = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:24:13
+   |
+22 |     let mut str = 0;
+23 |     let mut asm = 0;
+24 |     let mut return = 0;
+   |             ^^^^^^ Identifier cannot be a reserved keyword.
+25 |     let mut if = 0;
+26 |     let mut else = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:25:13
+   |
+23 |     let mut asm = 0;
+24 |     let mut return = 0;
+25 |     let mut if = 0;
+   |             ^^ Identifier cannot be a reserved keyword.
+26 |     let mut else = 0;
+27 |     let mut match = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:26:13
+   |
+24 |     let mut return = 0;
+25 |     let mut if = 0;
+26 |     let mut else = 0;
+   |             ^^^^ Identifier cannot be a reserved keyword.
+27 |     let mut match = 0;
+28 |     let mut mut = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:27:13
+   |
+25 |     let mut if = 0;
+26 |     let mut else = 0;
+27 |     let mut match = 0;
+   |             ^^^^^ Identifier cannot be a reserved keyword.
+28 |     let mut mut = 0;
+29 |     let mut let = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:28:13
+   |
+26 |     let mut else = 0;
+27 |     let mut match = 0;
+28 |     let mut mut = 0;
+   |             ^^^ Identifier cannot be a reserved keyword.
+29 |     let mut let = 0;
+30 |     let mut while = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:29:13
+   |
+27 |     let mut match = 0;
+28 |     let mut mut = 0;
+29 |     let mut let = 0;
+   |             ^^^ Identifier cannot be a reserved keyword.
+30 |     let mut while = 0;
+31 |     let mut where = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:30:13
+   |
+28 |     let mut mut = 0;
+29 |     let mut let = 0;
+30 |     let mut while = 0;
+   |             ^^^^^ Identifier cannot be a reserved keyword.
+31 |     let mut where = 0;
+32 |     let mut ref = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:31:13
+   |
+29 |     let mut let = 0;
+30 |     let mut while = 0;
+31 |     let mut where = 0;
+   |             ^^^^^ Identifier cannot be a reserved keyword.
+32 |     let mut ref = 0;
+33 |     let mut deref = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:32:13
+   |
+30 |     let mut while = 0;
+31 |     let mut where = 0;
+32 |     let mut ref = 0;
+   |             ^^^ Identifier cannot be a reserved keyword.
+33 |     let mut deref = 0;
+34 |     let mut true = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:34:13
+   |
+32 |     let mut ref = 0;
+33 |     let mut deref = 0;
+34 |     let mut true = 0;
+   |             ^^^^ Identifier cannot be a reserved keyword.
+35 |     let mut false = 0;
+36 |     let mut panic = 0;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:35:13
+   |
+33 |     let mut deref = 0;
+34 |     let mut true = 0;
+35 |     let mut false = 0;
+   |             ^^^^^ Identifier cannot be a reserved keyword.
+36 |     let mut panic = 0;
+37 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/reserved_identifiers/src/main.sw:36:13
+   |
+34 |     let mut true = 0;
+35 |     let mut false = 0;
+36 |     let mut panic = 0;
+   |             ^^^^^ Identifier cannot be a reserved keyword.
+37 | }
+   |
+____
+
+  Aborting due to 32 errors.
+error: Failed to compile reserved_identifiers

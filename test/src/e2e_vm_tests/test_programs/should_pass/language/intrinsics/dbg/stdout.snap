@@ -2,11 +2,112 @@
 source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --asm final | grep ecal
-ecal $r2 $r3 $r0 $r1          ; ecal id fd buf count
-ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
-ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
-ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 ecal $r4 $r2 $r3 $r0          ; ecal id fd buf count
+ecal $r2 $r1 $zero $zero      ; ecal id fd zero zero
 ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r2 $r0 $r1 $r3          ; ecal id fd buf count
+ecal $r3 $r1 $r2 $r4          ; ecal id fd buf count
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --release --asm final | grep ecal
+
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --logs
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg
+   Compiling library std (sway-lib-std)
+   Compiling script dbg (test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg)
+    Finished debug [unoptimized + fuel] target(s) [37.368 KB] in ???
+     Running 1 test, filtered 0 tests
+
+tested -- dbg
+
+      test call_main ... ok (???, 103315 gas)
+[src/main.sw:13:13] () = ()
+[src/main.sw:15:13] true = true
+[src/main.sw:16:13] false = false
+[src/main.sw:18:13] u8::min() = 0
+[src/main.sw:19:13] 1u8 = 1
+[src/main.sw:20:13] 10u8 = 10
+[src/main.sw:21:13] 100u8 = 100
+[src/main.sw:22:13] u8::max() = 255
+[src/main.sw:24:13] u16::min() = 0
+[src/main.sw:25:13] 1u16 = 1
+[src/main.sw:26:13] 10u16 = 10
+[src/main.sw:27:13] 100u16 = 100
+[src/main.sw:28:13] u16::max() = 65535
+[src/main.sw:30:13] u32::min() = 0
+[src/main.sw:31:13] 1u32 = 1
+[src/main.sw:32:13] 10u32 = 10
+[src/main.sw:33:13] 100u32 = 100
+[src/main.sw:34:13] u32::max() = 4294967295
+[src/main.sw:36:13] u64::min() = 0
+[src/main.sw:37:13] 1u64 = 1
+[src/main.sw:38:13] 10u64 = 10
+[src/main.sw:39:13] 100u64 = 100
+[src/main.sw:40:13] u64::max() = 18446744073709551615
+[src/main.sw:42:13] u256::min() = 0
+[src/main.sw:43:13] 1u256 = 1
+[src/main.sw:44:13] 10u256 = 10
+[src/main.sw:45:13] 100u256 = 100
+[src/main.sw:46:13] u256::max() = 115792089237316195423570985008687907853269984665640564039457584007913129639935
+[src/main.sw:48:13] b256::min() = 0x0000000000000000000000000000000000000000000000000000000000000000
+[src/main.sw:49:13] b256::max() = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+[src/main.sw:52:13] "A" = "A"
+[src/main.sw:53:13] __to_str_array("A") = "A"
+[src/main.sw:56:13] ("A", 0u8) = ("A", 0)
+[src/main.sw:57:13] [0u8, 1u8] = [0, 1]
+[src/main.sw:58:13] __slice(&[0u8, 1u8], 0, 2) = [0, 1]
+[src/main.sw:61:13] S {} = S { }
+[src/main.sw:62:13] E::None = None
+[src/main.sw:63:13] E::Some(S {}) = E(S { })
+[src/main.sw:66:13] std::address::Address::zero() = Address { bits: 0x0000000000000000000000000000000000000000000000000000000000000000 }
+[src/main.sw:67:13] std::asset_id::AssetId::zero() = AssetId { bits: 0x0000000000000000000000000000000000000000000000000000000000000000 }
+[src/main.sw:68:13] std::auth::AuthError::InputsNotAllOwnedBySameAddress = InputsNotAllOwnedBySameAddress
+[src/main.sw:69:13] std::b512::B512::zero() = B512 { bits: [0x0000000000000000000000000000000000000000000000000000000000000000, 0x0000000000000000000000000000000000000000000000000000000000000000] }
+[src/main.sw:71:13] std::block::BlockHashError::BlockHeightTooHigh = BlockHeightTooHigh
+[src/main.sw:72:13] {
+    let mut bytes = std::bytes::Bytes::new();
+    bytes.push(1);
+    bytes.push(2);
+    bytes.push(3);
+    bytes
+} = [1, 2, 3]
+[src/main.sw:79:13] std::contract_id::ContractId::zero() = ContractId { bits: 0x0000000000000000000000000000000000000000000000000000000000000000 }
+[src/main.sw:81:13] std::ecr::EcRecoverError::ZeroLengthMessage = ZeroLengthMessage
+[src/main.sw:82:13] std::identity::Identity::Address(Address::zero()) = Identity(Address { bits: 0x0000000000000000000000000000000000000000000000000000000000000000 })
+[src/main.sw:84:13] std::inputs::Input::Coin = Coin
+[src/main.sw:86:13] std::low_level_call::CallParams {
+    coins: 1,
+    asset_id: std::asset_id::AssetId::zero(),
+    gas: 2,
+} = CallParams { coins: 1, asset_id: AssetId { bits: 0x0000000000000000000000000000000000000000000000000000000000000000 }, gas: 2 }
+[src/main.sw:91:13] std::option::Option::Some(1u8) = Option(1)
+[src/main.sw:93:13] std::outputs::Output::Coin = Coin
+[src/main.sw:94:13] f() = Result(1)
+[src/main.sw:96:13] std::string::String::from_ascii_str("hello") = "hello"
+[src/main.sw:97:13] std::tx::Transaction::Script = Script
+[src/main.sw:99:13] std::u128::U128::zero() = U128 { upper: 0, lower: 0 }
+[src/main.sw:100:13] std::u128::U128Error::LossOfPrecision = LossOfPrecision
+[src/main.sw:101:13] {
+    let mut v = std::vec::Vec::new();
+    v.push(1u64);
+    v.push(2u64);
+    v.push(3u64);
+    v
+} = [1, 2, 3]
+[src/main.sw:108:13] {
+    let mut v = std::vec::Vec::new();
+    v.push(1u64);
+    v.push(2u64);
+    v.push(3u64);
+    v.iter()
+} = VecIter { values: [1, 2, 3], index: 0 }
+[src/main.sw:117:5] 11u64 = 11
+
+test result: OK. 1 passed; 0 failed; finished in ???
+
+    Finished in ???

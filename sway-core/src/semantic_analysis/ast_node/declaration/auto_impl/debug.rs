@@ -55,7 +55,8 @@ where
         let struct_decl = self.ctx.engines().de().get(&implementing_for_decl_id);
 
         let body = self.generate_fmt_struct_body(engines, &struct_decl);
-        let code = self.generate_fmt_code(struct_decl.name(), &struct_decl.type_parameters, body);
+        let code =
+            self.generate_fmt_code(struct_decl.name(), &struct_decl.generic_parameters, body);
         let node = self.parse_impl_trait_to_ty_ast_node(
             engines,
             struct_decl.span().source_id(),
@@ -75,9 +76,9 @@ where
         let type_parameters_declaration =
             self.generate_type_parameters_declaration_code(type_parameters);
         let type_parameters_constraints =
-            self.generate_type_parameters_constraints_code(type_parameters, "Debug");
+            self.generate_type_parameters_constraints_code(type_parameters, Some("Debug"));
 
-        let name = name.as_str();
+        let name = name.as_raw_ident_str();
 
         format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} Debug for {name}{type_parameters_declaration}{type_parameters_constraints} {{
             #[allow(dead_code, deprecated)]
@@ -93,13 +94,13 @@ where
         for field in decl.fields.iter() {
             fields.push_str(&format!(
                 ".field(\"{field_name}\", self.{field_name})\n",
-                field_name = field.name.as_str(),
+                field_name = field.name.as_raw_ident_str(),
             ));
         }
 
         format!(
             "_f.debug_struct(\"{}\"){fields}.finish();",
-            decl.name().as_str()
+            decl.name().as_raw_ident_str()
         )
     }
 
@@ -113,7 +114,7 @@ where
         let enum_decl = self.ctx.engines().de().get(&enum_decl_id);
 
         let body = self.generate_fmt_enum_body(engines, &enum_decl);
-        let code = self.generate_fmt_code(enum_decl.name(), &enum_decl.type_parameters, body);
+        let code = self.generate_fmt_code(enum_decl.name(), &enum_decl.generic_parameters, body);
         let node = self.parse_impl_trait_to_ty_ast_node(
             engines,
             enum_decl.span().source_id(),
@@ -125,13 +126,13 @@ where
     }
 
     fn generate_fmt_enum_body(&self, engines: &Engines, decl: &TyEnumDecl) -> String {
-        let enum_name = decl.call_path.suffix.as_str();
+        let enum_name = decl.call_path.suffix.as_raw_ident_str();
 
         let arms = decl
             .variants
             .iter()
             .map(|variant| {
-                let variant_name = variant.name.as_str();
+                let variant_name = variant.name.as_raw_ident_str();
                 if engines.te().get(variant.type_argument.type_id()).is_unit() {
                     format!(
                         "{enum_name}::{variant_name} => {{
