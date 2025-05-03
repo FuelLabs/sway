@@ -5,6 +5,7 @@ use ::hash::*;
 use ::option::Option::{self, *};
 use ::storage::storage_api::*;
 use ::codec::*;
+use ::debug::*;
 
 /// Store a raw_slice from the heap into storage.
 ///
@@ -37,7 +38,7 @@ pub fn write_slice(key: b256, slice: raw_slice) {
     let number_of_slots = (number_of_bytes + 31) >> 5;
     let mut ptr = slice.ptr();
 
-    // The capacity needs to be a multiple of 32 bytes so we can 
+    // The capacity needs to be a multiple of 32 bytes so we can
     // make the 'quad' storage instruction store without accessing unallocated heap memory.
     ptr = realloc_bytes(ptr, number_of_bytes, number_of_slots * 32);
 

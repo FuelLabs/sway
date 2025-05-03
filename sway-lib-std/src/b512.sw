@@ -8,6 +8,7 @@ use ::bytes::Bytes;
 use ::option::Option::{self, *};
 use ::raw_slice::*;
 use ::codec::*;
+use ::debug::*;
 
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.

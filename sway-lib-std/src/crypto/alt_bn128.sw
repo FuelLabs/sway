@@ -6,6 +6,7 @@ use ::revert::require;
 use ::crypto::{point2d::*, scalar::*};
 use ::alloc::alloc;
 use ::codec::*;
+use ::debug::*;
 
 /// The error type used when performing elliptic curve operations for the Alt BN128 curve.
 pub enum AltBn128Error {
@@ -50,7 +51,7 @@ pub fn alt_bn128_mul(point: Point2D, scalar: Scalar) -> Point2D {
         AltBn128Error::InvalidEllipticCurveScalar,
     );
 
-    // 1P = ([32 bytes], [32 bytes]) 
+    // 1P = ([32 bytes], [32 bytes])
     let mut result = [b256::zero(), b256::zero()];
     // 1P1S = (X, Y), Z = ([32 bytes], [32 bytes]), [32 bytes] = 3 * 32 bytes
     let mut ptr = alloc::<b256>(3);
@@ -100,7 +101,7 @@ pub fn alt_bn128_add(point_1: Point2D, point_2: Point2D) -> Point2D {
         AltBn128Error::InvalidEllipticCurvePoint,
     );
 
-    // 1P = ([32 bytes], [32 bytes]) 
+    // 1P = ([32 bytes], [32 bytes])
     let mut result = [b256::zero(), b256::zero()];
     // 1P1P = (X, Y), (X, Y) = ([32 bytes], [32 bytes]), ([32 bytes], [32 bytes]) = 4 * 32 bytes
     let mut points_ptr = alloc::<b256>(4);

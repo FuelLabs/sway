@@ -8,6 +8,7 @@ use ::option::Option::{self, *};
 use ::hash::*;
 use ::ops::*;
 use ::codec::*;
+use ::debug::*;
 
 /// Normalized (hashed) message authenticated by a signature.
 pub struct Message {

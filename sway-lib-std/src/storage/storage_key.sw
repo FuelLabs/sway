@@ -3,6 +3,7 @@ library;
 use ::option::Option;
 use ::storage::storage_api::*;
 use ::codec::*;
+use ::debug::*;
 
 /// Describes a location in storage.
 ///
@@ -224,7 +225,7 @@ impl<T> StorageKey<T> {
     pub fn clear(self) -> bool {
         if __size_of::<T>() == 0 {
             // If the generic doesn't have a size, this is an empty struct and nothing can be stored at the slot.
-            // This clears the length value for StorageVec, StorageString, and StorageBytes 
+            // This clears the length value for StorageVec, StorageString, and StorageBytes
             // or any other Storage type.
             clear::<u64>(self.field_id(), 0)
         } else {

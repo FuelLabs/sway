@@ -9,6 +9,7 @@ use ::option::Option::{self, *};
 use ::hash::*;
 use ::ops::*;
 use ::codec::*;
+use ::debug::*;
 
 /// Asymmetric public key, i.e. verifying key, in uncompressed form.
 ///

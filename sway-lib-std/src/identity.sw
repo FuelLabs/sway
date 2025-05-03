@@ -3,6 +3,7 @@
 library;
 
 use ::codec::*;
+use ::debug::*;
 use ::assert::assert;
 use ::address::Address;
 use ::alias::SubId;
