@@ -177,7 +177,7 @@ pub(crate) fn process_transaction_output(
     receipts: &[Receipt],
     tx_hash: &str,
     program_abi: &sway_core::asm_generation::ProgramABI,
-    result: String,
+    result: Option<String>,
     mode: &cmd::call::ExecutionMode,
     node: &crate::NodeTarget,
     verbosity: &cmd::call::Verbosity,
@@ -212,8 +212,8 @@ pub(crate) fn process_transaction_output(
 
     // print tx hash and result
     forc_tracing::println_label_green("tx hash:", tx_hash);
-    if !result.is_empty() {
-        forc_tracing::println_label_green("result:", &result);
+    if let Some(result) = result.as_ref() {
+        forc_tracing::println_label_green("result:", result);
     }
 
     // display transaction url if live mode
@@ -228,7 +228,7 @@ pub(crate) fn process_transaction_output(
 
     Ok(CallResponse {
         tx_hash: tx_hash.to_string(),
-        result,
+        result: result.unwrap_or_default(),
         logs,
     })
 }

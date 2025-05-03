@@ -50,7 +50,7 @@ pub async fn transfer(
         &tx_response.tx_status.receipts,
         &tx_response.tx_id.to_string(),
         &program_abi,
-        "".to_string(),
+        None,
         &crate::cmd::call::ExecutionMode::Live,
         node,
         verbosity,
