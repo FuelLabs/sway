@@ -41,11 +41,13 @@ tracing.workspace = true
 url = { workspace = true, features = ["serde"] }
 vec1.workspace = true
 walkdir.workspace = true
+pathdiff = "0.2.3"
+toml_edit = { version = "0.22", features = ["serde"] }
 
 [dev-dependencies]
 regex.workspace = true
 tempfile.workspace = true
+test-case = "3.3.1"
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 sysinfo.workspace = true
-
