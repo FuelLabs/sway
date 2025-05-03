@@ -232,7 +232,6 @@ impl Session {
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
             if let Some(program) = &compiled_program.typed {
-                let engines = self.engines.read();
                 return Some(capabilities::completion::to_completion_items(
                     &program.namespace,
                     &engines,
