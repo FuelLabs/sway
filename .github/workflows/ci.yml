@@ -532,6 +532,8 @@ jobs:
         run: cargo install --locked --debug --path ./forc
       - name: Run Std Unit Tests
         run: forc build --path sway-lib-std && forc test --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'references'
+        run: forc build --experimental references --path sway-lib-std && forc test --experimental references --path sway-lib-std
       - name: Run Std Unit Tests - Experimental feature 'error_type'
         run: forc build --experimental error_type --path sway-lib-std && forc test --experimental error_type --path sway-lib-std
       - name: Run In Language Unit Tests

@@ -167,7 +167,7 @@ impl ExperimentalFeatures {
 features! {
     new_encoding = true,
     "https://github.com/FuelLabs/sway/issues/5727",
-    references = true,
+    references = false,
     "https://github.com/FuelLabs/sway/issues/5063",
     error_type = false,
     "https://github.com/FuelLabs/sway/issues/6765",

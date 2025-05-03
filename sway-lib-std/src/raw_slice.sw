@@ -2,6 +2,7 @@ library;
 
 use ::ops::*;
 use ::raw_ptr::*;
+use ::slice::*;
 
 /// Trait to return a type as a `raw_slice`.
 pub trait AsRawSlice {
@@ -159,6 +160,18 @@ impl raw_slice {
     /// ```
     pub fn number_of_bytes(self) -> u64 {
         into_parts(self).1
+    }
+
+    pub fn into<T>(self) -> &mut [T] {
+        asm(s: into_parts(self)) {
+            s: &mut [T]
+        }
+    }
+}
+
+impl<T> AsRawSlice for &mut [T] {
+    fn as_raw_slice(self) -> raw_slice {
+        from_parts((self.ptr(), self.len()))
     }
 }
 
