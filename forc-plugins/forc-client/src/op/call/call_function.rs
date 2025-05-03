@@ -217,7 +217,7 @@ pub async fn call_function(
         &receipts,
         &tx_hash.to_string(),
         &program_abi,
-        result,
+        Some(result),
         &mode,
         &node,
         &verbosity,
