@@ -719,18 +719,15 @@ mod tests {
                 .fold(vec![], |mut acc, statement| match statement {
                     Statement::Item(item) => {
                         acc.push(attributes(&item.attributes));
-                        match &item.value {
-                            ItemKind::Struct(item_struct) => {
-                                let mut struct_attributes = item_struct
-                                    .fields
-                                    .inner
-                                    .value_separator_pairs
-                                    .iter()
-                                    .map(|(field, _)| attributes(&field.attributes))
-                                    .collect::<Vec<_>>();
-                                acc.append(&mut struct_attributes);
-                            }
-                            _ => {}
+                        if let ItemKind::Struct(item_struct) = &item.value {
+                            let mut struct_attributes = item_struct
+                                .fields
+                                .inner
+                                .value_separator_pairs
+                                .iter()
+                                .map(|(field, _)| attributes(&field.attributes))
+                                .collect::<Vec<_>>();
+                            acc.append(&mut struct_attributes);
                         }
                         acc
                     }
