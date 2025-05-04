@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     asm_generation::fuel::compiler_constants,
-    asm_lang::{ControlFlowOp, Label, VirtualImmediate12, VirtualOp, VirtualRegister},
+    asm_lang::{ControlFlowOp, JumpType, Label, VirtualImmediate12, VirtualOp, VirtualRegister},
 };
 
 use super::{
@@ -273,16 +273,16 @@ impl AbstractInstructionSet {
             let mut op_def = op.def_registers();
             op_def.append(&mut op.def_const_registers());
 
-            if let Either::Right(ControlFlowOp::Jump(_) | ControlFlowOp::JumpIfNotZero(..)) =
-                op.opcode
-            {
-                // Block boundary. Start afresh.
-                cur_live.clone_from(liveness.get(ix).expect("Incorrect liveness info"));
-                // Add use(op) to cur_live.
-                for u in op_use {
-                    cur_live.insert(u.clone());
+            if let Either::Right(ControlFlowOp::Jump { type_, .. }) = &op.opcode {
+                if !matches!(type_, JumpType::Call) {
+                    // Block boundary. Start afresh.
+                    cur_live.clone_from(liveness.get(ix).expect("Incorrect liveness info"));
+                    // Add use(op) to cur_live.
+                    for u in op_use {
+                        cur_live.insert(u.clone());
+                    }
+                    continue;
                 }
-                continue;
             }
 
             let dead = op_def.iter().all(|def| !cur_live.contains(def))
@@ -344,7 +344,7 @@ impl AbstractInstructionSet {
             reachables[op_idx] = true;
             let op = &ops[op_idx];
             for s in &op.successors(op_idx, ops, &label_to_index) {
-                if !reachables[*s] {
+                if !reachables[*s] && !worklist.contains(s) {
                     worklist.push(*s);
                 }
             }
