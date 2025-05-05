@@ -23,11 +23,15 @@ pub async fn handle_did_open_text_document(
     let (uri, session) = state
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
+    eprintln!("did_open for {:?}", uri.to_file_path().unwrap());
+
     state.documents.handle_open_file(&uri).await;
 
     send_new_compilation_request(state, session.clone(), &uri, None, false);
     state.is_compiling.store(true, Ordering::SeqCst);
+    eprintln!("did_open: waiting for parsing to finish for {:?}", uri.to_file_path().unwrap());
     state.wait_for_parsing().await;
+    eprintln!("did_open: publishing diagnostics for {:?}", uri.to_file_path().unwrap());
     state
         .publish_diagnostics(uri, params.text_document.uri, session)
         .await;
@@ -42,9 +46,11 @@ fn send_new_compilation_request(
     version: Option<i32>,
     optimized_build: bool,
 ) {
+    eprintln!("new compilation request for {:?}", uri.to_file_path().unwrap());
     let file_versions = file_versions(&state.documents, uri, version.map(|v| v as u64));
 
     if state.is_compiling.load(Ordering::SeqCst) {
+        eprintln!("cancelling existing compilation and retriggering compilation for {:?}", uri.to_file_path().unwrap());
         // If we are already compiling, then we need to retrigger compilation
         state.retrigger_compilation.store(true, Ordering::SeqCst);
     }
@@ -58,6 +64,7 @@ fn send_new_compilation_request(
         }
     }
 
+    eprintln!("sending compilation request for {:?}", uri.to_file_path().unwrap());
     let _ = state
         .cb_tx
         .send(TaskMessage::CompilationContext(CompilationContext {

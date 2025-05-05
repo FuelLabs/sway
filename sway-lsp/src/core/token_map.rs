@@ -20,7 +20,7 @@ pub use crate::core::token_map_ext::TokenMapExt;
 ///
 /// The TokenMap is a wrapper around a [DashMap], which is a concurrent HashMap.
 #[derive(Debug, Default)]
-pub struct TokenMap(DashMap<TokenIdent, Token>);
+pub struct TokenMap(pub DashMap<TokenIdent, Token>);
 
 impl<'a> TokenMap {
     /// Create a new token map.
@@ -255,6 +255,11 @@ impl<'a> TokenMap {
     pub fn remove_tokens_for_file(&self, path_to_remove: &PathBuf) {
         self.0
             .retain(|key, _value| (key.path.as_ref() != Some(path_to_remove)));
+    }
+
+    /// Remove all tokens for the given program from the token map.
+    pub fn remove_tokens_for_program(&self, program_id: ProgramId) {
+        self.0.retain(|key, _value| (key.program_id() != Some(program_id)));
     }
 }
 

@@ -25,6 +25,13 @@ pub fn semantic_tokens_range(
     range: &Range,
 ) -> Option<SemanticTokensRangeResult> {
     let _p = tracing::trace_span!("semantic_tokens_range").entered();
+    eprintln!("semantic_tokens_range request for: url: {:?}", url.to_file_path().unwrap());
+    let mut k = std::collections::HashSet::new();
+    for i in token_map.iter() {
+        let key = i.key().path.clone();
+        k.insert(key.clone());
+    }
+    eprintln!("token map keys: {:?}", k);
     let tokens: Vec<_> = token_map
         .tokens_for_file(url)
         .filter(|item| {
@@ -33,6 +40,7 @@ pub fn semantic_tokens_range(
             token_range.start >= range.start && token_range.end <= range.end
         })
         .collect();
+    eprintln!("semantic_tokens_range: token length: {:?} | url: {:?}", tokens.len(), url.to_file_path().unwrap());
     let sorted_tokens_refs = sort_tokens(&tokens);
     Some(semantic_tokens(&sorted_tokens_refs[..]).into())
 }

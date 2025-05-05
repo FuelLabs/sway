@@ -329,16 +329,20 @@ pub async fn handle_semantic_tokens_range(
     state: &ServerState,
     params: SemanticTokensRangeParams,
 ) -> Result<Option<SemanticTokensRangeResult>> {
+    eprintln!("semantic tokens req, waiting for parsing| params uri: {:?}", params.text_document.uri.to_file_path().unwrap());
     let _ = state.wait_for_parsing().await;
     match state
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((uri, _session)) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
+        Ok((uri, _session)) => {
+            eprintln!("semantic tokens req, got uri: {:?}", uri.to_file_path().unwrap());
+            Ok(capabilities::semantic_tokens::semantic_tokens_range(
             &state.token_map,
             &uri,
             &params.range,
-        )),
+        ))
+        },
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)

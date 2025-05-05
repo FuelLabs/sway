@@ -137,6 +137,7 @@ impl ServerState {
             while let Ok(msg) = rx.recv() {
                 match msg {
                     TaskMessage::CompilationContext(ctx) => {
+                        eprintln!("compilation context received for {:?}", ctx.uri.as_ref().unwrap().to_file_path().unwrap());
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
                         let engines_original = ctx.engines.clone();
@@ -160,6 +161,7 @@ impl ServerState {
                             file_versions: ctx.file_versions,
                         });
 
+                        eprintln!("compiling for {:?}", uri.to_file_path().unwrap());
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(
@@ -176,6 +178,7 @@ impl ServerState {
                                 // Find the program id from the path
                                 match session::program_id_from_path(&path, &engines_clone) {
                                     Ok(program_id) => {
+                                        eprintln!("compilation success for {:?}", uri.to_file_path().unwrap());
                                         // Use the program id to get the metrics for the program
                                         if let Some(metrics) = session.metrics.get(&program_id) {
                                             // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
@@ -198,6 +201,7 @@ impl ServerState {
                                             LastCompilationState::Success;
                                     }
                                     Err(err) => {
+                                        eprintln!("compilation failed for {:?}", uri.to_file_path().unwrap());
                                         tracing::error!("{}", err.to_string());
                                         *last_compilation_state.write() =
                                             LastCompilationState::Failed;
@@ -205,6 +209,7 @@ impl ServerState {
                                 }
                             }
                             Err(_err) => {
+                                eprintln!("compilation failed for {:?}", uri.to_file_path().unwrap());
                                 *last_compilation_state.write() = LastCompilationState::Failed;
                             }
                         }
@@ -212,9 +217,11 @@ impl ServerState {
                         // Reset the flags to false
                         is_compiling.store(false, Ordering::SeqCst);
                         retrigger_compilation.store(false, Ordering::SeqCst);
+                        eprintln!("resetting compilation flags for {:?}", uri.to_file_path().unwrap());
 
                         // Make sure there isn't any pending compilation work
                         if rx.is_empty() {
+                            eprintln!("finished compilation, notify waiters for {:?}", uri.to_file_path().unwrap());
                             // finished compilation, notify waiters
                             finished_compilation.notify_waiters();
                         }
@@ -303,6 +310,7 @@ impl ServerState {
         session: Arc<Session>,
     ) {
         let diagnostics = self.diagnostics(&uri, session.clone());
+        eprintln!("diagnostics len = {:?}", diagnostics.len());
         // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
         // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
         if let Some(client) = self.client.as_ref() {

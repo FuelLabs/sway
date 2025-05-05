@@ -336,6 +336,7 @@ pub fn traverse(
     session: Arc<Session>,
     token_map: &TokenMap,
     lsp_mode: Option<&LspConfig>,
+    program_id: ProgramId,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     let _p = tracing::trace_span!("traverse").entered();
     let modified_file = lsp_mode.and_then(|mode| {
@@ -344,9 +345,11 @@ pub fn traverse(
             .find_map(|(path, version)| version.map(|_| path.clone()))
     });
     if let Some(path) = &modified_file {
+        eprintln!("removing tokens for file: {:?}", path);
         token_map.remove_tokens_for_file(path);
     } else {
-        token_map.clear();
+        eprintln!("this is where we used to remove all tokens");
+        token_map.remove_tokens_for_program(program_id);
     }
 
     session.metrics.clear();
@@ -390,6 +393,7 @@ pub fn traverse(
                 let modified_program_id = program_id_from_path(modified_file, engines)?;
                 // We can skip traversing the programs for this iteration as they are unchanged.
                 if program_id != modified_program_id {
+                    eprintln!("skipping traversing program: {:?}", program_id);
                     continue;
                 }
             }
@@ -465,18 +469,22 @@ pub fn parse_project(
     session: Arc<Session>,
     token_map: Arc<TokenMap>,
 ) -> Result<(), LanguageServerError> {
+    eprintln!("parse_project");
     let _p = tracing::trace_span!("parse_project").entered();
+    let program_id = program_id_from_url(&uri, engines_clone)?;
+
     let build_plan = session
         .build_plan_cache
         .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
 
+    eprintln!("compile");
     let results = compile(
         &build_plan,
         engines_clone,
         retrigger_compilation,
         lsp_mode.as_ref(),
     )?;
-
+    eprintln!("compile done");
     // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
     // If we don't return an error here, then we will likely crash when trying to access the Engines
     // during traversal or when creating runnables.
@@ -484,6 +492,7 @@ pub fn parse_project(
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
+    eprintln!("traverse");
     let diagnostics = traverse(
         results,
         engines_original.clone(),
@@ -491,7 +500,11 @@ pub fn parse_project(
         session.clone(),
         &token_map,
         lsp_mode.as_ref(),
+        program_id,
     )?;
+    let tokens_for_program = token_map.tokens_for_file(&uri).collect::<Vec<_>>();
+    eprintln!("tokens_for_program: {:?}", tokens_for_program.len());
+
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {
@@ -503,8 +516,6 @@ pub fn parse_project(
     }
 
     session.runnables.clear();
-    let path = uri.to_file_path().unwrap();
-    let program_id = program_id_from_path(&path, engines_clone)?;
     if let Some(metrics) = session.metrics.get(&program_id) {
         // Check if the cached AST was returned by the compiler for the users workspace.
         // If it was, then we need to use the original engines.
@@ -688,6 +699,11 @@ pub fn program_id_from_path(
             path: path.to_string_lossy().to_string(),
         })?;
     Ok(program_id)
+}
+
+pub fn program_id_from_url(url: &Url, engines: &Engines) -> Result<ProgramId, DirectoryError> {
+    let path = url.to_file_path().unwrap();
+    program_id_from_path(&path, engines)
 }
 
 /// A cache for storing and retrieving BuildPlan objects.
