@@ -23,7 +23,7 @@ use tower_lsp::{jsonrpc::Result, LanguageServer};
 #[tower_lsp::async_trait]
 impl LanguageServer for ServerState {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        request::handle_initialize(self, &params)
+        request::handle_initialize(self, &params).await
     }
 
     async fn initialized(&self, _: InitializedParams) {
