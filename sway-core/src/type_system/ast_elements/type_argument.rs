@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 
+use super::type_parameter::ConstGenericExpr;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenericTypeArgument {
     /// The [TypeId] of the "referenced" [TypeInfo].
@@ -31,6 +33,11 @@ pub struct GenericTypeArgument {
     pub call_path_tree: Option<CallPathTree>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GenericConstArgument {
+    pub expr: ConstGenericExpr,
+}
+
 /// [TypeArgument] can be seen as an "annotated reference" to a [TypeInfo].
 /// It holds the [TypeArgument::type_id] which is the actual "reference"
 /// to the type, as well as an additional information about that type,
@@ -45,18 +52,21 @@ pub struct GenericTypeArgument {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GenericArgument {
     Type(GenericTypeArgument),
+    Const(GenericConstArgument),
 }
 
 impl GenericArgument {
     pub fn as_type_argument(&self) -> Option<&GenericTypeArgument> {
         match self {
             GenericArgument::Type(a) => Some(a),
+            _ => None,
         }
     }
 
     pub fn as_type_argument_mut(&mut self) -> Option<&mut GenericTypeArgument> {
         match self {
             GenericArgument::Type(a) => Some(a),
+            _ => None,
         }
     }
 
@@ -75,12 +85,18 @@ impl GenericArgument {
     pub fn call_path_tree(&self) -> Option<&CallPathTree> {
         match self {
             GenericArgument::Type(a) => a.call_path_tree.as_ref(),
+            GenericArgument::Const(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 
     pub fn call_path_tree_mut(&mut self) -> Option<&mut CallPathTree> {
         match self {
             GenericArgument::Type(a) => a.call_path_tree.as_mut(),
+            GenericArgument::Const(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 
@@ -100,6 +116,9 @@ impl GenericArgument {
             GenericArgument::Type(a) => {
                 a.type_id != a.initial_type_id || a.call_path_tree.is_some() || !a.span.is_dummy()
             }
+            GenericArgument::Const(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 }
@@ -108,6 +127,9 @@ impl Spanned for GenericArgument {
     fn span(&self) -> Span {
         match self {
             GenericArgument::Type(a) => a.span.clone(),
+            GenericArgument::Const(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 }
@@ -139,6 +161,9 @@ impl HashWithEngines for GenericArgument {
                 let type_engine = engines.te();
                 type_engine.get(*type_id).hash(state, engines);
             }
+            GenericArgument::Const(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 }
@@ -154,6 +179,10 @@ impl PartialEqWithEngines for GenericArgument {
                         .get(l.type_id)
                         .eq(&type_engine.get(r.type_id), ctx)
             }
+            (GenericArgument::Const(_), GenericArgument::Const(_)) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
+            _ => false,
         }
     }
 }
@@ -187,6 +216,11 @@ impl OrdWithEngines for GenericArgument {
                     .get(*lti)
                     .cmp(&ctx.engines().te().get(*rti), ctx)
             }
+            (GenericArgument::Const(_), GenericArgument::Const(_)) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
+            (GenericArgument::Type(_), _) => Ordering::Less,
+            (GenericArgument::Const(_), _) => Ordering::Greater,
         }
     }
 }
@@ -197,6 +231,9 @@ impl DisplayWithEngines for GenericArgument {
             GenericArgument::Type(a) => {
                 write!(f, "{}", engines.help_out(&*engines.te().get(a.type_id)))
             }
+            GenericArgument::Const(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            }
         }
     }
 }
@@ -206,6 +243,9 @@ impl DebugWithEngines for GenericArgument {
         match self {
             GenericArgument::Type(a) => {
                 write!(f, "{:?}", engines.help_out(&*engines.te().get(a.type_id)))
+            }
+            GenericArgument::Const(_) => {
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
         }
     }
@@ -220,7 +260,14 @@ impl From<&TypeParameter> for GenericArgument {
                 span: p.name.span(),
                 call_path_tree: None,
             }),
-            TypeParameter::Const(_) => todo!(),
+            TypeParameter::Const(p) => GenericArgument::Const(GenericConstArgument {
+                expr: match p.expr.as_ref() {
+                    Some(expr) => expr.clone(),
+                    None => ConstGenericExpr::AmbiguousVariableExpression {
+                        ident: p.name.clone(),
+                    },
+                },
+            }),
         }
     }
 }
@@ -229,6 +276,7 @@ impl SubstTypes for GenericArgument {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         match self {
             GenericArgument::Type(a) => a.type_id.subst(ctx),
+            GenericArgument::Const(_) => HasChanges::No,
         }
     }
 }

@@ -6,6 +6,7 @@ use ::storage::{storable_slice::*, storage_key::StorageKey};
 use ::storage::storage_api::read;
 use ::string::String;
 use ::codec::*;
+use ::debug::*;
 
 pub struct StorageString {}
 

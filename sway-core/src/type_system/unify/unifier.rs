@@ -7,8 +7,10 @@ use sway_error::{
 use sway_types::{Span, Spanned};
 
 use crate::{
+    ast_elements::type_parameter::ConstGenericExpr,
+    decl_engine::{DeclEngineGet, DeclId},
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext, WithEngines},
-    language::CallPath,
+    language::{ty::TyStructDecl, CallPath},
     type_system::{engine::Unification, priv_prelude::*},
 };
 
@@ -145,11 +147,17 @@ impl<'a> Unifier<'a> {
                     return;
                 }
 
-                if matches!(rc, Length::AmbiguousVariableExpression { .. }) {
+                if matches!(
+                    rc.expr(),
+                    ConstGenericExpr::AmbiguousVariableExpression { .. }
+                ) {
                     self.replace_received_with_expected(received, e, span);
                 }
 
-                if matches!(ec, Length::AmbiguousVariableExpression { .. }) {
+                if matches!(
+                    ec.expr(),
+                    ConstGenericExpr::AmbiguousVariableExpression { .. }
+                ) {
                     self.replace_expected_with_received(expected, r, span);
                 }
             }
@@ -157,17 +165,14 @@ impl<'a> Unifier<'a> {
                 let _ =
                     self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee);
             }
-            (Struct(r_decl_ref), Struct(e_decl_ref)) => {
-                let r_decl = self.engines.de().get_struct(r_decl_ref);
-                let e_decl = self.engines.de().get_struct(e_decl_ref);
-
+            (Struct(received_decl_id), Struct(expected_decl_id)) => {
                 self.unify_structs(
                     handler,
                     received,
                     expected,
                     span,
-                    (r_decl.call_path.clone(), r_decl.type_parameters.clone()),
-                    (e_decl.call_path.clone(), e_decl.type_parameters.clone()),
+                    received_decl_id,
+                    expected_decl_id,
                 );
             }
             // When we don't know anything about either term, assume that
@@ -259,8 +264,8 @@ impl<'a> Unifier<'a> {
                     received,
                     expected,
                     span,
-                    (r_decl.call_path.clone(), r_decl.type_parameters.clone()),
-                    (e_decl.call_path.clone(), e_decl.type_parameters.clone()),
+                    (r_decl.call_path.clone(), r_decl.generic_parameters.clone()),
+                    (e_decl.call_path.clone(), e_decl.generic_parameters.clone()),
                 );
             }
 
@@ -386,26 +391,75 @@ impl<'a> Unifier<'a> {
     fn unify_structs(
         &self,
         handler: &Handler,
-        received: TypeId,
-        expected: TypeId,
+        received_type_id: TypeId,
+        expected_type_id: TypeId,
         span: &Span,
-        r: (CallPath, Vec<TypeParameter>),
-        e: (CallPath, Vec<TypeParameter>),
+        received_decl_id: &DeclId<TyStructDecl>,
+        expected_decl_id: &DeclId<TyStructDecl>,
     ) {
-        let (rn, rtps) = r;
-        let (en, etps) = e;
-        if rn == en && rtps.len() == etps.len() {
-            rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                let rtp = rtp
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                let etp = etp
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                self.unify(handler, rtp.type_id, etp.type_id, span, false);
-            });
+        let TyStructDecl {
+            call_path: received_call_path,
+            generic_parameters: received_parameters,
+            ..
+        } = &*self.engines.de().get(received_decl_id);
+        let TyStructDecl {
+            call_path: expected_call_path,
+            generic_parameters: expected_parameters,
+            ..
+        } = &*self.engines.de().get(expected_decl_id);
+
+        if received_parameters.len() == expected_parameters.len()
+            && received_call_path == expected_call_path
+        {
+            for (received_parameter, expected_parameter) in
+                received_parameters.iter().zip(expected_parameters.iter())
+            {
+                match (received_parameter, expected_parameter) {
+                    (
+                        TypeParameter::Type(received_parameter),
+                        TypeParameter::Type(expected_parameter),
+                    ) => self.unify(
+                        handler,
+                        received_parameter.type_id,
+                        expected_parameter.type_id,
+                        span,
+                        false,
+                    ),
+                    (
+                        TypeParameter::Const(received_parameter),
+                        TypeParameter::Const(expected_parameter),
+                    ) => {
+                        match (received_parameter.expr.as_ref(), expected_parameter.expr.as_ref()) {
+                            (Some(r), Some(e)) => {
+                                match (r.as_literal_val(), e.as_literal_val()) {
+                                    (Some(r), Some(e)) if r == e => {},
+                                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                                }
+                            }
+                            (Some(_), None) => {
+                                self.replace_expected_with_received(
+                                    expected_type_id,
+                                    &TypeInfo::Struct(*received_decl_id),
+                                    span,
+                                );
+                            }
+                            (None, Some(_)) => {
+                                self.replace_received_with_expected(
+                                    received_type_id,
+                                    &TypeInfo::Struct(*expected_decl_id),
+                                    span,
+                                );
+                            }
+                            (None, None) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                        }
+                    }
+                    _ => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
+                }
+            }
         } else {
-            let (received, expected) = self.assign_args(received, expected);
+            let (received, expected) = self.assign_args(received_type_id, expected_type_id);
             handler.emit_err(
                 TypeError::MismatchedType {
                     expected,

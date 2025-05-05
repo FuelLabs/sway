@@ -10,6 +10,7 @@ use sway_ast::PubToken;
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::parser_error::{ParseError, ParseErrorKind};
+use sway_features::ExperimentalFeatures;
 use sway_types::{
     ast::{Delimiter, PunctKind},
     Ident, Span, Spanned,
@@ -20,15 +21,21 @@ pub struct Parser<'a, 'e> {
     full_span: Span,
     handler: &'e Handler,
     pub check_double_underscore: bool,
+    pub experimental: ExperimentalFeatures,
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
-    pub fn new(handler: &'e Handler, token_stream: &'a TokenStream) -> Parser<'a, 'e> {
+    pub fn new(
+        handler: &'e Handler,
+        token_stream: &'a TokenStream,
+        experimental: ExperimentalFeatures,
+    ) -> Parser<'a, 'e> {
         Parser {
             token_trees: token_stream.token_trees(),
             full_span: token_stream.span(),
             handler,
             check_double_underscore: true,
+            experimental,
         }
     }
 
@@ -78,6 +85,13 @@ impl<'a, 'e> Parser<'a, 'e> {
         Peeker::with(self.token_trees).map(|(v, _)| v)
     }
 
+    /// Tries to peek a `P` as the second token in its canonical way.
+    ///
+    /// Either way, on success or failure, the parser is not advanced.
+    pub fn peek_next<P: Peek>(&self) -> Option<P> {
+        Peeker::with(&self.token_trees[1..]).map(|(v, _)| v)
+    }
+
     /// This function will fork the current parse, and call the parsing function.
     /// If it succeeds it will sync the original parser with the forked one;
     ///
@@ -99,6 +113,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             full_span: self.full_span.clone(),
             handler: &handler,
             check_double_underscore: self.check_double_underscore,
+            experimental: self.experimental,
         };
 
         match parsing_function(&mut fork) {
@@ -159,6 +174,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             full_span: self.full_span.clone(),
             handler: &handler,
             check_double_underscore: self.check_double_underscore,
+            experimental: self.experimental,
         };
 
         match fork.parse() {
@@ -193,6 +209,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             full_span: self.full_span.clone(),
             handler: &handler,
             check_double_underscore: self.check_double_underscore,
+            experimental: self.experimental,
         };
         let r = match T::parse(&mut fork) {
             Ok(result) => {
@@ -246,6 +263,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             full_span: self.full_span.clone(),
             handler: &handler,
             check_double_underscore: self.check_double_underscore,
+            experimental: self.experimental,
         };
         let r = T::parse_to_end(fork);
         if append_diagnostics {
@@ -272,6 +290,7 @@ impl<'a, 'e> Parser<'a, 'e> {
                     full_span: token_stream.span(),
                     handler: self.handler,
                     check_double_underscore: self.check_double_underscore,
+                    experimental: self.experimental,
                 };
                 Some((parser, span.clone()))
             }
@@ -493,11 +512,15 @@ impl<'a> ParseRecoveryStrategies<'_, 'a, '_> {
         &'this self,
         f: impl FnOnce(&mut Parser<'a, 'this>),
     ) -> (Box<[Span]>, ErrorEmitted) {
-        let mut p = Parser {
-            token_trees: self.fork_token_trees,
-            full_span: self.fork_full_span.clone(),
-            handler: &self.handler,
-            check_double_underscore: self.original.borrow().check_double_underscore,
+        let mut p = {
+            let original = self.original.borrow();
+            Parser {
+                token_trees: self.fork_token_trees,
+                full_span: self.fork_full_span.clone(),
+                handler: &self.handler,
+                check_double_underscore: original.check_double_underscore,
+                experimental: original.experimental,
+            }
         };
         f(&mut p);
         self.finish(p)

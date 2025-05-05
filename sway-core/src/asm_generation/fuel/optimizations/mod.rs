@@ -1,7 +1,7 @@
 mod const_indexed_aggregates;
+mod constant_propagate;
 mod misc;
 mod reachability;
-mod symbolic_interpretation;
 mod verify;
 
 use std::cmp::Ordering;
@@ -25,13 +25,9 @@ impl AbstractInstructionSet {
             // On debug builds do a single pass through the simple optimizations
             OptLevel::Opt0 => self
                 .const_indexing_aggregates_function(data_section)
-                .interpret_propagate()
+                .constant_propagate()
                 .dce()
-                .simplify_cfg()
-                .remove_sequential_jumps()
-                .remove_redundant_moves()
                 .remove_redundant_ops(),
-            // On release builds we can do more iterations
             OptLevel::Opt1 => {
                 for _ in 0..MAX_OPT_ROUNDS {
                     let old = self.clone();

@@ -240,7 +240,7 @@ impl TyProgram {
         // Some checks that are specific to non-contracts
         if kind != parsed::TreeType::Contract {
             // impure functions are disallowed in non-contracts
-            if !matches!(kind, parsed::TreeType::Library { .. }) {
+            if !matches!(kind, parsed::TreeType::Library) {
                 for err in disallow_impure_functions(decl_engine, &declarations, &entries) {
                     handler.emit_err(err);
                 }

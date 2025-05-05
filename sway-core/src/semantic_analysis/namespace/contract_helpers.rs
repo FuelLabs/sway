@@ -11,6 +11,7 @@ use crate::{
     language::{
         parsed::{AstNode, AstNodeContent, Declaration, ExpressionKind},
         ty::{TyAstNode, TyAstNodeContent},
+        Visibility,
     },
     semantic_analysis::{
         namespace::Package, symbol_collection_context::SymbolCollectionContext, TypeCheckContext,
@@ -62,7 +63,7 @@ fn bind_contract_id_in_root_module(
     let const_item_len = const_item.len();
     let src = const_item.as_str().into();
     let token_stream = lex(handler, src, 0, const_item_len, None).unwrap();
-    let mut parser = Parser::new(handler, &token_stream);
+    let mut parser = Parser::new(handler, &token_stream, experimental);
     // perform the parse
     let const_item: ItemConst = parser.parse()?;
     let const_item_span = const_item.span();
@@ -75,6 +76,7 @@ fn bind_contract_id_in_root_module(
         handler,
         engines,
         const_item,
+        Visibility::Private,
         attributes,
         true,
     )?;
