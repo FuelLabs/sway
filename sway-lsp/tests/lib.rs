@@ -180,8 +180,14 @@ fn sync_with_updates_to_manifest_in_workspace() {
         manifest_content.push_str(test_lib_string);
         fs::write(&test_contract_manifest, &manifest_content).unwrap();
 
-        // wait for 500 milliseconds to give the debouncer time to pick up the change
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        // notify the server that the manifest file has changed
+        let params = DidChangeWatchedFilesParams {
+            changes: vec![FileEvent {
+                uri: uri.clone(),
+                typ: FileChangeType::CHANGED,
+            }],
+        };
+        lsp::did_change_watched_files_notification(&mut service, params).await;
 
         // Check that the build plan now has 3 items
         let (_, session) = service

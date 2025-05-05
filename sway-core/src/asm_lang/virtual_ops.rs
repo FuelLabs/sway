@@ -610,8 +610,136 @@ impl VirtualOp {
         .into_iter()
         .collect()
     }
+
     /// Returns a list of all registers *read* by instruction `self`.
     pub(crate) fn use_registers(&self) -> BTreeSet<&VirtualRegister> {
+        use VirtualOp::*;
+        (match self {
+            /* Arithmetic/Logic (ALU) Instructions */
+            ADD(_r1, r2, r3) => vec![r2, r3],
+            ADDI(_r1, r2, _i) => vec![r2],
+            AND(_r1, r2, r3) => vec![r2, r3],
+            ANDI(_r1, r2, _i) => vec![r2],
+            DIV(_r1, r2, r3) => vec![r2, r3],
+            DIVI(_r1, r2, _i) => vec![r2],
+            EQ(_r1, r2, r3) => vec![r2, r3],
+            EXP(_r1, r2, r3) => vec![r2, r3],
+            EXPI(_r1, r2, _i) => vec![r2],
+            GT(_r1, r2, r3) => vec![r2, r3],
+            LT(_r1, r2, r3) => vec![r2, r3],
+            MLOG(_r1, r2, r3) => vec![r2, r3],
+            MOD(_r1, r2, r3) => vec![r2, r3],
+            MODI(_r1, r2, _i) => vec![r2],
+            MOVE(_r1, r2) => vec![r2],
+            MOVI(_r1, _i) => vec![],
+            MROO(_r1, r2, r3) => vec![r2, r3],
+            MUL(_r1, r2, r3) => vec![r2, r3],
+            MULI(_r1, r2, _i) => vec![r2],
+            NOOP => vec![],
+            NOT(_r1, r2) => vec![r2],
+            OR(_r1, r2, r3) => vec![r2, r3],
+            ORI(_r1, r2, _i) => vec![r2],
+            SLL(_r1, r2, r3) => vec![r2, r3],
+            SLLI(_r1, r2, _i) => vec![r2],
+            SRL(_r1, r2, r3) => vec![r2, r3],
+            SRLI(_r1, r2, _i) => vec![r2],
+            SUB(_r1, r2, r3) => vec![r2, r3],
+            SUBI(_r1, r2, _i) => vec![r2],
+            XOR(_r1, r2, r3) => vec![r2, r3],
+            XORI(_r1, r2, _i) => vec![r2],
+            // Note that most of the `WQ..` instructions *read* from the `r1` result register,
+            // because the register itself does not contain the result, but provides the
+            // memory address at which the result will be stored.
+            WQOP(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQML(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
+            WQMD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            WQCM(_, r2, r3, _) => vec![r2, r3],
+            WQAM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            WQMM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+
+            /* Control Flow Instructions */
+            JMP(r1) => vec![r1],
+            JI(_im) => vec![],
+            JNE(r1, r2, r3) => vec![r1, r2, r3],
+            JNEI(r1, r2, _i) => vec![r1, r2],
+            JNZI(r1, _i) => vec![r1],
+            RET(r1) => vec![r1],
+
+            /* Memory Instructions */
+            ALOC(hp, r1) => vec![hp, r1],
+            CFEI(sp, _imm) => vec![sp],
+            CFSI(sp, _imm) => vec![sp],
+            CFE(sp, r1) => vec![sp, r1],
+            CFS(sp, r1) => vec![sp, r1],
+            LB(_r1, r2, _i) => vec![r2],
+            LW(_r1, r2, _i) => vec![r2],
+            MCL(r1, r2) => vec![r1, r2],
+            MCLI(r1, _imm) => vec![r1],
+            MCP(r1, r2, r3) => vec![r1, r2, r3],
+            MCPI(r1, r2, _imm) => vec![r1, r2],
+            MEQ(_r1, r2, r3, r4) => vec![r2, r3, r4],
+            SB(r1, r2, _i) => vec![r1, r2],
+            SW(r1, r2, _i) => vec![r1, r2],
+
+            /* Contract Instructions */
+            BAL(_r1, r2, r3) => vec![r2, r3],
+            BHEI(_r1) => vec![],
+            BHSH(r1, r2) => vec![r1, r2],
+            BURN(r1, r2) => vec![r1, r2],
+            CALL(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            CB(r1) => vec![r1],
+            CCP(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            CROO(r1, r2) => vec![r1, r2],
+            CSIZ(_r1, r2) => vec![r2],
+            BSIZ(_r1, r2) => vec![r2],
+            LDC(r1, r2, r3, _i0) => vec![r1, r2, r3],
+            BLDD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            LOG(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            MINT(r1, r2) => vec![r1, r2],
+            RETD(r1, r2) => vec![r1, r2],
+            RVRT(r1) => vec![r1],
+            SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SCWQ(r1, _r2, r3) => vec![r1, r3],
+            SRW(_r1, _r2, r3) => vec![r3],
+            SRWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
+            SWW(r1, _r2, r3) => vec![r1, r3],
+            SWWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
+            TIME(_r1, r2) => vec![r2],
+            TR(r1, r2, r3) => vec![r1, r2, r3],
+            TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+
+            /* Cryptographic Instructions */
+            ECK1(r1, r2, r3) => vec![r1, r2, r3],
+            ECR1(r1, r2, r3) => vec![r1, r2, r3],
+            ED19(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            K256(r1, r2, r3) => vec![r1, r2, r3],
+            S256(r1, r2, r3) => vec![r1, r2, r3],
+            ECOP(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            EPAR(_r1, r2, r3, r4) => vec![r2, r3, r4],
+
+            /* Other Instructions */
+            ECAL(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            FLAG(r1) => vec![r1],
+            GM(_r1, _imm) => vec![],
+            GTF(_r1, r2, _i) => vec![r2],
+
+            /* Non-VM Instructions */
+            BLOB(_imm) => vec![],
+            DataSectionOffsetPlaceholder => vec![],
+            ConfigurablesOffsetPlaceholder => vec![],
+            LoadDataId(_r1, _i) => vec![],
+            AddrDataId(_r1, _i) => vec![],
+
+            Undefined => vec![],
+        })
+        .into_iter()
+        .collect()
+    }
+
+    /// Returns a list of all registers *read* by instruction `self`.
+    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut VirtualRegister> {
         use VirtualOp::*;
         (match self {
             /* Arithmetic/Logic (ALU) Instructions */

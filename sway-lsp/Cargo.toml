@@ -17,8 +17,6 @@ forc-pkg.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
 lsp-types = { workspace = true, features = ["proposed"] }
-notify.workspace = true
-notify-debouncer-mini.workspace = true
 parking_lot.workspace = true
 proc-macro2.workspace = true
 quote.workspace = true

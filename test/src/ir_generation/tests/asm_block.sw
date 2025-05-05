@@ -39,6 +39,5 @@ fn main() -> u64 {
 // check: ret  $ret_val
 
 // The get_global_gas() function:
-// check: move $(ggas_val=$REG) $$ggas
-// check: move $$$$retv $ggas_val
+// check: move $$$$retv $$ggas
 // check: jmp $$$$reta

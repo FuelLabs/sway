@@ -256,6 +256,17 @@ impl BuildConfig {
         }
     }
 
+    /// Dummy build config that can be used for testing.
+    /// This is not not valid generally, but asm generation will accept it.
+    pub fn dummy_for_asm_generation() -> Self {
+        Self::root_from_file_name_and_manifest_path(
+            PathBuf::from("/"),
+            PathBuf::from("/"),
+            BuildTarget::default(),
+            DbgGeneration::None,
+        )
+    }
+
     pub fn with_print_dca_graph(self, a: Option<String>) -> Self {
         Self {
             print_dca_graph: a,

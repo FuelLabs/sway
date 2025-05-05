@@ -37,5 +37,4 @@ fn main() -> u64 {
 // check: srli $$$$reta $$$$reta i2
 // check: addi $$$$reta $$$$reta i4
 // check: jmpf $$zero $IMM
-// check: move $(ret_val=$REG) $$$$retv
-// check: ret  $ret_val
+// check: ret  $$$$retv
