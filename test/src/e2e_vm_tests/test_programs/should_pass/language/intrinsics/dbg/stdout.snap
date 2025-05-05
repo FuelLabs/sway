@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 162
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --asm final | sub ecal
 ecal $r0 $r2 $r3 $$retv       ; ecal id fd buf count
@@ -14,7 +15,7 @@ ecal $r3 $r1 $r2 $one         ; ecal id fd buf count
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --release --asm final | sub ecal
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --logs
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --dbgs
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg
@@ -26,6 +27,7 @@ output:
 tested -- dbg
 
       test call_main ... ok (???, 96529 gas)
+           debug output:
 [src/main.sw:13:13] () = ()
 [src/main.sw:15:13] true = true
 [src/main.sw:16:13] false = false
