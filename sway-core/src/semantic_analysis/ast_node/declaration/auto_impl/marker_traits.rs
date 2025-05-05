@@ -45,15 +45,17 @@ where
             return None;
         }
 
+        let type_parameters_declaration_expanded =
+            self.generate_type_parameters_declaration_code(&enum_decl.generic_parameters, true);
         let type_parameters_declaration =
-            self.generate_type_parameters_declaration_code(&enum_decl.generic_parameters);
+            self.generate_type_parameters_declaration_code(&enum_decl.generic_parameters, false);
         let type_parameters_constraints = self.generate_type_parameters_constraints_code(
             &enum_decl.generic_parameters,
             extra_constraint,
         );
 
         let impl_marker_trait_code = format!(
-            "#[allow(dead_code, deprecated)] impl{type_parameters_declaration} {marker_trait_name} for {}{type_parameters_declaration}{type_parameters_constraints} {{ }}",
+            "#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} {marker_trait_name} for {}{type_parameters_declaration}{type_parameters_constraints} {{ }}",
             enum_decl.name().as_raw_ident_str()
         );
 

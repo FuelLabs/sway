@@ -797,27 +797,25 @@ impl<'a> UnifyCheck<'a> {
             return false;
         }
 
-        let l_types = left
-            .generic_parameters
-            .iter()
-            .map(|x| {
-                let x = x
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                x.type_id
-            })
-            .collect::<Vec<_>>();
+        let mut l_types = vec![];
+        let mut r_types = vec![];
 
-        let r_types = right
+        for (l, r) in left
             .generic_parameters
             .iter()
-            .map(|x| {
-                let x = x
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                x.type_id
-            })
-            .collect::<Vec<_>>();
+            .zip(right.generic_parameters.iter())
+        {
+            match (l, r) {
+                (TypeParameter::Type(l), TypeParameter::Type(r)) => {
+                    l_types.push(l.type_id);
+                    r_types.push(r.type_id);
+                }
+                (TypeParameter::Const(_), TypeParameter::Const(_)) => {
+                    // TODO
+                }
+                _ => return false,
+            }
+        }
 
         self.check_multiple(&l_types, &r_types)
     }
