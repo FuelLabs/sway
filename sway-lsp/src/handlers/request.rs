@@ -38,7 +38,9 @@ pub async fn handle_initialize(
     }
 
     // Register a file system watcher for Forc.toml files with the client.
-    state.register_forc_toml_watcher().await;
+    if let Err(err) = state.register_forc_toml_watcher().await {
+        tracing::error!("Failed to register Forc.toml file watcher: {}", err);
+    }
 
     // Initializing tracing library based on the user's config
     let config = state.config.read();

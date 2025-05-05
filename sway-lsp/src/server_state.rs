@@ -119,11 +119,11 @@ impl ServerState {
     }
 
     /// Registers a file system watcher for Forc.toml files with the client.
-    pub async fn register_forc_toml_watcher(&self) {
+    pub async fn register_forc_toml_watcher(&self) -> Result<(), LanguageServerError> {
         let client = self
             .client
             .as_ref()
-            .expect("Client is guaranteed to be set by the time this is called");
+            .ok_or(LanguageServerError::ClientNotInitialized)?;
 
         let watchers = vec![FileSystemWatcher {
             glob_pattern: GlobPattern::String("**/Forc.toml".to_string()),
@@ -139,11 +139,12 @@ impl ServerState {
             ),
         };
 
-        if let Err(err) = client.register_capability(vec![registration]).await {
-            tracing::error!("Failed to register Forc.toml file watcher: {}", err);
-        } else {
-            tracing::info!("Successfully registered Forc.toml file watcher");
-        }
+        client
+            .register_capability(vec![registration])
+            .await
+            .map_err(|err| LanguageServerError::ClientRequestError(err.to_string()))?;
+
+        Ok(())
     }
 
     /// Spawns a new thread dedicated to handling compilation tasks. This thread listens for
