@@ -162,17 +162,6 @@ impl Secp256k1 {
             Ok(pub_key) => Ok(Address::from(sha256(pub_key))),
             Err(e) => Err(e),
         }
-        // TODO-IG:! Remove.
-        // let pub_key_result = Self::recover(self, message);
-
-        // if let Err(e) = pub_key_result {
-        //     // propagate the error if it exists
-        //     Err(e)
-        // } else {
-        //     let pub_key = pub_key_result.unwrap();
-        //     let address = sha256(pub_key);
-        //     Ok(Address::from(address))
-        // }
     }
 
     /// Recover the EVM address derived from the private key used to sign a message.
