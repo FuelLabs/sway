@@ -107,17 +107,11 @@ impl Session {
         self.sync.clone_manifest_dir_to_temp()?;
         // iterate over the project dir, parse all sway files
         let _ = self.store_sway_files(documents).await;
-        self.sync.watch_and_sync_manifest();
+        self.sync.sync_manifest();
         self.sync.manifest_dir().map_err(Into::into)
     }
 
     pub fn shutdown(&self) {
-        // shutdown the thread watching the manifest file
-        let handle = self.sync.notify_join_handle.read();
-        if let Some(join_handle) = &*handle {
-            join_handle.abort();
-        }
-
         // Delete the temporary directory.
         self.sync.remove_temp_dir();
     }
