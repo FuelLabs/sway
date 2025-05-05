@@ -1793,10 +1793,10 @@ impl TypeInfo {
                         decl.generic_parameters
                             .iter()
                             .map(|p| {
-                                let p = p
-                                    .as_type_parameter()
-                                    .expect("only works with type parameters");
-                                p.type_id.get_type_str(engines)
+                                match p {
+                                    TypeParameter::Type(p) => p.type_id.get_type_str(engines),
+                                    TypeParameter::Const(p) => p.name.as_str().to_string(),
+                                }
                             })
                             .collect::<Vec<_>>()
                             .join(",")

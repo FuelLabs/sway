@@ -313,10 +313,12 @@ impl CollectTypesMetadata for TyExpression {
             } => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
                 for p in enum_decl.generic_parameters.iter() {
-                    let p = p
-                        .as_type_parameter()
-                        .expect("only works for type parameters");
-                    ctx.call_site_insert(p.type_id, call_path_binding.inner.suffix.span())
+                    match p {
+                        TypeParameter::Type(p) => {
+                            ctx.call_site_insert(p.type_id, call_path_binding.inner.suffix.span())
+                        }
+                        TypeParameter::Const(_) => {}
+                    }
                 }
                 if let Some(contents) = contents {
                     res.append(&mut contents.collect_types_metadata(handler, ctx)?);
@@ -330,10 +332,12 @@ impl CollectTypesMetadata for TyExpression {
                     );
                 }
                 for p in enum_decl.generic_parameters.iter() {
-                    let p = p
-                        .as_type_parameter()
-                        .expect("only works for type parameters");
-                    res.append(&mut p.type_id.collect_types_metadata(handler, ctx)?);
+                    match p {
+                        TypeParameter::Type(p) => {
+                            res.append(&mut p.type_id.collect_types_metadata(handler, ctx)?);
+                        }
+                        TypeParameter::Const(_) => {}
+                    }
                 }
             }
             AbiCast { address, .. } => {

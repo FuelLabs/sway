@@ -355,12 +355,12 @@ impl TypeId {
                     .iter()
                     .zip(orig_enum_decl.generic_parameters.iter())
                 {
-                    let orig_type_param = orig_type_param
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
-                    let type_param = type_param
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
+                    let Some(orig_type_param) = orig_type_param.as_type_parameter() else {
+                        continue;
+                    };
+                    let Some(type_param) = type_param.as_type_parameter() else {
+                        continue;
+                    };
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
                     type_param.type_id.extract_type_parameters(
                         engines,
@@ -941,10 +941,11 @@ impl TypeId {
             }
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
-                for type_param in &enum_decl.generic_parameters {
-                    let type_param = type_param
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
+                let type_params = enum_decl
+                    .generic_parameters
+                    .iter()
+                    .filter_map(|x| x.as_type_parameter());
+                for type_param in type_params {
                     extend(
                         &mut found,
                         type_param.type_id.extract_any_including_self(
