@@ -4,17 +4,27 @@ use forc_pkg::{self as pkg};
 
 pub fn remove(cmd: RemoveCommand) -> Result<()> {
     let opts = opts_from_cmd(cmd);
-    pkg::manifest::manager::remove_dependencies(opts)?;
+    pkg::manifest::manager::modify_dependencies(opts)?;
     Ok(())
 }
 
-fn opts_from_cmd(cmd: RemoveCommand) -> pkg::manifest::manager::RemoveOpts {
-    pkg::manifest::manager::RemoveOpts {
+fn opts_from_cmd(cmd: RemoveCommand) -> pkg::manifest::manager::ModifyOpts {
+    pkg::manifest::manager::ModifyOpts {
+        // === Action ====
+        action: pkg::manifest::manager::Action::Add,
         // === Manifest Options ===
         manifest_path: cmd.manifest.manisfest_path,
 
         // === Package Selection ===
         package: cmd.package.package,
+
+        // === Source ===
+        source_path: None,
+        git: None,
+        branch: None,
+        tag: None,
+        rev: None,
+        ipfs: None,
 
         // === Section ===
         contract_deps: cmd.section.contract_deps,

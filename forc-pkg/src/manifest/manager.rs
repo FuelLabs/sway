@@ -1,3 +1,4 @@
+use super::PackageManifest;
 use crate::manifest::{
     ContractDependency, Dependency, DependencyDetails, GenericManifestFile, HexSalt,
 };
@@ -15,68 +16,47 @@ use sway_core::fuel_prelude::fuel_tx;
 use toml_edit::{value, DocumentMut, InlineTable, Item, Table, Value};
 use tracing::info;
 
-use super::PackageManifest;
+#[derive(Clone, Debug, Default)]
+pub enum Action {
+    #[default]
+    Add,
+    Remove,
+}
 
 #[derive(Clone, Debug, Default)]
-pub struct AddOpts {
+pub struct ModifyOpts {
     // === Manifest Options ===
     pub manifest_path: Option<String>,
-
     // === Package Selection ===
     pub package: Option<String>,
-
-    // === Source ===
+    // === Source (Add only) ===
     pub source_path: Option<String>,
     pub git: Option<String>,
     pub branch: Option<String>,
     pub tag: Option<String>,
     pub rev: Option<String>,
     pub ipfs: Option<String>,
-
     // === Section ===
     pub contract_deps: bool,
     pub salt: Option<String>,
-
     // === IPFS Node ===
     pub ipfs_node: Option<IPFSNode>,
-
     // === Dependencies & Flags ===
     pub dependencies: Vec<String>,
     pub dry_run: bool,
     pub offline: bool,
+    pub action: Action,
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct RemoveOpts {
-    // === Manifest Options ===
-    pub manifest_path: Option<String>,
-
-    // === Package Selection ===
-    pub package: Option<String>,
-
-    // === Section ===
-    pub contract_deps: bool,
-    pub salt: Option<String>,
-
-    // === IPFS Node ===
-    pub ipfs_node: Option<IPFSNode>,
-
-    // === Dependencies & Flags ===
-    pub dependencies: Vec<String>,
-    pub dry_run: bool,
-    pub offline: bool,
-}
-
-pub fn add_dependencies(opts: AddOpts) -> Result<()> {
+pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
     let dry_run = opts.dry_run;
-
-    // get manifest path
-    let this_dir = match opts.manifest_path.clone() {
-        Some(path) => PathBuf::from(path),
-        None => std::env::current_dir()?,
+    let cwd = if let Some(p) = opts.manifest_path.clone() {
+        PathBuf::from(p)
+    } else {
+        std::env::current_dir()?
     };
 
-    let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    let manifest_file = ManifestFile::from_dir(&cwd)?;
     let root_dir = manifest_file.root_dir();
     let mut member_manifests = manifest_file.member_manifests()?;
 
@@ -109,69 +89,26 @@ pub fn add_dependencies(opts: AddOpts) -> Result<()> {
         DepSection::Regular(&mut deps_regular)
     };
 
-    for dependency in &opts.dependencies {
-        let (dep_name, dependency_data) =
-            resolve_dependency(dependency, &opts, &member_manifests, package_spec.dir())?;
-        section.insert_dep(dep_name, dependency_data, opts.salt.clone());
+    match opts.action {
+        Action::Add => {
+            for dependency in &opts.dependencies {
+                let (dep_name, dependency_data) =
+                    resolve_dependency(dependency, &opts, &member_manifests, package_spec.dir())?;
+                section.insert_dep(dep_name, dependency_data, opts.salt.clone());
+            }
+
+            section.add_deps_manifest_table(package_spec_dir, &mut package_spec.manifest)?;
+        }
+        Action::Remove => {
+            let dep_refs: Vec<&str> = opts.dependencies.iter().map(String::as_str).collect();
+
+            section.remove_deps_manifest_table(
+                package_spec_dir,
+                &mut package_spec.manifest,
+                &dep_refs,
+            )?;
+        }
     }
-
-    section.add_deps_manifest_table(package_spec_dir, &mut package_spec.manifest)?;
-
-    update_lock_file(
-        &mut member_manifests,
-        &package_spec,
-        opts.ipfs_node,
-        dry_run,
-        old_lock,
-        lock_path,
-        opts.offline,
-    )?;
-
-    Ok(())
-}
-
-pub fn remove_dependencies(opts: RemoveOpts) -> Result<()> {
-    let dry_run = opts.dry_run;
-    let package_name = opts.package.clone();
-
-    // get manifest path
-    let this_dir = match opts.manifest_path.clone() {
-        Some(path) => PathBuf::from(path),
-        None => std::env::current_dir()?,
-    };
-
-    let manifest_file = ManifestFile::from_dir(&this_dir)?;
-    let root_dir = manifest_file.root_dir();
-    let mut member_manifests = manifest_file.member_manifests()?;
-
-    let package_spec_dir =
-        resolve_package_path(&manifest_file, package_name, &root_dir, &member_manifests)?;
-
-    let mut package_spec = PackageManifestFile::from_file(&package_spec_dir)?;
-
-    let lock_path = package_spec.lock_path()?;
-    let old_lock = Lock::from_path(&lock_path).unwrap_or_default();
-
-    let mut deps_regular = package_spec
-        .manifest
-        .dependencies
-        .take()
-        .unwrap_or_default();
-    let mut deps_contract = package_spec
-        .manifest
-        .contract_dependencies
-        .take()
-        .unwrap_or_default();
-
-    let mut section = if opts.contract_deps {
-        DepSection::Contract(&mut deps_contract, opts.salt.clone())
-    } else {
-        DepSection::Regular(&mut deps_regular)
-    };
-
-    let dep_refs: Vec<&str> = opts.dependencies.iter().map(String::as_str).collect();
-
-    section.remove_deps_manifest_table(package_spec_dir, &mut package_spec.manifest, &dep_refs)?;
 
     update_lock_file(
         &mut member_manifests,
@@ -229,7 +166,7 @@ fn resolve_workspace_path_inner(
 
 fn resolve_dependency<P: AsRef<Path>>(
     raw: &str,
-    opts: &AddOpts,
+    opts: &ModifyOpts,
     member_manifests: &BTreeMap<String, PackageManifestFile>,
     package_dir: P,
 ) -> Result<(String, Dependency)> {
@@ -522,28 +459,24 @@ fn remove_deps_from_table<P: AsRef<Path>>(
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::DepSpec;
-    use test_case::test_case;
-    #[test_case("abc", Some("abc"), None)]
-    #[test_case("abc@1", Some("abc"), Some("1"))]
-    fn dep_is_from_str_valid(s: &str, expected_name: Option<&str>, expected_version: Option<&str>) {
-        let dep: DepSpec = s.parse().expect("parsing dep spec failed");
-        assert_eq!(
-            (
-                dep.name.map(|p| p.to_string()),
-                dep.version_req.map(|p| p.to_string())
-            ),
-            (
-                expected_name.map(|n| n.to_string()),
-                expected_version.map(|v| v.to_string())
-            ),
-        );
+    use std::str::FromStr;
+    #[test]
+    fn dep_from_str_name_only() {
+        let dep: DepSpec = "abc".parse().expect("parsing dep spec failed");
+        assert_eq!(dep.name, Some("abc".to_string()));
+        assert_eq!(dep.version_req, None);
     }
 
     #[test]
-    fn dep_is_from_str_invalid() {
+    fn dep_from_str_name_and_version() {
+        let dep: DepSpec = "abc@1".parse().expect("parsing dep spec failed");
+        assert_eq!(dep.name, Some("abc".to_string()));
+        assert_eq!(dep.version_req, Some("1".to_string()));
+    }
+
+    #[test]
+    fn dep_from_str_invalid() {
         assert!(DepSpec::from_str("").is_err());
     }
 }

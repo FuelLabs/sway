@@ -1,15 +1,17 @@
 use crate::cli::AddCommand;
 use anyhow::Result;
-use forc_pkg::{self as pkg};
+use forc_pkg::{self as pkg, manifest::manager::Action};
 
 pub fn add(cmd: AddCommand) -> Result<()> {
     let opts = opts_from_cmd(cmd);
-    pkg::manifest::manager::add_dependencies(opts)?;
+    pkg::manifest::manager::modify_dependencies(opts)?;
     Ok(())
 }
 
-fn opts_from_cmd(cmd: AddCommand) -> pkg::manifest::manager::AddOpts {
-    pkg::manifest::manager::AddOpts {
+fn opts_from_cmd(cmd: AddCommand) -> pkg::manifest::manager::ModifyOpts {
+    pkg::manifest::manager::ModifyOpts {
+        // === Action ====
+        action: Action::Add,
         // === Manifest Options ===
         manifest_path: cmd.manifest.manisfest_path,
 

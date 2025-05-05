@@ -47,7 +47,6 @@ walkdir.workspace = true
 [dev-dependencies]
 regex.workspace = true
 tempfile.workspace = true
-test-case.workspace = true
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 sysinfo.workspace = true
