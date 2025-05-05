@@ -256,7 +256,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                                 if let Some(source_id) = span.source_id() {
                                     let path = engines.se().get_path(source_id);
                                     let path = path.to_string_lossy();
-                                    let LineCol { line, col } = span.start_pos().line_col();
+                                    let LineCol { line, col } = span.start_line_col_one_index();
                                     let url_format = url_format
                                         .replace("{path}", path.to_string().as_str())
                                         .replace("{line}", line.to_string().as_str())

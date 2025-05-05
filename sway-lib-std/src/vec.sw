@@ -7,9 +7,11 @@ use ::option::Option::{self, *};
 use ::convert::From;
 use ::iterator::*;
 use ::codec::*;
+use ::debug::*;
 use ::ops::*;
 use ::raw_slice::*;
 use ::clone::Clone;
+use ::debug::{Debug, DebugList, Formatter};
 
 struct RawVec<T> {
     ptr: raw_ptr,
@@ -889,7 +891,7 @@ impl<T> Clone for Vec<T> {
 
 impl<T> PartialEq for Vec<T>
 where
-    T: Eq,
+    T: PartialEq,
 {
     fn eq(self, other: Self) -> bool {
         if self.len() != other.len() {
@@ -903,5 +905,20 @@ where
             i += 1;
         }
         true
+    }
+}
+
+impl<T> Debug for Vec<T>
+where
+    T: Debug,
+{
+    fn fmt(self, ref mut f: Formatter) {
+        let mut l = f.debug_list();
+
+        for elem in self.iter() {
+            let _ = l.entry(elem);
+        }
+
+        l.finish();
     }
 }

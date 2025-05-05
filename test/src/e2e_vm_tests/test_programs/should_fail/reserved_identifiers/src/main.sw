@@ -1,7 +1,5 @@
 script;
 
-// this should fail with an `Identifiers cannot be a reserved keyword.` error
-
 fn main() {
     let mut script = 0;
     let mut contract = 0;
@@ -35,5 +33,5 @@ fn main() {
     let mut deref = 0;
     let mut true = 0;
     let mut false = 0;
+    let mut panic = 0;
 }
-

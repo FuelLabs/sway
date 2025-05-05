@@ -17,6 +17,12 @@ struct MyStruct<T, U> {
     o: Option<Identity>,
 }
 
+impl<T, U> Debug for MyStruct<T, U> {
+    fn fmt(self, f: Formatter) {
+        
+    }
+}
+
 struct Simple {
     x: u8,
 }

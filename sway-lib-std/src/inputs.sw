@@ -1,5 +1,5 @@
 //! Getters for fields on transaction inputs.
-//! This includes `Input::Coin`, `Input::Message` and `Input::Contract`.
+//! This includes `Input::Coin`, `Input::Message`, and `Input::Contract`.
 library;
 
 use ::address::Address;
@@ -24,6 +24,7 @@ use ::ops::*;
 use ::revert::revert;
 use ::primitive_conversions::u16::*;
 use ::codec::*;
+use ::debug::*;
 use ::raw_slice::*;
 
 // GTF Opcode const selectors
@@ -623,6 +624,35 @@ pub fn input_message_data(index: u64, offset: u64) -> Option<Bytes> {
                 Some(Bytes::from(raw_slice::from_parts::<u8>(new_ptr, offset_length)))
             }
         },
+        _ => None,
+    }
+}
+
+/// Gets the owner field from the input at `index`, if it's a coin,
+/// or the recipient of the input message, if it is a message.
+///
+/// # Arguments
+///
+/// * `index`: [u64] - The index of the input to check.
+///
+/// # Returns
+///
+/// * [Option<Address>] - The owner of the input at `index`, if the input's type is `Input::Coin`, or the recipient of the input message, if the input's type is `Input::Message`, else `None`.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::inputs::input_address;
+///
+/// fn foo() {
+///     let input_address = input_address(0).unwrap();
+///     assert(input_address != Address::zero());
+/// }
+/// ```
+pub fn input_address(index: u64) -> Option<Address> {
+    match input_type_id(index) {
+        INPUT_TYPE_COIN => Some(Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
+        INPUT_TYPE_MESSAGE => Some(Address::from(__gtf::<b256>(index, GTF_INPUT_MESSAGE_RECIPIENT))),
         _ => None,
     }
 }

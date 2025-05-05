@@ -12,10 +12,10 @@ use std::{
     fmt::Display,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
 };
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
 use sway_error::handler::Handler;
+use sway_types::span::Source;
 use sway_utils::{
     constants, find_nested_manifest_dir, find_parent_manifest_dir,
     find_parent_manifest_dir_with_check,
@@ -213,6 +213,7 @@ pub struct Project {
     #[serde(default)]
     pub experimental: HashMap<String, bool>,
     pub metadata: Option<toml::Value>,
+    pub force_dbg_in_release: Option<bool>,
 }
 
 // Validation function for the `name` field
@@ -417,10 +418,10 @@ impl PackageManifestFile {
     }
 
     /// Produces the string of the entry point file.
-    pub fn entry_string(&self) -> Result<Arc<str>> {
+    pub fn entry_string(&self) -> Result<Source> {
         let entry_path = self.entry_path();
         let entry_string = std::fs::read_to_string(entry_path)?;
-        Ok(Arc::from(entry_string))
+        Ok(entry_string.as_str().into())
     }
 
     /// Parse and return the associated project's program type.
@@ -880,7 +881,7 @@ fn implicit_std_dep() -> Dependency {
 
     if let Some((_, build_metadata)) = det.tag.as_ref().and_then(|tag| tag.split_once('+')) {
         // Nightlies are in the format v<version>+nightly.<date>.<hash>
-        let rev = build_metadata.split('.').last().map(|r| r.to_string());
+        let rev = build_metadata.split('.').next_back().map(|r| r.to_string());
 
         // If some revision is available and parsed from the 'nightly' build metadata,
         // we always prefer the revision over the tag.
@@ -1449,6 +1450,7 @@ mod tests {
             forc_version: None,
             experimental: HashMap::new(),
             metadata: Some(toml::Value::from(toml::value::Table::new())),
+            force_dbg_in_release: None,
         };
 
         let serialized = toml::to_string(&project).unwrap();
@@ -1477,6 +1479,7 @@ mod tests {
             forc_version: None,
             experimental: HashMap::new(),
             metadata: None,
+            force_dbg_in_release: None,
         };
 
         let serialized = toml::to_string(&project).unwrap();
@@ -1529,7 +1532,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata
             description = "Invalid TOML"
         "#;
@@ -1542,7 +1545,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             ] = "Invalid key"
         "#;
@@ -1555,7 +1558,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             nested = { key = "value1" }
 
@@ -1578,7 +1581,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             boolean = true
             integer = 42
@@ -1614,13 +1617,13 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
             description = "A test workspace"
             version = "1.0.0"
             authors = ["Test Author"]
             homepage = "https://example.com"
-            
+
             [workspace.metadata.ci]
             workflow = "main"
             timeout = 3600
@@ -1659,7 +1662,7 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
         "#;
 
@@ -1674,15 +1677,15 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
             numbers = [1, 2, 3]
             strings = ["a", "b", "c"]
             mixed = [1, "two", true]
-            
+
             [workspace.metadata.nested]
             key = "value"
-            
+
             [workspace.metadata.nested.deep]
             another = "value"
         "#;

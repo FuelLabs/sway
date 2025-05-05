@@ -732,6 +732,7 @@ impl Dependencies {
             ExpressionKind::ImplicitReturn(expr) | ExpressionKind::Return(expr) => {
                 self.gather_from_expr(engines, expr)
             }
+            ExpressionKind::Panic(expr) => self.gather_from_expr(engines, expr),
             ExpressionKind::Ref(RefExpression { value: expr, .. })
             | ExpressionKind::Deref(expr) => self.gather_from_expr(engines, expr),
         }
@@ -816,8 +817,15 @@ impl Dependencies {
     }
 
     fn gather_from_type_argument(self, engines: &Engines, type_argument: &GenericArgument) -> Self {
-        let type_engine = engines.te();
-        self.gather_from_typeinfo(engines, &type_engine.get(type_argument.type_id()))
+        match type_argument {
+            GenericArgument::Type(a) => {
+                let type_engine = engines.te();
+                self.gather_from_typeinfo(engines, &type_engine.get(a.type_id))
+            }
+            GenericArgument::Const(_) => Dependencies {
+                deps: HashSet::default(),
+            },
+        }
     }
 
     fn gather_from_typeinfo(mut self, engines: &Engines, type_info: &TypeInfo) -> Self {

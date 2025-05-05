@@ -6,6 +6,7 @@ use ::option::Option::{self, *};
 use ::ops::*;
 use ::primitive_conversions::u256::*;
 use ::codec::*;
+use ::debug::*;
 
 // NOTE: Bytes are used to support numbers greater than 32 bytes for future curves.
 /// The Scalar type used in cryptographic operations.

@@ -38,6 +38,13 @@ impl BuildTarget {
     pub const CFG: &'static [&'static str] = &["evm", "fuel"];
 }
 
+#[derive(Default, Clone, Copy)]
+pub enum DbgGeneration {
+    Full,
+    #[default]
+    None,
+}
+
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum OptLevel {
     #[default]
@@ -180,6 +187,7 @@ impl From<&PrintIr> for PrintPassesOpts {
 pub struct BuildConfig {
     // Build target for code generation.
     pub(crate) build_target: BuildTarget,
+    pub(crate) dbg_generation: DbgGeneration,
     // The canonical file path to the root module.
     // E.g. `/home/user/project/src/main.sw`.
     pub(crate) canonical_root_module: Arc<PathBuf>,
@@ -210,6 +218,7 @@ impl BuildConfig {
         root_module: PathBuf,
         canonical_manifest_dir: PathBuf,
         build_target: BuildTarget,
+        dbg_generation: DbgGeneration,
     ) -> Self {
         assert!(
             canonical_manifest_dir.has_root(),
@@ -230,6 +239,7 @@ impl BuildConfig {
         };
         Self {
             build_target,
+            dbg_generation,
             canonical_root_module: Arc::new(canonical_root_module),
             print_dca_graph: None,
             print_dca_graph_url_format: None,
@@ -244,6 +254,17 @@ impl BuildConfig {
             optimization_level: OptLevel::Opt0,
             lsp_mode: None,
         }
+    }
+
+    /// Dummy build config that can be used for testing.
+    /// This is not not valid generally, but asm generation will accept it.
+    pub fn dummy_for_asm_generation() -> Self {
+        Self::root_from_file_name_and_manifest_path(
+            PathBuf::from("/"),
+            PathBuf::from("/"),
+            BuildTarget::default(),
+            DbgGeneration::None,
+        )
     }
 
     pub fn with_print_dca_graph(self, a: Option<String>) -> Self {
@@ -348,6 +369,7 @@ mod test {
             root_module,
             canonical_manifest_dir,
             BuildTarget::default(),
+            DbgGeneration::Full,
         );
     }
 
@@ -359,6 +381,7 @@ mod test {
             root_module,
             canonical_manifest_dir,
             BuildTarget::default(),
+            DbgGeneration::Full,
         );
     }
 }

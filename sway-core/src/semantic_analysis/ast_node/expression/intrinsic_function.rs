@@ -110,6 +110,9 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Transmute => {
                 type_check_transmute(arguments, handler, kind, type_arguments, span, ctx)
             }
+            Intrinsic::Dbg => {
+                unreachable!("__dbg should not exist in the typed tree")
+            }
         }
     }
 }
@@ -397,9 +400,12 @@ fn type_check_slice(
             referenced_type,
             to_mutable_value,
         } => match &*type_engine.get(referenced_type.type_id()) {
-            TypeInfo::Array(elem_type_arg, array_len) if array_len.as_literal_val().is_some() => {
+            TypeInfo::Array(elem_type_arg, array_len)
+                if array_len.expr().as_literal_val().is_some() =>
+            {
                 // SAFETY: safe by the guard above
                 let array_len = array_len
+                    .expr()
                     .as_literal_val()
                     .expect("unexpected non literal array length")
                     as u64;

@@ -135,8 +135,7 @@ async fn input_message_msg_sender_from_contract() {
     let tx = tb.build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_id = provider.send_transaction(tx).await.unwrap();
-    let tx_status = provider.tx_status(&tx_id).await.unwrap();
+    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
     let response = call_handler.get_response(tx_status).unwrap();
     assert!(response.value);
 }
@@ -266,8 +265,7 @@ async fn caller_addresses_from_messages() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_id = provider.send_transaction(tx).await.unwrap();
-    let tx_status = provider.tx_status(&tx_id).await.unwrap();
+    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
     assert!(result
@@ -405,8 +403,7 @@ async fn caller_addresses_from_coins() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_id = provider.send_transaction(tx).await.unwrap();
-    let tx_status = provider.tx_status(&tx_id).await.unwrap();
+    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
     assert!(result
@@ -546,8 +543,7 @@ async fn caller_addresses_from_coins_and_messages() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_id = provider.send_transaction(tx).await.unwrap();
-    let tx_status = provider.tx_status(&tx_id).await.unwrap();
+    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
     assert!(result
@@ -618,7 +614,7 @@ async fn can_get_predicate_address() {
 
     // Setup predicate.
     let hex_predicate_address: &str =
-        "0xb2618f228760d4845f904fde8f732bafdbc50bdc6fe30870b72e2778ae4e06aa";
+        "0xf70528e17820e36c0868d25aac804f3e0750f90f0840d9e1d68a7e4e3c9290a8";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -633,7 +629,7 @@ async fn can_get_predicate_address() {
 
     // If this test fails, it can be that the predicate address got changed.
     // Uncomment the next line, get the predicate address, and update it above.
-    // dbg!(&predicate);
+    dbg!(&predicate);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
@@ -699,7 +695,7 @@ async fn when_incorrect_predicate_address_passed() {
 
     // Setup predicate with incorrect address.
     let hex_predicate_address: &str =
-        "0x36bf4bd40f2a3b3db595ef8fd8b21dbe9e6c0dd7b419b4413ff6b584ce7da5d7";
+        "0xf70528e17820e36c0868d25aac804f3e0750f90f0840d9e1d68a7e4e3c9290a8";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_data = AuthPredicateEncoder::default()
@@ -744,7 +740,7 @@ async fn when_incorrect_predicate_address_passed() {
 async fn can_get_predicate_address_in_message() {
     // Setup predicate address.
     let hex_predicate_address: &str =
-        "0xb2618f228760d4845f904fde8f732bafdbc50bdc6fe30870b72e2778ae4e06aa";
+        "0xf70528e17820e36c0868d25aac804f3e0750f90f0840d9e1d68a7e4e3c9290a8";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);

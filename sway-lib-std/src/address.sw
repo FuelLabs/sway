@@ -8,6 +8,7 @@ use ::primitives::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
 use ::codec::*;
+use ::debug::*;
 
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {

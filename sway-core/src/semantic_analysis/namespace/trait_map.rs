@@ -839,11 +839,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    ///   entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type(
         module: &Module,
         engines: &Engines,
@@ -901,11 +901,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    ///   entries that qualify as hits are equivalents of `type_id`
     pub fn get_impl_spans_for_type(
         module: &Module,
         engines: &Engines,
@@ -994,11 +994,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    ///   entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
         module: &Module,
         engines: &Engines,
@@ -1066,11 +1066,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    //    entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
         module: &Module,
         engines: &Engines,
@@ -1123,6 +1123,44 @@ impl TraitMap {
             Ok(None::<()>)
         });
         trait_names
+    }
+
+    /// Returns true if the type represented by the `type_id` implements
+    /// any trait that satisfies the `predicate`.
+    pub(crate) fn type_implements_trait<F: Fn(&TraitEntry) -> bool>(
+        module: &Module,
+        engines: &Engines,
+        type_id: TypeId,
+        predicate: F,
+    ) -> bool {
+        let type_id = engines.te().get_unaliased_type_id(type_id);
+
+        // small performance gain in bad case
+        if matches!(&*engines.te().get(type_id), TypeInfo::ErrorRecovery(_)) {
+            return false;
+        }
+
+        let unify_check = UnifyCheck::constraint_subset(engines);
+        let mut implements_trait = false;
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
+            lexical_scope.items.implemented_traits.for_each_impls(
+                engines,
+                type_id,
+                false,
+                |entry| {
+                    // We don't have a suitable way to cancel traversal, so we just
+                    // skip the checks if any of the previous traits has already matched.
+                    if !implements_trait
+                        && unify_check.check(type_id, entry.key.type_id)
+                        && predicate(entry)
+                    {
+                        implements_trait = true;
+                    }
+                },
+            );
+            Ok(None::<()>)
+        });
+        implements_trait
     }
 
     pub(crate) fn get_trait_item_for_type(

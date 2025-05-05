@@ -61,7 +61,7 @@ pub fn assert(condition: bool) {
 #[cfg(experimental_new_encoding = false)]
 pub fn assert_eq<T>(v1: T, v2: T)
 where
-    T: Eq,
+    T: PartialEq,
 {
     if (v1 != v2) {
         log(v1);
@@ -73,7 +73,7 @@ where
 #[cfg(experimental_new_encoding = true)]
 pub fn assert_eq<T>(v1: T, v2: T)
 where
-    T: Eq + AbiEncode,
+    T: PartialEq + AbiEncode,
 {
     if (v1 != v2) {
         log(v1);
@@ -105,7 +105,7 @@ where
 #[cfg(experimental_new_encoding = false)]
 pub fn assert_ne<T>(v1: T, v2: T)
 where
-    T: Eq,
+    T: PartialEq,
 {
     if (v1 == v2) {
         log(v1);
@@ -117,7 +117,7 @@ where
 #[cfg(experimental_new_encoding = true)]
 pub fn assert_ne<T>(v1: T, v2: T)
 where
-    T: Eq + AbiEncode,
+    T: PartialEq + AbiEncode,
 {
     if (v1 == v2) {
         log(v1);

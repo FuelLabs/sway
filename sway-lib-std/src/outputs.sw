@@ -22,6 +22,7 @@ use ::ops::*;
 use ::primitive_conversions::u16::*;
 use ::raw_ptr::*;
 use ::codec::*;
+use ::debug::*;
 
 // GTF Opcode const selectors
 //
@@ -284,7 +285,7 @@ pub fn output_asset_to(index: u64) -> Option<Address> {
 ///
 /// # Returns
 ///
-/// * [Option<Address>] - The asset id and the receiver of the output.
+/// * [Option<AssetId, Address>] - The asset id and the receiver of the output.
 ///
 /// # Examples
 ///
