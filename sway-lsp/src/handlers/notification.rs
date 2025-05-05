@@ -165,7 +165,7 @@ pub(crate) async fn handle_did_change_watched_files(
             FileChangeType::CHANGED => {
                 if event.uri.to_string().contains("Forc.toml") {
                     session.sync.sync_manifest();
-                    // TODO: Recompile the project
+                    // TODO: Recompile the project | see https://github.com/FuelLabs/sway/issues/7103
                 }
             }
             FileChangeType::DELETED => {

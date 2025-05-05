@@ -164,7 +164,7 @@ impl SyncWorkspace {
             .ok()
     }
 
-    /// Scan the Forc.toml and convert relative paths to absolute. Save into our temp directory.
+    /// Read the Forc.toml and convert relative paths to absolute. Save into our temp directory.
     pub(crate) fn sync_manifest(&self) {
         if let (Ok(manifest_dir), Some(manifest_path), Some(temp_manifest_path)) = (
             self.manifest_dir(),
