@@ -141,7 +141,7 @@ fn initialize() {
             initialization_options: None,
             ..Default::default()
         };
-        let _ = request::handle_initialize(&server, &params);
+        let _ = request::handle_initialize(&server, &params).await;
     });
 }
 

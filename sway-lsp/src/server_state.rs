@@ -13,7 +13,10 @@ use crossbeam_channel::{Receiver, Sender};
 use dashmap::{mapref::multiple::RefMulti, DashMap};
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::PackageManifestFile;
-use lsp_types::{Diagnostic, DidChangeWatchedFilesRegistrationOptions, FileSystemWatcher, GlobPattern, Registration, Url, WatchKind};
+use lsp_types::{
+    Diagnostic, DidChangeWatchedFilesRegistrationOptions, FileSystemWatcher, GlobPattern,
+    Registration, Url, WatchKind,
+};
 use parking_lot::{Mutex, RwLock};
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -141,7 +144,7 @@ impl ServerState {
         } else {
             tracing::info!("Successfully registered Forc.toml file watcher");
         }
-    }     
+    }
 
     /// Spawns a new thread dedicated to handling compilation tasks. This thread listens for
     /// `TaskMessage` instances sent over a channel and processes them accordingly.
