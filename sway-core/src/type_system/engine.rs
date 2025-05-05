@@ -2114,6 +2114,10 @@ impl TypeEngine {
     }
 
     fn touch_last_replace(&self) {
+        // eprintln!(
+        //     "    touch_last_replace {}",
+        //     std::backtrace::Backtrace::force_capture()
+        // );
         let mut write_last_change = self.last_replace.write();
         *write_last_change = Instant::now();
     }
@@ -2171,9 +2175,18 @@ impl TypeEngine {
         self.unifications.clear();
     }
 
-    pub(crate) fn reapply_unifications(&self, engines: &Engines) {
+    pub(crate) fn reapply_unifications(&self, engines: &Engines, depth: usize) {
+        if depth > 2000 {
+            panic!("Possible infinite recursion");
+        }
+
         let current_last_replace = *self.last_replace.read();
         for unification in self.unifications.values() {
+            // eprintln!(
+            //     "{depth}: {:?} -> {:?}",
+            //     engines.help_out(unification.received),
+            //     engines.help_out(unification.expected)
+            // );
             Self::unify_helper(
                 &Handler::default(),
                 engines,
@@ -2187,7 +2200,7 @@ impl TypeEngine {
             )
         }
         if *self.last_replace.read() > current_last_replace {
-            self.reapply_unifications(engines);
+            self.reapply_unifications(engines, depth + 1);
         }
     }
 

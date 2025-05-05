@@ -21,8 +21,13 @@ impl<T, const N: u64> S<T, N> {
     }
 }
 
+enum E<T, const N: u64> {
+    Nothing: (),
+    Array: [T; N]
+}
+
 fn main(a: [u64; 2]) {
-    __log(a);
+    __dbg(a);
 
     let a = [C {}].my_len();
     assert(a == 1);
@@ -31,5 +36,8 @@ fn main(a: [u64; 2]) {
     assert(b == 2);
 
     let s: S<u64, 3> = S { };
-    __log(s.len_xxx());
+    __dbg(s.len_xxx());
+
+    let e: E<u64, 3> = E::Nothing;
+    __dbg(e);
 }
