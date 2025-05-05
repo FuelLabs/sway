@@ -6,13 +6,9 @@ use dashmap::DashMap;
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::PackageManifestFile;
 use lsp_types::Url;
-use notify::RecursiveMode;
-use notify_debouncer_mini::new_debouncer;
-use parking_lot::RwLock;
 use std::{
     fs,
     path::{Path, PathBuf},
-    time::Duration,
 };
 use sway_types::{SourceEngine, Span};
 use sway_utils::{
@@ -20,8 +16,6 @@ use sway_utils::{
     SWAY_EXTENSION,
 };
 use tempfile::Builder;
-use tokio::task::JoinHandle;
-use tracing::error;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum Directory {
@@ -32,7 +26,6 @@ pub enum Directory {
 #[derive(Debug)]
 pub struct SyncWorkspace {
     pub directories: DashMap<Directory, PathBuf>,
-    pub notify_join_handle: RwLock<Option<JoinHandle<()>>>,
 }
 
 impl SyncWorkspace {
@@ -41,7 +34,6 @@ impl SyncWorkspace {
     pub(crate) fn new() -> Self {
         Self {
             directories: DashMap::new(),
-            notify_join_handle: RwLock::new(None),
         }
     }
 
@@ -49,13 +41,7 @@ impl SyncWorkspace {
     /// the current workspace.
     pub fn resync(&self) -> Result<(), LanguageServerError> {
         self.clone_manifest_dir_to_temp()?;
-        if let (Ok(manifest_dir), Some(manifest_path), Some(temp_manifest_path)) = (
-            self.manifest_dir(),
-            self.manifest_path(),
-            self.temp_manifest_path(),
-        ) {
-            edit_manifest_dependency_paths(&manifest_dir, &manifest_path, &temp_manifest_path)?;
-        }
+        self.sync_manifest();
         Ok(())
     }
 
@@ -178,8 +164,8 @@ impl SyncWorkspace {
             .ok()
     }
 
-    /// Watch the manifest directory and check for any save events on Forc.toml
-    pub(crate) fn watch_and_sync_manifest(&self) {
+    /// Read the Forc.toml and convert relative paths to absolute. Save into our temp directory.
+    pub(crate) fn sync_manifest(&self) {
         if let (Ok(manifest_dir), Some(manifest_path), Some(temp_manifest_path)) = (
             self.manifest_dir(),
             self.manifest_path(),
@@ -188,40 +174,7 @@ impl SyncWorkspace {
             if let Err(err) =
                 edit_manifest_dependency_paths(&manifest_dir, &manifest_path, &temp_manifest_path)
             {
-                error!("Failed to edit manifest dependency paths: {}", err);
-            }
-
-            let handle = tokio::spawn(async move {
-                let (tx, mut rx) = tokio::sync::mpsc::channel(10);
-                // Setup debouncer. No specific tickrate, max debounce time 500 milliseconds
-                let mut debouncer = new_debouncer(Duration::from_millis(500), move |event| {
-                    if let Ok(e) = event {
-                        let _ = tx.blocking_send(e);
-                    }
-                })
-                .unwrap();
-
-                debouncer
-                    .watcher()
-                    .watch(&manifest_dir, RecursiveMode::NonRecursive)
-                    .unwrap();
-                while let Some(_events) = rx.recv().await {
-                    // Rescan the Forc.toml and convert
-                    // relative paths to absolute. Save into our temp directory.
-                    if let Err(err) = edit_manifest_dependency_paths(
-                        &manifest_dir,
-                        &manifest_path,
-                        &temp_manifest_path,
-                    ) {
-                        error!("Failed to edit manifest dependency paths: {}", err);
-                    }
-                }
-            });
-
-            // Store the join handle so we can clean up the thread on shutdown
-            {
-                let mut join_handle = self.notify_join_handle.write();
-                *join_handle = Some(handle);
+                tracing::error!("Failed to edit manifest dependency paths: {}", err);
             }
         }
     }
