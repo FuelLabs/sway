@@ -23,11 +23,14 @@ use tower_lsp::{jsonrpc::Result, LanguageServer};
 #[tower_lsp::async_trait]
 impl LanguageServer for ServerState {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        request::handle_initialize(self, &params).await
+        request::handle_initialize(self, &params)
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        let _p = tracing::trace_span!("parse_text").entered();
+        // Register a file system watcher for Forc.toml files with the client.
+        if let Err(err) = self.register_forc_toml_watcher().await {
+            tracing::error!("Failed to register Forc.toml file watcher: {}", err);
+        }
         tracing::info!("Sway Language Server Initialized");
     }
 

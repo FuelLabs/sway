@@ -21,7 +21,7 @@ use sway_utils::PerformanceData;
 use tower_lsp::jsonrpc::Result;
 use tracing::metadata::LevelFilter;
 
-pub async fn handle_initialize(
+pub fn handle_initialize(
     state: &ServerState,
     params: &lsp_types::InitializeParams,
 ) -> Result<InitializeResult> {
@@ -35,11 +35,6 @@ pub async fn handle_initialize(
     // Start a thread that will shutdown the server if the client process is no longer active.
     if let Some(client_pid) = params.process_id {
         state.spawn_client_heartbeat(client_pid as usize);
-    }
-
-    // Register a file system watcher for Forc.toml files with the client.
-    if let Err(err) = state.register_forc_toml_watcher().await {
-        tracing::error!("Failed to register Forc.toml file watcher: {}", err);
     }
 
     // Initializing tracing library based on the user's config
