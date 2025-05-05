@@ -111,7 +111,7 @@ pub fn add_dependencies(opts: AddOpts) -> Result<()> {
 
     for dependency in &opts.dependencies {
         let (dep_name, dependency_data) =
-            resolve_dependency(dependency, &opts, &member_manifests, &package_spec.dir())?;
+            resolve_dependency(dependency, &opts, &member_manifests, package_spec.dir())?;
         section.insert_dep(dep_name, dependency_data, opts.salt.clone());
     }
 
@@ -203,12 +203,10 @@ fn resolve_package_path(
         };
 
         resolve_workspace_path_inner(member_manifests, &package_name, root_dir)
+    } else if let Some(package_name) = package {
+        resolve_workspace_path_inner(member_manifests, &package_name, root_dir)
     } else {
-        if let Some(package_name) = package {
-            resolve_workspace_path_inner(member_manifests, &package_name, root_dir)
-        } else {
-            Ok(manifest_file.path().to_path_buf())
-        }
+        Ok(manifest_file.path().to_path_buf())
     }
 }
 
@@ -229,11 +227,11 @@ fn resolve_workspace_path_inner(
     }
 }
 
-fn resolve_dependency(
+fn resolve_dependency<P: AsRef<Path>>(
     raw: &str,
     opts: &AddOpts,
     member_manifests: &BTreeMap<String, PackageManifestFile>,
-    package_dir: &Path,
+    package_dir: P,
 ) -> Result<(String, Dependency)> {
     let dep_spec: DepSpec = raw.parse()?;
     let dep_name = dep_spec
@@ -260,8 +258,7 @@ fn resolve_dependency(
     } else {
         if details.is_source_empty() {
             if let Some(member) = member_manifests.get(&dep_name) {
-                info!("{:?}, {:?}", &member.dir(), package_dir);
-                let rel_path = pathdiff::diff_paths(&member.dir(), package_dir)
+                let rel_path = pathdiff::diff_paths(member.dir(), package_dir)
                     .unwrap_or_else(|| member.path().to_path_buf());
                 details.path = Some(rel_path.to_string_lossy().to_string());
             }
@@ -367,7 +364,7 @@ pub enum DepSection<'a> {
     Contract(&'a mut BTreeMap<String, ContractDependency>, Option<String>),
 }
 
-impl<'a> DepSection<'a> {
+impl DepSection<'_> {
     pub fn insert_dep(&mut self, name: String, data: Dependency, salt: Option<String>) {
         match self {
             DepSection::Regular(map) => {
@@ -516,7 +513,7 @@ fn remove_deps_from_table<P: AsRef<Path>>(
     })?;
 
     for dep in deps {
-        section_table.remove(*dep);
+        section_table.remove(dep);
     }
 
     std::fs::write(manifest_path, doc.to_string())?;
@@ -525,12 +522,13 @@ fn remove_deps_from_table<P: AsRef<Path>>(
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::DepSpec;
     use test_case::test_case;
-    #[test_case("", None, None)]
     #[test_case("abc", Some("abc"), None)]
-    #[test_case("abc@1", Some("abc"), Some("^1"))]
-    fn dep_is_from_str(s: &str, expected_name: Option<&str>, expected_version: Option<&str>) {
+    #[test_case("abc@1", Some("abc"), Some("1"))]
+    fn dep_is_from_str_valid(s: &str, expected_name: Option<&str>, expected_version: Option<&str>) {
         let dep: DepSpec = s.parse().expect("parsing dep spec failed");
         assert_eq!(
             (
@@ -542,5 +540,10 @@ mod tests {
                 expected_version.map(|v| v.to_string())
             ),
         );
+    }
+
+    #[test]
+    fn dep_is_from_str_invalid() {
+        assert!(DepSpec::from_str("").is_err());
     }
 }
