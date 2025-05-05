@@ -8,6 +8,7 @@ use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
 use ::clone::Clone;
 use ::codec::*;
+use ::debug::*;
 use ::raw_slice::*;
 use ::ops::*;
 use ::iterator::*;
@@ -1212,5 +1213,15 @@ impl Iterator for BytesIter {
 
         self.index += 1;
         self.values.get(self.index - 1)
+    }
+}
+
+impl Debug for Bytes {
+    fn fmt(self, ref mut f: Formatter) {
+        let mut l = f.debug_list();
+        for elem in self.iter() {
+            let _ = l.entry(elem);
+        }
+        l.finish();
     }
 }

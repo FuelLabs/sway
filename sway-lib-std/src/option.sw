@@ -78,6 +78,7 @@ use ::logging::log;
 use ::result::Result;
 use ::revert::revert;
 use ::codec::*;
+use ::debug::*;
 use ::ops::*;
 
 // ANCHOR: docs_option

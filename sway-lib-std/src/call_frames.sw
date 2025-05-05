@@ -8,6 +8,7 @@ use ::intrinsics::is_reference_type;
 use ::registers::frame_ptr;
 use ::raw_ptr::*;
 use ::codec::*;
+use ::debug::*;
 
 // Note that everything when serialized is padded to word length.
 //

@@ -7,6 +7,7 @@ use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
 use ::codec::*;
+use ::debug::*;
 use ::ops::*;
 use ::raw_slice::AsRawSlice;
 use ::clone::Clone;
@@ -393,5 +394,16 @@ impl Clone for String {
         Self {
             bytes: self.bytes.clone(),
         }
+    }
+}
+
+impl Debug for String {
+    fn fmt(self, ref mut f: Formatter) {
+        let s = asm(s: (self.bytes.ptr(), self.bytes.len())) {
+            s: str
+        };
+        f.print_string_quotes();
+        f.print_str(s);
+        f.print_string_quotes();
     }
 }

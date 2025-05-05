@@ -5,4 +5,4 @@ entry = "main.sw"
 name = "dbg"
 
 [dependencies]
-std = { path = "../../../../../reduced_std_libs/sway-lib-std-core" }
+std = { path = "../../../../../../../../sway-lib-std" }

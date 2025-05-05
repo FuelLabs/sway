@@ -6,6 +6,7 @@ use ::result::Result;
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 use ::codec::*;
+use ::debug::*;
 
 /// The storage domain value of the [StorageMap].
 ///

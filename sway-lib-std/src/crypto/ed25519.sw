@@ -10,6 +10,7 @@ use ::result::Result::{self, *};
 use ::option::Option::{self, *};
 use ::ops::*;
 use ::codec::*;
+use ::debug::*;
 
 /// An ed25519 signature.
 pub struct Ed25519 {
