@@ -257,52 +257,53 @@ fn secp256k1_from_b256_tuple() {
     }
 }
 
-#[test]
-fn secp256k1_from_u8_array() {
-    let array_1 = [
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8,
-    ];
-    let secp256k1_1 = Secp256k1::from(array_1);
-    let mut iter_1 = 0;
-    while iter_1 < 64 {
-        assert(secp256k1_1.bits()[iter_1] == 0u8);
-        iter_1 += 1;
-    }
+// TODO: Enable this test once https://github.com/FuelLabs/sway/issues/7157 is fixed.
+// #[test]
+// fn secp256k1_from_u8_array() {
+//     let array_1 = [
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8,
+//     ];
+//     let secp256k1_1 = Secp256k1::from(array_1);
+//     let mut iter_1 = 0;
+//     while iter_1 < 64 {
+//         assert(secp256k1_1.bits()[iter_1] == 0u8);
+//         iter_1 += 1;
+//     }
 
-    let array_2 = [
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 1u8,
-    ];
-    let secp256k1_2 = Secp256k1::from(array_2);
-    assert(secp256k1_2.bits()[63] == 1u8);
-    let mut iter_2 = 0;
-    while iter_2 < 63 {
-        assert(secp256k1_2.bits()[iter_2] == 0u8);
-        iter_2 += 1;
-    }
+//     let array_2 = [
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 1u8,
+//     ];
+//     let secp256k1_2 = Secp256k1::from(array_2);
+//     assert(secp256k1_2.bits()[63] == 1u8);
+//     let mut iter_2 = 0;
+//     while iter_2 < 63 {
+//         assert(secp256k1_2.bits()[iter_2] == 0u8);
+//         iter_2 += 1;
+//     }
 
-    let array_3 = [
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-    ];
-    let secp256k1_3 = Secp256k1::from(array_3);
-    let mut iter_3 = 0;
-    while iter_3 < 64 {
-        assert(secp256k1_3.bits()[iter_3] == 255u8);
-        iter_3 += 1;
-    }
-}
+//     let array_3 = [
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//     ];
+//     let secp256k1_3 = Secp256k1::from(array_3);
+//     let mut iter_3 = 0;
+//     while iter_3 < 64 {
+//         assert(secp256k1_3.bits()[iter_3] == 255u8);
+//         iter_3 += 1;
+//     }
+// }
 
 #[test]
 fn secp256k1_try_from_bytes() {

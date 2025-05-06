@@ -530,14 +530,22 @@ jobs:
           cache-provider: "buildjet"
       - name: Install Forc
         run: cargo install --locked --debug --path ./forc
-      - name: Run Std Unit Tests
-        run: forc build --path sway-lib-std && forc test --path sway-lib-std
-      - name: Run Std Unit Tests - Experimental feature 'error_type'
-        run: forc build --experimental error_type --path sway-lib-std && forc test --experimental error_type --path sway-lib-std
-      - name: Run In Language Unit Tests
-        run: forc build --path test/src/in_language_tests && forc test --path test/src/in_language_tests
-      - name: Run In Language Unit Tests - Experimental feature 'error_type'
-        run: forc build --experimental error_type --path test/src/in_language_tests && forc test --experimental error_type --path test/src/in_language_tests
+      - name: Run Std Unit Tests (Debug)
+        run: forc test --path sway-lib-std
+      - name: Run Std Unit Tests (Release)
+        run: forc test --release --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'error_type' (Debug)
+        run: forc test --experimental error_type --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'error_type' (Release)
+        run: forc test --release --experimental error_type --path sway-lib-std
+      - name: Run In Language Unit Tests (Debug)
+        run: forc test --path test/src/in_language_tests
+      - name: Run In Language Unit Tests (Release)
+        run: forc test --release --path test/src/in_language_tests
+      - name: Run In Language Unit Tests - Experimental feature 'error_type' (Debug)
+        run: forc test --experimental error_type --path test/src/in_language_tests
+      - name: Run In Language Unit Tests - Experimental feature 'error_type' (Release)
+        run: forc test --release --experimental error_type --path test/src/in_language_tests
 
   forc-pkg-fuels-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
