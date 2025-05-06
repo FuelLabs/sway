@@ -180,8 +180,14 @@ fn sync_with_updates_to_manifest_in_workspace() {
         manifest_content.push_str(test_lib_string);
         fs::write(&test_contract_manifest, &manifest_content).unwrap();
 
-        // wait for 500 milliseconds to give the debouncer time to pick up the change
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        // notify the server that the manifest file has changed
+        let params = DidChangeWatchedFilesParams {
+            changes: vec![FileEvent {
+                uri: uri.clone(),
+                typ: FileChangeType::CHANGED,
+            }],
+        };
+        lsp::did_change_watched_files_notification(&mut service, params).await;
 
         // Check that the build plan now has 3 items
         let (_, session) = service
@@ -391,7 +397,7 @@ fn go_to_definition_for_fields() {
             req_uri: &uri,
             req_line: 5,
             req_char: 8,
-            def_line: 84,
+            def_line: 85,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -448,7 +454,7 @@ fn go_to_definition_inside_turbofish() {
             req_uri: &uri,
             req_line: 15,
             req_char: 12,
-            def_line: 84,
+            def_line: 85,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -468,7 +474,7 @@ fn go_to_definition_inside_turbofish() {
             req_uri: &uri,
             req_line: 20,
             req_char: 19,
-            def_line: 64,
+            def_line: 65,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/result.sw",
@@ -528,7 +534,7 @@ fn go_to_definition_for_matches() {
             req_uri: &uri,
             req_line: 25,
             req_char: 19,
-            def_line: 84,
+            def_line: 85,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -546,7 +552,7 @@ fn go_to_definition_for_matches() {
             req_uri: &uri,
             req_line: 25,
             req_char: 27,
-            def_line: 88,
+            def_line: 89,
             def_start_char: 4,
             def_end_char: 8,
             def_path: "sway-lib-std/src/option.sw",
@@ -561,7 +567,7 @@ fn go_to_definition_for_matches() {
             req_uri: &uri,
             req_line: 26,
             req_char: 17,
-            def_line: 86,
+            def_line: 87,
             def_start_char: 4,
             def_end_char: 8,
             def_path: "sway-lib-std/src/option.sw",
@@ -683,7 +689,7 @@ fn go_to_definition_for_paths() {
             req_uri: &uri,
             req_line: 10,
             req_char: 27,
-            def_line: 84,
+            def_line: 85,
             def_start_char: 9,
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
@@ -732,7 +738,7 @@ fn go_to_definition_for_paths() {
             req_uri: &uri,
             req_line: 12,
             req_char: 42,
-            def_line: 13,
+            def_line: 14,
             def_start_char: 11,
             def_end_char: 21,
             def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
@@ -1122,14 +1128,14 @@ fn go_to_definition_for_variables() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 53, 21).await;
 
         // Complex type ascriptions
-        go_to.def_line = 64;
+        go_to.def_line = 65;
         go_to.def_start_char = 9;
         go_to.def_end_char = 15;
         go_to.def_path = "sway-lib-std/src/result.sw";
         lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 22).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 31).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 60).await;
-        go_to.def_line = 84;
+        go_to.def_line = 85;
         go_to.def_path = "sway-lib-std/src/option.sw";
         lsp::definition_check_with_req_offset(&server, &mut go_to, 56, 28).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 11, 39).await;
@@ -1163,7 +1169,7 @@ fn go_to_definition_for_consts() {
             req_uri: &uri,
             req_line: 9,
             req_char: 24,
-            def_line: 12,
+            def_line: 13,
             def_start_char: 11,
             def_end_char: 21,
             def_path: "sway-lib-std/src/contract_id.sw",
@@ -1172,7 +1178,7 @@ fn go_to_definition_for_consts() {
 
         // value: `from`
         contract_go_to.req_char = 34;
-        contract_go_to.def_line = 62;
+        contract_go_to.def_line = 63;
         contract_go_to.def_start_char = 7;
         contract_go_to.def_end_char = 11;
         lsp::definition_check(&server, &contract_go_to).await;
@@ -1216,7 +1222,7 @@ fn go_to_definition_for_consts() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 10, 17).await;
 
         // Complex type ascriptions
-        go_to.def_line = 84;
+        go_to.def_line = 85;
         go_to.def_start_char = 9;
         go_to.def_end_char = 15;
         go_to.def_path = "sway-lib-std/src/option.sw";
@@ -1784,7 +1790,13 @@ fn hover_docs_for_self_keywords_vscode() {
 
         lsp::hover_request(&server, &hover).await;
         hover.req_char = 24;
-        hover.documentation = vec!["```sway\nstruct MyStruct\n```\n---\n\n---\n[2 implementations](command:sway.peekLocations?%5B%7B%22locations%22%3A%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A4%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A14%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A6%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%5D%7D%5D \"Go to implementations\")"];
+        hover.documentation = vec![
+            "```sway\nstruct MyStruct\n```\n---\n\n---\n[3 implementations]",
+            "sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A14%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A6%7D%7D%2C%22",
+            "sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A9%2C%22line%22%3A6%7D%2C%22start%22%3A%7B%22character%22%3A32%2C%22line%22%3A0%7D%7D%2C%22",
+            "sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.%25253Cautogenerated%25253E.sw%22%7D%5D%7D%5D",
+            "\"Go to implementations\")"
+        ];
         lsp::hover_request(&server, &hover).await;
         let _ = server.shutdown_server();
     });

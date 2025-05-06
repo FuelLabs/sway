@@ -42,17 +42,13 @@ fn main() -> u64 {
 //
 // Matching fn a() here, which just returns its arg:
 //
-// check: move $(ret_val=$REG) $$$$arg0
-// check: move $$$$retv $ret_val
+// check: move $$$$retv $$$$arg0
 // check: jmp $$$$reta
 //
 // Matching fn b() here, which has a local bool var, initialised to false/$zero:
 //
 // check: move $$$$locbase $$sp
 // check: cfei i8
-//
-// check: move $REG $$$$arg0
-// check: move $REG $$$$arg1
 //
 // check: sb   $$$$locbase $$zero i0
 // ...

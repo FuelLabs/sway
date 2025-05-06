@@ -36,7 +36,7 @@ where
         let type_parameters_constraints =
             self.generate_type_parameters_constraints_code(type_parameters, Some("AbiEncode"));
 
-        let name = name.as_str();
+        let name = name.as_raw_ident_str();
 
         if body.is_empty() {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
@@ -67,7 +67,7 @@ where
         let type_parameters_constraints =
             self.generate_type_parameters_constraints_code(type_parameters, Some("AbiDecode"));
 
-        let name = name.as_str();
+        let name = name.as_raw_ident_str();
 
         if body == "Self {  }" {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
@@ -92,7 +92,7 @@ where
         for f in decl.fields.iter() {
             code.push_str(&format!(
                 "let buffer = self.{field_name}.abi_encode(buffer);\n",
-                field_name = f.name.as_str(),
+                field_name = f.name.as_raw_ident_str(),
             ));
         }
 
@@ -108,7 +108,7 @@ where
         for f in decl.fields.iter() {
             code.push_str(&format!(
                 "{field_name}: buffer.decode::<{field_type_name}>(),",
-                field_name = f.name.as_str(),
+                field_name = f.name.as_raw_ident_str(),
                 field_type_name = Self::generate_type(engines, &f.type_argument)?,
             ));
         }
@@ -121,10 +121,10 @@ where
         engines: &Engines,
         decl: &TyEnumDecl,
     ) -> Option<String> {
-        let enum_name = decl.call_path.suffix.as_str();
+        let enum_name = decl.call_path.suffix.as_raw_ident_str();
         let arms = decl.variants.iter()
             .map(|x| {
-                let name = x.name.as_str();
+                let name = x.name.as_raw_ident_str();
                 Some(match &*engines.te().get(x.type_argument.type_id()) {
                     // unit
                     TypeInfo::Tuple(fields) if fields.is_empty() => {
@@ -156,12 +156,12 @@ where
             return "".into();
         }
 
-        let enum_name = decl.call_path.suffix.as_str();
+        let enum_name = decl.call_path.suffix.as_raw_ident_str();
         let arms = decl
             .variants
             .iter()
             .map(|x| {
-                let name = x.name.as_str();
+                let name = x.name.as_raw_ident_str();
                 if engines.te().get(x.type_argument.type_id()).is_unit() {
                     format!(
                         "{enum_name}::{variant_name} => {{
@@ -320,6 +320,9 @@ where
         for r in contract_fns {
             let decl = engines.de().get(r);
 
+            // For contract methods, even if their names are raw identifiers,
+            // we use just the name, because the generated methods will be prefixed
+            // with `__contract_entry_`.
             let name = decl.name.as_str();
             if !contract_methods.contains_key(name) {
                 contract_methods.insert(name.to_string(), vec![]);
@@ -424,7 +427,7 @@ where
                 });
                 return Err(err);
             };
-            let method_name = fallback_fn.name.as_str();
+            let method_name = fallback_fn.name.as_raw_ident_str();
             match fallback_fn.purity {
                 Purity::Pure => {}
                 Purity::Reads => reads = true,
