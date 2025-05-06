@@ -316,7 +316,7 @@ pub struct Command {
     pub external_contracts: Option<Vec<ContractId>>,
 
     /// Output format for the call result
-    #[clap(long, default_value = "default", help_heading = "OUTPUT")]
+    #[clap(long, short = 'o', default_value = "default", help_heading = "OUTPUT")]
     pub output: OutputFormat,
 
     /// Set verbosity levels; currently only supports max 2 levels
