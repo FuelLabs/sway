@@ -7,8 +7,9 @@ use std::{env, io};
 use tracing::{Level, Metadata};
 pub use tracing_subscriber::{
     self,
-    filter::{EnvFilter, LevelFilter},
+    filter::{filter_fn, EnvFilter, LevelFilter},
     fmt::{format::FmtSpan, MakeWriter},
+    layer::SubscriberExt,
 };
 
 const ACTION_COLUMN_WIDTH: usize = 12;
@@ -357,5 +358,30 @@ mod tests {
 
         let expected_action = "\x1b[1;31mRemoving\x1b[0m";
         assert!(logs_contain(&format!("     {} {}", expected_action, txt)));
+    }
+
+    #[traced_test]
+    #[test]
+    fn test_json_mode_println_functions() {
+        JSON_MODE_ACTIVE.store(true, Ordering::SeqCst);
+
+        // Call various print functions and capture the output
+        println_label_green("Label", "Value");
+        assert!(logs_contain("Label: Value"));
+
+        println_action_green("Action", "Target");
+        assert!(logs_contain("Action Target"));
+
+        println_green("Green text");
+        assert!(logs_contain("Green text"));
+
+        println_warning("This is a warning");
+        assert!(logs_contain("This is a warning"));
+
+        println_error("This is an error");
+        assert!(logs_contain("This is an error"));
+
+        // Reset JSON mode for other tests
+        JSON_MODE_ACTIVE.store(false, Ordering::SeqCst);
     }
 }
