@@ -56,6 +56,10 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
         std::env::current_dir()?
     };
 
+    let content = std::fs::read_to_string(&cwd)?;
+    let mut toml_doc = content.parse::<DocumentMut>()?;
+    let backup_doc = toml_doc.clone();
+
     let manifest_file = ManifestFile::from_dir(&cwd)?;
     let root_dir = manifest_file.root_dir();
     let mut member_manifests = manifest_file.member_manifests()?;
@@ -97,12 +101,17 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
                 section.insert_dep(dep_name, dependency_data, opts.salt.clone());
             }
 
-            section.add_deps_manifest_table(package_spec_dir, &mut package_spec.manifest)?;
+            section.add_deps_manifest_table(
+                &mut toml_doc,
+                package_spec_dir,
+                &mut package_spec.manifest,
+            )?;
         }
         Action::Remove => {
             let dep_refs: Vec<&str> = opts.dependencies.iter().map(String::as_str).collect();
 
             section.remove_deps_manifest_table(
+                &mut toml_doc,
                 package_spec_dir,
                 &mut package_spec.manifest,
                 &dep_refs,
@@ -110,15 +119,33 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
         }
     }
 
-    update_lock_file(
-        &mut member_manifests,
-        &package_spec,
-        opts.ipfs_node,
-        dry_run,
-        old_lock,
-        lock_path,
+    member_manifests.insert(
+        package_spec.project_name().to_string(),
+        package_spec.clone(),
+    );
+
+    let new_plan = pkg::BuildPlan::from_lock_and_manifests(
+        &lock_path,
+        &member_manifests,
+        false,
         opts.offline,
+        &opts.ipfs_node.clone().unwrap_or_default(),
     )?;
+
+    let new_lock = Lock::from_graph(new_plan.graph());
+    let diff = new_lock.diff(&old_lock);
+    let member_names = member_manifests
+        .values()
+        .map(|m| m.project.name.clone())
+        .collect();
+
+    lock::print_diff(&member_names, &diff);
+
+    if dry_run {
+        info!("Dry run enabled. toml file not modified.");
+        std::fs::write(cwd, backup_doc.to_string())?;
+        return Ok(());
+    }
 
     Ok(())
 }
@@ -206,46 +233,6 @@ fn resolve_dependency<P: AsRef<Path>>(
 
     Ok((dep_name, dependency_data))
 }
-
-fn update_lock_file(
-    member_manifests: &mut BTreeMap<String, PackageManifestFile>,
-    package_spec: &PackageManifestFile,
-    ipfs_node: Option<IPFSNode>,
-    dry_run: bool,
-    old_lock: Lock,
-    lock_path: PathBuf,
-    offline: bool,
-) -> Result<()> {
-    member_manifests.insert(
-        package_spec.project_name().to_string(),
-        package_spec.clone(),
-    );
-
-    if dry_run {
-        info!("Dry run enabled. Lock file not modified.");
-        return Ok(());
-    }
-
-    let new_plan = pkg::BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        member_manifests,
-        false,
-        offline,
-        &ipfs_node.clone().unwrap_or_default(),
-    )?;
-
-    let new_lock = Lock::from_graph(new_plan.graph());
-    let diff = new_lock.diff(&old_lock);
-    let member_names = member_manifests
-        .values()
-        .map(|m| m.project.name.clone())
-        .collect();
-
-    lock::print_diff(&member_names, &diff);
-
-    Ok(())
-}
-
 /// Reference to a package to be added as a dependency.
 ///
 /// See `forc add` help for more info.
@@ -325,6 +312,7 @@ impl DepSection<'_> {
 
     pub fn remove_deps_manifest_table<P: AsRef<Path>>(
         &mut self,
+        doc: &mut DocumentMut,
         manifest_path: P,
         manifest: &mut PackageManifest,
         deps: &[&str],
@@ -335,14 +323,14 @@ impl DepSection<'_> {
                     map.remove(*dep);
                 }
                 manifest.dependencies = Some(map.clone());
-                remove_deps_from_table(manifest_path, "dependencies", deps)?;
+                remove_deps_from_table(doc, manifest_path, "dependencies", deps)?;
             }
             DepSection::Contract(ref mut map, _) => {
                 for dep in deps {
                     map.remove(*dep);
                 }
                 manifest.contract_dependencies = Some(map.clone());
-                remove_deps_from_table(manifest_path, "contract-dependencies", deps)?;
+                remove_deps_from_table(doc, manifest_path, "contract-dependencies", deps)?;
             }
         };
         Ok(())
@@ -350,18 +338,11 @@ impl DepSection<'_> {
 
     pub fn add_deps_manifest_table<P: AsRef<Path>>(
         self,
+        doc: &mut DocumentMut,
         manifest_path: P,
         manifest: &mut PackageManifest,
     ) -> Result<()> {
         let path = manifest_path.as_ref();
-
-        let content =
-            fs::read_to_string(path).map_err(|e| anyhow!("failed to read manifest: {e}"))?;
-
-        let mut doc = content
-            .parse::<DocumentMut>()
-            .map_err(|e| anyhow!("failed to parse TOML: {e}"))?;
-
         let (section_name, new_table): (&str, Table) = match self {
             DepSection::Regular(deps) => {
                 manifest.dependencies = Some(deps.clone());
@@ -434,13 +415,12 @@ fn generate_table(details: &DependencyDetails) -> InlineTable {
 }
 
 fn remove_deps_from_table<P: AsRef<Path>>(
+    doc: &mut DocumentMut,
     manifest_path: P,
     section: &str,
     deps: &[&str],
 ) -> Result<()> {
-    let content = std::fs::read_to_string(&manifest_path)?;
-    let mut doc = content.parse::<DocumentMut>()?;
-
+    let path = manifest_path.as_ref();
     let section_table = doc[section].as_table_mut().ok_or_else(|| {
         anyhow!(
             "section [{}] not found in manifest: {}",
@@ -453,7 +433,7 @@ fn remove_deps_from_table<P: AsRef<Path>>(
         section_table.remove(dep);
     }
 
-    std::fs::write(manifest_path, doc.to_string())?;
+    std::fs::write(path, doc.to_string())?;
     Ok(())
 }
 

@@ -11,7 +11,7 @@ pub fn remove(cmd: RemoveCommand) -> Result<()> {
 fn opts_from_cmd(cmd: RemoveCommand) -> pkg::manifest::manager::ModifyOpts {
     pkg::manifest::manager::ModifyOpts {
         // === Action ====
-        action: pkg::manifest::manager::Action::Add,
+        action: pkg::manifest::manager::Action::Remove,
         // === Manifest Options ===
         manifest_path: cmd.manifest.manisfest_path,
 
