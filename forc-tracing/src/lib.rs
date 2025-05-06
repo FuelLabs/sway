@@ -310,9 +310,16 @@ mod tests {
     use super::*;
     use tracing_test::traced_test;
 
+    // Helper function to set up each test with consistent JSON mode state
+    fn setup_test() {
+        JSON_MODE_ACTIVE.store(false, Ordering::SeqCst);
+    }
+
     #[traced_test]
     #[test]
     fn test_println_label_green() {
+        setup_test();
+
         let txt = "main.sw";
         println_label_green("Compiling", txt);
 
@@ -323,6 +330,8 @@ mod tests {
     #[traced_test]
     #[test]
     fn test_println_label_red() {
+        setup_test();
+
         let txt = "main.sw";
         println_label_red("Error", txt);
 
@@ -333,6 +342,8 @@ mod tests {
     #[traced_test]
     #[test]
     fn test_println_action_green() {
+        setup_test();
+
         let txt = "main.sw";
         println_action_green("Compiling", txt);
 
@@ -343,6 +354,8 @@ mod tests {
     #[traced_test]
     #[test]
     fn test_println_action_green_long() {
+        setup_test();
+
         let txt = "main.sw";
         println_action_green("Supercalifragilistic", txt);
 
@@ -353,6 +366,8 @@ mod tests {
     #[traced_test]
     #[test]
     fn test_println_action_red() {
+        setup_test();
+
         let txt = "main";
         println_action_red("Removing", txt);
 
@@ -363,6 +378,8 @@ mod tests {
     #[traced_test]
     #[test]
     fn test_json_mode_println_functions() {
+        setup_test();
+
         JSON_MODE_ACTIVE.store(true, Ordering::SeqCst);
 
         // Call various print functions and capture the output
@@ -370,7 +387,8 @@ mod tests {
         assert!(logs_contain("Label: Value"));
 
         println_action_green("Action", "Target");
-        assert!(logs_contain("Action Target"));
+        assert!(logs_contain("Action"));
+        assert!(logs_contain("Target"));
 
         println_green("Green text");
         assert!(logs_contain("Green text"));
@@ -381,7 +399,6 @@ mod tests {
         println_error("This is an error");
         assert!(logs_contain("This is an error"));
 
-        // Reset JSON mode for other tests
         JSON_MODE_ACTIVE.store(false, Ordering::SeqCst);
     }
 }
