@@ -1,8 +1,5 @@
 use crate::{
-    cmd::{
-        self,
-        call::{FuncType, Verbosity},
-    },
+    cmd::{self, call::FuncType},
     op::call::{
         missing_contracts::determine_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
@@ -51,10 +48,8 @@ pub async fn call_function(
         gas,
         output,
         external_contracts,
-        verbosity,
         ..
     } = cmd;
-    let verbosity: Verbosity = verbosity.into();
 
     // Load ABI (already provided in the operation)
     let abi_str = super::load_abi(&abi).await?;
@@ -178,13 +173,16 @@ pub async fn call_function(
     };
 
     // Display the script JSON when verbosity level is 2 or higher (vv)
-    if verbosity.v2() {
-        let script_json = serde_json::json!({ "Script": script });
+    let script = if cmd.verbosity >= 2 {
+        let script_json = serde_json::to_value(&script).unwrap();
         forc_tracing::println_label_green(
             "transaction script:\n",
             &serde_json::to_string_pretty(&script_json).unwrap(),
         );
-    }
+        Some(script_json)
+    } else {
+        None
+    };
 
     // Process transaction results
     let receipts = tx_status
@@ -194,7 +192,7 @@ pub async fn call_function(
     // Parse the result based on output format
     let mut receipt_parser = ReceiptParser::new(&receipts, DecoderConfig::default());
     let result = match output {
-        cmd::call::OutputFormat::Default => {
+        cmd::call::OutputFormat::Default | cmd::call::OutputFormat::Json => {
             let data = receipt_parser
                 .extract_contract_call_data(contract_id)
                 .ok_or(anyhow!("Failed to extract contract call data"))?;
@@ -213,15 +211,20 @@ pub async fn call_function(
 
     // Process and return the final output
     let program_abi = sway_core::asm_generation::ProgramABI::Fuel(parsed_abi);
-    super::process_transaction_output(
+    let mut call_response = super::process_transaction_output(
         &receipts,
         &tx_hash.to_string(),
         &program_abi,
         Some(result),
         &mode,
         &node,
-        &verbosity,
-    )
+        cmd.verbosity,
+    )?;
+    if cmd.verbosity >= 2 {
+        call_response.script = script;
+    }
+
+    Ok(call_response)
 }
 
 fn prepare_contract_call_data(
