@@ -57,23 +57,9 @@ pub enum OutputFormat {
     Default,
     /// Raw unformatted output
     Raw,
+    /// JSON output with full tracing information (logs, errors, and result)
+    Json,
 }
-
-/// Verbosity level for log output
-#[derive(Debug, Clone, PartialEq, Default)]
-#[repr(transparent)]
-pub struct Verbosity(pub u8);
-
-impl Verbosity {
-    /// Verbose mode (-v)
-    pub(crate) fn v1(&self) -> bool {
-        self.0 >= 1
-    }
-
-    /// Very Verbose mode (-vv)
-    pub(crate) fn v2(&self) -> bool {
-        self.0 >= 2
-    }
 }
 
 impl From<u8> for Verbosity {
