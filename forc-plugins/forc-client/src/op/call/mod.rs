@@ -42,7 +42,8 @@ pub struct CallResponse {
 
 /// A command for calling a contract function.
 pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Result<CallResponse> {
-    match operation {
+    let is_json_mode = matches!(cmd.output, cmd::call::OutputFormat::Json);
+    let response = match operation {
         cmd::call::Operation::ListFunctions { contract_id, abi } => {
             if let cmd::call::OutputFormat::Json = cmd.output {
                 return Err(anyhow!("JSON output is not supported for list functions"));
@@ -59,7 +60,7 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
                 &mut std::io::stdout(),
             )?;
 
-            Ok(CallResponse::default())
+            CallResponse::default()
         }
         cmd::call::Operation::DirectTransfer {
             recipient,
@@ -71,26 +72,26 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
                 caller,
                 gas,
                 verbosity,
+                mut output,
                 ..
             } = cmd;
-            let verbosity: cmd::call::Verbosity = verbosity.into();
 
             // Already validated that mode is ExecutionMode::Live
             let (wallet, tx_policies, base_asset_id) =
                 setup_connection(&node, caller, &gas).await?;
             let asset_id = asset_id.unwrap_or(base_asset_id);
 
-            let response = transfer(
+            transfer(
                 &wallet,
                 recipient,
                 amount,
                 asset_id,
                 tx_policies,
                 &node,
-                &verbosity,
+                verbosity,
+                &mut output,
             )
-            .await?;
-            Ok(response)
+            .await?
         }
         cmd::call::Operation::CallFunction {
             contract_id,
@@ -99,10 +100,16 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
             function_args,
         } => {
             // Call the function with required parameters
-            let result = call_function(contract_id, abi, function, function_args, cmd).await?;
-            Ok(result)
+            call_function(contract_id, abi, function, function_args, cmd).await?
         }
+    };
+
+    // If using JSON output mode, explicitly print the response for potential parsing/piping
+    if is_json_mode {
+        println!("{}", serde_json::to_string_pretty(&response).unwrap());
     }
+
+    Ok(response)
 }
 
 /// Sets up the connection to the node and initializes common parameters
