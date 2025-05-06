@@ -198,10 +198,10 @@ pub(crate) fn process_transaction_output(
     result: Option<String>,
     mode: &cmd::call::ExecutionMode,
     node: &crate::NodeTarget,
-    verbosity: &cmd::call::Verbosity,
+    verbosity: u8,
 ) -> Result<CallResponse> {
     // print receipts
-    if verbosity.v2() {
+    if verbosity >= 2 {
         let formatted_receipts = forc_util::tx_utils::format_log_receipts(receipts, true)?;
         forc_tracing::println_label_green("receipts:", &formatted_receipts);
     }
@@ -221,7 +221,7 @@ pub(crate) fn process_transaction_output(
         .collect::<Vec<_>>();
 
     // display logs if verbosity is set
-    if verbosity.v1() && !logs.is_empty() {
+    if verbosity >= 1 && !logs.is_empty() {
         forc_tracing::println_green_bold("logs:");
         for log in logs.iter() {
             println!("  {:#}", log);
@@ -246,7 +246,13 @@ pub(crate) fn process_transaction_output(
 
     Ok(CallResponse {
         tx_hash: tx_hash.to_string(),
-        result: result.unwrap_or_default(),
+        result,
+        receipts: if verbosity >= 2 {
+            Some(receipts.to_vec())
+        } else {
+            None
+        },
+        script: None,
         logs,
     })
 }
