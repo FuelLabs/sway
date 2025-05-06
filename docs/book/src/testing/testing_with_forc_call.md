@@ -68,7 +68,39 @@ forc call \
 
 ## Usage
 
-The basic syntax for `forc call` is:
+Forc call has **3** usage modes:
+
+### List functions
+
+Syntax for `forc call` for listing supported functions from the ABI - with example command to perform call operation:
+
+```bash
+forc call --abi <ABI-PATH/URL> <CONTRACT_ID> --list-functions
+```
+
+Where the following arguments are required:
+
+- `ABI-PATH/URL` is the path or URL to the contract's JSON ABI file
+- `CONTRACT_ID` is the ID of the deployed contract you want to interact with 
+
+### Transfer assets
+
+Syntax for `forc call` for transferring assets:
+
+```bash
+forc call <RECEIVER_ADDRESS> --amount <AMOUNT> --mode=live
+```
+
+Where the following arguments are required:
+
+- `RECEIVER_ADDRESS` is address of the receiver (identity or contract).
+- `AMOUNT` is the amount of assets to transfer.
+
+Note: only live mode `--mode=live` is supported; transfers cannot be simulated.
+
+### Call contracts
+
+Syntax for `forc call` for contract calls:
 
 ```bash
 forc call [OPTIONS] --abi <ABI-PATH/URL> <CONTRACT_ID> <SELECTOR> [ARGS]...
