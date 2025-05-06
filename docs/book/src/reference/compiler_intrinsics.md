@@ -15,8 +15,8 @@ fn reset_contract_storage() -> bool {
     __state_clear()
 }
 
-```sway
-fn __state_clear() -> bool
+```
+
 The Sway compiler supports a list of intrinsics that perform various low level operations that are useful for building libraries. Compiler intrinsics should rarely be used but are preferred over `asm` blocks because they are type-checked and are safer overall. Below is a list of all available compiler intrinsics:
 
 ---
