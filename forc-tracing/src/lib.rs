@@ -2,6 +2,7 @@
 
 use ansiterm::Colour;
 use std::str;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{env, io};
 use tracing::{Level, Metadata};
 pub use tracing_subscriber::{
@@ -11,6 +12,14 @@ pub use tracing_subscriber::{
 };
 
 const ACTION_COLUMN_WIDTH: usize = 12;
+
+// Global flag to track if JSON output mode is active
+static JSON_MODE_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+/// Check if JSON mode is currently active
+fn is_json_mode_active() -> bool {
+    JSON_MODE_ACTIVE.load(Ordering::SeqCst)
+}
 
 /// Returns the indentation for the action prefix relative to [ACTION_COLUMN_WIDTH].
 fn get_action_indentation(action: &str) -> String {
@@ -230,22 +239,30 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
         Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
         None => EnvFilter::new("info"),
     };
+
     let level_filter = options
         .log_level
         .or_else(|| {
-            options.verbosity.and_then(|verbosity| {
-                match verbosity {
-                    1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
-                    2 => Some(LevelFilter::TRACE), // matches -vv
-                    _ => None,
-                }
+            options.verbosity.and_then(|verbosity| match verbosity {
+                1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
+                2 => Some(LevelFilter::TRACE), // matches -vv
+                _ => None,
             })
         })
         .or_else(|| {
             options
                 .silent
-                .and_then(|silent| if silent { Some(LevelFilter::OFF) } else { None })
+                .and_then(|silent| silent.then_some(LevelFilter::OFF))
         });
+
+    let writer_mode = match options.writer_mode {
+        Some(TracingWriter::Json) => {
+            JSON_MODE_ACTIVE.store(true, Ordering::SeqCst);
+            TracingWriter::Json
+        }
+        Some(TracingWriter::Stderr) => TracingWriter::Stderr,
+        _ => TracingWriter::Stdio,
+    };
 
     let builder = tracing_subscriber::fmt::Subscriber::builder()
         .with_env_filter(env_filter)
@@ -255,15 +272,35 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
         .with_line_number(false)
         .without_time()
         .with_target(false)
-        .with_writer(StdioTracingWriter {
-            writer_mode: options.writer_mode.unwrap_or(TracingWriterMode::Stdio),
-        });
+        .with_writer(writer_mode);
 
-    // If log level, verbosity, or silent mode is set, it overrides the RUST_LOG setting
-    if let Some(level_filter) = level_filter {
-        builder.with_max_level(level_filter).init();
-    } else {
-        builder.init();
+    // Use regex to filter logs - if provided; otherwise allow all logs
+    let filter = filter_fn(move |metadata| {
+        if let Some(ref regex_filter) = options.regex_filter {
+            let regex = regex::Regex::new(regex_filter).unwrap();
+            regex.is_match(metadata.target())
+        } else {
+            true
+        }
+    });
+
+    match (is_json_mode_active(), level_filter) {
+        (true, Some(level)) => {
+            let subscriber = builder.json().with_max_level(level).finish().with(filter);
+            tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+        }
+        (true, None) => {
+            let subscriber = builder.json().finish().with(filter);
+            tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+        }
+        (false, Some(level)) => {
+            let subscriber = builder.with_max_level(level).finish().with(filter);
+            tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+        }
+        (false, None) => {
+            let subscriber = builder.finish().with(filter);
+            tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+        }
     }
 }
 
