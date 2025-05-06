@@ -17,13 +17,64 @@ fn get_action_indentation(action: &str) -> String {
     if action.len() < ACTION_COLUMN_WIDTH {
         " ".repeat(ACTION_COLUMN_WIDTH - action.len())
     } else {
-        "".to_string()
+        String::new()
+    }
+}
+
+enum TextStyle {
+    Plain,
+    Bold,
+    Label(String),
+    Action(String),
+}
+
+enum LogLevel {
+    #[allow(dead_code)]
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error,
+}
+
+/// Common function to handle all kinds of output with color and styling
+fn print_message(text: &str, color: Colour, style: TextStyle, level: LogLevel) {
+    let log_msg = match (is_json_mode_active(), style) {
+        // JSON mode formatting (no colors)
+        (true, TextStyle::Plain | TextStyle::Bold) => text.to_string(),
+        (true, TextStyle::Label(label)) => format!("{}: {}", label, text),
+        (true, TextStyle::Action(action)) => {
+            let indent = get_action_indentation(&action);
+            format!("{}{} {}", indent, action, text)
+        }
+
+        // Normal mode formatting (with colors)
+        (false, TextStyle::Plain) => format!("{}", color.paint(text)),
+        (false, TextStyle::Bold) => format!("{}", color.bold().paint(text)),
+        (false, TextStyle::Label(label)) => format!("{} {}", color.bold().paint(label), text),
+        (false, TextStyle::Action(action)) => {
+            let indent = get_action_indentation(&action);
+            format!("{}{} {}", indent, color.bold().paint(action), text)
+        }
+    };
+
+    match level {
+        LogLevel::Trace => tracing::trace!("{}", log_msg),
+        LogLevel::Debug => tracing::debug!("{}", log_msg),
+        LogLevel::Info => tracing::info!("{}", log_msg),
+        LogLevel::Warn => tracing::warn!("{}", log_msg),
+        LogLevel::Error => tracing::error!("{}", log_msg),
     }
 }
 
 /// Prints a label with a green-bold label prefix like "Compiling ".
 pub fn println_label_green(label: &str, txt: &str) {
-    println_label(label, txt, Colour::Green);
+    print_message(
+        txt,
+        Colour::Green,
+        TextStyle::Label(label.to_string()),
+        LogLevel::Info,
+    );
 }
 
 /// Prints an action message with a green-bold prefix like "   Compiling ".
@@ -33,11 +84,12 @@ pub fn println_action_green(action: &str, txt: &str) {
 
 /// Prints a label with a red-bold label prefix like "error: ".
 pub fn println_label_red(label: &str, txt: &str) {
-    println_action(label, txt, Colour::Red);
-}
-
-fn println_label(label: &str, txt: &str, color: Colour) {
-    tracing::info!("{} {}", color.bold().paint(label), txt);
+    print_message(
+        txt,
+        Colour::Red,
+        TextStyle::Label(label.to_string()),
+        LogLevel::Info,
+    );
 }
 
 /// Prints an action message with a red-bold prefix like "   Removing ".
@@ -51,63 +103,70 @@ pub fn println_action_yellow(action: &str, txt: &str) {
 }
 
 fn println_action(action: &str, txt: &str, color: Colour) {
-    tracing::info!(
-        "{}{} {}",
-        get_action_indentation(action),
-        color.bold().paint(action),
-        txt
+    print_message(
+        txt,
+        color,
+        TextStyle::Action(action.to_string()),
+        LogLevel::Info,
     );
 }
 
 /// Prints a warning message to stdout with the yellow prefix "warning: ".
 pub fn println_warning(txt: &str) {
-    tracing::warn!("{}: {}", Colour::Yellow.paint("warning"), txt);
+    print_message(
+        txt,
+        Colour::Yellow,
+        TextStyle::Label("warning:".to_string()),
+        LogLevel::Warn,
+    );
 }
 
 /// Prints a warning message to stdout with the yellow prefix "warning: " only in verbose mode.
 pub fn println_warning_verbose(txt: &str) {
-    tracing::debug!("{}: {}", Colour::Yellow.paint("warning"), txt);
+    print_message(
+        txt,
+        Colour::Yellow,
+        TextStyle::Label("warning:".to_string()),
+        LogLevel::Debug,
+    );
 }
 
 /// Prints a warning message to stderr with the red prefix "error: ".
 pub fn println_error(txt: &str) {
-    tracing::warn!("{}: {}", Colour::Red.paint("error"), txt);
+    print_message(
+        txt,
+        Colour::Red,
+        TextStyle::Label("error:".to_string()),
+        LogLevel::Error,
+    );
 }
 
 pub fn println_red(txt: &str) {
-    println_std_out(txt, Colour::Red);
+    print_message(txt, Colour::Red, TextStyle::Plain, LogLevel::Info);
 }
 
 pub fn println_green(txt: &str) {
-    println_std_out(txt, Colour::Green);
+    print_message(txt, Colour::Green, TextStyle::Plain, LogLevel::Info);
 }
 
 pub fn println_yellow(txt: &str) {
-    println_std_out(txt, Colour::Yellow);
+    print_message(txt, Colour::Yellow, TextStyle::Plain, LogLevel::Info);
 }
 
 pub fn println_green_bold(txt: &str) {
-    tracing::info!("{}", Colour::Green.bold().paint(txt));
+    print_message(txt, Colour::Green, TextStyle::Bold, LogLevel::Info);
 }
 
 pub fn println_yellow_bold(txt: &str) {
-    tracing::info!("{}", Colour::Yellow.bold().paint(txt));
+    print_message(txt, Colour::Yellow, TextStyle::Bold, LogLevel::Info);
 }
 
 pub fn println_yellow_err(txt: &str) {
-    println_std_err(txt, Colour::Yellow);
+    print_message(txt, Colour::Yellow, TextStyle::Plain, LogLevel::Error);
 }
 
 pub fn println_red_err(txt: &str) {
-    println_std_err(txt, Colour::Red);
-}
-
-fn println_std_out(txt: &str, color: Colour) {
-    tracing::info!("{}", color.paint(txt));
-}
-
-fn println_std_err(txt: &str, color: Colour) {
-    tracing::error!("{}", color.paint(txt));
+    print_message(txt, Colour::Red, TextStyle::Plain, LogLevel::Error);
 }
 
 const LOG_FILTER: &str = "RUST_LOG";
