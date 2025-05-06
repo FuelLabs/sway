@@ -7,6 +7,7 @@ use fuels::{
 use fuels_core::types::{transaction::TxPolicies, Address, AssetId};
 use sway_core;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn transfer(
     wallet: &Wallet,
     recipient: Address,
@@ -14,25 +15,28 @@ pub async fn transfer(
     asset_id: AssetId,
     tx_policies: TxPolicies,
     node: &crate::NodeTarget,
-    verbosity: &crate::cmd::call::Verbosity,
+    verbosity: u8,
+    writer: &mut impl std::io::Write,
 ) -> anyhow::Result<super::CallResponse> {
     let provider = wallet.provider();
 
     // check is recipient is a user
     let tx_response = if provider.is_user_account(*recipient).await? {
-        println!(
+        writeln!(
+            writer,
             "\nTransferring {} 0x{} to recipient address 0x{}...\n",
             amount, asset_id, recipient
-        );
+        )?;
         wallet
             .transfer(&recipient.into(), amount, asset_id, tx_policies)
             .await
             .map_err(|e| anyhow!("Failed to transfer funds to recipient: {}", e))?
     } else {
-        println!(
+        writeln!(
+            writer,
             "\nTransferring {} 0x{} to contract address 0x{}...\n",
             amount, asset_id, recipient
-        );
+        )?;
         let address: Bech32Address = recipient.into();
         let contract_id = Bech32ContractId {
             hrp: address.hrp,
