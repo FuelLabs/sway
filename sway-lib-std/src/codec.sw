@@ -222,17 +222,6 @@ impl AbiEncode for u8 {
     }
 }
 
-// Encode str slice for raw ptr
-
-impl AbiEncode for raw_ptr {
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let v = asm(p: self) {
-            p: u64
-        };
-        v.abi_encode(buffer)
-    }
-}
-
 // Encode str slice and str arrays
 
 impl AbiEncode for str {
