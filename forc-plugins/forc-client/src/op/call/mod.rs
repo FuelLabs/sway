@@ -44,6 +44,10 @@ pub struct CallResponse {
 pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Result<CallResponse> {
     match operation {
         cmd::call::Operation::ListFunctions { contract_id, abi } => {
+            if let cmd::call::OutputFormat::Json = cmd.output {
+                return Err(anyhow!("JSON output is not supported for list functions"));
+            }
+
             let abi_str = load_abi(&abi).await?;
             let parsed_abi: ProgramABI = serde_json::from_str(&abi_str)?;
             let unified_program_abi = UnifiedProgramABI::from_counterpart(&parsed_abi)?;
