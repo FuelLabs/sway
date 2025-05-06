@@ -23,14 +23,21 @@ use fuels::{
     crypto::SecretKey,
 };
 use fuels_core::types::{transaction::TxPolicies, AssetId};
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use sway_core;
 
-#[derive(Debug, Default)]
+/// Response returned from a contract call operation
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct CallResponse {
     pub tx_hash: String,
-    pub result: String,
+    pub result: Option<String>,
     pub logs: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receipts: Option<Vec<Receipt>>,
+    #[serde(rename = "Script", skip_serializing_if = "Option::is_none")]
+    pub script: Option<serde_json::Value>,
 }
 
 /// A command for calling a contract function.
