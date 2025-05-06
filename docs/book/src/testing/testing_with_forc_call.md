@@ -81,7 +81,7 @@ forc call --abi <ABI-PATH/URL> <CONTRACT_ID> --list-functions
 Where the following arguments are required:
 
 - `ABI-PATH/URL` is the path or URL to the contract's JSON ABI file
-- `CONTRACT_ID` is the ID of the deployed contract you want to interact with 
+- `CONTRACT_ID` is the ID of the deployed contract you want to interact with
 
 ### Transfer assets
 
