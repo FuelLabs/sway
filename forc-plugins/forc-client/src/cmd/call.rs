@@ -4,7 +4,7 @@ use either::Either;
 use fuel_crypto::SecretKey;
 use fuels::programs::calls::CallParameters;
 use fuels_core::types::{Address, AssetId, ContractId};
-use std::{path::PathBuf, str::FromStr};
+use std::{io::Write, path::PathBuf, str::FromStr};
 use url::Url;
 
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
@@ -60,17 +60,31 @@ pub enum OutputFormat {
     /// JSON output with full tracing information (logs, errors, and result)
     Json,
 }
-}
 
-impl From<u8> for Verbosity {
-    fn from(level: u8) -> Self {
-        Verbosity(level)
+impl Write for OutputFormat {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
+        match self {
+            OutputFormat::Default => std::io::stdout().write(buf),
+            OutputFormat::Raw => std::io::stdout().write(buf),
+            OutputFormat::Json => Ok(buf.len()), // no-op for json
+        }
+    }
+
+    fn flush(&mut self) -> Result<(), std::io::Error> {
+        match self {
+            OutputFormat::Default => std::io::stdout().flush(),
+            OutputFormat::Raw => std::io::stdout().flush(),
+            OutputFormat::Json => Ok(()),
+        }
     }
 }
 
-impl From<Verbosity> for u8 {
-    fn from(verbosity: Verbosity) -> Self {
-        verbosity.0
+impl From<OutputFormat> for forc_tracing::TracingWriter {
+    fn from(format: OutputFormat) -> Self {
+        match format {
+            OutputFormat::Json => forc_tracing::TracingWriter::Json,
+            _ => forc_tracing::TracingWriter::Stdio,
+        }
     }
 }
 
