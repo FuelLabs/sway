@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 125
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity
 exit status: 1
@@ -113,5 +112,37 @@ error: Attribute can be applied only once
    |
 ____
 
-  Aborting due to 8 errors.
+error: Attribute can be applied only once
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/abi_name_attr.sw:4:3
+  |
+...
+3 | #[abi_name]
+  |   -------- info: It is already applied here.
+4 | #[abi_name(name = "name")]
+  |   ^^^^^^^^ "abi_name" attribute can be applied only once, but is applied two times.
+  |
+____
+
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/abi_name_attr.sw:3:3
+  |
+...
+3 | #[abi_name]
+  |   ^^^^^^^^ "abi_name" attribute must have exactly one argument, but has none.
+  |
+____
+
+error: Attribute can be applied only once
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/event_indexed_attr.sw:4:10
+  |
+...
+3 | #[event]
+  |   ----- info: It is already applied here.
+4 | #[event, event]
+  |          ^^^^^ "event" attribute can be applied only once, but is applied three times.
+  |   ----- info: And here.
+  |
+____
+
+  Aborting due to 11 errors.
 error: Failed to compile attributes_invalid_multiplicity

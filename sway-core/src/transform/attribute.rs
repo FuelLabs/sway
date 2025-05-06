@@ -317,7 +317,7 @@ pub enum ArgsExpectValues {
     ///
     /// E.g.: `#[cfg(target = "fuel", experimental_new_encoding = false)]`.
     Yes,
-    /// None of the arguments can never have values specified, or the
+    /// None of the arguments can have values specified, or the
     /// [Attribute] does not expect any arguments.
     ///
     /// E.g.: `#[storage(read, write)]`, `#[fallback]`.
@@ -350,6 +350,9 @@ pub enum AttributeKind {
     Fallback,
     ErrorType,
     Error,
+    AbiName,
+    Event,
+    Indexed,
 }
 
 /// Denotes if an [ItemTraitItem] belongs to an ABI or to a trait.
@@ -380,6 +383,9 @@ impl AttributeKind {
             FALLBACK_ATTRIBUTE_NAME => AttributeKind::Fallback,
             ERROR_TYPE_ATTRIBUTE_NAME => AttributeKind::ErrorType,
             ERROR_ATTRIBUTE_NAME => AttributeKind::Error,
+            ABI_NAME_ATTRIBUTE_NAME => AttributeKind::AbiName,
+            EVENT_ATTRIBUTE_NAME => AttributeKind::Event,
+            INDEXED_ATTRIBUTE_NAME => AttributeKind::Indexed,
             _ => AttributeKind::Unknown,
         }
     }
@@ -408,6 +414,9 @@ impl AttributeKind {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 }
@@ -448,6 +457,9 @@ impl Attribute {
             Fallback => Multiplicity::zero(),
             ErrorType => Multiplicity::zero(),
             Error => Multiplicity::exactly(1),
+            AbiName => Multiplicity::exactly(1),
+            Event => Multiplicity::zero(),
+            Indexed => Multiplicity::zero(),
         }
     }
 
@@ -503,6 +515,9 @@ impl Attribute {
             Fallback => None,
             ErrorType => None,
             Error => MustBeIn(vec![ERROR_M_ARG_NAME]),
+            AbiName => MustBeIn(vec![ABI_NAME_NAME_ARG_NAME]),
+            Event => None,
+            Indexed => None,
         }
     }
 
@@ -526,6 +541,9 @@ impl Attribute {
             ErrorType => No,
             // `error(msg = "msg")`.
             Error => Yes,
+            AbiName => Yes,
+            Event => No,
+            Indexed => No,
         }
     }
 
@@ -546,6 +564,9 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -599,6 +620,9 @@ impl Attribute {
             Fallback => matches!(item_kind, ItemKind::Fn(_)),
             ErrorType => matches!(item_kind, ItemKind::Enum(_)),
             Error => false,
+            AbiName => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
+            Event => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
+            Indexed => false,
         }
     }
 
@@ -624,6 +648,9 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => struct_or_enum_field == StructOrEnumField::EnumField,
+            AbiName => false,
+            Event => false,
+            Indexed => matches!(struct_or_enum_field, StructOrEnumField::StructField),
         }
     }
 
@@ -649,6 +676,9 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -671,6 +701,9 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -692,6 +725,9 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -711,6 +747,9 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -729,6 +768,9 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -780,6 +822,15 @@ impl Attribute {
             Fallback => vec!["\"fallback\" attribute can only annotate module functions in a contract module."],
             ErrorType => vec!["\"error_type\" attribute can only annotate enums."],
             Error => vec!["\"error\" attribute can only annotate enum variants of enums annotated with the \"error_type\" attribute."],
+            AbiName => vec![
+                "\"abi_name\" attribute can only annotate structs and enums.",
+            ],
+            Event => vec![
+                "\"event\" attribute can only annotate structs or enums.",
+            ],
+            Indexed => vec![
+                "\"indexed\" attribute can only annotate struct fields.",
+            ],
         };
 
         if help.is_empty() && target_friendly_name.starts_with("module kind") {
@@ -988,6 +1039,12 @@ impl Attributes {
             .map(|index| &self.attributes[index])
     }
 
+    /// Returns the `#[abi_name]` [Attribute], or `None` if the
+    /// [Attributes] does not contain any `#[abi_name]` attributes.
+    pub fn abi_name(&self) -> Option<&Attribute> {
+        self.of_kind(AttributeKind::AbiName).last()
+    }
+
     /// Returns the `#[test]` [Attribute], or `None` if the
     /// [Attributes] does not contain any `#[test]` attributes.
     pub fn test(&self) -> Option<&Attribute> {
@@ -1000,6 +1057,18 @@ impl Attributes {
     pub fn error(&self) -> Option<&Attribute> {
         // Last-wins approach.
         self.of_kind(AttributeKind::Error).last()
+    }
+
+    /// Returns the `#[event]` [Attribute], or `None` if the
+    /// [Attributes] does not contain any `#[event]` attributes.
+    pub fn event(&self) -> Option<&Attribute> {
+        self.of_kind(AttributeKind::Event).last()
+    }
+
+    /// Returns the `#[indexed]` [Attribute], or `None` if the
+    /// [Attributes] does not contain any `#[indexed]` attributes.
+    pub fn indexed(&self) -> Option<&Attribute> {
+        self.of_kind(AttributeKind::Indexed).last()
     }
 }
 

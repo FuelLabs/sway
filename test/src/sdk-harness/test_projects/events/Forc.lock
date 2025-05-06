@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-B183794502AF314F'
+
+[[package]]
+name = 'logging'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-B183794502AF314F'
+dependencies = ['core']

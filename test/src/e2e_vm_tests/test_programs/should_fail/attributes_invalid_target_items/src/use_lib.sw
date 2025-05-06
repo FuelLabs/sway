@@ -10,4 +10,6 @@ library;
 #[fallback(invalid)]
 #[error_type(invalid)]
 #[error(invalid)]
+#[event]
+#[indexed]
 use ::ok_lib::*;

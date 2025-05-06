@@ -10,6 +10,8 @@
 #[error_type(invalid)]
 #[error(invalid)]
 #[unknown(invalid)]
+#[event]
+#[indexed]
 library;
 
 // TODO: Extend with testing nested items once https://github.com/FuelLabs/sway/issues/6932 is implemented.
@@ -37,6 +39,8 @@ library;
 #[fallback(invalid)]
 #[error_type(invalid)]
 #[error(invalid)]
+#[event]
+#[indexed]
 //! Invalid inner comment.
 /// Invalid outer comment.
 mod module_kind;

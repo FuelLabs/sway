@@ -1044,6 +1044,10 @@ pub enum CompileError {
     EncodingUnsupportedType { span: Span },
     #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
     ConfigurableMissingAbiDecodeInPlace { span: Span },
+    #[error("Invalid name found for renamed ABI type.\n")]
+    ABIInvalidName { span: Span },
+    #[error("Duplicated name found for renamed ABI type.\n")]
+    ABIDuplicateName { span: Span },
     #[error("Collision detected between two different types.\n  Shared hash:{hash}\n  First type:{first_type}\n  Second type:{second_type}")]
     ABIHashCollision {
         span: Span,
@@ -1077,6 +1081,13 @@ pub enum CompileError {
     },
     #[error("This expression has type \"{argument_type}\", which does not implement \"std::marker::Error\". Panic expression arguments must implement \"Error\".")]
     PanicExpressionArgumentIsNotError { argument_type: String, span: Span },
+    #[error("Field \"{field_name}\" is marked as `#[indexed]`, but \"{struct_name}\" is not an `#[event]` struct.")]
+    IndexedFieldInNonEventStruct {
+        field_name: IdentUnique,
+        struct_name: IdentUnique,
+    },
+    #[error("Field \"{field_name}\" is marked as `#[indexed]`, but not a fized size type.")]
+    IndexedFieldIsNotFixedSizeABIType { field_name: IdentUnique },
     #[error("Incoherent impl was found due to breaking orphan rule check.")]
     IncoherentImplDueToOrphanRule { span: Span },
 }
@@ -1300,6 +1311,8 @@ impl Spanned for CompileError {
             CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
             EncodingUnsupportedType { span } => span.clone(),
             ConfigurableMissingAbiDecodeInPlace { span } => span.clone(),
+            ABIInvalidName { span, .. } => span.clone(),
+            ABIDuplicateName { span, .. } => span.clone(),
             ABIHashCollision { span, .. } => span.clone(),
             InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
@@ -1310,6 +1323,8 @@ impl Spanned for CompileError {
                 enum_variant_name, ..
             } => enum_variant_name.span(),
             PanicExpressionArgumentIsNotError { span, .. } => span.clone(),
+            IndexedFieldInNonEventStruct { field_name, .. } => field_name.span(),
+            IndexedFieldIsNotFixedSizeABIType { field_name } => field_name.span(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
         }
     }
@@ -3080,6 +3095,24 @@ impl ToDiagnostic for CompileError {
                     help.append(&mut error_marker_trait_help_msg());
                     help
                 },
+            },
+            IndexedFieldInNonEventStruct { field_name, struct_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Indexed fields must be in event structs".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Field \"{field_name}\" is marked as `#[indexed]`, but its struct is not an event.")
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        struct_name.span(),
+                        format!("Consider annotating \"{struct_name}\" struct with the `#[event]` attribute."),
+                    )
+                ],
+                help: vec![
+                    "Fields can be marked as `#[indexed]` only if their parent struct is annotated with the `#[event]` attribute.".to_string(),
+                ]
             },
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
