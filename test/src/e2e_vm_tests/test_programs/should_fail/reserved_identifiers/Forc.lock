@@ -1,3 +1,8 @@
 [[package]]
-name = 'reserved_identifiers'
-source = 'member'
+name = "reserved_identifiers"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-E00F3FB2E032AF39"

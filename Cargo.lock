@@ -2765,7 +2765,7 @@ checksum = "a0d2fde1f7b3d48b8395d5f2de76c18a528bd6a9cdde438df747bfcba3e05d6f"
 
 [[package]]
 name = "forc"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "annotate-snippets",
  "ansiterm",
@@ -2776,7 +2776,7 @@ dependencies = [
  "completest-pty",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-util",
  "fs_extra",
  "fuel-asm",
@@ -2802,7 +2802,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2815,7 +2815,7 @@ dependencies = [
  "either",
  "forc",
  "forc-pkg",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-tx",
  "forc-util",
  "forc-wallet",
@@ -2855,13 +2855,13 @@ dependencies = [
 
 [[package]]
 name = "forc-crypto"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "async-trait",
  "clap",
  "criterion",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-util",
  "fuel-core-types",
  "fuel-crypto",
@@ -2885,7 +2885,7 @@ dependencies = [
 
 [[package]]
 name = "forc-debug"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2894,7 +2894,7 @@ dependencies = [
  "escargot",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-util",
  "fuel-abi-types",
  "fuel-core-client",
@@ -2918,7 +2918,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2926,7 +2926,7 @@ dependencies = [
  "dir_indexer",
  "expect-test",
  "forc-pkg",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-util",
  "horrorshow",
  "include_dir",
@@ -2944,12 +2944,12 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "clap",
  "forc-pkg",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-util",
  "prettydiff",
  "sway-core",
@@ -2962,7 +2962,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2973,13 +2973,13 @@ dependencies = [
 
 [[package]]
 name = "forc-migrate"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "clap",
  "duplicate",
  "forc-pkg",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-util",
  "itertools 0.13.0",
  "num-bigint",
@@ -2994,12 +2994,12 @@ dependencies = [
 
 [[package]]
 name = "forc-node"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "clap",
  "dialoguer",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-util",
  "fuel-crypto",
  "libp2p-identity",
@@ -3017,14 +3017,14 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "ansiterm",
  "anyhow",
  "byte-unit",
  "cid",
  "flate2",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-util",
  "fuel-abi-types",
  "futures",
@@ -3058,11 +3058,11 @@ dependencies = [
 
 [[package]]
 name = "forc-publish"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "clap",
  "flate2",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-util",
  "reqwest",
  "semver 1.0.26",
@@ -3083,7 +3083,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -3110,7 +3110,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "ansiterm",
  "tracing",
@@ -3120,7 +3120,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -3136,7 +3136,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "annotate-snippets",
  "ansiterm",
@@ -3144,7 +3144,7 @@ dependencies = [
  "clap",
  "dirs 5.0.1",
  "fd-lock",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "fuel-abi-types",
  "fuel-asm",
  "fuel-tx",
@@ -3217,15 +3217,6 @@ name = "fs_extra"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
-
-[[package]]
-name = "fsevent-sys"
-version = "4.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76ee7a02da4d231650c7cea31349b889be2f45ddb3ef3032d2ec8185f6313fd2"
-dependencies = [
- "libc",
-]
 
 [[package]]
 name = "fuel-abi-types"
@@ -4708,26 +4699,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4c7245a08504955605670dbf141fceab975f15ca21570696aebe9d2e71576bd"
 
 [[package]]
-name = "inotify"
-version = "0.9.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8069d3ec154eb856955c1c0fbffefbf5f3c40a104ec912d4797314c1801abff"
-dependencies = [
- "bitflags 1.3.2",
- "inotify-sys",
- "libc",
-]
-
-[[package]]
-name = "inotify-sys"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e05c02b5e89bff3b946cedeca278abc628fe811e604f027c45a8aa3cf793d0eb"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "inout"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4909,26 +4880,6 @@ checksum = "505d1856a39b200489082f90d897c3f07c455563880bc5952e38eabf731c83b6"
 dependencies = [
  "digest 0.10.7",
  "sha3-asm",
-]
-
-[[package]]
-name = "kqueue"
-version = "1.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7447f1ca1b7b563588a205fe93dea8df60fd981423a768bc1c0ded35ed147d0c"
-dependencies = [
- "kqueue-sys",
- "libc",
-]
-
-[[package]]
-name = "kqueue-sys"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed9625ffda8729b85e45cf04090035ac368927b8cebc34898e7c120f52e4838b"
-dependencies = [
- "bitflags 1.3.2",
- "libc",
 ]
 
 [[package]]
@@ -5329,18 +5280,6 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.8.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4a650543ca06a924e8b371db273b2756685faae30f8487da1b56505a8f78b0c"
-dependencies = [
- "libc",
- "log",
- "wasi 0.11.0+wasi-snapshot-preview1",
- "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "mio"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2886843bf800fba2e3377cff24abf6379b4c4d5c6681eaf9ea5b0d15090450bd"
@@ -5490,36 +5429,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8911957c4b1549ac0dc74e30db9c8b0e66ddcd6d7acc33098f4c63a64a6d7ed"
 dependencies = [
  "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "notify"
-version = "6.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6205bd8bb1e454ad2e27422015fb5e4f2bcc7e08fa8f27058670d208324a4d2d"
-dependencies = [
- "bitflags 2.9.0",
- "crossbeam-channel",
- "filetime",
- "fsevent-sys",
- "inotify",
- "kqueue",
- "libc",
- "log",
- "mio 0.8.11",
- "walkdir",
- "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "notify-debouncer-mini"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d40b221972a1fc5ef4d858a2f671fb34c75983eb385463dff3780eeff6a9d43"
-dependencies = [
- "crossbeam-channel",
- "log",
- "notify",
 ]
 
 [[package]]
@@ -7934,7 +7843,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sway-ast"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -7946,7 +7855,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "clap",
  "dirs 5.0.1",
@@ -7982,6 +7891,7 @@ dependencies = [
  "sway-parse",
  "sway-types",
  "sway-utils",
+ "swayfmt",
  "sysinfo",
  "thiserror 1.0.69",
  "tracing",
@@ -7991,7 +7901,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "either",
  "in_definite",
@@ -8004,7 +7914,7 @@ dependencies = [
 
 [[package]]
 name = "sway-features"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "clap",
  "paste",
@@ -8014,7 +7924,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -8035,7 +7945,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -8045,7 +7955,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -8056,12 +7966,10 @@ dependencies = [
  "dirs 5.0.1",
  "fd-lock",
  "forc-pkg",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-util",
  "futures",
  "lsp-types",
- "notify",
- "notify-debouncer-mini",
  "parking_lot",
  "pretty_assertions",
  "proc-macro2",
@@ -8095,7 +8003,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp-test-utils"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "assert-json-diff",
  "futures",
@@ -8110,7 +8018,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -8129,7 +8037,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -8147,7 +8055,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "serde",
  "walkdir",
@@ -8155,10 +8063,10 @@ dependencies = [
 
 [[package]]
 name = "swayfmt"
-version = "0.68.1"
+version = "0.68.2"
 dependencies = [
  "anyhow",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "indoc",
  "paste",
  "prettydiff",
@@ -8418,7 +8326,7 @@ dependencies = [
  "forc-client",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.68.1",
+ "forc-tracing 0.68.2",
  "forc-util",
  "fuel-vm",
  "futures",
@@ -8634,7 +8542,7 @@ dependencies = [
  "backtrace",
  "bytes",
  "libc",
- "mio 1.0.3",
+ "mio",
  "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
