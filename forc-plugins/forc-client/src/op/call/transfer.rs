@@ -128,11 +128,7 @@ mod tests {
             !response.tx_hash.is_empty(),
             "Transaction hash should be returned"
         );
-        assert_eq!(
-            response.result.unwrap(),
-            "",
-            "Result should be empty string"
-        );
+        assert!(response.result.is_none(), "Result should be none");
 
         // Verify balance has increased by the transfer amount
         assert_eq!(
@@ -184,11 +180,7 @@ mod tests {
             !response.tx_hash.is_empty(),
             "Transaction hash should be returned"
         );
-        assert_eq!(
-            response.result.unwrap(),
-            "",
-            "Result should be empty string"
-        );
+        assert!(response.result.is_none(), "Result should be none");
 
         // Verify balance has increased by the transfer amount
         let balance = provider
