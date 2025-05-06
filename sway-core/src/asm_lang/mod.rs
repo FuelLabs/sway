@@ -16,7 +16,7 @@ pub(crate) use virtual_register::*;
 
 use crate::{
     asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool},
-    asm_lang::allocated_ops::{AllocatedOpcode, AllocatedRegister},
+    asm_lang::allocated_ops::{AllocatedInstruction, AllocatedRegister},
     language::AsmRegister,
     Ident,
 };
@@ -96,7 +96,7 @@ pub(crate) struct Op {
 
 #[derive(Clone, Debug)]
 pub(crate) struct AllocatedAbstractOp {
-    pub(crate) opcode: Either<AllocatedOpcode, ControlFlowOp<AllocatedRegister>>,
+    pub(crate) opcode: Either<AllocatedInstruction, ControlFlowOp<AllocatedRegister>>,
     /// A descriptive comment for ASM readability.
     ///
     /// For writing guidelines, see [Op::comment].
@@ -106,7 +106,7 @@ pub(crate) struct AllocatedAbstractOp {
 
 #[derive(Clone, Debug)]
 pub(crate) struct RealizedOp {
-    pub(crate) opcode: AllocatedOpcode,
+    pub(crate) opcode: AllocatedInstruction,
     /// A descriptive comment for ASM readability.
     ///
     /// For writing guidelines, see [Op::comment].
@@ -783,7 +783,7 @@ impl Op {
     pub(crate) fn allocate_registers(
         &self,
         pool: &RegisterPool,
-    ) -> Either<AllocatedOpcode, ControlFlowOp<AllocatedRegister>> {
+    ) -> Either<AllocatedInstruction, ControlFlowOp<AllocatedRegister>> {
         match &self.opcode {
             Either::Left(virt_op) => Either::Left(virt_op.allocate_registers(pool)),
             Either::Right(org_op) => Either::Right(org_op.allocate_registers(pool)),
