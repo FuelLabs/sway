@@ -109,25 +109,30 @@ mod tests {
             ..Default::default()
         };
 
-        // should successfully transfer funds)
-        let result = transfer(
+        // should successfully transfer funds
+        let response = transfer(
             &wallet_sender,
             recipient_address,
             amount,
             *base_asset_id,
             tx_policies,
             &node,
-            &(0u8.into()),
+            0, // verbosity level
+            &mut std::io::stdout(),
         )
         .await
         .unwrap();
 
         // Verify response structure
         assert!(
-            !result.tx_hash.is_empty(),
+            !response.tx_hash.is_empty(),
             "Transaction hash should be returned"
         );
-        assert_eq!(result.result, "", "Result should be empty string");
+        assert_eq!(
+            response.result.unwrap(),
+            "",
+            "Result should be empty string"
+        );
 
         // Verify balance has increased by the transfer amount
         assert_eq!(
@@ -160,25 +165,30 @@ mod tests {
             ..Default::default()
         };
 
-        // should successfully transfer funds)
-        let result = transfer(
+        // should successfully transfer funds
+        let response = transfer(
             &wallet,
             Address::new(id.into()),
             amount,
             *base_asset_id,
             tx_policies,
             &node,
-            &(0u8.into()),
+            0, // verbosity level
+            &mut std::io::stdout(),
         )
         .await
         .unwrap();
 
         // Verify response structure
         assert!(
-            !result.tx_hash.is_empty(),
+            !response.tx_hash.is_empty(),
             "Transaction hash should be returned"
         );
-        assert_eq!(result.result, "", "Result should be empty string");
+        assert_eq!(
+            response.result.unwrap(),
+            "",
+            "Result should be empty string"
+        );
 
         // Verify balance has increased by the transfer amount
         let balance = provider
