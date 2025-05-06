@@ -171,49 +171,16 @@ pub fn println_red_err(txt: &str) {
 
 const LOG_FILTER: &str = "RUST_LOG";
 
-// This allows us to write ERROR and WARN level logs to stderr and everything else to stdout.
-// https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
-pub struct StdioTracingWriter {
-    pub writer_mode: TracingWriterMode,
-}
-
-impl<'a> MakeWriter<'a> for StdioTracingWriter {
-    type Writer = Box<dyn io::Write>;
-
-    fn make_writer(&'a self) -> Self::Writer {
-        if self.writer_mode == TracingWriterMode::Stderr {
-            Box::new(io::stderr())
-        } else {
-            // We must have an implementation of `make_writer` that makes
-            // a "default" writer without any configuring metadata. Let's
-            // just return stdout in that case.
-            Box::new(io::stdout())
-        }
-    }
-
-    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
-        // Here's where we can implement our special behavior. We'll
-        // check if the metadata's verbosity level is WARN or ERROR,
-        // and return stderr in that case.
-        if self.writer_mode == TracingWriterMode::Stderr
-            || (self.writer_mode == TracingWriterMode::Stdio && meta.level() <= &Level::WARN)
-        {
-            return Box::new(io::stderr());
-        }
-
-        // Otherwise, we'll return stdout.
-        Box::new(io::stdout())
-    }
-}
-
 #[derive(PartialEq, Eq)]
-pub enum TracingWriterMode {
+pub enum TracingWriter {
     /// Write ERROR and WARN to stderr and everything else to stdout.
     Stdio,
     /// Write everything to stdout.
     Stdout,
     /// Write everything to stderr.
     Stderr,
+    /// Write everything as structured JSON to stdout.
+    Json,
 }
 
 #[derive(Default)]
@@ -221,7 +188,38 @@ pub struct TracingSubscriberOptions {
     pub verbosity: Option<u8>,
     pub silent: Option<bool>,
     pub log_level: Option<LevelFilter>,
-    pub writer_mode: Option<TracingWriterMode>,
+    pub writer_mode: Option<TracingWriter>,
+    pub regex_filter: Option<String>,
+}
+
+// This allows us to write ERROR and WARN level logs to stderr and everything else to stdout.
+// https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
+impl<'a> MakeWriter<'a> for TracingWriter {
+    type Writer = Box<dyn io::Write>;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        match self {
+            TracingWriter::Stderr => Box::new(io::stderr()),
+            // We must have an implementation of `make_writer` that makes
+            // a "default" writer without any configuring metadata. Let's
+            // just return stdout in that case.
+            _ => Box::new(io::stdout()),
+        }
+    }
+
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        // Here's where we can implement our special behavior. We'll
+        // check if the metadata's verbosity level is WARN or ERROR,
+        // and return stderr in that case.
+        if *self == TracingWriter::Stderr
+            || (*self == TracingWriter::Stdio && meta.level() <= &Level::WARN)
+        {
+            return Box::new(io::stderr());
+        }
+
+        // Otherwise, we'll return stdout.
+        Box::new(io::stdout())
+    }
 }
 
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
