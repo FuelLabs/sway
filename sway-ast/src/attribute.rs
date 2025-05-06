@@ -56,6 +56,9 @@ pub const ERROR_M_ARG_NAME: &str = "m";
 pub const ABI_NAME_ATTRIBUTE_NAME: &str = "abi_name";
 pub const ABI_NAME_NAME_ARG_NAME: &str = "name";
 
+pub const EVENT_ATTRIBUTE_NAME: &str = "event";
+pub const INDEXED_ATTRIBUTE_NAME: &str = "indexed";
+
 pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_ATTRIBUTE_NAME,
     DOC_COMMENT_ATTRIBUTE_NAME,
@@ -67,6 +70,8 @@ pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     DEPRECATED_ATTRIBUTE_NAME,
     FALLBACK_ATTRIBUTE_NAME,
     ABI_NAME_ATTRIBUTE_NAME,
+    EVENT_ATTRIBUTE_NAME,
+    INDEXED_ATTRIBUTE_NAME,
 ];
 
 /// An attribute declaration. Attribute declaration
