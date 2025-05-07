@@ -33,11 +33,8 @@ enum E<T, const N: u64> {
 }
 
 impl<T, const N: u64> E<T, N> {
-    pub fn len_xxx(self) -> u64 {
-        match self {
-            E::Nothing => N,
-            E::Array(_) => N,
-        }
+    pub fn len_xxx2(self) -> u64 {
+        N
     }
 }
 
@@ -57,7 +54,7 @@ fn main(a: [u64; 2]) {
     __dbg(e);
 
     let e: E<u64, 3> = E::<u64, 3>::Nothing;
-    let b = e.len_xxx();
+    let b = e.len_xxx2();
     assert(b == 3);
     //__dbg(e);
 

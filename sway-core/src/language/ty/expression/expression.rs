@@ -492,7 +492,33 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::Deref(r) => {
                 r.materialize_const_generics(engines, handler, name, value)
             }
-            _ => Err(handler.emit_err(
+            TyExpressionVariant::AsmExpression { registers, .. } => {
+                for r in registers.iter_mut() {
+                    if let Some(init) = r.initializer.as_mut() {
+                        init.materialize_const_generics(engines, handler, name, value)?;
+                    }
+                }
+                Ok(())
+            }
+            TyExpressionVariant::TupleElemAccess {
+                prefix,
+                resolved_type_of_parent,
+                ..
+            } => {
+                prefix.materialize_const_generics(engines, handler, name, value)?;
+                resolved_type_of_parent.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::MatchExp {
+                desugared,
+                scrutinees,
+            } => {
+                desugared.materialize_const_generics(engines, handler, name, value)?;
+                Ok(())
+            }
+            TyExpressionVariant::EnumTag { exp } => {
+                exp.materialize_const_generics(engines, handler, name, value)
+            }
+            x => Err(handler.emit_err(
                 sway_error::error::CompileError::ConstGenericNotSupportedHere {
                     span: self.span.clone(),
                 },
