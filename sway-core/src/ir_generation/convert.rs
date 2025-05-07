@@ -85,6 +85,7 @@ fn convert_resolved_type_info(
     // A handy macro for rejecting unsupported types.
     macro_rules! reject_type {
         ($name_str:literal) => {{
+            todo!("{span:?}");
             return Err(CompileError::TypeMustBeKnownAtThisPoint {
                 span: span.clone(),
                 internal: $name_str.into(),

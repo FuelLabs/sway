@@ -978,7 +978,8 @@ impl TypeEngine {
             | TypeInfo::Placeholder(_)
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Array(.., Length(ConstGenericExpr::AmbiguousVariableExpression { .. }))
-            | TypeInfo::Struct(_) => true,
+            | TypeInfo::Struct(_)
+            | TypeInfo::Enum(_) => true,
             TypeInfo::ContractCaller { abi_name, address } => {
                 Self::is_replaceable_contract_caller(abi_name, address)
             }

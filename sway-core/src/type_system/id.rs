@@ -136,16 +136,14 @@ impl MaterializeConstGenerics for TypeId {
                     }
                 };
 
-                let new_array = engines.te().insert_array(
+                *self = engines.te().insert_array(
                     engines,
                     type_argument.clone(),
                     Length(ConstGenericExpr::Literal {
                         val: val as usize,
-                        span: Span::dummy(),
+                        span: value.span.clone(),
                     }),
                 );
-
-                *self = new_array;
             }
             _ => {}
         }
@@ -355,20 +353,31 @@ impl TypeId {
                     .iter()
                     .zip(orig_enum_decl.generic_parameters.iter())
                 {
-                    let Some(orig_type_param) = orig_type_param.as_type_parameter() else {
-                        continue;
-                    };
-                    let Some(type_param) = type_param.as_type_parameter() else {
-                        continue;
-                    };
-                    type_parameters.push((type_param.type_id, orig_type_param.type_id));
-                    type_param.type_id.extract_type_parameters(
-                        engines,
-                        depth + 1,
-                        type_parameters,
-                        const_generic_parameters,
-                        orig_type_param.type_id,
-                    );
+                    match (orig_type_param, type_param) {
+                        (TypeParameter::Type(orig_type_param), TypeParameter::Type(type_param)) => {
+                            type_parameters.push((type_param.type_id, orig_type_param.type_id));
+                            type_param.type_id.extract_type_parameters(
+                                engines,
+                                depth + 1,
+                                type_parameters,
+                                const_generic_parameters,
+                                orig_type_param.type_id,
+                            );
+                        }
+                        (
+                            TypeParameter::Const(orig_type_param),
+                            TypeParameter::Const(type_param),
+                        ) => match (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
+                            (None, Some(expr)) => {
+                                const_generic_parameters.insert(
+                                    orig_type_param.name.as_str().to_string(),
+                                    expr.to_ty_expression(engines),
+                                );
+                            }
+                            _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                        },
+                        _ => {}
+                    }
                 }
             }
             (TypeInfo::Struct(struct_id), TypeInfo::Struct(orig_struct_id)) => {
