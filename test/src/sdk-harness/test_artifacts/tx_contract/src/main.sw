@@ -20,6 +20,7 @@ abi TxContractTest {
     fn get_tx_maturity() -> Option<u32>;
     fn get_tx_witness_limit() -> Option<u64>;
     fn get_tx_max_fee() -> Option<u64>;
+    fn get_tx_expiration() -> Option<u32>;
     fn get_tx_script_length() -> Option<u64>;
     fn get_tx_script_data_length() -> Option<u64>;
     fn get_tx_inputs_count() -> u64;
@@ -65,6 +66,9 @@ impl TxContractTest for Contract {
     }
     fn get_tx_max_fee() -> Option<u64> {
         tx_max_fee()
+    }
+    fn get_tx_expiration() -> Option<u32> {
+        tx_expiration()
     }
     fn get_tx_script_length() -> Option<u64> {
         tx_script_length()
