@@ -37,14 +37,6 @@ impl SyncWorkspace {
         }
     }
 
-    /// Overwrite the contents of the tmp/folder with everything in
-    /// the current workspace.
-    pub fn resync(&self) -> Result<(), LanguageServerError> {
-        self.clone_manifest_dir_to_temp()?;
-        self.sync_manifest();
-        Ok(())
-    }
-
     /// Clean up the temp directory that was created once the
     /// server closes down.
     pub(crate) fn remove_temp_dir(&self) {

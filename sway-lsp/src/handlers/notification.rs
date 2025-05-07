@@ -144,7 +144,6 @@ pub(crate) async fn handle_did_save_text_document(
     let (uri, session) = state
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
-    session.sync.resync()?;
     let file_versions = file_versions(&state.documents, &uri, None);
     send_new_compilation_request(state, session.clone(), &uri, None, false, file_versions);
     state.wait_for_parsing().await;
