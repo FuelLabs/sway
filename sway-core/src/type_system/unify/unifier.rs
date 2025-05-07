@@ -142,7 +142,7 @@ impl<'a> Unifier<'a> {
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
                 self.unify_tuples(handler, rfs, efs);
             }
-            (r @ Array(re, rc), e @ Array(ee, ec)) => {
+            (Array(re, rc), Array(ee, ec)) => {
                 if self
                     .unify_type_arguments_in_parents(handler, received, expected, span, re, ee)
                     .is_err()
@@ -171,6 +171,7 @@ impl<'a> Unifier<'a> {
                         ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
                         ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
                     ) => {
+                        assert!(r_ident.as_str() == e_ident.as_str());
                         // eprintln!("{}", r_ident.as_str());
                         // eprintln!("{}", e_ident.as_str());
                         // todo!()
@@ -545,8 +546,7 @@ impl<'a> Unifier<'a> {
                                 } else {
                                     todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                                 }
-                            }
-                            ,
+                            },
                         }
                     }
                     _ => {
