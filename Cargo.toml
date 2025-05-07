@@ -82,7 +82,7 @@ sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.68.2" }
 #
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.11"
+fuel-abi-types = "0.12"
 
 # Dependencies from the `fuel-core` repository:
 #
