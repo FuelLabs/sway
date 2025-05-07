@@ -7,9 +7,20 @@ trait A {
     fn my_len(self) -> u64;
 }
 
+enum LotsOfVariants {
+    A: u64,
+    B: u64,
+    C: u64,
+    D: u64,
+}
+
 impl<T, const N: u64> A for [T; N] {
     fn my_len(self) -> u64 {
-        N
+        match LotsOfVariants::A(N) {
+            LotsOfVariants::A(_) => N,
+            LotsOfVariants::B(_) | LotsOfVariants::C(_) => N,
+            _ => N,
+        }
     }
 }
 
