@@ -3,7 +3,7 @@ use crate::manifest::{
     ContractDependency, Dependency, DependencyDetails, GenericManifestFile, HexSalt,
 };
 use crate::source::IPFSNode;
-use crate::{self as pkg, lock, Lock, PackageManifestFile};
+use crate::{self as pkg, Lock, PackageManifestFile};
 use anyhow::{anyhow, bail, Result};
 use pkg::manifest::ManifestFile;
 use std::collections::BTreeMap;
@@ -49,16 +49,11 @@ pub struct ModifyOpts {
 }
 
 pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
-    let dry_run = opts.dry_run;
     let cwd = if let Some(p) = opts.manifest_path.clone() {
         PathBuf::from(p)
     } else {
         std::env::current_dir()?
     };
-
-    let content = std::fs::read_to_string(&cwd)?;
-    let mut toml_doc = content.parse::<DocumentMut>()?;
-    let backup_doc = toml_doc.clone();
 
     let manifest_file = ManifestFile::from_dir(&cwd)?;
     let root_dir = manifest_file.root_dir();
@@ -70,6 +65,10 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
         &root_dir,
         &member_manifests,
     )?;
+
+    let content = std::fs::read_to_string(&package_spec_dir)?;
+    let mut toml_doc = content.parse::<DocumentMut>()?;
+    let backup_doc = toml_doc.clone();
 
     let mut package_spec = PackageManifestFile::from_file(&package_spec_dir)?;
 
@@ -103,7 +102,7 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
 
             section.add_deps_manifest_table(
                 &mut toml_doc,
-                package_spec_dir,
+                package_spec_dir.clone(),
                 &mut package_spec.manifest,
             )?;
         }
@@ -112,7 +111,7 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
 
             section.remove_deps_manifest_table(
                 &mut toml_doc,
-                package_spec_dir,
+                package_spec_dir.clone(),
                 &mut package_spec.manifest,
                 &dep_refs,
             )?;
@@ -130,22 +129,34 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
         false,
         opts.offline,
         &opts.ipfs_node.clone().unwrap_or_default(),
-    )?;
+    );
+
+    if new_plan.is_err() {
+        std::fs::write(&package_spec_dir, backup_doc.to_string())
+            .map_err(|e| anyhow!("failed to write toml file: {}", e))?;
+        bail!(new_plan.err().unwrap());
+    }
+
+    let new_plan = new_plan?;
 
     let new_lock = Lock::from_graph(new_plan.graph());
-    let diff = new_lock.diff(&old_lock);
-    let member_names = member_manifests
-        .values()
-        .map(|m| m.project.name.clone())
-        .collect();
 
-    lock::print_diff(&member_names, &diff);
+    new_lock.diff(&old_lock);
 
-    if dry_run {
+    if opts.dry_run {
         info!("Dry run enabled. toml file not modified.");
         std::fs::write(cwd, backup_doc.to_string())?;
         return Ok(());
     }
+
+    let string = toml::ser::to_string_pretty(&new_lock)
+        .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
+
+    if let Err(e) = fs::write(&lock_path, string) {
+        std::fs::write(&package_spec_dir, backup_doc.to_string())
+            .map_err(|e| anyhow!("failed to write toml file: {}", e))?;
+        bail!("failed to write lock file: {}", e);
+    };
 
     Ok(())
 }
@@ -227,7 +238,6 @@ fn resolve_dependency<P: AsRef<Path>>(
                 details.path = Some(rel_path.to_string_lossy().to_string());
             }
         }
-        info!("{:?}", details);
         Dependency::Detailed(details)
     };
 
