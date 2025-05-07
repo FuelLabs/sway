@@ -1,0 +1,43 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --release --experimental const_generics --test-threads 1 --logs --revert-codes
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
+   Compiling library std (sway-lib-std)
+   Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:47:5
+   |
+45 | 
+46 | fn main(a: [u64; 2]) {
+47 |     __dbg(a);
+   |     -------- This returns a value of type [u64; 2], which is not assigned to anything and is ignored.
+48 | 
+49 |     let a = [C {}].my_len();
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:56:5
+   |
+54 | 
+55 |     let s: S<u64, 3> = S { };
+56 |     __dbg(s.len_xxx());
+   |     ------------------ This returns a value of type u64, which is not assigned to anything and is ignored.
+57 | 
+58 |     let e: E<u64, 3> = E::<u64, 3>::Nothing;
+   |
+____
+
+  Compiled script "const_generics" with 2 warnings.
+    Finished release [optimized + fuel] target(s) [680 B] in ???
+     Running 0 tests, filtered 0 tests
+
+tested -- const_generics
+
+
+test result: OK. 0 passed; 0 failed; finished in ???
+
+    Finished in ???
