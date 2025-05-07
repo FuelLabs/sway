@@ -149,7 +149,7 @@ fn foo() {
     assert(result.is_ok());
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.verify_address" class="method trait-impl"><a href="#method.verify_address" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.verify_address">verify_address</a>(<br>    self,<br>    address: Address,<br>    message: Message,<br>) -&gt; Result&lt;(), SignatureError&gt;</h4></div></summary><div class="docblock"><p>Verify that an signature matches given address.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.verify_address" class="method trait-impl"><a href="#method.verify_address" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.verify_address">verify_address</a>(<br>    self,<br>    address: Address,<br>    message: Message,<br>) -&gt; Result&lt;(), SignatureError&gt;</h4></div></summary><div class="docblock"><p>Verify that a signature matches given address.</p>
 <h1>Arguments</h1>
 <ul>
 <li><code>address</code>: [Address] - The address to verify against.</li>
@@ -175,10 +175,10 @@ fn foo() {
     assert(result.is_ok());
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.verify_evm_address" class="method trait-impl"><a href="#method.verify_evm_address" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.verify_evm_address">verify_evm_address</a>(<br>    self,<br>    evm_address: EvmAddress,<br>    message: Message,<br>) -&gt; Result&lt;(), SignatureError&gt;</h4></div></summary><div class="docblock"><p>Verify that an signature matches given evm address.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.verify_evm_address" class="method trait-impl"><a href="#method.verify_evm_address" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.verify_evm_address">verify_evm_address</a>(<br>    self,<br>    evm_address: EvmAddress,<br>    message: Message,<br>) -&gt; Result&lt;(), SignatureError&gt;</h4></div></summary><div class="docblock"><p>Verify that an signature matches given EVM address.</p>
 <h1>Arguments</h1>
 <ul>
-<li><code>evm_address</code>: [EvmAddress] - The evm address to verify against.</li>
+<li><code>evm_address</code>: [EvmAddress] - The EVM address to verify against.</li>
 <li><code>message</code>: Message - The signed data.</li>
 </ul>
 <h1>Returns</h1>
