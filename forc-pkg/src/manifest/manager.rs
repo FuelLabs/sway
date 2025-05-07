@@ -330,6 +330,12 @@ impl DepSection<'_> {
         match self {
             DepSection::Regular(ref mut map) => {
                 for dep in deps {
+                    if !map.contains_key(*dep) {
+                        bail!(
+                            "the dependency `{}` could not be found in `dependencies`",
+                            dep
+                        );
+                    }
                     map.remove(*dep);
                 }
                 manifest.dependencies = Some(map.clone());
@@ -337,6 +343,12 @@ impl DepSection<'_> {
             }
             DepSection::Contract(ref mut map, _) => {
                 for dep in deps {
+                    if !map.contains_key(*dep) {
+                        bail!(
+                            "the dependency `{}` could not be found in `contract-dependencies`",
+                            dep
+                        );
+                    }
                     map.remove(*dep);
                 }
                 manifest.contract_dependencies = Some(map.clone());
