@@ -961,6 +961,41 @@ impl Bytes {
             index: 0,
         }
     }
+
+    /// Returns true if all the bytes within the `Bytes` are zero.
+    ///
+    /// # Additional Information
+    ///
+    /// If `Bytes` is empty, this function will return `true`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     bytes.resize(10, 0u8);
+    ///     assert(bytes.are_all_zero() == true);
+    ///
+    ///     bytes.resize(20, 42u8);
+    ///     assert(bytes.are_all_zero() == false);
+    ///
+    ///     bytes.resize(0, 42u8);
+    ///     assert(bytes.are_all_zero() == true);
+    /// }
+    /// ```
+    pub fn are_all_zero(self) -> bool {
+        let mut iter = 0;
+        while iter < self.len {
+            let item_ptr = self.buf.ptr().add_uint_offset(iter);
+            let item = item_ptr.read_byte();
+            if item != 0 {
+                return false;
+            }
+            iter += 1;
+        }
+
+        true
+    }
 }
 
 impl PartialEq for Bytes {
@@ -985,6 +1020,8 @@ impl AsRawSlice for Bytes {
         }
     }
 }
+
+// TODO: Once const generics are available implement `From<[u8; N]>`.
 
 /// Methods for converting between the `Bytes` and the `b256` types.
 impl From<b256> for Bytes {
