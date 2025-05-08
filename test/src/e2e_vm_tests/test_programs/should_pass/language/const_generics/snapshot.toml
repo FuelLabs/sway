@@ -1,3 +1,3 @@
 cmds = [
-    "forc test --path {root} --release --experimental const_generics --test-threads 1 --logs --revert-codes",
+    "forc test --path {root} --experimental const_generics --test-threads 1 --logs --revert-codes",
 ]

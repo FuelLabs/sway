@@ -548,8 +548,7 @@ impl MaterializeConstGenerics for TyExpression {
                 prefix.materialize_const_generics(engines, handler, name, value)?;
                 resolved_type_of_parent.materialize_const_generics(engines, handler, name, value)
             }
-            x => {
-                todo!("{x:?}");
+            _ => {
                 Err(handler.emit_err(
                     sway_error::error::CompileError::ConstGenericNotSupportedHere {
                         span: self.span.clone(),
