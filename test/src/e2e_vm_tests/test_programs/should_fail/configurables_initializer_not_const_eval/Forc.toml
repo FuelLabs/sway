@@ -1,0 +1,10 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+implicit-std = false
+license = "Apache-2.0"
+name = "configurables_initializer_not_const_eval"
+
+[dependencies]
+std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
+

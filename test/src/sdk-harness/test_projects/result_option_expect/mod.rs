@@ -1,11 +1,11 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
+use fuels::{accounts::wallet::Wallet, prelude::*};
 
 abigen!(Contract(
     name = "ExpectTestingContract",
     abi = "test_projects/result_option_expect/out/release/result_option_expect-abi.json"
 ));
 
-async fn setup() -> (ExpectTestingContract<WalletUnlocked>, ContractId) {
+async fn setup() -> (ExpectTestingContract<Wallet>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/result_option_expect/out/release/result_option_expect.bin",
@@ -14,7 +14,8 @@ async fn setup() -> (ExpectTestingContract<WalletUnlocked>, ContractId) {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = ExpectTestingContract::new(id.clone(), wallet);
 
     (instance, id.into())

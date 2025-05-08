@@ -1,5 +1,7 @@
 use fuel_crypto::{fuel_types::Address, PublicKey, SecretKey};
-use fuels_accounts::wallet::{generate_mnemonic_phrase, DEFAULT_DERIVATION_PATH_PREFIX};
+use fuels_accounts::signers::{
+    derivation::DEFAULT_DERIVATION_PATH, private_key::generate_mnemonic_phrase,
+};
 use fuels_core::types::{
     bech32::{Bech32Address, FUEL_BECH32_HRP},
     checksum_address::checksum_encode,
@@ -271,10 +273,8 @@ fn generate_wallet(use_mnemonic: bool) -> anyhow::Result<(Address, SecretKey, Op
 
     let (private_key, mnemonic) = if use_mnemonic {
         let mnemonic = generate_mnemonic_phrase(&mut rng, 24)?;
-        let account_ix = 0;
-        let derivation_path = format!("{DEFAULT_DERIVATION_PATH_PREFIX}/{account_ix}'/0/0");
         let private_key =
-            SecretKey::new_from_mnemonic_phrase_with_path(&mnemonic, &derivation_path)?;
+            SecretKey::new_from_mnemonic_phrase_with_path(&mnemonic, DEFAULT_DERIVATION_PATH)?;
         (private_key, Some(mnemonic))
     } else {
         (SecretKey::random(&mut rng), None)

@@ -1,5 +1,2 @@
-category = "run"
-expected_result = { action = "return", value = 0 }
-expected_result_new_encoding = { action = "return_data", value = "0000000000000000" }
-validate_abi = true
-expected_warnings = 32
+category = "unit_tests_pass"
+expected_warnings = 1 # TODO: Set to zero once https://github.com/FuelLabs/sway/issues/7136 is fixed.

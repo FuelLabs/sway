@@ -1,8 +1,0 @@
-[[package]]
-name = "marker_trait_error_implemented_for_str"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-831208117855D4CC"

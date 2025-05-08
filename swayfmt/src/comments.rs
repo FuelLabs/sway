@@ -175,7 +175,8 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     let mut offset = 0;
     let mut to_rewrite = formatted_code[last_formatted..].to_string();
 
-    let formatted_leaf_spans = parse_snippet::<T>(&formatted_code[last_formatted..])?.leaf_spans();
+    let formatted_leaf_spans =
+        parse_snippet::<T>(&formatted_code[last_formatted..], formatter.experimental)?.leaf_spans();
 
     let mut previous_unformatted_leaf_span = unformatted_leaf_spans
         .first()
@@ -389,10 +390,8 @@ fn insert_after_span(
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::map::byte_span::ByteSpan;
-    use std::sync::Arc;
-
     use super::*;
+    use crate::utils::map::byte_span::ByteSpan;
 
     /// For readability of the assertions, the comments written within these snippets will be the
     /// ByteSpan representations instead of some random comment,
@@ -409,7 +408,7 @@ pub fn main() -> bool {
 }
 "#;
         let mut comments_ctx = CommentsContext::new(
-            CommentMap::from_src(Arc::from(commented_code)).unwrap(),
+            CommentMap::from_src(commented_code.into()).unwrap(),
             commented_code.to_string(),
         );
         assert_eq!(
@@ -432,7 +431,7 @@ pub fn main() -> bool {
 "#;
 
         comments_ctx = CommentsContext::new(
-            CommentMap::from_src(Arc::from(multiline_comment)).unwrap(),
+            CommentMap::from_src(multiline_comment.into()).unwrap(),
             multiline_comment.to_string(),
         );
 
@@ -457,7 +456,7 @@ pub fn main() -> bool {
 "#;
 
         comments_ctx = CommentsContext::new(
-            CommentMap::from_src(Arc::from(multi_newline_comments)).unwrap(),
+            CommentMap::from_src(multi_newline_comments.into()).unwrap(),
             multi_newline_comments.to_string(),
         );
 

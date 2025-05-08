@@ -81,19 +81,29 @@ impl TyProgram {
             namespace: ctx.namespace.current_package_ref().clone(),
         })?;
 
-        let (kind, declarations, configurables) = Self::validate_root(
-            handler,
-            engines,
-            &root,
-            *kind,
-            package_name,
-            ctx.experimental,
-        )
-        .map_err(|error| TypeCheckFailed {
-            error,
-            root_module: Some(root.clone()),
-            namespace: ctx.namespace.current_package_ref().clone(),
-        })?;
+        let experimental = ctx.experimental;
+        let (kind, declarations, configurables) =
+            Self::validate_root(handler, engines, &root, *kind, package_name, experimental)
+                .map_err(|error| TypeCheckFailed {
+                    error,
+                    root_module: Some(root.clone()),
+                    namespace: ctx.namespace.current_package_ref().clone(),
+                })?;
+
+        let mut namespace = ctx.namespace().clone();
+        // TODO: Currently this exposes an LSP engines re-use bug which causes a difference
+        // in behaviour when traversing the root namespace. Disable this for now under LSP.
+        let skip_coherence_checks = build_config
+            .is_some_and(|config| config.lsp_mode.as_ref().is_some_and(|_lsp_mode| true));
+        if !skip_coherence_checks {
+            Self::validate_coherence(handler, engines, &root, &mut namespace).map_err(|error| {
+                TypeCheckFailed {
+                    error,
+                    root_module: Some(root.clone()),
+                    namespace: ctx.namespace.current_package_ref().clone(),
+                }
+            })?;
+        }
 
         let program = TyProgram {
             kind,

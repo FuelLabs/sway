@@ -47,10 +47,10 @@ fn get_type_str(type_id: &TypeId, engines: &Engines, resolved_type_id: TypeId) -
             }
             (TypeInfo::Array(_, length), TypeInfo::Array(_, resolved_length)) => {
                 assert_eq!(
-                    length.as_literal_val().unwrap(),
-                    resolved_length.as_literal_val().unwrap()
+                    length.expr().as_literal_val().unwrap(),
+                    resolved_length.expr().as_literal_val().unwrap()
                 );
-                format!("[_; {:?}]", engines.help_out(length))
+                format!("[_; {:?}]", engines.help_out(length.expr()))
             }
             (TypeInfo::Slice(_), TypeInfo::Slice(_)) => "__slice[_]".into(),
             (TypeInfo::Custom { .. }, _) => {
@@ -119,7 +119,7 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
             format!(
                 "{}[{:?}]",
                 abi_str_type_arg(elem_ty, engines),
-                engines.help_out(length),
+                engines.help_out(length.expr()),
             )
         }
         RawUntypedPtr => "raw untyped ptr".into(),
@@ -140,7 +140,7 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
             referenced_type,
         } => {
             format!(
-                "__ref {}{}", // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
+                "__ref {}{}", // TODO: (REFERENCES) No references in ABIs according to the RFC. Or we want to have them?
                 if *to_mutable_value { "mut " } else { "" },
                 abi_str_type_arg(referenced_type, engines)
             )

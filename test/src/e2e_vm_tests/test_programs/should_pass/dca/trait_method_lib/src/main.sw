@@ -11,3 +11,9 @@ pub trait MyTrait {
         MyStruct {}
     }
 }
+
+impl MyTrait for MyStruct {
+    fn trait_method(self) -> bool {
+        true
+    }
+}

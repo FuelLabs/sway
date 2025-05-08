@@ -8,6 +8,7 @@ use ::option::Option::{self, *};
 use ::result::Result::{self, *};
 use ::inputs::{
     Input,
+    input_address,
     input_coin_owner,
     input_count,
     input_message_recipient,
@@ -17,6 +18,7 @@ use ::inputs::{
 use ::revert::revert;
 use ::vec::Vec;
 use ::codec::*;
+use ::debug::*;
 
 /// The error type used when an `Identity` cannot be determined.
 pub enum AuthError {
@@ -61,7 +63,7 @@ pub fn caller_is_external() -> bool {
 ///
 /// # Additional Information
 ///
-/// External calls result in undefined behaviour.
+/// External calls result in undefined behavior.
 ///
 /// # Returns
 ///
@@ -127,75 +129,58 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 ///
 /// # Returns
 ///
-/// * [Result<Address, AuthError>] - `Ok(Address)` if the owner can be determined, `Err(AuthError)` otherwise.
+/// * [Result<Address, AuthError>] - `Ok(Address)` if the single owner can be determined, `Err(AuthError)` otherwise.
 ///
 /// # Examples
 ///
 /// ```sway
-/// use std::auth::inputs_owner;
+/// use std::auth::caller_address;
 ///
 /// fn foo() {
-///     match inputs_owner() {
+///     match caller_address() {
 ///         Ok(address) => log(address),
-///         Err(AuthError::InputsNotAllOwnedBySameAddress) => log("Inputs not all owned by same address."),
+///         Err(AuthError::InputsNotAllOwnedBySameAddress) => log("Inputs not all owned by the same address."),
+///         Err(AuthError::CallerIsInternal) => log("Hell froze over."),
 ///     }
 /// }
 /// ```
 pub fn caller_address() -> Result<Address, AuthError> {
-    // Note: `input_count()` is guaranteed to be at least 1 for any valid tx.
-    let inputs = input_count().as_u64();
-    let mut candidate = None;
+    let input_count = input_count().as_u64();
+    let mut first_input_owner = None;
     let mut iter = 0;
 
-    while iter < inputs {
-        let type_of_input = input_type(iter);
-        match type_of_input {
-            Some(Input::Coin) => (),
-            Some(Input::Message) => (),
-            _ => {
-                // type != InputCoin or InputMessage, continue looping.
-                iter += 1;
-                continue;
-            }
-        }
-
-        // type == InputCoin or InputMessage.
-        let owner_of_input = match type_of_input {
-            Some(Input::Coin) => {
-                input_coin_owner(iter)
-            },
-            Some(Input::Message) => {
-                input_message_recipient(iter)
-            },
-            _ => {
-                // type != InputCoin or InputMessage, continue looping.
+    while iter < input_count {
+        let input_owner = match input_address(iter) {
+            Some(address) => address,
+            None => {
+                // Input is not `Input::Coin` or `Input::Message`, continue looping.
                 iter += 1;
                 continue;
             }
         };
 
-        if candidate.is_none() {
-            // This is the first input seen of the correct type.
-            candidate = owner_of_input;
+        // This is the first input seen that is either a coin or a message.
+        if first_input_owner.is_none() {
+            first_input_owner = Some(input_owner);
             iter += 1;
             continue;
         }
 
-        // Compare current input owner to candidate.
-        // `candidate` and `owner_of_input` must be `Some`.
-        // at this point, so we can unwrap safely.
-        if owner_of_input.unwrap() == candidate.unwrap() {
-            // Owners are a match, continue looping.
+        // Compare the current input owner to the first one.
+        // `first_input_owner` must be `Some` at this point,
+        // so we can safely unwrap.
+        if input_owner == first_input_owner.unwrap() {
+            // Owner is the same, continue looping.
             iter += 1;
             continue;
         }
 
-        // Owners don't match. Return Err.
+        // Owners are not the same, return error.
         return Err(AuthError::InputsNotAllOwnedBySameAddress);
     }
 
-    // `candidate` must be `Some` if the caller is an address, otherwise it's a contract.
-    match candidate {
+    // `first_input_owner` must be `Some` if the caller is an address, otherwise it's a contract.
+    match first_input_owner {
         Some(address) => Ok(address),
         None => Err(AuthError::CallerIsInternal),
     }
@@ -206,7 +191,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
 ///
 /// # Additional Information
 ///
-/// The list is not deduplicated, so there may be repeated addresses in the returned vector.
+/// The returned `Vec` is not deduplicated, so it may contain repeated addresses.
 ///
 /// # Returns
 ///
@@ -224,21 +209,16 @@ pub fn caller_address() -> Result<Address, AuthError> {
 /// }
 /// ```
 pub fn caller_addresses() -> Vec<Address> {
-    let inputs = input_count().as_u64();
+    let input_count = input_count().as_u64();
     let mut addresses = Vec::new();
     let mut iter = 0;
 
-    while iter < inputs {
-        // Call the corresponding function based on the input type.
-        let input_owner = match input_type(iter) {
-            Some(Input::Coin) => input_coin_owner(iter),
-            Some(Input::Message) => input_message_recipient(iter),
-            _ => None, // If not Coin or Message, loop continues.
-        };
-
-        // If we successfully retrieved an owner address, add it to the vector.
-        if let Some(address) = input_owner {
-            addresses.push(address);
+    while iter < input_count {
+        match input_address(iter) {
+            Some(address) => {
+                addresses.push(address);
+            },
+            _ => {}
         }
 
         iter += 1;
@@ -264,20 +244,12 @@ pub fn caller_addresses() -> Vec<Address> {
 /// }
 /// ```
 pub fn predicate_address() -> Option<Address> {
-    // Get index of current predicate.
-    // i3 = GM_GET_VERIFYING_PREDICATE
+    // Get the index of the current predicate:
+    //   i3 == GM_GET_VERIFYING_PREDICATE
     let predicate_index = asm(r1) {
         gm r1 i3;
         r1: u64
     };
 
-    let type_of_input = input_type(predicate_index);
-
-    match type_of_input {
-        Some(Input::Coin) => input_coin_owner(predicate_index),
-        Some(Input::Message) => input_message_recipient(predicate_index),
-        _ => {
-            None
-        }
-    }
+    input_address(predicate_index)
 }

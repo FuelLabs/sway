@@ -1,0 +1,10 @@
+[workspace] # Needed because this crate is not part of the original workspace.
+
+[package]
+name = "check-dep-versions"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+regex = "1"
+toml = "0.8"

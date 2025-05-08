@@ -35,6 +35,7 @@ pub struct ParsedDeclEngine {
 
 pub trait ParsedDeclEngineGet<I, U> {
     fn get(&self, index: &I) -> Arc<U>;
+    fn map<R>(&self, index: &I, f: impl FnOnce(&U) -> R) -> R;
 }
 
 pub trait ParsedDeclEngineInsert<T> {
@@ -57,6 +58,10 @@ macro_rules! decl_engine_get {
         impl ParsedDeclEngineGet<ParsedDeclId<$decl>, $decl> for ParsedDeclEngine {
             fn get(&self, index: &ParsedDeclId<$decl>) -> Arc<$decl> {
                 self.$slab.get(index.inner())
+            }
+
+            fn map<R>(&self, index: &ParsedDeclId<$decl>, f: impl FnOnce(&$decl) -> R) -> R {
+                self.$slab.map(index.inner(), f)
             }
         }
     };

@@ -13,7 +13,7 @@ const REDUCED_LIB_CONFIG_FILE_NAME: &str = "reduced_lib.config";
 /// Creates the reduced versions of `std` libraries based on the list of
 /// modules defined in [REDUCED_LIB_CONFIG_FILE_NAME] file for each reduced library
 /// available in the [REDUCED_STD_LIBS_DIR_NAME].
-pub(crate) fn create() -> Result<()> {
+pub fn create() -> Result<()> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let reduced_libs_dir = format!("{manifest_dir}/src/e2e_vm_tests/{REDUCED_STD_LIBS_DIR_NAME}");
     let std_lib_src_dir = format!("{manifest_dir}/../sway-lib-std/src");
@@ -33,7 +33,7 @@ fn create_reduced_std_libs(std_lib_src_dir: &str, reduced_libs_dir: &str) -> Res
 
         if !reduced_lib_config.exists() {
             bail!(format!("The config file \"{REDUCED_LIB_CONFIG_FILE_NAME}\" cannot be found for the reduced standard library \"{}\".\nThe config file must be at this location: {}",
-                reduced_lib_dir.components().last().unwrap().as_os_str().to_string_lossy(),
+                reduced_lib_dir.components().next_back().unwrap().as_os_str().to_string_lossy(),
                 reduced_lib_config.as_os_str().to_string_lossy()
             ));
         }

@@ -356,8 +356,7 @@ pub(crate) fn compile_configurables(
                 Some(module_ns),
                 None,
                 decl.value.as_ref().unwrap(),
-            )
-            .unwrap();
+            )?;
 
             let opt_metadata = md_mgr.span_to_md(context, &decl.span);
 
@@ -596,10 +595,11 @@ fn compile_fn(
                     // Convert the name.
                     param.name.as_str().into(),
                     // Convert the type further to a pointer if it's a reference.
-                    param
-                        .is_reference
-                        .then(|| Type::new_ptr(context, ty))
-                        .unwrap_or(ty),
+                    if param.is_reference {
+                        Type::new_ptr(context, ty)
+                    } else {
+                        ty
+                    },
                     // Convert the span to a metadata index.
                     md_mgr.span_to_md(context, &param.name.span()),
                 )

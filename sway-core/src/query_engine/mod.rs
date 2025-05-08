@@ -12,7 +12,7 @@ use sway_types::{IdentUnique, ProgramId, SourceId, Spanned};
 use crate::{
     decl_engine::{DeclId, DeclRef},
     language::ty::{TyFunctionDecl, TyFunctionSig, TyModule},
-    {Engines, Programs},
+    namespace, Engines, Programs,
 };
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -47,6 +47,7 @@ pub struct ParsedModuleInfo {
 #[derive(Clone, Debug)]
 pub struct TypedModuleInfo {
     pub module: Arc<TyModule>,
+    pub namespace_module: Arc<namespace::Module>,
     pub version: Option<u64>,
 }
 

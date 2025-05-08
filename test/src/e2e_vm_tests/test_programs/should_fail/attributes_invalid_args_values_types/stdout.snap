@@ -1,8 +1,7 @@
 ---
-source: test/tests/tests.rs
-assertion_line: 115
+source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types --release --experimental error_type
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types
@@ -47,6 +46,16 @@ error: Attribute argument value has a wrong type
 ____
 
 error: Attribute argument value has a wrong type
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types/src/error_attr.sw:6:17
+  |
+...
+6 |     #[error(m = 42)]
+  |                 ^^ "m" argument must have a value of type "str".
+  |                 -- help: This value has type "numeric".
+  |
+____
+
+error: Attribute argument value has a wrong type
  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types/src/deprecated_attr.sw:3:21
   |
 ...
@@ -56,5 +65,5 @@ error: Attribute argument value has a wrong type
   |
 ____
 
-  Aborting due to 4 errors.
+  Aborting due to 5 errors.
 error: Failed to compile attributes_invalid_args_values_types

@@ -1,4 +1,3 @@
-use fuels::accounts::wallet::WalletUnlocked;
 use fuels::prelude::*;
 
 abigen!(Contract(
@@ -6,7 +5,7 @@ abigen!(Contract(
     abi = "test_projects/storage_vec_to_vec/out/release/storage_vec_to_vec-abi.json",
 ));
 
-async fn test_storage_vec_to_vec_instance() -> TestStorageVecToVecContract<WalletUnlocked> {
+async fn test_storage_vec_to_vec_instance() -> TestStorageVecToVecContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/storage_vec_to_vec/out/release/storage_vec_to_vec.bin",
@@ -15,7 +14,8 @@ async fn test_storage_vec_to_vec_instance() -> TestStorageVecToVecContract<Walle
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestStorageVecToVecContract::new(id.clone(), wallet)
 }

@@ -917,7 +917,7 @@ pub enum CompileError {
         span: Span,
         hint: String,
     },
-    #[error("Call to \"{name}\" expects {expected} arguments")]
+    #[error("Call to \"{name}\" expects {expected} argument(s)")]
     IntrinsicIncorrectNumArgs {
         name: String,
         expected: u64,
@@ -1062,6 +1062,23 @@ pub enum CompileError {
     },
     #[error("Multiple contracts methods with the same name.")]
     MultipleContractsMethodsWithTheSameName { spans: Vec<Span> },
+    #[error("Error type enum \"{enum_name}\" has non-error variant{} {}. All variants must be marked as `#[error]`.",
+        plural_s(non_error_variants.len()),
+        sequence_to_str(non_error_variants, Enclosing::DoubleQuote, 2)
+    )]
+    ErrorTypeEnumHasNonErrorVariants {
+        enum_name: IdentUnique,
+        non_error_variants: Vec<IdentUnique>,
+    },
+    #[error("Enum variant \"{enum_variant_name}\" is marked as `#[error]`, but \"{enum_name}\" is not an `#[error_type]` enum.")]
+    ErrorAttributeInNonErrorEnum {
+        enum_name: IdentUnique,
+        enum_variant_name: IdentUnique,
+    },
+    #[error("This expression has type \"{argument_type}\", which does not implement \"std::marker::Error\". Panic expression arguments must implement \"Error\".")]
+    PanicExpressionArgumentIsNotError { argument_type: String, span: Span },
+    #[error("Incoherent impl was found due to breaking orphan rule check.")]
+    IncoherentImplDueToOrphanRule { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1288,6 +1305,12 @@ impl Spanned for CompileError {
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
             MultipleImplsSatisfyingTraitForType { span, .. } => span.clone(),
             MultipleContractsMethodsWithTheSameName { spans } => spans[0].clone(),
+            ErrorTypeEnumHasNonErrorVariants { enum_name, .. } => enum_name.span(),
+            ErrorAttributeInNonErrorEnum {
+                enum_variant_name, ..
+            } => enum_variant_name.span(),
+            PanicExpressionArgumentIsNotError { span, .. } => span.clone(),
+            IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
         }
     }
 }
@@ -1791,7 +1814,7 @@ impl ToDiagnostic for CompileError {
                     },
                 }
             },
-            // TODO-IG: Extend error messages to pointers, once typed pointers are defined and can be dereferenced.
+            // TODO: (REFERENCES) Extend error messages to pointers, once typed pointers are defined and can be dereferenced.
             ExpressionCannotBeDereferenced { expression_type, span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Expression cannot be dereferenced".to_string())),
                 issue: Issue::error(
@@ -2313,7 +2336,7 @@ impl ToDiagnostic for CompileError {
                 ],
                 help: vec![
                     "Consider:".to_string(),
-                    // TODO-IG: Once desugaring information becomes available, do not show the first suggestion if declaring variable as mutable is not possible.
+                    // TODO: (REFERENCES) Once desugaring information becomes available, do not show the first suggestion if declaring variable as mutable is not possible.
                     format!("{}- declaring \"{decl_name}\" as mutable.", Indent::Single),
                     format!("{}- taking a reference without `mut`: `&{decl_name}`.", Indent::Single),
                     format!("{}- referencing a mutable copy of \"{decl_name}\", by returning it from a block: `&mut {{ {decl_name} }}`.", Indent::Single)
@@ -2384,10 +2407,7 @@ impl ToDiagnostic for CompileError {
                 ),
                 hints: vec![],
                 help: match marker_trait_name(marker_trait_full_name) {
-                    "Error" => vec![
-                        "\"Error\" marker trait is automatically implemented by the compiler for string slices".to_string(),
-                        "and enums annotated with the `#[error_type]` attribute.".to_string(),
-                    ],
+                    "Error" => error_marker_trait_help_msg(),
                     "Enum" => vec![
                         "\"Enum\" marker trait is automatically implemented by the compiler for all enum types.".to_string(),
                     ],
@@ -2423,7 +2443,7 @@ impl ToDiagnostic for CompileError {
                     ),
                 ],
                 help: vec![
-                    // TODO-IG: Once desugaring information becomes available, do not show this suggestion if declaring variable as mutable is not possible.
+                    // TODO: (DESUGARING) Once desugaring information becomes available, do not show this suggestion if declaring variable as mutable is not possible.
                     format!("Consider declaring \"{decl_name}\" as mutable."),
                 ],
             },
@@ -3001,15 +3021,66 @@ impl ToDiagnostic for CompileError {
                 help: vec!["Contract methods names must be unique, even when implementing multiple ABIs.".into()],
             },
             FunctionSelectorClash { method_name, span, other_method_name, other_span } => Diagnostic {
-		reason: Some(Reason::new(code(1), format!("Methods {method_name} and {other_method_name} have clashing function selectors."))),
-		issue: Issue::error(
-		    source_engine,
-		    span.clone(),
-		    String::new()
-		),
-		hints: vec![Hint::error(source_engine, other_span.clone(), format!("The declaration of {other_method_name} is here"))],
-		help: vec![format!("The methods of a contract must have distinct function selectors, which are computed from the method hash. \nRenaming one of the methods should solve the problem")]
-	    },
+                reason: Some(Reason::new(code(1), format!("Methods {method_name} and {other_method_name} have clashing function selectors."))),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    String::new()
+                ),
+                hints: vec![Hint::error(source_engine, other_span.clone(), format!("The declaration of {other_method_name} is here"))],
+                help: vec![format!("The methods of a contract must have distinct function selectors, which are computed from the method hash. \nRenaming one of the methods should solve the problem")]
+            },
+            ErrorTypeEnumHasNonErrorVariants { enum_name, non_error_variants } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Error type enum cannot have non-error variants".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    enum_name.span(),
+                    format!("Error type enum \"{enum_name}\" has non-error variant{} {}.",
+                        plural_s(non_error_variants.len()),
+                        sequence_to_str(non_error_variants, Enclosing::DoubleQuote, 2)
+                    )
+                ),
+                hints: non_error_variants.iter().map(|variant| Hint::underscored_info(source_engine, variant.span())).collect(),
+                help: vec![
+                    "All error type enum's variants must be marked as errors.".to_string(),
+                    "To mark error variants as errors, annotate them with the `#[error]` attribute.".to_string(),
+                ]
+            },
+            ErrorAttributeInNonErrorEnum { enum_name, enum_variant_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Error enum variants must be in error type enums".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    enum_variant_name.span(),
+                    format!("Enum variant \"{enum_variant_name}\" is marked as `#[error]`, but its enum is not an error type enum.")
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        enum_name.span(),
+                        format!("Consider annotating \"{enum_name}\" enum with the `#[error_type]` attribute."),
+                    )
+                ],
+                help: vec![
+                    "Enum variants can be marked as `#[error]` only if their parent enum is annotated with the `#[error_type]` attribute.".to_string(),
+                ]
+            },
+            PanicExpressionArgumentIsNotError { argument_type, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Panic expression arguments must implement \"Error\" marker trait".into())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("This expression has type \"{argument_type}\", which does not implement \"std::marker::Error\" trait."),
+                ),
+                hints: vec![],
+                help: {
+                    let mut help = vec![
+                        "Panic expression accepts only arguments that implement \"std::marker::Error\" trait.".to_string(),
+                        Diagnostic::help_empty_line(),
+                    ];
+                    help.append(&mut error_marker_trait_help_msg());
+                    help
+                },
+            },
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting
@@ -3179,4 +3250,11 @@ fn marker_trait_name(marker_trait_full_name: &str) -> &str {
     let upper_boundary = lower_boundary + only_name_len;
 
     &marker_trait_full_name[lower_boundary..upper_boundary]
+}
+
+fn error_marker_trait_help_msg() -> Vec<String> {
+    vec![
+        "\"Error\" marker trait is automatically implemented by the compiler for the unit type `()`,".to_string(),
+        "string slices, and enums annotated with the `#[error_type]` attribute.".to_string(),
+    ]
 }

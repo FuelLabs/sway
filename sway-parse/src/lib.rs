@@ -33,27 +33,30 @@ use sway_ast::{
     Module, ModuleKind,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::SourceId;
-
-use std::sync::Arc;
+use sway_features::ExperimentalFeatures;
+use sway_types::{span::Source, SourceId};
 
 pub fn parse_file(
     handler: &Handler,
-    src: Arc<str>,
+    src: Source,
     source_id: Option<SourceId>,
+    experimental: ExperimentalFeatures,
 ) -> Result<Annotated<Module>, ErrorEmitted> {
-    let ts = lex(handler, &src, 0, src.len(), source_id)?;
-    let (m, _) = Parser::new(handler, &ts).parse_to_end()?;
+    let end = src.text.len();
+    let ts = lex(handler, src, 0, end, source_id)?;
+    let (m, _) = Parser::new(handler, &ts, experimental).parse_to_end()?;
     Ok(m)
 }
 
 pub fn parse_module_kind(
     handler: &Handler,
-    src: Arc<str>,
+    src: Source,
     source_id: Option<SourceId>,
+    experimental: ExperimentalFeatures,
 ) -> Result<ModuleKind, ErrorEmitted> {
-    let ts = lex(handler, &src, 0, src.len(), source_id)?;
-    let mut parser = Parser::new(handler, &ts);
+    let end = src.text.len();
+    let ts = lex(handler, src, 0, end, source_id)?;
+    let mut parser = Parser::new(handler, &ts, experimental);
     while let Some(DocComment {
         doc_style: DocStyle::Inner,
         ..
@@ -71,25 +74,29 @@ mod tests {
     #[test]
     fn parse_invalid() {
         // just make sure these do not panic
-        let _res = parse_file(&Handler::default(), Arc::from("script; fn main(256߄"), None);
         let _res = parse_file(
             &Handler::default(),
-            Arc::from(
-                "script;
+            "script; fn main(256߄".into(),
+            None,
+            ExperimentalFeatures::default(),
+        );
+        let _res = parse_file(
+            &Handler::default(),
+            "script;
             fn karr() {
                 let c: f828 =  0x00000000000000000000000vncifxp;
             abi Zezybt {
                 #[mfzbezc, storage(r#
             true }
             }
-            cug",
-            ),
+            cug"
+            .into(),
             None,
+            ExperimentalFeatures::default(),
         );
         let _res = parse_file(
             &Handler::default(),
-            Arc::from(
-                "script;
+            "script;
 
             stdfn main() {
                 let a: b256 =  0x000>0000000scri s = \"flibrary I24;
@@ -97,14 +104,16 @@ mod tests {
             use std::primitives::*;
             use std::assert::assert;
 
-            ///\u{7eb}",
-            ),
+            ///\u{7eb}"
+                .into(),
             None,
+            ExperimentalFeatures::default(),
         );
         let _res = parse_file(
             &Handler::default(),
-            Arc::from("script; \"\u{7eb}\u{7eb}"),
+            "script; \"\u{7eb}\u{7eb}".into(),
             None,
+            ExperimentalFeatures::default(),
         );
     }
 }

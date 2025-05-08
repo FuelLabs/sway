@@ -6,6 +6,7 @@ use ::hash::{Hash, Hasher};
 use ::ops::*;
 use ::primitives::*;
 use ::codec::*;
+use ::debug::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
 

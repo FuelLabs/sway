@@ -27,6 +27,10 @@ pub enum LanguageServerError {
     ProgramsIsNone,
     #[error("Unable to acquire a semaphore permit for parsing")]
     UnableToAcquirePermit,
+    #[error("Client is not initialized")]
+    ClientNotInitialized,
+    #[error("Client request error: {0}")]
+    ClientRequestError(String),
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]

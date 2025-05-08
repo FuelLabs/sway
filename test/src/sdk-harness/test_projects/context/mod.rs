@@ -1,7 +1,6 @@
 use fuel_core::types::fuel_tx::ContractIdExt;
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{
-    accounts::wallet::WalletUnlocked,
     prelude::*,
     types::{Bits256, Bytes32, ContractId},
 };
@@ -22,9 +21,9 @@ abigen!(
 );
 
 async fn get_contracts() -> (
-    TestContextContract<WalletUnlocked>,
+    TestContextContract<Wallet>,
     ContractId,
-    TestContextCallerContract<WalletUnlocked>,
+    TestContextCallerContract<Wallet>,
     ContractId,
 ) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
@@ -35,7 +34,8 @@ async fn get_contracts() -> (
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let id_2 = Contract::load_from(
         "test_artifacts/context_caller_contract/out/release/context_caller_contract.bin",
         LoadConfiguration::default(),
@@ -43,7 +43,8 @@ async fn get_contracts() -> (
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let instance_2 = TestContextCallerContract::new(id_2.clone(), wallet.clone());
     let instance_1 = TestContextContract::new(id_1.clone(), wallet.clone());

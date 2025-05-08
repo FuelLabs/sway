@@ -1,0 +1,5 @@
+category = "fail"
+
+#check: $()Trait is already implemented for type
+#check: $()Trait "foo" is already implemented for type "S<u32, u64>".
+#check: $()Trait "foo" is already implemented for type "S<Z, Y>".

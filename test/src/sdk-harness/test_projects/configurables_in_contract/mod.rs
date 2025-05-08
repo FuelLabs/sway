@@ -19,7 +19,8 @@ async fn contract_uses_default_configurables() -> Result<()> {
     )
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
-    .await?;
+    .await?
+    .contract_id;
 
     let contract_instance = MyContract::new(contract_id, wallet.clone());
 
@@ -82,7 +83,8 @@ async fn contract_configurables() -> Result<()> {
         LoadConfiguration::default().with_configurables(configurables),
     )?
     .deploy(&wallet, TxPolicies::default())
-    .await?;
+    .await?
+    .contract_id;
 
     let contract_instance = MyContract::new(contract_id, wallet.clone());
 

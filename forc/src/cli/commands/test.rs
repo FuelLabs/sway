@@ -71,6 +71,9 @@ pub struct TestPrintOpts {
     /// Print the raw logs for tests.
     #[clap(long)]
     pub raw_logs: bool,
+    /// Print the revert codes for tests.
+    #[clap(long)]
+    pub revert_codes: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
@@ -165,11 +168,23 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
                     info!("Decoded log value: {}, log rb: {}", var_value, rb);
                 }
             }
+
+            for captured in test.ecal.captured.iter() {
+                captured.apply();
+            }
         }
 
+        // If raw logs are enabled, print them.
         if test_print_opts.raw_logs {
             let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
             info!("Raw logs:\n{}", formatted_logs);
+        }
+
+        // If revert codes are enabled, print them.
+        if test_print_opts.revert_codes {
+            if let Some(revert_code) = test.revert_code() {
+                info!("Revert code: {revert_code:x}");
+            }
         }
 
         // If the test is failing, save the test result for printing the details later on.
@@ -257,6 +272,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         error_on_warnings: cmd.build.profile.error_on_warnings,
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
+        hex_outfile: cmd.build.output.hex_file,
         build_target: cmd.build.build_target,
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,
