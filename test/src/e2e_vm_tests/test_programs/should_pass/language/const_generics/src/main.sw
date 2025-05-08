@@ -50,7 +50,7 @@ impl<T, const N: u64> E<T, N> {
 }
 
 fn main(a: [u64; 2]) {
-    __dbg(a);
+    let _ = __dbg(a);
 
     let a = [C {}].my_len();
     assert(a == 1);
@@ -76,4 +76,9 @@ fn main(a: [u64; 2]) {
 #[test]
 fn run_main() {
     main([1, 2]);
+}
+
+#[test]
+fn main_test() {
+    main([0, 1]);
 }

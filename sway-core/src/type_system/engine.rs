@@ -2183,11 +2183,6 @@ impl TypeEngine {
 
         let current_last_replace = *self.last_replace.read();
         for unification in self.unifications.values() {
-            // eprintln!(
-            //     "{depth}: {:?} -> {:?}",
-            //     engines.help_out(unification.received),
-            //     engines.help_out(unification.expected)
-            // );
             Self::unify_helper(
                 &Handler::default(),
                 engines,

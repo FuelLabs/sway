@@ -810,8 +810,16 @@ impl<'a> UnifyCheck<'a> {
                     l_types.push(l.type_id);
                     r_types.push(r.type_id);
                 }
-                (TypeParameter::Const(_), TypeParameter::Const(_)) => {
-                    // TODO
+                (TypeParameter::Const(l), TypeParameter::Const(r)) => {
+                    match (l.expr.as_ref(), r.expr.as_ref()) {
+                        (None, None) => {},
+                        (None, Some(_)) => {},
+                        (Some(_), None) => {},
+                        (Some(ConstGenericExpr::Literal { val: l_val, .. }), Some(ConstGenericExpr::Literal { val: r_val, .. })) => {
+                            assert!(l_val == r_val);
+                        },
+                        (Some(_), Some(_)) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                    }
                 }
                 _ => return false,
             }

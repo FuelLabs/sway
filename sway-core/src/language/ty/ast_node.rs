@@ -154,7 +154,7 @@ impl MaterializeConstGenerics for TyAstNode {
             TyAstNodeContent::Expression(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
             }
-            x => todo!("{x:?}"),
+            _ => Ok(()),
         }
     }
 }
