@@ -10,6 +10,8 @@ pub use crate::{
 use std::{borrow::Cow, fmt::Write, path::Path, sync::Arc};
 use sway_ast::attribute::Annotated;
 use sway_ast::Module;
+use sway_features::ExperimentalFeatures;
+use sway_types::span::Source;
 use sway_types::{SourceEngine, Spanned};
 
 pub(crate) mod shape;
@@ -20,6 +22,7 @@ pub struct Formatter {
     pub shape: Shape,
     pub config: Config,
     pub comments_context: CommentsContext,
+    pub experimental: ExperimentalFeatures,
 }
 
 pub type FormattedCode = String;
@@ -33,7 +36,7 @@ pub trait Format {
 }
 
 impl Formatter {
-    pub fn from_dir(dir: &Path) -> Result<Self, ConfigError> {
+    pub fn from_dir(dir: &Path, experimental: ExperimentalFeatures) -> Result<Self, ConfigError> {
         let config = match Config::from_dir(dir) {
             Ok(config) => config,
             Err(ConfigError::NotFound) => Config::default(),
@@ -42,6 +45,7 @@ impl Formatter {
 
         Ok(Self {
             config,
+            experimental,
             ..Default::default()
         })
     }
@@ -76,13 +80,13 @@ impl Formatter {
     /// Collect a mapping of Span -> Comment from unformatted input.
     pub fn with_comments_context(&mut self, src: &str) -> Result<&mut Self, FormatterError> {
         let comments_context =
-            CommentsContext::new(CommentMap::from_src(Arc::from(src))?, src.to_string());
+            CommentsContext::new(CommentMap::from_src(src.into())?, src.to_string());
         self.comments_context = comments_context;
         Ok(self)
     }
 
-    pub fn format(&mut self, src: Arc<str>) -> Result<FormattedCode, FormatterError> {
-        let annotated_module = parse_file(src)?;
+    pub fn format(&mut self, src: Source) -> Result<FormattedCode, FormatterError> {
+        let annotated_module = parse_file(src, self.experimental)?;
         self.format_module(&annotated_module)
     }
 
@@ -100,7 +104,7 @@ impl Formatter {
 
         // Get the original trimmed source code.
         let module_kind_span = annotated_module.value.kind.span();
-        let src = module_kind_span.src().trim();
+        let src = module_kind_span.src().text.trim();
 
         // Formatted code will be pushed here with raw newline style.
         // Which means newlines are not converted into system-specific versions until `apply_newline_style()`.
@@ -125,7 +129,7 @@ impl Formatter {
         handle_newlines(
             Arc::from(src),
             &annotated_module.value,
-            Arc::from(formatted_code.clone()),
+            formatted_code.as_str().into(),
             &mut formatted_code,
             self,
         )?;

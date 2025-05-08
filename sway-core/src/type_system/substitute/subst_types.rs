@@ -64,6 +64,19 @@ pub trait SubstTypes {
     }
 }
 
+impl<T: SubstTypes + Clone> SubstTypes for std::sync::Arc<T> {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        if let Some(item) = std::sync::Arc::get_mut(self) {
+            item.subst_inner(ctx)
+        } else {
+            let mut item = self.as_ref().clone();
+            let r = item.subst_inner(ctx);
+            *self = std::sync::Arc::new(item);
+            r
+        }
+    }
+}
+
 impl<A, B: SubstTypes> SubstTypes for (A, B) {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         self.1.subst(ctx)

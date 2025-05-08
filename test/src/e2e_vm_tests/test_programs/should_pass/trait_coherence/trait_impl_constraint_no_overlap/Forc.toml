@@ -1,0 +1,6 @@
+[project]
+name = "trait_impl_constraint_no_overlap"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "lib.sw"
+license = "Apache-2.0"
+implicit-std = false

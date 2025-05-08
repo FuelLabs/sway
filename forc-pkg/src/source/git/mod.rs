@@ -201,6 +201,7 @@ impl source::Fetch for Pinned {
         // directories, however we should add some code to validate this. E.g. can we
         // recreate the git hash by hashing the directory or something along these lines
         // using git?
+        // https://github.com/FuelLabs/sway/issues/7075
         {
             let _guard = lock.write()?;
             if !repo_path.exists() {
@@ -431,6 +432,12 @@ where
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
 
+    // Add a guard to ensure cleanup happens if we got out of scope whether by
+    // returning or panicking.
+    let _cleanup_guard = scopeguard::guard(&repo_dir, |dir| {
+        let _ = std::fs::remove_dir_all(dir);
+    });
+
     let config = git2::Config::open_default().unwrap();
 
     // Init auth manager
@@ -468,9 +475,6 @@ where
 
     // Call the user function.
     let output = f(repo)?;
-
-    // Clean up the temporary directory.
-    let _ = std::fs::remove_dir_all(&repo_dir);
     Ok(output)
 }
 

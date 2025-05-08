@@ -20,7 +20,8 @@ async fn run_external_can_proxy_call() {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let configurables = RunExternalProxyContractConfigurables::default()
         .with_TARGET(target_id.clone().into())
@@ -32,7 +33,8 @@ async fn run_external_can_proxy_call() {
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
     let instance = RunExternalProxyContract::new(id.clone(), wallet);
     // Call "large_value"
     // Will call run_external_proxy::large_value
@@ -45,7 +47,7 @@ async fn run_external_can_proxy_call() {
         .call()
         .await
         .unwrap();
-    for r in result.receipts.iter() {
+    for r in result.tx_status.receipts.iter() {
         match r {
             Receipt::LogData { data, .. } => {
                 if let Some(data) = data {
@@ -75,7 +77,7 @@ async fn run_external_can_proxy_call() {
         .call()
         .await
         .unwrap();
-    for r in result.receipts.iter() {
+    for r in result.tx_status.receipts.iter() {
         match r {
             Receipt::LogData { data, .. } => {
                 if let Some(data) = data {

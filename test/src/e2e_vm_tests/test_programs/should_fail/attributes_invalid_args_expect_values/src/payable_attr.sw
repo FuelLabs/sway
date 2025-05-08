@@ -1,3 +1,3 @@
 library;
 
-// Payable attribute does not expect any arguments.
+// `payable` attribute does not expect any arguments.

@@ -2,7 +2,6 @@ use std::{
     fs,
     ops::Not,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use anyhow::Result;
@@ -11,7 +10,7 @@ use sway_core::{
     compile_ir_context_to_finalized_asm, compile_to_ast,
     ir_generation::compile_program,
     namespace::{self, Package},
-    BuildTarget, Engines,
+    BuildConfig, BuildTarget, Engines, OptLevel,
 };
 use sway_error::handler::Handler;
 
@@ -237,6 +236,7 @@ pub(super) async fn run(
                     path.clone(),
                     PathBuf::from("/"),
                     build_target,
+                    sway_core::DbgGeneration::Full,
                 );
 
                 // Include unit tests in the build.
@@ -249,7 +249,7 @@ pub(super) async fn run(
                 let compile_res = compile_to_ast(
                     &handler,
                     &engines,
-                    Arc::from(sway_str),
+                    sway_str.as_ref().into(),
                     initial_namespace,
                     Some(&bld_cfg),
                     PACKAGE_NAME,
@@ -425,7 +425,11 @@ pub(super) async fn run(
 
                             // Compile to ASM.
                             let handler = Handler::default();
-                            let asm_result = compile_ir_context_to_finalized_asm(&handler, &ir, None);
+                            let asm_result = compile_ir_context_to_finalized_asm(
+                                &handler,
+                                &ir,
+                    Some(&BuildConfig::dummy_for_asm_generation().with_optimization_level(OptLevel::Opt1))
+                            );
                             let (errors, _warnings) = handler.consume();
 
                             if asm_result.is_err() || !errors.is_empty() {

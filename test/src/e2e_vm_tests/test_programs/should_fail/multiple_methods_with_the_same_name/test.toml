@@ -24,4 +24,14 @@ category = "fail"
 # check: $()fn my_add(self, other: Self) -> Self {
 # check: $()Method "my_add" already declared in type "Data<u64>".
 
-# check: $()Aborting due to 6 errors
+# check: $()Type contains duplicate declarations
+# check: $()fn my_add(self, other: Self) -> Self {
+# check: $()"my_add" previously defined here.
+# check: $()fn my_add(self, other: Self) -> Self {
+# check: $()Method "my_add" already declared in type "Data<u32>".
+
+# check: $()Type contains duplicate declarations
+# check: $()fn my_add(self, other: Self) -> Self {
+# check: $()"my_add" previously defined here.
+# check: $()fn my_add(self, other: Self) -> Self {
+# check: $()Method "my_add" already declared in type "Data<u32>".

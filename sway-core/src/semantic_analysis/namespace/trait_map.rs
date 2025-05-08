@@ -539,6 +539,27 @@ impl TraitMap {
         }
     }
 
+    pub(crate) fn get_traits_types(
+        &self,
+        traits_types: &mut HashMap<CallPath, Vec<TypeId>>,
+    ) -> Result<(), ErrorEmitted> {
+        for key in self.trait_impls.keys() {
+            for self_entry in self.trait_impls[key].iter() {
+                let callpath = CallPath {
+                    prefixes: self_entry.key.name.prefixes.clone(),
+                    suffix: self_entry.key.name.suffix.name.clone(),
+                    callpath_type: self_entry.key.name.callpath_type,
+                };
+                if let Some(vec) = traits_types.get_mut(&callpath) {
+                    vec.push(self_entry.key.type_id);
+                } else {
+                    traits_types.insert(callpath, vec![self_entry.key.type_id]);
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Filters the entries in `self` and return a new [TraitMap] with all of
     /// the entries from `self` that implement a trait from the declaration with that span.
     pub(crate) fn filter_by_trait_decl_span(&self, trait_decl_span: Span) -> TraitMap {
@@ -701,7 +722,9 @@ impl TraitMap {
                                 *type_id,
                                 *map_type_id,
                                 engines,
-                            ),
+                            )
+                            .map(|(name, item)| (name.to_string(), item))
+                            .collect(),
                             engines,
                         );
                     }
@@ -711,49 +734,51 @@ impl TraitMap {
         trait_map
     }
 
-    fn filter_dummy_methods(
-        map_trait_items: &TraitItems,
+    fn filter_dummy_methods<'a>(
+        map_trait_items: &'a TraitItems,
         type_id: TypeId,
         map_type_id: TypeId,
-        engines: &Engines,
-    ) -> TraitItems {
-        let mut insertable = true;
-        if let TypeInfo::UnknownGeneric {
-            is_from_type_parameter,
-            ..
-        } = *engines.te().get(map_type_id)
-        {
-            insertable = !is_from_type_parameter
-                || matches!(*engines.te().get(type_id), TypeInfo::UnknownGeneric { .. });
-        }
+        engines: &'a Engines,
+    ) -> impl Iterator<Item = (&'a str, ResolvedTraitImplItem)> + 'a {
+        let maybe_is_from_type_parameter = engines.te().map(map_type_id, |x| match x {
+            TypeInfo::UnknownGeneric {
+                is_from_type_parameter,
+                ..
+            } => Some(*is_from_type_parameter),
+            _ => None,
+        });
+        let insertable = if let Some(is_from_type_parameter) = maybe_is_from_type_parameter {
+            !is_from_type_parameter
+                || matches!(*engines.te().get(type_id), TypeInfo::UnknownGeneric { .. })
+        } else {
+            true
+        };
 
         map_trait_items
             .iter()
-            .filter_map(|(name, item)| match item {
+            .filter_map(move |(name, item)| match item {
                 ResolvedTraitImplItem::Parsed(_item) => todo!(),
                 ResolvedTraitImplItem::Typed(item) => match item {
-                    ty::TyTraitItem::Fn(decl_ref) => {
-                        let decl = (*engines.de().get(decl_ref.id())).clone();
+                    ty::TyTraitItem::Fn(decl_ref) => engines.de().map(decl_ref.id(), |decl| {
                         if decl.is_trait_method_dummy && !insertable {
                             None
                         } else {
                             Some((
-                                name.clone(),
+                                name.as_str(),
                                 ResolvedTraitImplItem::Typed(TyImplItem::Fn(decl_ref.clone())),
                             ))
                         }
-                    }
+                    }),
                     ty::TyTraitItem::Constant(decl_ref) => Some((
-                        name.clone(),
+                        name.as_str(),
                         ResolvedTraitImplItem::Typed(TyImplItem::Constant(decl_ref.clone())),
                     )),
                     ty::TyTraitItem::Type(decl_ref) => Some((
-                        name.clone(),
+                        name.as_str(),
                         ResolvedTraitImplItem::Typed(TyImplItem::Type(decl_ref.clone())),
                     )),
                 },
             })
-            .collect()
     }
 
     fn make_item_for_type_mapping(
@@ -814,11 +839,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    ///   entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type(
         module: &Module,
         engines: &Engines,
@@ -859,9 +884,7 @@ impl TraitMap {
                             entry.key.type_id,
                             engines,
                         )
-                        .values()
-                        .cloned()
-                        .map(|i| (i, entry.key.clone()))
+                        .map(|(_, i)| (i, entry.key.clone()))
                         .collect::<Vec<_>>();
 
                         items.extend(trait_items);
@@ -878,11 +901,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    ///   entries that qualify as hits are equivalents of `type_id`
     pub fn get_impl_spans_for_type(
         module: &Module,
         engines: &Engines,
@@ -971,11 +994,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    ///   entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
         module: &Module,
         engines: &Engines,
@@ -1019,9 +1042,7 @@ impl TraitMap {
                             e.key.type_id,
                             engines,
                         )
-                        .values()
-                        .cloned()
-                        .map(|i| {
+                        .map(|(_, i)| {
                             Self::make_item_for_type_mapping(
                                 engines,
                                 i,
@@ -1045,11 +1066,11 @@ impl TraitMap {
     ///
     /// Notes:
     /// - equivalency is defined (1) based on whether the types contains types
-    ///     that are dynamic and can change and (2) whether the types hold
-    ///     equivalency after (1) is fulfilled
+    ///   that are dynamic and can change and (2) whether the types hold
+    ///   equivalency after (1) is fulfilled
     /// - this method does not translate types from the found entries to the
-    ///     `type_id` (like in `filter_by_type()`). This is because the only
-    ///     entries that qualify as hits are equivalents of `type_id`
+    ///   `type_id` (like in `filter_by_type()`). This is because the only
+    //    entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
         module: &Module,
         engines: &Engines,
@@ -1102,6 +1123,44 @@ impl TraitMap {
             Ok(None::<()>)
         });
         trait_names
+    }
+
+    /// Returns true if the type represented by the `type_id` implements
+    /// any trait that satisfies the `predicate`.
+    pub(crate) fn type_implements_trait<F: Fn(&TraitEntry) -> bool>(
+        module: &Module,
+        engines: &Engines,
+        type_id: TypeId,
+        predicate: F,
+    ) -> bool {
+        let type_id = engines.te().get_unaliased_type_id(type_id);
+
+        // small performance gain in bad case
+        if matches!(&*engines.te().get(type_id), TypeInfo::ErrorRecovery(_)) {
+            return false;
+        }
+
+        let unify_check = UnifyCheck::constraint_subset(engines);
+        let mut implements_trait = false;
+        let _ = module.walk_scope_chain_early_return(|lexical_scope| {
+            lexical_scope.items.implemented_traits.for_each_impls(
+                engines,
+                type_id,
+                false,
+                |entry| {
+                    // We don't have a suitable way to cancel traversal, so we just
+                    // skip the checks if any of the previous traits has already matched.
+                    if !implements_trait
+                        && unify_check.check(type_id, entry.key.type_id)
+                        && predicate(entry)
+                    {
+                        implements_trait = true;
+                    }
+                },
+            );
+            Ok(None::<()>)
+        });
+        implements_trait
     }
 
     pub(crate) fn get_trait_item_for_type(

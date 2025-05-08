@@ -12,7 +12,10 @@ use fuels::{
     macros::abigen,
     types::{transaction::TxPolicies, AsciiString, Bits256, SizedAsciiString},
 };
-use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account, ViewOnlyAccount};
+use fuels_accounts::{
+    provider::Provider, signers::private_key::PrivateKeySigner, wallet::Wallet, Account,
+    ViewOnlyAccount,
+};
 use portpicker::Port;
 use rand::thread_rng;
 use rexpect::spawn;
@@ -145,7 +148,7 @@ fn update_main_sw(tmp_dir: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn assert_big_contract_calls(wallet: WalletUnlocked, contract_id: ContractId) {
+async fn assert_big_contract_calls(wallet: Wallet, contract_id: ContractId) {
     abigen!(Contract(
         name = "BigContract",
         abi = "forc-plugins/forc-client/test/data/big_contract/big_contract-abi.json"
@@ -374,7 +377,7 @@ async fn test_simple_deploy() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "57a5ac7d952df0dd7e72812509fd373260bee5dac54cca48c4d0b2841e9bcee3",
+            "7338571226a3a07d411acc73bf31821d7315365e3e04e309f5055f0b567431fb",
         )
         .unwrap(),
         proxy: None,
@@ -418,7 +421,7 @@ async fn test_deploy_submit_only() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "57a5ac7d952df0dd7e72812509fd373260bee5dac54cca48c4d0b2841e9bcee3",
+            "7338571226a3a07d411acc73bf31821d7315365e3e04e309f5055f0b567431fb",
         )
         .unwrap(),
         proxy: None,
@@ -465,12 +468,12 @@ async fn test_deploy_fresh_proxy() {
     node.kill().unwrap();
     let impl_contract = DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "57a5ac7d952df0dd7e72812509fd373260bee5dac54cca48c4d0b2841e9bcee3",
+            "7338571226a3a07d411acc73bf31821d7315365e3e04e309f5055f0b567431fb",
         )
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "b8588024c0581f715d79c4f5ebd0b9e07f4ed0028f4da4fcf245ec09e1400982",
+                "2d4f046d31ee52218c189d0c4f30ac74490ab73b0747b4b95908b1ca7f7f7976",
             )
             .unwrap(),
         ),
@@ -522,7 +525,8 @@ async fn test_proxy_contract_re_routes_call() {
     // contract returns a true.
     let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
-    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+    let signer = PrivateKeySigner::new(secret_key);
+    let wallet_unlocked = Wallet::new(signer, provider);
 
     abigen!(Contract(
         name = "ImplementationContract",
@@ -656,13 +660,13 @@ async fn test_non_owner_fails_to_set_target() {
     // Create and fund an owner account and an attacker account.
     let provider = Provider::connect(&node_url).await.unwrap();
     let attacker_secret_key = SecretKey::random(&mut thread_rng());
-    let attacker_wallet =
-        WalletUnlocked::new_from_private_key(attacker_secret_key, Some(provider.clone()));
+    let attacker_signer = PrivateKeySigner::new(attacker_secret_key);
+    let attacker_wallet = Wallet::new(attacker_signer.clone(), provider.clone());
 
     let owner_secret_key =
         SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
-    let owner_wallet =
-        WalletUnlocked::new_from_private_key(owner_secret_key, Some(provider.clone()));
+    let owner_signer = PrivateKeySigner::new(owner_secret_key);
+    let owner_wallet = Wallet::new(owner_signer, provider.clone());
     let consensus_parameters = provider.consensus_parameters().await.unwrap();
     let base_asset_id = consensus_parameters.base_asset_id();
 
@@ -680,7 +684,7 @@ async fn test_non_owner_fails_to_set_target() {
     let dummy_contract_id_target = ContractId::default();
     abigen!(Contract(name = "ProxyContract", abi = "{\"programType\":\"contract\",\"specVersion\":\"1\",\"encodingVersion\":\"1\",\"concreteTypes\":[{\"type\":\"()\",\"concreteTypeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"},{\"type\":\"enum standards::src5::AccessError\",\"concreteTypeId\":\"3f702ea3351c9c1ece2b84048006c8034a24cbc2bad2e740d0412b4172951d3d\",\"metadataTypeId\":1},{\"type\":\"enum standards::src5::State\",\"concreteTypeId\":\"192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c\",\"metadataTypeId\":2},{\"type\":\"enum std::option::Option<struct std::contract_id::ContractId>\",\"concreteTypeId\":\"0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8\",\"metadataTypeId\":4,\"typeArguments\":[\"29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54\"]},{\"type\":\"enum sway_libs::ownership::errors::InitializationError\",\"concreteTypeId\":\"1dfe7feadc1d9667a4351761230f948744068a090fe91b1bc6763a90ed5d3893\",\"metadataTypeId\":5},{\"type\":\"enum sway_libs::upgradability::errors::SetProxyOwnerError\",\"concreteTypeId\":\"3c6e90ae504df6aad8b34a93ba77dc62623e00b777eecacfa034a8ac6e890c74\",\"metadataTypeId\":6},{\"type\":\"str\",\"concreteTypeId\":\"8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a\"},{\"type\":\"struct std::contract_id::ContractId\",\"concreteTypeId\":\"29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54\",\"metadataTypeId\":9},{\"type\":\"struct sway_libs::upgradability::events::ProxyOwnerSet\",\"concreteTypeId\":\"96dd838b44f99d8ccae2a7948137ab6256c48ca4abc6168abc880de07fba7247\",\"metadataTypeId\":10},{\"type\":\"struct sway_libs::upgradability::events::ProxyTargetSet\",\"concreteTypeId\":\"1ddc0adda1270a016c08ffd614f29f599b4725407c8954c8b960bdf651a9a6c8\",\"metadataTypeId\":11}],\"metadataTypes\":[{\"type\":\"b256\",\"metadataTypeId\":0},{\"type\":\"enum standards::src5::AccessError\",\"metadataTypeId\":1,\"components\":[{\"name\":\"NotOwner\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"}]},{\"type\":\"enum standards::src5::State\",\"metadataTypeId\":2,\"components\":[{\"name\":\"Uninitialized\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"},{\"name\":\"Initialized\",\"typeId\":3},{\"name\":\"Revoked\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"}]},{\"type\":\"enum std::identity::Identity\",\"metadataTypeId\":3,\"components\":[{\"name\":\"Address\",\"typeId\":8},{\"name\":\"ContractId\",\"typeId\":9}]},{\"type\":\"enum std::option::Option\",\"metadataTypeId\":4,\"components\":[{\"name\":\"None\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"},{\"name\":\"Some\",\"typeId\":7}],\"typeParameters\":[7]},{\"type\":\"enum sway_libs::ownership::errors::InitializationError\",\"metadataTypeId\":5,\"components\":[{\"name\":\"CannotReinitialized\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"}]},{\"type\":\"enum sway_libs::upgradability::errors::SetProxyOwnerError\",\"metadataTypeId\":6,\"components\":[{\"name\":\"CannotUninitialize\",\"typeId\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\"}]},{\"type\":\"generic T\",\"metadataTypeId\":7},{\"type\":\"struct std::address::Address\",\"metadataTypeId\":8,\"components\":[{\"name\":\"bits\",\"typeId\":0}]},{\"type\":\"struct std::contract_id::ContractId\",\"metadataTypeId\":9,\"components\":[{\"name\":\"bits\",\"typeId\":0}]},{\"type\":\"struct sway_libs::upgradability::events::ProxyOwnerSet\",\"metadataTypeId\":10,\"components\":[{\"name\":\"new_proxy_owner\",\"typeId\":2}]},{\"type\":\"struct sway_libs::upgradability::events::ProxyTargetSet\",\"metadataTypeId\":11,\"components\":[{\"name\":\"new_target\",\"typeId\":9}]}],\"functions\":[{\"inputs\":[],\"name\":\"proxy_target\",\"output\":\"0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8\",\"attributes\":[{\"name\":\"doc-comment\",\"arguments\":[\" Returns the target contract of the proxy contract.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Returns\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * [Option<ContractId>] - The new proxy contract to which all fallback calls will be passed or `None`.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Number of Storage Accesses\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Reads: `1`\"]},{\"name\":\"storage\",\"arguments\":[\"read\"]}]},{\"inputs\":[{\"name\":\"new_target\",\"concreteTypeId\":\"29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54\"}],\"name\":\"set_proxy_target\",\"output\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\",\"attributes\":[{\"name\":\"doc-comment\",\"arguments\":[\" Change the target contract of the proxy contract.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Additional Information\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" This method can only be called by the `proxy_owner`.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Arguments\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * `new_target`: [ContractId] - The new proxy contract to which all fallback calls will be passed.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Reverts\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * When not called by `proxy_owner`.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Number of Storage Accesses\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Reads: `1`\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Write: `1`\"]},{\"name\":\"storage\",\"arguments\":[\"read\",\"write\"]}]},{\"inputs\":[],\"name\":\"proxy_owner\",\"output\":\"192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c\",\"attributes\":[{\"name\":\"doc-comment\",\"arguments\":[\" Returns the owner of the proxy contract.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Returns\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * [State] - Represents the state of ownership for this contract.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Number of Storage Accesses\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Reads: `1`\"]},{\"name\":\"storage\",\"arguments\":[\"read\"]}]},{\"inputs\":[],\"name\":\"initialize_proxy\",\"output\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\",\"attributes\":[{\"name\":\"doc-comment\",\"arguments\":[\" Initializes the proxy contract.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Additional Information\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" This method sets the storage values using the values of the configurable constants `INITIAL_TARGET` and `INITIAL_OWNER`.\"]},{\"name\":\"doc-comment\",\"arguments\":[\" This then allows methods that write to storage to be called.\"]},{\"name\":\"doc-comment\",\"arguments\":[\" This method can only be called once.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Reverts\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * When `storage::SRC14.proxy_owner` is not [State::Uninitialized].\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Number of Storage Accesses\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Writes: `2`\"]},{\"name\":\"storage\",\"arguments\":[\"write\"]}]},{\"inputs\":[{\"name\":\"new_proxy_owner\",\"concreteTypeId\":\"192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c\"}],\"name\":\"set_proxy_owner\",\"output\":\"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d\",\"attributes\":[{\"name\":\"doc-comment\",\"arguments\":[\" Changes proxy ownership to the passed State.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Additional Information\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" This method can be used to transfer ownership between Identities or to revoke ownership.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Arguments\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * `new_proxy_owner`: [State] - The new state of the proxy ownership.\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Reverts\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * When the sender is not the current proxy owner.\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * When the new state of the proxy ownership is [State::Uninitialized].\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" # Number of Storage Accesses\"]},{\"name\":\"doc-comment\",\"arguments\":[\"\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Reads: `1`\"]},{\"name\":\"doc-comment\",\"arguments\":[\" * Writes: `1`\"]},{\"name\":\"storage\",\"arguments\":[\"write\"]}]}],\"loggedTypes\":[{\"logId\":\"4571204900286667806\",\"concreteTypeId\":\"3f702ea3351c9c1ece2b84048006c8034a24cbc2bad2e740d0412b4172951d3d\"},{\"logId\":\"2151606668983994881\",\"concreteTypeId\":\"1ddc0adda1270a016c08ffd614f29f599b4725407c8954c8b960bdf651a9a6c8\"},{\"logId\":\"2161305517876418151\",\"concreteTypeId\":\"1dfe7feadc1d9667a4351761230f948744068a090fe91b1bc6763a90ed5d3893\"},{\"logId\":\"4354576968059844266\",\"concreteTypeId\":\"3c6e90ae504df6aad8b34a93ba77dc62623e00b777eecacfa034a8ac6e890c74\"},{\"logId\":\"10870989709723147660\",\"concreteTypeId\":\"96dd838b44f99d8ccae2a7948137ab6256c48ca4abc6168abc880de07fba7247\"},{\"logId\":\"10098701174489624218\",\"concreteTypeId\":\"8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a\"}],\"messagesTypes\":[],\"configurables\":[{\"name\":\"INITIAL_TARGET\",\"concreteTypeId\":\"0d79387ad3bacdc3b7aad9da3a96f4ce60d9a1b6002df254069ad95a3931d5c8\",\"offset\":13368},{\"name\":\"INITIAL_OWNER\",\"concreteTypeId\":\"192bc7098e2fe60635a9918afb563e4e5419d386da2bdbf0d716b4bc8549802c\",\"offset\":13320}]}",));
 
-    let wallet = WalletUnlocked::new_from_private_key(attacker_secret_key, Some(provider.clone()));
+    let wallet = Wallet::new(attacker_signer, provider.clone());
     let attacker_account = ForcClientAccount::Wallet(wallet);
     // Try to change target of the proxy with a random wallet which is not the owner of the proxy.
     let res = update_proxy_contract_target(&attacker_account, proxy_id, dummy_contract_id_target)
@@ -792,7 +796,8 @@ async fn chunked_deploy_re_routes_calls() {
 
     let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
-    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+    let signer = PrivateKeySigner::new(secret_key);
+    let wallet_unlocked = Wallet::new(signer, provider);
 
     assert_big_contract_calls(wallet_unlocked, deployed_contract.id).await;
 
@@ -836,7 +841,8 @@ async fn chunked_deploy_with_proxy_re_routes_call() {
 
     let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
-    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+    let signer = PrivateKeySigner::new(secret_key);
+    let wallet_unlocked = Wallet::new(signer, provider);
 
     assert_big_contract_calls(wallet_unlocked, deployed_contract.id).await;
 
@@ -942,7 +948,8 @@ async fn deploy_script_calls() {
 
     let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
-    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+    let signer = PrivateKeySigner::new(secret_key);
+    let wallet_unlocked = Wallet::new(signer, provider);
 
     let loader_path = tmp_dir.path().join("out/deployed_script-loader.bin");
     let instance = MyScript::new(wallet_unlocked, &loader_path.display().to_string());
@@ -955,7 +962,7 @@ async fn deploy_script_calls() {
         .await
         .unwrap();
     let (configs, with_input, without_input, from_contract) = call_handler.value;
-    let receipts = call_handler.receipts;
+    let receipts = call_handler.tx_status.receipts;
 
     assert!(configs.0); // bool
     assert_eq!(configs.1, 8); // u8
@@ -991,7 +998,7 @@ async fn deploy_script_calls() {
 
     receipts.iter().find(|receipt| {
         if let fuel_tx::Receipt::LogData { data, .. } = receipt {
-            *data == Some(vec![0x08])
+            data == &Some(vec![0x08])
         } else {
             false
         }
@@ -1070,7 +1077,8 @@ async fn deployed_predicate_call() {
     let consensus_parameters = provider.consensus_parameters().await.unwrap();
     let base_asset_id = consensus_parameters.base_asset_id();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
-    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    let signer = PrivateKeySigner::new(secret_key);
+    let wallet_unlocked = Wallet::new(signer, provider.clone());
     let loader_path = tmp_dir.path().join("out/deployed_predicate-loader.bin");
     let strct = StructWithGeneric {
         field_1: 8,
@@ -1129,7 +1137,8 @@ async fn call_with_sdk_generated_overrides(node_url: &str, contract_id: Contract
     ));
     let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
-    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    let signer = PrivateKeySigner::new(secret_key);
+    let wallet_unlocked = Wallet::new(signer, provider);
     let bin_dir = project_dir.join("deployed_script.bin");
     let script_instance = MyScript::new(wallet_unlocked, bin_dir.display().to_string().as_str());
 
@@ -1183,7 +1192,8 @@ async fn call_with_sdk_generated_overrides(node_url: &str, contract_id: Contract
 async fn call_with_forc_generated_overrides(node_url: &str, contract_id: ContractId) -> String {
     let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
-    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    let signer = PrivateKeySigner::new(secret_key);
+    let wallet_unlocked = Wallet::new(signer, provider);
     let tmp_dir = tempdir().unwrap();
     let project_dir = test_data_path().join("deployed_script");
     copy_dir(&project_dir, tmp_dir.path()).unwrap();

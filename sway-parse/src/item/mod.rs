@@ -57,7 +57,7 @@ impl Parse for ItemKind {
         } else if let Some(item) = parser.guarded_parse::<AbiToken, _>()? {
             ItemKind::Abi(item)
         } else if let Some(mut item) = parser.guarded_parse::<ConstToken, ItemConst>()? {
-            item.visibility = visibility.take();
+            item.pub_token = visibility.take();
             parser.take::<SemicolonToken>().ok_or_else(|| {
                 parser.emit_error(ParseErrorKind::ExpectedPunct {
                     kinds: vec![sway_types::ast::PunctKind::Semicolon],
@@ -213,7 +213,7 @@ impl Parse for TraitType {
 mod tests {
     use super::*;
     use crate::test_utils::parse;
-    use sway_ast::{AttributeDecl, Item, ItemTraitItem};
+    use sway_ast::{AttributeDecl, Item, ItemTraitItem, Statement};
 
     // Attribute name and its list of parameters
     type ParameterizedAttr<'a> = (&'a str, Option<Vec<&'a str>>);
@@ -689,6 +689,66 @@ mod tests {
                 [("doc-comment", Some(vec![" This is a doc comment."]))],
                 [("doc-comment", Some(vec![" This is another doc comment."]))]
             ]
+        );
+    }
+
+    #[test]
+    fn parse_nested_annotations() {
+        let item = parse::<ItemFn>(
+            r#"
+          fn fun() {
+            /// Struct Comment.
+            #[allow(dead_code)]
+            struct S {
+              /// Field Comment.
+              #[allow(dead_code)]
+              field: u8,
+            }
+
+            /// Const Comment.
+            #[allow(dead_code)]
+            const CONST: u8 = 0;
+          }
+        "#,
+        );
+        let item_attributes =
+            item.body
+                .inner
+                .statements
+                .iter()
+                .fold(vec![], |mut acc, statement| match statement {
+                    Statement::Item(item) => {
+                        acc.push(attributes(&item.attributes));
+                        if let ItemKind::Struct(item_struct) = &item.value {
+                            let mut struct_attributes = item_struct
+                                .fields
+                                .inner
+                                .value_separator_pairs
+                                .iter()
+                                .map(|(field, _)| attributes(&field.attributes))
+                                .collect::<Vec<_>>();
+                            acc.append(&mut struct_attributes);
+                        }
+                        acc
+                    }
+                    _ => acc,
+                });
+        assert_eq!(
+            item_attributes,
+            vec![
+                vec![
+                    [("doc-comment", Some(vec![" Struct Comment."]))],
+                    [("allow", Some(vec!["dead_code"]))],
+                ],
+                vec![
+                    [("doc-comment", Some(vec![" Field Comment."]))],
+                    [("allow", Some(vec!["dead_code"]))],
+                ],
+                vec![
+                    [("doc-comment", Some(vec![" Const Comment."]))],
+                    [("allow", Some(vec!["dead_code"]))],
+                ]
+            ],
         );
     }
 }

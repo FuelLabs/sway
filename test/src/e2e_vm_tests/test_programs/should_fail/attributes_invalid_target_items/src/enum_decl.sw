@@ -6,6 +6,7 @@ library;
 //! Invalid inner comment.
 #[payable(invalid)]
 #[fallback(invalid)]
+#[error(invalid)]
 enum E {
     #[storage(invalid)]
     #[inline(invalid)]
@@ -13,5 +14,6 @@ enum E {
     //! Invalid inner comment.
     #[payable(invalid)]
     #[fallback(invalid)]
+    #[error_type(invalid)]
     A: (),
 }

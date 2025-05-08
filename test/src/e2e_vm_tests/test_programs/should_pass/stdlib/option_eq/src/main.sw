@@ -33,12 +33,6 @@ impl PartialEq for MyStruct {
 impl Eq for MyStruct {}
 
 pub type Tuple = (u32, u32);
-impl PartialEq for Tuple {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-impl Eq for Tuple {}
 
 impl PartialEq for MyEnum {
     fn eq(self, other: MyEnum) -> bool {

@@ -22,5 +22,6 @@ pub mod alloc;
 pub mod iterator;
 pub mod clone;
 pub mod vec;
+pub mod debug;
 
 pub mod prelude;

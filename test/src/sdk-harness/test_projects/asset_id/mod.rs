@@ -1,4 +1,4 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::AssetId};
+use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestAssetId",
@@ -17,13 +17,13 @@ async fn can_get_base_asset_id() {
         .await
         .unwrap()
         .value;
-    let consensus_params = wallet.provider().unwrap().consensus_parameters().await.unwrap();
+    let consensus_params = wallet.provider().consensus_parameters().await.unwrap();
     let base_asset_id = consensus_params.base_asset_id();
 
     assert_eq!(asset_id, *base_asset_id);
 }
 
-async fn get_instance(wallet: WalletUnlocked) -> (TestAssetId<WalletUnlocked>, ContractId) {
+async fn get_instance(wallet: Wallet) -> (TestAssetId<Wallet>, ContractId) {
     let fuelcontract_id = Contract::load_from(
         "test_projects/asset_id/out/release/asset_id.bin",
         LoadConfiguration::default(),
@@ -31,7 +31,8 @@ async fn get_instance(wallet: WalletUnlocked) -> (TestAssetId<WalletUnlocked>, C
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     wallet
         .force_transfer_to_contract(&fuelcontract_id, 1000, AssetId::BASE, TxPolicies::default())

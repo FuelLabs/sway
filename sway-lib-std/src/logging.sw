@@ -2,6 +2,7 @@
 library;
 
 use ::codec::*;
+use ::debug::*;
 
 /// Log any stack type.
 ///

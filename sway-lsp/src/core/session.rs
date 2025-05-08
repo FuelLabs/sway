@@ -53,9 +53,9 @@ pub type ProjectDirectory = PathBuf;
 
 #[derive(Default, Debug)]
 pub struct CompiledProgram {
-    pub lexed: Option<LexedProgram>,
-    pub parsed: Option<ParseProgram>,
-    pub typed: Option<ty::TyProgram>,
+    pub lexed: Option<Arc<LexedProgram>>,
+    pub parsed: Option<Arc<ParseProgram>>,
+    pub typed: Option<Arc<ty::TyProgram>>,
 }
 
 /// A `Session` is used to store information about a single member in a workspace.
@@ -107,17 +107,11 @@ impl Session {
         self.sync.clone_manifest_dir_to_temp()?;
         // iterate over the project dir, parse all sway files
         let _ = self.store_sway_files(documents).await;
-        self.sync.watch_and_sync_manifest();
+        self.sync.sync_manifest();
         self.sync.manifest_dir().map_err(Into::into)
     }
 
     pub fn shutdown(&self) {
-        // shutdown the thread watching the manifest file
-        let handle = self.sync.notify_join_handle.read();
-        if let Some(join_handle) = &*handle {
-            join_handle.abort();
-        }
-
         // Delete the temporary directory.
         self.sync.remove_temp_dir();
     }
@@ -150,6 +144,7 @@ impl Session {
         let path = uri.to_file_path().unwrap();
         let source_id = { engines.se().get_source_id(&path) };
         engines.clear_module(&source_id);
+
         Ok(())
     }
 
@@ -231,7 +226,6 @@ impl Session {
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
             if let Some(program) = &compiled_program.typed {
-                let engines = self.engines.read();
                 return Some(capabilities::completion::to_completion_items(
                     &program.namespace,
                     &engines,
@@ -326,6 +320,7 @@ pub fn compile(
         retrigger_compilation,
         &[],
         &[sway_features::Feature::NewEncoding],
+        sway_core::DbgGeneration::None,
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
@@ -358,15 +353,15 @@ pub fn traverse(
         let current_diagnostics = handler.consume();
         diagnostics = current_diagnostics;
 
-        if value.is_none() {
-            continue;
-        }
-        let Programs {
+        let Some(Programs {
             lexed,
             parsed,
             typed,
             metrics,
-        } = value.unwrap();
+        }) = value.as_ref()
+        else {
+            continue;
+        };
 
         // Check if the cached AST was returned by the compiler for the users workspace.
         // If it was, then we need to use the original engines for traversal.
@@ -385,7 +380,7 @@ pub fn traverse(
         if let Some(source_id) = lexed.root.tree.value.span().source_id() {
             let path = engines.se().get_path(source_id);
             let program_id = program_id_from_path(&path, engines)?;
-            session.metrics.insert(program_id, metrics);
+            session.metrics.insert(program_id, metrics.clone());
 
             if let Some(modified_file) = &modified_file {
                 let modified_program_id = program_id_from_path(modified_file, engines)?;
@@ -409,7 +404,6 @@ pub fn traverse(
                 }
             }
         };
-        let typed = typed.ok();
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
@@ -419,15 +413,15 @@ pub fn traverse(
         if i == results_len - 1 {
             // First, populate our token_map with sway keywords.
             let lexed_tree = LexedTree::new(&ctx);
-            lexed_tree.collect_module_kinds(&lexed);
-            parse_lexed_program(&lexed, &ctx, &modified_file, |an, _ctx| {
+            lexed_tree.collect_module_kinds(lexed);
+            parse_lexed_program(lexed, &ctx, &modified_file, |an, _ctx| {
                 lexed_tree.traverse_node(an)
             });
 
             // Next, populate our token_map with un-typed yet parsed ast nodes.
             let parsed_tree = ParsedTree::new(&ctx);
-            parsed_tree.collect_module_spans(&parsed);
-            parse_ast_to_tokens(&parsed, &ctx, &modified_file, |an, _ctx| {
+            parsed_tree.collect_module_spans(parsed);
+            parse_ast_to_tokens(parsed, &ctx, &modified_file, |an, _ctx| {
                 parsed_tree.traverse_node(an)
             });
 
@@ -439,12 +433,12 @@ pub fn traverse(
             });
 
             let compiled_program = &mut *session.compiled_program.write();
-            compiled_program.lexed = Some(lexed);
-            compiled_program.parsed = Some(parsed);
-            compiled_program.typed = typed;
+            compiled_program.lexed = Some(lexed.clone());
+            compiled_program.parsed = Some(parsed.clone());
+            compiled_program.typed = typed.as_ref().map(|x| x.clone()).ok();
         } else {
             // Collect tokens from dependencies and the standard library prelude.
-            parse_ast_to_tokens(&parsed, &ctx, &modified_file, |an, ctx| {
+            parse_ast_to_tokens(parsed, &ctx, &modified_file, |an, ctx| {
                 dependency::collect_parsed_declaration(an, ctx);
             });
 
@@ -509,7 +503,7 @@ pub fn parse_project(
         let compiled_program = session.compiled_program.read();
         create_runnables(
             &session.runnables,
-            compiled_program.typed.as_ref(),
+            compiled_program.typed.as_deref(),
             engines.de(),
             engines.se(),
         );

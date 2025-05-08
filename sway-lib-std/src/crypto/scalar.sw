@@ -6,6 +6,7 @@ use ::option::Option::{self, *};
 use ::ops::*;
 use ::primitive_conversions::u256::*;
 use ::codec::*;
+use ::debug::*;
 
 // NOTE: Bytes are used to support numbers greater than 32 bytes for future curves.
 /// The Scalar type used in cryptographic operations.
@@ -16,23 +17,12 @@ pub struct Scalar {
 // All scalars must be of length 32
 impl PartialEq for Scalar {
     fn eq(self, other: Self) -> bool {
-        if self.bytes.len() != 32 || other.bytes.len() != 32 {
-            return false;
-        }
-
-        let mut iter = 0;
-        while iter < 32 {
-            if self.bytes.get(iter).unwrap() != other.bytes.get(iter).unwrap()
-            {
-                return false;
-            }
-
-            iter += 1;
-        }
-        true
+        self.bytes.len() == 32 && self.bytes == other.bytes
     }
 }
-impl Eq for Scalar {}
+// Note that `Scalar` implements `PartialEq` but not `Eq`,
+// because an uninitialized `Scalar`, created by `Scalar::new`
+// is not equal to any other scalar, including itself.
 
 impl Scalar {
     /// Returns a new, uninitialized Scalar.
@@ -117,7 +107,13 @@ impl Scalar {
     /// }
     /// ```
     pub fn is_zero(self) -> bool {
-        self == Self::zero()
+        // Note that we could simply return `self == Self::zero()` here,
+        // but this would cause creating a new `Scalar` zero instance
+        // every time we call this function. `Self::zero()` is expensive
+        // both in terms of gas and allocated memory.
+        // In cases like calling this function in a loop, the performance
+        // impact would be significant.
+        self.bytes.len() == 32 && self.bytes.are_all_zero()
     }
 
     /// Returns the underlying bytes of the scalar.
@@ -159,6 +155,8 @@ impl From<b256> for Scalar {
 
 impl From<[u8; 32]> for Scalar {
     fn from(bytes_array: [u8; 32]) -> Self {
+        // TODO: Once const generics are available directly call `From<[u8; N]>` on `Bytes`
+        //       instead of having a loop.
         let mut bytes = Bytes::with_capacity(32);
 
         let mut iter = 0;

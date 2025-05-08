@@ -7,6 +7,8 @@ library;
 #[payable(invalid)]
 #[deprecated(invalid)]
 #[fallback(invalid)]
+#[error_type(invalid)]
+#[error(invalid)]
 trait T {
     #[storage(invalid)]
     #[inline(invalid)]
@@ -15,5 +17,7 @@ trait T {
     #[payable(invalid)]
     #[deprecated(invalid)]
     #[fallback(invalid)]
+    #[error_type(invalid)]
+    #[error(invalid)]
     const TRAIT_CONST: u8 = 0;
 } 

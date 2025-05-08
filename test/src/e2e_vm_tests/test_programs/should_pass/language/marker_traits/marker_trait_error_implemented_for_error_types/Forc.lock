@@ -1,0 +1,8 @@
+[[package]]
+name = "marker_trait_error_implemented_for_error_types"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-826541C4D1778EF1"

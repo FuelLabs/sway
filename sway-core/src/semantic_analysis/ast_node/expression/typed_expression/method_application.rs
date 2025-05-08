@@ -11,7 +11,10 @@ use crate::{
     semantic_analysis::*,
     type_system::*,
 };
-use ast_elements::{type_argument::GenericTypeArgument, type_parameter::GenericTypeParameter};
+use ast_elements::{
+    type_argument::GenericTypeArgument,
+    type_parameter::{ConstGenericExpr, GenericTypeParameter},
+};
 use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
 use itertools::izip;
@@ -126,8 +129,8 @@ pub(crate) fn type_check_method_application(
             .te()
             .get(args_opt_buf[0].0.as_ref().unwrap().return_type);
         if let (
-            TypeInfo::Array(_, Length::AmbiguousVariableExpression { ident }),
-            TypeInfo::Array(_, Length::Literal { val, .. }),
+            TypeInfo::Array(_, Length(ConstGenericExpr::AmbiguousVariableExpression { ident })),
+            TypeInfo::Array(_, Length(ConstGenericExpr::Literal { val, .. })),
         ) = (&*a, &*b)
         {
             const_generics.insert(
@@ -179,8 +182,8 @@ pub(crate) fn type_check_method_application(
 
         if let (Some(arg), _, false) = arg_opt {
             if let Some(param) = method.parameters.get(param_index) {
-                // If argument type is compcoerces to resolved method parameter type skip second type_check.
                 if coercion_check.check(arg.return_type, param.type_argument.type_id()) {
+                    // If argument type coerces to resolved method parameter type skip second type_check.
                     args_buf.push_back(arg);
                     continue;
                 }
@@ -652,9 +655,10 @@ pub(crate) fn type_check_method_application(
                     implementing_for_typeid.get_type_parameters(engines);
                 if let Some(implementing_type_parameters) = implementing_type_parameters {
                     for p in method.type_parameters.clone() {
-                        let p = p
-                            .as_type_parameter()
-                            .expect("only works with type parameters");
+                        let Some(p) = p.as_type_parameter() else {
+                            continue;
+                        };
+
                         if p.is_from_parent {
                             if let Some(impl_type_param) =
                                 names_index.get(&p.name).and_then(|type_param_index| {
@@ -733,7 +737,12 @@ pub(crate) fn type_check_method_application(
 
                 // This will subst inner method_application placeholders with the already resolved
                 // current method application type parameter
-                for p in method.type_parameters.clone() {
+                for p in method
+                    .type_parameters
+                    .iter()
+                    .filter(|x| x.as_type_parameter().is_some())
+                    .cloned()
+                {
                     if names_type_ids.contains_key(p.name()) {
                         let type_id = p
                             .as_type_parameter()

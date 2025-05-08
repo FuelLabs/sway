@@ -1,5 +1,5 @@
 //! Getters for fields on transaction outputs.
-//! This includes `Output::Coins`, `Input::Messages` and `Input::Contracts`.
+//! This includes `Output::Coin`, `Output::Contract`, `Output::Change`, `Output::Variable`, and `Output::ContractCreated`.
 library;
 
 use ::address::Address;
@@ -11,14 +11,18 @@ use ::tx::{
     GTF_CREATE_OUTPUTS_COUNT,
     GTF_SCRIPT_OUTPUT_AT_INDEX,
     GTF_SCRIPT_OUTPUTS_COUNT,
+    GTF_TYPE,
     Transaction,
     tx_type,
+    TX_TYPE_CREATE,
+    TX_TYPE_MINT,
 };
 use ::option::Option::{self, *};
 use ::ops::*;
 use ::primitive_conversions::u16::*;
 use ::raw_ptr::*;
 use ::codec::*;
+use ::debug::*;
 
 // GTF Opcode const selectors
 //
@@ -49,7 +53,40 @@ pub enum Output {
     ContractCreated: (),
 }
 
-/// Get the type of an output at `index`.
+impl PartialEq for Output {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Output::Coin, Output::Coin) => true,
+            (Output::Contract, Output::Contract) => true,
+            (Output::Change, Output::Change) => true,
+            (Output::Variable, Output::Variable) => true,
+            (Output::ContractCreated, Output::ContractCreated) => true,
+            _ => false,
+        }
+    }
+}
+impl Eq for Output {}
+
+const OUTPUT_TYPE_COIN: u8 = 0;
+const OUTPUT_TYPE_CONTRACT: u8 = 1;
+const OUTPUT_TYPE_CHANGE: u8 = 2;
+const OUTPUT_TYPE_VARIABLE: u8 = 3;
+const OUTPUT_TYPE_CONTRACT_CREATED: u8 = 4;
+
+/// Returns the `u8` type id of the output at `index` if such output exists,
+/// or a non-existing type id if the `index` is out of output bounds.
+///
+/// This private function is used to avoid the overhead of creating and
+/// inspecting `Option`s for the output type.
+fn output_type_id(index: u64) -> u8 {
+    if index < output_count().as_u64() {
+        __gtf::<u8>(index, GTF_OUTPUT_TYPE)
+    } else {
+        u8::max()
+    }
+}
+
+/// Get the type of the output at `index`.
 ///
 /// # Arguments
 ///
@@ -76,57 +113,29 @@ pub enum Output {
 /// }
 /// ```
 pub fn output_type(index: u64) -> Option<Output> {
-    if index >= output_count().as_u64() {
-        return None
-    }
-
-    match __gtf::<u8>(index, GTF_OUTPUT_TYPE) {
-        0u8 => Some(Output::Coin),
-        1u8 => Some(Output::Contract),
-        2u8 => Some(Output::Change),
-        3u8 => Some(Output::Variable),
-        4u8 => Some(Output::ContractCreated),
+    match output_type_id(index) {
+        OUTPUT_TYPE_COIN => Some(Output::Coin),
+        OUTPUT_TYPE_CONTRACT => Some(Output::Contract),
+        OUTPUT_TYPE_CHANGE => Some(Output::Change),
+        OUTPUT_TYPE_VARIABLE => Some(Output::Variable),
+        OUTPUT_TYPE_CONTRACT_CREATED => Some(Output::ContractCreated),
         _ => None,
     }
 }
 
-/// Get a pointer to the output at `index`
-/// for either `tx_type` (transaction-script or transaction-create).
+/// Returns the pointer to the output at `index`.
 ///
-/// # Arguments
-///
-/// * `index`: [u64] - The index of the output to get the pointer to.
-///
-/// # Returns
-///
-/// * [Option<raw_ptr>] - A pointer to the output at `index`.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::outputs::output_pointer;
-///
-/// fn foo() {
-///     let output_pointer = output_pointer(0).unwrap();
-/// }
-/// ```
-fn output_pointer(index: u64) -> Option<raw_ptr> {
-    if output_type(index).is_none() {
-        return None
-    }
-
-    match tx_type() {
-        Transaction::Script => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
-        Transaction::Create => Some(__gtf::<raw_ptr>(index, GTF_CREATE_OUTPUT_AT_INDEX)),
-        Transaction::Upgrade => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
-        Transaction::Upload => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
-        Transaction::Blob => Some(__gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX)),
-        _ => None,
+/// This private function **does not check if the `index` is out of bounds**.
+/// It assumes that the caller has already checked the output count.
+fn output_pointer(index: u64) -> raw_ptr {
+    match __gtf::<u8>(0, GTF_TYPE) {
+        TX_TYPE_CREATE => __gtf::<raw_ptr>(index, GTF_CREATE_OUTPUT_AT_INDEX),
+        TX_TYPE_MINT => revert(0),
+        _ => __gtf::<raw_ptr>(index, GTF_SCRIPT_OUTPUT_AT_INDEX),
     }
 }
 
-/// Get the transaction outputs count for either `tx_type`
-/// (transaction-script or transaction-create).
+/// Gets the transaction outputs count.
 ///
 /// # Returns
 ///
@@ -147,13 +156,10 @@ fn output_pointer(index: u64) -> Option<raw_ptr> {
 /// }
 /// ```
 pub fn output_count() -> u16 {
-    match tx_type() {
-        Transaction::Script => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
-        Transaction::Create => __gtf::<u16>(0, GTF_CREATE_OUTPUTS_COUNT),
-        Transaction::Upgrade => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
-        Transaction::Upload => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
-        Transaction::Blob => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
-        _ => revert(0),
+    match __gtf::<u8>(0, GTF_TYPE) {
+        TX_TYPE_CREATE => __gtf::<u16>(0, GTF_CREATE_OUTPUTS_COUNT),
+        TX_TYPE_MINT => revert(0),
+        _ => __gtf::<u16>(0, GTF_SCRIPT_OUTPUTS_COUNT),
     }
 }
 
@@ -162,7 +168,7 @@ pub fn output_count() -> u16 {
 /// # Additional Information
 ///
 /// This method is only meaningful if the `Output` type has the `amount` field,
-/// specifically: `Output::Coin`, `Output::Change` & `Output::Variable`.
+/// specifically: `Output::Coin`, `Output::Change`, and `Output::Variable`.
 ///
 /// For now, output changes are always guaranteed to have an amount of
 /// zero since they're only set after execution terminates.
@@ -186,14 +192,11 @@ pub fn output_count() -> u16 {
 /// }
 /// ```
 pub fn output_amount(index: u64) -> Option<u64> {
-    match output_type(index) {
-        Some(Output::Coin) => Some(__gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT)),
-        Some(Output::Contract) => None,
-        // For now, output changes are always guaranteed to have an amount of
-        // zero since they're only set after execution terminates.
-        Some(Output::Change) => Some(0),
-        Some(Output::Variable) => {
-            let ptr = output_pointer(index).unwrap();
+    match output_type_id(index) {
+        OUTPUT_TYPE_COIN => Some(__gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT)),
+        OUTPUT_TYPE_CHANGE => Some(0),
+        OUTPUT_TYPE_VARIABLE => {
+            let ptr = output_pointer(index);
             Some(
                 asm(r1, r2, r3: ptr) {
                     addi r2 r3 i40;
@@ -202,24 +205,22 @@ pub fn output_amount(index: u64) -> Option<u64> {
                 },
             )
         },
-        Some(Output::ContractCreated) => None,
-        None => None,
+        _ => None,
     }
 }
 
-/// Gets the AssetId of the output.
+/// Gets the asset id of the output at `index`.
+///
+/// If you want to get the asset id and the receiver of the output,
+/// use `output_asset_id_and_to` instead.
 ///
 /// # Arguments
 ///
-/// * `index`: [u64] - The index of the output to get the AssetId of.
+/// * `index`: [u64] - The index of the output to get the asset id of.
 ///
 /// # Returns
 ///
-/// * [Option<AssetId>] - The AssetId of the output. None otherwise.
-///
-/// # Reverts
-///
-/// * When the output type is unrecognized. This should never happen.
+/// * [Option<AssetId>] - The asset id of the output.
 ///
 /// # Examples
 ///
@@ -232,18 +233,20 @@ pub fn output_amount(index: u64) -> Option<u64> {
 /// }
 /// ```
 pub fn output_asset_id(index: u64) -> Option<AssetId> {
-    match output_type(index) {
-        Some(Output::Coin) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
-        Some(Output::Change) => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
-        Some(Output::Variable) => {
-            let ptr = output_pointer(index).unwrap();
+    match output_type_id(index) {
+        OUTPUT_TYPE_COIN | OUTPUT_TYPE_CHANGE => Some(AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID))),
+        OUTPUT_TYPE_VARIABLE => {
+            let ptr = output_pointer(index);
             Some(AssetId::from(ptr.add_uint_offset(OUTPUT_VARIABLE_ASSET_ID_OFFSET).read::<b256>()))
         },
         _ => None,
     }
 }
 
-/// Returns the receiver of the output.
+/// Returns the receiver of the output at `index`.
+///
+/// If you want to get the asset id and the receiver of the output,
+/// use `output_asset_id_and_to` instead.
 ///
 /// # Arguments
 ///
@@ -251,11 +254,7 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 ///
 /// # Returns
 ///
-/// * [Option<Address>] - The receiver of the output. None otherwise.
-///
-/// # Reverts
-///
-/// * When the output type is unrecognized. This should never happen.
+/// * [Option<Address>] - The receiver of the output.
 ///
 /// # Examples
 ///
@@ -268,27 +267,50 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 /// }
 /// ```
 pub fn output_asset_to(index: u64) -> Option<Address> {
-    match output_type(index) {
-        Some(Output::Coin) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
-        Some(Output::Change) => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
-        Some(Output::Variable) => {
-            let ptr = output_pointer(index).unwrap();
+    match output_type_id(index) {
+        OUTPUT_TYPE_COIN | OUTPUT_TYPE_CHANGE => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
+        OUTPUT_TYPE_VARIABLE => {
+            let ptr = output_pointer(index);
             Some(Address::from(ptr.add_uint_offset(OUTPUT_VARIABLE_TO_OFFSET).read::<b256>()))
         },
         _ => None,
     }
 }
 
-impl PartialEq for Output {
-    fn eq(self, other: Self) -> bool {
-        match (self, other) {
-            (Output::Coin, Output::Coin) => true,
-            (Output::Contract, Output::Contract) => true,
-            (Output::Change, Output::Change) => true,
-            (Output::Variable, Output::Variable) => true,
-            (Output::ContractCreated, Output::ContractCreated) => true,
-            _ => false,
-        }
+/// Gets the asset id and the receiver of the output at `index`.
+///
+/// # Arguments
+///
+/// * `index`: [u64] - The index of the output to get the asset id and the receiver of.
+///
+/// # Returns
+///
+/// * [Option<AssetId, Address>] - The asset id and the receiver of the output.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::outputs::output_asset_id_and_to;
+///
+/// fn foo() {
+///     let (output_asset_id, output_receiver) = output_asset_id_and_to(0);
+///     log(output_asset_id);
+///     log(output_receiver);
+/// }
+/// ```
+pub fn output_asset_id_and_to(index: u64) -> Option<(AssetId, Address)> {
+    match output_type_id(index) {
+        OUTPUT_TYPE_COIN | OUTPUT_TYPE_CHANGE => Some((
+            AssetId::from(__gtf::<b256>(index, GTF_OUTPUT_COIN_ASSET_ID)),
+            __gtf::<Address>(index, GTF_OUTPUT_COIN_TO),
+        )),
+        OUTPUT_TYPE_VARIABLE => {
+            let ptr = output_pointer(index);
+            Some((
+                AssetId::from(ptr.add_uint_offset(OUTPUT_VARIABLE_ASSET_ID_OFFSET).read::<b256>()),
+                Address::from(ptr.add_uint_offset(OUTPUT_VARIABLE_TO_OFFSET).read::<b256>()),
+            ))
+        },
+        _ => None,
     }
 }
-impl Eq for Output {}

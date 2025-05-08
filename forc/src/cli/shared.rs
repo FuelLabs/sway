@@ -34,6 +34,10 @@ pub struct BuildOutput {
     /// If the file extension is .json, JSON format is used. Otherwise, an .elf file containing DWARF format is emitted.
     #[clap(long = "output-debug", short = 'g')]
     pub debug_file: Option<String>,
+
+    /// Generates a JSON file containing the hex-encoded script binary.
+    #[clap(long = "output-hexfile")]
+    pub hex_file: Option<String>,
 }
 
 /// Build profile options.
@@ -155,7 +159,7 @@ pub struct Pkg {
     pub locked: bool,
     /// The IPFS node to use for fetching IPFS sources.
     ///
-    /// [possible values: PUBLIC, LOCAL, <GATEWAY_URL>]
+    /// [possible values: FUEL, PUBLIC, LOCAL, <GATEWAY_URL>]
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
 }

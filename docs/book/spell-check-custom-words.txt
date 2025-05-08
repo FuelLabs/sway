@@ -243,3 +243,7 @@ RawSlice
 StringArray
 StringSlice
 calldata
+Cfg
+evm
+AbiEncode
+AbiDecode

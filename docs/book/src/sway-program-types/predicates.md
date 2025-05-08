@@ -32,9 +32,3 @@ An analogy for predicates is rather than a traditional 12 or 24 word seed phrase
 Predicates may introspect the transaction spending their coins (inputs, outputs, script bytecode, etc.) and may take runtime arguments, either or both of which may affect the evaluation of the predicate.
 
 It is important to note that predicates cannot read or write memory. They may however check the inputs and outputs of a transaction. For example in the [OTC Predicate Swap Example](https://github.com/FuelLabs/sway-applications/tree/master/OTC-swap-predicate), a user may specify they would like to swap `asset1` for `asset2` and with amount of `5`. The user would then send `asset1` to the predicate. Only when the predicate can verify that the outputs include `5` coins of `asset2` being sent to the original user, may `asset1` be transferred out of the predicate.
-
-## Debugging Predicates
-
-Because they don't have any side effects (they are _pure_), predicates cannot create receipts. Therefore, they cannot have logging or create a stack backtrace. This means that there is no native way to debug them aside from using a single-stepping debugger.
-
-As a workaround, the predicate can be written, tested, and debugged first as a `script`, and then changed back into a `predicate`.

@@ -1,5 +1,3 @@
-use std::{collections::HashMap, sync::Arc};
-
 use crate::{
     asm_generation::{
         asm_builder::AsmBuilder, from_ir::StateAccessType, fuel::data_section::DataSection,
@@ -8,15 +6,15 @@ use crate::{
     asm_lang::Label,
     metadata::MetadataManager,
 };
+use etk_asm::{asm::Assembler, ops::*};
 use etk_ops::london::*;
+use std::collections::HashMap;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_ir::{Context, *};
 use sway_types::Span;
-
-use etk_asm::{asm::Assembler, ops::*};
 
 /// A smart contract is created by sending a transaction with an empty "to" field.
 /// When this is done, the Ethereum virtual machine (EVM) runs the bytecode which is
@@ -283,7 +281,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
 
     fn empty_span() -> Span {
         let msg = "unknown source location";
-        Span::new(Arc::from(msg), 0, msg.len(), None).unwrap()
+        Span::new(msg.into(), 0, msg.len(), None).unwrap()
     }
 
     fn get_label(&mut self) -> Label {

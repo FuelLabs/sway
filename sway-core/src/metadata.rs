@@ -4,7 +4,7 @@ use crate::{
 };
 
 use sway_ir::{Context, MetadataIndex, Metadatum, Value};
-use sway_types::{Ident, SourceId, Span, Spanned};
+use sway_types::{span::Source, Ident, SourceId, Span, Spanned};
 
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
@@ -30,7 +30,7 @@ pub(crate) struct MetadataManager {
     md_span_cache: HashMap<MetadataIndex, Span>,
     /// Holds [Span]s tagged with an arbitrary tag.
     md_tagged_span_cache: HashMap<MetadataIndex, (Span, &'static str)>,
-    md_file_loc_cache: HashMap<MetadataIndex, (Arc<PathBuf>, Arc<str>)>,
+    md_file_loc_cache: HashMap<MetadataIndex, (Arc<PathBuf>, Source)>,
     md_purity_cache: HashMap<MetadataIndex, Purity>,
     md_inline_cache: HashMap<MetadataIndex, Inline>,
     md_test_decl_index_cache: HashMap<MetadataIndex, DeclId<TyFunctionDecl>>,
@@ -210,7 +210,7 @@ impl MetadataManager {
         &mut self,
         context: &Context,
         md: &Metadatum,
-    ) -> Option<(Arc<PathBuf>, Arc<str>)> {
+    ) -> Option<(Arc<PathBuf>, Source)> {
         md.unwrap_index().and_then(|md_idx| {
             self.md_file_loc_cache.get(&md_idx).cloned().or_else(|| {
                 // Create a new file location (path and src) and save it in the cache.
@@ -220,7 +220,7 @@ impl MetadataManager {
                     .and_then(|source_id| {
                         let path_buf = context.source_engine.get_path(source_id);
                         let src = std::fs::read_to_string(&path_buf).ok()?;
-                        let path_and_src = (Arc::new(path_buf), Arc::from(src));
+                        let path_and_src = (Arc::new(path_buf), src.as_str().into());
 
                         self.md_file_loc_cache.insert(md_idx, path_and_src.clone());
 

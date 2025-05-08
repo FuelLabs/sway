@@ -8,6 +8,7 @@ use ::registers::error;
 use ::hash::*;
 use ::result::Result::{self, *};
 use ::codec::*;
+use ::debug::*;
 
 /// The error type used when the `ec_recover` function fails.
 pub enum EcRecoverError {

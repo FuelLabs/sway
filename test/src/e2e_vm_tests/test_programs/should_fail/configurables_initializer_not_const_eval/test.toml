@@ -1,0 +1,5 @@
+category = "fail"
+
+#check: $()error
+#check: $()CONFIG: u64 = not_const_eval(),
+#nextln: $()Could not evaluate initializer to a const declaration.

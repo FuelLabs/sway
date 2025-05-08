@@ -7,6 +7,8 @@ contract;
 #[payable(invalid)]
 #[deprecated(invalid)]
 #[fallback(invalid)]
+#[error_type(invalid)]
+#[error(invalid)]
 storage {
     #[storage(invalid)]
     #[inline(invalid)]
@@ -15,6 +17,8 @@ storage {
     //! Invalid inner comment.
     #[deprecated(invalid)]
     #[fallback(invalid)]
+    #[error_type(invalid)]
+    #[error(invalid)]
     x: u8 = 0,
     // The below examples would require a separate test.
     // Let's skip it for now, all storage items are
@@ -26,6 +30,8 @@ storage {
     //! Invalid inner comment.
     #[deprecated(invalid)]
     #[fallback(invalid)]
+    #[error_type(invalid)]
+    #[error(invalid)]
     ns_1 {
         #[storage(invalid)]
         #[inline(invalid)]
@@ -34,6 +40,7 @@ storage {
         #[payable(invalid)]
         #[deprecated(invalid)]
         #[fallback(invalid)]
+        #[error(invalid)]
         x: u8 = 0,
         #[storage(invalid)]
         #[inline(invalid)]
@@ -42,6 +49,8 @@ storage {
         #[payable(invalid)]
         #[deprecated(invalid)]
         #[fallback(invalid)]
+        #[error_type(invalid)]
+        #[error(invalid)]
         ns_2 {
             #[storage(invalid)]
             #[inline(invalid)]
@@ -50,6 +59,8 @@ storage {
             #[payable(invalid)]
             #[deprecated(invalid)]
             #[fallback(invalid)]
+            #[error_type(invalid)]
+            #[error(invalid)]
             x: u8 = 0,
         }
     }

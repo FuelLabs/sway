@@ -18,7 +18,6 @@ macro_rules! testgen {
     ) => {
         pub mod $module_name {
             use fuels::prelude::*;
-            use fuels::accounts::wallet::WalletUnlocked;
 
             abigen!(Contract(
                 name = "MyContract",
@@ -30,7 +29,7 @@ macro_rules! testgen {
             pub mod setup {
                 use super::*;
 
-                pub async fn get_contract_instance() -> MyContract<WalletUnlocked> {
+                pub async fn get_contract_instance() -> MyContract<Wallet> {
                     let wallet = launch_provider_and_get_wallet().await.unwrap();
                     let id = Contract::load_from(
                         &format!(
@@ -52,7 +51,8 @@ macro_rules! testgen {
                     .unwrap()
                     .deploy(&wallet, TxPolicies::default())
                     .await
-                    .unwrap();
+                    .unwrap()
+                    .contract_id;
 
                     MyContract::new(id.clone(), wallet)
                 }
@@ -63,7 +63,7 @@ macro_rules! testgen {
             pub mod wrappers {
                 use super::*;
 
-                pub async fn push(instance: &MyContract<WalletUnlocked>, value: $type_declaration) {
+                pub async fn push(instance: &MyContract<Wallet>, value: $type_declaration) {
                     instance.methods()
                         .push(value)
                         .call()
@@ -71,7 +71,7 @@ macro_rules! testgen {
                         .unwrap();
                 }
 
-                pub async fn pop(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
+                pub async fn pop(instance: &MyContract<Wallet>) -> $type_declaration {
                     instance.methods()
                         .pop()
                         .call()
@@ -80,7 +80,7 @@ macro_rules! testgen {
                         .value
                 }
 
-                pub async fn get(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
+                pub async fn get(instance: &MyContract<Wallet>, index: u64) -> $type_declaration {
                     instance.methods()
                         .get(index)
                         .call()
@@ -89,7 +89,7 @@ macro_rules! testgen {
                         .value
                 }
 
-                pub async fn remove(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
+                pub async fn remove(instance: &MyContract<Wallet>, index: u64) -> $type_declaration {
                     instance.methods()
                         .remove(index)
                         .call()
@@ -98,7 +98,7 @@ macro_rules! testgen {
                         .value
                 }
 
-                pub async fn swap_remove(instance: &MyContract<WalletUnlocked>, index: u64) -> $type_declaration {
+                pub async fn swap_remove(instance: &MyContract<Wallet>, index: u64) -> $type_declaration {
                     instance.methods()
                         .swap_remove(index)
                         .call()
@@ -107,7 +107,7 @@ macro_rules! testgen {
                         .value
                 }
 
-                pub async fn set(instance: &MyContract<WalletUnlocked>, index: u64, value: $type_declaration) {
+                pub async fn set(instance: &MyContract<Wallet>, index: u64, value: $type_declaration) {
                     instance.methods()
                         .set(index, value)
                         .call()
@@ -115,7 +115,7 @@ macro_rules! testgen {
                         .unwrap();
                 }
 
-                pub async fn insert(instance: &MyContract<WalletUnlocked>, index: u64, value: $type_declaration) {
+                pub async fn insert(instance: &MyContract<Wallet>, index: u64, value: $type_declaration) {
                     instance.methods()
                         .insert(index, value)
                         .call()
@@ -123,7 +123,7 @@ macro_rules! testgen {
                         .unwrap();
                 }
 
-                pub async fn len(instance: &MyContract<WalletUnlocked>) -> u64 {
+                pub async fn len(instance: &MyContract<Wallet>) -> u64 {
                     instance.methods()
                         .len()
                         .call()
@@ -132,7 +132,7 @@ macro_rules! testgen {
                         .value
                 }
 
-                pub async fn is_empty(instance: &MyContract<WalletUnlocked>) -> bool {
+                pub async fn is_empty(instance: &MyContract<Wallet>) -> bool {
                     instance.methods()
                         .is_empty()
                         .call()
@@ -141,7 +141,7 @@ macro_rules! testgen {
                         .value
                 }
 
-                pub async fn clear(instance: &MyContract<WalletUnlocked>) {
+                pub async fn clear(instance: &MyContract<Wallet>) {
                     instance.methods()
                         .clear()
                         .call()
@@ -149,7 +149,7 @@ macro_rules! testgen {
                         .unwrap();
                 }
 
-                pub async fn swap(instance: &MyContract<WalletUnlocked>, index_0: u64, index_1: u64) {
+                pub async fn swap(instance: &MyContract<Wallet>, index_0: u64, index_1: u64) {
                     instance.methods()
                         .swap(index_0, index_1)
                         .call()
@@ -157,7 +157,7 @@ macro_rules! testgen {
                         .unwrap();
                 }
 
-                pub async fn first(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
+                pub async fn first(instance: &MyContract<Wallet>) -> $type_declaration {
                     instance.methods()
                         .first()
                         .call()
@@ -166,7 +166,7 @@ macro_rules! testgen {
                         .value
                 }
 
-                pub async fn last(instance: &MyContract<WalletUnlocked>) -> $type_declaration {
+                pub async fn last(instance: &MyContract<Wallet>) -> $type_declaration {
                     instance.methods()
                         .last()
                         .call()
@@ -175,7 +175,7 @@ macro_rules! testgen {
                         .value
                 }
 
-                pub async fn reverse(instance: &MyContract<WalletUnlocked>) {
+                pub async fn reverse(instance: &MyContract<Wallet>) {
                     instance.methods()
                         .reverse()
                         .call()
@@ -183,7 +183,7 @@ macro_rules! testgen {
                         .unwrap();
                 }
 
-                pub async fn fill(instance: &MyContract<WalletUnlocked>, value: $type_declaration) {
+                pub async fn fill(instance: &MyContract<Wallet>, value: $type_declaration) {
                     instance.methods()
                         .fill(value)
                         .call()
@@ -191,7 +191,7 @@ macro_rules! testgen {
                         .unwrap();
                 }
 
-                pub async fn resize(instance: &MyContract<WalletUnlocked>, new_len: u64, value: $type_declaration) {
+                pub async fn resize(instance: &MyContract<Wallet>, new_len: u64, value: $type_declaration) {
                     instance.methods()
                         .resize(new_len, value)
                         .call()
@@ -589,7 +589,7 @@ macro_rules! testgen {
                 };
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 0")]
+                #[should_panic(expected = "revert_id: Some(0)")]
                 async fn cant_pop() {
                     let instance = get_contract_instance().await;
 
@@ -597,7 +597,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 0")]
+                #[should_panic(expected = "revert_id: Some(0)")]
                 async fn cant_get() {
                     let instance = get_contract_instance().await;
 
@@ -605,7 +605,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 18446744073709486084")]
+                #[should_panic(expected = "revert_id: Some(18446744073709486084)")]
                 async fn cant_remove() {
                     let instance = get_contract_instance().await;
 
@@ -613,7 +613,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 18446744073709486084")]
+                #[should_panic(expected = "revert_id: Some(18446744073709486084)")]
                 async fn cant_swap_remove() {
                     let instance = get_contract_instance().await;
 
@@ -621,7 +621,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 18446744073709486084")]
+                #[should_panic(expected = "revert_id: Some(18446744073709486084)")]
                 async fn cant_set() {
                     let instance = get_contract_instance().await;
 
@@ -629,7 +629,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 18446744073709486084")]
+                #[should_panic(expected = "revert_id: Some(18446744073709486084)")]
                 async fn cant_insert() {
                     let instance = get_contract_instance().await;
 
@@ -637,7 +637,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 0")]
+                #[should_panic(expected = "revert_id: Some(0)")]
                 async fn cant_get_first() {
                     let instance = get_contract_instance().await;
 
@@ -645,7 +645,7 @@ macro_rules! testgen {
                 }
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 0")]
+                #[should_panic(expected = "revert_id: Some(0)")]
                 async fn cant_get_last() {
                     let instance = get_contract_instance().await;
 
@@ -654,7 +654,7 @@ macro_rules! testgen {
 
 
                 #[tokio::test]
-                #[should_panic(expected = "revert_id: 18446744073709486084")]
+                #[should_panic(expected = "revert_id: Some(18446744073709486084)")]
                 async fn cant_swap() {
                     let instance = get_contract_instance().await;
 

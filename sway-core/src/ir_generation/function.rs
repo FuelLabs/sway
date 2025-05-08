@@ -821,7 +821,7 @@ impl<'eng> FnCompiler<'eng> {
                     }),
                 }
             }
-            ty::TyExpressionVariant::Continue { .. } => match self.block_to_continue_to {
+            ty::TyExpressionVariant::Continue => match self.block_to_continue_to {
                 // If `self.block_to_continue_to` is not None, then it has been set inside
                 // a loop and the use of `continue` here is legal, so create a branch
                 // instruction. Error out otherwise.
@@ -848,6 +848,9 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::Return(exp) => {
                 self.compile_return(context, md_mgr, exp, span_md_idx)
+            }
+            ty::TyExpressionVariant::Panic(exp) => {
+                self.compile_panic(context, md_mgr, exp, span_md_idx)
             }
             ty::TyExpressionVariant::Ref(exp) => {
                 self.compile_ref(context, md_mgr, exp, span_md_idx)
@@ -988,7 +991,7 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        i @ ty::TyIntrinsicFunctionKind {
+        ty::TyIntrinsicFunctionKind {
             kind,
             arguments,
             type_arguments,
@@ -1403,18 +1406,18 @@ impl<'eng> FnCompiler<'eng> {
                     });
                 }
 
-                // The log value and the log ID are just Value.
                 let log_val = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[0])?
                 )
                 .unwrap_register();
-                let logged_type = i
-                    .get_logged_type(context.experimental.new_encoding)
-                    .expect("Could not return logged type.");
-                let log_id = match self.logged_types_map.get(&logged_type) {
+                let logged_type_id = TypeMetadata::get_logged_type_id(
+                    &arguments[0],
+                    context.experimental.new_encoding,
+                )?;
+                let log_id = match self.logged_types_map.get(&logged_type_id) {
                     None => {
                         return Err(CompileError::Internal(
-                            "Unable to determine ID for log instance.",
+                            "Unable to determine log instance ID for `__log` intrinsic.",
                             span,
                         ));
                     }
@@ -1425,7 +1428,7 @@ impl<'eng> FnCompiler<'eng> {
 
                 match log_val.get_type(context) {
                     None => Err(CompileError::Internal(
-                        "Unable to determine type for logged value.",
+                        "Unable to determine logged value type in the `__log` intrinsic.",
                         span,
                     )),
                     Some(log_ty) => {
@@ -2404,6 +2407,9 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::Transmute => {
                 self.compile_intrinsic_transmute(arguments, return_type, context, md_mgr, &span)
             }
+            Intrinsic::Dbg => {
+                unreachable!("__dbg should not exist in the typed tree")
+            }
         }
     }
 
@@ -2695,6 +2701,71 @@ impl<'eng> FnCompiler<'eng> {
                     ast_expr.span.clone(),
                 )
             })
+    }
+
+    fn compile_panic(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        ast_expr: &ty::TyExpression,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<TerminatorValue, CompileError> {
+        // In predicates, we only revert and do not log.
+        if context.program_kind != Kind::Predicate {
+            // TODO: Currently, we log all the values.
+            //       In the next step, ABI generation, if the `ast_expr` const evaluates to
+            //       a string slice, we will neither log it, nor leave it in the generated
+            //       bytecode, but just create a "msg" entry in the ABI.
+
+            let panic_val = return_on_termination_or_extract!(
+                self.compile_expression_to_value(context, md_mgr, ast_expr)?
+            );
+            let logged_type_id =
+                TypeMetadata::get_logged_type_id(ast_expr, context.experimental.new_encoding)?;
+            let log_id = match self.logged_types_map.get(&logged_type_id) {
+                None => {
+                    return Err(CompileError::Internal(
+                        "Unable to determine log instance ID for `panic` expression.",
+                        ast_expr.span.clone(),
+                    ));
+                }
+                Some(log_id) => convert_literal_to_value(context, &Literal::U64(log_id.hash_id)),
+            };
+
+            match panic_val.get_type(context) {
+                None => {
+                    return Err(CompileError::Internal(
+                        "Unable to determine logged value type in the `panic` expression.",
+                        ast_expr.span.clone(),
+                    ))
+                }
+                Some(log_ty) => {
+                    let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
+
+                    // The `log` instruction
+                    self.current_block
+                        .append(context)
+                        .log(panic_val, log_ty, log_id)
+                        .add_metadatum(context, span_md_idx);
+                }
+            };
+        } else {
+            // TODO: Consider using `__dbg` intrinsic in predicates, once it is implemented.
+        }
+
+        let revert_code = context.get_next_panic_revert_code();
+        let revert_code_const = ConstantContent::new_uint(context, 64, revert_code);
+        let revert_code_const = Constant::unique(context, revert_code_const);
+        let revert_code_val = Value::new_constant(context, revert_code_const);
+
+        // The `revert` instruction
+        let val = self
+            .current_block
+            .append(context)
+            .revert(revert_code_val)
+            .add_metadatum(context, span_md_idx);
+
+        Ok(TerminatorValue::new(val, context))
     }
 
     fn compile_ref(

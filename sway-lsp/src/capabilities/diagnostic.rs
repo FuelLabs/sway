@@ -19,7 +19,7 @@ fn get_error_diagnostic(error: &CompileError) -> Diagnostic {
     let data = serde_json::to_value(DiagnosticData::try_from(error.clone()).ok()).ok();
 
     Diagnostic {
-        range: get_range(error.span().line_col()),
+        range: get_range(error.span().line_col_one_index()),
         severity: Some(DiagnosticSeverity::ERROR),
         message: format!("{error}"),
         data,
@@ -29,7 +29,7 @@ fn get_error_diagnostic(error: &CompileError) -> Diagnostic {
 
 fn get_warning_diagnostic(warning: &CompileWarning) -> Diagnostic {
     Diagnostic {
-        range: get_range(warning.span().line_col()),
+        range: get_range(warning.span().line_col_one_index()),
         severity: Some(DiagnosticSeverity::WARNING),
         message: warning.to_friendly_warning_string(),
         tags: get_warning_diagnostic_tags(&warning.warning_content),

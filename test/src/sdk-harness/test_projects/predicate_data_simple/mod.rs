@@ -2,14 +2,13 @@ use fuel_vm::fuel_asm::{op, RegId};
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_tx::{Address, AssetId, Output};
 use fuels::{
-    accounts::wallet::{Wallet, WalletUnlocked},
     core::codec::{ABIEncoder, EncoderConfig},
     prelude::*,
     types::{input::Input, transaction_builders::ScriptTransactionBuilder, Token},
 };
 use std::str::FromStr;
 
-async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
+async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
     let predicate_code =
         std::fs::read("test_projects/predicate_data_simple/out/release/predicate_data_simple.bin")
             .unwrap();
@@ -36,22 +35,22 @@ async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
 
 async fn create_predicate(
     predicate_address: Address,
-    wallet: &WalletUnlocked,
+    wallet: &Wallet,
     amount_to_predicate: u64,
     asset_id: AssetId,
 ) {
-    let provider = wallet.provider().unwrap();
+    let provider = wallet.provider();
     let wallet_coins = wallet
         .get_asset_inputs_for_amount(
             asset_id,
-            wallet.get_asset_balance(&asset_id).await.unwrap(),
+            wallet.get_asset_balance(&asset_id).await.unwrap().into(),
             None,
         )
         .await
         .unwrap();
 
     let output_coin = Output::coin(predicate_address, amount_to_predicate, asset_id);
-    let output_change = Output::change(wallet.address().into(), 0, asset_id);
+    let output_change = Output::change(wallet.clone().address().into(), 0, asset_id);
 
     let mut tx = ScriptTransactionBuilder::prepare_transfer(
         wallet_coins,
@@ -60,10 +59,10 @@ async fn create_predicate(
     )
     .with_script(op::ret(RegId::ONE).to_bytes().to_vec());
 
-    tx.add_signer(wallet.clone()).unwrap();
+    tx.add_signer(wallet.signer().clone()).unwrap();
     let tx = tx.build(provider).await.unwrap();
 
-    provider.send_transaction(tx).await.unwrap();
+    provider.send_transaction_and_await_commit(tx).await.unwrap();
 }
 
 async fn submit_to_predicate(
@@ -78,13 +77,12 @@ async fn submit_to_predicate(
     let filter = ResourceFilter {
         from: predicate_address.into(),
         asset_id: Some(asset_id),
-        amount: amount_to_predicate,
+        amount: amount_to_predicate.into(),
         ..Default::default()
     };
 
     let utxo_predicate_hash = wallet
         .provider()
-        .unwrap()
         .get_spendable_resources(filter)
         .await
         .unwrap();
@@ -104,7 +102,7 @@ async fn submit_to_predicate(
     let output_coin = Output::coin(receiver_address, total_amount_in_predicate - 1, asset_id);
     let output_change = Output::change(predicate_address, 0, asset_id);
 
-    let provider = wallet.provider().unwrap();
+    let provider = wallet.provider();
     let new_tx = ScriptTransactionBuilder::prepare_transfer(
         inputs,
         vec![output_coin, output_change],
@@ -115,18 +113,12 @@ async fn submit_to_predicate(
     .await
     .unwrap();
 
-    wallet
-        .provider()
-        .unwrap()
-        .send_transaction(new_tx)
-        .await
-        .map(|_| ())
+    wallet.provider().send_transaction_and_await_commit(new_tx).await.map(|_| ())
 }
 
 async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {
     wallet
         .provider()
-        .unwrap()
         .get_asset_balance(&address.into(), asset_id)
         .await
         .unwrap()

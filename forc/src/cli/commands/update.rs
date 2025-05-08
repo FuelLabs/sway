@@ -32,7 +32,7 @@ pub struct Command {
 
     /// The IPFS Node to use for fetching IPFS sources.
     ///
-    /// Possible values: PUBLIC, LOCAL, <GATEWAY_URL>
+    /// Possible values: FUEL, PUBLIC, LOCAL, <GATEWAY_URL>
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
 }

@@ -4,7 +4,11 @@ use fuels::{
     prelude::*,
     types::{coin_type_id::CoinTypeId, input::Input},
 };
-use fuels_accounts::{wallet::WalletUnlocked, Account};
+use fuels_accounts::{
+    signers::private_key::PrivateKeySigner,
+    wallet::{Unlocked, Wallet},
+    Account,
+};
 
 use super::aws::AwsSigner;
 
@@ -14,7 +18,7 @@ pub enum ForcClientAccount {
     /// Local signer where the private key owned locally. This can be
     /// generated through `forc-wallet` integration or manually by providing
     /// a private-key.
-    Wallet(WalletUnlocked),
+    Wallet(Wallet<Unlocked<PrivateKeySigner>>),
     /// A KMS Signer specifically using AWS KMS service. The signing key
     /// is managed by another entity for KMS signers. Messages are
     /// signed by the KMS entity. Signed transactions are retrieved
@@ -51,7 +55,7 @@ impl ViewOnlyAccount for ForcClientAccount {
     async fn get_asset_inputs_for_amount(
         &self,
         asset_id: AssetId,
-        amount: u64,
+        amount: u128,
         excluded_coins: Option<Vec<CoinTypeId>>,
     ) -> Result<Vec<Input>> {
         match self {
@@ -73,7 +77,7 @@ impl ViewOnlyAccount for ForcClientAccount {
 impl Signer for ForcClientAccount {
     async fn sign(&self, message: Message) -> Result<Signature> {
         match self {
-            ForcClientAccount::Wallet(wallet) => wallet.sign(message).await,
+            ForcClientAccount::Wallet(wallet) => wallet.signer().sign(message).await,
             ForcClientAccount::KmsSigner(account) => account.sign(message).await,
         }
     }

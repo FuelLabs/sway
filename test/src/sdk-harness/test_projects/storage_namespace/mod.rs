@@ -1,5 +1,4 @@
 use fuels::{
-    accounts::wallet::WalletUnlocked,
     prelude::*,
     types::{Bits256, SizedAsciiString},
 };
@@ -9,7 +8,7 @@ abigen!(Contract(
     abi = "test_projects/storage_namespace/out/release/storage-namespace-abi.json",
 ));
 
-async fn get_test_storage_instance() -> TestStorageContract<WalletUnlocked> {
+async fn get_test_storage_instance() -> TestStorageContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/storage_namespace/out/release/storage_namespace.bin",
