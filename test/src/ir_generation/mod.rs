@@ -10,7 +10,7 @@ use sway_core::{
     compile_ir_context_to_finalized_asm, compile_to_ast,
     ir_generation::compile_program,
     namespace::{self, Package},
-    BuildConfig, BuildTarget, Engines, OptLevel,
+    BuildConfig, BuildTarget, Engines, OptLevel, PanicOccurrences,
 };
 use sway_error::handler::Handler;
 
@@ -282,8 +282,8 @@ pub(super) async fn run(
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut panic_locations = vec![];
-                let mut ir = compile_program(typed_program, &mut panic_locations, include_tests, &engines, experimental)
+                let mut panic_occurrences = PanicOccurrences::default();
+                let mut ir = compile_program(typed_program, &mut panic_occurrences, include_tests, &engines, experimental)
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
                         let e = e[0].clone();

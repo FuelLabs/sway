@@ -6,7 +6,7 @@ use crate::{
     semantic_analysis::namespace,
     type_system::TypeId,
     types::{LogId, MessageId},
-    Engines, PanicLocation,
+    Engines, PanicOccurrences,
 };
 
 use super::{
@@ -30,7 +30,7 @@ pub(super) fn compile_script(
     namespace: &namespace::Namespace,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    panic_locations: &mut Vec<PanicLocation>,
+    panic_occurrences: &mut PanicOccurrences,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
@@ -48,7 +48,7 @@ pub(super) fn compile_script(
         namespace.current_package_root_module(),
         logged_types_map,
         messages_types_map,
-        panic_locations,
+        panic_occurrences,
         cache,
     )
     .map_err(|err| vec![err])?;
@@ -60,7 +60,7 @@ pub(super) fn compile_script(
         entry_function,
         logged_types_map,
         messages_types_map,
-        panic_locations,
+        panic_occurrences,
         None,
         cache,
     )?;
@@ -71,7 +71,7 @@ pub(super) fn compile_script(
         module,
         logged_types_map,
         messages_types_map,
-        panic_locations,
+        panic_occurrences,
         test_fns,
         cache,
     )?;
@@ -87,7 +87,7 @@ pub(super) fn compile_predicate(
     namespace: &namespace::Namespace,
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
-    panic_locations: &mut Vec<PanicLocation>,
+    panic_occurrences: &mut PanicOccurrences,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
@@ -105,7 +105,7 @@ pub(super) fn compile_predicate(
         namespace.current_package_root_module(),
         logged_types,
         messages_types,
-        panic_locations,
+        panic_occurrences,
         cache,
     )
     .map_err(|err| vec![err])?;
@@ -117,7 +117,7 @@ pub(super) fn compile_predicate(
         entry_function,
         &HashMap::new(),
         &HashMap::new(),
-        panic_locations,
+        panic_occurrences,
         None,
         cache,
     )?;
@@ -128,7 +128,7 @@ pub(super) fn compile_predicate(
         module,
         logged_types,
         messages_types,
-        panic_locations,
+        panic_occurrences,
         test_fns,
         cache,
     )?;
@@ -145,7 +145,7 @@ pub(super) fn compile_contract(
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    panic_locations: &mut Vec<PanicLocation>,
+    panic_occurrences: &mut PanicOccurrences,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     engines: &Engines,
     cache: &mut CompiledFunctionCache,
@@ -164,7 +164,7 @@ pub(super) fn compile_contract(
         namespace.current_package_root_module(),
         logged_types_map,
         messages_types_map,
-        panic_locations,
+        panic_occurrences,
         cache,
     )
     .map_err(|err| vec![err])?;
@@ -178,7 +178,7 @@ pub(super) fn compile_contract(
             entry_function,
             logged_types_map,
             messages_types_map,
-            panic_locations,
+            panic_occurrences,
             None,
             cache,
         )?;
@@ -192,7 +192,7 @@ pub(super) fn compile_contract(
             decl,
             logged_types_map,
             messages_types_map,
-            panic_locations,
+            panic_occurrences,
             engines,
             cache,
         )?;
@@ -212,7 +212,7 @@ pub(super) fn compile_contract(
                         &decl_id,
                         logged_types_map,
                         messages_types_map,
-                        panic_locations,
+                        panic_occurrences,
                         engines,
                         cache,
                     )?;
@@ -228,7 +228,7 @@ pub(super) fn compile_contract(
         module,
         logged_types_map,
         messages_types_map,
-        panic_locations,
+        panic_occurrences,
         test_fns,
         cache,
     )?;
@@ -243,7 +243,7 @@ pub(super) fn compile_library(
     namespace: &namespace::Namespace,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    panic_locations: &mut Vec<PanicLocation>,
+    panic_occurrences: &mut PanicOccurrences,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
@@ -260,7 +260,7 @@ pub(super) fn compile_library(
         module,
         logged_types_map,
         messages_types_map,
-        panic_locations,
+        panic_occurrences,
         test_fns,
         cache,
     )?;
@@ -345,7 +345,7 @@ pub(crate) fn compile_configurables(
     module_ns: &namespace::Module,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    panic_locations: &mut Vec<PanicLocation>,
+    panic_occurrences: &mut PanicOccurrences,
     cache: &mut CompiledFunctionCache,
 ) -> Result<(), CompileError> {
     for decl_name in module_ns.root_items().get_all_declared_symbols() {
@@ -404,7 +404,7 @@ pub(crate) fn compile_configurables(
                     &decode_fn,
                     logged_types_map,
                     messages_types_map,
-                    panic_locations,
+                    panic_occurrences,
                 )?;
 
                 let name = decl_name.as_str().to_string();
@@ -450,7 +450,7 @@ pub(super) fn compile_function(
     original_name: &Ident,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    panic_locations: &mut Vec<PanicLocation>,
+    panic_occurrences: &mut PanicOccurrences,
     is_entry: bool,
     is_original_entry: bool,
     test_decl_ref: Option<DeclRefFunction>,
@@ -473,7 +473,7 @@ pub(super) fn compile_function(
             None,
             logged_types_map,
             messages_types_map,
-            panic_locations,
+            panic_occurrences,
             test_decl_ref,
             cache,
         )
@@ -490,7 +490,7 @@ pub(super) fn compile_entry_function(
     ast_fn_decl: &DeclId<ty::TyFunctionDecl>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    panic_locations: &mut Vec<PanicLocation>,
+    panic_occurrences: &mut PanicOccurrences,
     test_decl_ref: Option<DeclRefFunction>,
     cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
@@ -508,7 +508,7 @@ pub(super) fn compile_entry_function(
         &ast_fn_decl.name,
         logged_types_map,
         messages_types_map,
-        panic_locations,
+        panic_occurrences,
         is_entry,
         is_original_entry,
         test_decl_ref,
@@ -525,7 +525,7 @@ pub(super) fn compile_tests(
     module: Module,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    panic_locations: &mut Vec<PanicLocation>,
+    panic_occurrences: &mut PanicOccurrences,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     cache: &mut CompiledFunctionCache,
 ) -> Result<Vec<Function>, Vec<CompileError>> {
@@ -540,7 +540,7 @@ pub(super) fn compile_tests(
                 decl_ref.id(),
                 logged_types_map,
                 messages_types_map,
-                panic_locations,
+                panic_occurrences,
                 Some(decl_ref.clone()),
                 cache,
             )
@@ -565,7 +565,7 @@ fn compile_fn(
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    panic_locations: &mut Vec<PanicLocation>,
+    panic_occurrences: &mut PanicOccurrences,
     test_decl_ref: Option<DeclRefFunction>,
     cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
@@ -675,7 +675,7 @@ fn compile_fn(
         func,
         logged_types_map,
         messages_types_map,
-        panic_locations,
+        panic_occurrences,
         cache,
     );
     let mut ret_val = compiler.compile_code_block_to_value(context, md_mgr, body)?;
@@ -727,7 +727,7 @@ fn compile_abi_method(
     ast_fn_decl: &DeclId<ty::TyFunctionDecl>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    panic_locations: &mut Vec<PanicLocation>,
+    panic_occurrences: &mut PanicOccurrences,
     engines: &Engines,
     cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
@@ -774,7 +774,7 @@ fn compile_abi_method(
         selector,
         logged_types_map,
         messages_types_map,
-        panic_locations,
+        panic_occurrences,
         None,
         cache,
     )

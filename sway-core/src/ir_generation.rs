@@ -20,11 +20,7 @@ use sway_types::{span::Span, Ident};
 pub(crate) use purity::{check_function_purity, PurityEnv};
 
 use crate::{
-    engine_threading::HashWithEngines,
-    language::ty,
-    metadata::MetadataManager,
-    types::{LogId, MessageId},
-    Engines, PanicLocation, TypeId,
+    engine_threading::HashWithEngines, language::ty, metadata::MetadataManager, types::{LogId, MessageId}, Engines, PanicOccurrences, TypeId
 };
 
 type FnKey = u64;
@@ -48,7 +44,7 @@ impl CompiledFunctionCache {
         decl: &ty::TyFunctionDecl,
         logged_types_map: &HashMap<TypeId, LogId>,
         messages_types_map: &HashMap<TypeId, MessageId>,
-        panic_locations: &mut Vec<PanicLocation>,
+        panic_occurrences: &mut PanicOccurrences,
     ) -> Result<Function, CompileError> {
         // The compiler inlines everything very lazily.  Function calls include the body of the
         // callee (i.e., the callee_body arg above). Library functions are provided in an initial
@@ -98,7 +94,7 @@ impl CompiledFunctionCache {
                     &decl.name,
                     logged_types_map,
                     messages_types_map,
-                    panic_locations,
+                    panic_occurrences,
                     is_entry,
                     is_original_entry,
                     None,
@@ -121,7 +117,7 @@ impl CompiledFunctionCache {
 
 pub fn compile_program<'a>(
     program: &ty::TyProgram,
-    panic_locations: &'a mut Vec<PanicLocation>,
+    panic_occurrences: &'a mut PanicOccurrences,
     include_tests: bool,
     engines: &'a Engines,
     experimental: ExperimentalFeatures,
@@ -172,7 +168,7 @@ pub fn compile_program<'a>(
             namespace,
             &logged_types,
             &messages_types,
-            panic_locations,
+            panic_occurrences,
             &test_fns,
             &mut cache,
         ),
@@ -183,7 +179,7 @@ pub fn compile_program<'a>(
             namespace,
             &logged_types,
             &messages_types,
-            panic_locations,
+            panic_occurrences,
             &test_fns,
             &mut cache,
         ),
@@ -198,7 +194,7 @@ pub fn compile_program<'a>(
             declarations,
             &logged_types,
             &messages_types,
-            panic_locations,
+            panic_occurrences,
             &test_fns,
             engines,
             &mut cache,
@@ -209,7 +205,7 @@ pub fn compile_program<'a>(
             namespace,
             &logged_types,
             &messages_types,
-            panic_locations,
+            panic_occurrences,
             &test_fns,
             &mut cache,
         ),

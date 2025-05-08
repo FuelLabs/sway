@@ -20,7 +20,7 @@ use crate::{
     metadata::MetadataManager,
     type_system::*,
     types::*,
-    PanicLocation,
+    PanicOccurrence, PanicOccurrences,
 };
 
 use indexmap::IndexMap;
@@ -103,7 +103,7 @@ pub(crate) struct FnCompiler<'a> {
     logged_types_map: &'a HashMap<TypeId, LogId>,
     /// Maps a [TypeId] of a message data type to the [MessageId] of its corresponding SMO.
     messages_types_map: &'a HashMap<TypeId, MessageId>,
-    panic_locations: &'a mut Vec<PanicLocation>,
+    panic_occurrences: &'a mut PanicOccurrences,
 }
 
 fn to_constant(_s: &mut FnCompiler<'_>, context: &mut Context, value: u64) -> Value {
@@ -159,7 +159,7 @@ impl<'a> FnCompiler<'a> {
         function: Function,
         logged_types_map: &'a HashMap<TypeId, LogId>,
         messages_types_map: &'a HashMap<TypeId, MessageId>,
-        panic_locations: &'a mut Vec<PanicLocation>,
+        panic_occurrences: &'a mut PanicOccurrences,
         cache: &'a mut CompiledFunctionCache,
     ) -> Self {
         let lexical_map = LexicalMap::from_iter(
@@ -179,7 +179,7 @@ impl<'a> FnCompiler<'a> {
             current_fn_param: None,
             logged_types_map,
             messages_types_map,
-            panic_locations,
+            panic_occurrences,
         }
     }
 
@@ -2508,10 +2508,13 @@ impl<'a> FnCompiler<'a> {
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let mut panic_location = PanicLocation::default();
+        // 1. Build the `PanicOccurrence` that corresponds to this `panic` call.
+        let mut panic_occurrence = PanicOccurrence::default();
+
+        // 1.a Define either the `msg` or `log_id` entry.
 
         // If the `panic` argument can be const-evaluated to a string slice,
-        // we will not log it, but just create a "msg" entry in the ABI.
+        // we will not log it, but just create an `msg` entry in the ABI.
         let logged_expression =
             TypeMetadata::get_logged_expression(ast_expr, context.experimental.new_encoding)?;
 
@@ -2536,7 +2539,7 @@ impl<'a> FnCompiler<'a> {
             };
 
         if let Some(const_eval_string) = const_eval_string {
-            panic_location.msg = Some(const_eval_string);
+            panic_occurrence.msg = Some(const_eval_string);
         } else {
             // If the `panic` argument is not a constant string slice, we will log it.
             // Note that the argument can still be a string slice, but we cannot
@@ -2556,7 +2559,7 @@ impl<'a> FnCompiler<'a> {
                         ));
                     }
                     Some(log_id) => {
-                        panic_location.log_id = Some(*log_id);
+                        panic_occurrence.log_id = Some(*log_id);
                         convert_literal_to_value(context, &Literal::U64(log_id.hash_id))
                     }
                 };
@@ -2571,7 +2574,7 @@ impl<'a> FnCompiler<'a> {
                     Some(log_ty) => {
                         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
 
-                        // The `log` instruction
+                        // Emit the `log` instruction.
                         self.current_block
                             .append(context)
                             .log(panic_val, log_ty, log_id)
@@ -2583,29 +2586,38 @@ impl<'a> FnCompiler<'a> {
             }
         }
 
-        let revert_code = context.get_next_panic_revert_code();
-
-        let revert_code_const = ConstantContent::new_uint(context, 64, revert_code);
-        let revert_code_const = Constant::unique(context, revert_code_const);
-        let revert_code_val = Value::new_constant(context, revert_code_const);
-
-        // The `revert` instruction
-        let val = self
-            .current_block
-            .append(context)
-            .revert(revert_code_val)
-            .add_metadatum(context, span_md_idx);
-
-        panic_location.revert_code = revert_code;
-        // We want to set the location to the `panic` keyword.
-        panic_location.loc = self.engines.se().get_source_location(
+        // 1.b Define the `loc` entry.
+        // Set the location to the `panic` keyword.
+        panic_occurrence.loc = self.engines.se().get_source_location(
             md_mgr
                 .md_to_span(context, span_md_idx)
                 .as_ref()
                 .unwrap_or(&ast_expr.span),
         );
 
-        self.panic_locations.push(panic_location);
+        // 2. Define the revert code for this particular panic occurrence.
+        // If we have encountered this `panic` before, we will reuse the revert code.
+        // This happen, e.g., when compiling a generic function that panics on a non-generic argument.
+        let revert_code = match self.panic_occurrences.get(&panic_occurrence) {
+            Some(revert_code) => *revert_code,
+            None => {
+                // If we have not encountered this `panic` before, we will assign a new revert code.
+                let revert_code = context.get_next_panic_revert_code();
+                self.panic_occurrences.insert(panic_occurrence, revert_code);
+                revert_code
+            }
+        };
+
+        let revert_code_const = ConstantContent::new_uint(context, 64, revert_code);
+        let revert_code_const = Constant::unique(context, revert_code_const);
+        let revert_code_val = Value::new_constant(context, revert_code_const);
+
+        // 3. Emit the `revert` instruction.
+        let val = self
+            .current_block
+            .append(context)
+            .revert(revert_code_val)
+            .add_metadatum(context, span_md_idx);
 
         Ok(TerminatorValue::new(val, context))
     }
@@ -3093,7 +3105,7 @@ impl<'a> FnCompiler<'a> {
             callee,
             self.logged_types_map,
             self.messages_types_map,
-            self.panic_locations,
+            self.panic_occurrences,
         )?;
 
         // Now actually call the new function.

@@ -8,17 +8,14 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 use crate::{
-    ast_elements::type_parameter::GenericTypeParameter,
-    language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
-    transform::Attributes,
-    Engines, PanicLocation, TypeId, TypeInfo,
+    ast_elements::type_parameter::GenericTypeParameter, language::ty::{TyFunctionDecl, TyProgram, TyProgramKind}, transform::Attributes, Engines, PanicOccurrences, TypeId, TypeInfo
 };
 
 use super::abi_str::AbiStrContext;
 
 pub struct AbiContext<'a> {
     pub program: &'a TyProgram,
-    pub panic_locations: &'a Vec<PanicLocation>,
+    pub panic_occurrences: &'a PanicOccurrences,
     pub abi_with_callpaths: bool,
     pub type_ids_to_full_type_str: HashMap<String, String>,
 }
@@ -108,7 +105,7 @@ pub fn generate_program_abi(
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
-            let error_codes = generate_error_codes(ctx.panic_locations)?;
+            let error_codes = generate_error_codes(ctx.panic_occurrences)?;
             program_abi::ProgramABI {
                 program_type: "contract".to_string(),
                 spec_version,
@@ -137,7 +134,7 @@ pub fn generate_program_abi(
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
-            let error_codes = generate_error_codes(ctx.panic_locations)?;
+            let error_codes = generate_error_codes(ctx.panic_occurrences)?;
             program_abi::ProgramABI {
                 program_type: "script".to_string(),
                 spec_version,
@@ -166,7 +163,7 @@ pub fn generate_program_abi(
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
-            let error_codes = generate_error_codes(ctx.panic_locations)?;
+            let error_codes = generate_error_codes(ctx.panic_occurrences)?;
             program_abi::ProgramABI {
                 program_type: "predicate".to_string(),
                 spec_version,
@@ -185,7 +182,7 @@ pub fn generate_program_abi(
                 generate_logged_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let messages_types =
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
-            let error_codes = generate_error_codes(ctx.panic_locations)?;
+            let error_codes = generate_error_codes(ctx.panic_occurrences)?;
             program_abi::ProgramABI {
                 program_type: "library".to_string(),
                 spec_version,
@@ -580,23 +577,23 @@ fn generate_configurables(
 }
 
 fn generate_error_codes(
-    panic_locations: &[PanicLocation],
+    panic_occurrences: &PanicOccurrences,
 ) -> Result<BTreeMap<u64, ErrorDetails>, ErrorEmitted> {
     let mut res = BTreeMap::new();
-    for panic_location in panic_locations.iter() {
+    for (panic_occurrence, revert_code) in panic_occurrences.iter() {
         res.insert(
-            panic_location.revert_code,
+            *revert_code,
             ErrorDetails {
                 pos: ErrorPosition {
-                    pkg: panic_location.loc.pkg.clone(),
-                    file: panic_location.loc.file.clone(),
-                    line: panic_location.loc.loc.line as u64,
-                    column: panic_location.loc.loc.col as u64,
+                    pkg: panic_occurrence.loc.pkg.clone(),
+                    file: panic_occurrence.loc.file.clone(),
+                    line: panic_occurrence.loc.loc.line as u64,
+                    column: panic_occurrence.loc.loc.col as u64,
                 },
-                log_id: panic_location
+                log_id: panic_occurrence
                     .log_id
                     .map(|log_id| log_id.hash_id.to_string()),
-                msg: panic_location.msg.clone(),
+                msg: panic_occurrence.msg.clone(),
             },
         );
     }

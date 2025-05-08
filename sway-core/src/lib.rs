@@ -40,6 +40,7 @@ use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
 use semantic_analysis::program::TypeCheckFailed;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -739,17 +740,29 @@ pub fn build_module_dep_graph(
     Ok(())
 }
 
-#[derive(Default, Debug, Clone)]
-pub struct PanicLocation {
-    pub revert_code: u64,
+/// A possible occurrence of a `panic` expression that is located in code at [PanicOccurrence::loc].
+///
+/// Note that a single `panic` expression can have multiple [PanicOccurrence]s related to it.
+///
+/// For example:
+/// - `panic "Some message.";` will have just a single occurrence, with `msg` containing the message.
+/// - `panic some_value_of_a_concrete_type;` will have just a single occurrence, with `log_id` containing the [LogId] of the concrete type.
+/// - `panic some_value_of_a_generic_type;` will have multiple occurrences, one with `log_id` for every monomorphized type.
+///
+/// **Every [PanicOccurrence] has exactly one revert code assigned to it.**
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PanicOccurrence {
     pub loc: SourceLocation,
     pub log_id: Option<LogId>,
     pub msg: Option<String>,
 }
 
+/// [PanicOccurrence]s mapped to their corresponding revert codes.
+type PanicOccurrences = HashMap<PanicOccurrence, u64>;
+
 pub struct CompiledAsm {
     pub finalized_asm: FinalizedAsm,
-    pub panic_locations: Vec<PanicLocation>,
+    pub panic_occurrences: PanicOccurrences,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1097,13 +1110,13 @@ pub fn ast_to_asm(
         Err(err) => return Err(err.error),
     };
 
-    let mut panic_locations = vec![];
+    let mut panic_occurrences = PanicOccurrences::default();
 
     let asm = match compile_ast_to_ir_to_asm(
         handler,
         engines,
         typed_program,
-        &mut panic_locations,
+        &mut panic_occurrences,
         build_config,
         experimental,
     ) {
@@ -1116,7 +1129,7 @@ pub fn ast_to_asm(
 
     Ok(CompiledAsm {
         finalized_asm: asm,
-        panic_locations,
+        panic_occurrences,
     })
 }
 
@@ -1124,7 +1137,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     handler: &Handler,
     engines: &Engines,
     program: &ty::TyProgram,
-    panic_locations: &mut Vec<PanicLocation>,
+    panic_occurrences: &mut PanicOccurrences,
     build_config: &BuildConfig,
     experimental: ExperimentalFeatures,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
@@ -1141,7 +1154,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     let mut ir = match ir_generation::compile_program(
         program,
-        panic_locations,
+        panic_occurrences,
         build_config.include_tests,
         engines,
         experimental,

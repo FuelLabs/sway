@@ -275,7 +275,7 @@ impl SourceEngine {
 
 /// A location in a source code file, represented by a package name, relative file path,
 /// and line/column within the file.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SourceLocation {
     /// The name and the version of the package that contains the source file,
     /// in the format "name@version".

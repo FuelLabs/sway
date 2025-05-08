@@ -14,6 +14,7 @@ abi Abi {
     fn generic_panic_with_different_str_same_revert_code();
     fn generic_panic_with_error_type_enum();
     fn generic_panic_with_error_type_enum_different_variant_same_revert_code();
+    fn generic_function_with_non_generic_panic();
 }
 
 impl Abi for Contract {
@@ -59,6 +60,12 @@ impl Abi for Contract {
 
     fn generic_panic_with_error_type_enum_different_variant_same_revert_code() {
         generic_panic(ErrorEnum::B(42));
+    }
+
+    fn generic_function_with_non_generic_panic() {
+        panicking_lib::generic_function_with_non_generic_panic::<u8>();
+        panicking_lib::generic_function_with_non_generic_panic::<u16>();
+        panicking_lib::generic_function_with_non_generic_panic::<u32>();
     }
 }
 

@@ -1788,7 +1788,7 @@ pub fn compile(
                     &handler,
                     &mut AbiContext {
                         program: typed_program,
-                        panic_locations: &asm.panic_locations,
+                        panic_occurrences: &asm.panic_occurrences,
                         abi_with_callpaths: true,
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                     },
@@ -2871,6 +2871,7 @@ mod test {
                 configurables: None,
                 logged_types: None,
                 messages_types: None,
+                error_codes: None,
             }),
             storage_slots: vec![],
             warnings: vec![],
