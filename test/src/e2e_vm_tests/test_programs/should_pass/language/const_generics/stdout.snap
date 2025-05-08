@@ -13,8 +13,8 @@ output:
 tested -- const_generics
 
       test main_test ... ok (???, 2629 gas)
-[src/main.sw:47:13] a = [0, 1]
-[src/main.sw:56:13] s.len_xxx() = 3
+[src/main.sw:48:13] a = [0, 1]
+[src/main.sw:57:13] s.len_xxx() = 3
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
