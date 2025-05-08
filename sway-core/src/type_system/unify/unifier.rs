@@ -10,9 +10,7 @@ use crate::{
     ast_elements::type_parameter::ConstGenericExpr,
     decl_engine::{DeclEngineGet, DeclId},
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext, WithEngines},
-    language::
-        ty::{TyEnumDecl, TyStructDecl}
-    ,
+    language::ty::{TyEnumDecl, TyStructDecl},
     type_system::{engine::Unification, priv_prelude::*},
 };
 
@@ -159,11 +157,15 @@ impl<'a> Unifier<'a> {
                     (
                         ConstGenericExpr::Literal { .. },
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
-                    ) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                    ) => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
                     (
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
                         ConstGenericExpr::Literal { .. },
-                    ) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                    ) => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
                     (
                         ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
                         ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
