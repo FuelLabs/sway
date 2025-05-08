@@ -344,6 +344,17 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                                         use_idx: 0,
                                     });
                                 }
+                            } else if let Some(stored_pointee_ty) = stored_ty.get_pointee_type(ctx) {
+                                // The value being stored is a pointer to what should've been stored.
+                                // So we just load the value and store it.
+                                if dst_pointee_ty == stored_pointee_ty {
+                                    instrs_to_fix.push(TypeCorrection {
+                                        actual_ty: stored_ty,
+                                        expected_ty: stored_pointee_ty,
+                                        use_instr: instr,
+                                        use_idx: 1,
+                                    });
+                                }
                             }
                         } else {
                             // The destination is not a pointer type, but should've been.

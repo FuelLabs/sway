@@ -148,6 +148,8 @@ pub(crate) struct FnCompiler<'eng> {
     block_to_continue_to: Option<Block>,
     current_fn_param: Option<ty::TyFunctionParameter>,
     lexical_map: LexicalMap,
+    // TODO: This field and all its uses must go once we have references properly implemented.
+    pub ref_mut_args: rustc_hash::FxHashSet<String>,
     cache: &'eng mut CompiledFunctionCache,
     // This is a map from the type IDs of a logged type and the ID of the corresponding log
     logged_types_map: HashMap<TypeId, LogId>,
@@ -244,6 +246,7 @@ impl<'eng> FnCompiler<'eng> {
             block_to_break_to: None,
             block_to_continue_to: None,
             lexical_map,
+            ref_mut_args: rustc_hash::FxHashSet::default(),
             cache,
             current_fn_param: None,
             logged_types_map: logged_types_map.clone(),
@@ -279,11 +282,14 @@ impl<'eng> FnCompiler<'eng> {
             let local_name = self.lexical_map.insert(arg_name.as_str().to_owned());
             let local_var = self.function.new_unique_local_var(
                 context,
-                local_name,
+                local_name.clone(),
                 arg_value.get_type(context).unwrap(),
                 None,
                 false,
             );
+            if self.ref_mut_args.contains(&arg_name) {
+                self.ref_mut_args.insert(local_name.clone());
+            }
             let local_val = entry.append(context).get_local(local_var);
             entry.append(context).store(local_val, arg_value);
         }
@@ -3791,8 +3797,17 @@ impl<'eng> FnCompiler<'eng> {
                     })?;
 
                 if indices.is_empty() {
-                    // A non-aggregate; use a direct `store`.
-                    lhs_val
+                    if self.ref_mut_args.contains(name) {
+                        // If the LHS is a mutable reference, then we need to dereference it to get the
+                        // pointer to the value.
+                        self.current_block
+                            .append(context)
+                            .load(lhs_val)
+                            .add_metadatum(context, span_md_idx)
+                    } else {
+                        // A non-aggregate; use a direct `store`.
+                        lhs_val
+                    }
                 } else {
                     let (terminator, gep_indices) =
                         self.compile_indices(context, md_mgr, *base_type, indices)?;
