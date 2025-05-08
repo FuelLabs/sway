@@ -10,10 +10,9 @@ use crate::{
     ast_elements::type_parameter::ConstGenericExpr,
     decl_engine::{DeclEngineGet, DeclId},
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext, WithEngines},
-    language::{
-        ty::{TyEnumDecl, TyStructDecl},
-        CallPath,
-    },
+    language::
+        ty::{TyEnumDecl, TyStructDecl}
+    ,
     type_system::{engine::Unification, priv_prelude::*},
 };
 
@@ -156,25 +155,20 @@ impl<'a> Unifier<'a> {
                         ConstGenericExpr::Literal { val: e_eval, .. },
                     ) => {
                         assert!(r_eval == e_eval);
-                        // eprintln!("{}", r_eval);
-                        // eprintln!("{}", e_eval);
                     }
                     (
                         ConstGenericExpr::Literal { .. },
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
-                    ) => todo!(),
+                    ) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                     (
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
                         ConstGenericExpr::Literal { .. },
-                    ) => todo!(),
+                    ) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                     (
                         ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
                         ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
                     ) => {
                         assert!(r_ident.as_str() == e_ident.as_str());
-                        // eprintln!("{}", r_ident.as_str());
-                        // eprintln!("{}", e_ident.as_str());
-                        // todo!()
                     }
                 }
             }

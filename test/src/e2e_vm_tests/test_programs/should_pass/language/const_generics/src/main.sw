@@ -44,7 +44,7 @@ impl<T, const N: u64> E<T, N> {
 }
 
 fn main(a: [u64; 2]) {
-    __dbg(a);
+    let _ = __dbg(a);
 
     let a = [C {}].my_len();
     assert(a == 1);
@@ -53,10 +53,14 @@ fn main(a: [u64; 2]) {
     assert(b == 2);
 
     let s: S<u64, 3> = S { };
-    __dbg(s.len_xxx());
+    let _ = __dbg(s.len_xxx());
 
     let e: E<u64, 3> = E::<u64, 3>::Nothing;
     let b = e.len_xxx2();
     assert(b == 3);
-    //__dbg(e);
+}
+
+#[test]
+fn main_test() {
+    main([0, 1]);
 }
