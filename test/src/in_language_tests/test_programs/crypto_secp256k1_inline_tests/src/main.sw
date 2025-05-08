@@ -257,7 +257,7 @@ fn secp256k1_from_b256_tuple() {
     }
 }
 
-// TODO: Enable this test once https://github.com/FuelLabs/sway/issues/7157 is fixed.
+// TODO: Uncomment this test once https://github.com/FuelLabs/sway/issues/7157 is fixed.
 // #[test]
 // fn secp256k1_from_u8_array() {
 //     let array_1 = [
