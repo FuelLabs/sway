@@ -57,6 +57,7 @@ fn main(a: [u64; 2]) {
     let _ = __dbg(s.len_xxx());
 
     let e: E<u64, 3> = E::<u64, 3>::Nothing;
+    let _ = __dbg(e);
     let b = e.len_xxx2();
     assert(b == 3);
 }
