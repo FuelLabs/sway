@@ -2103,6 +2103,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         ty.is_unit(self.context)
             || ty.is_never(self.context)
             || ty.is_bool(self.context)
+            || ty.is_ptr(self.context)
             || ty
                 .get_uint_width(self.context)
                 .map(|x| x < 256)

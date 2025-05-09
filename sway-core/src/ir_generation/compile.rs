@@ -574,6 +574,7 @@ fn compile_fn(
         )]);
     }
 
+    let mut ref_mut_args = rustc_hash::FxHashSet::default();
     let args = ast_fn_decl
         .parameters
         .iter()
@@ -587,6 +588,9 @@ fn compile_fn(
                 &param.type_argument.span(),
             )
             .map(|ty| {
+                if param.is_reference && param.is_mutable {
+                    ref_mut_args.insert(param.name.as_str().to_owned());
+                }
                 (
                     // Convert the name.
                     param.name.as_str().into(),
@@ -652,7 +656,9 @@ fn compile_fn(
         messages_types_map,
         cache,
     );
-    let mut ret_val = compiler.compile_code_block_to_value(context, md_mgr, body)?;
+    compiler.ref_mut_args = ref_mut_args;
+
+    let mut ret_val = compiler.compile_fn_to_value(context, md_mgr, body)?;
 
     // Special case: sometimes the returned value at the end of the function block is hacked
     // together and is invalid.  This can happen with diverging control flow or with implicit
