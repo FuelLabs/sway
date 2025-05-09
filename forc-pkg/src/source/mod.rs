@@ -32,7 +32,7 @@ use sway_utils::{DEFAULT_IPFS_GATEWAY_URL, DEFAULT_REGISTRY_IPFS_GATEWAY_URL};
 
 /// Pin this source at a specific "version", return the local directory to fetch into.
 trait Pin {
-    type Pinned: Fetch + Hash;
+    type Pinned: Fetch + Hash + Checksum;
     fn pin(&self, ctx: PinCtx) -> Result<(Self::Pinned, PathBuf)>;
 }
 
@@ -44,6 +44,10 @@ trait Fetch {
 /// Given a parent manifest, return the canonical, local path for this source as a dependency.
 trait DepPath {
     fn dep_path(&self, name: &str) -> Result<DependencyPath>;
+}
+
+trait Checksum {
+    fn checksum(&self) -> &str;
 }
 
 type FetchId = u64;

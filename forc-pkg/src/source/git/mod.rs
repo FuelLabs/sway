@@ -17,6 +17,8 @@ use std::{
     str::FromStr,
 };
 
+use super::Checksum;
+
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Url {
     url: gix_url::Url,
@@ -56,6 +58,9 @@ pub struct Pinned {
     pub source: Source,
     /// The hash to which we have pinned the source.
     pub commit_hash: String,
+    /// Calculated sha256-hash for this given pinned instance.
+    /// Prefixed with `0x`.
+    pub checksum: String,
 }
 
 /// Error returned upon failed parsing of `Pinned::from_str`.
@@ -140,6 +145,12 @@ impl Reference {
             Reference::DefaultBranch => resolve_default_branch(repo),
             Reference::Rev(s) => resolve_rev(repo, s),
         }
+    }
+}
+
+impl Checksum for Pinned {
+    fn checksum(&self) -> &str {
+        &self.checksum
     }
 }
 
@@ -230,6 +241,12 @@ impl source::DepPath for Pinned {
         let path = manifest::find_within(&repo_path, name)
             .ok_or_else(|| anyhow!("failed to find package `{}` in {}", name, self))?;
         Ok(source::DependencyPath::ManifestPath(path))
+    }
+}
+
+impl source::Checksum for Pinned {
+    fn checksum(&self) -> String {
+        self.checksum
     }
 }
 

@@ -56,6 +56,8 @@ pub trait GenericManifestFile {
 
     /// Returns a mapping of member member names to package manifest files.
     fn member_manifests(&self) -> Result<MemberManifestFiles>;
+    /// Returns the checksum of the source described by this `ManifestFile`.
+    fn checksum(&self) -> Result<String>;
 }
 
 #[derive(Clone, Debug)]
@@ -136,6 +138,16 @@ impl GenericManifestFile for ManifestFile {
             ManifestFile::Package(pkg_manifest) => pkg_manifest.lock_path(),
             ManifestFile::Workspace(workspace_manifest) => workspace_manifest.lock_path(),
         }
+    }
+
+    /// Returns the checksum of the source described by this `ManifestFile`.
+    fn checksum(&self) -> Result<String> {
+        // We basically want to read Forc.toml, and anything under src/ folder.
+        // given that it ends with a .sw file.
+        //
+        // If this is a workspace manifest file, then we also need to read the
+        // top level Forc.toml and do the logic above for each member manifest.
+        todo!()
     }
 }
 
