@@ -4,7 +4,7 @@
 use crate::{
     capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
 };
-use forc_tracing::{tracing_subscriber, FmtSpan, StdioTracingWriter, TracingWriterMode};
+use forc_tracing::{tracing_subscriber, FmtSpan, TracingWriter};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
     InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
@@ -44,9 +44,7 @@ pub fn handle_initialize(
             .with_ansi(false)
             .with_max_level(config.logging.level)
             .with_span_events(FmtSpan::CLOSE)
-            .with_writer(StdioTracingWriter {
-                writer_mode: TracingWriterMode::Stderr,
-            })
+            .with_writer(TracingWriter::Stderr)
             .init();
     }
     tracing::info!("Initializing the Sway Language Server");
