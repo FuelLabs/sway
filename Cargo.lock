@@ -3113,6 +3113,7 @@ name = "forc-tracing"
 version = "0.68.2"
 dependencies = [
  "ansiterm",
+ "regex",
  "tracing",
  "tracing-subscriber",
  "tracing-test",
