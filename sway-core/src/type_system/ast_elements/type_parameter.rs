@@ -1,6 +1,8 @@
 use crate::{
     abi_generation::abi_str::AbiStrContext,
-    decl_engine::{parsed_id::ParsedDeclId, DeclMapping, InterfaceItemMap, ItemMap},
+    decl_engine::{
+        parsed_id::ParsedDeclId, DeclMapping, InterfaceItemMap, ItemMap, ParsedDeclEngineGet,
+    },
     engine_threading::*,
     has_changes,
     language::{
@@ -53,6 +55,7 @@ impl PartialEqWithEngines for TypeParameter {
 
 impl HashWithEngines for TypeParameter {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        std::mem::discriminant(self).hash(state);
         match self {
             TypeParameter::Type(p) => p.hash(state, engines),
             TypeParameter::Const(p) => p.hash(state, engines),
@@ -1011,10 +1014,15 @@ pub struct ConstGenericParameter {
 
 impl HashWithEngines for ConstGenericParameter {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let ConstGenericParameter { name, ty, .. } = self;
+        let ConstGenericParameter { name, ty, id, .. } = self;
         let type_engine = engines.te();
         type_engine.get(*ty).hash(state, engines);
         name.hash(state);
+        if let Some(id) = id.as_ref() {
+            let decl = engines.pe().get(id);
+            decl.name.hash(state);
+            decl.ty.hash(state);
+        }
     }
 }
 

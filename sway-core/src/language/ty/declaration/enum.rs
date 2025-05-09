@@ -118,6 +118,10 @@ impl MaterializeConstGenerics for TyEnumDecl {
                 TypeParameter::Const(p) if p.name.as_str() == name => {
                     p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
                 }
+                TypeParameter::Type(p) => {
+                    p.type_id
+                        .materialize_const_generics(engines, handler, name, value)?;
+                }
                 _ => {}
             }
         }

@@ -7,14 +7,15 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
-    Finished debug [unoptimized + fuel] target(s) [2.424 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [3.664 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-      test main_test ... ok (???, 2629 gas)
+      test main_test ... ok (???, 3212 gas)
 [src/main.sw:48:13] a = [0, 1]
 [src/main.sw:57:13] s.len_xxx() = 3
+[src/main.sw:60:13] e = Nothing
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
