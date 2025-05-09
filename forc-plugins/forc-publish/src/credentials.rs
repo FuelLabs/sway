@@ -30,7 +30,7 @@ pub fn get_auth_token(
         return Ok(token);
     }
 
-    if let Some(token) = std::env::var("FORC_PUB_TOKEN").ok() {
+    if let Ok(token) = std::env::var("FORC_PUB_TOKEN") {
         return Ok(token);
     }
 
