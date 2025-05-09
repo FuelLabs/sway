@@ -23,27 +23,19 @@ pub async fn handle_did_open_text_document(
     let (uri, session) = state
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
+    eprintln!("did_open for {:?}", uri.to_file_path().unwrap());
+
     state.documents.handle_open_file(&uri).await;
-    // If the token map is empty, then we need to parse the project.
-    // Otherwise, don't recompile the project when a new file in the project is opened
-    // as the workspace is already compiled.
-    if session.token_map().is_empty() {
-        let _ = state
-            .cb_tx
-            .send(TaskMessage::CompilationContext(CompilationContext {
-                session: Some(session.clone()),
-                uri: Some(uri.clone()),
-                version: None,
-                optimized_build: false,
-                gc_options: state.config.read().garbage_collection.clone(),
-                file_versions: BTreeMap::new(),
-            }));
-        state.is_compiling.store(true, Ordering::SeqCst);
-        state.wait_for_parsing().await;
-        state
-            .publish_diagnostics(uri, params.text_document.uri, session)
-            .await;
-    }
+
+    send_new_compilation_request(state, session.clone(), &uri, None, false);
+    state.is_compiling.store(true, Ordering::SeqCst);
+    eprintln!("did_open: waiting for parsing to finish for {:?}", uri.to_file_path().unwrap());
+    state.wait_for_parsing().await;
+    eprintln!("did_open: publishing diagnostics for {:?}", uri.to_file_path().unwrap());
+    state
+        .publish_diagnostics(uri, params.text_document.uri, session)
+        .await;
+
     Ok(())
 }
 
@@ -53,9 +45,12 @@ fn send_new_compilation_request(
     uri: &Url,
     version: Option<i32>,
     optimized_build: bool,
-    file_versions: BTreeMap<PathBuf, Option<u64>>,
 ) {
+    eprintln!("new compilation request for {:?}", uri.to_file_path().unwrap());
+    let file_versions = file_versions(&state.documents, uri, version.map(|v| v as u64));
+
     if state.is_compiling.load(Ordering::SeqCst) {
+        eprintln!("cancelling existing compilation and retriggering compilation for {:?}", uri.to_file_path().unwrap());
         // If we are already compiling, then we need to retrigger compilation
         state.retrigger_compilation.store(true, Ordering::SeqCst);
     }
@@ -69,10 +64,13 @@ fn send_new_compilation_request(
         }
     }
 
+    eprintln!("sending compilation request for {:?}", uri.to_file_path().unwrap());
     let _ = state
         .cb_tx
         .send(TaskMessage::CompilationContext(CompilationContext {
             session: Some(session.clone()),
+            engines: state.engines.clone(),
+            token_map: state.token_map.clone(),
             uri: Some(uri.clone()),
             version,
             optimized_build,
@@ -100,11 +98,6 @@ pub async fn handle_did_change_text_document(
         .write_changes_to_file(&uri, &params.content_changes)
         .await?;
 
-    let file_versions = file_versions(
-        &state.documents,
-        &uri,
-        Some(params.text_document.version as u64),
-    );
     send_new_compilation_request(
         state,
         session.clone(),
@@ -112,7 +105,6 @@ pub async fn handle_did_change_text_document(
         Some(params.text_document.version),
         // TODO: Set this back to true once https://github.com/FuelLabs/sway/issues/6576 is fixed.
         false,
-        file_versions,
     );
     Ok(())
 }
@@ -145,8 +137,7 @@ pub(crate) async fn handle_did_save_text_document(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     session.sync.resync()?;
-    let file_versions = file_versions(&state.documents, &uri, None);
-    send_new_compilation_request(state, session.clone(), &uri, None, false, file_versions);
+    send_new_compilation_request(state, session.clone(), &uri, None, false);
     state.wait_for_parsing().await;
     state
         .publish_diagnostics(uri, params.text_document.uri, session)

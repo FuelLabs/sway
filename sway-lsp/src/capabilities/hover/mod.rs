@@ -6,6 +6,7 @@ use crate::{
     core::{
         session::Session,
         token::{SymbolKind, Token, TypedAstToken},
+        token_map::TokenMap,
     },
     utils::{
         attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
@@ -22,12 +23,14 @@ use sway_types::{Span, Spanned};
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(
     session: Arc<Session>,
+    engines: &Engines,
+    token_map: &TokenMap,
     keyword_docs: &KeywordDocs,
     url: &Url,
     position: Position,
     client_config: LspClient,
 ) -> Option<lsp_types::Hover> {
-    let t = session.token_map().token_at_position(url, position)?;
+    let t = token_map.token_at_position(url, position)?;
     let (ident, token) = t.pair();
     let range = ident.range;
 
@@ -51,13 +54,13 @@ pub fn hover_data(
         });
     }
 
-    let contents = match &token.declared_token_ident(&session.engines.read()) {
+    let contents = match &token.declared_token_ident(engines) {
         Some(decl_ident) => {
-            let t = session.token_map().try_get(decl_ident).try_unwrap()?;
+            let t = token_map.try_get(decl_ident).try_unwrap()?;
             let decl_token = t.value();
             hover_format(
                 session.clone(),
-                &session.engines.read(),
+                engines,
                 decl_token,
                 &decl_ident.name,
                 client_config.clone(),
@@ -67,7 +70,7 @@ pub fn hover_data(
         // we use the `Ident` of the token itself.
         None => hover_format(
             session.clone(),
-            &session.engines.read(),
+            engines,
             token,
             &ident.name,
             client_config.clone(),

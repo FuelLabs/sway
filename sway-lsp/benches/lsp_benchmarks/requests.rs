@@ -9,7 +9,7 @@ use sway_lsp::{
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, documents) = Runtime::new()
+    let (uri, session, documents, token_map, engines) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
     let config = sway_lsp::config::Config::default();
@@ -18,13 +18,13 @@ fn benchmarks(c: &mut Criterion) {
     let range = Range::new(Position::new(1628, 0), Position::new(1728, 0));
 
     c.bench_function("semantic_tokens", |b| {
-        b.iter(|| capabilities::semantic_tokens::semantic_tokens_full(session.clone(), &uri))
+        b.iter(|| capabilities::semantic_tokens::semantic_tokens_full(&token_map, &uri))
     });
 
     c.bench_function("document_symbol", |b| {
         b.iter(|| {
             session
-                .document_symbols(&uri)
+                .document_symbols(&uri, &token_map, &engines.read())
                 .map(DocumentSymbolResponse::Nested)
         })
     });
@@ -33,7 +33,7 @@ fn benchmarks(c: &mut Criterion) {
         let position = Position::new(1698, 28);
         b.iter(|| {
             session
-                .completion_items(&uri, position, ".")
+                .completion_items(&uri, position, ".", &token_map, &engines.read())
                 .map(CompletionResponse::Array)
         })
     });
@@ -42,6 +42,8 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             capabilities::hover::hover_data(
                 session.clone(),
+                &engines.read(),
+                &token_map,
                 &keyword_docs,
                 &uri,
                 position,
@@ -51,21 +53,30 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("highlight", |b| {
-        b.iter(|| capabilities::highlight::get_highlights(session.clone(), &uri, position))
+        b.iter(|| {
+            capabilities::highlight::get_highlights(
+                session.clone(),
+                &engines.read(),
+                &token_map,
+                &uri,
+                position,
+            )
+        })
     });
 
     c.bench_function("find_all_references", |b| {
-        b.iter(|| session.token_references(&uri, position))
+        b.iter(|| session.token_references(&engines.read(), &token_map, &uri, position))
     });
 
     c.bench_function("goto_definition", |b| {
-        b.iter(|| session.token_definition_response(&uri, position))
+        b.iter(|| session.token_definition_response(&engines.read(), &token_map, &uri, position))
     });
 
     c.bench_function("inlay_hints", |b| {
         b.iter(|| {
             capabilities::inlay_hints::inlay_hints(
-                session.clone(),
+                &engines.read(),
+                &token_map,
                 &uri,
                 &range,
                 &config.inlay_hints,
@@ -74,13 +85,23 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("prepare_rename", |b| {
-        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &uri, position))
+        b.iter(|| {
+            capabilities::rename::prepare_rename(
+                session.clone(),
+                &engines.read(),
+                &token_map,
+                &uri,
+                position,
+            )
+        })
     });
 
     c.bench_function("rename", |b| {
         b.iter(|| {
             capabilities::rename::rename(
                 session.clone(),
+                &engines.read(),
+                &token_map,
                 "new_token_name".to_string(),
                 &uri,
                 position,
@@ -91,7 +112,15 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("code_action", |b| {
         let range = Range::new(Position::new(4, 10), Position::new(4, 10));
         b.iter(|| {
-            capabilities::code_actions::code_actions(session.clone(), &range, &uri, &uri, &vec![])
+            capabilities::code_actions::code_actions(
+                session.clone(),
+                &engines.read(),
+                &token_map,
+                &range,
+                &uri,
+                &uri,
+                &vec![],
+            )
         })
     });
 
