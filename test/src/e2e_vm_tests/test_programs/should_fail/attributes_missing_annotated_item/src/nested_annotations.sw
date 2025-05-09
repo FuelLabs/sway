@@ -1,4 +1,3 @@
-// TODO: Adjust this test once https://github.com/FuelLabs/sway/issues/6932 is implemented.
 library;
 
 pub fn fa() {

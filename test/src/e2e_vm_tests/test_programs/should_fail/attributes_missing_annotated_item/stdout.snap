@@ -184,37 +184,38 @@ error
 ____
 
 error
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/nested_annotations.sw:5:5
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/nested_annotations.sw:4:38
   |
-3 | 
-4 | pub fn fa() {
-5 |     /// This is an outer doc comment.
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected an expression.
-6 | }
-7 | 
+2 | 
+3 | pub fn fa() {
+4 |     /// This is an outer doc comment.
+  |                                      ^ Expected a documented element.
+5 | }
+6 | 
+7 | pub fn fb() {
   |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/nested_annotations.sw:9:5
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/nested_annotations.sw:8:5
    |
- 7 | 
- 8 | pub fn fb() {
- 9 |     //! This is an inner doc comment.
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected an expression.
-10 | }
-11 | 
+ 6 | 
+ 7 | pub fn fb() {
+ 8 |     //! This is an inner doc comment.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected an inner doc comment (`//!`) to be at the top of the module file.
+ 9 | }
+10 | 
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/nested_annotations.sw:13:5
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_missing_annotated_item/src/nested_annotations.sw:12:24
    |
-11 | 
-12 | pub fn fc() {
-13 |     #[allow(dead_code)]
-   |     ^ Expected an expression.
-14 | }
+10 | 
+11 | pub fn fc() {
+12 |     #[allow(dead_code)]
+   |                        ^ Expected an annotated element.
+13 | }
    |
 ____
 

@@ -44,6 +44,7 @@ pub const GTF_POLICY_TIP = 0x501;
 pub const GTF_POLICY_WITNESS_LIMIT = 0x502;
 pub const GTF_POLICY_MATURITY = 0x503;
 pub const GTF_POLICY_MAX_FEE = 0x504;
+pub const GTF_POLICY_EXPIRATION = 0x505;
 
 /// A transaction type.
 pub enum Transaction {
@@ -141,6 +142,7 @@ const TIP_POLICY: u32 = 1u32 << 0;
 const WITNESS_LIMIT_POLICY: u32 = 1u32 << 1;
 const MATURITY_POLICY: u32 = 1u32 << 2;
 const MAX_FEE_POLICY: u32 = 1u32 << 3;
+const EXPIRATION_POLICY: u32 = 1u32 << 4;
 
 /// Returns policies bits. It can be used to identify which policies are set.
 fn policies() -> u32 {
@@ -262,6 +264,31 @@ pub fn tx_max_fee() -> Option<u64> {
     let bits = policies();
     if bits & MAX_FEE_POLICY > 0 {
         Some(__gtf::<u64>(0, GTF_POLICY_MAX_FEE))
+    } else {
+        None
+    }
+}
+
+/// Get the expiration for the transaction, if it is set.
+///
+/// # Returns
+///
+/// * [Option<u32>] - The expiration for the transaction.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::tx::tx_expiration;
+///
+/// fn foo() {
+///     let expiration = tx_expiration().unwrap();
+///     log(expiration);
+/// }
+/// ```
+pub fn tx_expiration() -> Option<u32> {
+    let bits = policies();
+    if bits & EXPIRATION_POLICY > 0 {
+        Some(__gtf::<u32>(0, GTF_POLICY_EXPIRATION))
     } else {
         None
     }
