@@ -30,6 +30,10 @@ pub fn get_auth_token(
         return Ok(token);
     }
 
+    if let Some(token) = std::env::var("FORC_PUB_TOKEN").ok() {
+        return Ok(token);
+    }
+
     let credentials_path = credentials_dir
         .unwrap_or(user_forc_directory())
         .join(CREDENTIALS_FILE);
@@ -87,6 +91,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use serial_test::serial;
     use std::fs;
     use tempfile::tempdir;
 
@@ -95,6 +100,15 @@ mod test {
         let token = Some("cli_token".to_string());
         let result = get_auth_token(token, None).unwrap();
         assert_eq!(result, "cli_token");
+    }
+
+    #[test]
+    #[serial]
+    fn test_get_auth_token_from_env() {
+        std::env::set_var("FORC_PUB_TOKEN", "env_token");
+        let result = get_auth_token(None, None).unwrap();
+        std::env::remove_var("FORC_PUB_TOKEN");
+        assert_eq!(result, "env_token");
     }
 
     #[test]
