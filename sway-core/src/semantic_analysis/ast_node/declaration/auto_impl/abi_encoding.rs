@@ -31,22 +31,24 @@ where
         type_parameters: &[TypeParameter],
         body: String,
     ) -> String {
+        let type_parameters_declaration_expanded =
+            self.generate_type_parameters_declaration_code(type_parameters, true);
         let type_parameters_declaration =
-            self.generate_type_parameters_declaration_code(type_parameters);
+            self.generate_type_parameters_declaration_code(type_parameters, false);
         let type_parameters_constraints =
             self.generate_type_parameters_constraints_code(type_parameters, Some("AbiEncode"));
 
         let name = name.as_raw_ident_str();
 
         if body.is_empty() {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     buffer
                 }}
             }}")
         } else {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     {body}
@@ -62,22 +64,24 @@ where
         type_parameters: &[TypeParameter],
         body: String,
     ) -> String {
+        let type_parameters_declaration_expanded =
+            self.generate_type_parameters_declaration_code(type_parameters, true);
         let type_parameters_declaration =
-            self.generate_type_parameters_declaration_code(type_parameters);
+            self.generate_type_parameters_declaration_code(type_parameters, false);
         let type_parameters_constraints =
             self.generate_type_parameters_constraints_code(type_parameters, Some("AbiDecode"));
 
         let name = name.as_raw_ident_str();
 
         if body == "Self {  }" {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut _buffer: BufferReader) -> Self {{
                     {body}
                 }}
             }}")
         } else {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut buffer: BufferReader) -> Self {{
                     {body}

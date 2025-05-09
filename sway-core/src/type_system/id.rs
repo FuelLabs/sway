@@ -8,7 +8,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, MaterializeConstGenerics},
+    decl_engine::{DeclEngineGet, DeclEngineInsert, MaterializeConstGenerics},
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::CallPath,
     namespace::TraitMap,
@@ -118,7 +118,7 @@ impl MaterializeConstGenerics for TypeId {
     fn materialize_const_generics(
         &mut self,
         engines: &Engines,
-        _handler: &Handler,
+        handler: &Handler,
         name: &str,
         value: &crate::language::ty::TyExpression,
     ) -> Result<(), ErrorEmitted> {
@@ -136,16 +136,23 @@ impl MaterializeConstGenerics for TypeId {
                     }
                 };
 
-                let new_array = engines.te().insert_array(
+                *self = engines.te().insert_array(
                     engines,
                     type_argument.clone(),
                     Length(ConstGenericExpr::Literal {
                         val: val as usize,
-                        span: Span::dummy(),
+                        span: value.span.clone(),
                     }),
                 );
+            }
+            TypeInfo::Enum(id) => {
+                let decl = engines.de().get(id);
+                let mut decl = (*decl).clone();
+                decl.materialize_const_generics(engines, handler, name, value)?;
 
-                *self = new_array;
+                let decl_ref = engines.de().insert(decl, None);
+
+                *self = engines.te().insert_enum(engines, *decl_ref.id());
             }
             _ => {}
         }
@@ -355,20 +362,31 @@ impl TypeId {
                     .iter()
                     .zip(orig_enum_decl.generic_parameters.iter())
                 {
-                    let orig_type_param = orig_type_param
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
-                    let type_param = type_param
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
-                    type_parameters.push((type_param.type_id, orig_type_param.type_id));
-                    type_param.type_id.extract_type_parameters(
-                        engines,
-                        depth + 1,
-                        type_parameters,
-                        const_generic_parameters,
-                        orig_type_param.type_id,
-                    );
+                    match (orig_type_param, type_param) {
+                        (TypeParameter::Type(orig_type_param), TypeParameter::Type(type_param)) => {
+                            type_parameters.push((type_param.type_id, orig_type_param.type_id));
+                            type_param.type_id.extract_type_parameters(
+                                engines,
+                                depth + 1,
+                                type_parameters,
+                                const_generic_parameters,
+                                orig_type_param.type_id,
+                            );
+                        }
+                        (
+                            TypeParameter::Const(orig_type_param),
+                            TypeParameter::Const(type_param),
+                        ) => match (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
+                            (None, Some(expr)) => {
+                                const_generic_parameters.insert(
+                                    orig_type_param.name.as_str().to_string(),
+                                    expr.to_ty_expression(engines),
+                                );
+                            }
+                            _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                        },
+                        _ => {}
+                    }
                 }
             }
             (TypeInfo::Struct(struct_id), TypeInfo::Struct(orig_struct_id)) => {
@@ -941,10 +959,11 @@ impl TypeId {
             }
             TypeInfo::Enum(enum_ref) => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
-                for type_param in &enum_decl.generic_parameters {
-                    let type_param = type_param
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
+                let type_params = enum_decl
+                    .generic_parameters
+                    .iter()
+                    .filter_map(|x| x.as_type_parameter());
+                for type_param in type_params {
                     extend(
                         &mut found,
                         type_param.type_id.extract_any_including_self(

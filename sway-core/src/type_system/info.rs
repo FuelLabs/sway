@@ -765,7 +765,18 @@ impl DebugWithEngines for TypeInfo {
                     decl.call_path.suffix.as_str(),
                     decl.generic_parameters.iter().map(|x| match x {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => {
+                            if let Some(expr) = p.expr.as_ref() {
+                                match expr {
+                                    ConstGenericExpr::Literal { val, .. } => val.to_string(),
+                                    ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+                                        ident.as_str().to_string()
+                                    }
+                                }
+                            } else {
+                                p.name.as_str().to_string()
+                            }
+                        }
                     }),
                 )
             }
@@ -1793,10 +1804,10 @@ impl TypeInfo {
                         decl.generic_parameters
                             .iter()
                             .map(|p| {
-                                let p = p
-                                    .as_type_parameter()
-                                    .expect("only works with type parameters");
-                                p.type_id.get_type_str(engines)
+                                match p {
+                                    TypeParameter::Type(p) => p.type_id.get_type_str(engines),
+                                    TypeParameter::Const(p) => p.name.as_str().to_string(),
+                                }
                             })
                             .collect::<Vec<_>>()
                             .join(",")
