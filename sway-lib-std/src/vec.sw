@@ -241,13 +241,13 @@ impl<T> Vec<T> {
     ///```
     pub fn push(ref mut self, value: T) {
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.capacity() {
+        if self.len == self.buf.cap {
             self.buf.grow();
         };
 
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
-        let end = self.buf.ptr().add::<T>(self.len);
+        let end = self.buf.ptr.add::<T>(self.len);
 
         // Write `value` at pointer `end`
         end.write::<T>(value);
@@ -274,7 +274,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     pub fn capacity(self) -> u64 {
-        self.buf.capacity()
+        self.buf.cap
     }
 
     /// Clears the vector, removing all values.
@@ -331,10 +331,15 @@ impl<T> Vec<T> {
         };
 
         // Get a pointer to the desired element using `index`
-        let ptr = self.buf.ptr().add::<T>(index);
+        let ptr = self.buf.ptr.add::<T>(index);
 
         // Read from `ptr`
         Some(ptr.read::<T>())
+    }
+
+    /// Fetches the element stored at `index` without bounds checking.
+    fn get_unchecked(self, index: u64) -> T {
+        self.buf.ptr.add::<T>(index).read::<T>()
     }
 
     /// Returns the number of elements in the vector, also referred to
@@ -418,7 +423,7 @@ impl<T> Vec<T> {
     pub fn remove(ref mut self, index: u64) -> T {
         assert(index < self.len);
 
-        let buf_start = self.buf.ptr();
+        let buf_start = self.buf.ptr;
 
         // Read the value at `index`
         let ptr = buf_start.add::<T>(index);
@@ -473,11 +478,11 @@ impl<T> Vec<T> {
         assert(index <= self.len);
 
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.capacity() {
+        if self.len == self.buf.cap {
             self.buf.grow();
         }
 
-        let buf_start = self.buf.ptr();
+        let buf_start = self.buf.ptr;
 
         // The spot to put the new value
         let index_ptr = buf_start.add::<T>(index);
@@ -525,7 +530,7 @@ impl<T> Vec<T> {
             return None;
         }
         self.len -= 1;
-        Some(self.buf.ptr().add::<T>(self.len).read::<T>())
+        Some(self.buf.ptr.add::<T>(self.len).read::<T>())
     }
 
     /// Swaps two elements.
@@ -563,8 +568,8 @@ impl<T> Vec<T> {
             return;
         }
 
-        let element1_ptr = self.buf.ptr().add::<T>(element1_index);
-        let element2_ptr = self.buf.ptr().add::<T>(element2_index);
+        let element1_ptr = self.buf.ptr.add::<T>(element1_index);
+        let element2_ptr = self.buf.ptr.add::<T>(element2_index);
 
         let element1_val: T = element1_ptr.read::<T>();
         element2_ptr.copy_to::<T>(element1_ptr, 1);
@@ -601,7 +606,7 @@ impl<T> Vec<T> {
     pub fn set(ref mut self, index: u64, value: T) {
         assert(index < self.len);
 
-        let index_ptr = self.buf.ptr().add::<T>(index);
+        let index_ptr = self.buf.ptr.add::<T>(index);
 
         index_ptr.write::<T>(value);
     }
@@ -701,7 +706,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     pub fn ptr(self) -> raw_ptr {
-        self.buf.ptr()
+        self.buf.ptr
     }
 
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
@@ -782,13 +787,13 @@ impl<T> Vec<T> {
             return None;
         }
 
-        Some(self.buf.ptr().add::<T>(self.len - 1).read::<T>())
+        Some(self.buf.ptr.add::<T>(self.len - 1).read::<T>())
     }
 }
 
 impl<T> AsRawSlice for Vec<T> {
     fn as_raw_slice(self) -> raw_slice {
-        raw_slice::from_parts::<T>(self.buf.ptr(), self.len)
+        raw_slice::from_parts::<T>(self.buf.ptr, self.len)
     }
 }
 
@@ -803,7 +808,7 @@ impl<T> From<raw_slice> for Vec<T> {
 
 impl<T> From<Vec<T>> for raw_slice {
     fn from(vec: Vec<T>) -> Self {
-        asm(ptr: (vec.ptr(), vec.len())) {
+        asm(ptr: (vec.buf.ptr, vec.len)) {
             ptr: raw_slice
         }
     }
@@ -814,12 +819,12 @@ where
     T: AbiEncode,
 {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let len = self.len();
+        let len = self.len;
         let mut buffer = len.abi_encode(buffer);
 
         let mut i = 0;
         while i < len {
-            let item = self.get(i).unwrap();
+            let item = self.get_unchecked(i);
             buffer = item.abi_encode(buffer);
             i += 1;
         }
@@ -863,27 +868,27 @@ impl<T> Iterator for VecIter<T> {
         //
         //         If the original vector gets modified during the iteration
         //         (e.g., elements are removed), this modification will not
-        //         be reflected in `self.values.len()`.
+        //         be reflected in `self.values.len`.
         //
         //         But since modifying the vector during iteration is
         //         considered undefined behavior, this implementation,
         //         that always checks against the length at the time
         //         the iterator got created is perfectly valid.
-        if self.index >= self.values.len() {
+        if self.index >= self.values.len {
             return None
         }
 
         self.index += 1;
-        self.values.get(self.index - 1)
+        Some(self.values.get_unchecked(self.index - 1))
     }
 }
 
 impl<T> Clone for Vec<T> {
     fn clone(self) -> Self {
-        let len = self.len();
+        let len = self.len;
         let buf = RawVec::with_capacity(len);
         if len > 0 {
-            self.ptr().copy_to::<T>(buf.ptr(), len);
+            self.buf.ptr.copy_to::<T>(buf.ptr, len);
         }
         Self { buf, len }
     }
@@ -894,12 +899,12 @@ where
     T: PartialEq,
 {
     fn eq(self, other: Self) -> bool {
-        if self.len() != other.len() {
+        if self.len != other.len {
             return false;
         }
         let mut i = 0;
-        while i < self.len() {
-            if self.get(i).unwrap() != other.get(i).unwrap() {
+        while i < self.len {
+            if self.get_unchecked(i) != other.get_unchecked(i) {
                 return false;
             }
             i += 1;

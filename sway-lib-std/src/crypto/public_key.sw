@@ -57,11 +57,31 @@ impl PublicKey {
     ///
     /// fn foo() -> {
     ///     let new_key = PublicKey::new();
-    ///     assert(new_key.bytes().len() == 64);
+    ///     assert(new_key.bytes().len() == 0);
     /// }
     /// ```
     pub fn bytes(self) -> Bytes {
         self.bytes
+    }
+
+    /// Returns the length of the public key in bytes.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The length of the public key.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::crypto::PublicKey;
+    ///
+    /// fn foo() -> {
+    ///     let new_key = PublicKey::new();
+    ///     assert(new_key.len() == 0);
+    /// }
+    /// ```
+    pub fn len(self) -> u64 {
+        self.bytes.len()
     }
 
     /// Returns whether the public key is the zero public key.
@@ -81,15 +101,7 @@ impl PublicKey {
     /// }
     /// ```
     pub fn is_zero(self) -> bool {
-        let mut iter = 0;
-        while iter < self.bytes.len() {
-            if self.bytes.get(iter).unwrap() != 0 {
-                return false;
-            }
-            iter += 1;
-        }
-
-        true
+        self.bytes.are_all_zero()
     }
 }
 
@@ -177,20 +189,7 @@ impl TryInto<b256> for PublicKey {
 
 impl PartialEq for PublicKey {
     fn eq(self, other: Self) -> bool {
-        if self.bytes.len() != other.bytes.len() {
-            return false;
-        }
-
-        let mut iter = 0;
-        while iter < self.bytes.len() {
-            if self.bytes.get(iter).unwrap() != other.bytes.get(iter).unwrap()
-            {
-                return false;
-            }
-            iter += 1;
-        }
-
-        true
+        self.bytes == other.bytes
     }
 }
 impl Eq for PublicKey {}
