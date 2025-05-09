@@ -8,7 +8,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, MaterializeConstGenerics},
+    decl_engine::{DeclEngineGet, DeclEngineInsert, MaterializeConstGenerics},
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::CallPath,
     namespace::TraitMap,
@@ -118,7 +118,7 @@ impl MaterializeConstGenerics for TypeId {
     fn materialize_const_generics(
         &mut self,
         engines: &Engines,
-        _handler: &Handler,
+        handler: &Handler,
         name: &str,
         value: &crate::language::ty::TyExpression,
     ) -> Result<(), ErrorEmitted> {
@@ -144,6 +144,15 @@ impl MaterializeConstGenerics for TypeId {
                         span: value.span.clone(),
                     }),
                 );
+            }
+            TypeInfo::Enum(id) => {
+                let decl = engines.de().get(id);
+                let mut decl = (&*decl).clone();
+                decl.materialize_const_generics(engines, handler, name, value)?;
+
+                let decl_ref = engines.de().insert(decl, None);
+
+                *self = engines.te().insert_enum(engines, *decl_ref.id());
             }
             _ => {}
         }
