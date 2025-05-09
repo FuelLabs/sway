@@ -81,6 +81,22 @@ impl TypeMetadata {
         logged_expr: &TyExpression,
         is_new_encoding: bool,
     ) -> Result<TypeId, CompileError> {
+        Self::get_logged_expression(logged_expr, is_new_encoding)
+            .map(|logged_expr| logged_expr.return_type)
+    }
+
+    /// Returns the [TyExpression] that is actually being logged.
+    /// When the "new_encoding" is off, this is the `logged_expr` itself.
+    /// E.g., when calling `__log(<logged_expr>)`, or `panic <logged_expr>;`
+    /// it will be the expression of the `__log` or `panic` argument,
+    /// respectively. When "new_encoding" is on, it is the expression
+    /// of the argument passed to the `encode` function.
+    /// In this case, when `is_new_encoding` is true, `logged_expr`
+    /// must represent a [TyExpressionVariant::FunctionApplication] call to `encode`.
+    pub(crate) fn get_logged_expression(
+        logged_expr: &TyExpression,
+        is_new_encoding: bool,
+    ) -> Result<&TyExpression, CompileError> {
         if is_new_encoding {
             match &logged_expr.expression {
                 TyExpressionVariant::FunctionApplication {
@@ -94,7 +110,7 @@ impl TypeMetadata {
                             logged_expr.span.clone(),
                         ))
                     } else {
-                        Ok(arguments[0].1.return_type)
+                        Ok(&arguments[0].1)
                     }
                 }
                 _ => Err(CompileError::Internal(
@@ -103,7 +119,7 @@ impl TypeMetadata {
                     ))
             }
         } else {
-            Ok(logged_expr.return_type)
+            Ok(logged_expr)
         }
     }
 

@@ -1,0 +1,16 @@
+[[package]]
+name = "panic_string_slices"
+source = "member"
+dependencies = [
+    "panicking_lib",
+    "std",
+]
+
+[[package]]
+name = "panicking_lib"
+source = "path+from-root-79F46FBB5D6E492C"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-79F46FBB5D6E492C"

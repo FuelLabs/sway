@@ -178,6 +178,10 @@ impl AttributeArg {
     pub fn is_test_should_revert(&self) -> bool {
         self.name.as_str() == TEST_SHOULD_REVERT_ARG_NAME
     }
+
+    pub fn is_error_message(&self) -> bool {
+        self.name.as_str() == ERROR_M_ARG_NAME
+    }
 }
 
 impl Spanned for AttributeArg {
@@ -1000,6 +1004,25 @@ impl Attributes {
     pub fn error(&self) -> Option<&Attribute> {
         // Last-wins approach.
         self.of_kind(AttributeKind::Error).last()
+    }
+
+    /// Returns the error message of the `#[error]` [Attribute],
+    /// or `None` if the [Attributes] does not contain any
+    /// `#[error]` attributes, or if the attribute does not
+    /// contain a message argument (`m`), or if the message
+    /// argument is not a string.
+    pub fn error_message(&self) -> Option<&String> {
+        // Last-wins approach.
+        self.error().and_then(|error_attr| {
+            error_attr
+                .args
+                .iter()
+                .filter(|arg| arg.is_error_message())
+                .last()
+                .and_then(|arg| {
+                    arg.get_string_opt(&Handler::default()).ok().flatten()
+                })
+        })
     }
 }
 
