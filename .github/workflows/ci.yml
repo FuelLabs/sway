@@ -903,9 +903,42 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
+  publish-sway-lib-std:
+    needs: publish
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Publish sway-lib-std
+        run: |
+          cd sway-lib-std
+          cargo run --locked -p forc-publish
+        env:
+          FORC_PUB_TOKEN: ${{ secrets.FORCPUB_TOKEN }}
+
+      - name: Notify if Job Fails
+        uses: ravsamhq/notify-slack-action@v2
+        if: always()
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+          footer: ""
+          notify_when: "failure"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+
   build-publish-release-image:
     # Build & Publish Docker Image Per Sway Release
-    needs: publish
+    needs: [publish, publish-sway-lib-std]
     runs-on: buildjet-4vcpu-ubuntu-2204
     permissions:
       contents: read
@@ -962,7 +995,7 @@ jobs:
     name: Build and upload forc binaries to release
     runs-on: ${{ matrix.job.os }}
     if: github.event_name == 'release' && github.event.action == 'published'
-    needs: publish
+    needs: [publish, publish-sway-lib-std]
     strategy:
       matrix:
         job:
