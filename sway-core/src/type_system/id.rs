@@ -147,7 +147,7 @@ impl MaterializeConstGenerics for TypeId {
             }
             TypeInfo::Enum(id) => {
                 let decl = engines.de().get(id);
-                let mut decl = (&*decl).clone();
+                let mut decl = (*decl).clone();
                 decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let decl_ref = engines.de().insert(decl, None);
