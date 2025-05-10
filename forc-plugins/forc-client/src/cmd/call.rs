@@ -4,7 +4,7 @@ use either::Either;
 use fuel_crypto::SecretKey;
 use fuels::programs::calls::CallParameters;
 use fuels_core::types::{Address, AssetId, ContractId};
-use std::{path::PathBuf, str::FromStr};
+use std::{io::Write, path::PathBuf, str::FromStr};
 use url::Url;
 
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
@@ -57,34 +57,34 @@ pub enum OutputFormat {
     Default,
     /// Raw unformatted output
     Raw,
+    /// JSON output with full tracing information (logs, errors, and result)
+    Json,
 }
 
-/// Verbosity level for log output
-#[derive(Debug, Clone, PartialEq, Default)]
-#[repr(transparent)]
-pub struct Verbosity(pub u8);
-
-impl Verbosity {
-    /// Verbose mode (-v)
-    pub(crate) fn v1(&self) -> bool {
-        self.0 >= 1
+impl Write for OutputFormat {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
+        match self {
+            OutputFormat::Default => std::io::stdout().write(buf),
+            OutputFormat::Raw => std::io::stdout().write(buf),
+            OutputFormat::Json => Ok(buf.len()), // no-op for json
+        }
     }
 
-    /// Very Verbose mode (-vv)
-    pub(crate) fn v2(&self) -> bool {
-        self.0 >= 2
-    }
-}
-
-impl From<u8> for Verbosity {
-    fn from(level: u8) -> Self {
-        Verbosity(level)
+    fn flush(&mut self) -> Result<(), std::io::Error> {
+        match self {
+            OutputFormat::Default => std::io::stdout().flush(),
+            OutputFormat::Raw => std::io::stdout().flush(),
+            OutputFormat::Json => Ok(()),
+        }
     }
 }
 
-impl From<Verbosity> for u8 {
-    fn from(verbosity: Verbosity) -> Self {
-        verbosity.0
+impl From<OutputFormat> for forc_tracing::TracingWriter {
+    fn from(format: OutputFormat) -> Self {
+        match format {
+            OutputFormat::Json => forc_tracing::TracingWriter::Json,
+            _ => forc_tracing::TracingWriter::Stdio,
+        }
     }
 }
 
@@ -316,7 +316,7 @@ pub struct Command {
     pub external_contracts: Option<Vec<ContractId>>,
 
     /// Output format for the call result
-    #[clap(long, default_value = "default", help_heading = "OUTPUT")]
+    #[clap(long, short = 'o', default_value = "default", help_heading = "OUTPUT")]
     pub output: OutputFormat,
 
     /// Set verbosity levels; currently only supports max 2 levels

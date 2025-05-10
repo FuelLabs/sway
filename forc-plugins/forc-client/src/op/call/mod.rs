@@ -23,20 +23,32 @@ use fuels::{
     crypto::SecretKey,
 };
 use fuels_core::types::{transaction::TxPolicies, AssetId};
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use sway_core;
 
-#[derive(Debug, Default)]
+/// Response returned from a contract call operation
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct CallResponse {
     pub tx_hash: String,
-    pub result: String,
+    pub result: Option<String>,
     pub logs: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receipts: Option<Vec<Receipt>>,
+    #[serde(rename = "Script", skip_serializing_if = "Option::is_none")]
+    pub script: Option<serde_json::Value>,
 }
 
 /// A command for calling a contract function.
 pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Result<CallResponse> {
-    match operation {
+    let is_json_mode = matches!(cmd.output, cmd::call::OutputFormat::Json);
+    let response = match operation {
         cmd::call::Operation::ListFunctions { contract_id, abi } => {
+            if let cmd::call::OutputFormat::Json = cmd.output {
+                return Err(anyhow!("JSON output is not supported for list functions"));
+            }
+
             let abi_str = load_abi(&abi).await?;
             let parsed_abi: ProgramABI = serde_json::from_str(&abi_str)?;
             let unified_program_abi = UnifiedProgramABI::from_counterpart(&parsed_abi)?;
@@ -48,7 +60,7 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
                 &mut std::io::stdout(),
             )?;
 
-            Ok(CallResponse::default())
+            CallResponse::default()
         }
         cmd::call::Operation::DirectTransfer {
             recipient,
@@ -60,26 +72,26 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
                 caller,
                 gas,
                 verbosity,
+                mut output,
                 ..
             } = cmd;
-            let verbosity: cmd::call::Verbosity = verbosity.into();
 
             // Already validated that mode is ExecutionMode::Live
             let (wallet, tx_policies, base_asset_id) =
                 setup_connection(&node, caller, &gas).await?;
             let asset_id = asset_id.unwrap_or(base_asset_id);
 
-            let response = transfer(
+            transfer(
                 &wallet,
                 recipient,
                 amount,
                 asset_id,
                 tx_policies,
                 &node,
-                &verbosity,
+                verbosity,
+                &mut output,
             )
-            .await?;
-            Ok(response)
+            .await?
         }
         cmd::call::Operation::CallFunction {
             contract_id,
@@ -88,10 +100,16 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
             function_args,
         } => {
             // Call the function with required parameters
-            let result = call_function(contract_id, abi, function, function_args, cmd).await?;
-            Ok(result)
+            call_function(contract_id, abi, function, function_args, cmd).await?
         }
+    };
+
+    // If using JSON output mode, explicitly print the response for potential parsing/piping
+    if is_json_mode {
+        println!("{}", serde_json::to_string_pretty(&response).unwrap());
     }
+
+    Ok(response)
 }
 
 /// Sets up the connection to the node and initializes common parameters
@@ -177,13 +195,13 @@ pub(crate) fn process_transaction_output(
     receipts: &[Receipt],
     tx_hash: &str,
     program_abi: &sway_core::asm_generation::ProgramABI,
-    result: String,
+    result: Option<String>,
     mode: &cmd::call::ExecutionMode,
     node: &crate::NodeTarget,
-    verbosity: &cmd::call::Verbosity,
+    verbosity: u8,
 ) -> Result<CallResponse> {
     // print receipts
-    if verbosity.v2() {
+    if verbosity >= 2 {
         let formatted_receipts = forc_util::tx_utils::format_log_receipts(receipts, true)?;
         forc_tracing::println_label_green("receipts:", &formatted_receipts);
     }
@@ -203,7 +221,7 @@ pub(crate) fn process_transaction_output(
         .collect::<Vec<_>>();
 
     // display logs if verbosity is set
-    if verbosity.v1() && !logs.is_empty() {
+    if verbosity >= 1 && !logs.is_empty() {
         forc_tracing::println_green_bold("logs:");
         for log in logs.iter() {
             println!("  {:#}", log);
@@ -212,8 +230,8 @@ pub(crate) fn process_transaction_output(
 
     // print tx hash and result
     forc_tracing::println_label_green("tx hash:", tx_hash);
-    if !result.is_empty() {
-        forc_tracing::println_label_green("result:", &result);
+    if let Some(result) = result.as_ref() {
+        forc_tracing::println_label_green("result:", result);
     }
 
     // display transaction url if live mode
@@ -229,6 +247,12 @@ pub(crate) fn process_transaction_output(
     Ok(CallResponse {
         tx_hash: tx_hash.to_string(),
         result,
+        receipts: if verbosity >= 2 {
+            Some(receipts.to_vec())
+        } else {
+            None
+        },
+        script: None,
         logs,
     })
 }
