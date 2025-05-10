@@ -1,4 +1,5 @@
 pub mod build_profile;
+pub mod manager;
 
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
@@ -62,6 +63,26 @@ pub trait GenericManifestFile {
 pub enum ManifestFile {
     Package(Box<PackageManifestFile>),
     Workspace(WorkspaceManifestFile),
+}
+
+impl ManifestFile {
+    pub fn is_workspace(&self) -> bool {
+        matches!(self, ManifestFile::Workspace(_))
+    }
+
+    pub fn root_dir(&self) -> PathBuf {
+        match self {
+            ManifestFile::Package(pkg_manifest_file) => pkg_manifest_file
+                .workspace()
+                .ok()
+                .flatten()
+                .map(|ws| ws.dir().to_path_buf())
+                .unwrap_or_else(|| pkg_manifest_file.dir().to_path_buf()),
+            ManifestFile::Workspace(workspace_manifest_file) => {
+                workspace_manifest_file.dir().to_path_buf()
+            }
+        }
+    }
 }
 
 impl GenericManifestFile for ManifestFile {
@@ -327,6 +348,7 @@ impl DependencyDetails {
             version,
             ipfs,
             namespace,
+            path,
             ..
         } = self;
 
@@ -345,7 +367,16 @@ impl DependencyDetails {
         if version.is_none() && namespace.is_some() {
             bail!("Namespace can only be specified for sources with version");
         }
+
+        if version.is_some() && path.is_some() {
+            bail!("Both version and path details provided fro same dependency");
+        }
+
         Ok(())
+    }
+
+    pub fn is_source_empty(&self) -> bool {
+        self.git.is_none() && self.path.is_none() && self.ipfs.is_none()
     }
 }
 
