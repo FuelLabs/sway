@@ -13,7 +13,7 @@ use crate::{
     },
     asm_lang::{
         allocated_ops::{AllocatedInstruction, AllocatedRegister},
-        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, VirtualImmediate12,
+        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, VirtualImmediate12,
         VirtualImmediate18, VirtualImmediate24,
     },
     decl_engine::DeclRefFunction,

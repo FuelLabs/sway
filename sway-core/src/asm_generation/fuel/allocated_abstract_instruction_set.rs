@@ -1,7 +1,7 @@
 use crate::{
     asm_generation::fuel::data_section::EntryName,
     asm_lang::{
-        allocated_ops::{AllocatedOpcode, AllocatedRegister},
+        allocated_ops::{AllocatedInstruction, AllocatedRegister},
         AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, RealizedOp,
         VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
     },
@@ -328,20 +328,20 @@ impl AllocatedAbstractInstructionSet {
             Either::Right(Label(_)) => 0,
 
             // Loads from data section may take up to 2 instructions
-            Either::Left(AllocatedOpcode::LoadDataId(_, _) | AllocatedOpcode::AddrDataId(_, _)) => {
-                2
-            }
+            Either::Left(
+                AllocatedInstruction::LoadDataId(_, _) | AllocatedInstruction::AddrDataId(_, _),
+            ) => 2,
 
             // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
-            Either::Left(AllocatedOpcode::CFEI(ref op))
-            | Either::Left(AllocatedOpcode::CFSI(ref op))
+            Either::Left(AllocatedInstruction::CFEI(ref op))
+            | Either::Left(AllocatedInstruction::CFSI(ref op))
                 if op.value() == 0 =>
             {
                 0
             }
 
             // Another special case for the blob opcode, used for testing.
-            Either::Left(AllocatedOpcode::BLOB(ref count)) => count.value() as u64,
+            Either::Left(AllocatedInstruction::BLOB(ref count)) => count.value() as u64,
 
             // This is a concrete op, size is fixed
             Either::Left(_) => 1,
@@ -583,13 +583,13 @@ pub(crate) fn compile_jump(
 
         return vec![
             RealizedOp {
-                opcode: AllocatedOpcode::NOOP,
+                opcode: AllocatedInstruction::NOOP,
                 owning_span: owning_span.clone(),
                 comment: "".into(),
             },
             if let Some(cond_nz) = condition_nonzero {
                 RealizedOp {
-                    opcode: AllocatedOpcode::JNZB(
+                    opcode: AllocatedInstruction::JNZB(
                         cond_nz,
                         AllocatedRegister::Constant(ConstantRegister::Zero),
                         VirtualImmediate12::new_unchecked(0, "unreachable()"),
@@ -599,7 +599,7 @@ pub(crate) fn compile_jump(
                 }
             } else {
                 RealizedOp {
-                    opcode: AllocatedOpcode::JMPB(
+                    opcode: AllocatedInstruction::JMPB(
                         AllocatedRegister::Constant(ConstantRegister::Zero),
                         VirtualImmediate18::new_unchecked(0, "unreachable()"),
                     ),
@@ -621,7 +621,7 @@ pub(crate) fn compile_jump(
 
             vec![
                 RealizedOp {
-                    opcode: AllocatedOpcode::LoadDataId(
+                    opcode: AllocatedInstruction::LoadDataId(
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
                         data_id,
                     ),
@@ -630,13 +630,13 @@ pub(crate) fn compile_jump(
                 },
                 RealizedOp {
                     opcode: if let Some(cond_nz) = condition_nonzero {
-                        AllocatedOpcode::JNZB(
+                        AllocatedInstruction::JNZB(
                             cond_nz,
                             AllocatedRegister::Constant(ConstantRegister::Scratch),
                             VirtualImmediate12::new_unchecked(0, "unreachable()"),
                         )
                     } else {
-                        AllocatedOpcode::JMPB(
+                        AllocatedInstruction::JMPB(
                             AllocatedRegister::Constant(ConstantRegister::Scratch),
                             VirtualImmediate18::new_unchecked(0, "unreachable()"),
                         )
@@ -648,13 +648,13 @@ pub(crate) fn compile_jump(
         } else {
             vec![RealizedOp {
                 opcode: if let Some(cond_nz) = condition_nonzero {
-                    AllocatedOpcode::JNZB(
+                    AllocatedInstruction::JNZB(
                         cond_nz,
                         AllocatedRegister::Constant(ConstantRegister::Zero),
                         VirtualImmediate12::new_unchecked(delta, "ensured by mark_far_jumps"),
                     )
                 } else {
-                    AllocatedOpcode::JMPB(
+                    AllocatedInstruction::JMPB(
                         AllocatedRegister::Constant(ConstantRegister::Zero),
                         VirtualImmediate18::new_unchecked(delta, "ensured by mark_far_jumps"),
                     )
@@ -676,7 +676,7 @@ pub(crate) fn compile_jump(
 
         vec![
             RealizedOp {
-                opcode: AllocatedOpcode::LoadDataId(
+                opcode: AllocatedInstruction::LoadDataId(
                     AllocatedRegister::Constant(ConstantRegister::Scratch),
                     data_id,
                 ),
@@ -685,13 +685,13 @@ pub(crate) fn compile_jump(
             },
             RealizedOp {
                 opcode: if let Some(cond_nz) = condition_nonzero {
-                    AllocatedOpcode::JNZF(
+                    AllocatedInstruction::JNZF(
                         cond_nz,
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
                         VirtualImmediate12::new_unchecked(0, "unreachable()"),
                     )
                 } else {
-                    AllocatedOpcode::JMPF(
+                    AllocatedInstruction::JMPF(
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
                         VirtualImmediate18::new_unchecked(0, "unreachable()"),
                     )
@@ -703,13 +703,13 @@ pub(crate) fn compile_jump(
     } else {
         vec![RealizedOp {
             opcode: if let Some(cond_nz) = condition_nonzero {
-                AllocatedOpcode::JNZF(
+                AllocatedInstruction::JNZF(
                     cond_nz,
                     AllocatedRegister::Constant(ConstantRegister::Zero),
                     VirtualImmediate12::new_unchecked(delta, "ensured by mark_far_jumps"),
                 )
             } else {
-                AllocatedOpcode::JMPF(
+                AllocatedInstruction::JMPF(
                     AllocatedRegister::Constant(ConstantRegister::Zero),
                     VirtualImmediate18::new_unchecked(delta, "ensured by mark_far_jumps"),
                 )

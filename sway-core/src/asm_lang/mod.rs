@@ -1411,16 +1411,16 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         (match self {
             Label(_)
             | Comment
-            | Jump(_)
-            | Call(_)
             | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
-            | LoadLabel(..)
             | PushAll(_)
             | PopAll(_) => vec![],
-
-            JumpIfNotZero(r1, _) => vec![r1],
+            Jump { type_, .. } => match type_ {
+                JumpType::Unconditional => vec![],
+                JumpType::NotZero(r1) => vec![r1],
+                JumpType::Call => vec![],
+            },
         })
         .into_iter()
         .collect()
