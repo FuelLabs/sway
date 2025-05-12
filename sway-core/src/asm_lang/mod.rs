@@ -250,7 +250,6 @@ impl Op {
             opcode: Either::Right(OrganizationalOp::Jump {
                 to: label,
                 type_: JumpType::Unconditional,
-                force_far: false,
             }),
             comment: String::new(),
             owning_span: None,
@@ -262,7 +261,6 @@ impl Op {
             opcode: Either::Right(OrganizationalOp::Jump {
                 to: label,
                 type_: JumpType::Unconditional,
-                force_far: false,
             }),
             comment: comment.into(),
             owning_span: None,
@@ -275,7 +273,6 @@ impl Op {
             opcode: Either::Right(OrganizationalOp::Jump {
                 to: label,
                 type_: JumpType::NotZero(reg0),
-                force_far: false,
             }),
             comment: String::new(),
             owning_span: None,
@@ -292,7 +289,6 @@ impl Op {
             opcode: Either::Right(OrganizationalOp::Jump {
                 to: label,
                 type_: JumpType::NotZero(reg0),
-                force_far: false,
             }),
             comment: comment.into(),
             owning_span: None,
@@ -1317,10 +1313,6 @@ pub(crate) enum ControlFlowOp<Reg> {
         to: Label,
         /// Jump type
         type_: JumpType<Reg>,
-        /// Force far jump, reserving space for an extra opcode to load target address.
-        /// If this is false but the target is far, [`mark_far_jumps`] pass will enable this.
-        /// Also, this will be enabled for self-jumps, as they require a noop to be inserted before them.
-        force_far: bool,
     },
     // Save a return label address in a register.
     SaveRetAddr(Reg, Label),
@@ -1459,15 +1451,10 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | PushAll(_)
             | PopAll(_) => self.clone(),
 
-            Jump {
-                to,
-                type_,
-                force_far,
-            } => match type_ {
+            Jump { to, type_ } => match type_ {
                 JumpType::NotZero(r1) => Self::Jump {
                     to: *to,
                     type_: JumpType::NotZero(update_reg(r1)),
-                    force_far: *force_far,
                 },
                 _ => self.clone(),
             },
@@ -1561,18 +1548,13 @@ impl ControlFlowOp<VirtualRegister> {
         match self {
             Label(label) => Label(*label),
             Comment => Comment,
-            Jump {
-                to,
-                type_,
-                force_far,
-            } => Jump {
+            Jump { to, type_ } => Jump {
                 to: *to,
                 type_: match type_ {
                     JumpType::NotZero(r1) => JumpType::NotZero(map_reg(r1)),
                     JumpType::Unconditional => JumpType::Unconditional,
                     JumpType::Call => JumpType::Call,
                 },
-                force_far: *force_far,
             },
             DataSectionOffsetPlaceholder => DataSectionOffsetPlaceholder,
             ConfigurablesOffsetPlaceholder => ConfigurablesOffsetPlaceholder,

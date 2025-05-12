@@ -208,7 +208,6 @@ impl AbstractProgram {
                     opcode: Either::Right(ControlFlowOp::Jump {
                         to: label,
                         type_: JumpType::Unconditional,
-                        force_far: false,
                     }),
                     comment: String::new(),
                     owning_span: None,
@@ -262,7 +261,6 @@ impl AbstractProgram {
             opcode: Either::Right(ControlFlowOp::Jump {
                 to: entry.label,
                 type_: JumpType::Unconditional,
-                force_far: false,
             }),
             comment: "jump to ABI function selector".into(),
             owning_span: None,
@@ -352,7 +350,6 @@ impl AbstractProgram {
                 opcode: Either::Right(ControlFlowOp::Jump {
                     to: entry.label,
                     type_: JumpType::NotZero(CMP_RESULT_REG),
-                    force_far: false,
                 }),
                 comment: "[function selection]: jump to selected contract function".into(),
                 owning_span: None,
@@ -364,7 +361,6 @@ impl AbstractProgram {
                 opcode: Either::Right(ControlFlowOp::Jump {
                     to: fallback_fn,
                     type_: JumpType::Call,
-                    force_far: false,
                 }),
                 comment: "[function selection]: call contract fallback function".into(),
                 owning_span: None,

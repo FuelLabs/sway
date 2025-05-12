@@ -92,9 +92,10 @@ impl AbstractInstructionSet {
             reachables[op_idx] = true;
             let op = &ops[op_idx];
             for s in &op.successors(op_idx, ops, &label_to_index) {
-                if !reachables[*s] && !worklist.contains(s) {
-                    worklist.push(*s);
+                if reachables[*s] {
+                    continue;
                 }
+                worklist.push(*s);
             }
         }
 

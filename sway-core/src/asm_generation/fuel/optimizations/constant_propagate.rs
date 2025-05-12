@@ -145,7 +145,6 @@ impl AbstractInstructionSet {
                 Either::Right(ControlFlowOp::Jump {
                     to,
                     type_: JumpType::NotZero(reg),
-                    force_far,
                 }) => {
                     if let Some(con) = known_values.resolve(reg).and_then(|r| r.value()) {
                         if con == 0 {
@@ -162,7 +161,6 @@ impl AbstractInstructionSet {
                             op.opcode = Either::Right(ControlFlowOp::Jump {
                                 to: *to,
                                 type_: JumpType::Unconditional,
-                                force_far: *force_far,
                             });
                         }
                     }

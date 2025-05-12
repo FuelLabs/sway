@@ -177,7 +177,6 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                     opcode: Either::Right(crate::asm_lang::ControlFlowOp::Jump {
                         to: *decode_fn_label,
                         type_: JumpType::Call,
-                        force_far: false,
                     }),
                     comment: format!("decode configurable {}", name),
                     owning_span: None,

@@ -15,6 +15,7 @@ use super::{
 
 use fuel_vm::fuel_asm::Imm12;
 use indexmap::{IndexMap, IndexSet};
+use rustc_hash::FxHashSet;
 use sway_types::span::Span;
 
 use std::collections::{BTreeSet, HashMap};
@@ -197,13 +198,18 @@ impl AllocatedAbstractInstructionSet {
     pub(crate) fn realize_labels(
         mut self,
         data_section: &mut DataSection,
+        far_jump_indices: &FxHashSet<usize>,
     ) -> Result<(RealizedAbstractInstructionSet, LabeledBlocks), crate::CompileError> {
         let label_offsets = self.resolve_labels(data_section);
         let mut curr_offset = 0;
 
         let mut realized_ops = vec![];
-        for op in &self.ops {
-            let op_size = Self::instruction_size(op, data_section);
+        for (op_idx, op) in self.ops.iter().enumerate() {
+            let op_size = if far_jump_indices.contains(&op_idx) {
+                2
+            } else {
+                Self::instruction_size_not_far_jump(op, data_section)
+            };
             let rel_offset =
                 |curr_offset, lab| label_offsets.get(lab).unwrap().offs.abs_diff(curr_offset);
             let AllocatedAbstractOp {
@@ -218,11 +224,7 @@ impl AllocatedAbstractInstructionSet {
                     comment,
                 }),
                 Either::Right(org_op) => match org_op {
-                    ControlFlowOp::Jump {
-                        to,
-                        type_,
-                        force_far,
-                    } => {
+                    ControlFlowOp::Jump { to, type_ } => {
                         let target_offset = label_offsets.get(&to).unwrap().offs;
                         let ops = compile_jump(
                             data_section,
@@ -232,7 +234,7 @@ impl AllocatedAbstractInstructionSet {
                                 JumpType::NotZero(cond) => Some(cond),
                                 _ => None,
                             },
-                            force_far,
+                            far_jump_indices.contains(&op_idx),
                             comment,
                             owning_span,
                         );
@@ -316,8 +318,8 @@ impl AllocatedAbstractInstructionSet {
     /// This approach is not optimal as it sometimes requires more opcodes than necessary,
     /// but it is simple and quite works well in practice.
     fn resolve_labels(&mut self, data_section: &mut DataSection) -> LabeledBlocks {
-        self.mark_far_jumps();
-        self.map_label_offsets(data_section)
+        let far_jump_indices = self.collect_far_jumps();
+        self.map_label_offsets(data_section, &far_jump_indices)
     }
 
     // Returns largest size an instruction can take up.
@@ -372,10 +374,10 @@ impl AllocatedAbstractInstructionSet {
         }
     }
 
-    // Actual size of an instruction. Note that for jump instructions to return
-    // the correct value, the program must have been ran through [`Self::mark_far_jumps`] first.
+    // Actual size of an instruction.
+    // Note that this return incorrect values for far jumps, they must be handled separately.
     // The return value is in concrete instructions, i.e. units of 4 bytes.
-    fn instruction_size(op: &AllocatedAbstractOp, data_section: &DataSection) -> u64 {
+    fn instruction_size_not_far_jump(op: &AllocatedAbstractOp, data_section: &DataSection) -> u64 {
         use ControlFlowOp::*;
         match op.opcode {
             Either::Right(Label(_)) => 0,
@@ -415,14 +417,8 @@ impl AllocatedAbstractInstructionSet {
             // This is a concrete op, size is fixed
             Either::Left(_) => 1,
 
-            //
-            Either::Right(Jump { force_far, .. }) => {
-                if force_far {
-                    2
-                } else {
-                    1
-                }
-            }
+            // Far jumps must be handled separately, as they require two instructions.
+            Either::Right(Jump { .. }) => 1,
 
             // We use three instructions to save the absolute address for return.
             // SUB r1 $pc $is
@@ -448,10 +444,14 @@ impl AllocatedAbstractInstructionSet {
     }
 
     /// Go through all jumps and check if they could require a far jump in the worst case.
-    fn mark_far_jumps(&mut self) {
+    /// For far jumps we have to reserve space for an extra opcode to load target address.
+    /// Also, this will be mark self-jumps, as they require a noop to be inserted before them.
+    pub(crate) fn collect_far_jumps(&self) -> FxHashSet<usize> {
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
         let mut cur_basic_block = None;
+
+        let mut far_jump_indices = FxHashSet::default();
 
         struct JumpInfo {
             to: Label,
@@ -506,18 +506,23 @@ impl AllocatedAbstractInstructionSet {
             // Self jumps need a NOOP inserted before it so that we can jump to the NOOP.
             // This is handled by the force_far machinery as well.
             if rel_offset == 0 || rel_offset > jump.limit {
-                let Either::Right(ControlFlowOp::Jump { force_far, .. }) =
-                    &mut self.ops[jump.op_idx].opcode
-                else {
-                    unreachable!("invalid jump index");
-                };
-                *force_far = true;
+                debug_assert!(matches!(
+                    self.ops[jump.op_idx].opcode,
+                    Either::Right(ControlFlowOp::Jump { .. })
+                ));
+                far_jump_indices.insert(jump.op_idx);
             }
         }
+
+        far_jump_indices
     }
 
     /// Map the labels to their offsets in the program.
-    fn map_label_offsets(&self, data_section: &DataSection) -> LabeledBlocks {
+    fn map_label_offsets(
+        &self,
+        data_section: &DataSection,
+        far_jump_indices: &FxHashSet<usize>,
+    ) -> LabeledBlocks {
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
         let mut cur_basic_block = None;
@@ -536,7 +541,12 @@ impl AllocatedAbstractInstructionSet {
             }
 
             // Update the offset.
-            cur_offset += Self::instruction_size(op, data_section);
+            let op_size = if far_jump_indices.contains(&op_idx) {
+                2
+            } else {
+                Self::instruction_size_not_far_jump(op, data_section)
+            };
+            cur_offset += op_size;
         }
 
         // Don't forget the final block.
@@ -565,8 +575,6 @@ impl std::fmt::Display for AllocatedAbstractInstructionSet {
 /// Compiles jump into the appropriate operations.
 /// Near jumps are compiled into a single instruction, while far jumps are compiled into
 /// two instructions: one to load the target address and another to jump to it.
-///
-/// `mark_far_jumps` must have been called before this to ensure `far` is set correctly.
 pub(crate) fn compile_jump(
     data_section: &mut DataSection,
     curr_offset: u64,

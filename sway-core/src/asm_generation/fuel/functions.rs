@@ -194,7 +194,6 @@ impl FuelAsmBuilder<'_, '_> {
             opcode: Either::Right(OrganizationalOp::Jump {
                 to: fn_label,
                 type_: JumpType::Call,
-                force_far: false,
             }),
             comment: format!("[call]: call {}", function.get_name(self.context)),
             owning_span: None,
