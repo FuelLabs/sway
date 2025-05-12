@@ -4,7 +4,6 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
-use forc_pkg::PackageManifestFile;
 use lsp_types::Url;
 use std::{
     fs,

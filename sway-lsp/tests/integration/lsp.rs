@@ -54,13 +54,25 @@ pub(crate) async fn initialize_request(
     service: &mut LspService<ServerState>,
     entry_point: &PathBuf,
 ) -> Request {
-    let search_dir = entry_point.parent().unwrap_or(&entry_point);
-    let manifest_file = ManifestFile::from_dir(search_dir).unwrap();
-    let project_root_path = manifest_file.dir();
-    let root_uri = Url::from_directory_path(project_root_path).expect(&format!(
-        "Failed to create directory URL from project root: {:?}",
-        project_root_path
-    ));
+    let search_dir = entry_point.parent().unwrap_or_else(|| Path::new(""));
+    let project_root_path_for_uri: PathBuf = match ManifestFile::from_dir(search_dir) {
+        Ok(manifest_file) => {
+            // Found a Forc.toml, use its directory
+            manifest_file.dir().to_path_buf()
+        }
+        Err(_) => {
+            // Forc.toml not found, assume search_dir is the intended project root for this test fixture.
+            // This is common for minimal test cases that might only have a src/main.sw
+            search_dir.to_path_buf()
+        }
+    };
+
+    let root_uri = Url::from_directory_path(&project_root_path_for_uri).unwrap_or_else(|_| {
+        panic!(
+            "Failed to create directory URL from project root: {:?}",
+            project_root_path_for_uri
+        )
+    });
 
     // Construct the InitializeParams using the defined client_capabilities
     let params = json!({
