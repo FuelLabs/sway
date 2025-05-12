@@ -14,7 +14,7 @@ The `forc add` CLI supports various sources and optional flags:
 forc add <dep> [--path <PATH>] [--git <URL> --tag <TAG>] [--ipfs <CID>] [--contract-dep]
 ```
 
-#### Examples
+#### Add Examples
 
 * From a Git branch:
 
@@ -54,7 +54,7 @@ Optional:
 
 > ⚠️ **Note:**
 > We do not currently support offline mode for projects that use **registry** sources.
-> Also wildcard declarations `(ex: custom_lib = *)` to get the latest version available for that package or caret declarations `(ex: custom_lib = ^0.1)` to get SemVer compatible latest available option for a given dependency is not supported yet.
+> Also wildcard declarations `(ex: custom_lib = *)` to get the latest version available for that package or caret declarations `(ex: custom_lib = ^0.1)` to get `SemVer` compatible latest available option for a given dependency is not supported yet.
 
 Once the package is added, running `forc build` will automatically fetch and resolve the dependencies.
 
@@ -91,7 +91,7 @@ You can remove one or more dependencies using the `forc remove` command:
 forc remove <dep> [--contract-dep] [--package <NAME>] [--manifest-path <PATH>]
 ```
 
-#### Examples
+### Remove Examples
 
 * Remove from `[dependencies]`:
 

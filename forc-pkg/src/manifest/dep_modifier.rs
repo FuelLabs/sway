@@ -171,9 +171,9 @@ fn resolve_package_path(
             bail!("`forc add` could not determine which package to modify. Use --package.\nAvailable: {}", packages);
         };
 
-        resolve_workspace_path_inner(member_manifests, &package_name, root_dir)
+        resolve_workspace_path_inner(member_manifests, package_name, root_dir)
     } else if let Some(package_name) = package {
-        resolve_workspace_path_inner(member_manifests, &package_name, root_dir)
+        resolve_workspace_path_inner(member_manifests, package_name, root_dir)
     } else {
         Ok(manifest_file.path().to_path_buf())
     }
@@ -264,15 +264,15 @@ impl FromStr for DepSpec {
             bail!("dependency name is missing");
         };
 
-        let mut dep = DepSpec::default();
+        let dep = &mut DepSpec::default();
         dep.name = Some(name.parse()?);
 
         let Some(version_req) = s.next() else {
-            return Ok(dep);
+            return Ok(dep.clone());
         };
 
         dep.version_req = Some(version_req.parse()?);
-        Ok(dep)
+        Ok(dep.clone())
     }
 }
 
@@ -307,7 +307,7 @@ impl DepSection<'_> {
                 map.insert(name, data);
             }
             DepSection::Contract(map, salt_opt) => {
-                let resolved_salt = match salt.as_ref().or_else(|| salt_opt.as_ref()) {
+                let resolved_salt = match salt.as_ref().or(salt_opt.as_ref()) {
                     Some(s) => {
                         HexSalt::from_str(s).map_err(|e| anyhow!("Invalid salt format: {}", e))?
                     }
