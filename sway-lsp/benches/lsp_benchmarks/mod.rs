@@ -7,11 +7,13 @@ use std::{path::PathBuf, sync::Arc};
 use sway_lsp::core::{
     document::Documents,
     session::{self, Session},
+    sync::SyncWorkspace,
 };
 
-pub async fn compile_test_project() -> (Url, Arc<Session>, Documents) {
+pub async fn compile_test_project() -> (Url, Arc<Session>, Documents, SyncWorkspace) {
     let session = Arc::new(Session::new());
     let documents = Documents::new();
+    let sync = SyncWorkspace::new();
     let lsp_mode = Some(sway_core::LspConfig {
         optimized_build: false,
         file_versions: Default::default(),
@@ -26,9 +28,10 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, Documents) {
         None,
         lsp_mode,
         session.clone(),
+        &sync,
     )
     .unwrap();
-    (uri, session, documents)
+    (uri, session, documents, sync)
 }
 
 pub fn sway_workspace_dir() -> PathBuf {

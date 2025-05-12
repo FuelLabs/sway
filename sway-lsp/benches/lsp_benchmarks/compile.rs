@@ -7,13 +7,13 @@ use tokio::runtime::Runtime;
 const NUM_DID_CHANGE_ITERATIONS: usize = 10;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, _) = Runtime::new()
+    let (uri, session, _, sync) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
 
     let build_plan = session
         .build_plan_cache
-        .get_or_update(&session.sync.manifest_path(), || session::build_plan(&uri))
+        .get_or_update(&sync.manifest_path(), || session::build_plan(&uri))
         .unwrap();
 
     let mut lsp_mode = Some(sway_core::LspConfig {

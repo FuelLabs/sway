@@ -9,7 +9,7 @@ use sway_lsp::{
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, documents) = Runtime::new()
+    let (uri, session, documents, sync) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
     let config = sway_lsp::config::Config::default();
@@ -46,6 +46,7 @@ fn benchmarks(c: &mut Criterion) {
                 &uri,
                 position,
                 LspClient::default(),
+                &sync,
             )
         })
     });
@@ -55,11 +56,11 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("find_all_references", |b| {
-        b.iter(|| session.token_references(&uri, position))
+        b.iter(|| session.token_references(&uri, position, &sync))
     });
 
     c.bench_function("goto_definition", |b| {
-        b.iter(|| session.token_definition_response(&uri, position))
+        b.iter(|| session.token_definition_response(&uri, position, &sync))
     });
 
     c.bench_function("inlay_hints", |b| {
@@ -74,7 +75,7 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("prepare_rename", |b| {
-        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &uri, position))
+        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &uri, position, &sync))
     });
 
     c.bench_function("rename", |b| {
@@ -84,6 +85,7 @@ fn benchmarks(c: &mut Criterion) {
                 "new_token_name".to_string(),
                 &uri,
                 position,
+                &sync,
             )
         })
     });

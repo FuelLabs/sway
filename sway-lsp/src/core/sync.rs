@@ -30,7 +30,7 @@ pub struct SyncWorkspace {
 impl SyncWorkspace {
     pub const LSP_TEMP_PREFIX: &'static str = "SWAY_LSP_TEMP_DIR";
 
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             directories: DashMap::new(),
         }
