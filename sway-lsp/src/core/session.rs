@@ -5,7 +5,6 @@ use crate::{
         runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
     core::{
-        document::{Documents, TextDocument},
         sync::SyncWorkspace,
         token::{self, TypedAstToken},
         token_map::{TokenMap, TokenMapExt},
@@ -46,7 +45,7 @@ use sway_core::{
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{ProgramId, SourceEngine, Spanned};
-use sway_utils::{helpers::get_sway_files, PerformanceData};
+use sway_utils::PerformanceData;
 
 pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
 pub type ProjectDirectory = PathBuf;
@@ -69,7 +68,6 @@ pub struct Session {
     pub build_plan_cache: BuildPlanCache,
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
-    pub sync: SyncWorkspace,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
     pub metrics: DashMap<ProgramId, PerformanceData>,
@@ -90,30 +88,8 @@ impl Session {
             metrics: DashMap::new(),
             compiled_program: RwLock::new(CompiledProgram::default()),
             engines: <_>::default(),
-            sync: SyncWorkspace::new(),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }
-    }
-
-    pub async fn init(
-        &self,
-        uri: &Url,
-        documents: &Documents,
-    ) -> Result<ProjectDirectory, LanguageServerError> {
-        let manifest_dir = PathBuf::from(uri.path());
-        // Create a new temp dir that clones the current workspace
-        // and store manifest and temp paths
-        self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
-        self.sync.clone_manifest_dir_to_temp()?;
-        // iterate over the project dir, parse all sway files
-        let _ = self.store_sway_files(documents).await;
-        self.sync.sync_manifest();
-        self.sync.manifest_dir().map_err(Into::into)
-    }
-
-    pub fn shutdown(&self) {
-        // Delete the temporary directory.
-        self.sync.remove_temp_dir();
     }
 
     /// Return a reference to the [TokenMap] of the current session.
@@ -125,9 +101,10 @@ impl Session {
     pub fn garbage_collect_program(
         &self,
         engines: &mut Engines,
+        sync: &SyncWorkspace,
     ) -> Result<(), LanguageServerError> {
         let _p = tracing::trace_span!("garbage_collect").entered();
-        let path = self.sync.temp_dir()?;
+        let path = sync.temp_dir()?;
         let program_id = { engines.se().get_program_id_from_manifest_path(&path) };
         if let Some(program_id) = program_id {
             engines.clear_program(&program_id);
@@ -148,7 +125,7 @@ impl Session {
         Ok(())
     }
 
-    pub fn token_references(&self, url: &Url, position: Position) -> Option<Vec<Location>> {
+    pub fn token_references(&self, url: &Url, position: Position, sync: &SyncWorkspace) -> Option<Vec<Location>> {
         let _p = tracing::trace_span!("token_references").entered();
         let token_references: Vec<_> = self
             .token_map
@@ -160,7 +137,7 @@ impl Session {
             .filter_map(|item| {
                 let path = item.key().path.as_ref()?;
                 let uri = Url::from_file_path(path).ok()?;
-                self.sync
+                sync
                     .to_workspace_url(uri)
                     .map(|workspace_url| Location::new(workspace_url, item.key().range))
             })
@@ -188,6 +165,7 @@ impl Session {
         &self,
         uri: &Url,
         position: Position,
+        sync: &SyncWorkspace,
     ) -> Option<GotoDefinitionResponse> {
         let _p = tracing::trace_span!("token_definition_response").entered();
         self.token_map
@@ -197,7 +175,7 @@ impl Session {
                 decl_ident.path.and_then(|path| {
                     // We use ok() here because we don't care about propagating the error from from_file_path
                     Url::from_file_path(path).ok().and_then(|url| {
-                        self.sync.to_workspace_url(url).map(|url| {
+                        sync.to_workspace_url(url).map(|url| {
                             GotoDefinitionResponse::Scalar(Location::new(url, decl_ident.range))
                         })
                     })
@@ -264,16 +242,6 @@ impl Session {
                     &self.token_map,
                 )
             })
-    }
-
-    /// Populate [Documents] with sway files found in the workspace.
-    async fn store_sway_files(&self, documents: &Documents) -> Result<(), LanguageServerError> {
-        let temp_dir = self.sync.temp_dir()?;
-        // Store the documents.
-        for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
-            documents.store_document(TextDocument::build_from_path(path).await?)?;
-        }
-        Ok(())
     }
 }
 
@@ -458,11 +426,12 @@ pub fn parse_project(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
+    sync: &SyncWorkspace,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
     let build_plan = session
         .build_plan_cache
-        .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
+        .get_or_update(&sync.manifest_path(), || build_plan(uri))?;
 
     let results = compile(
         &build_plan,
@@ -738,7 +707,8 @@ mod tests {
         let uri = get_url(&dir);
         let engines = Engines::default();
         let session = Arc::new(Session::new());
-        let result = parse_project(&uri, &engines, None, None, session)
+        let sync = SyncWorkspace::new();
+        let result = parse_project(&uri, &engines, None, None, session, &sync)
             .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
