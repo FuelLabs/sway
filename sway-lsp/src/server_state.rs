@@ -417,7 +417,7 @@ impl ServerState {
         if let Some(session) = self.sessions.get(&manifest_dir) {
             return Ok(session);
         }
-        
+
         // If no session can be found, then we need to call init and insert a new session into the map
         let session = Arc::new(Session::new());
         self.sessions

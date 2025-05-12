@@ -40,12 +40,15 @@ impl SyncWorkspace {
     /// Clean up the temp directory that was created once the
     /// server closes down.
     pub(crate) fn remove_temp_dir(&self) {
-         if let Ok(dir) = self.temp_dir() {
+        if let Ok(dir) = self.temp_dir() {
             // The tempdir created by Builder is typically a randomly named directory.
             // The `temp_path` we store is `random_dir/project_name`.
             // So, we need to remove `random_dir` by getting the parent directory.
             if let Some(parent_dir) = dir.parent() {
-                if parent_dir.to_string_lossy().contains(SyncWorkspace::LSP_TEMP_PREFIX) {
+                if parent_dir
+                    .to_string_lossy()
+                    .contains(SyncWorkspace::LSP_TEMP_PREFIX)
+                {
                     if let Err(e) = fs::remove_dir_all(parent_dir) {
                         tracing::warn!("Failed to remove temp base dir {:?}: {}", parent_dir, e);
                     } else {
@@ -71,17 +74,25 @@ impl SyncWorkspace {
             .prefix(SyncWorkspace::LSP_TEMP_PREFIX)
             .tempdir()
             .map_err(|_| DirectoryError::TempDirFailed)?;
-            
+
         // Construct the path for our specific workspace clone *inside* the directory managed by temp_dir_guard.
         let temp_workspace_base = temp_dir_guard.path().join(root_dir_name);
 
         fs::create_dir_all(&temp_workspace_base).map_err(|io_err| {
-            tracing::error!("Failed to create subdirectory {:?} in temp: {}", temp_workspace_base, io_err);
+            tracing::error!(
+                "Failed to create subdirectory {:?} in temp: {}",
+                temp_workspace_base,
+                io_err
+            );
             DirectoryError::TempDirFailed
         })?;
-        
+
         let canonical_temp_path = temp_workspace_base.canonicalize().map_err(|io_err| {
-            tracing::warn!("Failed to canonicalize temp path {:?}: {}", temp_workspace_base, io_err);
+            tracing::warn!(
+                "Failed to canonicalize temp path {:?}: {}",
+                temp_workspace_base,
+                io_err
+            );
             DirectoryError::CanonicalizeFailed
         })?;
 

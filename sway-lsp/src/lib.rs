@@ -15,7 +15,10 @@ mod traverse;
 pub mod utils;
 
 use lsp_types::{
-    CodeActionProviderCapability, CodeLensOptions, CompletionOptions, ExecuteCommandOptions, HoverProviderCapability, OneOf, RenameOptions, SemanticTokensLegend, SemanticTokensOptions, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions, WorkspaceFoldersServerCapabilities, WorkspaceServerCapabilities
+    CodeActionProviderCapability, CodeLensOptions, CompletionOptions, ExecuteCommandOptions,
+    HoverProviderCapability, OneOf, RenameOptions, SemanticTokensLegend, SemanticTokensOptions,
+    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions,
+    WorkspaceFoldersServerCapabilities, WorkspaceServerCapabilities,
 };
 use server_state::ServerState;
 use tower_lsp::{LspService, Server};
