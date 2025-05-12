@@ -11,11 +11,12 @@ use crate::asm_lang::{
 use super::super::abstract_instruction_set::AbstractInstructionSet;
 
 /// A register value is known to contain the value of this expression.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Expr {
     Const(u64),
     Eq(VirtualRegister),
-    Add(Box<Expr>, Box<Expr>),
+    Add(Vec<Expr>),
+    Mul(Vec<Expr>),
     Sub(Box<Expr>, Box<Expr>),
 }
 
@@ -45,7 +46,8 @@ impl Expr {
         match self {
             Expr::Const(_) => false,
             Expr::Eq(v) => v == reg,
-            Expr::Add(l, r) => l.depends_on(reg) || r.depends_on(reg),
+            Expr::Add(vs) => vs.iter().any(|v| v.depends_on(reg)),
+            Expr::Mul(vs) => vs.iter().any(|v| v.depends_on(reg)),
             Expr::Sub(l, r) => l.depends_on(reg) || r.depends_on(reg),
         }
     }
@@ -59,17 +61,80 @@ impl Expr {
                 Some(res) => res.simplify(ctx),
                 None => self,
             },
-            Expr::Add(lhs, rhs) => {
-                let lhs = lhs.simplify(&ctx);
-                let rhs = rhs.simplify(&ctx);
-                match (lhs.integer(), rhs.integer()) {
-                    (_, Some(0)) => lhs,
-                    (Some(0), _) => rhs,
-                    (Some(l), Some(r)) => match l.checked_add(r) {
-                        Some(v) => Expr::Const(v),
-                        None => Expr::Add(Box::new(lhs), Box::new(rhs)),
-                    },
-                    _ => Expr::Add(Box::new(lhs), Box::new(rhs)),
+            Expr::Add(vs) => {
+                let mut simplified = Vec::new();
+                for v in vs {
+                    let v = v.simplify(ctx);
+                    if v.integer() == Some(0) {
+                        continue;
+                    }
+                    if let Expr::Add(vs) = v {
+                        simplified.extend(vs);
+                    } else {
+                        simplified.push(v);
+                    }
+                }
+                simplified.sort();
+
+                let mut i = 0;
+                while i + 1 < simplified.len() {
+                    let lhs = simplified[i].integer();
+                    let rhs = simplified[i + 1].integer();
+                    if let (Some(l), Some(r)) = (lhs, rhs) {
+                        if let Some(x) = l.checked_add(r) {
+                            simplified[i] = Expr::Const(x);
+                            simplified.remove(i + 1);
+                        } else {
+                            i += 1;
+                        }
+                    }
+
+                    i += 1;
+                }
+                if simplified.len() == 0 {
+                    Expr::Const(0)
+                } else if simplified.len() == 1 {
+                    simplified.pop().expect("Checked in if condition")
+                } else {
+                    Expr::Add(simplified)
+                }
+            }
+            Expr::Mul(vs) => {
+                let mut simplified = Vec::new();
+                for v in vs {
+                    let v = v.simplify(ctx);
+                    if v.integer() == Some(1) {
+                        continue;
+                    }
+                    if let Expr::Mul(vs) = v {
+                        simplified.extend(vs);
+                    } else {
+                        simplified.push(v);
+                    }
+                }
+                simplified.sort();
+
+                let mut i = 0;
+                while i + 1 < simplified.len() {
+                    let lhs = simplified[i].integer();
+                    let rhs = simplified[i + 1].integer();
+                    if let (Some(l), Some(r)) = (lhs, rhs) {
+                        if let Some(x) = l.checked_mul(r) {
+                            simplified[i] = Expr::Const(x);
+                            simplified.remove(i + 1);
+                        } else {
+                            i += 1;
+                        }
+                    }
+
+                    i += 1;
+                }
+                if simplified.len() == 0 {
+                    Expr::Const(1)
+                } else if simplified.len() == 1 {
+                    simplified.pop().expect("Checked in if condition")
+                } else {
+                    Expr::Mul(simplified)
                 }
             }
             Expr::Sub(lhs, rhs) => {
@@ -180,9 +245,7 @@ impl AbstractInstructionSet {
 
         let mut known_values = KnownValues::default();
 
-        println!(" == round ==");
         for op in &mut self.ops {
-            println!("op = {:?}", op);
             // Perform constant propagation on the instruction.
             let mut uses_regs: Vec<_> = op.use_registers_mut().into_iter().collect();
             for reg in uses_regs.iter_mut() {
@@ -236,7 +299,7 @@ impl AbstractInstructionSet {
                 Either::Left(VirtualOp::ADD(dst, lhs, rhs)) => {
                     let lhs = Expr::Eq(lhs.clone());
                     let rhs = Expr::Eq(rhs.clone());
-                    let expr = Expr::Add(Box::new(lhs), Box::new(rhs)).simplify(&known_values);
+                    let expr = Expr::Add(vec![lhs, rhs]).simplify(&known_values);
                     if known_values.resolve(dst).as_ref() == Some(&expr) {
                         op.opcode = Either::Left(VirtualOp::NOOP);
                     } else {
@@ -247,7 +310,7 @@ impl AbstractInstructionSet {
                 Either::Left(VirtualOp::ADDI(dst, lhs, rhs)) => {
                     let lhs = Expr::Eq(lhs.clone());
                     let rhs = Expr::Const(rhs.value() as u64);
-                    let expr = Expr::Add(Box::new(lhs), Box::new(rhs)).simplify(&known_values);
+                    let expr = Expr::Add(vec![lhs, rhs]).simplify(&known_values);
                     if known_values.resolve(dst).as_ref() == Some(&expr) {
                         op.opcode = Either::Left(VirtualOp::NOOP);
                     } else {
@@ -270,6 +333,28 @@ impl AbstractInstructionSet {
                     let lhs = Expr::Eq(lhs.clone());
                     let rhs = Expr::Const(rhs.value() as u64);
                     let expr = Expr::Sub(Box::new(lhs), Box::new(rhs)).simplify(&known_values);
+                    if known_values.resolve(dst).as_ref() == Some(&expr) {
+                        op.opcode = Either::Left(VirtualOp::NOOP);
+                    } else {
+                        known_values.assign(dst.clone(), expr);
+                    }
+                    true
+                }
+                Either::Left(VirtualOp::MUL(dst, lhs, rhs)) => {
+                    let lhs = Expr::Eq(lhs.clone());
+                    let rhs = Expr::Eq(rhs.clone());
+                    let expr = Expr::Mul(vec![lhs, rhs]).simplify(&known_values);
+                    if known_values.resolve(dst).as_ref() == Some(&expr) {
+                        op.opcode = Either::Left(VirtualOp::NOOP);
+                    } else {
+                        known_values.assign(dst.clone(), expr);
+                    }
+                    true
+                }
+                Either::Left(VirtualOp::MULI(dst, lhs, rhs)) => {
+                    let lhs = Expr::Eq(lhs.clone());
+                    let rhs = Expr::Const(rhs.value() as u64);
+                    let expr = Expr::Mul(vec![lhs, rhs]).simplify(&known_values);
                     if known_values.resolve(dst).as_ref() == Some(&expr) {
                         op.opcode = Either::Left(VirtualOp::NOOP);
                     } else {
