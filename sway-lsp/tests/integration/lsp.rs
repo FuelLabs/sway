@@ -4,9 +4,11 @@
 
 use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
+use forc_pkg::manifest::ManifestFile;
+use forc_pkg::manifest::GenericManifestFile;
 use regex::Regex;
 use serde_json::json;
-use std::{borrow::Cow, path::Path};
+use std::{borrow::Cow, path::{Path, PathBuf}};
 use sway_lsp::{
     handlers::request,
     lsp_ext::{ShowAstParams, VisualizeParams},
@@ -35,16 +37,41 @@ pub(crate) async fn call_request(
     service.ready().await?.call(req).await
 }
 
-pub(crate) async fn initialize_request(service: &mut LspService<ServerState>) -> Request {
-    let params = json!({ "capabilities": sway_lsp::server_capabilities() });
-    let initialize = build_request_with_id("initialize", params, 1);
-    let response = call_request(service, initialize.clone()).await;
-    let expected = Response::from_ok(
-        1.into(),
-        json!({ "capabilities": sway_lsp::server_capabilities() }),
-    );
-    assert_json_eq!(expected, response.ok().unwrap());
-    initialize
+pub(crate) fn client_capabilities() -> ClientCapabilities {
+    ClientCapabilities {
+        workspace: Some(WorkspaceClientCapabilities {
+            workspace_folders: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }
+}
+
+pub(crate) async fn initialize_request(service: &mut LspService<ServerState>, entry_point: &PathBuf) -> Request {
+    let search_dir = entry_point.parent().unwrap_or(&entry_point);
+    let manifest_file = ManifestFile::from_dir(search_dir).unwrap();
+    let project_root_path = manifest_file.dir();
+    let root_uri = Url::from_directory_path(project_root_path)
+        .expect(&format!("Failed to create directory URL from project root: {:?}", project_root_path));
+
+    // Construct the InitializeParams using the defined client_capabilities
+    let params = json!({
+        "processId": Option::<u32>::None,
+        "rootUri": Some(root_uri),
+        "capabilities": client_capabilities(),
+        "initializationOptions": Option::<serde_json::Value>::None,
+    });
+
+    let initialize_request = build_request_with_id("initialize", params, 1); // Renamed for clarity
+    let response = call_request(service, initialize_request.clone()).await;
+
+    let expected_initialize_result = json!({ "capabilities": sway_lsp::server_capabilities() });
+    let expected_response = Response::from_ok(1.into(), expected_initialize_result);
+
+    assert!(response.is_ok(), "Initialize request failed: {:?}", response.err());
+    assert_json_eq!(expected_response, response.ok().unwrap());
+
+    initialize_request
 }
 
 pub(crate) async fn initialized_notification(service: &mut LspService<ServerState>) {
