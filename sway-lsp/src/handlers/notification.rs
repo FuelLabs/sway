@@ -37,6 +37,7 @@ pub async fn handle_did_open_text_document(
                 optimized_build: false,
                 gc_options: state.config.read().garbage_collection.clone(),
                 file_versions: BTreeMap::new(),
+                sync: Some(state.sync_workspace.get().unwrap().clone()),
             }));
         state.is_compiling.store(true, Ordering::SeqCst);
         state.wait_for_parsing().await;
@@ -78,6 +79,7 @@ fn send_new_compilation_request(
             optimized_build,
             gc_options: state.config.read().garbage_collection.clone(),
             file_versions,
+            sync: Some(state.sync_workspace.get().unwrap().clone()),
         }));
 }
 
@@ -163,7 +165,7 @@ pub(crate) async fn handle_did_change_watched_files(
         match event.typ {
             FileChangeType::CHANGED => {
                 if event.uri.to_string().contains("Forc.toml") {
-                    session.sync.sync_manifest();
+                    //session.sync.sync_manifest();
                     // TODO: Recompile the project | see https://github.com/FuelLabs/sway/issues/7103
                 }
             }

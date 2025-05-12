@@ -11,6 +11,8 @@ pub enum LanguageServerError {
     DirectoryError(#[from] DirectoryError),
     #[error(transparent)]
     RenameError(#[from] RenameError),
+    #[error(transparent)]
+    TowerError(#[from] tower_lsp::jsonrpc::Error),
 
     // Top level errors
     #[error("Failed to create build plan. {0}")]
@@ -31,6 +33,8 @@ pub enum LanguageServerError {
     ClientNotInitialized,
     #[error("Client request error: {0}")]
     ClientRequestError(String),
+    #[error("Global workspace not initialized")]
+    GlobalWorkspaceNotInitialized,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]

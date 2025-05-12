@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use crate::{
     error::{DirectoryError, DocumentError, LanguageServerError},
@@ -7,6 +7,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_util::fs_locking::PidFileLocking;
 use lsp_types::{Position, Range, TextDocumentContentChangeEvent, Url};
+use sway_utils::get_sway_files;
 use tokio::{fs::File, io::AsyncWriteExt};
 
 #[derive(Debug, Clone)]
@@ -204,6 +205,18 @@ impl Documents {
         self.insert(uri.clone(), text_document).map_or(Ok(()), |_| {
             Err(DocumentError::DocumentAlreadyStored { path: uri })
         })
+    }
+
+    /// Populate with sway files found in the workspace.
+    pub async fn store_sway_files_from_temp(
+        &self,
+        temp_dir: PathBuf,
+    ) -> Result<(), LanguageServerError> {
+        for path_str in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
+            let text_doc = TextDocument::build_from_path(path_str).await?; 
+            self.store_document(text_doc)?; 
+        }
+        Ok(())
     }
 }
 

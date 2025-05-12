@@ -23,14 +23,35 @@ use tower_lsp::{jsonrpc::Result, LanguageServer};
 #[tower_lsp::async_trait]
 impl LanguageServer for ServerState {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        request::handle_initialize(self, &params)
+        match request::handle_initialize(self, &params) {
+            Ok(_) => Ok(InitializeResult {
+                server_info: None,
+                capabilities: crate::server_capabilities(),
+                ..InitializeResult::default()
+            }),
+            Err(err) => {
+                tracing::error!("Server initialization failed: {}", err.to_string());
+                let mut json_err = tower_lsp::jsonrpc::Error::internal_error();
+                json_err.message = err.to_string().into();
+                Err(json_err)
+            }
+        }
     }
 
     async fn initialized(&self, _: InitializedParams) {
+        eprintln!("INITIALIZED");
         // Register a file system watcher for Forc.toml files with the client.
         if let Err(err) = self.register_forc_toml_watcher().await {
             tracing::error!("Failed to register Forc.toml file watcher: {}", err);
         }
+        eprintln!("registered forc toml watcher");
+        if let Some(sw) = self.sync_workspace.get() {
+            if let Ok(temp_dir) = sw.temp_dir() {
+                eprintln!("temp dir: {:?}", temp_dir);
+                let _ = self.documents.store_sway_files_from_temp(temp_dir).await;
+            }
+        }
+        eprintln!("synced documents");
         tracing::info!("Sway Language Server Initialized");
     }
 

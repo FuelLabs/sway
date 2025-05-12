@@ -5,6 +5,7 @@ use crate::{
     core::{
         document::{Documents, PidLockedFiles},
         session::{self, Session},
+        sync::SyncWorkspace,
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::{debug, keyword_docs::KeywordDocs},
@@ -27,7 +28,7 @@ use std::{
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, OnceLock,
     },
 };
 use sway_core::LspConfig;
@@ -40,6 +41,7 @@ const DEFAULT_SESSION_CACHE_CAPACITY: usize = 4;
 pub struct ServerState {
     pub(crate) client: Option<Client>,
     pub config: Arc<RwLock<Config>>,
+    pub sync_workspace: OnceLock<Arc<SyncWorkspace>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
     /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
@@ -63,6 +65,7 @@ impl Default for ServerState {
         let state = ServerState {
             client: None,
             config: Arc::new(RwLock::new(Config::default())),
+            sync_workspace: OnceLock::new(),
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: LruSessionCache::new(DEFAULT_SESSION_CACHE_CAPACITY),
             documents: Documents::new(),
@@ -103,6 +106,7 @@ pub enum TaskMessage {
 #[derive(Debug, Default)]
 pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
+    pub sync: Option<Arc<SyncWorkspace>>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
     pub optimized_build: bool,
@@ -165,6 +169,7 @@ impl ServerState {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = session.engines.read().clone();
+                        let sync = ctx.sync.as_ref().unwrap().clone();
 
                         // Perform garbage collection if enabled to manage memory usage.
                         if ctx.gc_options.gc_enabled {
@@ -192,6 +197,7 @@ impl ServerState {
                             Some(retrigger_compilation.clone()),
                             lsp_mode,
                             session.clone(),
+                            &sync,
                         ) {
                             Ok(()) => {
                                 let path = uri.to_file_path().unwrap();
@@ -311,10 +317,11 @@ impl ServerState {
             .send(TaskMessage::Terminate)
             .expect("failed to send terminate message");
 
-        let _ = self.sessions.iter().map(|item| {
-            let session = item.value();
-            session.shutdown();
-        });
+        // Delete the temporary directory.
+        if let Some(sw) = self.sync_workspace.get() {
+            sw.remove_temp_dir();
+        }
+
         Ok(())
     }
 
@@ -371,9 +378,16 @@ impl ServerState {
         &self,
         workspace_uri: &Url,
     ) -> Result<(Url, Arc<Session>), LanguageServerError> {
+        let sw = self
+            .sync_workspace
+            .get()
+            .ok_or(LanguageServerError::GlobalWorkspaceNotInitialized)?; // Should be initialized by now.
+
         let session = self.url_to_session(workspace_uri).await?;
-        let uri = session.sync.workspace_to_temp_url(workspace_uri)?;
-        Ok((uri, session))
+        // Convert the workspace URI to its corresponding temporary URI.
+        let temp_uri = sw.workspace_to_temp_url(workspace_uri)?;
+
+        Ok((temp_uri, session))
     }
 
     async fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
@@ -403,10 +417,9 @@ impl ServerState {
         if let Some(session) = self.sessions.get(&manifest_dir) {
             return Ok(session);
         }
-
+        
         // If no session can be found, then we need to call init and insert a new session into the map
         let session = Arc::new(Session::new());
-        session.init(uri, &self.documents).await?;
         self.sessions
             .insert((*manifest_dir).clone(), session.clone());
 

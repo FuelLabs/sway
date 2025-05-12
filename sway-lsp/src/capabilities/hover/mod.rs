@@ -2,6 +2,7 @@ pub(crate) mod hover_link_contents;
 
 use self::hover_link_contents::HoverLinkContents;
 use crate::config::LspClient;
+use crate::core::sync::SyncWorkspace;
 use crate::{
     core::{
         session::Session,
@@ -26,6 +27,7 @@ pub fn hover_data(
     url: &Url,
     position: Position,
     client_config: LspClient,
+    sync: &SyncWorkspace,
 ) -> Option<lsp_types::Hover> {
     let t = session.token_map().token_at_position(url, position)?;
     let (ident, token) = t.pair();
@@ -61,6 +63,7 @@ pub fn hover_data(
                 decl_token,
                 &decl_ident.name,
                 client_config.clone(),
+                sync,
             )
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
@@ -71,6 +74,7 @@ pub fn hover_data(
             token,
             &ident.name,
             client_config.clone(),
+            sync,
         ),
     };
 
@@ -131,6 +135,7 @@ fn hover_format(
     token: &Token,
     ident_name: &str,
     client_config: LspClient,
+    sync: &SyncWorkspace,
 ) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
     let doc_comment = format_doc_attributes(engines, token);
@@ -151,7 +156,7 @@ fn hover_format(
                 ty::TyDecl::VariableDecl(var_decl) => {
                     let type_name =
                         format!("{}", engines.help_out(var_decl.type_ascription.type_id()));
-                    hover_link_contents.add_related_types(&var_decl.type_ascription.type_id());
+                    hover_link_contents.add_related_types(&var_decl.type_ascription.type_id(), sync);
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
@@ -160,7 +165,7 @@ fn hover_format(
                 }
                 ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
                     let struct_decl = decl_engine.get_struct(decl_id);
-                    hover_link_contents.add_implementations_for_decl(decl);
+                    hover_link_contents.add_implementations_for_decl(decl, sync);
                     Some(format_visibility_hover(
                         struct_decl.visibility,
                         decl.friendly_type_name(),
@@ -169,7 +174,7 @@ fn hover_format(
                 }
                 ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                     let trait_decl = decl_engine.get_trait(decl_id);
-                    hover_link_contents.add_implementations_for_trait(&trait_decl);
+                    hover_link_contents.add_implementations_for_trait(&trait_decl, sync);
                     Some(format_visibility_hover(
                         trait_decl.visibility,
                         decl.friendly_type_name(),
@@ -178,7 +183,7 @@ fn hover_format(
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let enum_decl = decl_engine.get_enum(decl_id);
-                    hover_link_contents.add_implementations_for_decl(decl);
+                    hover_link_contents.add_implementations_for_decl(decl, sync);
                     Some(format_visibility_hover(
                         enum_decl.visibility,
                         decl.friendly_type_name(),
@@ -186,17 +191,17 @@ fn hover_format(
                     ))
                 }
                 ty::TyDecl::AbiDecl(ty::AbiDecl { .. }) => {
-                    hover_link_contents.add_implementations_for_decl(decl);
+                    hover_link_contents.add_implementations_for_decl(decl, sync);
                     Some(format!("{} {}", decl.friendly_type_name(), &ident_name))
                 }
                 _ => None,
             },
             TypedAstToken::TypedFunctionDeclaration(func) => {
-                hover_link_contents.add_related_types(&func.return_type.type_id());
+                hover_link_contents.add_related_types(&func.return_type.type_id(), sync);
                 Some(extract_fn_signature(&func.span()))
             }
             TypedAstToken::TypedFunctionParameter(param) => {
-                hover_link_contents.add_related_types(&param.type_argument.type_id());
+                hover_link_contents.add_related_types(&param.type_argument.type_id(), sync);
                 Some(format_name_with_type(
                     param.name.as_str(),
                     &param.type_argument.type_id(),
@@ -206,6 +211,7 @@ fn hover_format(
                 hover_link_contents.add_implementations_for_type(
                     &field.type_argument.span(),
                     field.type_argument.type_id(),
+                    sync,
                 );
                 Some(format_name_with_type(
                     field.name.as_str(),
