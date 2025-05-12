@@ -35,6 +35,8 @@ pub enum LanguageServerError {
     ClientRequestError(String),
     #[error("Global workspace not initialized")]
     GlobalWorkspaceNotInitialized,
+    #[error("SyncWorkspace already initialized")]
+    SyncWorkspaceAlreadyInitialized,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]

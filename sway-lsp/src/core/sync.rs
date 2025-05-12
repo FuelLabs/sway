@@ -67,10 +67,9 @@ impl SyncWorkspace {
                 dir: actual_workspace_root.to_string_lossy().to_string(),
             })?;
 
-        // temp_dir_guard holds the `TempDir` object.
         let temp_dir_guard = Builder::new()
             .prefix(SyncWorkspace::LSP_TEMP_PREFIX)
-            .tempdir() // This creates a directory like /tmp/SWAY_LSP_TEMP_DIR_XYZ
+            .tempdir()
             .map_err(|_| DirectoryError::TempDirFailed)?;
             
         // Construct the path for our specific workspace clone *inside* the directory managed by temp_dir_guard.
@@ -100,46 +99,6 @@ impl SyncWorkspace {
         );
 
         Ok(())
-
-
-
-        // let manifest = PackageManifestFile::from_dir(manifest_dir).map_err(|_| {
-        //     DocumentError::ManifestFileNotFound {
-        //         dir: manifest_dir.to_string_lossy().to_string(),
-        //     }
-        // })?;
-
-        // // strip Forc.toml from the path to get the manifest directory
-        // let manifest_dir = manifest
-        //     .path()
-        //     .parent()
-        //     .ok_or(DirectoryError::ManifestDirNotFound)?;
-
-        // // extract the project name from the path
-        // let project_name = manifest_dir
-        //     .file_name()
-        //     .and_then(|name| name.to_str())
-        //     .ok_or(DirectoryError::CantExtractProjectName {
-        //         dir: manifest_dir.to_string_lossy().to_string(),
-        //     })?;
-
-        // // Create a new temporary directory that we can clone the current workspace into.
-        // let temp_dir = Builder::new()
-        //     .prefix(SyncWorkspace::LSP_TEMP_PREFIX)
-        //     .tempdir()
-        //     .map_err(|_| DirectoryError::TempDirFailed)?;
-
-        // let temp_path = temp_dir
-        //     .into_path()
-        //     .canonicalize()
-        //     .map_err(|_| DirectoryError::CanonicalizeFailed)?
-        //     .join(project_name);
-
-        // self.directories
-        //     .insert(Directory::Manifest, manifest_dir.to_path_buf());
-        // self.directories.insert(Directory::Temp, temp_path);
-
-        // Ok(())
     }
 
     pub(crate) fn clone_manifest_dir_to_temp(&self) -> Result<(), DirectoryError> {
