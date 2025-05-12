@@ -39,19 +39,16 @@ impl LanguageServer for ServerState {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        eprintln!("INITIALIZED");
         // Register a file system watcher for Forc.toml files with the client.
         if let Err(err) = self.register_forc_toml_watcher().await {
             tracing::error!("Failed to register Forc.toml file watcher: {}", err);
         }
-        eprintln!("registered forc toml watcher");
+        // Populate documents from temp dir
         if let Some(sw) = self.sync_workspace.get() {
             if let Ok(temp_dir) = sw.temp_dir() {
-                eprintln!("temp dir: {:?}", temp_dir);
                 let _ = self.documents.store_sway_files_from_temp(temp_dir).await;
             }
         }
-        eprintln!("synced documents");
         tracing::info!("Sway Language Server Initialized");
     }
 

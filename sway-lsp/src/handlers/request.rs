@@ -79,13 +79,13 @@ pub fn handle_initialize(
     let sw = Arc::new(SyncWorkspace::new());
     sw.create_temp_dir_from_workspace(&actual_workspace_root)?;
     sw.clone_manifest_dir_to_temp()?;
-    sw.sync_manifest(); // Assuming this doesn't return a critical error or we log within it.
+    sw.sync_manifest();
 
     // Initialize the OnceLock for sync_workspace
     state
         .sync_workspace
         .set(sw)
-        .map_err(|_| LanguageServerError::FailedToParse)?; // Or a more specific error "SyncWorkspaceAlreadyInitialized"
+        .map_err(|_| LanguageServerError::SyncWorkspaceAlreadyInitialized)?;
 
     Ok(())
 }
