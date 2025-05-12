@@ -213,8 +213,8 @@ impl Documents {
         temp_dir: PathBuf,
     ) -> Result<(), LanguageServerError> {
         for path_str in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
-            let text_doc = TextDocument::build_from_path(path_str).await?; 
-            self.store_document(text_doc)?; 
+            let text_doc = TextDocument::build_from_path(path_str).await?;
+            self.store_document(text_doc)?;
         }
         Ok(())
     }

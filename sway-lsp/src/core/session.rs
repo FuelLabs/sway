@@ -125,7 +125,12 @@ impl Session {
         Ok(())
     }
 
-    pub fn token_references(&self, url: &Url, position: Position, sync: &SyncWorkspace) -> Option<Vec<Location>> {
+    pub fn token_references(
+        &self,
+        url: &Url,
+        position: Position,
+        sync: &SyncWorkspace,
+    ) -> Option<Vec<Location>> {
         let _p = tracing::trace_span!("token_references").entered();
         let token_references: Vec<_> = self
             .token_map
@@ -137,8 +142,7 @@ impl Session {
             .filter_map(|item| {
                 let path = item.key().path.as_ref()?;
                 let uri = Url::from_file_path(path).ok()?;
-                sync
-                    .to_workspace_url(uri)
+                sync.to_workspace_url(uri)
                     .map(|workspace_url| Location::new(workspace_url, item.key().range))
             })
             .collect();

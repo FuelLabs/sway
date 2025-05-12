@@ -64,7 +64,7 @@ async fn open(server: &ServerState, entry_point: PathBuf) -> Url {
 
 async fn init_and_open(service: &mut LspService<ServerState>, entry_point: PathBuf) -> Url {
     let _ = lsp::initialize_request(service, &entry_point).await;
-    let _ =lsp::initialized_notification(service).await;
+    let _ = lsp::initialized_notification(service).await;
     let (uri, sway_program) = load_sway_example(entry_point);
     lsp::did_open_notification(service, &uri, &sway_program).await;
     uri
@@ -198,9 +198,15 @@ fn sync_with_updates_to_manifest_in_workspace() {
             .unwrap();
         let build_plan = session
             .build_plan_cache
-            .get_or_update(&service.inner().sync_workspace.get().unwrap().manifest_path(), || {
-                sway_lsp::core::session::build_plan(&uri)
-            })
+            .get_or_update(
+                &service
+                    .inner()
+                    .sync_workspace
+                    .get()
+                    .unwrap()
+                    .manifest_path(),
+                || sway_lsp::core::session::build_plan(&uri),
+            )
             .unwrap();
         assert_eq!(build_plan.compilation_order().len(), 3);
 
@@ -334,7 +340,11 @@ fn did_change_stress_test_random_wait() {
 fn compilation_succeeds_when_triggered_from_module() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/modules/src/test_mod.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/modules/src/test_mod.sw"),
+        )
+        .await;
         shutdown_and_exit(&mut service).await;
     });
 }
@@ -385,7 +395,8 @@ fn go_to_definition() {
 fn go_to_definition_for_fields() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service,
+        let uri = init_and_open(
+            &mut service,
             test_fixtures_dir().join("tokens/fields/src/main.sw"),
         )
         .await;
@@ -440,7 +451,11 @@ fn go_to_definition_for_fields() {
 fn go_to_definition_inside_turbofish() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/turbofish/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/turbofish/src/main.sw"),
+        )
+        .await;
 
         let mut opt_go_to = GotoDefinition {
             req_uri: &uri,
@@ -486,7 +501,11 @@ fn go_to_definition_inside_turbofish() {
 fn go_to_definition_for_matches() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/matches/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/matches/src/main.sw"),
+        )
+        .await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
@@ -596,7 +615,11 @@ fn go_to_definition_for_matches() {
 fn go_to_definition_for_modules() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/modules/src/lib.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/modules/src/lib.sw"),
+        )
+        .await;
 
         let opt_go_to = GotoDefinition {
             req_uri: &uri,
@@ -609,7 +632,11 @@ fn go_to_definition_for_modules() {
         };
         // mod test_mod;
         lsp::definition_check(&service.inner(), &opt_go_to).await;
-        let uri = open(&service.inner(), test_fixtures_dir().join("tokens/modules/src/test_mod.sw")).await;
+        let uri = open(
+            &service.inner(),
+            test_fixtures_dir().join("tokens/modules/src/test_mod.sw"),
+        )
+        .await;
 
         let opt_go_to = GotoDefinition {
             req_uri: &uri,
@@ -631,7 +658,11 @@ fn go_to_definition_for_modules() {
 fn go_to_definition_for_paths() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/paths/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/paths/src/main.sw"),
+        )
+        .await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
@@ -1010,7 +1041,11 @@ fn go_to_definition_for_paths() {
 fn go_to_definition_for_traits() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/traits/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/traits/src/main.sw"),
+        )
+        .await;
 
         let mut trait_go_to = GotoDefinition {
             req_uri: &uri,
@@ -1037,7 +1072,11 @@ fn go_to_definition_for_traits() {
 fn go_to_definition_for_variables() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/variables/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/variables/src/main.sw"),
+        )
+        .await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
@@ -1126,7 +1165,11 @@ fn go_to_definition_for_variables() {
 fn go_to_definition_for_consts() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/consts/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/consts/src/main.sw"),
+        )
+        .await;
 
         // value: TyExpression: `ContractId`
         let mut contract_go_to = GotoDefinition {
@@ -1200,7 +1243,11 @@ fn go_to_definition_for_consts() {
 fn go_to_definition_for_functions() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/functions/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/functions/src/main.sw"),
+        )
+        .await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
@@ -1249,7 +1296,11 @@ fn go_to_definition_for_functions() {
 fn go_to_definition_for_structs() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/structs/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/structs/src/main.sw"),
+        )
+        .await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
@@ -1300,7 +1351,11 @@ fn go_to_definition_for_structs() {
 fn go_to_definition_for_impls() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/impls/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/impls/src/main.sw"),
+        )
+        .await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
@@ -1335,7 +1390,11 @@ fn go_to_definition_for_impls() {
 fn go_to_definition_for_where_clause() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/where_clause/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/where_clause/src/main.sw"),
+        )
+        .await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
@@ -1392,7 +1451,11 @@ fn go_to_definition_for_where_clause() {
 fn go_to_definition_for_enums() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/enums/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/enums/src/main.sw"),
+        )
+        .await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
@@ -1433,7 +1496,11 @@ fn go_to_definition_for_enums() {
 fn go_to_definition_for_abi() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/abi/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/abi/src/main.sw"),
+        )
+        .await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
@@ -1460,7 +1527,11 @@ fn go_to_definition_for_abi() {
 fn go_to_definition_for_storage() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/storage/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/storage/src/main.sw"),
+        )
+        .await;
 
         let mut go_to = GotoDefinition {
             req_uri: &uri,
@@ -1548,7 +1619,11 @@ fn go_to_definition_for_storage() {
 fn hover_docs_for_consts() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/consts/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/consts/src/main.sw"),
+        )
+        .await;
 
         let mut hover = HoverDocumentation {
             req_uri: &uri,
@@ -1570,7 +1645,11 @@ fn hover_docs_for_functions_vscode() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
         service.inner().config.write().client = LspClient::VsCode;
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/functions/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/functions/src/main.sw"),
+        )
+        .await;
 
         let hover = HoverDocumentation {
         req_uri: &uri,
@@ -1587,7 +1666,11 @@ fn hover_docs_for_functions_vscode() {
 fn hover_docs_for_structs() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/structs/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/structs/src/main.sw"),
+        )
+        .await;
         let data_documentation = "```sway\nenum Data\n```\n---\n My data enum";
 
         let mut hover = HoverDocumentation {
@@ -1622,7 +1705,11 @@ fn hover_docs_for_structs() {
 fn hover_docs_for_enums() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/enums/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/enums/src/main.sw"),
+        )
+        .await;
 
         let mut hover = HoverDocumentation {
             req_uri: &uri,
@@ -1647,7 +1734,11 @@ fn hover_docs_for_enums() {
 fn hover_docs_for_abis() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/abi/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/abi/src/main.sw"),
+        )
+        .await;
 
         let hover = HoverDocumentation {
             req_uri: &uri,
@@ -1664,7 +1755,11 @@ fn hover_docs_for_abis() {
 fn hover_docs_for_variables() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/variables/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/variables/src/main.sw"),
+        )
+        .await;
 
         let hover = HoverDocumentation {
             req_uri: &uri,
@@ -1699,7 +1794,11 @@ fn hover_docs_for_self_keywords_vscode() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
         service.inner().config.write().client = LspClient::VsCode;
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("completion/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("completion/src/main.sw"),
+        )
+        .await;
 
         let mut hover = HoverDocumentation {
             req_uri: &uri,
@@ -1726,7 +1825,11 @@ fn hover_docs_for_self_keywords_vscode() {
 fn hover_docs_for_self_keywords() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("completion/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("completion/src/main.sw"),
+        )
+        .await;
 
         let hover = HoverDocumentation {
             req_uri: &uri,
@@ -1744,7 +1847,11 @@ fn hover_docs_for_self_keywords() {
 fn hover_docs_for_boolean_keywords() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("tokens/storage/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/storage/src/main.sw"),
+        )
+        .await;
 
         let mut hover = HoverDocumentation {
         req_uri: &uri,
@@ -1766,7 +1873,11 @@ fn hover_docs_for_boolean_keywords() {
 fn rename() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, test_fixtures_dir().join("renaming/src/main.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("renaming/src/main.sw"),
+        )
+        .await;
 
         // Struct expression variable
         let rename = Rename {
@@ -1856,7 +1967,10 @@ fn rename() {
             req_char: 2,
             new_name: "StruCt", // from struct
         };
-        assert_eq!(lsp::prepare_rename_request(&service.inner(), &rename).await, None);
+        assert_eq!(
+            lsp::prepare_rename_request(&service.inner(), &rename).await,
+            None
+        );
 
         // Fail to rename module
         let rename = Rename {
@@ -1865,7 +1979,10 @@ fn rename() {
             req_char: 13,
             new_name: "new_mod_name", // from std
         };
-        assert_eq!(lsp::prepare_rename_request(&service.inner(), &rename).await, None);
+        assert_eq!(
+            lsp::prepare_rename_request(&service.inner(), &rename).await,
+            None
+        );
 
         // Fail to rename a type defined in a module outside of the users workspace
         let rename = Rename {
@@ -1874,7 +1991,10 @@ fn rename() {
             req_char: 33,
             new_name: "NEW_TYPE_NAME", // from ZERO_B256
         };
-        assert_eq!(lsp::prepare_rename_request(&service.inner(), &rename).await, None);
+        assert_eq!(
+            lsp::prepare_rename_request(&service.inner(), &rename).await,
+            None
+        );
         shutdown_and_exit(&mut service).await;
     });
 }
@@ -2043,7 +2163,6 @@ async fn write_all_example_asts() {
     let _ = lsp::initialize_request(&mut service, &ast_folder).await;
     lsp::initialized_notification(&mut service).await;
 
-    
     let _ = fs::create_dir(&ast_folder);
     let e2e_dir = sway_workspace_dir().join(e2e_language_dir());
     let mut entries = fs::read_dir(&e2e_dir)
