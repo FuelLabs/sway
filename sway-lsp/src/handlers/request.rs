@@ -2,12 +2,18 @@
 //! Protocol. This module specifically handles requests.
 
 use crate::{
-    capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
+    capabilities,
+    core::{session::build_plan, sync::SyncWorkspace},
+    error::{DocumentError, LanguageServerError},
+    lsp_ext,
+    server_state::ServerState,
+    utils::debug,
 };
 use forc_tracing::{tracing_subscriber, FmtSpan, TracingWriter};
+use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
-    InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
+    InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
     SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
     SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
@@ -15,6 +21,7 @@ use std::{
     fs::File,
     io::Write,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 use sway_types::{Ident, Spanned};
 use sway_utils::PerformanceData;
@@ -24,7 +31,7 @@ use tracing::metadata::LevelFilter;
 pub fn handle_initialize(
     state: &ServerState,
     params: &lsp_types::InitializeParams,
-) -> Result<InitializeResult> {
+) -> std::result::Result<(), LanguageServerError> {
     if let Some(initialization_options) = &params.initialization_options {
         let mut config = state.config.write();
         *config = serde_json::from_value(initialization_options.clone())
@@ -48,11 +55,39 @@ pub fn handle_initialize(
             .init();
     }
     tracing::info!("Initializing the Sway Language Server");
-    Ok(InitializeResult {
-        server_info: None,
-        capabilities: crate::server_capabilities(),
-        ..InitializeResult::default()
-    })
+
+    // Determine the workspace root path.
+    let workspace_root = params
+        .root_uri
+        .as_ref()
+        .and_then(|uri| uri.to_file_path().ok())
+        .ok_or(LanguageServerError::ClientNotInitialized)?;
+
+    // Ensure it's a directory. If it's a file, find its manifest's directory.
+    let actual_workspace_root = if workspace_root.is_file() {
+        ManifestFile::from_dir(&workspace_root)
+            .map_err(|_e| DocumentError::ManifestFileNotFound {
+                dir: workspace_root.to_string_lossy().to_string(),
+            })?
+            .dir()
+            .to_path_buf()
+    } else {
+        workspace_root
+    };
+
+    // Create and initialize the global SyncWorkspace.
+    let sw = Arc::new(SyncWorkspace::new());
+    sw.create_temp_dir_from_workspace(&actual_workspace_root)?;
+    sw.clone_manifest_dir_to_temp()?;
+    sw.sync_manifest(); // Assuming this doesn't return a critical error or we log within it.
+
+    // Initialize the OnceLock for sync_workspace
+    state
+        .sync_workspace
+        .set(sw)
+        .map_err(|_| LanguageServerError::FailedToParse)?; // Or a more specific error "SyncWorkspaceAlreadyInitialized"
+
+    Ok(())
 }
 
 pub async fn handle_document_symbol(
@@ -83,8 +118,9 @@ pub async fn handle_goto_definition(
         .await
     {
         Ok((uri, session)) => {
+            let sync = state.sync_workspace.get().unwrap();
             let position = params.text_document_position_params.position;
-            Ok(session.token_definition_response(&uri, position))
+            Ok(session.token_definition_response(&uri, position, &sync))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -127,12 +163,14 @@ pub async fn handle_hover(
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
+            let sync = state.sync_workspace.get().unwrap();
             Ok(capabilities::hover::hover_data(
                 session,
                 &state.keyword_docs,
                 &uri,
                 position,
                 state.config.read().client.clone(),
+                &sync,
             ))
         }
         Err(err) => {
@@ -151,7 +189,8 @@ pub async fn handle_prepare_rename(
         .await
     {
         Ok((uri, session)) => {
-            match capabilities::rename::prepare_rename(session, &uri, params.position) {
+            let sync = state.sync_workspace.get().unwrap();
+            match capabilities::rename::prepare_rename(session, &uri, params.position, &sync) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -177,7 +216,8 @@ pub async fn handle_rename(
         Ok((uri, session)) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
-            match capabilities::rename::rename(session, new_name, &uri, position) {
+            let sync = state.sync_workspace.get().unwrap();
+            match capabilities::rename::rename(session, new_name, &uri, position, &sync) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -225,7 +265,8 @@ pub async fn handle_references(
     {
         Ok((uri, session)) => {
             let position = params.text_document_position.position;
-            Ok(session.token_references(&uri, position))
+            let sync = state.sync_workspace.get().unwrap();
+            Ok(session.token_references(&uri, position, &sync))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
