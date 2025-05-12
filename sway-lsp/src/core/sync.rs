@@ -3,19 +3,12 @@ use crate::{
     utils::document::{get_path_from_url, get_url_from_path, get_url_from_span},
 };
 use dashmap::DashMap;
-use forc_pkg::manifest::GenericManifestFile;
-use forc_pkg::{manifest::Dependency, PackageManifestFile};
-use indexmap::IndexMap;
+use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
+use forc_pkg::PackageManifestFile;
 use lsp_types::Url;
-use notify::RecursiveMode;
-use notify_debouncer_mini::new_debouncer;
-use parking_lot::RwLock;
 use std::{
-    fs::{self, File},
-    io::{Read, Write},
+    fs,
     path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
 };
 use sway_types::{SourceEngine, Span};
 use sway_utils::{
@@ -23,7 +16,6 @@ use sway_utils::{
     SWAY_EXTENSION,
 };
 use tempfile::Builder;
-use tokio::task::JoinHandle;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum Directory {
@@ -34,7 +26,6 @@ pub enum Directory {
 #[derive(Debug)]
 pub struct SyncWorkspace {
     pub directories: DashMap<Directory, PathBuf>,
-    pub notify_join_handle: RwLock<Option<JoinHandle<()>>>,
 }
 
 impl SyncWorkspace {
@@ -43,7 +34,6 @@ impl SyncWorkspace {
     pub(crate) fn new() -> Self {
         Self {
             directories: DashMap::new(),
-            notify_join_handle: RwLock::new(None),
         }
     }
 
@@ -51,14 +41,7 @@ impl SyncWorkspace {
     /// the current workspace.
     pub fn resync(&self) -> Result<(), LanguageServerError> {
         self.clone_manifest_dir_to_temp()?;
-        if let Some(manifest) = self
-            .manifest_path()
-            .and_then(|manifest_path| PackageManifestFile::from_dir(manifest_path).ok())
-        {
-            if let Some(temp_manifest_path) = &self.temp_manifest_path() {
-                edit_manifest_dependency_paths(&manifest, temp_manifest_path);
-            }
-        }
+        self.sync_manifest();
         Ok(())
     }
 
@@ -181,45 +164,19 @@ impl SyncWorkspace {
             .ok()
     }
 
-    /// Watch the manifest directory and check for any save events on Forc.toml
-    pub(crate) fn watch_and_sync_manifest(&self) {
-        let _ = self
-            .manifest_path()
-            .and_then(|manifest_path| PackageManifestFile::from_dir(manifest_path).ok())
-            .map(|manifest| {
-                let manifest_dir = Arc::new(manifest.clone());
-                if let Some(temp_manifest_path) = self.temp_manifest_path() {
-                    edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
-
-                    let handle = tokio::spawn(async move {
-                        let (tx, mut rx) = tokio::sync::mpsc::channel(10);
-                        // Setup debouncer. No specific tickrate, max debounce time 2 seconds
-                        let mut debouncer = new_debouncer(Duration::from_secs(1), move |event| {
-                            if let Ok(e) = event {
-                                let _ = tx.blocking_send(e);
-                            }
-                        })
-                        .unwrap();
-
-                        debouncer
-                            .watcher()
-                            .watch(manifest_dir.as_ref().path(), RecursiveMode::NonRecursive)
-                            .unwrap();
-
-                        while let Some(_events) = rx.recv().await {
-                            // Rescan the Forc.toml and convert
-                            // relative paths to absolute. Save into our temp directory.
-                            edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
-                        }
-                    });
-
-                    // Store the join handle so we can clean up the thread on shutdown
-                    {
-                        let mut join_handle = self.notify_join_handle.write();
-                        *join_handle = Some(handle);
-                    }
-                }
-            });
+    /// Read the Forc.toml and convert relative paths to absolute. Save into our temp directory.
+    pub(crate) fn sync_manifest(&self) {
+        if let (Ok(manifest_dir), Some(manifest_path), Some(temp_manifest_path)) = (
+            self.manifest_dir(),
+            self.manifest_path(),
+            self.temp_manifest_path(),
+        ) {
+            if let Err(err) =
+                edit_manifest_dependency_paths(&manifest_dir, &manifest_path, &temp_manifest_path)
+            {
+                tracing::error!("Failed to edit manifest dependency paths: {}", err);
+            }
+        }
     }
 
     /// Return the path to the projects manifest directory.
@@ -262,41 +219,78 @@ fn convert_url(uri: &Url, from: &Path, to: &PathBuf) -> Result<Url, DirectoryErr
 /// Edit the toml entry using toml_edit with the absolute path.
 /// Save the manifest to temp_dir/Forc.toml.
 pub(crate) fn edit_manifest_dependency_paths(
-    manifest: &PackageManifestFile,
+    manifset_dir: &Path,
+    manifest_path: &Path,
     temp_manifest_path: &Path,
-) {
-    // Key = name of the dependency that has been specified will a relative path
-    // Value = the absolute path that should be used to overwrite the relateive path
-    let mut dependency_map: IndexMap<String, PathBuf> = IndexMap::new();
+) -> Result<(), LanguageServerError> {
+    // Read and parse the original manifest
+    let manifest_content =
+        std::fs::read_to_string(manifest_path).map_err(|err| DocumentError::IOError {
+            path: manifest_path.to_string_lossy().to_string(),
+            error: err.to_string(),
+        })?;
 
-    if let Some(deps) = &manifest.dependencies {
-        for (name, dep) in deps {
-            if let Dependency::Detailed(details) = dep {
-                if details.path.is_some() {
-                    if let Some(abs_path) = manifest.dep_path(name) {
-                        dependency_map.insert(name.clone(), abs_path);
+    let mut doc = manifest_content
+        .parse::<toml_edit::DocumentMut>()
+        .map_err(|err| DocumentError::IOError {
+            path: manifest_path.to_string_lossy().to_string(),
+            error: format!("Failed to parse TOML: {}", err),
+        })?;
+
+    let manifest =
+        ManifestFile::from_file(manifest_path).map_err(|err| DocumentError::IOError {
+            path: manifest_path.to_string_lossy().to_string(),
+            error: err.to_string(),
+        })?;
+
+    if let ManifestFile::Package(package) = manifest {
+        // Process dependencies if they exist
+        if let Some(deps) = &package.dependencies {
+            if let Some(deps_table) = doc.get_mut("dependencies").and_then(|v| v.as_table_mut()) {
+                process_dependencies(manifset_dir, deps, deps_table)?;
+            }
+        }
+    }
+
+    // Write the updated manifest to the temp file
+    std::fs::write(temp_manifest_path, doc.to_string()).map_err(|err| {
+        DocumentError::UnableToWriteFile {
+            path: temp_manifest_path.to_string_lossy().to_string(),
+            err: err.to_string(),
+        }
+    })?;
+
+    Ok(())
+}
+
+/// Process dependencies and convert relative paths to absolute
+fn process_dependencies(
+    manifest_dir: &Path,
+    deps: &std::collections::BTreeMap<String, forc_pkg::manifest::Dependency>,
+    deps_table: &mut toml_edit::Table,
+) -> Result<(), LanguageServerError> {
+    for (name, dependency) in deps {
+        if let forc_pkg::manifest::Dependency::Detailed(details) = dependency {
+            if let Some(rel_path) = &details.path {
+                // Convert relative path to absolute
+                let abs_path = manifest_dir
+                    .join(rel_path)
+                    .canonicalize()
+                    .map_err(|_| DirectoryError::CanonicalizeFailed)?
+                    .to_string_lossy()
+                    .to_string();
+
+                // Update the path in the TOML document
+                if let Some(dep_item) = deps_table.get_mut(name) {
+                    let path_value = toml_edit::Value::from(abs_path);
+                    if let Some(table) = dep_item.as_inline_table_mut() {
+                        table.insert("path", path_value);
                     }
                 }
             }
         }
     }
-
-    if dependency_map.capacity() != 0 {
-        if let Ok(mut file) = File::open(manifest.path()) {
-            let mut toml = String::new();
-            let _ = file.read_to_string(&mut toml);
-            if let Ok(mut manifest_toml) = toml.parse::<toml_edit::DocumentMut>() {
-                for (name, abs_path) in dependency_map {
-                    manifest_toml["dependencies"][&name]["path"] =
-                        toml_edit::value(abs_path.display().to_string());
-                }
-
-                if let Ok(mut file) = File::create(temp_manifest_path) {
-                    let _ = file.write_all(manifest_toml.to_string().as_bytes());
-                }
-            }
-        }
-    }
+    Ok(())
 }
 
 /// Copies only the specified files from the source directory to the target directory.

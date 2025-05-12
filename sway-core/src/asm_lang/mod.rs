@@ -16,7 +16,7 @@ pub(crate) use virtual_register::*;
 
 use crate::{
     asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool},
-    asm_lang::allocated_ops::{AllocatedOpcode, AllocatedRegister},
+    asm_lang::allocated_ops::{AllocatedInstruction, AllocatedRegister},
     language::AsmRegister,
     Ident,
 };
@@ -96,7 +96,7 @@ pub(crate) struct Op {
 
 #[derive(Clone, Debug)]
 pub(crate) struct AllocatedAbstractOp {
-    pub(crate) opcode: Either<AllocatedOpcode, ControlFlowOp<AllocatedRegister>>,
+    pub(crate) opcode: Either<AllocatedInstruction, ControlFlowOp<AllocatedRegister>>,
     /// A descriptive comment for ASM readability.
     ///
     /// For writing guidelines, see [Op::comment].
@@ -106,7 +106,7 @@ pub(crate) struct AllocatedAbstractOp {
 
 #[derive(Clone, Debug)]
 pub(crate) struct RealizedOp {
-    pub(crate) opcode: AllocatedOpcode,
+    pub(crate) opcode: AllocatedInstruction,
     /// A descriptive comment for ASM readability.
     ///
     /// For writing guidelines, see [Op::comment].
@@ -749,6 +749,13 @@ impl Op {
         }
     }
 
+    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut VirtualRegister> {
+        match &mut self.opcode {
+            Either::Left(virt_op) => virt_op.use_registers_mut(),
+            Either::Right(org_op) => org_op.use_registers_mut(),
+        }
+    }
+
     pub(crate) fn def_registers(&self) -> BTreeSet<&VirtualRegister> {
         match &self.opcode {
             Either::Left(virt_op) => virt_op.def_registers(),
@@ -792,7 +799,7 @@ impl Op {
     pub(crate) fn allocate_registers(
         &self,
         pool: &RegisterPool,
-    ) -> Either<AllocatedOpcode, ControlFlowOp<AllocatedRegister>> {
+    ) -> Either<AllocatedInstruction, ControlFlowOp<AllocatedRegister>> {
         match &self.opcode {
             Either::Left(virt_op) => Either::Left(virt_op.allocate_registers(pool)),
             Either::Right(org_op) => Either::Right(org_op.allocate_registers(pool)),
@@ -1394,6 +1401,26 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
             },
+        })
+        .into_iter()
+        .collect()
+    }
+
+    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut Reg> {
+        use ControlFlowOp::*;
+        (match self {
+            Label(_)
+            | Comment
+            | Jump(_)
+            | Call(_)
+            | SaveRetAddr(..)
+            | DataSectionOffsetPlaceholder
+            | ConfigurablesOffsetPlaceholder
+            | LoadLabel(..)
+            | PushAll(_)
+            | PopAll(_) => vec![],
+
+            JumpIfNotZero(r1, _) => vec![r1],
         })
         .into_iter()
         .collect()

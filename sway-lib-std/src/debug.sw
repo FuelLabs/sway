@@ -2,6 +2,8 @@ library;
 
 use ::raw_ptr::*;
 use ::codec::*;
+use ::debug::*;
+use ::slice::*;
 
 const STDERR: u64 = 2;
 
@@ -9,6 +11,13 @@ const STDERR: u64 = 2;
 fn syscall_write(fd: u64, buf: raw_ptr, count: u64) {
     asm(id: 1000, fd: fd, buf: buf, count: count) {
         ecal id fd buf count;
+    }
+}
+
+// int fflush(FILE *_Nullable stream);
+fn syscall_fflush(fd: u64) {
+    asm(id: 1001, fd: fd) {
+        ecal id fd zero zero;
     }
 }
 
@@ -30,9 +39,14 @@ pub struct DebugTuple {
 pub struct Formatter {}
 
 impl Formatter {
+    pub fn print_string_quotes(self) {
+        let c = [34u8];
+        syscall_write(STDERR, __addr_of(c), 1);
+    }
+
     pub fn print_newline(self) {
-        let lf = [10u8];
-        syscall_write(STDERR, __addr_of(lf), 1);
+        let c = [10u8];
+        syscall_write(STDERR, __addr_of(c), 1);
     }
 
     pub fn print_str(self, s: str) {
@@ -41,13 +55,16 @@ impl Formatter {
 
     pub fn print_u8(self, value: u8) {
         let mut value = value;
-        let mut digits = [0u8; 64];
+        let mut digits = [48u8; 64];
         let mut i = 63;
-        while value > 0 {
-            let digit = value % 10;
-            digits[i] = digit + 48; // ascii zero = 48 
-            i -= 1;
+        while true {
+            digits[i] = (value % 10) + 48; // ascii zero = 48
             value = value / 10;
+
+            if value == 0 {
+                break;
+            }
+            i -= 1;
         }
 
         syscall_write(STDERR, __addr_of(digits).add::<u8>(i), 64 - i);
@@ -55,15 +72,19 @@ impl Formatter {
 
     pub fn print_u16(self, value: u16) {
         let mut value = value;
-        let mut digits = [0u8; 64];
+        let mut digits = [48u8; 64];
         let mut i = 63;
-        while value > 0 {
+        while true {
             let digit = asm(v: value % 10) {
                 v: u8
             };
-            digits[i] = digit + 48; // ascii zero = 48 
-            i -= 1;
+            digits[i] = digit + 48; // ascii zero = 48
             value = value / 10;
+
+            if value == 0 {
+                break;
+            }
+            i -= 1;
         }
 
         syscall_write(STDERR, __addr_of(digits).add::<u8>(i), 64 - i);
@@ -71,15 +92,19 @@ impl Formatter {
 
     pub fn print_u32(self, value: u32) {
         let mut value = value;
-        let mut digits = [0u8; 64];
+        let mut digits = [48u8; 64];
         let mut i = 63;
-        while value > 0 {
+        while true {
             let digit = asm(v: value % 10) {
                 v: u8
             };
-            digits[i] = digit + 48; // ascii zero = 48 
-            i -= 1;
+            digits[i] = digit + 48; // ascii zero = 48
             value = value / 10;
+
+            if value == 0 {
+                break;
+            }
+            i -= 1;
         }
 
         syscall_write(STDERR, __addr_of(digits).add::<u8>(i), 64 - i);
@@ -87,15 +112,19 @@ impl Formatter {
 
     pub fn print_u64(self, value: u64) {
         let mut value = value;
-        let mut digits = [0u8; 64];
+        let mut digits = [48u8; 64];
         let mut i = 63;
-        while value > 0 {
+        while true {
             let digit = asm(v: value % 10) {
                 v: u8
             };
-            digits[i] = digit + 48; // ascii zero = 48 
-            i -= 1;
+            digits[i] = digit + 48; // ascii zero = 48
             value = value / 10;
+
+            if value == 0 {
+                break;
+            }
+            i -= 1;
         }
 
         syscall_write(STDERR, __addr_of(digits).add::<u8>(i), 64 - i);
@@ -104,9 +133,9 @@ impl Formatter {
     pub fn print_u256(self, value: u256) {
         let mut value = value;
         // u256::MAX = 115792089237316195423570985008687907853269984665640564039457584007913129639935
-        let mut digits = [0u8; 80];
+        let mut digits = [48u8; 80];
         let mut i = 79;
-        while value > 0 {
+        while true {
             let rem = value % 10;
             let (_, _, _, digit) = asm(rem: rem) {
                 rem: (u64, u64, u64, u64)
@@ -114,12 +143,56 @@ impl Formatter {
             let digit = asm(v: digit % 10) {
                 v: u8
             };
-            digits[i] = digit + 48; // ascii zero = 48 
-            i -= 1;
+            digits[i] = digit + 48; // ascii zero = 48
             value = value / 10;
+
+            if value == 0 {
+                break;
+            }
+            i -= 1;
         }
 
         syscall_write(STDERR, __addr_of(digits).add::<u8>(i), 80 - i);
+    }
+
+    pub fn print_u256_as_hex(self, value: u256, uppercase: bool) {
+        let a = if uppercase {
+            // ascii A
+            65u8
+        } else {
+            // ascii a
+            97u8
+        };
+
+        let mut value = value;
+        // 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+        let mut digits = [48u8; 66];
+        digits[0] = 48; // ascii Zero
+        digits[1] = 120; // ascii X
+        let mut i = 65;
+        while true {
+            let rem = value % 16;
+            let (_, _, _, digit) = asm(rem: rem) {
+                rem: (u64, u64, u64, u64)
+            };
+            let digit = asm(v: digit % 16) {
+                v: u8
+            };
+
+            if digit < 10 {
+                digits[i] = digit + 48; // ascii zero = 48
+            } else {
+                digits[i] = (digit - 10) + a;
+            }
+            value = value / 16;
+
+            if value == 0 {
+                break;
+            }
+            i -= 1;
+        }
+
+        syscall_write(STDERR, __addr_of(digits), 66);
     }
 
     pub fn debug_struct(self, name: str) -> DebugStruct {
@@ -149,6 +222,10 @@ impl Formatter {
             f: self,
             has_fields: false,
         }
+    }
+
+    pub fn flush(self) {
+        syscall_fflush(STDERR);
     }
 }
 
@@ -224,6 +301,22 @@ pub trait Debug {
     fn fmt(self, ref mut f: Formatter);
 }
 
+impl Debug for () {
+    fn fmt(self, ref mut f: Formatter) {
+        f.print_str("()");
+    }
+}
+
+impl Debug for bool {
+    fn fmt(self, ref mut f: Formatter) {
+        if self {
+            f.print_str("true");
+        } else {
+            f.print_str("false");
+        }
+    }
+}
+
 impl Debug for u8 {
     fn fmt(self, ref mut f: Formatter) {
         f.print_u8(self);
@@ -254,6 +347,14 @@ impl Debug for u256 {
     }
 }
 
+impl Debug for b256 {
+    fn fmt(self, ref mut f: Formatter) {
+        f.print_u256_as_hex(asm(s: self) {
+            s: u256
+        }, true);
+    }
+}
+
 impl Debug for raw_ptr {
     fn fmt(self, ref mut f: Formatter) {
         let v = asm(v: self) {
@@ -265,14 +366,27 @@ impl Debug for raw_ptr {
 
 impl Debug for str {
     fn fmt(self, ref mut f: Formatter) {
-        let quote = [34u8];
-        f.print_str(asm(s: (__addr_of(quote), 1)) {
-            s: str
-        });
+        f.print_string_quotes();
         f.print_str(self);
-        f.print_str(asm(s: (__addr_of(quote), 1)) {
-            s: str
-        });
+        f.print_string_quotes();
+    }
+}
+
+impl<T> Debug for &[T]
+where
+    T: Debug,
+{
+    fn fmt(self, ref mut f: Formatter) {
+        let mut f = f.debug_list();
+
+        let mut i = 0;
+        while i < self.len() {
+            let item: T = *__elem_at(self, i);
+            f = f.entry(item);
+            i += 1;
+        }
+
+        f.finish();
     }
 }
 

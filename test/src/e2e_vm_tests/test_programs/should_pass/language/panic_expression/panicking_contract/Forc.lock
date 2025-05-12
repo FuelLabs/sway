@@ -1,0 +1,16 @@
+[[package]]
+name = "panicking_contract"
+source = "member"
+dependencies = [
+    "panicking_lib",
+    "std",
+]
+
+[[package]]
+name = "panicking_lib"
+source = "path+from-root-4F2C749FBE3C7AD8"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-4F2C749FBE3C7AD8"

@@ -5,24 +5,32 @@ use fuel_vm::{
 
 // ssize_t write(int fd, const void buf[.count], size_t count);
 pub const WRITE_SYSCALL: u64 = 1000;
+pub const FFLUSH_SYSCALL: u64 = 1001;
 
 #[derive(Debug, Clone)]
 pub enum Syscall {
     Write { fd: u64, bytes: Vec<u8> },
+    Fflush { fd: u64 },
     Unknown { ra: u64, rb: u64, rc: u64, rd: u64 },
 }
 
 impl Syscall {
     pub fn apply(&self) {
+        use std::io::Write;
+        use std::os::fd::FromRawFd;
         match self {
             Syscall::Write { fd, bytes } => {
                 let s = std::str::from_utf8(bytes.as_slice()).unwrap();
 
-                use std::io::Write;
-                use std::os::fd::FromRawFd;
-
                 let mut f = unsafe { std::fs::File::from_raw_fd(*fd as i32) };
                 write!(&mut f, "{}", s).unwrap();
+
+                // Dont close the fd
+                std::mem::forget(f);
+            }
+            Syscall::Fflush { fd } => {
+                let mut f = unsafe { std::fs::File::from_raw_fd(*fd as i32) };
+                let _ = f.flush();
 
                 // Dont close the fd
                 std::mem::forget(f);
@@ -80,8 +88,8 @@ impl EcalSyscallHandler {
 }
 
 impl EcalHandler for EcalSyscallHandler {
-    fn ecal<M, S, Tx>(
-        vm: &mut Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, V>(
+        vm: &mut Interpreter<M, S, Tx, Self, V>,
         a: RegId,
         b: RegId,
         c: RegId,
@@ -98,6 +106,10 @@ impl EcalHandler for EcalSyscallHandler {
                 let count = regs[d.to_u8() as usize];
                 let bytes = vm.memory().read(addr, count).unwrap().to_vec();
                 Syscall::Write { fd, bytes }
+            }
+            FFLUSH_SYSCALL => {
+                let fd = regs[b.to_u8() as usize];
+                Syscall::Fflush { fd }
             }
             _ => {
                 let ra = regs[a.to_u8() as usize];

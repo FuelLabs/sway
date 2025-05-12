@@ -46,11 +46,11 @@ impl AllocatedAbstractInstructionSet {
             // than the operations we want to retain ;-)
             let remove = match &op.opcode {
                 // `cfei i0` and `cfsi i0` pairs.
-                Either::Left(AllocatedOpcode::CFEI(imm))
-                | Either::Left(AllocatedOpcode::CFSI(imm)) => imm.value() == 0u32,
+                Either::Left(AllocatedInstruction::CFEI(imm))
+                | Either::Left(AllocatedInstruction::CFSI(imm)) => imm.value() == 0u32,
                 // `cfe $zero` and `cfs $zero` pairs.
-                Either::Left(AllocatedOpcode::CFE(reg))
-                | Either::Left(AllocatedOpcode::CFS(reg)) => reg.is_zero(),
+                Either::Left(AllocatedInstruction::CFE(reg))
+                | Either::Left(AllocatedInstruction::CFS(reg)) => reg.is_zero(),
                 _ => false,
             };
 
@@ -144,14 +144,14 @@ impl AllocatedAbstractInstructionSet {
                     let (mask_l, mask_h) = generate_mask(&regs);
                     if mask_l.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
-                            opcode: Either::Left(AllocatedOpcode::PSHL(mask_l)),
+                            opcode: Either::Left(AllocatedInstruction::PSHL(mask_l)),
                             comment: "save registers 16..40".into(),
                             owning_span: op.owning_span.clone(),
                         });
                     }
                     if mask_h.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
-                            opcode: Either::Left(AllocatedOpcode::PSHH(mask_h)),
+                            opcode: Either::Left(AllocatedInstruction::PSHH(mask_h)),
                             comment: "save registers 40..64".into(),
                             owning_span: op.owning_span.clone(),
                         });
@@ -170,14 +170,14 @@ impl AllocatedAbstractInstructionSet {
                     let (mask_l, mask_h) = generate_mask(&regs);
                     if mask_h.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
-                            opcode: Either::Left(AllocatedOpcode::POPH(mask_h)),
+                            opcode: Either::Left(AllocatedInstruction::POPH(mask_h)),
                             comment: "restore registers 40..64".into(),
                             owning_span: op.owning_span.clone(),
                         });
                     }
                     if mask_l.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
-                            opcode: Either::Left(AllocatedOpcode::POPL(mask_l)),
+                            opcode: Either::Left(AllocatedInstruction::POPL(mask_l)),
                             comment: "restore registers 16..40".into(),
                             owning_span: op.owning_span.clone(),
                         });
@@ -246,7 +246,7 @@ impl AllocatedAbstractInstructionSet {
                         );
                         assert!(curr_offset < label_offsets.get(to).unwrap().offs);
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::SUB(
+                            opcode: AllocatedInstruction::SUB(
                                 r1.clone(),
                                 AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
                                 AllocatedRegister::Constant(ConstantRegister::InstructionStart),
@@ -256,7 +256,7 @@ impl AllocatedAbstractInstructionSet {
                                 .into(),
                         });
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::SRLI(
+                            opcode: AllocatedInstruction::SRLI(
                                 r1.clone(),
                                 r1.clone(),
                                 VirtualImmediate12::new_unchecked(2, "two must fit in 12 bits"),
@@ -265,21 +265,21 @@ impl AllocatedAbstractInstructionSet {
                             comment: "get current instruction offset in 32-bit words".into(),
                         });
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::ADDI(r1.clone(), r1, imm),
+                            opcode: AllocatedInstruction::ADDI(r1.clone(), r1, imm),
                             owning_span,
                             comment,
                         });
                     }
                     ControlFlowOp::DataSectionOffsetPlaceholder => {
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::DataSectionOffsetPlaceholder,
+                            opcode: AllocatedInstruction::DataSectionOffsetPlaceholder,
                             owning_span: None,
                             comment: String::new(),
                         });
                     }
                     ControlFlowOp::ConfigurablesOffsetPlaceholder => {
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::ConfigurablesOffsetPlaceholder,
+                            opcode: AllocatedInstruction::ConfigurablesOffsetPlaceholder,
                             owning_span: None,
                             comment: String::new(),
                         });
@@ -381,7 +381,7 @@ impl AllocatedAbstractInstructionSet {
             Either::Right(Label(_)) => 0,
 
             // A special case for LoadDataId which may be 1 or 2 ops, depending on the source size.
-            Either::Left(AllocatedOpcode::LoadDataId(_, ref data_id)) => {
+            Either::Left(AllocatedInstruction::LoadDataId(_, ref data_id)) => {
                 let has_copy_type = data_section.has_copy_type(data_id).expect(
                     "Internal miscalculation in data section -- \
                         data id did not match up to any actual data",
@@ -393,7 +393,7 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
-            Either::Left(AllocatedOpcode::AddrDataId(_, ref id)) => {
+            Either::Left(AllocatedInstruction::AddrDataId(_, ref id)) => {
                 if data_section.data_id_to_offset(id) > usize::from(Imm12::MAX.to_u16()) {
                     2
                 } else {
@@ -402,15 +402,15 @@ impl AllocatedAbstractInstructionSet {
             }
 
             // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
-            Either::Left(AllocatedOpcode::CFEI(ref op))
-            | Either::Left(AllocatedOpcode::CFSI(ref op))
+            Either::Left(AllocatedInstruction::CFEI(ref op))
+            | Either::Left(AllocatedInstruction::CFSI(ref op))
                 if op.value() == 0 =>
             {
                 0
             }
 
             // Another special case for the blob opcode, used for testing.
-            Either::Left(AllocatedOpcode::BLOB(ref count)) => count.value() as u64,
+            Either::Left(AllocatedInstruction::BLOB(ref count)) => count.value() as u64,
 
             // This is a concrete op, size is fixed
             Either::Left(_) => 1,
