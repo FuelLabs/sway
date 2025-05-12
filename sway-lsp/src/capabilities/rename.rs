@@ -1,6 +1,9 @@
 use crate::{
     core::{
-        session::Session, sync::SyncWorkspace, token::{SymbolKind, Token, TokenIdent, TypedAstToken}, token_map::TokenMapExt
+        session::Session,
+        sync::SyncWorkspace,
+        token::{SymbolKind, Token, TokenIdent, TypedAstToken},
+        token_map::TokenMapExt,
     },
     error::{LanguageServerError, RenameError},
     utils::document::get_url_from_path,

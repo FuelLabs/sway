@@ -77,7 +77,13 @@ impl<'a> HoverLinkContents<'a> {
     }
 
     /// Adds a single type to the list of related types.
-    fn add_related_type(&mut self, name: String, span: &Span, callpath: CallPath, sync: &SyncWorkspace) {
+    fn add_related_type(
+        &mut self,
+        name: String,
+        span: &Span,
+        callpath: CallPath,
+        sync: &SyncWorkspace,
+    ) {
         if let Ok(mut uri) = get_url_from_span(self.engines.se(), span) {
             let converted_url = sync.temp_to_workspace_url(&uri);
             if let Ok(url) = converted_url {
@@ -94,7 +100,11 @@ impl<'a> HoverLinkContents<'a> {
     }
 
     /// Adds all implementations of the given [`TyTraitDecl`] to the list of implementations.
-    pub fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl, sync: &SyncWorkspace) {
+    pub fn add_implementations_for_trait(
+        &mut self,
+        trait_decl: &TyTraitDecl,
+        sync: &SyncWorkspace,
+    ) {
         if let Some(namespace) = self.session.namespace() {
             let call_path =
                 CallPath::from(trait_decl.name.clone()).to_fullpath(self.engines, &namespace);
@@ -117,7 +127,12 @@ impl<'a> HoverLinkContents<'a> {
     }
 
     /// Adds implementations of the given type to the list of implementations using the [`TypeId`].
-    pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: TypeId, sync: &SyncWorkspace) {
+    pub fn add_implementations_for_type(
+        &mut self,
+        decl_span: &Span,
+        type_id: TypeId,
+        sync: &SyncWorkspace,
+    ) {
         if let Some(namespace) = self.session.namespace() {
             let impl_spans = TraitMap::get_impl_spans_for_type(
                 namespace.current_module(),
@@ -130,7 +145,12 @@ impl<'a> HoverLinkContents<'a> {
 
     /// Adds implementations to the list of implementation spans, with the declaration span first.
     /// Ensure that all paths are converted to workspace paths before adding them.
-    fn add_implementations(&mut self, decl_span: &Span, mut impl_spans: Vec<Span>, sync: &SyncWorkspace) {
+    fn add_implementations(
+        &mut self,
+        decl_span: &Span,
+        mut impl_spans: Vec<Span>,
+        sync: &SyncWorkspace,
+    ) {
         let mut all_spans = vec![decl_span.clone()];
         all_spans.append(&mut impl_spans);
         all_spans.dedup();

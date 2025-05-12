@@ -4,11 +4,14 @@
 
 use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
-use forc_pkg::manifest::ManifestFile;
 use forc_pkg::manifest::GenericManifestFile;
+use forc_pkg::manifest::ManifestFile;
 use regex::Regex;
 use serde_json::json;
-use std::{borrow::Cow, path::{Path, PathBuf}};
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+};
 use sway_lsp::{
     handlers::request,
     lsp_ext::{ShowAstParams, VisualizeParams},
@@ -47,12 +50,17 @@ pub(crate) fn client_capabilities() -> ClientCapabilities {
     }
 }
 
-pub(crate) async fn initialize_request(service: &mut LspService<ServerState>, entry_point: &PathBuf) -> Request {
+pub(crate) async fn initialize_request(
+    service: &mut LspService<ServerState>,
+    entry_point: &PathBuf,
+) -> Request {
     let search_dir = entry_point.parent().unwrap_or(&entry_point);
     let manifest_file = ManifestFile::from_dir(search_dir).unwrap();
     let project_root_path = manifest_file.dir();
-    let root_uri = Url::from_directory_path(project_root_path)
-        .expect(&format!("Failed to create directory URL from project root: {:?}", project_root_path));
+    let root_uri = Url::from_directory_path(project_root_path).expect(&format!(
+        "Failed to create directory URL from project root: {:?}",
+        project_root_path
+    ));
 
     // Construct the InitializeParams using the defined client_capabilities
     let params = json!({
@@ -68,7 +76,11 @@ pub(crate) async fn initialize_request(service: &mut LspService<ServerState>, en
     let expected_initialize_result = json!({ "capabilities": sway_lsp::server_capabilities() });
     let expected_response = Response::from_ok(1.into(), expected_initialize_result);
 
-    assert!(response.is_ok(), "Initialize request failed: {:?}", response.err());
+    assert!(
+        response.is_ok(),
+        "Initialize request failed: {:?}",
+        response.err()
+    );
     assert_json_eq!(expected_response, response.ok().unwrap());
 
     initialize_request
