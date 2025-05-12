@@ -67,6 +67,18 @@ pub(crate) async fn exit_notification(service: &mut LspService<ServerState>) {
     assert_eq!(response, Ok(None));
 }
 
+pub(crate) async fn did_change_watched_files_notification(
+    service: &mut LspService<ServerState>,
+    params: DidChangeWatchedFilesParams,
+) {
+    let params: serde_json::value::Value = serde_json::to_value(params).unwrap();
+    let did_change_watched_files = Request::build("workspace/didChangeWatchedFiles")
+        .params(params)
+        .finish();
+    let response = call_request(service, did_change_watched_files).await;
+    assert_eq!(response, Ok(None));
+}
+
 pub(crate) async fn did_open_notification(
     service: &mut LspService<ServerState>,
     uri: &Url,
