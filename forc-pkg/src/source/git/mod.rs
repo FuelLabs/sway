@@ -1,5 +1,6 @@
 mod auth;
 
+use super::Checksum;
 use crate::manifest::GenericManifestFile;
 use crate::{
     manifest::{self, PackageManifestFile},
@@ -16,8 +17,6 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-
-use super::Checksum;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Url {
@@ -152,6 +151,10 @@ impl Checksum for Pinned {
     fn checksum(&self) -> &str {
         &self.checksum
     }
+
+    fn verify_checksum(&self, checksum: &str) -> bool {
+        self.checksum == checksum
+    }
 }
 
 impl Pinned {
@@ -176,6 +179,7 @@ impl source::Pin for Source {
             Pinned {
                 source: self.clone(),
                 commit_hash,
+                checksum: todo!(),
             }
         } else if let Reference::DefaultBranch | Reference::Branch(_) = self.reference {
             // If the reference is to a branch or to the default branch we need to fetch
@@ -189,6 +193,7 @@ impl source::Pin for Source {
                 Ok(Some((_local_path, commit_hash))) => Pinned {
                     source: self.clone(),
                     commit_hash,
+                    checksum: todo!(),
                 },
                 _ => {
                     // If the checkout we are looking for does not exists locally or an
@@ -241,12 +246,6 @@ impl source::DepPath for Pinned {
         let path = manifest::find_within(&repo_path, name)
             .ok_or_else(|| anyhow!("failed to find package `{}` in {}", name, self))?;
         Ok(source::DependencyPath::ManifestPath(path))
-    }
-}
-
-impl source::Checksum for Pinned {
-    fn checksum(&self) -> String {
-        self.checksum
     }
 }
 
@@ -340,6 +339,7 @@ impl FromStr for Pinned {
         Ok(Self {
             source,
             commit_hash,
+            checksum: todo!(),
         })
     }
 }
@@ -511,6 +511,7 @@ pub fn pin(fetch_id: u64, name: &str, source: Source) -> Result<Pinned> {
     Ok(Pinned {
         source,
         commit_hash,
+        checksum: todo!(),
     })
 }
 

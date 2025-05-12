@@ -25,6 +25,7 @@ ipfs-api-backend-hyper = { workspace = true, features = ["with-builder"] }
 petgraph = { workspace = true, features = ["serde-1"] }
 reqwest.workspace = true
 scopeguard.workspace = true
+sha2.workspace = true
 semver = { workspace = true, features = ["serde"] }
 serde = { workspace = true, features = ["derive"] }
 serde_ignored.workspace = true

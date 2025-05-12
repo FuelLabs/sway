@@ -48,6 +48,7 @@ trait DepPath {
 
 trait Checksum {
     fn checksum(&self) -> &str;
+    fn verify_checksum(&self, checksum: &str) -> bool;
 }
 
 type FetchId = u64;
