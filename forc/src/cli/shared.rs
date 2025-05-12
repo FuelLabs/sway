@@ -32,8 +32,8 @@ pub struct SourceArgs {
 #[command(group(
     ArgGroup::new("git_ref")
         .args(["branch", "tag", "rev"])
-        .multiple(false) // only one allowed
-        .requires("git") // require --git if any git_ref is set
+        .multiple(false)
+        .requires("git")
 ))]
 pub struct GitRef {
     /// The branch to use.

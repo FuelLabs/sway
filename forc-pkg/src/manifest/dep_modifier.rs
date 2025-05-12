@@ -16,6 +16,9 @@ use sway_core::fuel_prelude::fuel_tx;
 use toml_edit::{value, DocumentMut, InlineTable, Item, Table, Value};
 use tracing::info;
 
+const DEPS: &str = "dependencies";
+const CONTRACT_DEPS: &str = "contract-dependencies";
+
 #[derive(Clone, Debug, Default)]
 pub enum Action {
     #[default]
@@ -49,7 +52,7 @@ pub struct ModifyOpts {
 }
 
 pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
-    let cwd = if let Some(p) = opts.manifest_path.clone() {
+    let cwd = if let Some(p) = &opts.manifest_path {
         PathBuf::from(p)
     } else {
         std::env::current_dir()?
@@ -59,12 +62,8 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
     let root_dir = manifest_file.root_dir();
     let mut member_manifests = manifest_file.member_manifests()?;
 
-    let package_spec_dir = resolve_package_path(
-        &manifest_file,
-        opts.package.clone(),
-        &root_dir,
-        &member_manifests,
-    )?;
+    let package_spec_dir =
+        resolve_package_path(&manifest_file, &opts.package, &root_dir, &member_manifests)?;
 
     let content = std::fs::read_to_string(&package_spec_dir)?;
     let mut toml_doc = content.parse::<DocumentMut>()?;
@@ -97,7 +96,7 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
             for dependency in &opts.dependencies {
                 let (dep_name, dependency_data) =
                     resolve_dependency(dependency, &opts, &member_manifests, package_spec.dir())?;
-                section.insert_dep(dep_name, dependency_data, opts.salt.clone());
+                section.insert_dep(dep_name, dependency_data, opts.salt.clone())?;
             }
 
             section.add_deps_manifest_table(
@@ -118,10 +117,7 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
         }
     }
 
-    member_manifests.insert(
-        package_spec.project_name().to_string(),
-        package_spec.clone(),
-    );
+    member_manifests.insert(package_spec.project_name().to_string(), package_spec);
 
     let new_plan = pkg::BuildPlan::from_lock_and_manifests(
         &lock_path,
@@ -131,13 +127,11 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
         &opts.ipfs_node.clone().unwrap_or_default(),
     );
 
-    if new_plan.is_err() {
+    let new_plan = new_plan.or_else(|e| {
         std::fs::write(&package_spec_dir, backup_doc.to_string())
-            .map_err(|e| anyhow!("failed to write toml file: {}", e))?;
-        bail!(new_plan.err().unwrap());
-    }
-
-    let new_plan = new_plan?;
+            .map_err(|write_err| anyhow!("failed to write toml file: {}", write_err))?;
+        Err(e)
+    })?;
 
     let new_lock = Lock::from_graph(new_plan.graph());
 
@@ -163,7 +157,7 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
 
 fn resolve_package_path(
     manifest_file: &ManifestFile,
-    package: Option<String>,
+    package: &Option<String>,
     root_dir: &Path,
     member_manifests: &BTreeMap<String, PackageManifestFile>,
 ) -> Result<PathBuf> {
@@ -190,8 +184,7 @@ fn resolve_workspace_path_inner(
     package_name: &str,
     root_dir: &Path,
 ) -> Result<PathBuf> {
-    if member_manifests.contains_key(package_name) {
-        let dir = member_manifests.get(package_name).unwrap();
+    if let Some(dir) = member_manifests.get(package_name) {
         Ok(dir.path().to_path_buf())
     } else {
         anyhow::bail!(
@@ -211,7 +204,6 @@ fn resolve_dependency<P: AsRef<Path>>(
     let dep_spec: DepSpec = raw.parse()?;
     let dep_name = dep_spec
         .name
-        .clone()
         .ok_or_else(|| anyhow!("Missing name in `{}`", raw))?;
 
     let mut details = DependencyDetails {
@@ -233,8 +225,15 @@ fn resolve_dependency<P: AsRef<Path>>(
     } else {
         if details.is_source_empty() {
             if let Some(member) = member_manifests.get(&dep_name) {
-                let rel_path = pathdiff::diff_paths(member.dir(), package_dir)
-                    .unwrap_or_else(|| member.path().to_path_buf());
+                if member.dir() == package_dir.as_ref() {
+                    bail!("cannot add `{}` as a dependency to itself", dep_name);
+                }
+                let sibling_parent = package_dir.as_ref().parent().unwrap();
+                let rel_path = member
+                    .dir()
+                    .strip_prefix(sibling_parent)
+                    .map(|p| PathBuf::from("..").join(p))
+                    .unwrap_or_else(|_| member.dir().to_path_buf());
                 details.path = Some(rel_path.to_string_lossy().to_string());
             }
         }
@@ -260,13 +259,12 @@ impl FromStr for DepSpec {
             bail!("dependency spec cannot be empty");
         }
 
-        let mut dep = DepSpec::default();
-
         let mut s = s.split('@');
         let Some(name) = s.next() else {
             bail!("dependency name is missing");
         };
 
+        let mut dep = DepSpec::default();
         dep.name = Some(name.parse()?);
 
         let Some(version_req) = s.next() else {
@@ -274,7 +272,6 @@ impl FromStr for DepSpec {
         };
 
         dep.version_req = Some(version_req.parse()?);
-
         Ok(dep)
     }
 }
@@ -299,25 +296,31 @@ pub enum DepSection<'a> {
 }
 
 impl DepSection<'_> {
-    pub fn insert_dep(&mut self, name: String, data: Dependency, salt: Option<String>) {
+    pub fn insert_dep(
+        &mut self,
+        name: String,
+        data: Dependency,
+        salt: Option<String>,
+    ) -> Result<()> {
         match self {
             DepSection::Regular(map) => {
                 map.insert(name, data);
             }
             DepSection::Contract(map, salt_opt) => {
-                let resolved_salt = salt
-                    .or_else(|| salt_opt.clone())
-                    .map(|s| HexSalt::from_str(&s).unwrap())
-                    .unwrap_or_else(|| HexSalt(fuel_tx::Salt::default()));
-
+                let resolved_salt = match salt.as_ref().or_else(|| salt_opt.as_ref()) {
+                    Some(s) => {
+                        HexSalt::from_str(s).map_err(|e| anyhow!("Invalid salt format: {}", e))?
+                    }
+                    None => HexSalt(fuel_tx::Salt::default()),
+                };
                 let contract_dep = ContractDependency {
                     dependency: data,
                     salt: resolved_salt,
                 };
-
                 map.insert(name, contract_dep);
             }
         }
+        Ok(())
     }
 
     pub fn remove_deps_manifest_table<P: AsRef<Path>>(
@@ -331,28 +334,26 @@ impl DepSection<'_> {
             DepSection::Regular(ref mut map) => {
                 for dep in deps {
                     if !map.contains_key(*dep) {
-                        bail!(
-                            "the dependency `{}` could not be found in `dependencies`",
-                            dep
-                        );
+                        bail!("the dependency `{}` could not be found in `{}`", dep, DEPS);
                     }
                     map.remove(*dep);
                 }
                 manifest.dependencies = Some(map.clone());
-                remove_deps_from_table(doc, manifest_path, "dependencies", deps)?;
+                remove_deps_from_table(doc, manifest_path, DEPS, deps)?;
             }
             DepSection::Contract(ref mut map, _) => {
                 for dep in deps {
                     if !map.contains_key(*dep) {
                         bail!(
-                            "the dependency `{}` could not be found in `contract-dependencies`",
-                            dep
+                            "the dependency `{}` could not be found in `{}`",
+                            dep,
+                            CONTRACT_DEPS
                         );
                     }
                     map.remove(*dep);
                 }
                 manifest.contract_dependencies = Some(map.clone());
-                remove_deps_from_table(doc, manifest_path, "contract-dependencies", deps)?;
+                remove_deps_from_table(doc, manifest_path, CONTRACT_DEPS, deps)?;
             }
         };
         Ok(())
@@ -379,7 +380,7 @@ impl DepSection<'_> {
                     };
                     table.insert(name, item);
                 }
-                ("dependencies", table)
+                (DEPS, table)
             }
             DepSection::Contract(deps, salt_hex) => {
                 let mut table = Table::new();
@@ -399,7 +400,7 @@ impl DepSection<'_> {
                     };
                     table.insert(name, item);
                 }
-                ("contract-dependencies", table)
+                (CONTRACT_DEPS, table)
             }
         };
         doc[section_name] = Item::Table(new_table);

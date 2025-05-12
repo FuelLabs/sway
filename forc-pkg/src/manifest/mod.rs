@@ -1,5 +1,5 @@
 pub mod build_profile;
-pub mod manager;
+pub mod dep_modifier;
 
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
@@ -369,7 +369,7 @@ impl DependencyDetails {
         }
 
         if version.is_some() && path.is_some() {
-            bail!("Both version and path details provided fro same dependency");
+            bail!("Both version and path details provided for same dependency");
         }
 
         Ok(())

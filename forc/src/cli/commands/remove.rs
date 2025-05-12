@@ -49,11 +49,7 @@ pub struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
-    let _ = command;
-    match forc_remove::remove(command) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(format!("couldn't remove dependencies: {}", e)
-            .as_str()
-            .into()),
-    }
+    forc_remove::remove(command)
+        .map_err(|e| format!("failed to add dependencies: {}", e))
+        .map_err(|msg| msg.as_str().into())
 }
