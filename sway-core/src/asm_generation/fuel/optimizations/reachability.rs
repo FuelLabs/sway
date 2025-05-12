@@ -88,7 +88,9 @@ impl AbstractInstructionSet {
         let mut reachables = vec![false; ops.len()];
         let mut worklist = vec![0];
         while let Some(op_idx) = worklist.pop() {
-            assert!(!reachables[op_idx]);
+            if reachables[op_idx] {
+                continue;
+            }
             reachables[op_idx] = true;
             let op = &ops[op_idx];
             for s in &op.successors(op_idx, ops, &label_to_index) {
