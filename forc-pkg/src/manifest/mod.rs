@@ -356,8 +356,20 @@ impl DependencyDetails {
             bail!("Details reserved for git sources used without a git field");
         }
 
-        if version.is_some() && git.is_some() {
-            bail!("Both version and git details provided for same dependency");
+        if git.is_some() && branch.is_some() && tag.is_some() && rev.is_some() {
+            bail!("Cannot specify `branch`, `tag`, and `rev` together for dependency with a Git source");
+        }
+
+        if git.is_some() && branch.is_some() && tag.is_some() {
+            bail!("Cannot specify both `branch` and `tag` for dependency with a Git source");
+        }
+
+        if git.is_some() && rev.is_some() && tag.is_some() {
+            bail!("Cannot specify both `rev` and `tag` for dependency with a Git source");
+        }
+
+        if git.is_some() && branch.is_some() && rev.is_some() {
+            bail!("Cannot specify both `branch` and `rev` for dependency with a Git source");
         }
 
         if version.is_some() && ipfs.is_some() {

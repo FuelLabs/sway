@@ -9,7 +9,7 @@ use forc_util::ForcResult;
 forc_util::cli_examples! {
 crate::cli::Opt {
     [Add a dependencies => "forc remove <DEP>"]
-    [Add a contract dependency => "forc renove <DEP> --contract-dep"]
+    [Add a contract dependency => "forc remove <DEP> --contract-dep"]
     [Dry run  => "forc remove <DEP> --dry-run"]
 }
 }
