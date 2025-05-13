@@ -912,7 +912,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
   publish-sway-lib-std:
-    needs: publish
+    needs: [publish, build-and-release-forc-binaries]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
@@ -946,7 +946,7 @@ jobs:
 
   build-publish-release-image:
     # Build & Publish Docker Image Per Sway Release
-    needs: [publish, publish-sway-lib-std]
+    needs: [publish]
     runs-on: buildjet-4vcpu-ubuntu-2204
     permissions:
       contents: read
@@ -1003,7 +1003,7 @@ jobs:
     name: Build and upload forc binaries to release
     runs-on: ${{ matrix.job.os }}
     if: github.event_name == 'release' && github.event.action == 'published'
-    needs: [publish, publish-sway-lib-std]
+    needs: [publish]
     strategy:
       matrix:
         job:
