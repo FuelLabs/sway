@@ -1,9 +1,9 @@
-use crate::{
-    cli::shared::{ManifestArgs, PackagesSelectionArgs, SectionArgs, SourceArgs},
-    ops::forc_add,
-};
+use crate::cli::shared::{ManifestArgs, PackagesSelectionArgs, SectionArgs, SourceArgs};
 use clap::Parser;
-use forc_pkg::source::IPFSNode;
+use forc_pkg::{
+    manifest::dep_modifier::{self, Action, ModifyOpts},
+    source::IPFSNode,
+};
 use forc_util::ForcResult;
 
 forc_util::cli_examples! {
@@ -52,7 +52,29 @@ pub struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
-    forc_add::add(command)
+    dep_modifier::modify_dependencies(command.into())
         .map_err(|e| format!("failed to add dependencies: {}", e))
         .map_err(|msg| msg.as_str().into())
+}
+
+impl From<Command> for ModifyOpts {
+    fn from(cmd: Command) -> Self {
+        ModifyOpts {
+            action: Action::Add,
+            manifest_path: cmd.manifest.manisfest_path,
+            package: cmd.package.package,
+            source_path: cmd.source.path,
+            git: cmd.source.git,
+            branch: cmd.source.git_ref.branch,
+            tag: cmd.source.git_ref.tag,
+            rev: cmd.source.git_ref.rev,
+            ipfs: cmd.source.ipfs,
+            contract_deps: cmd.section.contract_deps,
+            salt: cmd.section.salt,
+            ipfs_node: cmd.ipfs_node,
+            dependencies: cmd.dependencies,
+            dry_run: cmd.dry_run,
+            offline: cmd.offline,
+        }
+    }
 }

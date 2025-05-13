@@ -1,9 +1,9 @@
-use crate::{
-    cli::shared::{ManifestArgs, PackagesSelectionArgs, SectionArgs},
-    ops::forc_remove,
-};
+use crate::cli::shared::{ManifestArgs, PackagesSelectionArgs, SectionArgs};
 use clap::Parser;
-use forc_pkg::source::IPFSNode;
+use forc_pkg::{
+    manifest::dep_modifier::{self, Action, ModifyOpts},
+    source::IPFSNode,
+};
 use forc_util::ForcResult;
 
 forc_util::cli_examples! {
@@ -49,7 +49,29 @@ pub struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
-    forc_remove::remove(command)
-        .map_err(|e| format!("failed to add dependencies: {}", e))
+    dep_modifier::modify_dependencies(command.into())
+        .map_err(|e| format!("failed to remove dependencies: {}", e))
         .map_err(|msg| msg.as_str().into())
+}
+
+impl From<Command> for ModifyOpts {
+    fn from(cmd: Command) -> Self {
+        ModifyOpts {
+            action: Action::Remove,
+            manifest_path: cmd.manifest.manisfest_path,
+            package: cmd.package.package,
+            source_path: None,
+            git: None,
+            branch: None,
+            tag: None,
+            rev: None,
+            ipfs: None,
+            contract_deps: cmd.section.contract_deps,
+            salt: cmd.section.salt,
+            ipfs_node: cmd.ipfs_node,
+            dependencies: cmd.dependencies,
+            dry_run: cmd.dry_run,
+            offline: cmd.offline,
+        }
+    }
 }
