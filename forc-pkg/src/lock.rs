@@ -39,7 +39,6 @@ pub struct PkgLock {
     source: String,
     dependencies: Option<Vec<PkgDepLine>>,
     contract_dependencies: Option<Vec<PkgDepLine>>,
-    checksum: String,
 }
 
 /// `PkgDepLine` is a terse, single-line, git-diff-friendly description of a package's
@@ -117,15 +116,12 @@ impl PkgLock {
             None
         };
 
-        let checksum = todo!("hash the source itself");
-
         Self {
             name,
             version,
             source,
             dependencies,
             contract_dependencies,
-            checksum,
         }
     }
 

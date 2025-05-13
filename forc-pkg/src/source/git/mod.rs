@@ -1,6 +1,5 @@
 mod auth;
 
-use super::Checksum;
 use crate::manifest::GenericManifestFile;
 use crate::{
     manifest::{self, PackageManifestFile},
@@ -57,9 +56,6 @@ pub struct Pinned {
     pub source: Source,
     /// The hash to which we have pinned the source.
     pub commit_hash: String,
-    /// Calculated sha256-hash for this given pinned instance.
-    /// Prefixed with `0x`.
-    pub checksum: String,
 }
 
 /// Error returned upon failed parsing of `Pinned::from_str`.
@@ -147,16 +143,6 @@ impl Reference {
     }
 }
 
-impl Checksum for Pinned {
-    fn checksum(&self) -> &str {
-        &self.checksum
-    }
-
-    fn verify_checksum(&self, checksum: &str) -> bool {
-        self.checksum == checksum
-    }
-}
-
 impl Pinned {
     pub const PREFIX: &'static str = "git";
 }
@@ -179,7 +165,6 @@ impl source::Pin for Source {
             Pinned {
                 source: self.clone(),
                 commit_hash,
-                checksum: todo!(),
             }
         } else if let Reference::DefaultBranch | Reference::Branch(_) = self.reference {
             // If the reference is to a branch or to the default branch we need to fetch
@@ -193,7 +178,6 @@ impl source::Pin for Source {
                 Ok(Some((_local_path, commit_hash))) => Pinned {
                     source: self.clone(),
                     commit_hash,
-                    checksum: todo!(),
                 },
                 _ => {
                     // If the checkout we are looking for does not exists locally or an
@@ -339,7 +323,6 @@ impl FromStr for Pinned {
         Ok(Self {
             source,
             commit_hash,
-            checksum: todo!(),
         })
     }
 }
@@ -511,7 +494,6 @@ pub fn pin(fetch_id: u64, name: &str, source: Source) -> Result<Pinned> {
     Ok(Pinned {
         source,
         commit_hash,
-        checksum: todo!(),
     })
 }
 

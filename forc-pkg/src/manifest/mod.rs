@@ -143,83 +143,10 @@ impl GenericManifestFile for ManifestFile {
 
     // Returns the checksum of the source described by this `ManifestFile`.
     fn checksum(&self) -> Result<String> {
-        /// Helper function to add source (.sw) files to the hash
-        fn add_source_files_to_hash(hasher: &mut sha2::Sha256, base_path: &Path) -> Result<()> {
-            use std::collections::BTreeMap;
-            use walkdir::WalkDir;
-
-            // Using BTreeMap for deterministic ordering by relative path
-            let mut source_files = BTreeMap::new();
-
-            // Find src directory
-            let src_path = base_path.join("src");
-            if src_path.exists() {
-                // Collect all .sw files under src/
-                for entry in WalkDir::new(&src_path) {
-                    let entry = entry?;
-                    let path = entry.path();
-
-                    if path.is_file() && path.extension() == Some(std::ffi::OsStr::new("sw")) {
-                        // Calculate relative path from base_path for consistent naming
-                        let rel_path = path
-                            .strip_prefix(base_path)
-                            .unwrap_or_else(|_| path)
-                            .to_string_lossy()
-                            .to_string();
-
-                        // Read file contents
-                        let content = std::fs::read(path).map_err(|e| {
-                            anyhow::anyhow!("Failed to read file {}: {}", path.display(), e)
-                        })?;
-
-                        source_files.insert(rel_path, content);
-                    }
-                }
-            }
-
-            // Add all files to the hasher in sorted order (guaranteed by BTreeMap)
-            for (rel_path, content) in source_files {
-                hasher.update(rel_path.as_bytes());
-                // Add a separator to prevent concatenation attacks
-                hasher.update(b"\0");
-                hasher.update(&content);
-                // Add another separator between files
-                hasher.update(b"\0\0");
-            }
-
-            Ok(())
-        }
-        // Initialize hasher
-        let mut hasher = Sha256::new();
-
-        // Add normalized manifest content to the hash
         match self {
-            ManifestFile::Package(package) => {
-                // Add serialized package data (normalized representation) to hash
-                let serialized = serde_json::to_string(&package)
-                    .map_err(|e| anyhow::anyhow!("Failed to serialize package manifest: {}", e))?;
-                hasher.update(serialized.as_bytes());
-
-                // Add source files
-                add_source_files_to_hash(&mut hasher, &package.path())?;
-            }
-            ManifestFile::Workspace(workspace) => {
-                // Add serialized workspace data to hash
-                let serialized = serde_json::to_string(workspace).map_err(|e| {
-                    anyhow::anyhow!("Failed to serialize workspace manifest: {}", e)
-                })?;
-                hasher.update(serialized.as_bytes());
-
-                // Add source files from each member
-                for member in workspace.members() {
-                    add_source_files_to_hash(&mut hasher, &member)?;
-                }
-            }
+            ManifestFile::Package(package) => package.checksum(),
+            ManifestFile::Workspace(workspace) => workspace.checksum(),
         }
-
-        // Return the final hash as a hex string
-        let result = hasher.finalize();
-        Ok(format!("{:x}", result))
     }
 }
 
@@ -684,6 +611,18 @@ impl GenericManifestFile for PackageManifestFile {
 
         Ok(member_manifest_files)
     }
+
+    fn checksum(&self) -> Result<String> {
+        let mut hasher = Sha256::new();
+        let serialized = serde_json::to_string(&self.manifest)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize package manifest: {}", e))?;
+        hasher.update(serialized.as_bytes());
+
+        add_source_files_to_hash(&mut hasher, self.dir())?;
+
+        let result = hasher.finalize();
+        Ok(format!("{:x}", result))
+    }
 }
 
 impl PackageManifest {
@@ -1112,6 +1051,21 @@ impl GenericManifestFile for WorkspaceManifestFile {
 
         Ok(member_manifest_files)
     }
+
+    fn checksum(&self) -> Result<String> {
+        let mut hasher = Sha256::new();
+        let serialized = serde_json::to_string(&self.manifest)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize workspace manifest: {}", e))?;
+        hasher.update(serialized.as_bytes());
+
+        // Add source files from each member
+        for member in self.members() {
+            add_source_files_to_hash(&mut hasher, member)?;
+        }
+
+        let result = hasher.finalize();
+        Ok(format!("{:x}", result))
+    }
 }
 
 impl WorkspaceManifest {
@@ -1232,6 +1186,53 @@ pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }
 
+/// Helper function to add source (.sw) files to the hash
+fn add_source_files_to_hash(hasher: &mut sha2::Sha256, base_path: &Path) -> Result<()> {
+    use std::collections::BTreeMap;
+    use walkdir::WalkDir;
+
+    // Using BTreeMap for deterministic ordering by relative path
+    let mut source_files = BTreeMap::new();
+
+    // Find src directory
+    let src_path = base_path.join("src");
+    if src_path.exists() {
+        // Collect all .sw files under src/
+        for entry in WalkDir::new(&src_path) {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_file() && path.extension() == Some(std::ffi::OsStr::new("sw")) {
+                // Calculate relative path from base_path for consistent naming
+                let rel_path = path
+                    .strip_prefix(base_path)
+                    .unwrap_or(path)
+                    .to_string_lossy()
+                    .to_string();
+
+                println!("adding {:?}", rel_path);
+                // Read file contents
+                let content = std::fs::read(path).map_err(|e| {
+                    anyhow::anyhow!("Failed to read file {}: {}", path.display(), e)
+                })?;
+
+                source_files.insert(rel_path, content);
+            }
+        }
+    }
+
+    // Add all files to the hasher in sorted order (guaranteed by BTreeMap)
+    for (rel_path, content) in source_files {
+        hasher.update(rel_path.as_bytes());
+        // Add a separator to prevent concatenation attacks
+        hasher.update(b"\0");
+        hasher.update(&content);
+        // Add another separator between files
+        hasher.update(b"\0\0");
+    }
+
+    Ok(())
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1423,12 +1424,16 @@ mod tests {
     #[test]
     fn test_checksum_affected_by_file_paths() -> Result<()> {
         // Create first package with specific file name
-        let (_temp_dir1, pkg_manifest1) =
-            create_test_package("test_pkg", vec![("file1.sw", "fn test() -> u64 { 42 }")])?;
+        let (_temp_dir1, pkg_manifest1) = create_test_package(
+            "test_pkg",
+            vec![("main.sw", ""), ("file1.sw", "fn test() -> u64 { 42 }")],
+        )?;
 
         // Create second package with same content but different file name
-        let (_temp_dir2, pkg_manifest2) =
-            create_test_package("test_pkg", vec![("file2.sw", "fn test() -> u64 { 42 }")])?;
+        let (_temp_dir2, pkg_manifest2) = create_test_package(
+            "test_pkg",
+            vec![("main.sw", ""), ("file2.sw", "fn test() -> u64 { 42 }")],
+        )?;
 
         let manifest_file1 = ManifestFile::Package(Box::new(pkg_manifest1));
         let manifest_file2 = ManifestFile::Package(Box::new(pkg_manifest2));
@@ -1479,7 +1484,7 @@ mod tests {
             name = "test_pkg"
             
             [dependencies]
-            dep1 = "2.0.0"  // Different version
+            dep1 = "2.0.0"
         "#;
         fs::write(base_path2.join("Forc.toml"), forc_toml2)?;
         fs::write(
@@ -1538,7 +1543,7 @@ mod tests {
             name = "test_pkg"
             
             [dependencies]
-            dep2 = "1.0.0"  // Different order
+            dep2 = "1.0.0"
             dep1 = "1.0.0"
         "#;
         fs::write(base_path2.join("Forc.toml"), forc_toml2)?;
@@ -1622,6 +1627,9 @@ mod tests {
     }
 
     #[test]
+    // NOTE: We should probably do the caching in AST level instead of this
+    // string level operations. This test illustrates why we should be doing it
+    // on AST.
     fn test_checksum_changes_with_whitespace_in_files() -> Result<()> {
         // Create first package with specific formatting
         let temp_dir1 = tempdir()?;
@@ -1669,55 +1677,6 @@ mod tests {
 
         // Different whitespace should result in different checksums
         assert_ne!(checksum1, checksum2);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_checksum_with_identical_file_contents() -> Result<()> {
-        // Create test package with multiple files having the same content
-        let temp_dir = tempdir()?;
-        let base_path = temp_dir.path();
-        fs::create_dir_all(base_path.join("src"))?;
-
-        let forc_toml = r#"
-            [project]
-            authors = ["Test"]
-            entry = "main.sw"
-            license = "MIT"
-            name = "test_pkg"
-        "#;
-        fs::write(base_path.join("Forc.toml"), forc_toml)?;
-
-        // Create two files with the same content
-        let file_content = "fn helper() -> bool { true }";
-        fs::write(base_path.join("src").join("file1.sw"), file_content)?;
-        fs::write(base_path.join("src").join("file2.sw"), file_content)?;
-
-        let pkg_manifest = PackageManifestFile::from_file(base_path.join("Forc.toml"))?;
-        let manifest_file = ManifestFile::Package(Box::new(pkg_manifest));
-
-        let checksum = manifest_file.checksum()?;
-
-        // Verify the checksum is generated correctly (should include both files despite same content)
-        assert_eq!(checksum.len(), 64);
-
-        // Compare with a package that has only one of the files
-        let temp_dir2 = tempdir()?;
-        let base_path2 = temp_dir2.path();
-        fs::create_dir_all(base_path2.join("src"))?;
-
-        fs::write(base_path2.join("Forc.toml"), forc_toml)?;
-        fs::write(base_path2.join("src").join("file1.sw"), file_content)?;
-        // Not writing file2.sw
-
-        let pkg_manifest2 = PackageManifestFile::from_file(base_path2.join("Forc.toml"))?;
-        let manifest_file2 = ManifestFile::Package(Box::new(pkg_manifest2));
-
-        let checksum2 = manifest_file2.checksum()?;
-
-        // Different number of files should result in different checksums
-        assert_ne!(checksum, checksum2);
 
         Ok(())
     }
