@@ -60,7 +60,10 @@ async fn create_predicate(
 
     tx.add_signer(wallet.signer().clone()).unwrap();
     let tx = tx.build(provider).await.unwrap();
-    provider.send_transaction_and_await_commit(tx).await.unwrap();
+    provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
 }
 
 async fn submit_to_predicate(

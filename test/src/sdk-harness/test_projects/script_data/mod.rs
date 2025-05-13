@@ -31,9 +31,11 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
     let tx = tx.build(provider).await?;
 
     let provider = wallet.provider();
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
-    tx_status
-        .take_receipts_checked(None)
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
+    tx_status.take_receipts_checked(None)
 }
 
 #[tokio::test]

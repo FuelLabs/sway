@@ -135,7 +135,10 @@ async fn input_message_msg_sender_from_contract() {
     let tx = tb.build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let response = call_handler.get_response(tx_status).unwrap();
     assert!(response.value);
 }
@@ -265,7 +268,10 @@ async fn caller_addresses_from_messages() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
     assert!(result
@@ -403,7 +409,10 @@ async fn caller_addresses_from_coins() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
     assert!(result
@@ -543,7 +552,10 @@ async fn caller_addresses_from_coins_and_messages() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
     assert!(result
