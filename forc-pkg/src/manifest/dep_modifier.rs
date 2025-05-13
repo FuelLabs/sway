@@ -58,36 +58,28 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
     let root_dir = manifest_file.root_dir();
     let mut member_manifests = manifest_file.member_manifests()?;
 
-    let package_spec_dir =
+    let package_manifest_dir =
         resolve_package_path(&manifest_file, &opts.package, &root_dir, &member_manifests)?;
 
-    let content = std::fs::read_to_string(&package_spec_dir)?;
+    let content = std::fs::read_to_string(&package_manifest_dir)?;
     let mut toml_doc = content.parse::<DocumentMut>()?;
     let backup_doc = toml_doc.clone();
 
-    let package_spec = PackageManifestFile::from_file(&package_spec_dir)?;
-    let package_dir = package_spec.dir().to_path_buf();
-
-    let lock_path = package_spec.lock_path()?;
+    let old_package_manifest = PackageManifestFile::from_file(&package_manifest_dir)?;
+    let lock_path = old_package_manifest.lock_path()?;
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
 
-    let deps_regular = &package_spec.manifest.dependencies.unwrap_or_default();
-    let deps_contract = &package_spec
-        .manifest
-        .contract_dependencies
-        .unwrap_or_default();
-
-    let section = if opts.contract_deps {
-        DepSection::Contract(deps_contract)
-    } else {
-        DepSection::Regular(deps_regular)
-    };
+    let section = DepSection::new(opts.contract_deps);
 
     match opts.action {
         Action::Add => {
             for dependency in &opts.dependencies {
-                let (dep_name, dependency_data) =
-                    resolve_dependency(dependency, &opts, &member_manifests, &package_dir)?;
+                let (dep_name, dependency_data) = resolve_dependency(
+                    dependency,
+                    &opts,
+                    &member_manifests,
+                    &old_package_manifest.dir().to_path_buf(),
+                )?;
 
                 section.add_deps_manifest_table(
                     &mut toml_doc,
@@ -105,12 +97,12 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
     }
 
     // write updates to toml doc
-    std::fs::write(&package_spec_dir, toml_doc.to_string())?;
+    std::fs::write(&package_manifest_dir, toml_doc.to_string())?;
 
-    let updated_package_spec = PackageManifestFile::from_file(&package_spec_dir)?;
+    let updated_package_manifest = PackageManifestFile::from_file(&package_manifest_dir)?;
     member_manifests.insert(
-        updated_package_spec.project_name().to_string(),
-        updated_package_spec,
+        updated_package_manifest.project_name().to_string(),
+        updated_package_manifest,
     );
 
     let new_plan = pkg::BuildPlan::from_lock_and_manifests(
@@ -122,7 +114,7 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
     );
 
     let new_plan = new_plan.or_else(|e| {
-        std::fs::write(&package_spec_dir, backup_doc.to_string())
+        std::fs::write(&package_manifest_dir, backup_doc.to_string())
             .map_err(|write_err| anyhow!("failed to write toml file: {}", write_err))?;
         Err(e)
     })?;
@@ -141,7 +133,7 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
         .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
 
     if let Err(e) = fs::write(&lock_path, string) {
-        std::fs::write(&package_spec_dir, backup_doc.to_string())
+        std::fs::write(&package_manifest_dir, backup_doc.to_string())
             .map_err(|e| anyhow!("failed to write toml file: {}", e))?;
         bail!("failed to write lock file: {}", e);
     };
@@ -292,22 +284,30 @@ impl fmt::Display for DepSpec {
 }
 
 #[derive(Clone)]
-pub enum DepSection<'a> {
-    Regular(&'a BTreeMap<String, Dependency>),
-    Contract(&'a BTreeMap<String, ContractDependency>),
+pub enum DepSection {
+    Regular,
+    Contract,
 }
 
-impl fmt::Display for DepSection<'_> {
+impl fmt::Display for DepSection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let section = match self {
-            DepSection::Regular(_) => "dependencies",
-            DepSection::Contract(_) => "contract-dependencies",
+            DepSection::Regular => "dependencies",
+            DepSection::Contract => "contract-dependencies",
         };
         write!(f, "{}", section)
     }
 }
 
-impl DepSection<'_> {
+impl DepSection {
+    pub fn new(contract_deps: bool) -> Self {
+        if contract_deps {
+            DepSection::Contract
+        } else {
+            DepSection::Regular
+        }
+    }
+
     pub fn add_deps_manifest_table(
         &self,
         doc: &mut DocumentMut,
@@ -318,7 +318,7 @@ impl DepSection<'_> {
         let mut table = Table::new();
 
         match self {
-            DepSection::Regular(_) => {
+            DepSection::Regular => {
                 let item = match dep_data {
                     Dependency::Simple(ver) => ver.to_string().into(),
                     Dependency::Detailed(details) => {
@@ -327,7 +327,7 @@ impl DepSection<'_> {
                 };
                 table.insert(&dep_name, item);
             }
-            DepSection::Contract(_) => {
+            DepSection::Contract => {
                 let resolved_salt = match salt.as_ref().or(salt.as_ref()) {
                     Some(s) => {
                         HexSalt::from_str(s).map_err(|e| anyhow!("Invalid salt format: {}", e))?
@@ -375,9 +375,9 @@ impl DepSection<'_> {
         })?;
 
         match self {
-            DepSection::Regular(map) => {
+            DepSection::Regular => {
                 for dep in deps {
-                    if !map.contains_key(*dep) {
+                    if !section_table.contains_key(dep) {
                         bail!(
                             "the dependency `{}` could not be found in `{}`",
                             dep,
@@ -387,9 +387,9 @@ impl DepSection<'_> {
                     section_table.remove(dep);
                 }
             }
-            DepSection::Contract(map) => {
+            DepSection::Contract => {
                 for dep in deps {
-                    if !map.contains_key(*dep) {
+                    if !section_table.contains_key(dep) {
                         bail!(
                             "the dependency `{}` could not be found in `{}`",
                             dep,
@@ -435,7 +435,6 @@ fn generate_table(details: &DependencyDetails) -> InlineTable {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PackageManifest;
     use std::str::FromStr;
 
     fn get_path(relative_path: &str) -> PathBuf {
@@ -847,11 +846,11 @@ mod tests {
             authors = ["Fuel Labs"]
         "#;
         let mut doc: DocumentMut = toml_str.parse().unwrap();
-        let deps = BTreeMap::new();
 
         let dep_data = Dependency::Simple("1.0.0".into());
 
-        let section = DepSection::Regular(&deps);
+        let section = DepSection::Regular;
+
         section
             .add_deps_manifest_table(&mut doc, "dep1".into(), dep_data, None)
             .unwrap();
@@ -869,9 +868,6 @@ mod tests {
         authors = ["Fuel Labs"]
     "#;
         let mut doc: DocumentMut = toml_str.parse().unwrap();
-        let manifest = PackageManifest::from_string(toml_str.to_string()).unwrap();
-
-        let deps = manifest.dependencies.unwrap_or_default();
 
         let dep_data = Dependency::Detailed(DependencyDetails {
             git: Some("https://github.com/example/repo".to_string()),
@@ -879,7 +875,7 @@ mod tests {
             ..Default::default()
         });
 
-        let section = DepSection::Regular(&deps);
+        let section = DepSection::Regular;
 
         section
             .add_deps_manifest_table(&mut doc, "dep2".into(), dep_data, None)
@@ -904,11 +900,8 @@ mod tests {
         "#;
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
-        let manifest = PackageManifest::from_string(toml_str.to_string()).unwrap();
 
-        let deps = manifest.contract_dependencies.unwrap_or_default();
-
-        let section = DepSection::Contract(&deps);
+        let section = DepSection::Contract;
         let dep_name = "custom_dep";
         let dep_data = Dependency::Simple("1.0.0".to_string());
         let salt_str = "0x2222222222222222222222222222222222222222222222222222222222222222";
@@ -948,11 +941,8 @@ mod tests {
         "#;
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
-        let manifest = PackageManifest::from_string(toml_str.to_string()).unwrap();
 
-        let deps = manifest.contract_dependencies.unwrap_or_default();
-
-        let section = DepSection::Contract(&deps);
+        let section = DepSection::Contract;
         let dep_name = "custom_dep";
         let dep_data = Dependency::Simple("1.0.0".to_string());
 
@@ -985,11 +975,8 @@ mod tests {
         "#;
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
-        let manifest = PackageManifest::from_string(toml_str.to_string()).unwrap();
 
-        let deps = manifest.contract_dependencies.unwrap_or_default();
-
-        let section = DepSection::Contract(&deps);
+        let section = DepSection::Contract;
         let dep_name = "custom_dep";
         let dep_data = Dependency::Simple("1.0.0".to_string());
 
@@ -1019,11 +1006,8 @@ mod tests {
         "#;
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
-        let manifest = PackageManifest::from_string(toml_str.to_string()).unwrap();
 
-        let deps = manifest.dependencies.unwrap_or_default();
-
-        let section = DepSection::Regular(&deps);
+        let section = DepSection::Regular;
         section
             .remove_deps_manifest_table(&mut doc, &["foo"])
             .unwrap();
@@ -1046,11 +1030,8 @@ mod tests {
         "#;
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
-        let manifest = PackageManifest::from_string(toml_str.to_string()).unwrap();
 
-        let deps = manifest.dependencies.unwrap_or_default();
-
-        let section = DepSection::Regular(&deps);
+        let section = DepSection::Regular;
 
         let err = section
             .remove_deps_manifest_table(&mut doc, &["notfound"])
@@ -1074,11 +1055,8 @@ mod tests {
         "#;
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
-        let manifest = PackageManifest::from_string(toml_str.to_string()).unwrap();
 
-        let deps = manifest.contract_dependencies.unwrap_or_default();
-
-        let section = DepSection::Contract(&deps);
+        let section = DepSection::Contract;
         section
             .remove_deps_manifest_table(&mut doc, &["baz"])
             .unwrap();
@@ -1104,11 +1082,8 @@ mod tests {
         "#;
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
-        let manifest = PackageManifest::from_string(toml_str.to_string()).unwrap();
 
-        let deps = manifest.contract_dependencies.unwrap_or_default();
-
-        let section = DepSection::Contract(&deps);
+        let section = DepSection::Contract;
 
         let result = section.remove_deps_manifest_table(&mut doc, &["ghost"]);
         assert!(result.is_err());
@@ -1132,11 +1107,8 @@ mod tests {
         "#;
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
-        let manifest = PackageManifest::from_string(toml_str.to_string()).unwrap();
 
-        let deps = manifest.contract_dependencies.unwrap_or_default();
-
-        let section = DepSection::Contract(&deps);
+        let section = DepSection::Contract;
 
         let result = section.remove_deps_manifest_table(&mut doc, &["ghost"]);
 
