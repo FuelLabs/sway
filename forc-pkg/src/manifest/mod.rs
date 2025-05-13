@@ -1304,7 +1304,7 @@ mod tests {
         // Create each member
         for (name, source_files) in members {
             let member_path = base_path.join(name);
-            fs::create_dir_all(&member_path.join("src"))?;
+            fs::create_dir_all(member_path.join("src"))?;
 
             // Create member Forc.toml
             let forc_toml = format!(
