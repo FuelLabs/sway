@@ -435,7 +435,7 @@ fn remove_deps_from_table(doc: &mut DocumentMut, section: &str, deps: &[&str]) -
         .ok_or_else(|| anyhow!("section [{}] not found in manifest", section))?;
 
     for dep in deps {
-        section_table.remove(*dep);
+        section_table.remove(dep);
     }
 
     Ok(())
@@ -533,7 +533,7 @@ mod tests {
 
         let err = resolve_package_path(&manifest_file, &None, &root_dir, &members).unwrap_err();
 
-        let resp = format!("`forc add` could not determine which package to modify. Use --package.\nAvailable: package-1, package-2", );
+        let resp = "`forc add` could not determine which package to modify. Use --package.\nAvailable: package-1, package-2".to_string();
         assert!(err.to_string().contains(&resp), "unexpected error: {err}");
     }
 
@@ -657,7 +657,7 @@ mod tests {
         };
 
         let (name, data) =
-            resolve_dependency(&dep, &opts, &members, &package_dir).expect("should resolve");
+            resolve_dependency(dep, &opts, &members, &package_dir).expect("should resolve");
 
         assert_eq!(name, dep);
         match data {
