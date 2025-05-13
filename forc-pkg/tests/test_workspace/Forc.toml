@@ -1,0 +1,2 @@
+[workspace]
+members = ["package-1", "package-2"]
