@@ -372,6 +372,10 @@ impl DependencyDetails {
             bail!("Cannot specify both `branch` and `rev` for dependency with a Git source");
         }
 
+        if version.is_some() && git.is_some() {
+            bail!("Both version and git details provided for same dependency");
+        }
+
         if version.is_some() && ipfs.is_some() {
             bail!("Both version and ipfs details provided for same dependency");
         }
@@ -1447,7 +1451,7 @@ mod tests {
             version: None,
             path: None,
             git: Some(git_source_string),
-            branch: Some("test_branch".to_string()),
+            branch: None,
             tag: None,
             package: None,
             rev: Some("9f35b8e".to_string()),
