@@ -394,6 +394,7 @@ pub async fn handle_inlay_hints(
         .await
     {
         Ok((uri, session)) => {
+            eprintln!("inlay hints: Uri: {:?}", uri);
             let config = &state.config.read().inlay_hints;
             Ok(capabilities::inlay_hints::inlay_hints(
                 session,
