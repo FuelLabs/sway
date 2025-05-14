@@ -25,6 +25,8 @@ pub enum LanguageServerError {
     FormatError(FormatterError),
     #[error("No Programs were returned from the compiler")]
     ProgramsIsNone,
+    #[error("Member program not found in the compiler results")]
+    MemberProgramNotFound,
     #[error("Unable to acquire a semaphore permit for parsing")]
     UnableToAcquirePermit,
     #[error("Client is not initialized")]
@@ -70,6 +72,8 @@ pub enum DirectoryError {
     TempDirNotFound,
     #[error("Can't find manifest directory")]
     ManifestDirNotFound,
+    #[error("Can't find temporary member directory")]
+    TempMemberDirNotFound,
     #[error("Can't extract project name from {:?}", dir)]
     CantExtractProjectName { dir: String },
     #[error("Failed to create hidden .lsp_locks directory: {0}")]

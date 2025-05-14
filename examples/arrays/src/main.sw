@@ -6,7 +6,6 @@ struct Foo {
 }
 
 fn main() {
-    let x = 65;
     // Array of integers with type ascription
     let array_of_integers: [u8; 5] = [1, 2, 3, 4, 5];
 
