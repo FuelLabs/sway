@@ -3,7 +3,9 @@ use std::collections::hash_map::Entry;
 use either::Either;
 use rustc_hash::FxHashMap;
 
-use crate::asm_lang::{ConstantRegister, ControlFlowOp, Label, Op, VirtualOp, VirtualRegister};
+use crate::asm_lang::{
+    ConstantRegister, ControlFlowOp, JumpType, Label, Op, VirtualOp, VirtualRegister,
+};
 
 use super::super::abstract_instruction_set::AbstractInstructionSet;
 
@@ -117,13 +119,8 @@ impl AbstractInstructionSet {
         // todo: build proper control flow graph instead
         let mut jump_target_labels = FxHashMap::<Label, usize>::default();
         for op in &self.ops {
-            if let Either::Right(
-                ControlFlowOp::Jump(label)
-                | ControlFlowOp::JumpIfNotZero(_, label)
-                | ControlFlowOp::Call(label),
-            ) = &op.opcode
-            {
-                *jump_target_labels.entry(*label).or_default() += 1;
+            if let Either::Right(ControlFlowOp::Jump { to, .. }) = &op.opcode {
+                *jump_target_labels.entry(*to).or_default() += 1;
             }
         }
 
@@ -145,20 +142,26 @@ impl AbstractInstructionSet {
             // Some instructions can be further simplified with the known values.
             match &mut op.opcode {
                 // Conditional jumps can be simplified if we know the value of the register.
-                Either::Right(ControlFlowOp::JumpIfNotZero(reg, lab)) => {
+                Either::Right(ControlFlowOp::Jump {
+                    to,
+                    type_: JumpType::NotZero(reg),
+                }) => {
                     if let Some(con) = known_values.resolve(reg).and_then(|r| r.value()) {
                         if con == 0 {
-                            let Entry::Occupied(mut count) = jump_target_labels.entry(*lab) else {
+                            let Entry::Occupied(mut count) = jump_target_labels.entry(*to) else {
                                 unreachable!("Jump target label not found in jump_target_labels");
                             };
                             *count.get_mut() -= 1;
                             if *count.get() == 0 {
                                 // Nobody jumps to this label anymore
-                                jump_target_labels.remove(lab);
+                                jump_target_labels.remove(to);
                             }
                             op.opcode = Either::Left(VirtualOp::NOOP);
                         } else {
-                            op.opcode = Either::Right(ControlFlowOp::Jump(*lab));
+                            op.opcode = Either::Right(ControlFlowOp::Jump {
+                                to: *to,
+                                type_: JumpType::Unconditional,
+                            });
                         }
                     }
                 }
@@ -210,19 +213,18 @@ impl AbstractInstructionSet {
                                 ResetKnown::Defs
                             }
                         }
-                        // Jumping away doesn't invalidate state
-                        ControlFlowOp::Jump(_) | ControlFlowOp::JumpIfNotZero(_, _) => {
-                            ResetKnown::Defs
-                        }
+                        // Jumping away doesn't invalidate state, but for calls:
                         // TODO: `def_const_registers` doesn't contain return value, which
                         //       seems incorrect, so I'm clearing everything as a precaution
-                        ControlFlowOp::Call(_) => ResetKnown::Full,
+                        ControlFlowOp::Jump { type_, .. } => match type_ {
+                            JumpType::Call => ResetKnown::Full,
+                            _ => ResetKnown::Defs,
+                        },
                         // These ops mark their outputs properly and cause no control-flow effects
                         ControlFlowOp::Comment
                         | ControlFlowOp::SaveRetAddr(_, _)
                         | ControlFlowOp::ConfigurablesOffsetPlaceholder
-                        | ControlFlowOp::DataSectionOffsetPlaceholder
-                        | ControlFlowOp::LoadLabel(_, _) => ResetKnown::Defs,
+                        | ControlFlowOp::DataSectionOffsetPlaceholder => ResetKnown::Defs,
                         // This changes the stack pointer
                         ControlFlowOp::PushAll(_) => ResetKnown::NonVirtual,
                         // This can be considered to destroy all known values
