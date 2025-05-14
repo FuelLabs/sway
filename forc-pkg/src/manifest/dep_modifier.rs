@@ -48,13 +48,14 @@ pub struct ModifyOpts {
 }
 
 pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
-    let cwd = if let Some(p) = &opts.manifest_path {
-        PathBuf::from(p)
+    let manifest_file = if let Some(p) = &opts.manifest_path {
+        let path = &PathBuf::from(p);
+        ManifestFile::from_file(path)?
     } else {
-        std::env::current_dir()?
+        let cwd = std::env::current_dir()?;
+        ManifestFile::from_dir(cwd)?
     };
 
-    let manifest_file = ManifestFile::from_dir(&cwd)?;
     let root_dir = manifest_file.root_dir();
     let mut member_manifests = manifest_file.member_manifests()?;
 
@@ -70,9 +71,9 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
 
     let section = if opts.contract_deps {
-        Section::Deps
-    } else {
         Section::ContractDeps
+    } else {
+        Section::Deps
     };
 
     match opts.action {
@@ -104,6 +105,7 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
     std::fs::write(&package_manifest_dir, toml_doc.to_string())?;
 
     let updated_package_manifest = PackageManifestFile::from_file(&package_manifest_dir)?;
+
     member_manifests.insert(
         updated_package_manifest.project_name().to_string(),
         updated_package_manifest,
@@ -129,7 +131,7 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
 
     if opts.dry_run {
         info!("Dry run enabled. toml file not modified.");
-        std::fs::write(cwd, backup_doc.to_string())?;
+        std::fs::write(&package_manifest_dir, backup_doc.to_string())?;
         return Ok(());
     }
 
@@ -332,17 +334,17 @@ impl Section {
                 };
 
                 let dep = &contract_dep.dependency;
-                let salt = &contract_dep.salt;
+                let salt: &HexSalt = &contract_dep.salt;
                 let item = match dep {
                     Dependency::Simple(ver) => {
                         let mut inline = InlineTable::default();
-                        inline.insert("version", ver.to_string().into());
-                        inline.insert("salt", salt.to_string().into());
+                        inline.insert("version", Value::from(ver.to_string()));
+                        inline.insert("salt", Value::from(format!("0x{}", salt.to_string())));
                         Item::Value(toml_edit::Value::InlineTable(inline))
                     }
                     Dependency::Detailed(details) => {
                         let mut inline = generate_table(details);
-                        inline.insert("salt", salt.to_string().into());
+                        inline.insert("salt", Value::from(format!("0x{}", salt.to_string())));
                         Item::Value(toml_edit::Value::InlineTable(inline))
                     }
                 };
@@ -427,13 +429,105 @@ fn generate_table(details: &DependencyDetails) -> InlineTable {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::WorkspaceManifestFile;
     use std::str::FromStr;
+    use tempfile::{tempdir, TempDir};
 
-    fn get_path(relative_path: &str) -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join(relative_path)
-            .canonicalize()
-            .expect("failed to resolve path")
+    fn create_test_package(
+        name: &str,
+        source_files: Vec<(&str, &str)>,
+    ) -> Result<(TempDir, PackageManifestFile)> {
+        let temp_dir = tempdir()?;
+        let base_path = temp_dir.path();
+
+        // Create package structure
+        fs::create_dir_all(base_path.join("src"))?;
+
+        // Create Forc.toml
+        let forc_toml = format!(
+            r#"
+            [project]
+            authors = ["Test"]
+            entry = "main.sw"
+            license = "MIT"
+            name = "{}"
+            
+            [dependencies]
+        "#,
+            name
+        );
+        fs::write(base_path.join("Forc.toml"), forc_toml)?;
+
+        // Create source files
+        for (file_name, content) in source_files {
+            // Handle nested directories in the file path
+            let file_path = base_path.join("src").join(file_name);
+            if let Some(parent) = file_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(file_path, content)?;
+        }
+
+        // Create the manifest file
+        let manifest_file = PackageManifestFile::from_file(base_path.join("Forc.toml"))?;
+
+        Ok((temp_dir, manifest_file))
+    }
+
+    fn create_test_workspace(
+        members: Vec<(&str, Vec<(&str, &str)>)>,
+    ) -> Result<(TempDir, WorkspaceManifestFile)> {
+        let temp_dir = tempdir()?;
+        let base_path = temp_dir.path();
+
+        // Create workspace Forc.toml
+        let mut workspace_toml = "[workspace]\nmembers = [".to_string();
+
+        for (i, (name, _)) in members.iter().enumerate() {
+            if i > 0 {
+                workspace_toml.push_str(", ");
+            }
+            workspace_toml.push_str(&format!("\"{name}\""));
+        }
+        workspace_toml.push_str("]\n");
+
+        fs::write(base_path.join("Forc.toml"), workspace_toml)?;
+
+        // Create each member
+        for (name, source_files) in members {
+            let member_path = base_path.join(name);
+            fs::create_dir_all(member_path.join("src"))?;
+
+            // Create member Forc.toml
+            let forc_toml = format!(
+                r#"
+                [project]
+                authors = ["Test"]
+                entry = "main.sw"
+                license = "MIT"
+                name = "{}"
+                
+                [dependencies]
+            "#,
+                name
+            );
+            fs::write(member_path.join("Forc.toml"), forc_toml)?;
+
+            // Create source files
+            for (file_name, content) in source_files {
+                // Handle nested directories in the file path
+                let file_path = member_path.join("src").join(file_name);
+                if let Some(parent) = file_path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::write(file_path, content)?;
+            }
+        }
+
+        // Create the workspace manifest file
+        let manifest_file = WorkspaceManifestFile::from_file(base_path.join("Forc.toml"))?;
+
+        Ok((temp_dir, manifest_file))
     }
 
     #[test]
@@ -472,10 +566,14 @@ mod tests {
 
     #[test]
     fn test_resolve_package_path_single_package_mode() {
-        let dir = PathBuf::from("./tests/test_package");
-        let expected_path = get_path("./tests/test_package/Forc.toml");
+        let (temp_dir, pkg_manifest) =
+            create_test_package("test_pkg", vec![("main.sw", "fn main() -> u64 { 42 }")]).unwrap();
 
-        let manifest_file = ManifestFile::from_dir(&dir).unwrap();
+        let package_spec_dir = temp_dir.path().to_path_buf();
+        let expected_path = pkg_manifest.path;
+
+        let manifest_file = ManifestFile::from_dir(&package_spec_dir).unwrap();
+
         let members = manifest_file.member_manifests().unwrap();
         let root_dir = manifest_file.root_dir();
         let result = resolve_package_path(&manifest_file, &None, &root_dir, &members).unwrap();
@@ -485,14 +583,21 @@ mod tests {
 
     #[test]
     fn test_resolve_package_path_workspace_with_package_found() {
-        let dir = PathBuf::from("./tests/test_workspace");
-        let expected_path = get_path("./tests/test_workspace/package-1/Forc.toml");
+        let (temp_dir, _) = create_test_workspace(vec![
+            ("pkg1", vec![("main.sw", "fn main() -> u64 { 1 }")]),
+            ("pkg2", vec![("main.sw", "fn main() -> u64 { 2 }")]),
+        ])
+        .unwrap();
 
-        let manifest_file = ManifestFile::from_dir(&dir).unwrap();
+        let base_path = temp_dir.path();
+
+        let expected_path = base_path.join("pkg1/Forc.toml");
+
+        let manifest_file = ManifestFile::from_dir(&base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
         let root_dir = manifest_file.root_dir();
 
-        let package = "package-1".to_string();
+        let package = "pkg1".to_string();
         let result =
             resolve_package_path(&manifest_file, &Some(package), &root_dir, &members).unwrap();
 
@@ -501,9 +606,15 @@ mod tests {
 
     #[test]
     fn test_resolve_package_path_workspace_package_not_found() {
-        let dir = PathBuf::from("./tests/test_workspace");
+        let (temp_dir, _) = create_test_workspace(vec![
+            ("pkg1", vec![("main.sw", "fn main() -> u64 { 1 }")]),
+            ("pkg2", vec![("main.sw", "fn main() -> u64 { 2 }")]),
+        ])
+        .unwrap();
 
-        let manifest_file = ManifestFile::from_dir(&dir).unwrap();
+        let base_path = temp_dir.path();
+
+        let manifest_file = ManifestFile::from_dir(&base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
         let root_dir = manifest_file.root_dir();
 
@@ -523,15 +634,21 @@ mod tests {
 
     #[test]
     fn test_resolve_package_path_workspace_package_not_set() {
-        let dir = PathBuf::from("./tests/test_workspace");
+        let (temp_dir, _) = create_test_workspace(vec![
+            ("pkg1", vec![("main.sw", "fn main() -> u64 { 1 }")]),
+            ("pkg2", vec![("main.sw", "fn main() -> u64 { 2 }")]),
+        ])
+        .unwrap();
 
-        let manifest_file = ManifestFile::from_dir(&dir).unwrap();
+        let base_path = temp_dir.path();
+
+        let manifest_file = ManifestFile::from_dir(&base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
         let root_dir = manifest_file.root_dir();
 
         let err = resolve_package_path(&manifest_file, &None, &root_dir, &members).unwrap_err();
 
-        let resp = "`forc add` could not determine which package to modify. Use --package.\nAvailable: package-1, package-2".to_string();
+        let resp = "`forc add` could not determine which package to modify. Use --package.\nAvailable: pkg1, pkg2".to_string();
         assert!(err.to_string().contains(&resp), "unexpected error: {err}");
     }
 
@@ -542,11 +659,12 @@ mod tests {
             ..Default::default()
         };
 
-        let dir = PathBuf::from("./tests/test_package");
+        let (temp_dir, _) =
+            create_test_package("test_pkg", vec![("main.sw", "fn main() -> u64 { 42 }")]).unwrap();
 
-        let package_spec_dir = get_path("./tests/test_package");
+        let package_spec_dir = temp_dir.path().to_path_buf();
 
-        let manifest_file = ManifestFile::from_dir(&dir).unwrap();
+        let manifest_file = ManifestFile::from_dir(&package_spec_dir).unwrap();
         let members = manifest_file.member_manifests().unwrap();
 
         // with semver version
@@ -580,7 +698,11 @@ mod tests {
             ..Default::default()
         };
 
-        let package_spec_dir = get_path("./tests/test_package");
+        let (temp_dir, _) =
+            create_test_package("test_pkg", vec![("main.sw", "fn main() -> u64 { 42 }")]).unwrap();
+
+        let package_spec_dir = temp_dir.path().to_path_buf();
+
         let manifest_file = ManifestFile::from_dir(&package_spec_dir).unwrap();
         let members = manifest_file.member_manifests().unwrap();
         let dep = "dummy_dep";
@@ -674,7 +796,10 @@ mod tests {
             ..Default::default()
         };
 
-        let package_spec_dir = get_path("./tests/test_package");
+        let (temp_dir, _) =
+            create_test_package("test_pkg", vec![("main.sw", "fn main() -> u64 { 42 }")]).unwrap();
+
+        let package_spec_dir = temp_dir.path().to_path_buf();
         let manifest_file = ManifestFile::from_dir(&package_spec_dir).unwrap();
         let members = manifest_file.member_manifests().unwrap();
         let dep = "dummy_dep";
@@ -780,17 +905,24 @@ mod tests {
 
     #[test]
     fn test_resolve_dependency_from_workspace_sibling() {
-        let dir = PathBuf::from("./tests/test_workspace");
-        let package_dir = get_path("./tests/test_workspace/package-2");
-        let dep = "package-1";
+        let (temp_dir, _) = create_test_workspace(vec![
+            ("pkg1", vec![("main.sw", "fn main() -> u64 { 1 }")]),
+            ("pkg2", vec![("main.sw", "fn main() -> u64 { 2 }")]),
+        ])
+        .unwrap();
 
-        let manifest_file = ManifestFile::from_dir(&dir).unwrap();
+        let base_path = temp_dir.path();
+        let package_dir = base_path.join("pkg2");
+
+        let dep = "pkg1";
+
+        let manifest_file = ManifestFile::from_dir(&base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
 
         let opts = ModifyOpts {
             source_path: None,
             dependencies: vec![dep.to_string()],
-            package: Some("package-2".to_string()),
+            package: Some("pkg2".to_string()),
             ..Default::default()
         };
 
@@ -802,7 +934,7 @@ mod tests {
             Dependency::Detailed(details) => {
                 assert!(details.path.is_some());
                 let actual_path = details.path.as_ref().unwrap();
-                assert_eq!(actual_path, "../package-1");
+                assert_eq!(actual_path, "../pkg1");
             }
             _ => panic!("Expected detailed dependency with fallback path"),
         }
@@ -810,12 +942,18 @@ mod tests {
 
     #[test]
     fn test_resolve_dependency_self_dependency_error() {
-        let dir = PathBuf::from("./tests/test_workspace");
-        let package_dir = get_path("./tests/test_workspace/package-1");
-        let dep = "package-1";
+        let (temp_dir, _) = create_test_workspace(vec![
+            ("pkg1", vec![("main.sw", "fn main() -> u64 { 1 }")]),
+            ("pkg2", vec![("main.sw", "fn main() -> u64 { 2 }")]),
+        ])
+        .unwrap();
+
+        let base_path = temp_dir.path();
+        let package_dir = base_path.join("pkg1");
+        let dep = "pkg1";
         let resp = format!("cannot add `{}` as a dependency to itself", dep);
 
-        let manifest_file = ManifestFile::from_dir(&dir).unwrap();
+        let manifest_file = ManifestFile::from_dir(&base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
 
         let opts = ModifyOpts {
@@ -840,7 +978,7 @@ mod tests {
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("dependency spec cannot be empty"));
+            .contains("Dependency spec cannot be empty"));
     }
 
     #[test]
