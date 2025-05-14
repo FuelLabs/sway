@@ -23,19 +23,7 @@ use tower_lsp::{jsonrpc::Result, LanguageServer};
 #[tower_lsp::async_trait]
 impl LanguageServer for ServerState {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        match request::handle_initialize(self, &params) {
-            Ok(_) => Ok(InitializeResult {
-                server_info: None,
-                capabilities: crate::server_capabilities(),
-                ..InitializeResult::default()
-            }),
-            Err(err) => {
-                tracing::error!("Server initialization failed: {}", err.to_string());
-                let mut json_err = tower_lsp::jsonrpc::Error::internal_error();
-                json_err.message = err.to_string().into();
-                Err(json_err)
-            }
-        }
+        request::handle_initialize(self, &params)
     }
 
     async fn initialized(&self, _: InitializedParams) {

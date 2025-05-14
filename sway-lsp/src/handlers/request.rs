@@ -12,10 +12,7 @@ use crate::{
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_tracing::{tracing_subscriber, FmtSpan, TracingWriter};
 use lsp_types::{
-    CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse, InlayHint,
-    InlayHintParams, PrepareRenameResponse, RenameParams, SemanticTokensParams,
-    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult,
-    TextDocumentIdentifier, Url, WorkspaceEdit,
+    CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse, InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams, SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit
 };
 use std::{
     fs::File,
@@ -31,7 +28,7 @@ use tracing::metadata::LevelFilter;
 pub fn handle_initialize(
     state: &ServerState,
     params: &lsp_types::InitializeParams,
-) -> std::result::Result<(), LanguageServerError> {
+) -> Result<InitializeResult> {
     if let Some(initialization_options) = &params.initialization_options {
         let mut config = state.config.write();
         *config = serde_json::from_value(initialization_options.clone())
@@ -55,39 +52,54 @@ pub fn handle_initialize(
             .init();
     }
     tracing::info!("Initializing the Sway Language Server");
+    if let Some(uri) = &params.root_uri {
+        tracing::info!("Client reported rootUri: {}", uri);
+    }
 
-    // Determine the workspace root path.
-    let workspace_root = params
-        .root_uri
-        .as_ref()
-        .and_then(|uri| uri.to_file_path().ok())
-        .ok_or(LanguageServerError::ClientNotInitialized)?;
+    Ok(InitializeResult {
+        server_info: None,
+        capabilities: crate::server_capabilities(),
+        ..InitializeResult::default()
+    })
 
-    // Ensure it's a directory. If it's a file, find its manifest's directory.
-    let actual_workspace_root = if workspace_root.is_file() {
-        ManifestFile::from_dir(&workspace_root)
-            .map_err(|_e| DocumentError::ManifestFileNotFound {
-                dir: workspace_root.to_string_lossy().to_string(),
-            })?
-            .dir()
-            .to_path_buf()
-    } else {
-        workspace_root
-    };
+    // // Determine the workspace root path.
+    // let workspace_root = params
+    //     .root_uri
+    //     .as_ref()
+    //     .and_then(|uri| uri.to_file_path().ok())
+    //     .ok_or(LanguageServerError::ClientNotInitialized)?;
 
-    // Create and initialize the global SyncWorkspace.
-    let sw = Arc::new(SyncWorkspace::new());
-    sw.create_temp_dir_from_workspace(&actual_workspace_root)?;
-    sw.clone_manifest_dir_to_temp()?;
-    sw.sync_manifest();
+    // // Regardless of whether initial_path_from_client is a file or directory,
+    // // use ManifestFile::from_dir to find the true project/workspace root.
+    // // ManifestFile::from_dir will search upwards from initial_path_from_client (or its parent if it's a file)
+    // // to find a Forc.toml.
+    // let search_path_for_manifest = if workspace_root.is_file() {
+    //     workspace_root.parent().unwrap_or(&workspace_root)
+    // } else {
+    //     &workspace_root
+    // };
 
-    // Initialize the OnceLock for sync_workspace
-    state
-        .sync_workspace
-        .set(sw)
-        .map_err(|_| LanguageServerError::SyncWorkspaceAlreadyInitialized)?;
+    // let manifest_file = ManifestFile::from_dir(search_path_for_manifest)
+    // .map_err(|_e| DocumentError::ManifestFileNotFound {
+    //     dir: workspace_root.to_string_lossy().to_string(),
+    // })?;
 
-    Ok(())
+    // let actual_workspace_root = manifest_file.dir().to_path_buf(); // This will be sway/examples/
+    // tracing::info!("Actual workspace root determined by ManifestFile::from_dir: {:?}", actual_workspace_root);
+
+    // // Create and initialize the global SyncWorkspace.
+    // let sw = Arc::new(SyncWorkspace::new());
+    // sw.create_temp_dir_from_workspace(&actual_workspace_root)?;
+    // sw.clone_manifest_dir_to_temp()?;
+    // sw.sync_manifest();
+
+    // // Initialize the OnceLock for sync_workspace
+    // state
+    //     .sync_workspace
+    //     .set(sw)
+    //     .map_err(|_| LanguageServerError::SyncWorkspaceAlreadyInitialized)?;
+
+    // Ok(())
 }
 
 pub async fn handle_document_symbol(
