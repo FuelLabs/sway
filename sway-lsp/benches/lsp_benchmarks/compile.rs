@@ -13,7 +13,9 @@ fn benchmarks(c: &mut Criterion) {
 
     let build_plan = session
         .build_plan_cache
-        .get_or_update(&sync.workspace_manifest_path(), || session::build_plan(&uri))
+        .get_or_update(&sync.workspace_manifest_path(), || {
+            session::build_plan(&uri)
+        })
         .unwrap();
 
     let mut lsp_mode = Some(sway_core::LspConfig {
