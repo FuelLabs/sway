@@ -296,7 +296,7 @@ pub(crate) async fn metrics_request(
     res
 }
 
-pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn get_semantic_tokens_full(server: &ServerState, uri: &Url) -> SemanticTokens {
     let params = SemanticTokensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
@@ -306,76 +306,91 @@ pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
         .await
         .unwrap();
     if let Some(SemanticTokensResult::Tokens(tokens)) = response {
-        assert!(!tokens.data.is_empty());
+        tokens
+    } else {
+        panic!("Expected semantic tokens response");
     }
 }
 
-pub(crate) async fn document_symbols_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
+    let tokens = get_semantic_tokens_full(server, uri).await;
+    assert!(!tokens.data.is_empty());
+}
+
+pub(crate) async fn get_nested_document_symbols(
+    server: &ServerState,
+    uri: &Url,
+) -> Vec<DocumentSymbol> {
     let params = DocumentSymbolParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_document_symbol(server, params)
-        .await
-        .unwrap();
-
-    if let Some(DocumentSymbolResponse::Nested(symbols)) = response {
-        // Check for enum with its variants
-        let enum_symbol = symbols
-            .iter()
-            .find(|s| s.name == "NumberOrString")
-            .expect("Should find NumberOrString enum");
-        assert_eq!(enum_symbol.kind, SymbolKind::ENUM);
-        let variants = enum_symbol
-            .children
-            .as_ref()
-            .expect("Enum should have variants");
-        assert_eq!(variants.len(), 2);
-        assert!(variants.iter().any(|v| v.name == "Number"));
-        assert!(variants.iter().any(|v| v.name == "String"));
-
-        // Check for struct with its fields
-        let struct_symbol = symbols
-            .iter()
-            .find(|s| s.name == "Data")
-            .expect("Should find Data struct");
-        assert_eq!(struct_symbol.kind, SymbolKind::STRUCT);
-        let fields = struct_symbol
-            .children
-            .as_ref()
-            .expect("Struct should have fields");
-        assert_eq!(fields.len(), 2);
-        assert!(fields
-            .iter()
-            .any(|f| f.name == "value" && f.detail.as_deref() == Some("NumberOrString")));
-        assert!(fields
-            .iter()
-            .any(|f| f.name == "address" && f.detail.as_deref() == Some("u64")));
-
-        // Check for impl with nested function and variable
-        let impl_symbol = symbols
-            .iter()
-            .find(|s| s.name == "impl FooABI for Contract")
-            .expect("Should find impl block");
-        let impl_fns = impl_symbol
-            .children
-            .as_ref()
-            .expect("Impl should have functions");
-        let main_fn = impl_fns
-            .iter()
-            .find(|f| f.name == "main")
-            .expect("Should find main function");
-        let vars = main_fn
-            .children
-            .as_ref()
-            .expect("Function should have variables");
-        assert!(vars
-            .iter()
-            .any(|v| v.name == "_data" && v.detail.as_deref() == Some("Data")));
+    if let Some(DocumentSymbolResponse::Nested(symbols)) =
+        request::handle_document_symbol(server, params)
+            .await
+            .unwrap()
+    {
+        symbols
     } else {
         panic!("Expected nested document symbols response");
     }
+}
+
+pub(crate) async fn document_symbols_request(server: &ServerState, uri: &Url) {
+    let symbols = get_nested_document_symbols(server, uri).await;
+    // Check for enum with its variants
+    let enum_symbol = symbols
+        .iter()
+        .find(|s| s.name == "NumberOrString")
+        .expect("Should find NumberOrString enum");
+    assert_eq!(enum_symbol.kind, SymbolKind::ENUM);
+    let variants = enum_symbol
+        .children
+        .as_ref()
+        .expect("Enum should have variants");
+    assert_eq!(variants.len(), 2);
+    assert!(variants.iter().any(|v| v.name == "Number"));
+    assert!(variants.iter().any(|v| v.name == "String"));
+
+    // Check for struct with its fields
+    let struct_symbol = symbols
+        .iter()
+        .find(|s| s.name == "Data")
+        .expect("Should find Data struct");
+    assert_eq!(struct_symbol.kind, SymbolKind::STRUCT);
+    let fields = struct_symbol
+        .children
+        .as_ref()
+        .expect("Struct should have fields");
+    assert_eq!(fields.len(), 2);
+    assert!(fields
+        .iter()
+        .any(|f| f.name == "value" && f.detail.as_deref() == Some("NumberOrString")));
+    assert!(fields
+        .iter()
+        .any(|f| f.name == "address" && f.detail.as_deref() == Some("u64")));
+
+    // Check for impl with nested function and variable
+    let impl_symbol = symbols
+        .iter()
+        .find(|s| s.name == "impl FooABI for Contract")
+        .expect("Should find impl block");
+    let impl_fns = impl_symbol
+        .children
+        .as_ref()
+        .expect("Impl should have functions");
+    let main_fn = impl_fns
+        .iter()
+        .find(|f| f.name == "main")
+        .expect("Should find main function");
+    let vars = main_fn
+        .children
+        .as_ref()
+        .expect("Function should have variables");
+    assert!(vars
+        .iter()
+        .any(|v| v.name == "_data" && v.detail.as_deref() == Some("Data")));
 }
 
 pub(crate) async fn format_request(server: &ServerState, uri: &Url) {
@@ -783,18 +798,24 @@ pub fn create_did_change_params(
 
 pub(crate) fn range_from_start_and_end_line(start_line: u32, end_line: u32) -> Range {
     Range {
-        start: Position { line: start_line, character: 0 },
-        end: Position { line: end_line, character: 0 },
+        start: Position {
+            line: start_line,
+            character: 0,
+        },
+        end: Position {
+            line: end_line,
+            character: 0,
+        },
     }
 }
 
 pub(crate) async fn get_inlay_hints_for_range(
     server: &ServerState,
-    uri: Url,
+    uri: &Url,
     range: Range,
 ) -> Vec<InlayHint> {
     let params = InlayHintParams {
-        text_document: TextDocumentIdentifier { uri },
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
         range,
         work_done_progress_params: Default::default(),
     };
@@ -810,9 +831,12 @@ pub(crate) async fn inlay_hints_request(server: &ServerState, uri: &Url) -> Opti
             line: 25,
             character: 0,
         },
-        end: Position { line: 26, character: 1 },
+        end: Position {
+            line: 26,
+            character: 1,
+        },
     };
-    let res = get_inlay_hints_for_range(server, uri.clone(), range).await;
+    let res = get_inlay_hints_for_range(server, uri, range).await;
     let expected = vec![
         InlayHint {
             position: Position {

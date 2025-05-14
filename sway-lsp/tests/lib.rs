@@ -3,6 +3,10 @@
 pub mod integration;
 
 use crate::integration::{code_actions, lsp};
+use forc_pkg::{
+    manifest::{GenericManifestFile, ManifestFile},
+    PackageManifestFile,
+};
 use lsp_types::*;
 use rayon::prelude::*;
 use std::{
@@ -155,35 +159,65 @@ fn did_open() {
     });
 }
 
-// Josh we need to focus on getting the examples workspace working nicely tomorrow! 
+// Josh we need to focus on getting the examples workspace working nicely tomorrow!
 #[test]
 fn did_open_all_members_in_examples() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
+        let workspace_dir = sway_workspace_dir().join("examples");
         // Open up the arrays example in the examples workspace
-        let arrays_dir = sway_workspace_dir().join("examples/arrays");
+        let arrays_dir = workspace_dir.join("arrays");
 
         // This example opens and passes here but if you open it in the editor its obviously not working. Improve this test tomorrow!
         let uri = init_and_open(&mut service, arrays_dir.join("src/main.sw")).await;
         service.inner().wait_for_parsing().await;
 
-        eprintln!("did_change");
-        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
-        service.inner().wait_for_parsing().await;
-
         // Assert that we found the correct workspace manifest file
-        let workspace_manifest_path = service.inner().sync_workspace.get().unwrap().workspace_manifest_path().unwrap();
+        let workspace_manifest_path = service
+            .inner()
+            .sync_workspace
+            .get()
+            .unwrap()
+            .workspace_manifest_path()
+            .unwrap();
         assert!(workspace_manifest_path.ends_with("sway/examples/Forc.toml"));
         eprintln!("workspace manifest: {:?}", workspace_manifest_path);
 
-        let (tmp_uri, session) = service.inner().uri_and_session_from_workspace(&uri).await.unwrap();
-        let tokens = session.token_map().tokens_for_file(&tmp_uri).map(|item| item.value().clone()).collect::<Vec<_>>();
-        eprintln!("tokens for file length: {:?}", tokens.len());
-        //eprintln!("tokens for file: {:#?}", tokens);
-
         let range = lsp::range_from_start_and_end_line(0, 34);
-        let inlay_hints = lsp::get_inlay_hints_for_range(&service.inner(), uri, range).await;
+        let inlay_hints = lsp::get_inlay_hints_for_range(&service.inner(), &uri, range).await;
         assert!(inlay_hints.len() > 0);
+
+        let document_symbols = lsp::get_nested_document_symbols(&service.inner(), &uri).await;
+        assert!(document_symbols.len() > 0);
+
+        let semantic_tokens = lsp::get_semantic_tokens_full(&service.inner(), &uri).await;
+        assert!(semantic_tokens.data.len() > 0);
+
+        //----------------------------------
+        let manifest_dir = PathBuf::from(workspace_dir);
+        let member_manifests = ManifestFile::from_dir(manifest_dir)
+            .unwrap()
+            .member_manifests()
+            .unwrap();
+
+        // Open all workspace members and assert that we are able to return semantic tokens for each workspace member.
+        for (name, package_manifest) in &member_manifests {
+            eprintln!("opening workspace member: {:?}", name);
+            let dir = package_manifest.path().parent().unwrap();
+            let uri = open(&mut service.inner(), dir.join("src/main.sw")).await;
+
+            // Make sure that program was parsed and the token map is populated
+            let (tmp_uri, session) = service
+                .inner()
+                .uri_and_session_from_workspace(&uri)
+                .await
+                .unwrap();
+            let num_tokens_for_file = session.token_map().tokens_for_file(&tmp_uri).count();
+            assert!(num_tokens_for_file > 0);
+
+            let semantic_tokens = lsp::get_semantic_tokens_full(&service.inner(), &uri).await;
+            assert!(semantic_tokens.data.len() > 0);
+        }
 
         shutdown_and_exit(&mut service).await;
     });
@@ -374,7 +408,7 @@ fn did_change_stress_test_random_wait() {
 fn compilation_succeeds_when_triggered_from_module() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(
+        let _ = init_and_open(
             &mut service,
             test_fixtures_dir().join("tokens/modules/src/test_mod.sw"),
         )
