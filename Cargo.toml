@@ -34,7 +34,7 @@ exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
-version = "0.68.3"
+version = "0.68.4"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
@@ -45,37 +45,37 @@ repository = "https://github.com/FuelLabs/sway"
 # Internal dependencies in order to propagate `workspace.version`
 #
 
-forc = { path = "forc/", version = "0.68.3" }
-forc-pkg = { path = "forc-pkg/", version = "0.68.3" }
-forc-test = { path = "forc-test/", version = "0.68.3" }
-forc-tracing = { path = "forc-tracing/", version = "0.68.3" }
-forc-util = { path = "forc-util/", version = "0.68.3" }
+forc = { path = "forc/", version = "0.68.4" }
+forc-pkg = { path = "forc-pkg/", version = "0.68.4" }
+forc-test = { path = "forc-test/", version = "0.68.4" }
+forc-tracing = { path = "forc-tracing/", version = "0.68.4" }
+forc-util = { path = "forc-util/", version = "0.68.4" }
 
 # Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.68.3" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.68.3" }
-forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.68.3" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.68.3" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.68.3" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.68.3" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.68.3" }
-forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.68.3" }
-forc-publish = { path = "forc-plugins/forc-publish/", version = "0.68.3" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.68.3" }
+forc-plugins = { path = "forc-plugins/", version = "0.68.4" }
+forc-client = { path = "forc-plugins/forc-client/", version = "0.68.4" }
+forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.68.4" }
+forc-debug = { path = "forc-plugins/forc-debug/", version = "0.68.4" }
+forc-doc = { path = "forc-plugins/forc-doc/", version = "0.68.4" }
+forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.68.4" }
+forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.68.4" }
+forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.68.4" }
+forc-publish = { path = "forc-plugins/forc-publish/", version = "0.68.4" }
+forc-tx = { path = "forc-plugins/forc-tx/", version = "0.68.4" }
 
-sway-ast = { path = "sway-ast/", version = "0.68.3" }
-sway-core = { path = "sway-core/", version = "0.68.3" }
-sway-error = { path = "sway-error/", version = "0.68.3" }
-sway-features = { path = "sway-features/", version = "0.68.3" }
-sway-lsp = { path = "sway-lsp/", version = "0.68.3" }
-sway-parse = { path = "sway-parse/", version = "0.68.3" }
-sway-types = { path = "sway-types/", version = "0.68.3" }
-sway-utils = { path = "sway-utils/", version = "0.68.3" }
-swayfmt = { path = "swayfmt/", version = "0.68.3" }
+sway-ast = { path = "sway-ast/", version = "0.68.4" }
+sway-core = { path = "sway-core/", version = "0.68.4" }
+sway-error = { path = "sway-error/", version = "0.68.4" }
+sway-features = { path = "sway-features/", version = "0.68.4" }
+sway-lsp = { path = "sway-lsp/", version = "0.68.4" }
+sway-parse = { path = "sway-parse/", version = "0.68.4" }
+sway-types = { path = "sway-types/", version = "0.68.4" }
+sway-utils = { path = "sway-utils/", version = "0.68.4" }
+swayfmt = { path = "swayfmt/", version = "0.68.4" }
 
 # Sway IR
-sway-ir = { path = "sway-ir/", version = "0.68.3" }
-sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.68.3" }
+sway-ir = { path = "sway-ir/", version = "0.68.4" }
+sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.68.4" }
 
 #
 # External Fuel dependencies
