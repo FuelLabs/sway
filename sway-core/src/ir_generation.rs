@@ -70,6 +70,10 @@ impl CompiledFunctionCache {
         decl.hash(&mut hasher, engines);
         let fn_key = hasher.finish();
 
+        if decl.name.as_str().contains("return_n") {
+            dbg!(fn_key, decl);
+        }
+
         let (fn_key, item) = (Some(fn_key), self.recreated_fns.get(&fn_key).copied());
         let new_callee = match item {
             Some(func) => func,

@@ -1,12 +1,14 @@
 use crate::{
     abi_generation::abi_str::AbiStrContext,
-    decl_engine::{parsed_id::ParsedDeclId, DeclMapping, InterfaceItemMap, ItemMap},
+    decl_engine::{
+        parsed_id::ParsedDeclId, DeclEngineInsert as _, DeclMapping, InterfaceItemMap, ItemMap,
+    },
     engine_threading::*,
     has_changes,
     language::{
         parsed::ConstGenericDeclaration,
-        ty::{self, TyExpression},
-        CallPath,
+        ty::{self, ConstGenericDecl, TyConstGenericDecl, TyExpression},
+        CallPath, CallPathType,
     },
     namespace::TraitMap,
     semantic_analysis::{GenericShadowingMode, TypeCheckContext},
@@ -29,6 +31,136 @@ use sway_types::{ident::Ident, span::Span, BaseIdent, Named, Spanned};
 pub enum TypeParameter {
     Type(GenericTypeParameter),
     Const(ConstGenericParameter),
+}
+
+impl TypeParameter {
+    pub(crate) fn insert_into_namespace_constraints(
+        &self,
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        // Insert the trait constraints into the namespace.
+        match self {
+            TypeParameter::Type(p) => {
+                for trait_constraint in &p.trait_constraints {
+                    TraitConstraint::insert_into_namespace(
+                        handler,
+                        ctx.by_ref(),
+                        p.type_id,
+                        trait_constraint,
+                    )?;
+                }
+            }
+            TypeParameter::Const(_) => {}
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn insert_into_namespace_self(
+        &self,
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        let (is_from_parent, name, type_id, ty_decl) = match self {
+            TypeParameter::Type(GenericTypeParameter {
+                is_from_parent,
+                name,
+                type_id,
+                ..
+            }) => (
+                is_from_parent,
+                name,
+                *type_id,
+                ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                    name: name.clone(),
+                    type_id: *type_id,
+                }),
+            ),
+            TypeParameter::Const(ConstGenericParameter {
+                is_from_parent,
+                name,
+                id,
+                span,
+                ty,
+                ..
+            }) => {
+                let decl_ref = ctx.engines.de().insert(
+                    TyConstGenericDecl {
+                        call_path: CallPath {
+                            prefixes: vec![],
+                            suffix: name.clone(),
+                            callpath_type: CallPathType::Ambiguous,
+                        },
+                        span: span.clone(),
+                        return_type: *ty,
+                        value: None,
+                    },
+                    id.as_ref(),
+                );
+                (
+                    is_from_parent,
+                    name,
+                    ctx.engines.te().id_of_u64(),
+                    ty::TyDecl::ConstGenericDecl(ConstGenericDecl {
+                        decl_id: *decl_ref.id(),
+                    }),
+                )
+            }
+        };
+
+        if *is_from_parent {
+            ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
+
+            let (resolve_declaration, _) =
+                ctx.namespace()
+                    .current_module()
+                    .resolve_symbol(handler, ctx.engines(), name)?;
+
+            match resolve_declaration.expect_typed_ref() {
+                ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                    type_id: parent_type_id,
+                    ..
+                }) => {
+                    if let TypeInfo::UnknownGeneric {
+                        name,
+                        trait_constraints,
+                        parent,
+                        is_from_type_parameter,
+                    } = &*ctx.engines().te().get(type_id)
+                    {
+                        if parent.is_some() {
+                            return Ok(());
+                        }
+
+                        ctx.engines.te().replace(
+                            ctx.engines(),
+                            type_id,
+                            TypeInfo::UnknownGeneric {
+                                name: name.clone(),
+                                trait_constraints: trait_constraints.clone(),
+                                parent: Some(*parent_type_id),
+                                is_from_type_parameter: *is_from_type_parameter,
+                            },
+                        );
+                    }
+                }
+                ty::TyDecl::ConstGenericDecl(_) => {}
+                _ => {
+                    handler.emit_err(CompileError::Internal(
+                        "Unexpected TyDeclaration for TypeParameter.",
+                        name.span(),
+                    ));
+                }
+            }
+        }
+
+        // Insert the type parameter into the namespace as a dummy type
+        // declaration.
+        ctx.insert_symbol(handler, name.clone(), ty_decl).ok();
+
+        Ok(())
+    }
 }
 
 impl Named for TypeParameter {
@@ -377,35 +509,35 @@ impl GenericTypeParameter {
 
         handler.scope(|handler| {
             for p in generic_params {
-                match p {
+                let p = match p {
                     TypeParameter::Type(p) => {
-                        let p = TypeParameter::Type(
-                            match GenericTypeParameter::type_check(handler, ctx.by_ref(), p) {
-                                Ok(res) => res,
-                                Err(_) => continue,
-                            },
-                        );
-                        new_generic_params.push(p)
+                        match GenericTypeParameter::type_check(handler, ctx.by_ref(), p) {
+                            Ok(res) => res,
+                            Err(_) => continue,
+                        }
                     }
-                    TypeParameter::Const(p) => {
-                        let p = TypeParameter::Const(p.clone());
-                        new_generic_params.push(p);
-                    }
-                }
+                    TypeParameter::Const(p) => TypeParameter::Const(p.clone()),
+                };
+                p.insert_into_namespace_self(handler, ctx.by_ref())?;
+                new_generic_params.push(p)
             }
 
             // Type check trait constraints only after type checking all type parameters.
             // This is required because a trait constraint may use other type parameters.
             // Ex: `struct Struct2<A, B> where A : MyAdd<B>`
-            for type_parameter in new_generic_params
-                .iter_mut()
-                .filter_map(|x| x.as_type_parameter_mut())
-            {
-                GenericTypeParameter::type_check_trait_constraints(
-                    handler,
-                    ctx.by_ref(),
-                    type_parameter,
-                )?;
+            for type_parameter in new_generic_params.iter_mut() {
+                match type_parameter {
+                    TypeParameter::Type(type_parameter) => {
+                        GenericTypeParameter::type_check_trait_constraints(
+                            handler,
+                            ctx.by_ref(),
+                            type_parameter,
+                        )?;
+                    }
+                    TypeParameter::Const(_) => {}
+                }
+
+                type_parameter.insert_into_namespace_constraints(handler, ctx.by_ref())?;
             }
 
             Ok(new_generic_params)
@@ -451,9 +583,9 @@ impl GenericTypeParameter {
     /// inserts into into the current namespace.
     fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         type_parameter: GenericTypeParameter,
-    ) -> Result<Self, ErrorEmitted> {
+    ) -> Result<TypeParameter, ErrorEmitted> {
         let type_engine = ctx.engines.te();
 
         let GenericTypeParameter {
@@ -501,8 +633,7 @@ impl GenericTypeParameter {
         };
 
         // Insert the type parameter into the namespace
-        type_parameter.insert_into_namespace_self(handler, ctx.by_ref())?;
-
+        let type_parameter = TypeParameter::Type(type_parameter);
         Ok(type_parameter)
     }
 
@@ -553,97 +684,6 @@ impl GenericTypeParameter {
         );
 
         type_parameter.trait_constraints = trait_constraints_with_supertraits;
-
-        // Insert the trait constraints into the namespace.
-        type_parameter.insert_into_namespace_constraints(handler, ctx.by_ref())?;
-
-        Ok(())
-    }
-
-    pub(crate) fn insert_into_namespace_constraints(
-        &self,
-        handler: &Handler,
-        mut ctx: TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
-        // Insert the trait constraints into the namespace.
-        for trait_constraint in &self.trait_constraints {
-            TraitConstraint::insert_into_namespace(
-                handler,
-                ctx.by_ref(),
-                self.type_id,
-                trait_constraint,
-            )?;
-        }
-
-        Ok(())
-    }
-
-    pub(crate) fn insert_into_namespace_self(
-        &self,
-        handler: &Handler,
-        mut ctx: TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
-        let Self {
-            is_from_parent,
-            name,
-            type_id,
-            ..
-        } = self;
-
-        if *is_from_parent {
-            ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
-
-            let (sy, _) =
-                ctx.namespace()
-                    .current_module()
-                    .resolve_symbol(handler, ctx.engines(), name)?;
-
-            match sy.expect_typed_ref() {
-                ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
-                    type_id: parent_type_id,
-                    ..
-                }) => {
-                    if let TypeInfo::UnknownGeneric {
-                        name,
-                        trait_constraints,
-                        parent,
-                        is_from_type_parameter,
-                    } = &*ctx.engines().te().get(*type_id)
-                    {
-                        if parent.is_some() {
-                            return Ok(());
-                        }
-
-                        ctx.engines.te().replace(
-                            ctx.engines(),
-                            *type_id,
-                            TypeInfo::UnknownGeneric {
-                                name: name.clone(),
-                                trait_constraints: trait_constraints.clone(),
-                                parent: Some(*parent_type_id),
-                                is_from_type_parameter: *is_from_type_parameter,
-                            },
-                        );
-                    }
-                }
-                _ => {
-                    handler.emit_err(CompileError::Internal(
-                        "Unexpected TyDeclaration for TypeParameter.",
-                        self.name.span(),
-                    ));
-                }
-            }
-        }
-
-        // Insert the type parameter into the namespace as a dummy type
-        // declaration.
-        let type_parameter_decl =
-            ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
-                name: name.clone(),
-                type_id: *type_id,
-            });
-        ctx.insert_symbol(handler, name.clone(), type_parameter_decl)
-            .ok();
 
         Ok(())
     }
