@@ -256,7 +256,7 @@ impl FromStr for DepSpec {
             anyhow::bail!("Dependency spec cannot be empty");
         }
 
-        let mut s = s.split('@');
+        let mut s = s.trim().split('@');
 
         let name = s
             .next()
