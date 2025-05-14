@@ -142,6 +142,7 @@ fn initialize() {
             ..Default::default()
         };
         let _ = request::handle_initialize(&service.inner(), &params);
+        shutdown_and_exit(&mut service).await;
     });
 }
 
@@ -150,6 +151,20 @@ fn did_open() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
         let _ = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
+        service.inner().wait_for_parsing().await;
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
+// Josh we need to focus on getting the examples workspace working nicely tomorrow! 
+#[test]
+fn did_open_all_members_in_examples() {
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let arrays_dir = sway_workspace_dir().join("examples/arrays");
+
+        // THis example opens and passes here but if you open it in the editor its obviously not working. Improve this test tomorrow!
+        let _ = init_and_open(&mut service, arrays_dir.join("src/main.sw")).await;
         service.inner().wait_for_parsing().await;
         shutdown_and_exit(&mut service).await;
     });
