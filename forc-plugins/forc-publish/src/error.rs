@@ -44,9 +44,9 @@ impl Error {
                 status,
                 error: parsed_error.error,
             },
-            Err(_) => Error::ApiResponseError {
+            Err(err) => Error::ApiResponseError {
                 status,
-                error: "Unknown API error".to_string(),
+                error: format!("Unexpected API error: {}", err),
             },
         }
     }
@@ -118,7 +118,7 @@ mod test {
         match error {
             Error::ApiResponseError { status, error } => {
                 assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-                assert_eq!(error, "Unknown API error");
+                assert_eq!(error, "Unexpected API error: error decoding response body");
             }
             _ => panic!("Expected ApiResponseError"),
         }
