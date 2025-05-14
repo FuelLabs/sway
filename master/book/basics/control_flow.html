@@ -1,0 +1,366 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Control Flow - The Sway Programming Language</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="control-flow"><a class="header" href="#control-flow">Control Flow</a></h1>
+<h2 id="if-expressions"><a class="header" href="#if-expressions"><code>if</code> expressions</a></h2>
+<!-- This section should explain `if` expressions in Sway -->
+<!-- if:example:start -->
+<p>Sway supports <em>if</em>, <em>else</em>, and <em>else if</em> expressions that allow you to branch your code depending on conditions.</p>
+<!-- if:example:end -->
+<p>For example:</p>
+<pre><code class="language-sway">fn main() {
+    let number = 6;
+
+    if number % 4 == 0 {
+        // do something
+    } else if number % 3 == 0 {
+        // do something else
+    } else {
+        // do something else
+    }
+}
+</code></pre>
+<h3 id="using-if-in-a-let-statement"><a class="header" href="#using-if-in-a-let-statement">Using <code>if</code> in a <code>let</code> statement</a></h3>
+<p>Like Rust, <code>if</code>s are expressions in Sway. What this means is you can use <code>if</code> expressions on the right side of a <code>let</code> statement to assign the outcome to a variable.</p>
+<pre><code class="language-sway">let my_data = if some_bool &lt; 10 { foo() } else { bar() };
+</code></pre>
+<p>Note that all branches of the <code>if</code> expression must return a value of the same type.</p>
+<h3 id="match-expressions"><a class="header" href="#match-expressions"><code>match</code> expressions</a></h3>
+<!-- This section should explain `match` expressions in Sway -->
+<!-- match:example:start -->
+<p>Sway supports advanced pattern matching through exhaustive <code>match</code> expressions. Unlike an <code>if</code> expression, a <code>match</code> expression asserts <strong>at compile time</strong> that all possible patterns have been matched. If you don't handle all the patterns, you will get compiler error indicating that your <code>match</code> expression is non-exhaustive.</p>
+<!-- match:example:end -->
+<p>The basic syntax of a <code>match</code> expression is as follows:</p>
+<pre><code class="language-sway">let result = match expression {
+    pattern1 =&gt; code_to_execute_if_expression_matches_pattern1,
+    pattern2 =&gt; code_to_execute_if_expression_matches_pattern2,
+    pattern3 | pattern4 =&gt; code_to_execute_if_expression_matches_pattern3_or_pattern4
+    ...
+    _ =&gt; code_to_execute_if_expression_matches_no_pattern,
+}
+</code></pre>
+<p>Some examples of how you can use a <code>match</code> expression:</p>
+<pre><code class="language-sway">script;
+
+// helper functions for our example
+fn on_even(num: u64) {
+    // do something with even numbers
+}
+fn on_odd(num: u64) {
+    // do something with odd numbers
+}
+
+fn main(num: u64) -&gt; u64 {
+    // Match as an expression
+    let is_even = match num % 2 {
+        0 =&gt; true,
+        _ =&gt; false,
+    };
+
+    // Match as control flow
+    let x = 12;
+    match x {
+        5 =&gt; on_odd(x),
+        _ =&gt; on_even(x),
+    };
+
+    // Match an enum
+    enum Weather {
+        Sunny: (),
+        Rainy: (),
+        Cloudy: (),
+        Snowy: (),
+    }
+    let current_weather = Weather::Sunny;
+    let avg_temp = match current_weather {
+        Weather::Sunny =&gt; 80,
+        Weather::Rainy =&gt; 50,
+        Weather::Cloudy =&gt; 60,
+        Weather::Snowy =&gt; 20,
+    };
+
+    let is_sunny = match current_weather {
+        Weather::Sunny =&gt; true,
+        Weather::Rainy | Weather::Cloudy | Weather::Snowy =&gt; false,
+    };
+
+    // match expression used for a return
+    let outside_temp = Weather::Sunny;
+    match outside_temp {
+        Weather::Sunny =&gt; 80,
+        Weather::Rainy =&gt; 50,
+        Weather::Cloudy =&gt; 60,
+        Weather::Snowy =&gt; 20,
+    }
+}
+</code></pre>
+<h2 id="loops"><a class="header" href="#loops">Loops</a></h2>
+<h3 id="while"><a class="header" href="#while"><code>while</code></a></h3>
+<p>This is what a <code>while</code> loop looks like:</p>
+<pre><code class="language-sway">while counter &lt; 10 {
+    counter = counter + 1;
+}
+</code></pre>
+<p>You need the <code>while</code> keyword, some condition (<code>value &lt; 10</code> in this case) which will be evaluated each iteration, and a block of code inside the curly braces (<code>{...}</code>) to execute each iteration.</p>
+<h3 id="for"><a class="header" href="#for"><code>for</code></a></h3>
+<p>This is what a <code>for</code> loop that computes the sum of a vector of numbers looks like:</p>
+<pre><code class="language-sway">for element in vector.iter() {
+    sum += element;
+}
+</code></pre>
+<p>You need the <code>for</code> keyword, some pattern that contains variable names such as <code>element</code> in this case, the <code>ìn</code> keyword followed by an iterator, and a block of code inside the curly braces (<code>{...}</code>) to execute each iteration. <code>vector.iter()</code> in the example above returns an iterator for the <code>vector</code>. In each iteration, the value of <code>element</code> is updated with the next value in the iterator until the end of the vector is reached and the <code>for</code> loop iteration ends.</p>
+<p>Modifying the <code>vector</code> during iteration, by e.g. adding or removing elements, is a logical error and results in an <a href="../reference/undefined_behavior.html">undefined behavior</a>:</p>
+<pre><code class="language-sway">// The behavior of this `for` loop is undefined because
+// the `vector` gets modified within the loop.
+for element in vector.iter() {
+    if element == 3 {
+        vector.push(6); // Modification of the vector!
+    }
+}
+</code></pre>
+<h3 id="break-and-continue"><a class="header" href="#break-and-continue"><code>break</code> and <code>continue</code></a></h3>
+<p><code>break</code> and <code>continue</code> keywords are available to use inside the body of a <code>while</code> or <code>for</code> loop. The purpose of the <code>break</code> statement is to break out of a loop early:</p>
+<pre><code class="language-sway">fn break_example() -&gt; u64 {
+    let mut counter = 1;
+    let mut sum = 0;
+    let num = 10;
+    while true {
+        if counter &gt; num {
+            break;
+        }
+        sum += counter;
+        counter += 1;
+    }
+    sum // 1 + 2 + .. + 10 = 55
+}
+</code></pre>
+<p>The purpose of the <code>continue</code> statement is to skip a portion of a loop in an iteration and jump directly into the next iteration:</p>
+<pre><code class="language-sway">fn continue_example() -&gt; u64 {
+    let mut counter = 0;
+    let mut sum = 0;
+    let num = 10;
+    while counter &lt; num {
+        counter += 1;
+        if counter % 2 == 0 {
+            continue;
+        }
+        sum += counter;
+    }
+    sum // 1 + 3 + .. + 9 = 25
+}
+</code></pre>
+<h3 id="nested-loops"><a class="header" href="#nested-loops">Nested loops</a></h3>
+<p>You can also use nested <code>while</code> loops if needed:</p>
+<pre><code class="language-sway">while condition_1 == true {
+    // do stuff...
+    while condition_2 == true {
+        // do more stuff...
+    }
+}
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../basics/comments_and_logging.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../blockchain-development/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../basics/comments_and_logging.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../blockchain-development/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
