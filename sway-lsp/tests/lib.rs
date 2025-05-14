@@ -136,13 +136,12 @@ macro_rules! lsp_capability_test {
 #[test]
 fn initialize() {
     run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
+        let (service, _) = LspService::new(ServerState::new);
         let params = InitializeParams {
             initialization_options: None,
             ..Default::default()
         };
         let _ = request::handle_initialize(&service.inner(), &params);
-        shutdown_and_exit(&mut service).await;
     });
 }
 
@@ -168,6 +167,10 @@ fn did_open_all_members_in_examples() {
         let uri = init_and_open(&mut service, arrays_dir.join("src/main.sw")).await;
         service.inner().wait_for_parsing().await;
 
+        eprintln!("did_change");
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
+        service.inner().wait_for_parsing().await;
+
         // Assert that we found the correct workspace manifest file
         let workspace_manifest_path = service.inner().sync_workspace.get().unwrap().workspace_manifest_path().unwrap();
         assert!(workspace_manifest_path.ends_with("sway/examples/Forc.toml"));
@@ -176,7 +179,7 @@ fn did_open_all_members_in_examples() {
         let (tmp_uri, session) = service.inner().uri_and_session_from_workspace(&uri).await.unwrap();
         let tokens = session.token_map().tokens_for_file(&tmp_uri).map(|item| item.value().clone()).collect::<Vec<_>>();
         eprintln!("tokens for file length: {:?}", tokens.len());
-        eprintln!("tokens for file: {:#?}", tokens);
+        //eprintln!("tokens for file: {:#?}", tokens);
 
         let range = lsp::range_from_start_and_end_line(0, 34);
         let inlay_hints = lsp::get_inlay_hints_for_range(&service.inner(), uri, range).await;

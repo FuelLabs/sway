@@ -200,6 +200,12 @@ impl SyncWorkspace {
         }
     }
 
+    pub(crate) fn member_path(&self, temp_uri: &Url) -> Option<PathBuf> {
+        let p = self.member_manifest_path(temp_uri)?;
+        let dir = p.parent()?;
+        Some(dir.to_path_buf())
+    }
+
 
     pub(crate) fn sync_manifest(&self) {
         let actual_manifest_dir = match self.manifest_dir() {
