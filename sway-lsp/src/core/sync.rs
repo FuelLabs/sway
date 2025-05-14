@@ -179,20 +179,126 @@ impl SyncWorkspace {
             .ok()
     }
 
-    /// Read the Forc.toml and convert relative paths to absolute. Save into our temp directory.
     pub(crate) fn sync_manifest(&self) {
-        if let (Ok(manifest_dir), Some(manifest_path), Some(temp_manifest_path)) = (
-            self.manifest_dir(),
-            self.manifest_path(),
-            self.temp_manifest_path(),
-        ) {
-            if let Err(err) =
-                edit_manifest_dependency_paths(&manifest_dir, &manifest_path, &temp_manifest_path)
-            {
-                tracing::error!("Failed to edit manifest dependency paths: {}", err);
+        let actual_manifest_dir = match self.manifest_dir() {
+            Ok(dir) => dir,
+            Err(e) => {
+                tracing::error!("sync_manifest: Failed to get actual manifest dir: {:?}", e);
+                return;
+            }
+        };
+
+        let temp_manifest_dir = match self.temp_dir() {
+            Ok(dir) => dir,
+            Err(e) => {
+                tracing::error!("sync_manifest: Failed to get temp manifest dir: {:?}", e);
+                return;
+            }
+        };
+
+        // Load the manifest from the *actual* workspace root to determine if it's a package or workspace
+        match ManifestFile::from_dir(&actual_manifest_dir) {
+            Ok(ManifestFile::Package(pkg_manifest_file)) => {
+                // Single package: behave as before
+                let actual_pkg_manifest_path = pkg_manifest_file.path();
+                let temp_pkg_manifest_path = temp_manifest_dir.join(
+                    actual_pkg_manifest_path.file_name()
+                        .unwrap_or_else(|| std::ffi::OsStr::new(MANIFEST_FILE_NAME)) // Corrected
+                );
+                tracing::debug!("Syncing single package manifest: {:?} to temp: {:?}", actual_pkg_manifest_path, temp_pkg_manifest_path);
+                if let Err(err) = edit_manifest_dependency_paths(
+                    pkg_manifest_file.dir(), // Original base for resolving relative paths
+                    actual_pkg_manifest_path, // Original Forc.toml
+                    &temp_pkg_manifest_path,  // Temp Forc.toml to write to
+                ) {
+                    tracing::error!(
+                        "Failed to edit manifest dependency paths for package {:?}: {}",
+                        actual_pkg_manifest_path, err
+                    );
+                }
+            }
+            Ok(ManifestFile::Workspace(ws_manifest_file)) => {
+                // Workspace: iterate through members and sync each member's manifest
+                tracing::debug!("Syncing workspace members in: {:?}", actual_manifest_dir);
+                match ws_manifest_file.member_pkg_manifests() {
+                    Ok(member_manifests_iter) => {
+                        for member_result in member_manifests_iter {
+                            match member_result {
+                                Ok(actual_member_pkg_manifest) => {
+                                    let actual_member_manifest_path = actual_member_pkg_manifest.path();
+                                    // Determine the relative path of the member from the workspace root
+                                    if let Ok(relative_member_path) = actual_member_manifest_path.strip_prefix(&actual_manifest_dir) {
+                                        let temp_member_manifest_path = temp_manifest_dir.join(relative_member_path);
+                                        
+                                        tracing::debug!("Syncing workspace member manifest: {:?} to temp: {:?}", actual_member_manifest_path, temp_member_manifest_path);
+                                        if let Err(err) = edit_manifest_dependency_paths(
+                                            actual_member_pkg_manifest.dir(), // Member's original dir for its relative paths
+                                            actual_member_manifest_path,      // Member's original Forc.toml
+                                            &temp_member_manifest_path,       // Member's temp Forc.toml
+                                        ) {
+                                            tracing::error!(
+                                                "Failed to edit manifest dependency paths for member {:?}: {}",
+                                                actual_member_manifest_path, err
+                                            );
+                                        }
+                                    } else {
+                                        tracing::error!("Could not determine relative path for member: {:?}", actual_member_manifest_path);
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::error!("Failed to load workspace member manifest: {}", e);
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to get member manifests for workspace {:?}: {}", actual_manifest_dir, e);
+                    }
+                }
+                // Optionally, sync the root workspace Forc.toml itself if it can have [patch] sections
+                // that need absolutizing, though this is less common.
+                // The current edit_manifest_dependency_paths handles patches.
+                let actual_root_workspace_toml_path = ws_manifest_file.path();
+                let temp_root_workspace_toml_path = temp_manifest_dir.join(
+                    actual_root_workspace_toml_path.file_name()
+                        .unwrap_or_else(|| std::ffi::OsStr::new(MANIFEST_FILE_NAME)) // Corrected
+                );
+                tracing::debug!("Syncing root workspace manifest for patches: {:?} to temp: {:?}", actual_root_workspace_toml_path, temp_root_workspace_toml_path);
+                if let Err(err) = edit_manifest_dependency_paths(
+                    ws_manifest_file.dir(),
+                    actual_root_workspace_toml_path,
+                    &temp_root_workspace_toml_path,
+                ) {
+                    tracing::error!(
+                        "Failed to edit manifest dependency paths for root workspace manifest {:?}: {}",
+                        actual_root_workspace_toml_path, err
+                    );
+                }
+
+            }
+            Err(e) => {
+                tracing::error!(
+                    "Failed to load manifest from actual directory {:?}: {}. Cannot sync manifest.",
+                    actual_manifest_dir, e
+                );
             }
         }
     }
+
+    // /// Read the Forc.toml and convert relative paths to absolute. Save into our temp directory.
+    // pub(crate) fn sync_manifest(&self) {
+    //     if let (Ok(manifest_dir), Some(manifest_path), Some(temp_manifest_path)) = (
+    //         self.manifest_dir(),
+    //         self.manifest_path(),
+    //         self.temp_manifest_path(),
+    //     ) {
+    //         if let Err(err) =
+    //             edit_manifest_dependency_paths(&manifest_dir, &manifest_path, &temp_manifest_path)
+    //         {
+    //             tracing::error!("Failed to edit manifest dependency paths: {}", err);
+    //         }
+    //     }
+    // }
 
     /// Return the path to the projects manifest directory.
     pub(crate) fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {
