@@ -1,4 +1,5 @@
 use codspeed_criterion_compat::{black_box, criterion_group, Criterion};
+use parking_lot::RwLock;
 use std::sync::Arc;
 use sway_core::Engines;
 use sway_lsp::core::session;
@@ -7,7 +8,7 @@ use tokio::runtime::Runtime;
 const NUM_DID_CHANGE_ITERATIONS: usize = 10;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, _) = Runtime::new()
+    let (uri, session, _, token_map, _) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
 
@@ -31,16 +32,20 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("traverse", |b| {
-        let engines = Engines::default();
-        let results =
-            black_box(session::compile(&build_plan, &engines, None, lsp_mode.as_ref()).unwrap());
+        let engines_original = Arc::new(RwLock::new(Engines::default()));
+        let engines_clone = engines_original.read().clone();
+        let results = black_box(
+            session::compile(&build_plan, &engines_clone, None, lsp_mode.as_ref()).unwrap(),
+        );
         let session = Arc::new(session::Session::new());
         b.iter(|| {
             let _ = black_box(
                 session::traverse(
                     results.clone(),
-                    &engines,
+                    engines_original.clone(),
+                    &engines_clone,
                     session.clone(),
+                    &token_map,
                     lsp_mode.as_ref(),
                 )
                 .unwrap(),

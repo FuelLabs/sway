@@ -17,7 +17,7 @@ use sway_core::{
     type_system::{TypeId, TypeInfo, TypeParameter},
     Engines, GenericArgument, TraitConstraint, TypeEngine,
 };
-use sway_types::{Ident, SourceEngine, Span, Spanned};
+use sway_types::{Ident, ProgramId, SourceEngine, SourceId, Span, Spanned};
 
 /// The `ParsedAstToken` holds the types produced by the [sway_core::language::parsed::ParseProgram].
 /// These tokens have not been type-checked.
@@ -217,25 +217,29 @@ pub struct TokenIdent {
     pub name: String,
     pub range: Range,
     pub path: Option<PathBuf>,
+    pub source_id: Option<SourceId>,
     pub is_raw_ident: bool,
 }
 
 impl TokenIdent {
     pub fn new(ident: &Ident, se: &SourceEngine) -> Self {
-        let path = ident
-            .span()
-            .source_id()
-            .map(|source_id| se.get_path(source_id));
+        let source_id = ident.span().source_id().copied();
+        let path = source_id.as_ref().map(|source_id| se.get_path(source_id));
         Self {
             name: ident.span().str(),
             range: get_range_from_span(&ident.span()),
             path,
+            source_id,
             is_raw_ident: ident.is_raw_ident(),
         }
     }
 
     pub fn is_raw_ident(&self) -> bool {
         self.is_raw_ident
+    }
+
+    pub fn program_id(&self) -> Option<ProgramId> {
+        self.source_id.map(|source_id| source_id.program_id())
     }
 }
 

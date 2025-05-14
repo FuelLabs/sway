@@ -1,15 +1,15 @@
 use crate::{
     config::InlayHintsConfig,
     core::{
-        session::Session,
         token::{get_range_from_span, TypedAstToken},
+        token_map::TokenMap,
     },
 };
 use lsp_types::{self, Range, Url};
-use std::sync::Arc;
 use sway_core::{
     language::ty::{TyDecl, TyExpression, TyExpressionVariant},
     type_system::TypeInfo,
+    Engines,
 };
 use sway_types::{Ident, Spanned};
 
@@ -28,7 +28,8 @@ pub struct InlayHint {
 
 /// Generates inlay hints for the provided range.
 pub fn inlay_hints(
-    session: Arc<Session>,
+    engines: &Engines,
+    token_map: &TokenMap,
     uri: &Url,
     range: &Range,
     config: &InlayHintsConfig,
@@ -47,8 +48,7 @@ pub fn inlay_hints(
     //       - Look up the type information
     //       - Generate a type hint
     // 4. Collect all generated hints into a single vector
-    let hints: Vec<lsp_types::InlayHint> = session
-        .token_map()
+    let hints: Vec<lsp_types::InlayHint> = token_map
         .tokens_for_file(uri)
         .filter_map(|item| {
             let token = item.value();
@@ -75,18 +75,14 @@ pub fn inlay_hints(
 
             // Variable declaration hints
             if var.type_ascription.call_path_tree().is_none() {
-                let type_info = session
-                    .engines
-                    .read()
-                    .te()
-                    .get(var.type_ascription.type_id());
+                let type_info = engines.te().get(var.type_ascription.type_id());
                 if !matches!(
                     *type_info,
                     TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. }
                 ) {
                     let range = get_range_from_span(&var.name.span());
                     let kind = InlayKind::TypeHint;
-                    let label = format!("{}", session.engines.read().help_out(var.type_ascription));
+                    let label = format!("{}", engines.help_out(var.type_ascription));
                     let inlay_hint = InlayHint { range, kind, label };
                     hints.push(self::inlay_hint(config, inlay_hint));
                 }
