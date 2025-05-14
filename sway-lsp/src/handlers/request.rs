@@ -12,7 +12,10 @@ use crate::{
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_tracing::{tracing_subscriber, FmtSpan, TracingWriter};
 use lsp_types::{
-    CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse, InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams, SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit
+    CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
+    InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use std::{
     fs::File,

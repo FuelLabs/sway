@@ -266,7 +266,7 @@ pub fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
             .map_err(|_| DocumentError::MemberManifestsFailed {
                 dir: uri.path().into(),
             })?;
-    //eprintln!("member_manifests: {:#?}", member_manifests.keys());    
+    //eprintln!("member_manifests: {:#?}", member_manifests.keys());
     let lock_path = manifest
         .lock_path()
         .map_err(|_| DocumentError::ManifestsLockPathFailed {
@@ -342,8 +342,16 @@ pub fn traverse(
             continue;
         };
 
-        let program_id = typed.as_ref().unwrap().namespace.current_package_ref().program_id;
-        let program_path = engines_clone.se().get_manifest_path_from_program_id(&program_id).unwrap();
+        let program_id = typed
+            .as_ref()
+            .unwrap()
+            .namespace
+            .current_package_ref()
+            .program_id;
+        let program_path = engines_clone
+            .se()
+            .get_manifest_path_from_program_id(&program_id)
+            .unwrap();
 
         // Check if the cached AST was returned by the compiler for the users workspace.
         // If it was, then we need to use the original engines for traversal.
@@ -449,36 +457,44 @@ pub fn parse_project(
     // Compilation on the first run will be much slower as the entire workspace will need to be compiled.
     let workspace_manifest_path = sync.workspace_manifest_path();
     let member_manifest_path = sync.member_manifest_path(uri);
-    
+
     let build_plan = session
         .build_plan_cache
         .get_or_update(&member_manifest_path, || build_plan(uri))?;
 
     //eprintln!("compiling with build_plan: {:#?}", build_plan);
-    //let now = std::time::Instant::now();
+    let now = std::time::Instant::now();
     let results = compile(
         &build_plan,
         engines,
         retrigger_compilation,
         lsp_mode.as_ref(),
     )?;
-    //eprintln!("compile time: {:?}", now.elapsed());
+    eprintln!("compile time: {:?}", now.elapsed());
     // eprintln!("workspace_manifest_path: {:?}", workspace_manifest_path);
     // eprintln!("member_manifest_path: {:?}", member_manifest_path);
     // eprintln!("member_path: {:?}", member_path);
 
     // First check if results is empty or if all program values are None,
     // indicating an error occurred in the compiler
-    if results.is_empty() || results.iter().all(|(programs_opt, _)| programs_opt.is_none()) {
+    if results.is_empty()
+        || results
+            .iter()
+            .all(|(programs_opt, _)| programs_opt.is_none())
+    {
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
-    let member_path = sync.member_path(uri).ok_or(DirectoryError::TempMemberDirNotFound)?;
+    let member_path = sync
+        .member_path(uri)
+        .ok_or(DirectoryError::TempMemberDirNotFound)?;
 
     // Next check that the member path is present in the results.
     let found_program_for_member = results.iter().any(|(programs_opt, _handler)| {
         programs_opt.as_ref().map_or(false, |programs| {
-            programs.typed.as_ref()
+            programs
+                .typed
+                .as_ref()
                 .ok()
                 .and_then(|typed| {
                     let program_id = typed.as_ref().namespace.current_package_ref().program_id();
@@ -489,14 +505,20 @@ pub fn parse_project(
                 })
         })
     });
-    
+
     if !found_program_for_member {
         // If we don't return an error here, then we will likely crash when trying to access the Engines
         // during traversal or when creating runnables.
         return Err(LanguageServerError::MemberProgramNotFound);
     }
 
-    let diagnostics = traverse(member_path, results, engines, session.clone(), lsp_mode.as_ref())?;
+    let diagnostics = traverse(
+        member_path,
+        results,
+        engines,
+        session.clone(),
+        lsp_mode.as_ref(),
+    )?;
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {
