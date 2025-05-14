@@ -339,12 +339,12 @@ impl Section {
                     Dependency::Simple(ver) => {
                         let mut inline = InlineTable::default();
                         inline.insert("version", Value::from(ver.to_string()));
-                        inline.insert("salt", Value::from(format!("0x{}", salt.to_string())));
+                        inline.insert("salt", Value::from(format!("0x{}", salt)));
                         Item::Value(toml_edit::Value::InlineTable(inline))
                     }
                     Dependency::Detailed(details) => {
                         let mut inline = generate_table(details);
-                        inline.insert("salt", Value::from(format!("0x{}", salt.to_string())));
+                        inline.insert("salt", Value::from(format!("0x{}", salt)));
                         Item::Value(toml_edit::Value::InlineTable(inline))
                     }
                 };
@@ -593,7 +593,7 @@ mod tests {
 
         let expected_path = base_path.join("pkg1/Forc.toml");
 
-        let manifest_file = ManifestFile::from_dir(&base_path).unwrap();
+        let manifest_file = ManifestFile::from_dir(base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
         let root_dir = manifest_file.root_dir();
 
@@ -614,7 +614,7 @@ mod tests {
 
         let base_path = temp_dir.path();
 
-        let manifest_file = ManifestFile::from_dir(&base_path).unwrap();
+        let manifest_file = ManifestFile::from_dir(base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
         let root_dir = manifest_file.root_dir();
 
@@ -642,7 +642,7 @@ mod tests {
 
         let base_path = temp_dir.path();
 
-        let manifest_file = ManifestFile::from_dir(&base_path).unwrap();
+        let manifest_file = ManifestFile::from_dir(base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
         let root_dir = manifest_file.root_dir();
 
@@ -916,7 +916,7 @@ mod tests {
 
         let dep = "pkg1";
 
-        let manifest_file = ManifestFile::from_dir(&base_path).unwrap();
+        let manifest_file = ManifestFile::from_dir(base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
 
         let opts = ModifyOpts {
@@ -953,7 +953,7 @@ mod tests {
         let dep = "pkg1";
         let resp = format!("cannot add `{}` as a dependency to itself", dep);
 
-        let manifest_file = ManifestFile::from_dir(&base_path).unwrap();
+        let manifest_file = ManifestFile::from_dir(base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
 
         let opts = ModifyOpts {
@@ -1071,7 +1071,7 @@ mod tests {
         );
         assert_eq!(
             contract_table.get("salt").unwrap().as_str(),
-            Some(hex_salt.to_string().as_str())
+            Some(format!("0x{}", hex_salt).as_str())
         );
     }
 
@@ -1105,7 +1105,7 @@ mod tests {
         );
         assert_eq!(
             contract_table.get("salt").unwrap().as_str(),
-            Some(fuel_tx::Salt::default().to_string().as_str())
+            Some(format!("0x{}", fuel_tx::Salt::default()).as_str())
         );
     }
 
