@@ -251,23 +251,28 @@ impl Session {
 
 /// Create a [BuildPlan] from the given [Url] appropriate for the language server.
 pub fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
+    eprintln!("build_plan uri: {:?}", uri);
     let _p = tracing::trace_span!("build_plan").entered();
     let manifest_dir = PathBuf::from(uri.path());
+    eprintln!("manifest_dir: {:?}", manifest_dir);
     let manifest =
         ManifestFile::from_dir(manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
         })?;
+    eprintln!("manifest: {:?}", manifest);
     let member_manifests =
         manifest
             .member_manifests()
             .map_err(|_| DocumentError::MemberManifestsFailed {
                 dir: uri.path().into(),
             })?;
+    eprintln!("member_manifests: {:#?}", member_manifests);
     let lock_path = manifest
         .lock_path()
         .map_err(|_| DocumentError::ManifestsLockPathFailed {
             dir: uri.path().into(),
         })?;
+    eprintln!("lock_path: {:?}", lock_path);
     // TODO: Either we want LSP to deploy a local node in the background or we want this to
     // point to Fuel operated IPFS node.
     let ipfs_node = pkg::source::IPFSNode::Local;
@@ -320,6 +325,7 @@ pub fn traverse(
     session.metrics.clear();
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
     let results_len = results.len();
+    eprintln!("results length: {:?}", results_len);
     for (i, (value, handler)) in results.into_iter().enumerate() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
         let current_diagnostics = handler.consume();
@@ -335,6 +341,7 @@ pub fn traverse(
             continue;
         };
 
+
         // Check if the cached AST was returned by the compiler for the users workspace.
         // If it was, then we need to use the original engines for traversal.
         //
@@ -346,6 +353,10 @@ pub fn traverse(
         } else {
             engines_clone
         };
+
+        let program_id = typed.as_ref().unwrap().namespace.current_package_ref().program_id;
+        let program_path = engines.se().get_manifest_path_from_program_id(&program_id).unwrap();
+        eprintln!("program path: {:?}", program_path);
 
         // Convert the source_id to a path so we can use the manifest path to get the program_id.
         // This is used to store the metrics for the module.
@@ -400,6 +411,8 @@ pub fn traverse(
             // Finally, populate our token_map with typed ast nodes.
             let typed_tree = TypedTree::new(&ctx);
             typed_tree.collect_module_spans(&root_module);
+            eprintln!("root_module len {:?}", root_module.all_nodes.len());
+            //eprintln!("root_module: {:#?}", root_module.all_nodes);
             parse_ast_to_typed_tokens(&root_module, &ctx, &modified_file, |node, _ctx| {
                 typed_tree.traverse_node(node);
             });
@@ -433,17 +446,30 @@ pub fn parse_project(
     sync: &SyncWorkspace,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
+
+    // If we use sync.manifest_path() here, then we will get the manifest path from the workspace.
+    // Compilation on the first run will be much slower as the entire workspace will need to be compiled.
+    let workspace_manifest_path = sync.workspace_manifest_path();
+
+    // TODO: we need a method that gives us the member manifest path from the Url.
+    let member_manifest_path = sync.member_manifest_path(uri);
+
+    
     let build_plan = session
         .build_plan_cache
-        .get_or_update(&sync.manifest_path(), || build_plan(uri))?;
+        .get_or_update(&member_manifest_path, || build_plan(uri))?;
 
+    //eprintln!("compiling with build_plan: {:#?}", build_plan);
+    let now = std::time::Instant::now();
     let results = compile(
         &build_plan,
         engines,
         retrigger_compilation,
         lsp_mode.as_ref(),
     )?;
-
+    eprintln!("compile time: {:?}", now.elapsed());
+    eprintln!("workspace_manifest_path: {:?}", workspace_manifest_path);
+    eprintln!("member_manifest_path: {:?}", member_manifest_path);
     // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
     // If we don't return an error here, then we will likely crash when trying to access the Engines
     // during traversal or when creating runnables.

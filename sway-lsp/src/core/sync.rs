@@ -167,17 +167,39 @@ impl SyncWorkspace {
         }
     }
 
+    /// Returns the path to the Forc.toml of the workspace in the temp directory.
     pub(crate) fn temp_manifest_path(&self) -> Option<PathBuf> {
         self.temp_dir()
             .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
             .ok()
     }
 
-    pub fn manifest_path(&self) -> Option<PathBuf> {
+    /// Returns the path to the Forc.toml of the workspace.
+    pub fn workspace_manifest_path(&self) -> Option<PathBuf> {
         self.manifest_dir()
             .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
             .ok()
     }
+
+    /// Returns the path to the Forc.toml of the workspace member containing the given TEMP URI.
+    /// This function assumes the input URI points to a file within the temporary cloned workspace.
+    pub(crate) fn member_manifest_path(&self, temp_uri: &Url) -> Option<PathBuf> {
+        let file_path_in_temp_member = get_path_from_url(temp_uri).ok()?;
+        let temp_workspace_root_dir = self.temp_dir().ok()?;
+        let manifest_file = ManifestFile::from_dir(&temp_workspace_root_dir).ok()?;
+        match manifest_file {
+            ManifestFile::Package(pkg_manifest) => file_path_in_temp_member
+                .starts_with(pkg_manifest.dir())
+                .then(|| pkg_manifest.path().to_path_buf()),
+            ManifestFile::Workspace(ws_manifest) => ws_manifest
+                .member_pkg_manifests()
+                .ok()?
+                .filter_map(Result::ok)
+                .find(|member_pkg| file_path_in_temp_member.starts_with(member_pkg.dir()))
+                .map(|member_pkg| member_pkg.path().to_path_buf()),
+        }
+    }
+
 
     pub(crate) fn sync_manifest(&self) {
         let actual_manifest_dir = match self.manifest_dir() {

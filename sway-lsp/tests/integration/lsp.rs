@@ -781,25 +781,38 @@ pub fn create_did_change_params(
     }
 }
 
-pub(crate) async fn inlay_hints_request(server: &ServerState, uri: &Url) -> Option<Vec<InlayHint>> {
+pub(crate) fn range_from_start_and_end_line(start_line: u32, end_line: u32) -> Range {
+    Range {
+        start: Position { line: start_line, character: 0 },
+        end: Position { line: end_line, character: 0 },
+    }
+}
+
+pub(crate) async fn get_inlay_hints_for_range(
+    server: &ServerState,
+    uri: Url,
+    range: Range,
+) -> Vec<InlayHint> {
     let params = InlayHintParams {
-        text_document: TextDocumentIdentifier { uri: uri.clone() },
-        range: Range {
-            start: Position {
-                line: 25,
-                character: 0,
-            },
-            end: Position {
-                line: 26,
-                character: 1,
-            },
-        },
+        text_document: TextDocumentIdentifier { uri },
+        range,
         work_done_progress_params: Default::default(),
     };
-    let res = request::handle_inlay_hints(server, params)
+    request::handle_inlay_hints(server, params)
         .await
         .unwrap()
-        .unwrap();
+        .unwrap()
+}
+
+pub(crate) async fn inlay_hints_request(server: &ServerState, uri: &Url) -> Option<Vec<InlayHint>> {
+    let range = Range {
+        start: Position {
+            line: 25,
+            character: 0,
+        },
+        end: Position { line: 26, character: 1 },
+    };
+    let res = get_inlay_hints_for_range(server, uri.clone(), range).await;
     let expected = vec![
         InlayHint {
             position: Position {

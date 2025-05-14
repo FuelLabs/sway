@@ -161,11 +161,27 @@ fn did_open() {
 fn did_open_all_members_in_examples() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
+        // Open up the arrays example in the examples workspace
         let arrays_dir = sway_workspace_dir().join("examples/arrays");
 
-        // THis example opens and passes here but if you open it in the editor its obviously not working. Improve this test tomorrow!
-        let _ = init_and_open(&mut service, arrays_dir.join("src/main.sw")).await;
+        // This example opens and passes here but if you open it in the editor its obviously not working. Improve this test tomorrow!
+        let uri = init_and_open(&mut service, arrays_dir.join("src/main.sw")).await;
         service.inner().wait_for_parsing().await;
+
+        // Assert that we found the correct workspace manifest file
+        let workspace_manifest_path = service.inner().sync_workspace.get().unwrap().workspace_manifest_path().unwrap();
+        assert!(workspace_manifest_path.ends_with("sway/examples/Forc.toml"));
+        eprintln!("workspace manifest: {:?}", workspace_manifest_path);
+
+        let (tmp_uri, session) = service.inner().uri_and_session_from_workspace(&uri).await.unwrap();
+        let tokens = session.token_map().tokens_for_file(&tmp_uri).map(|item| item.value().clone()).collect::<Vec<_>>();
+        eprintln!("tokens for file length: {:?}", tokens.len());
+        eprintln!("tokens for file: {:#?}", tokens);
+
+        let range = lsp::range_from_start_and_end_line(0, 34);
+        let inlay_hints = lsp::get_inlay_hints_for_range(&service.inner(), uri, range).await;
+        assert!(inlay_hints.len() > 0);
+
         shutdown_and_exit(&mut service).await;
     });
 }
@@ -219,7 +235,7 @@ fn sync_with_updates_to_manifest_in_workspace() {
                     .sync_workspace
                     .get()
                     .unwrap()
-                    .manifest_path(),
+                    .workspace_manifest_path(),
                 || sway_lsp::core::session::build_plan(&uri),
             )
             .unwrap();
