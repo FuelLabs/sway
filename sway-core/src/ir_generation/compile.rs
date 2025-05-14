@@ -665,7 +665,15 @@ fn compile_fn(
     // returns.  We can double check here and make sure the return value type is correct.
     let undef = Constant::unique(context, ConstantContent::get_undef(ret_type));
     ret_val = match ret_val.get_type(context) {
-        Some(ret_val_type) if ret_type.eq(context, &ret_val_type) => ret_val,
+        Some(ret_val_type)
+            if ret_type.eq(context, &ret_val_type)
+            // TODO: This must be removed along with sway_core::ir_generation::type_correction.
+                || ret_val_type
+                    .get_pointee_type(context)
+                    .is_some_and(|pointee_ty| pointee_ty.eq(context, &ret_type)) =>
+        {
+            ret_val
+        }
 
         // Mismatched or unavailable type.  Set ret_val to a correctly typed Undef.
         _otherwise => Value::new_constant(context, undef),

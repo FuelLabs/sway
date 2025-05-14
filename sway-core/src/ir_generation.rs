@@ -344,7 +344,8 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                                         use_idx: 0,
                                     });
                                 }
-                            } else if let Some(stored_pointee_ty) = stored_ty.get_pointee_type(ctx) {
+                            } else if let Some(stored_pointee_ty) = stored_ty.get_pointee_type(ctx)
+                            {
                                 // The value being stored is a pointer to what should've been stored.
                                 // So we just load the value and store it.
                                 if dst_pointee_ty == stored_pointee_ty {
@@ -363,6 +364,22 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                                 instrs_to_fix.push(TypeCorrection {
                                     actual_ty: dst_ty,
                                     expected_ty: pointer_to_dst,
+                                    use_instr: instr,
+                                    use_idx: 0,
+                                });
+                            }
+                        }
+                    }
+                    InstOp::Ret(ret_val, ret_ty) => {
+                        if let Some(ret_val_pointee_ty) = ret_val
+                            .get_type(ctx)
+                            .and_then(|ret_val_ty| ret_val_ty.get_pointee_type(ctx))
+                        {
+                            if ret_val_pointee_ty == *ret_ty {
+                                dbg!();
+                                instrs_to_fix.push(TypeCorrection {
+                                    actual_ty: ret_val.get_type(ctx).unwrap(),
+                                    expected_ty: *ret_ty,
                                     use_instr: instr,
                                     use_idx: 0,
                                 });
