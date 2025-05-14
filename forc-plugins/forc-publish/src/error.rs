@@ -44,9 +44,9 @@ impl Error {
                 status,
                 error: parsed_error.error,
             },
-            Err(_) => Error::ApiResponseError {
+            Err(err) => Error::ApiResponseError {
                 status,
-                error: "Unknown API error".to_string(),
+                error: format!("Unexpected API error: {:?}", err),
             },
         }
     }
