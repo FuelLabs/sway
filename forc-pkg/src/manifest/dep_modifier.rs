@@ -69,7 +69,11 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
     let lock_path = old_package_manifest.lock_path()?;
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
 
-    let section = DepSection::new(opts.contract_deps);
+    let section = if opts.contract_deps {
+        Section::Deps
+    } else {
+        Section::ContractDeps
+    };
 
     match opts.action {
         Action::Add => {
@@ -188,9 +192,7 @@ fn resolve_dependency(
     package_dir: &PathBuf,
 ) -> Result<(String, Dependency)> {
     let dep_spec: DepSpec = raw.parse()?;
-    let dep_name = dep_spec
-        .name
-        .ok_or_else(|| anyhow!("Missing name in `{}`", raw))?;
+    let dep_name = dep_spec.name;
 
     let mut details = DependencyDetails {
         version: dep_spec.version_req.clone(),
@@ -240,7 +242,7 @@ fn resolve_dependency(
 /// See `forc add` help for more info.
 #[derive(Clone, Debug, Default)]
 pub struct DepSpec {
-    pub name: Option<String>,
+    pub name: String,
     pub version_req: Option<String>,
 }
 
@@ -248,66 +250,56 @@ impl FromStr for DepSpec {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> anyhow::Result<Self> {
-        if s.is_empty() {
-            bail!("dependency spec cannot be empty");
+        if s.trim().is_empty() {
+            anyhow::bail!("Dependency spec cannot be empty");
         }
 
         let mut s = s.split('@');
-        let Some(name) = s.next() else {
-            bail!("dependency name is missing");
-        };
 
-        let dep = &mut DepSpec::default();
-        dep.name = Some(name.parse()?);
+        let name = s
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("missing dependency name"))?;
 
-        let Some(version_req) = s.next() else {
-            return Ok(dep.clone());
-        };
+        let version_req = s.next().map(|s| s.to_string());
 
-        dep.version_req = Some(version_req.parse()?);
-        Ok(dep.clone())
+        if let Some(ref v) = version_req {
+            semver::VersionReq::parse(v)
+                .map_err(|_| anyhow::anyhow!("invalid version requirement `{v}`"))?;
+        }
+
+        Ok(Self {
+            name: name.to_string(),
+            version_req,
+        })
     }
 }
 
 impl fmt::Display for DepSpec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(name) = &self.name {
-            write!(f, "{name}")?;
+        match &self.version_req {
+            Some(version) => write!(f, "{}@{}", self.name, version),
+            None => write!(f, "{}", self.name),
         }
-
-        if let Some(version_req) = &self.version_req {
-            write!(f, "@{version_req}")?;
-        }
-
-        Ok(())
     }
 }
 
 #[derive(Clone)]
-pub enum DepSection {
-    Regular,
-    Contract,
+pub enum Section {
+    Deps,
+    ContractDeps,
 }
 
-impl fmt::Display for DepSection {
+impl fmt::Display for Section {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let section = match self {
-            DepSection::Regular => "dependencies",
-            DepSection::Contract => "contract-dependencies",
+            Section::Deps => "dependencies",
+            Section::ContractDeps => "contract-dependencies",
         };
         write!(f, "{}", section)
     }
 }
 
-impl DepSection {
-    pub fn new(contract_deps: bool) -> Self {
-        if contract_deps {
-            DepSection::Contract
-        } else {
-            DepSection::Regular
-        }
-    }
-
+impl Section {
     pub fn add_deps_manifest_table(
         &self,
         doc: &mut DocumentMut,
@@ -318,7 +310,7 @@ impl DepSection {
         let mut table = Table::new();
 
         match self {
-            DepSection::Regular => {
+            Section::Deps => {
                 let item = match dep_data {
                     Dependency::Simple(ver) => ver.to_string().into(),
                     Dependency::Detailed(details) => {
@@ -327,7 +319,7 @@ impl DepSection {
                 };
                 table.insert(&dep_name, item);
             }
-            DepSection::Contract => {
+            Section::ContractDeps => {
                 let resolved_salt = match salt.as_ref().or(salt.as_ref()) {
                     Some(s) => {
                         HexSalt::from_str(s).map_err(|e| anyhow!("Invalid salt format: {}", e))?
@@ -375,7 +367,7 @@ impl DepSection {
         })?;
 
         match self {
-            DepSection::Regular => {
+            Section::Deps => {
                 for dep in deps {
                     if !section_table.contains_key(dep) {
                         bail!(
@@ -387,7 +379,7 @@ impl DepSection {
                     section_table.remove(dep);
                 }
             }
-            DepSection::Contract => {
+            Section::ContractDeps => {
                 for dep in deps {
                     if !section_table.contains_key(dep) {
                         bail!(
@@ -445,21 +437,36 @@ mod tests {
     }
 
     #[test]
-    fn dep_from_str_name_only() {
+    fn test_dep_from_str_name_only() {
         let dep: DepSpec = "abc".parse().expect("parsing dep spec failed");
-        assert_eq!(dep.name, Some("abc".to_string()));
+        assert_eq!(dep.name, "abc".to_string());
         assert_eq!(dep.version_req, None);
     }
 
     #[test]
-    fn dep_from_str_name_and_version() {
+    fn test_dep_from_str_name_and_version() {
         let dep: DepSpec = "abc@1".parse().expect("parsing dep spec failed");
-        assert_eq!(dep.name, Some("abc".to_string()));
+        assert_eq!(dep.name, "abc".to_string());
         assert_eq!(dep.version_req, Some("1".to_string()));
     }
 
     #[test]
-    fn dep_from_str_invalid() {
+    fn test_dep_spec_invalid_version_req() {
+        let input = "foo@not-a-version";
+        let result = DepSpec::from_str(input);
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("invalid version requirement"),
+            "Expected version requirement parse failure"
+        );
+    }
+
+    #[test]
+    fn test_dep_from_str_invalid() {
         assert!(DepSpec::from_str("").is_err());
     }
 
@@ -849,7 +856,7 @@ mod tests {
 
         let dep_data = Dependency::Simple("1.0.0".into());
 
-        let section = DepSection::Regular;
+        let section = Section::Deps;
 
         section
             .add_deps_manifest_table(&mut doc, "dep1".into(), dep_data, None)
@@ -875,7 +882,7 @@ mod tests {
             ..Default::default()
         });
 
-        let section = DepSection::Regular;
+        let section = Section::Deps;
 
         section
             .add_deps_manifest_table(&mut doc, "dep2".into(), dep_data, None)
@@ -901,7 +908,7 @@ mod tests {
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
 
-        let section = DepSection::Contract;
+        let section = Section::ContractDeps;
         let dep_name = "custom_dep";
         let dep_data = Dependency::Simple("1.0.0".to_string());
         let salt_str = "0x2222222222222222222222222222222222222222222222222222222222222222";
@@ -942,7 +949,7 @@ mod tests {
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
 
-        let section = DepSection::Contract;
+        let section = Section::ContractDeps;
         let dep_name = "custom_dep";
         let dep_data = Dependency::Simple("1.0.0".to_string());
 
@@ -976,7 +983,7 @@ mod tests {
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
 
-        let section = DepSection::Contract;
+        let section = Section::ContractDeps;
         let dep_name = "custom_dep";
         let dep_data = Dependency::Simple("1.0.0".to_string());
 
@@ -1007,7 +1014,7 @@ mod tests {
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
 
-        let section = DepSection::Regular;
+        let section = Section::Deps;
         section
             .remove_deps_manifest_table(&mut doc, &["foo"])
             .unwrap();
@@ -1031,7 +1038,7 @@ mod tests {
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
 
-        let section = DepSection::Regular;
+        let section = Section::Deps;
 
         let err = section
             .remove_deps_manifest_table(&mut doc, &["notfound"])
@@ -1056,7 +1063,7 @@ mod tests {
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
 
-        let section = DepSection::Contract;
+        let section = Section::ContractDeps;
         section
             .remove_deps_manifest_table(&mut doc, &["baz"])
             .unwrap();
@@ -1083,7 +1090,7 @@ mod tests {
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
 
-        let section = DepSection::Contract;
+        let section = Section::ContractDeps;
 
         let result = section.remove_deps_manifest_table(&mut doc, &["ghost"]);
         assert!(result.is_err());
@@ -1108,7 +1115,7 @@ mod tests {
 
         let mut doc: DocumentMut = toml_str.parse().unwrap();
 
-        let section = DepSection::Contract;
+        let section = Section::ContractDeps;
 
         let result = section.remove_deps_manifest_table(&mut doc, &["ghost"]);
 
