@@ -319,6 +319,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         let fn_ref = unknown_decl.to_fn_ref(handler, ctx.engines())?;
         // Get a new copy from the declaration engine.
         let mut new_copy = (*decl_engine.get_function(fn_ref.id())).clone();
+
         match self.type_arguments {
             // Monomorphize the copy, in place.
             TypeArgs::Regular(_) => {
@@ -352,6 +353,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                 decl_engine.get_parsed_decl_id(fn_ref.id()).as_ref(),
             )
             .with_parent(ctx.engines.de(), fn_ref.id().into());
+
         Ok((new_fn_ref, None, None))
     }
 }

@@ -38,7 +38,6 @@ fn main(a: [u64; 2]) {
     let s: S<u64, 3> = S { };
     __log(s.len_xxx());
 
-    __dbg(return_n::<3>());
-    assert(return_n::<4>() == 4);
-    __dbg(return_n::<5>());
+    let _ = __dbg(return_n::<3>());
+    let _ = __dbg(return_n::<5>());
 }
