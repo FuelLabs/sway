@@ -185,6 +185,7 @@ impl PartialEqWithEngines for TypeParameter {
 
 impl HashWithEngines for TypeParameter {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        std::mem::discriminant(self).hash(state);
         match self {
             TypeParameter::Type(p) => p.hash(state, engines),
             TypeParameter::Const(p) => p.hash(state, engines),
@@ -633,8 +634,7 @@ impl GenericTypeParameter {
         };
 
         // Insert the type parameter into the namespace
-        let type_parameter = TypeParameter::Type(type_parameter);
-        Ok(type_parameter)
+        Ok(TypeParameter::Type(type_parameter))
     }
 
     /// Type checks a [TypeParameter] [TraitConstraint]s and
@@ -1050,11 +1050,15 @@ pub struct ConstGenericParameter {
 }
 
 impl HashWithEngines for ConstGenericParameter {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let ConstGenericParameter { name, ty, .. } = self;
-        let type_engine = engines.te();
-        type_engine.get(*ty).hash(state, engines);
-        name.hash(state);
+    fn hash<H: Hasher>(&self, state: &mut H, _: &Engines) {
+        match &self.expr {
+            Some(expr) => {
+                expr.hash(state);
+            }
+            None => {
+                self.name.hash(state);
+            }
+        }
     }
 }
 
