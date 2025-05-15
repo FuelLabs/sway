@@ -20,7 +20,11 @@ use sway_types::{span::Span, Ident};
 pub(crate) use purity::{check_function_purity, PurityEnv};
 
 use crate::{
-    engine_threading::HashWithEngines, language::ty, metadata::MetadataManager, types::{LogId, MessageId}, Engines, PanicOccurrences, TypeId
+    engine_threading::HashWithEngines,
+    language::ty,
+    metadata::MetadataManager,
+    types::{LogId, MessageId},
+    Engines, PanicOccurrences, TypeId,
 };
 
 type FnKey = u64;

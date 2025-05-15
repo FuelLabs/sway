@@ -1019,9 +1019,7 @@ impl Attributes {
                 .iter()
                 .filter(|arg| arg.is_error_message())
                 .last()
-                .and_then(|arg| {
-                    arg.get_string_opt(&Handler::default()).ok().flatten()
-                })
+                .and_then(|arg| arg.get_string_opt(&Handler::default()).ok().flatten())
         })
     }
 }

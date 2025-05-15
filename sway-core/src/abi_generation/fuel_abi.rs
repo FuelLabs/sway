@@ -8,7 +8,10 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 use crate::{
-    ast_elements::type_parameter::GenericTypeParameter, language::ty::{TyFunctionDecl, TyProgram, TyProgramKind}, transform::Attributes, Engines, PanicOccurrences, TypeId, TypeInfo
+    ast_elements::type_parameter::GenericTypeParameter,
+    language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
+    transform::Attributes,
+    Engines, PanicOccurrences, TypeId, TypeInfo,
 };
 
 use super::abi_str::AbiStrContext;
@@ -576,24 +579,27 @@ fn generate_configurables(
         .collect::<Result<Vec<_>, _>>()
 }
 
-fn generate_error_codes(
-    panic_occurrences: &PanicOccurrences,
-) -> BTreeMap<u64, ErrorDetails> {
-    panic_occurrences.iter().map(|(panic_occurrence, revert_code)| (
-        *revert_code,
-        ErrorDetails {
-            pos: ErrorPosition {
-                pkg: panic_occurrence.loc.pkg.clone(),
-                file: panic_occurrence.loc.file.clone(),
-                line: panic_occurrence.loc.loc.line as u64,
-                column: panic_occurrence.loc.loc.col as u64,
-            },
-            log_id: panic_occurrence
-                .log_id
-                .map(|log_id| log_id.hash_id.to_string()),
-            msg: panic_occurrence.msg.clone(),
-        },
-    )).collect()
+fn generate_error_codes(panic_occurrences: &PanicOccurrences) -> BTreeMap<u64, ErrorDetails> {
+    panic_occurrences
+        .iter()
+        .map(|(panic_occurrence, revert_code)| {
+            (
+                *revert_code,
+                ErrorDetails {
+                    pos: ErrorPosition {
+                        pkg: panic_occurrence.loc.pkg.clone(),
+                        file: panic_occurrence.loc.file.clone(),
+                        line: panic_occurrence.loc.loc.line as u64,
+                        column: panic_occurrence.loc.loc.col as u64,
+                    },
+                    log_id: panic_occurrence
+                        .log_id
+                        .map(|log_id| log_id.hash_id.to_string()),
+                    msg: panic_occurrence.msg.clone(),
+                },
+            )
+        })
+        .collect()
 }
 
 impl TypeId {
