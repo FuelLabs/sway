@@ -8328,7 +8328,6 @@ dependencies = [
  "anyhow",
  "assert-json-diff",
  "codspeed-criterion-compat",
- "criterion",
  "crossbeam-channel",
  "dashmap 6.1.0",
  "dirs 5.0.1",

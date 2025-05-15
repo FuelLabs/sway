@@ -191,7 +191,7 @@ impl SourceEngine {
             // Forc.toml file at the manifest path.
             let package_dir_name = manifest_path
                 .iter()
-                .last()
+                .next_back()
                 .map(|p| p.to_string_lossy().to_string())
                 .unwrap_or_else(|| "<unknown>".to_string());
             (package_dir_name, String::new())
