@@ -1,3 +1,4 @@
+// ignore garbage_collection_all_language_tests - needs a experimental feature
 script;
 
 struct C {}
@@ -21,6 +22,11 @@ impl<T, const N: u64> S<T, N> {
     }
 }
 
+#[inline(never)]
+fn return_n<const NNN: u64>() -> u64 {
+    NNN
+}
+
 fn main(a: [u64; 2]) {
     __log(a);
 
@@ -32,4 +38,7 @@ fn main(a: [u64; 2]) {
 
     let s: S<u64, 3> = S { };
     __log(s.len_xxx());
+
+    let _ = __dbg(return_n::<3>());
+    let _ = __dbg(return_n::<5>());
 }

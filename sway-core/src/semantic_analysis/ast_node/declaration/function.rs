@@ -9,11 +9,14 @@ use sway_error::{
 use symbol_collection_context::SymbolCollectionContext;
 
 use crate::{
-    decl_engine::{parsed_id::ParsedDeclId, DeclId, DeclRefFunction},
+    decl_engine::{
+        parsed_id::ParsedDeclId, DeclEngineInsert as _, DeclId, DeclRefFunction,
+        ParsedDeclEngineGet as _,
+    },
     language::{
         parsed::*,
-        ty::{self, TyCodeBlock, TyFunctionDecl},
-        CallPath, Visibility,
+        ty::{self, ConstGenericDecl, TyCodeBlock, TyConstGenericDecl, TyDecl, TyFunctionDecl},
+        CallPath, CallPathType, Visibility,
     },
     semantic_analysis::*,
     type_system::*,
@@ -34,6 +37,22 @@ impl ty::TyFunctionDecl {
 
         // create a namespace for the function
         let _ = ctx.scoped(engines, fn_decl.span.clone(), Some(decl), |scoped_ctx| {
+            let const_generic_parameters = fn_decl
+                .type_parameters
+                .iter()
+                .filter_map(|x| x.as_const_parameter())
+                .filter_map(|x| x.id.as_ref());
+
+            for const_generic_parameter in const_generic_parameters {
+                let const_generic_decl = engines.pe().get(const_generic_parameter);
+                scoped_ctx.insert_parsed_symbol(
+                    handler,
+                    engines,
+                    const_generic_decl.name.clone(),
+                    Declaration::ConstGenericDeclaration(*const_generic_parameter),
+                )?;
+            }
+
             TyCodeBlock::collect(handler, engines, scoped_ctx, &fn_decl.body)
         });
         Ok(())
@@ -113,6 +132,36 @@ impl ty::TyFunctionDecl {
                     type_parameters.clone(),
                     None,
                 )?;
+
+                // const generic parameters
+                let const_generic_parameters = type_parameters
+                    .iter()
+                    .filter_map(|x| x.as_const_parameter())
+                    .filter_map(|x| x.id.as_ref());
+                for const_generic_decl_id in const_generic_parameters {
+                    let const_generic_decl = ctx.engines.pe().get(const_generic_decl_id);
+                    let decl_ref = ctx.engines.de().insert(
+                        TyConstGenericDecl {
+                            call_path: CallPath {
+                                prefixes: vec![],
+                                suffix: const_generic_decl.name.clone(),
+                                callpath_type: CallPathType::Ambiguous,
+                            },
+                            span: const_generic_decl.span.clone(),
+                            return_type: const_generic_decl.ty,
+                            value: None,
+                        },
+                        Some(const_generic_decl_id),
+                    );
+
+                    ctx.insert_symbol(
+                        handler,
+                        const_generic_decl.name.clone(),
+                        TyDecl::ConstGenericDecl(ConstGenericDecl {
+                            decl_id: *decl_ref.id(),
+                        }),
+                    )?;
+                }
 
                 // type check the function parameters, which will also insert them into the namespace
                 let mut new_parameters = vec![];
@@ -212,10 +261,10 @@ impl ty::TyFunctionDecl {
 
                 // Insert the previously type checked type parameters into the current namespace.
                 // We insert all type parameter before the constraints because some constraints may depend on the parameters.
-                for p in type_parameters.iter().filter_map(|x| x.as_type_parameter()) {
+                for p in type_parameters.iter() {
                     p.insert_into_namespace_self(handler, ctx.by_ref())?;
                 }
-                for p in type_parameters.iter().filter_map(|x| x.as_type_parameter()) {
+                for p in type_parameters.iter() {
                     p.insert_into_namespace_constraints(handler, ctx.by_ref())?;
                 }
 
