@@ -15,6 +15,68 @@
   ],
   "configurables": [],
   "encodingVersion": "1",
+  "errorCodes": {
+    "18446744069414584320": {
+      "logId": null,
+      "msg": "This is the first panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 31,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "18446744069414584321": {
+      "logId": null,
+      "msg": "This is the second panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 35,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "18446744069414584322": {
+      "logId": null,
+      "msg": "This is a default panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 39,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "18446744069414584323": {
+      "logId": null,
+      "msg": "This is a panic string in then branch.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 43,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "18446744069414584324": {
+      "logId": "10098701174489624218",
+      "msg": null,
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 27,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "18446744069414584325": {
+      "logId": null,
+      "msg": "This is a panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 15,
+        "pkg": "panic_string_slices"
+      }
+    }
+  },
   "functions": [
     {
       "attributes": null,

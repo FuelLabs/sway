@@ -105,7 +105,7 @@ pub fn generate_program_abi(
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
-            let error_codes = generate_error_codes(ctx.panic_occurrences)?;
+            let error_codes = generate_error_codes(ctx.panic_occurrences);
             program_abi::ProgramABI {
                 program_type: "contract".to_string(),
                 spec_version,
@@ -134,7 +134,7 @@ pub fn generate_program_abi(
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
-            let error_codes = generate_error_codes(ctx.panic_occurrences)?;
+            let error_codes = generate_error_codes(ctx.panic_occurrences);
             program_abi::ProgramABI {
                 program_type: "script".to_string(),
                 spec_version,
@@ -163,7 +163,7 @@ pub fn generate_program_abi(
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
-            let error_codes = generate_error_codes(ctx.panic_occurrences)?;
+            let error_codes = generate_error_codes(ctx.panic_occurrences);
             program_abi::ProgramABI {
                 program_type: "predicate".to_string(),
                 spec_version,
@@ -182,7 +182,7 @@ pub fn generate_program_abi(
                 generate_logged_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let messages_types =
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
-            let error_codes = generate_error_codes(ctx.panic_occurrences)?;
+            let error_codes = generate_error_codes(ctx.panic_occurrences);
             program_abi::ProgramABI {
                 program_type: "library".to_string(),
                 spec_version,
@@ -578,26 +578,22 @@ fn generate_configurables(
 
 fn generate_error_codes(
     panic_occurrences: &PanicOccurrences,
-) -> Result<BTreeMap<u64, ErrorDetails>, ErrorEmitted> {
-    let mut res = BTreeMap::new();
-    for (panic_occurrence, revert_code) in panic_occurrences.iter() {
-        res.insert(
-            *revert_code,
-            ErrorDetails {
-                pos: ErrorPosition {
-                    pkg: panic_occurrence.loc.pkg.clone(),
-                    file: panic_occurrence.loc.file.clone(),
-                    line: panic_occurrence.loc.loc.line as u64,
-                    column: panic_occurrence.loc.loc.col as u64,
-                },
-                log_id: panic_occurrence
-                    .log_id
-                    .map(|log_id| log_id.hash_id.to_string()),
-                msg: panic_occurrence.msg.clone(),
+) -> BTreeMap<u64, ErrorDetails> {
+    panic_occurrences.iter().map(|(panic_occurrence, revert_code)| (
+        *revert_code,
+        ErrorDetails {
+            pos: ErrorPosition {
+                pkg: panic_occurrence.loc.pkg.clone(),
+                file: panic_occurrence.loc.file.clone(),
+                line: panic_occurrence.loc.loc.line as u64,
+                column: panic_occurrence.loc.loc.col as u64,
             },
-        );
-    }
-    Ok(res)
+            log_id: panic_occurrence
+                .log_id
+                .map(|log_id| log_id.hash_id.to_string()),
+            msg: panic_occurrence.msg.clone(),
+        },
+    )).collect()
 }
 
 impl TypeId {
@@ -689,7 +685,7 @@ impl TypeId {
                             type_id: program_abi::TypeId::Metadata(MetadataTypeId(
                                 x.type_argument.initial_type_id().index(),
                             )),
-                            error_message: x.attributes.error_message().map(|msg| msg.clone()),
+                            error_message: x.attributes.error_message().cloned(),
                             type_arguments: x
                                 .type_argument
                                 .initial_type_id()

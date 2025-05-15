@@ -758,7 +758,7 @@ pub struct PanicOccurrence {
 }
 
 /// [PanicOccurrence]s mapped to their corresponding revert codes.
-type PanicOccurrences = HashMap<PanicOccurrence, u64>;
+pub type PanicOccurrences = HashMap<PanicOccurrence, u64>;
 
 pub struct CompiledAsm {
     pub finalized_asm: FinalizedAsm,

@@ -94,9 +94,9 @@ fuel-core-types = { version = "0.43", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.72"
-fuels-core = "0.72"
-fuels-accounts = "0.72"
+fuels = "0.73"
+fuels-core = "0.73"
+fuels-accounts = "0.73"
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.60"
@@ -254,9 +254,3 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
-
-[patch.crates-io]
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-errors" }
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-errors" }
-fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-errors" }
-fuels-code-gen = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-errors" }
