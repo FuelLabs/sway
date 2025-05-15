@@ -1,0 +1,103 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    },
+    {
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a",
+      "type": "str"
+    },
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "type": "u8"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {
+    "18446744069414584320": {
+      "logId": null,
+      "msg": "This is the first panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 31,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "18446744069414584321": {
+      "logId": null,
+      "msg": "This is the second panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 35,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "18446744069414584322": {
+      "logId": null,
+      "msg": "This is a default panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 39,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "18446744069414584323": {
+      "logId": null,
+      "msg": "This is a panic string in then branch.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 43,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "18446744069414584324": {
+      "logId": "10098701174489624218",
+      "msg": null,
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 27,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "18446744069414584325": {
+      "logId": null,
+      "msg": "This is a panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "line": 15,
+        "pkg": "panic_string_slices"
+      }
+    }
+  },
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+          "name": "choice"
+        }
+      ],
+      "name": "main",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    }
+  ],
+  "loggedTypes": [
+    {
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a",
+      "logId": "10098701174489624218"
+    }
+  ],
+  "messagesTypes": [],
+  "metadataTypes": [],
+  "programType": "script",
+  "specVersion": "1.1"
+}

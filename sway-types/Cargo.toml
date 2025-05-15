@@ -21,6 +21,7 @@ rustc-hash.workspace = true
 serde = { workspace = true, features = ["derive", "std", "rc"] }
 sway-utils.workspace = true
 thiserror.workspace = true
+toml.workspace = true
 
 [features]
 no-span-debug = []

@@ -79,10 +79,12 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                     let mut last_output: Option<String> = None;
 
-                    for cmd in cmd.split("|") {
+                    // We intentionally split the command by " | " to allow for
+                    // `regex` command to support `|` operator, although without
+                    // surrounding spaces.
+                    for cmd in cmd.split(" | ") {
                         let cmd = cmd.trim();
 
-                        // known commands
                         let cmd = if let Some(cmd) = cmd.strip_prefix("forc doc ") {
                             FORC_DOC_COMPILATION.call_once(|| {
                                 compile_forc_doc();
@@ -93,7 +95,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                 compile_forc();
                             });
                             format!("target/release/forc {cmd} 1>&2")
-                        } else if let Some(cmd) = cmd.strip_prefix("grep ") {
+                        } else if let Some(cmd) = cmd.strip_prefix("sub ") {
                             let arg = cmd.trim();
                             if let Some(l) = last_output.take() {
                                 let mut new_output = String::new();
@@ -106,8 +108,23 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                 last_output = Some(new_output);
                             }
                             continue;
+                        } else if let Some(cmd) = cmd.strip_prefix("regex ") {
+                            let arg = cmd.trim();
+                            let arg = arg.trim_matches('\'');
+                            let regex = Regex::new(arg).expect("regex provided to the snapshot `regex` filter is not a valid Rust regex");
+                            if let Some(l) = last_output.take() {
+                                let mut new_output = String::new();
+                                for line in l.lines() {
+                                    if regex.is_match(line) {
+                                        new_output.push_str(line);
+                                        new_output.push('\n');
+                                    }
+                                }
+                                last_output = Some(new_output);
+                            }
+                            continue;
                         } else {
-                            panic!("Not supported. Possible commands: forc")
+                            panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex");
                         };
 
                         let o = duct::cmd!("bash", "-c", cmd.clone())
