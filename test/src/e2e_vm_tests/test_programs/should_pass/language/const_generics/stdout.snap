@@ -64,16 +64,28 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [2.856 KB] in ???
+=======
+    Finished debug [unoptimized + fuel] target(s) [4.472 KB] in ???
+>>>>>>> 5ac072490 (test with enum with just one variant)
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
+<<<<<<< HEAD
       test run_main ... ok (???, 4184 gas)
 [src/main.sw:31:13] a = [1, 2]
 [src/main.sw:40:13] s.len_xxx() = 3
 [src/main.sw:42:13] return_n::<3>() = 3
 [src/main.sw:43:13] return_n::<5>() = 5
+=======
+      test main_test ... ok (???, 6377 gas)
+[src/main.sw:60:13] a = [0, 1]
+[src/main.sw:69:13] s.len_xxx() = 3
+[src/main.sw:75:13] e = OneVariant([1, 2, 3])
+[src/main.sw:80:13] e = Nothing
+>>>>>>> 5ac072490 (test with enum with just one variant)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
