@@ -1,3 +1,4 @@
+// ignore garbage_collection_all_language_tests - needs a experimental feature
 script;
 
 struct C {}
