@@ -1018,7 +1018,7 @@ impl Attributes {
                 .args
                 .iter()
                 .filter(|arg| arg.is_error_message())
-                .last()
+                .next_back()
                 .and_then(|arg| arg.get_string_opt(&Handler::default()).ok().flatten())
         })
     }
