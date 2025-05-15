@@ -2533,7 +2533,7 @@ fn run_garbage_collection_tests_from_projects_dir(projects_dir: PathBuf) -> Resu
                 .to_string();
             let main_file = project_dir.join("src/main.sw");
 
-             // check if this test must be ignored
+            // check if this test must be ignored
             let contents = std::fs::read_to_string(&main_file)
                 .map(|x| x.contains("ignore garbage_collection_all_language_tests"));
             if let Ok(true) = contents {
