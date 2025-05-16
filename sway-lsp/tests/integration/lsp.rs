@@ -52,7 +52,7 @@ pub(crate) fn client_capabilities() -> ClientCapabilities {
 
 pub(crate) async fn initialize_request(
     service: &mut LspService<ServerState>,
-    entry_point: &PathBuf,
+    entry_point: &Path,
 ) -> Request {
     let search_dir = entry_point.parent().unwrap_or_else(|| Path::new(""));
     let project_root_path_for_uri: PathBuf = match ManifestFile::from_dir(search_dir) {
