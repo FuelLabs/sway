@@ -14,7 +14,6 @@ flate2.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
 futures-util.workspace = true
-indicatif.workspace = true
 reqwest = { workspace = true, features = ["json", "stream"] }
 semver = { workspace = true, features = ["serde"] }
 serde = { workspace = true, features = ["derive"] }
