@@ -53,7 +53,7 @@ pub async fn handle_did_open_text_document(
             // `OnceLock::get_or_init_async` would be ideal but is not in std yet.
             // We will call our async helper and then try to set.
             // If another thread sets it in between, .set() will fail, which is acceptable.
-            match initialize_global_sync_workspace(state, file_uri).await {
+            match state.initialize_global_sync_workspace(file_uri).await {
                 Ok(initialized_sw) => {
                     match state.sync_workspace.set(initialized_sw.clone()) {
                         Ok(()) => {
@@ -246,87 +246,4 @@ pub(crate) async fn handle_did_change_watched_files(
         }
     }
     Ok(())
-}
-
-// In sway-lsp/src/handlers/notification.rs
-async fn initialize_global_sync_workspace(
-    state: &ServerState,
-    file_uri_triggering_init: &Url,
-) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
-    tracing::info!(
-        "Performing one-time SyncWorkspace initialization triggered by: {:?}",
-        file_uri_triggering_init
-    );
-
-    let path = PathBuf::from(file_uri_triggering_init.path());
-    let search_dir = path.parent().unwrap_or(&path);
-
-    // Find the initial manifest (could be package or workspace)
-    let initial_manifest_file = ManifestFile::from_dir(search_dir).map_err(|e| {
-        tracing::error!("Failed to find any manifest for {:?}: {}", search_dir, e);
-        DocumentError::ManifestFileNotFound {
-            dir: search_dir.to_string_lossy().into(),
-        }
-    })?;
-
-    // Determine the true workspace root.
-    // If the initial manifest is a package that's part of a workspace, get that workspace root.
-    // Otherwise, the initial manifest's directory is the root.
-    let actual_sync_root = match &initial_manifest_file {
-        ManifestFile::Package(pkg_mf) => {
-            // Check if this package is part of a workspace // TODO JOSH this is the wrong error type
-            match pkg_mf
-                .workspace()
-                .map_err(|e| LanguageServerError::BuildPlanFailed(e))?
-            {
-                Some(ws_mf) => {
-                    // It's part of a workspace, use the workspace's directory
-                    tracing::info!(
-                        "Package {:?} is part of workspace {:?}. Using workspace root.",
-                        pkg_mf.path(),
-                        ws_mf.path()
-                    );
-                    ws_mf.dir().to_path_buf()
-                }
-                None => {
-                    // It's a standalone package, use its directory
-                    tracing::info!(
-                        "Package {:?} is standalone. Using package root.",
-                        pkg_mf.path()
-                    );
-                    initial_manifest_file.dir().to_path_buf()
-                }
-            }
-        }
-        ManifestFile::Workspace(ws_mf) => {
-            // It's already a workspace manifest, use its directory
-            tracing::info!(
-                "Initial manifest is a workspace: {:?}. Using its root.",
-                ws_mf.path()
-            );
-            initial_manifest_file.dir().to_path_buf()
-        }
-    };
-
-    tracing::info!(
-        "Determined actual root for SyncWorkspace: {:?}",
-        actual_sync_root
-    );
-
-    let sw = Arc::new(SyncWorkspace::new());
-    sw.create_temp_dir_from_workspace(&actual_sync_root)?; // Use the true workspace root
-    sw.clone_manifest_dir_to_temp()?; // This will now clone the entire workspace
-    sw.sync_manifest(); // This will now iterate through members if actual_sync_root is a workspace
-
-    let temp_dir_for_docs = sw.temp_dir()?;
-    state
-        .documents
-        .store_sway_files_from_temp(temp_dir_for_docs)
-        .await?;
-    tracing::info!(
-        "Initial document population complete for SyncWorkspace root: {:?}",
-        actual_sync_root
-    );
-
-    Ok(sw)
 }

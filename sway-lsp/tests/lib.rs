@@ -163,7 +163,7 @@ fn did_open_all_members_in_examples() {
         let examples_workspace_dir = sway_workspace_dir().join("examples");
         let _test_programs_workspace_dir = sway_workspace_dir().join(in_language_test_dir());
         let _sdk_harness_workspace_dir = sway_workspace_dir().join(sdk_harness_test_projects_dir());
-        
+
         // TODO: Support multiple workspaces: https://github.com/FuelLabs/sway/issues/7177
         let workspace_dirs = vec![
             &examples_workspace_dir,
@@ -171,41 +171,10 @@ fn did_open_all_members_in_examples() {
             //&sdk_harness_workspace_dir,
         ];
 
-        // Open up the arrays example in the examples workspace
-        //let arrays_dir = examples_workspace_dir.join("arrays");
-        //let address_inline_tests_dir = test_programs_workspace_dir.join("test_programs/address_inline_tests");
-        //let call_frames_dir = sdk_harness_workspace_dir.join("test_projects/call_frames");
-
-        // This example opens and passes here but if you open it in the editor its obviously not working. Improve this test tomorrow!
-        //let uri = init_and_open(&mut service, arrays_dir.join("src/main.sw")).await;
-        //service.inner().wait_for_parsing().await;
-
-        // // Assert that we found the correct workspace manifest file
-        // let workspace_manifest_path = service
-        //     .inner()
-        //     .sync_workspace
-        //     .get()
-        //     .unwrap()
-        //     .workspace_manifest_path()
-        //     .unwrap();
-        // assert!(workspace_manifest_path.ends_with("sway/examples/Forc.toml"));
-        // eprintln!("workspace manifest: {:?}", workspace_manifest_path);
-
-        // let range = lsp::range_from_start_and_end_line(0, 34);
-        // let inlay_hints = lsp::get_inlay_hints_for_range(&service.inner(), &uri, range).await;
-        // assert!(inlay_hints.len() > 0);
-
-        // let document_symbols = lsp::get_nested_document_symbols(&service.inner(), &uri).await;
-        // assert!(document_symbols.len() > 0);
-
-        // let semantic_tokens = lsp::get_semantic_tokens_full(&service.inner(), &uri).await;
-        // assert!(semantic_tokens.data.len() > 0);
-
         //----------------------------------
         for workspace_dir in workspace_dirs {
             // we need to init and open if this is the first time we are opening a workspace
             // TODO: https://github.com/FuelLabs/sway/issues/7177
-            eprintln!("---- opening workspace: {:?}", workspace_dir);
             let member_manifests = ManifestFile::from_dir(workspace_dir)
                 .unwrap()
                 .member_manifests()
@@ -213,7 +182,6 @@ fn did_open_all_members_in_examples() {
 
             // Open all workspace members and assert that we are able to return semantic tokens for each workspace member.
             for (name, package_manifest) in &member_manifests {
-                eprintln!("opening workspace member: {:?}", name);
                 let dir = package_manifest.path().parent().unwrap();
 
                 // If the workspace is not initialized, we need to initialize it
@@ -238,7 +206,6 @@ fn did_open_all_members_in_examples() {
                 assert!(semantic_tokens.data.len() > 0);
             }
         }
-
         shutdown_and_exit(&mut service).await;
     });
 }

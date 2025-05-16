@@ -12,7 +12,7 @@ use crate::{
 };
 use crossbeam_channel::{Receiver, Sender};
 use dashmap::{mapref::multiple::RefMulti, DashMap};
-use forc_pkg::manifest::GenericManifestFile;
+use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::PackageManifestFile;
 use lsp_types::{
     Diagnostic, DidChangeWatchedFilesRegistrationOptions, FileSystemWatcher, GlobPattern,
@@ -424,6 +424,87 @@ impl ServerState {
             .insert((*manifest_dir).clone(), session.clone());
 
         Ok(session)
+    }
+
+    pub async fn initialize_global_sync_workspace(
+        &self,
+        file_uri_triggering_init: &Url,
+    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
+        tracing::info!(
+            "Performing one-time SyncWorkspace initialization triggered by: {:?}",
+            file_uri_triggering_init
+        );
+
+        let path = PathBuf::from(file_uri_triggering_init.path());
+        let search_dir = path.parent().unwrap_or(&path);
+
+        // Find the initial manifest (could be package or workspace)
+        let initial_manifest_file = ManifestFile::from_dir(search_dir).map_err(|e| {
+            tracing::error!("Failed to find any manifest for {:?}: {}", search_dir, e);
+            DocumentError::ManifestFileNotFound {
+                dir: search_dir.to_string_lossy().into(),
+            }
+        })?;
+
+        // Determine the true workspace root.
+        // If the initial manifest is a package that's part of a workspace, get that workspace root.
+        // Otherwise, the initial manifest's directory is the root.
+        let actual_sync_root = match &initial_manifest_file {
+            ManifestFile::Package(pkg_mf) => {
+                // Check if this package is part of a workspace // TODO JOSH this is the wrong error type
+                match pkg_mf
+                    .workspace()
+                    .map_err(|e| LanguageServerError::BuildPlanFailed(e))?
+                {
+                    Some(ws_mf) => {
+                        // It's part of a workspace, use the workspace's directory
+                        tracing::info!(
+                            "Package {:?} is part of workspace {:?}. Using workspace root.",
+                            pkg_mf.path(),
+                            ws_mf.path()
+                        );
+                        ws_mf.dir().to_path_buf()
+                    }
+                    None => {
+                        // It's a standalone package, use its directory
+                        tracing::info!(
+                            "Package {:?} is standalone. Using package root.",
+                            pkg_mf.path()
+                        );
+                        initial_manifest_file.dir().to_path_buf()
+                    }
+                }
+            }
+            ManifestFile::Workspace(ws_mf) => {
+                // It's already a workspace manifest, use its directory
+                tracing::info!(
+                    "Initial manifest is a workspace: {:?}. Using its root.",
+                    ws_mf.path()
+                );
+                initial_manifest_file.dir().to_path_buf()
+            }
+        };
+
+        tracing::info!(
+            "Determined actual root for SyncWorkspace: {:?}",
+            actual_sync_root
+        );
+
+        let sw = Arc::new(SyncWorkspace::new());
+        sw.create_temp_dir_from_workspace(&actual_sync_root)?; // Use the true workspace root
+        sw.clone_manifest_dir_to_temp()?; // This will now clone the entire workspace
+        sw.sync_manifest(); // This will now iterate through members if actual_sync_root is a workspace
+
+        let temp_dir_for_docs = sw.temp_dir()?;
+        self.documents
+            .store_sway_files_from_temp(temp_dir_for_docs)
+            .await?;
+        tracing::info!(
+            "Initial document population complete for SyncWorkspace root: {:?}",
+            actual_sync_root
+        );
+
+        Ok(sw)
     }
 }
 
