@@ -48,54 +48,12 @@ pub fn handle_initialize(
             .init();
     }
     tracing::info!("Initializing the Sway Language Server");
-    if let Some(uri) = &params.root_uri {
-        tracing::info!("Client reported rootUri: {}", uri);
-    }
 
     Ok(InitializeResult {
         server_info: None,
         capabilities: crate::server_capabilities(),
         ..InitializeResult::default()
     })
-
-    // // Determine the workspace root path.
-    // let workspace_root = params
-    //     .root_uri
-    //     .as_ref()
-    //     .and_then(|uri| uri.to_file_path().ok())
-    //     .ok_or(LanguageServerError::ClientNotInitialized)?;
-
-    // // Regardless of whether initial_path_from_client is a file or directory,
-    // // use ManifestFile::from_dir to find the true project/workspace root.
-    // // ManifestFile::from_dir will search upwards from initial_path_from_client (or its parent if it's a file)
-    // // to find a Forc.toml.
-    // let search_path_for_manifest = if workspace_root.is_file() {
-    //     workspace_root.parent().unwrap_or(&workspace_root)
-    // } else {
-    //     &workspace_root
-    // };
-
-    // let manifest_file = ManifestFile::from_dir(search_path_for_manifest)
-    // .map_err(|_e| DocumentError::ManifestFileNotFound {
-    //     dir: workspace_root.to_string_lossy().to_string(),
-    // })?;
-
-    // let actual_workspace_root = manifest_file.dir().to_path_buf(); // This will be sway/examples/
-    // tracing::info!("Actual workspace root determined by ManifestFile::from_dir: {:?}", actual_workspace_root);
-
-    // // Create and initialize the global SyncWorkspace.
-    // let sw = Arc::new(SyncWorkspace::new());
-    // sw.create_temp_dir_from_workspace(&actual_workspace_root)?;
-    // sw.clone_manifest_dir_to_temp()?;
-    // sw.sync_manifest();
-
-    // // Initialize the OnceLock for sync_workspace
-    // state
-    //     .sync_workspace
-    //     .set(sw)
-    //     .map_err(|_| LanguageServerError::SyncWorkspaceAlreadyInitialized)?;
-
-    // Ok(())
 }
 
 pub async fn handle_document_symbol(

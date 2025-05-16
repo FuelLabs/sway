@@ -21,17 +21,8 @@ pub async fn handle_did_open_text_document(
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
     let file_uri = &params.text_document.uri;
-    // Get or initialize the global SyncWorkspace.
-    let sync_workspace = state.get_or_init_global_sync_workspace(&file_uri).await?;
-
-    // Convert the opened file's actual URI to its temporary URI
-    let temp_uri_for_opened_file = sync_workspace.workspace_to_temp_url(file_uri)?;
-
-    // Ensure this specific document is loaded into the main document store using its temp URI
-    state
-        .documents
-        .handle_open_file(&temp_uri_for_opened_file)
-        .await;
+    // Initialize the SyncWorkspace if it doesn't exist.
+    let _ = state.get_or_init_global_sync_workspace(&file_uri).await?;
 
     // Get or create a session for the original file URI.
     let (uri, session) = state
@@ -175,12 +166,12 @@ pub(crate) async fn handle_did_change_watched_files(
     params: DidChangeWatchedFilesParams,
 ) -> Result<(), LanguageServerError> {
     for event in params.changes {
-        let (uri, session) = state.uri_and_session_from_workspace(&event.uri).await?;
+        let (uri, _) = state.uri_and_session_from_workspace(&event.uri).await?;
 
         match event.typ {
             FileChangeType::CHANGED => {
                 if event.uri.to_string().contains("Forc.toml") {
-                    //session.sync.sync_manifest();
+                    state.sync_workspace.get().unwrap().sync_manifest()?;
                     // TODO: Recompile the project | see https://github.com/FuelLabs/sway/issues/7103
                 }
             }

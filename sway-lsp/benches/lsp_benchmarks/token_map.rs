@@ -3,9 +3,10 @@ use lsp_types::Position;
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, _, _) = Runtime::new()
+    let (uri, session, state) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
+    let sync = state.sync_workspace.get().unwrap();
     let engines = session.engines.read();
     let position = Position::new(1716, 24);
 
@@ -42,6 +43,11 @@ fn benchmarks(c: &mut Criterion) {
                 .parent_decl_at_position(&engines, &uri, position)
         })
     });
+
+    // Remove the temp dir after the benchmarks are done
+    Runtime::new()
+        .unwrap()
+        .block_on(async { sync.remove_temp_dir() });
 }
 
 criterion_group! {
