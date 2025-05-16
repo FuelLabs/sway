@@ -156,8 +156,7 @@ fn hover_format(
                 ty::TyDecl::VariableDecl(var_decl) => {
                     let type_name =
                         format!("{}", engines.help_out(var_decl.type_ascription.type_id()));
-                    hover_link_contents
-                        .add_related_types(&var_decl.type_ascription.type_id());
+                    hover_link_contents.add_related_types(&var_decl.type_ascription.type_id());
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,

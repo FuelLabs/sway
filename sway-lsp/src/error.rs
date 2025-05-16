@@ -43,6 +43,8 @@ pub enum LanguageServerError {
 pub enum DocumentError {
     #[error("No document found at {:?}", path)]
     DocumentNotFound { path: String },
+    #[error("Workspace manifest not found. {:?}", err)]
+    WorkspaceManifestNotFound { err: String },
     #[error("Missing Forc.toml in {:?}", dir)]
     ManifestFileNotFound { dir: String },
     #[error("Cannot get member manifest files for the manifest at {:?}", dir)]
