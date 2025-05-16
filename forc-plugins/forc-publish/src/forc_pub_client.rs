@@ -159,7 +159,7 @@ mod test {
             .respond_with(
                 ResponseTemplate::new(200)
                     .insert_header("Content-Type", "text/event-stream")
-                    .set_body_string(sse_body)
+                    .set_body_string(sse_body),
             )
             .mount(&mock_server)
             .await;
@@ -186,7 +186,7 @@ mod test {
             .respond_with(
                 ResponseTemplate::new(200)
                     .insert_header("Content-Type", "text/event-stream")
-                    .set_body_string(sse_body)
+                    .set_body_string(sse_body),
             )
             .mount(&mock_server)
             .await;
