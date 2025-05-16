@@ -146,7 +146,7 @@ fn hover_format(
     };
 
     // Used to collect all the information we need to generate links for the hover component.
-    let mut hover_link_contents = HoverLinkContents::new(session, engines);
+    let mut hover_link_contents = HoverLinkContents::new(session, engines, sync);
 
     let sway_block = token
         .as_typed()
@@ -157,7 +157,7 @@ fn hover_format(
                     let type_name =
                         format!("{}", engines.help_out(var_decl.type_ascription.type_id()));
                     hover_link_contents
-                        .add_related_types(&var_decl.type_ascription.type_id(), sync);
+                        .add_related_types(&var_decl.type_ascription.type_id());
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
@@ -166,7 +166,7 @@ fn hover_format(
                 }
                 ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
                     let struct_decl = decl_engine.get_struct(decl_id);
-                    hover_link_contents.add_implementations_for_decl(decl, sync);
+                    hover_link_contents.add_implementations_for_decl(decl);
                     Some(format_visibility_hover(
                         struct_decl.visibility,
                         decl.friendly_type_name(),
@@ -175,7 +175,7 @@ fn hover_format(
                 }
                 ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. }) => {
                     let trait_decl = decl_engine.get_trait(decl_id);
-                    hover_link_contents.add_implementations_for_trait(&trait_decl, sync);
+                    hover_link_contents.add_implementations_for_trait(&trait_decl);
                     Some(format_visibility_hover(
                         trait_decl.visibility,
                         decl.friendly_type_name(),
@@ -184,7 +184,7 @@ fn hover_format(
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let enum_decl = decl_engine.get_enum(decl_id);
-                    hover_link_contents.add_implementations_for_decl(decl, sync);
+                    hover_link_contents.add_implementations_for_decl(decl);
                     Some(format_visibility_hover(
                         enum_decl.visibility,
                         decl.friendly_type_name(),
@@ -192,17 +192,17 @@ fn hover_format(
                     ))
                 }
                 ty::TyDecl::AbiDecl(ty::AbiDecl { .. }) => {
-                    hover_link_contents.add_implementations_for_decl(decl, sync);
+                    hover_link_contents.add_implementations_for_decl(decl);
                     Some(format!("{} {}", decl.friendly_type_name(), &ident_name))
                 }
                 _ => None,
             },
             TypedAstToken::TypedFunctionDeclaration(func) => {
-                hover_link_contents.add_related_types(&func.return_type.type_id(), sync);
+                hover_link_contents.add_related_types(&func.return_type.type_id());
                 Some(extract_fn_signature(&func.span()))
             }
             TypedAstToken::TypedFunctionParameter(param) => {
-                hover_link_contents.add_related_types(&param.type_argument.type_id(), sync);
+                hover_link_contents.add_related_types(&param.type_argument.type_id());
                 Some(format_name_with_type(
                     param.name.as_str(),
                     &param.type_argument.type_id(),
@@ -212,7 +212,6 @@ fn hover_format(
                 hover_link_contents.add_implementations_for_type(
                     &field.type_argument.span(),
                     field.type_argument.type_id(),
-                    sync,
                 );
                 Some(format_name_with_type(
                     field.name.as_str(),
