@@ -473,7 +473,7 @@ pub fn parse_project(
 
     // Next check that the member path is present in the results.
     let found_program_for_member = results.iter().any(|(programs_opt, _handler)| {
-        programs_opt.as_ref().map_or(false, |programs| {
+        programs_opt.as_ref().is_some_and(|programs| {
             programs
                 .typed
                 .as_ref()
@@ -482,9 +482,7 @@ pub fn parse_project(
                     let program_id = typed.as_ref().namespace.current_package_ref().program_id();
                     engines.se().get_manifest_path_from_program_id(&program_id)
                 })
-                .map_or(false, |program_manifest_path| {
-                    program_manifest_path == *member_path
-                })
+                .is_some_and(|program_manifest_path| program_manifest_path == *member_path)
         })
     });
 

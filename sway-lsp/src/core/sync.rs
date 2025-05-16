@@ -22,7 +22,7 @@ pub enum Directory {
     Temp,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SyncWorkspace {
     pub directories: DashMap<Directory, PathBuf>,
 }
@@ -31,9 +31,7 @@ impl SyncWorkspace {
     pub const LSP_TEMP_PREFIX: &'static str = "SWAY_LSP_TEMP_DIR";
 
     pub fn new() -> Self {
-        Self {
-            directories: DashMap::new(),
-        }
+        Self::default()
     }
 
     /// Clean up the temp directory that was created once the server closes down.
