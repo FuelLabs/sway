@@ -226,12 +226,11 @@ impl SyncWorkspace {
         // Load the manifest from the *actual* workspace root to determine if it's a package or workspace
         match ManifestFile::from_dir(&actual_manifest_dir) {
             Ok(ManifestFile::Package(pkg_manifest_file)) => {
-                // Single package: behave as before
                 let actual_pkg_manifest_path = pkg_manifest_file.path();
                 let temp_pkg_manifest_path = temp_manifest_dir.join(
                     actual_pkg_manifest_path
                         .file_name()
-                        .unwrap_or_else(|| std::ffi::OsStr::new(MANIFEST_FILE_NAME)), // Corrected
+                        .unwrap_or_else(|| std::ffi::OsStr::new(MANIFEST_FILE_NAME)),
                 );
                 tracing::debug!(
                     "Syncing single package manifest: {:?} to temp: {:?}",
@@ -239,9 +238,9 @@ impl SyncWorkspace {
                     temp_pkg_manifest_path
                 );
                 if let Err(err) = edit_manifest_dependency_paths(
-                    pkg_manifest_file.dir(),  // Original base for resolving relative paths
-                    actual_pkg_manifest_path, // Original Forc.toml
-                    &temp_pkg_manifest_path,  // Temp Forc.toml to write to
+                    pkg_manifest_file.dir(), 
+                    actual_pkg_manifest_path,
+                    &temp_pkg_manifest_path,
                 ) {
                     tracing::error!(
                         "Failed to edit manifest dependency paths for package {:?}: {}",
@@ -260,7 +259,6 @@ impl SyncWorkspace {
                                 Ok(actual_member_pkg_manifest) => {
                                     let actual_member_manifest_path =
                                         actual_member_pkg_manifest.path();
-                                    // Determine the relative path of the member from the workspace root
                                     if let Ok(relative_member_path) = actual_member_manifest_path
                                         .strip_prefix(&actual_manifest_dir)
                                     {
@@ -273,9 +271,9 @@ impl SyncWorkspace {
                                             temp_member_manifest_path
                                         );
                                         if let Err(err) = edit_manifest_dependency_paths(
-                                            actual_member_pkg_manifest.dir(), // Member's original dir for its relative paths
-                                            actual_member_manifest_path, // Member's original Forc.toml
-                                            &temp_member_manifest_path,  // Member's temp Forc.toml
+                                            actual_member_pkg_manifest.dir(),
+                                            actual_member_manifest_path,
+                                            &temp_member_manifest_path,
                                         ) {
                                             tracing::error!(
                                                 "Failed to edit manifest dependency paths for member {:?}: {}",
@@ -313,7 +311,7 @@ impl SyncWorkspace {
                 let temp_root_workspace_toml_path = temp_manifest_dir.join(
                     actual_root_workspace_toml_path
                         .file_name()
-                        .unwrap_or_else(|| std::ffi::OsStr::new(MANIFEST_FILE_NAME)), // Corrected
+                        .unwrap_or_else(|| std::ffi::OsStr::new(MANIFEST_FILE_NAME)),
                 );
                 tracing::debug!(
                     "Syncing root workspace manifest for patches: {:?} to temp: {:?}",
