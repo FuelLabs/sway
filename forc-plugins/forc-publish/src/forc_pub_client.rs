@@ -63,8 +63,8 @@ impl ForcPubClient {
                     Ok(bytes) => {
                         let event_str = String::from_utf8_lossy(&bytes);
                         for event in event_str.split("\n\n") {
-                            if event.starts_with("data:") {
-                                let data = &event[5..].trim();
+                            if let Some(stripped) = event.strip_prefix("data:") {
+                                let data = &stripped.trim();
                                 if let Ok(upload_response) =
                                     serde_json::from_str::<UploadResponse>(data)
                                 {
