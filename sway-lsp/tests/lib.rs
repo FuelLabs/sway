@@ -156,28 +156,29 @@ fn did_open() {
     });
 }
 
-// Josh we need to focus on getting the examples workspace working nicely tomorrow!
 #[test]
 fn did_open_all_members_in_examples() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
         let examples_workspace_dir = sway_workspace_dir().join("examples");
-        let test_programs_workspace_dir = sway_workspace_dir().join(in_language_test_dir());
-        let sdk_harness_workspace_dir = sway_workspace_dir().join(sdk_harness_test_projects_dir());
+        let _test_programs_workspace_dir = sway_workspace_dir().join(in_language_test_dir());
+        let _sdk_harness_workspace_dir = sway_workspace_dir().join(sdk_harness_test_projects_dir());
+        
+        // TODO: Support multiple workspaces: https://github.com/FuelLabs/sway/issues/7177
         let workspace_dirs = vec![
             &examples_workspace_dir,
-            &test_programs_workspace_dir,
-            &sdk_harness_workspace_dir,
+            //&test_programs_workspace_dir,
+            //&sdk_harness_workspace_dir,
         ];
 
         // Open up the arrays example in the examples workspace
-        let arrays_dir = examples_workspace_dir.join("arrays");
-        let address_inline_tests_dir = test_programs_workspace_dir.join("test_programs/address_inline_tests");
-        let call_frames_dir = sdk_harness_workspace_dir.join("test_projects/call_frames");
+        //let arrays_dir = examples_workspace_dir.join("arrays");
+        //let address_inline_tests_dir = test_programs_workspace_dir.join("test_programs/address_inline_tests");
+        //let call_frames_dir = sdk_harness_workspace_dir.join("test_projects/call_frames");
 
         // This example opens and passes here but if you open it in the editor its obviously not working. Improve this test tomorrow!
-        let uri = init_and_open(&mut service, call_frames_dir.join("src/main.sw")).await;
-        service.inner().wait_for_parsing().await;
+        //let uri = init_and_open(&mut service, arrays_dir.join("src/main.sw")).await;
+        //service.inner().wait_for_parsing().await;
 
         // // Assert that we found the correct workspace manifest file
         // let workspace_manifest_path = service
@@ -203,7 +204,7 @@ fn did_open_all_members_in_examples() {
         //----------------------------------
         for workspace_dir in workspace_dirs {
             // we need to init and open if this is the first time we are opening a workspace
-            // TODO: fix this
+            // TODO: https://github.com/FuelLabs/sway/issues/7177
             eprintln!("---- opening workspace: {:?}", workspace_dir);
             let member_manifests = ManifestFile::from_dir(workspace_dir)
                 .unwrap()
@@ -214,7 +215,14 @@ fn did_open_all_members_in_examples() {
             for (name, package_manifest) in &member_manifests {
                 eprintln!("opening workspace member: {:?}", name);
                 let dir = package_manifest.path().parent().unwrap();
-                let uri = open(&mut service.inner(), dir.join("src/main.sw")).await;
+
+                // If the workspace is not initialized, we need to initialize it
+                // Otherwise, we can just open the file
+                let uri = if service.inner().sync_workspace.get().is_none() {
+                    init_and_open(&mut service, dir.join("src/main.sw")).await
+                } else {
+                    open(&mut service.inner(), dir.join("src/main.sw")).await
+                };
 
                 // Make sure that program was parsed and the token map is populated
                 let (tmp_uri, session) = service
@@ -225,6 +233,7 @@ fn did_open_all_members_in_examples() {
                 let num_tokens_for_file = session.token_map().tokens_for_file(&tmp_uri).count();
                 assert!(num_tokens_for_file > 0);
 
+                // Make sure that semantic tokens are successfully returned for the file
                 let semantic_tokens = lsp::get_semantic_tokens_full(&service.inner(), &uri).await;
                 assert!(semantic_tokens.data.len() > 0);
             }
