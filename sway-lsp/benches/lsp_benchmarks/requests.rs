@@ -9,9 +9,10 @@ use sway_lsp::{
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, documents, sync) = Runtime::new()
+    let (uri, session, state) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
+    let sync = state.sync_workspace.get().unwrap();
     let config = sway_lsp::config::Config::default();
     let keyword_docs = KeywordDocs::new();
     let position = Position::new(1717, 24);
@@ -110,12 +111,19 @@ fn benchmarks(c: &mut Criterion) {
                 text: "\n".to_string(),
             }],
         };
-        b.iter(|| capabilities::on_enter::on_enter(&config.on_enter, &documents, &uri, &params))
+        b.iter(|| {
+            capabilities::on_enter::on_enter(&config.on_enter, &state.documents, &uri, &params)
+        })
     });
 
     c.bench_function("format", |b| {
-        b.iter(|| capabilities::formatting::format_text(&documents, &uri))
+        b.iter(|| capabilities::formatting::format_text(&state.documents, &uri))
     });
+
+    // Remove the temp dir after the benchmarks are done
+    Runtime::new()
+        .unwrap()
+        .block_on(async { sync.remove_temp_dir() });
 }
 
 criterion_group! {

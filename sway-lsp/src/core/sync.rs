@@ -37,7 +37,7 @@ impl SyncWorkspace {
     }
 
     /// Clean up the temp directory that was created once the server closes down.
-    pub(crate) fn remove_temp_dir(&self) {
+    pub fn remove_temp_dir(&self) {
         if let Ok(dir) = self.temp_dir() {
             // The `temp_path` we store is `random_dir/project_name`.
             // So, we need to remove `random_dir` by getting the parent directory.
@@ -56,7 +56,7 @@ impl SyncWorkspace {
         }
     }
 
-    pub(crate) fn create_temp_dir_from_workspace(
+    pub fn create_temp_dir_from_workspace(
         &self,
         actual_workspace_root: &Path,
     ) -> Result<(), LanguageServerError> {
@@ -110,7 +110,7 @@ impl SyncWorkspace {
         Ok(())
     }
 
-    pub(crate) fn clone_manifest_dir_to_temp(&self) -> Result<(), DirectoryError> {
+    pub fn clone_manifest_dir_to_temp(&self) -> Result<(), DirectoryError> {
         copy_dir_contents(self.manifest_dir()?, self.temp_dir()?)
             .map_err(|_| DirectoryError::CopyContentsFailed)?;
 
@@ -118,7 +118,7 @@ impl SyncWorkspace {
     }
 
     /// Convert the Url path from the client to point to the same file in our temp folder
-    pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
+    pub fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
         convert_url(uri, &self.temp_dir()?, &self.manifest_dir()?)
     }
 
@@ -200,14 +200,14 @@ impl SyncWorkspace {
         }
     }
 
-    pub(crate) fn member_path(&self, temp_uri: &Url) -> Option<PathBuf> {
+    pub fn member_path(&self, temp_uri: &Url) -> Option<PathBuf> {
         let p = self.member_manifest_path(temp_uri)?;
         let dir = p.parent()?;
         Some(dir.to_path_buf())
     }
 
     /// Read the Forc.toml and convert relative paths to absolute. Save into our temp directory.
-    pub(crate) fn sync_manifest(&self) -> Result<(), LanguageServerError> {
+    pub fn sync_manifest(&self) -> Result<(), LanguageServerError> {
         let actual_manifest_dir = self.manifest_dir()?;
         let temp_manifest_dir = self.temp_dir()?;
 

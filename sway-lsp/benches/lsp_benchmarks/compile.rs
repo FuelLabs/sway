@@ -7,10 +7,11 @@ use tokio::runtime::Runtime;
 const NUM_DID_CHANGE_ITERATIONS: usize = 10;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, _, sync) = Runtime::new()
+    let (uri, session, state) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
 
+    let sync = state.sync_workspace.get().unwrap();
     let build_plan = session
         .build_plan_cache
         .get_or_update(&sync.workspace_manifest_path(), || {
@@ -37,9 +38,12 @@ fn benchmarks(c: &mut Criterion) {
         let results =
             black_box(session::compile(&build_plan, &engines, None, lsp_mode.as_ref()).unwrap());
         let session = Arc::new(session::Session::new());
+        let member_path = sync.member_path(&uri).unwrap();
+
         b.iter(|| {
             let _ = black_box(
                 session::traverse(
+                    member_path.clone(),
                     results.clone(),
                     &engines,
                     session.clone(),
@@ -61,6 +65,11 @@ fn benchmarks(c: &mut Criterion) {
             }
         })
     });
+
+    // Remove the temp dir after the benchmarks are done
+    Runtime::new()
+        .unwrap()
+        .block_on(async { sync.remove_temp_dir() });
 }
 
 criterion_group! {
