@@ -5,7 +5,5 @@ license = "Apache-2.0"
 name = "dead_code"
 
 [dependencies]
-# std = { git = "https://github.com/FuelLabs/sway", tag = "v0.66.5" }
-# TODO: Pin back to latest version once std and core merge is in
-std = { path = "../../../../sway-lib-std" }
+std = { git = "https://github.com/FuelLabs/sway", tag = "v0.68.4" }
 
