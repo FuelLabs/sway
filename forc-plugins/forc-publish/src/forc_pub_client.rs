@@ -145,12 +145,22 @@ mod test {
     async fn test_upload_success() {
         let (client, mock_server) = get_mock_client_server().await;
         let upload_id = Uuid::new_v4();
-        let success_response = serde_json::json!({ "upload_id": upload_id });
+
+        // Simulate SSE response with a progress event and a final upload_id event
+        let sse_body = format!(
+            "data: uploading...\n\n\
+             data: {{\"upload_id\":\"{}\"}}\n\n",
+            upload_id
+        );
 
         Mock::given(method("POST"))
             .and(path("/upload_project"))
             .and(query_param("forc_version", "0.66.5"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(&success_response))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("Content-Type", "text/event-stream")
+                    .set_body_string(sse_body)
+            )
             .mount(&mock_server)
             .await;
 
@@ -168,11 +178,15 @@ mod test {
     async fn test_upload_server_error() {
         let (client, mock_server) = get_mock_client_server().await;
 
+        // Simulate SSE error event
+        let sse_body = "data: {\"error\":\"Internal Server Error\"}\n\n";
+
         Mock::given(method("POST"))
             .and(path("/upload_project"))
             .respond_with(
-                ResponseTemplate::new(500)
-                    .set_body_json(serde_json::json!({ "error": "Internal Server Error" })),
+                ResponseTemplate::new(200)
+                    .insert_header("Content-Type", "text/event-stream")
+                    .set_body_string(sse_body)
             )
             .mount(&mock_server)
             .await;
@@ -186,7 +200,7 @@ mod test {
         match result {
             Err(Error::ApiResponseError { status, error }) => {
                 assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-                assert_eq!(error, "Internal Server Error");
+                assert_eq!(error, "{\"error\":\"Internal Server Error\"}");
             }
             _ => panic!("Expected ApiResponseError"),
         }
