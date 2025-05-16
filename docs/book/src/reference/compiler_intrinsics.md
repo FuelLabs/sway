@@ -3,13 +3,13 @@
 
 ## `__state_clear`
 
-**Type Signature**: 
+**Type Signature**:
 
 ## `__state_clear() -> bool`
 
 The `__state_clear` intrinsic function is used to clear all entries in the contract's storage. It removes all key-value pairs from the storage, effectively resetting the contract's state to its initial empty condition. This intrinsic returns a boolean value: `true` if the operation was successful, and `false` if it failed for any reason.
 
-#### Example
+### Example
 
 ```sway
 fn reset_contract_storage() -> bool {
