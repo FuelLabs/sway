@@ -1,57 +1,159 @@
-use anyhow::{bail, Result};
 use clap::Parser;
-use forc_doc::{
-    cli::Command, compile_html, get_doc_dir, render::constant::INDEX_FILENAME, ASSETS_DIR_NAME,
-};
-use include_dir::{include_dir, Dir};
+use forc_util::{find_manifest_dir, ForcToml, ManifestFile};
 use std::{
-    process::Command as Process,
-    {fs, path::PathBuf},
+    fs::{self, File},
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
 };
 
-pub fn main() -> Result<()> {
-    let build_instructions = Command::parse();
+#[derive(Debug, Clone, Parser)]
+pub struct Args {
+    /// Path to the project or workspace root
+    #[clap(long, value_parser)]
+    pub path: Option<PathBuf>,
 
-    let (doc_path, pkg_manifest) = compile_html(&build_instructions, &get_doc_dir)?;
+    /// Output directory for the generated documentation
+    #[clap(long, value_parser)]
+    pub output: Option<PathBuf>,
 
-    // CSS, icons and logos
-    static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/static.files");
-    let assets_path = doc_path.join(ASSETS_DIR_NAME);
-    fs::create_dir_all(&assets_path)?;
-    for file in ASSETS_DIR.files() {
-        let asset_path = assets_path.join(file.path());
-        fs::write(asset_path, file.contents())?;
+    /// Include private items in the documentation
+    #[clap(long)]
+    pub include_private: bool,
+
+    /// Open the documentation in a web browser after generation
+    #[clap(long)]
+    pub open: bool,
+}
+
+fn main() {
+    let args = Args::parse();
+
+    let manifest_dir = match &args.path {
+        Some(path) => path.clone(),
+        None => find_manifest_dir(std::env::current_dir().unwrap())
+            .expect("Failed to find Forc.toml in current or parent directories"),
+    };
+
+    if is_workspace(&manifest_dir) {
+        handle_workspace(&manifest_dir, &args);
+    } else {
+        handle_single_project(&manifest_dir, &args);
     }
-    // Sway syntax highlighting file
-    const SWAY_HJS_FILENAME: &str = "highlight.js";
-    let sway_hjs = std::include_bytes!("static.files/highlight.js");
-    fs::write(assets_path.join(SWAY_HJS_FILENAME), sway_hjs)?;
+}
 
-    // check if the user wants to open the doc in the browser
-    // if opening in the browser fails, attempt to open using a file explorer
-    if build_instructions.open {
-        const BROWSER_ENV_VAR: &str = "BROWSER";
-        let path = doc_path
-            .join(pkg_manifest.project_name())
-            .join(INDEX_FILENAME);
-        let default_browser_opt = std::env::var_os(BROWSER_ENV_VAR);
-        match default_browser_opt {
-            Some(def_browser) => {
-                let browser = PathBuf::from(def_browser);
-                if let Err(e) = Process::new(&browser).arg(path).status() {
-                    bail!(
-                        "Couldn't open docs with {}: {}",
-                        browser.to_string_lossy(),
-                        e
-                    );
-                }
+/// Detect if the path is a workspace by checking for `[workspace]` in Forc.toml
+fn is_workspace(path: &Path) -> bool {
+    let forc_toml_path = path.join("Forc.toml");
+    if let Ok(content) = fs::read_to_string(forc_toml_path) {
+        content.contains("[workspace]")
+    } else {
+        false
+    }
+}
+
+/// Generate docs for a single project
+fn handle_single_project(project_path: &Path, args: &Args) {
+    let mut command = Command::new("forc");
+    command.arg("doc");
+
+    if let Some(path) = &args.path {
+        command.arg("--path").arg(path);
+    }
+
+    if let Some(output) = &args.output {
+        command.arg("--output").arg(output);
+    }
+
+    if args.include_private {
+        command.arg("--include-private");
+    }
+
+    if args.open {
+        command.arg("--open");
+    }
+
+    let status = command.current_dir(project_path).status().unwrap();
+
+    if !status.success() {
+        eprintln!("❌ Failed to generate docs for project at {:?}", project_path);
+    }
+}
+
+/// Handle workspace: extract members and build docs for each
+fn handle_workspace(workspace_path: &Path, args: &Args) {
+    let forc_toml_path = workspace_path.join("Forc.toml");
+    let content = fs::read_to_string(&forc_toml_path)
+        .expect("Failed to read Forc.toml for workspace");
+
+    let toml: toml::Value = toml::from_str(&content).expect("Invalid TOML format");
+    let members = toml
+        .get("workspace")
+        .and_then(|w| w.get("members"))
+        .and_then(|m| m.as_array())
+        .expect("Workspace must have 'members' array in Forc.toml");
+
+    let mut generated_projects = vec![];
+
+    for member in members {
+        if let Some(member_str) = member.as_str() {
+            let member_path = workspace_path.join(member_str);
+            let output_dir = args
+                .output
+                .clone()
+                .unwrap_or_else(|| workspace_path.join("docs").join(member_str));
+
+            let mut command = Command::new("forc");
+            command.arg("doc");
+            command.arg("--path").arg(&member_path);
+            command.arg("--output").arg(&output_dir);
+
+            if args.include_private {
+                command.arg("--include-private");
             }
-            None => {
-                if let Err(e) = opener::open(&path) {
-                    bail!("Couldn't open docs: {}", e);
-                }
+
+            // Don't open browser for each member
+            let status = command.current_dir(workspace_path).status().unwrap();
+
+            if status.success() {
+                println!("✅ Generated docs for {member_str}");
+                generated_projects.push((member_str.to_string(), output_dir));
+            } else {
+                eprintln!("❌ Failed to generate docs for {member_str}");
             }
         }
     }
-    Ok(())
+
+    if !generated_projects.is_empty() {
+        create_workspace_index(workspace_path, &generated_projects);
+
+        if args.open {
+            let index_path = workspace_path.join("docs/index.html");
+            let _ = opener::open(index_path);
+        }
+    }
+}
+
+/// Generate a top-level HTML index for the workspace
+fn create_workspace_index(workspace_path: &Path, members: &[(String, PathBuf)]) {
+    let index_path = workspace_path.join("docs/index.html");
+    let mut file = File::create(&index_path).expect("Failed to create workspace index.html");
+
+    writeln!(
+        file,
+        "<html><head><title>Workspace Documentation</title></head><body><h1>Workspace Documentation</h1><ul>"
+    )
+    .unwrap();
+
+    for (name, _) in members {
+        writeln!(
+            file,
+            "<li><a href=\"./{name}/index.html\">{name}</a></li>"
+        )
+        .unwrap();
+    }
+
+    writeln!(file, "</ul></body></html>").unwrap();
+
+    println!("📘 Workspace docs index generated at: {:?}", index_path);
 }
