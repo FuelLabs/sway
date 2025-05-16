@@ -39,14 +39,16 @@ impl Error {
     /// Converts a `reqwest::Response` into an `ApiError`
     pub async fn from_response(response: reqwest::Response) -> Self {
         let status = response.status();
-        match response.json::<ApiErrorResponse>().await {
+        let body = response.text().await.unwrap_or_default();
+        
+        match serde_json::from_str::<ApiErrorResponse>(&body) {
             Ok(parsed_error) => Error::ApiResponseError {
                 status,
                 error: parsed_error.error,
             },
-            Err(err) => Error::ApiResponseError {
+            Err(_) => Error::ApiResponseError {
                 status,
-                error: format!("Unexpected API error: {}", err),
+                error: format!("Unexpected API error: {}", body),
             },
         }
     }
@@ -118,7 +120,7 @@ mod test {
         match error {
             Error::ApiResponseError { status, error } => {
                 assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-                assert_eq!(error, "Unexpected API error: error decoding response body");
+                assert_eq!(error, "Unexpected API error: not a json object");
             }
             _ => panic!("Expected ApiResponseError"),
         }
