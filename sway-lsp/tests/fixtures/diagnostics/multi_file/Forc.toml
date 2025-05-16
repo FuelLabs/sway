@@ -6,7 +6,5 @@ entry = "main.sw"
 implicit-std = false
 
 [dependencies]
-# std = { git = "https://github.com/FuelLabs/sway", tag = "v0.48.1" }
-# TODO: Pin back to latest version once std and core merge is in
-std = { path = "../../../../sway-lib-std" }
+std = { git = "https://github.com/FuelLabs/sway", tag = "v0.68.4" }
 
