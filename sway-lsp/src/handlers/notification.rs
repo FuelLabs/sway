@@ -21,74 +21,24 @@ pub async fn handle_did_open_text_document(
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
     let file_uri = &params.text_document.uri;
-    tracing::info!("textDocument/didOpen: {:?}", file_uri);
-
     // Get or initialize the global SyncWorkspace.
-    // get_or_try_init ensures the initialization closure runs only once.
-    let sync_workspace_arc = match state.sync_workspace.get() {
-        Some(sw_arc) => {
-            tracing::debug!("SyncWorkspace already initialized.");
-            sw_arc.clone()
-        }
-        None => {
-            // Not initialized, attempt to initialize.
-            // This closure will only run if the OnceLock is empty.
-            // It needs to be an async block if initialize_global_sync_workspace is async.
-            // However, get_or_try_init expects a FnOnce that returns Result, not async.
-            // So, we must block_on or handle this differently if init is async.
-            // For now, let's assume we can call an async helper and set it.
-            // A robust way for async init with OnceLock might need a small mutex or a dedicated future.
-
-            // Simpler approach: Check, then init if needed, then get. This might race if two didOpen arrive simultaneously.
-            // Using a lock specifically for this initialization is safer if get_or_try_init can't take an async fn.
-            // For now, let's assume a single-threaded context for this specific part or that races are unlikely
-            // for the very first file open. A dedicated init future in ServerState would be more robust.
-
-            // Let's use get_or_try_init by making the init fn sync or by adapting.
-            // Alternative: a dedicated initialization state/mutex in ServerState.
-
-            // For simplicity, let's call the async init and then try to set.
-            // This is NOT fully robust against races for the *very first* init.
-            // `OnceLock::get_or_init_async` would be ideal but is not in std yet.
-            // We will call our async helper and then try to set.
-            // If another thread sets it in between, .set() will fail, which is acceptable.
-            match state.initialize_workspace_sync(file_uri).await {
-                Ok(initialized_sw) => {
-                    match state.sync_workspace.set(initialized_sw.clone()) {
-                        Ok(()) => {
-                            tracing::info!("Global SyncWorkspace successfully initialized and set.")
-                        }
-                        Err(_) => tracing::info!(
-                            "Global SyncWorkspace was already set by another concurrent operation."
-                        ),
-                    }
-                    // Regardless of who set it, get the reference now.
-                    state.sync_workspace.get().unwrap().clone() // Should be Some now.
-                }
-                Err(e) => {
-                    tracing::error!("Failed to initialize global SyncWorkspace: {:?}. LSP functions requiring it may fail.", e);
-                    // Cannot proceed if SyncWorkspace failed to init.
-                    return Err(e);
-                }
-            }
-        }
-    };
+    let sync_workspace = state.get_or_init_global_sync_workspace(&file_uri).await?;
 
     // Convert the opened file's actual URI to its temporary URI
-    let temp_uri_for_opened_file = sync_workspace_arc.workspace_to_temp_url(file_uri)?;
+    let temp_uri_for_opened_file = sync_workspace.workspace_to_temp_url(file_uri)?;
 
     // Ensure this specific document is loaded into the main document store using its temp URI
     state
         .documents
         .handle_open_file(&temp_uri_for_opened_file)
         .await;
-    tracing::debug!("Handled open for temp file: {:?}", temp_uri_for_opened_file);
 
     // Get or create a session for the original file URI.
     let (uri, session) = state
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     state.documents.handle_open_file(&uri).await;
+
     // If the token map is empty, then we need to parse the project.
     // Otherwise, don't recompile the project when a new file in the project is opened
     // as the workspace is already compiled.

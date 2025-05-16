@@ -426,6 +426,34 @@ impl ServerState {
         Ok(session)
     }
 
+    /// Gets the existing SyncWorkspace or initializes it if it doesn't exist.
+    /// This is specific to a single SyncWorkspace managed by an OnceLock.
+    pub async fn get_or_init_global_sync_workspace(
+        &self,
+        uri: &Url,
+    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
+        if let Some(sw_arc) = self.sync_workspace.get() {
+            Ok(sw_arc.clone())
+        } else {
+            match self.initialize_workspace_sync(uri).await {
+                Ok(initialized_sw) => {
+                    if self.sync_workspace.set(initialized_sw).is_ok() {
+                        tracing::info!("SyncWorkspace successfully initialized and set.");
+                    } else {
+                        tracing::debug!(
+                            "SyncWorkspace was set by another concurrent operation after check."
+                        );
+                    }
+                    Ok(self.sync_workspace.get().unwrap().clone())
+                }
+                Err(e) => {
+                    tracing::error!("Failed to initialize global SyncWorkspace: {:?}. LSP functions requiring it may fail.", e);
+                    Err(e)
+                }
+            }
+        }
+    }
+
     pub async fn initialize_workspace_sync(
         &self,
         file_uri_triggering_init: &Url,
