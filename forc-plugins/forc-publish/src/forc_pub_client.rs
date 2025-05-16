@@ -1,5 +1,6 @@
 use crate::error::Error;
 use crate::error::Result;
+use reqwest::StatusCode;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -39,6 +40,7 @@ impl ForcPubClient {
 
     /// Uploads the given file to the server
     pub async fn upload<P: AsRef<Path>>(&self, file_path: P, forc_version: &str) -> Result<Uuid> {
+        use futures_util::StreamExt;
         let url = self
             .uri
             .join(&format!("upload_project?forc_version={}", forc_version))?;
@@ -50,16 +52,49 @@ impl ForcPubClient {
             .header("Content-Type", "application/gzip")
             .body(file_bytes)
             .send()
-            .await?;
+            .await;
 
-        let status = response.status();
+        if let Ok(response) = response {
+            let mut stream = response.bytes_stream();
 
-        if status.is_success() {
-            // Extract `upload_id` from the response if available
-            let upload_response: UploadResponse = response.json().await?;
-            Ok(upload_response.upload_id)
+            // TODO: Close stream
+            while let Some(chunk) = stream.next().await {
+                match chunk {
+                    Ok(bytes) => {
+                        let event_str = String::from_utf8_lossy(&bytes);
+                        for event in event_str.split("\n\n") {
+                            if event.starts_with("data:") {
+                                let data = &event[5..].trim();
+                                if let Ok(upload_response) =
+                                    serde_json::from_str::<UploadResponse>(data)
+                                {
+                                    return Ok(upload_response.upload_id);
+                                } else if data.starts_with("{") {
+                                    // Attempt to parse error from JSON
+                                    return Err(Error::ApiResponseError {
+                                        status: StatusCode::INTERNAL_SERVER_ERROR,
+                                        error: data.to_string(),
+                                    });
+                                } else {
+                                    // Print the event data, replacing the previous message.
+                                    print!("\r\x1b[2K  =>  {}", data);
+                                    use std::io::{stdout, Write};
+                                    stdout().flush().unwrap();
+                                }
+                            } else if event.starts_with(":") {
+                                // Do nothing. These are keep-alive events.
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        return Err(Error::HttpError(e));
+                    }
+                }
+            }
+            Err(Error::ServerError)
         } else {
-            Err(Error::from_response(response).await)
+            eprintln!("Error during upload initiation: {:?}", response);
+            Err(Error::ServerError)
         }
     }
 

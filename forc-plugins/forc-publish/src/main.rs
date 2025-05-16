@@ -29,6 +29,7 @@ async fn main() {
     init_tracing_subscriber(TracingSubscriberOptions::default());
 
     if let Err(err) = run().await {
+        println!("");
         println_error(&format!("{err}"));
         std::process::exit(1);
     }
@@ -48,6 +49,7 @@ async fn run() -> Result<()> {
     let upload_id = client.upload(file_path, forc_version).await?;
     let published = client.publish(upload_id, &auth_token).await?;
 
+    println!("");
     println_action_green(
         "Published",
         &format!("{} {}", published.name, published.version),
