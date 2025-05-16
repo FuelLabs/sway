@@ -796,6 +796,7 @@ pub fn create_did_change_params(
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn range_from_start_and_end_line(start_line: u32, end_line: u32) -> Range {
     Range {
         start: Position {

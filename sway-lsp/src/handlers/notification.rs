@@ -22,7 +22,7 @@ pub async fn handle_did_open_text_document(
 ) -> Result<(), LanguageServerError> {
     let file_uri = &params.text_document.uri;
     // Initialize the SyncWorkspace if it doesn't exist.
-    let _ = state.get_or_init_global_sync_workspace(&file_uri).await?;
+    let _ = state.get_or_init_global_sync_workspace(file_uri).await?;
 
     // Get or create a session for the original file URI.
     let (uri, session) = state

@@ -181,7 +181,7 @@ fn did_open_all_members_in_examples() {
                 .unwrap();
 
             // Open all workspace members and assert that we are able to return semantic tokens for each workspace member.
-            for (name, package_manifest) in &member_manifests {
+            for (_name, package_manifest) in &member_manifests {
                 let dir = package_manifest.path().parent().unwrap();
 
                 // If the workspace is not initialized, we need to initialize it
