@@ -192,7 +192,7 @@ fn did_open_all_members_in_examples() {
                 let uri = if service.inner().sync_workspace.get().is_none() {
                     init_and_open(&mut service, dir.join("src/main.sw")).await
                 } else {
-                    open(&mut service.inner(), dir.join("src/main.sw")).await
+                    open(service.inner(), dir.join("src/main.sw")).await
                 };
 
                 // Make sure that program was parsed and the token map is populated
@@ -206,7 +206,7 @@ fn did_open_all_members_in_examples() {
 
                 // Make sure that semantic tokens are successfully returned for the file
                 let semantic_tokens = lsp::get_semantic_tokens_full(service.inner(), &uri).await;
-                assert!(semantic_tokens.data.len() > 0);
+                assert!(!semantic_tokens.data.is_empty());
             }
         }
         shutdown_and_exit(&mut service).await;
