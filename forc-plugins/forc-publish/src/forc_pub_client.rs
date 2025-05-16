@@ -57,7 +57,11 @@ impl ForcPubClient {
         if let Ok(response) = response {
             let mut stream = response.bytes_stream();
 
-            // TODO: Close stream
+            // Process the SSE stream.
+            // The server sends events in the format: "data: <event>\n\n"
+            // The first event is usually a progress event, and the last one contains the upload_id
+            // or an error message. If the stream is open for more than 60 seconds, it will be closed
+            // by the server, and we will return an HTTPError.
             while let Some(chunk) = stream.next().await {
                 match chunk {
                     Ok(bytes) => {
