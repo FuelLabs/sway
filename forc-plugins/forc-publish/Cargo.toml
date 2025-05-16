@@ -28,5 +28,5 @@ uuid = { workspace = true, features = ["v4", "serde"] }
 walkdir.workspace = true
 
 [dev-dependencies]
-wiremock.workspace = true
 serial_test.workspace = true
+wiremock.workspace = true
