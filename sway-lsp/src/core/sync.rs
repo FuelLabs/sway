@@ -36,11 +36,9 @@ impl SyncWorkspace {
         }
     }
 
-    /// Clean up the temp directory that was created once the
-    /// server closes down.
+    /// Clean up the temp directory that was created once the server closes down.
     pub(crate) fn remove_temp_dir(&self) {
         if let Ok(dir) = self.temp_dir() {
-            // The tempdir created by Builder is typically a randomly named directory.
             // The `temp_path` we store is `random_dir/project_name`.
             // So, we need to remove `random_dir` by getting the parent directory.
             if let Some(parent_dir) = dir.parent() {
@@ -98,11 +96,12 @@ impl SyncWorkspace {
         self.directories
             .insert(Directory::Manifest, actual_workspace_root.to_path_buf());
         self.directories
-            .insert(Directory::Temp, canonical_temp_path.clone()); // This is /tmp/SWAY_LSP_TEMP_DIR_XYZ/root_dir_name
+            .insert(Directory::Temp, canonical_temp_path.clone());
 
-        let _ = temp_dir_guard.into_path(); // Consume the guard to disable auto-cleanup.
+        // Consume the guard to disable auto-cleanup.
+        let _ = temp_dir_guard.into_path();
 
-        tracing::info!(
+        tracing::debug!(
             "SyncWorkspace: Manifest dir set to {:?}, Temp dir set to {:?}",
             actual_workspace_root,
             canonical_temp_path
@@ -168,6 +167,7 @@ impl SyncWorkspace {
     }
 
     /// Returns the path to the Forc.toml of the workspace in the temp directory.
+    #[allow(dead_code)]
     pub(crate) fn temp_manifest_path(&self) -> Option<PathBuf> {
         self.temp_dir()
             .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
@@ -206,22 +206,10 @@ impl SyncWorkspace {
         Some(dir.to_path_buf())
     }
 
-    pub(crate) fn sync_manifest(&self) {
-        let actual_manifest_dir = match self.manifest_dir() {
-            Ok(dir) => dir,
-            Err(e) => {
-                tracing::error!("sync_manifest: Failed to get actual manifest dir: {:?}", e);
-                return;
-            }
-        };
-
-        let temp_manifest_dir = match self.temp_dir() {
-            Ok(dir) => dir,
-            Err(e) => {
-                tracing::error!("sync_manifest: Failed to get temp manifest dir: {:?}", e);
-                return;
-            }
-        };
+    /// Read the Forc.toml and convert relative paths to absolute. Save into our temp directory.
+    pub(crate) fn sync_manifest(&self) -> Result<(), LanguageServerError> {
+        let actual_manifest_dir = self.manifest_dir()?;
+        let temp_manifest_dir = self.temp_dir()?;
 
         // Load the manifest from the *actual* workspace root to determine if it's a package or workspace
         match ManifestFile::from_dir(&actual_manifest_dir) {
@@ -237,17 +225,11 @@ impl SyncWorkspace {
                     actual_pkg_manifest_path,
                     temp_pkg_manifest_path
                 );
-                if let Err(err) = edit_manifest_dependency_paths(
-                    pkg_manifest_file.dir(), 
+                edit_manifest_dependency_paths(
+                    pkg_manifest_file.dir(),
                     actual_pkg_manifest_path,
                     &temp_pkg_manifest_path,
-                ) {
-                    tracing::error!(
-                        "Failed to edit manifest dependency paths for package {:?}: {}",
-                        actual_pkg_manifest_path,
-                        err
-                    );
-                }
+                )?;
             }
             Ok(ManifestFile::Workspace(ws_manifest_file)) => {
                 // Workspace: iterate through members and sync each member's manifest
@@ -270,16 +252,11 @@ impl SyncWorkspace {
                                             actual_member_manifest_path,
                                             temp_member_manifest_path
                                         );
-                                        if let Err(err) = edit_manifest_dependency_paths(
+                                        edit_manifest_dependency_paths(
                                             actual_member_pkg_manifest.dir(),
                                             actual_member_manifest_path,
                                             &temp_member_manifest_path,
-                                        ) {
-                                            tracing::error!(
-                                                "Failed to edit manifest dependency paths for member {:?}: {}",
-                                                actual_member_manifest_path, err
-                                            );
-                                        }
+                                        )?;
                                     } else {
                                         tracing::error!(
                                             "Could not determine relative path for member: {:?}",
@@ -304,9 +281,8 @@ impl SyncWorkspace {
                         );
                     }
                 }
-                // Optionally, sync the root workspace Forc.toml itself if it can have [patch] sections
-                // that need absolutizing, though this is less common.
-                // The current edit_manifest_dependency_paths handles patches.
+
+                // Sync the root workspace Forc.toml itself
                 let actual_root_workspace_toml_path = ws_manifest_file.path();
                 let temp_root_workspace_toml_path = temp_manifest_dir.join(
                     actual_root_workspace_toml_path
@@ -318,16 +294,11 @@ impl SyncWorkspace {
                     actual_root_workspace_toml_path,
                     temp_root_workspace_toml_path
                 );
-                if let Err(err) = edit_manifest_dependency_paths(
+                edit_manifest_dependency_paths(
                     ws_manifest_file.dir(),
                     actual_root_workspace_toml_path,
                     &temp_root_workspace_toml_path,
-                ) {
-                    tracing::error!(
-                        "Failed to edit manifest dependency paths for root workspace manifest {:?}: {}",
-                        actual_root_workspace_toml_path, err
-                    );
-                }
+                )?;
             }
             Err(e) => {
                 tracing::error!(
@@ -337,22 +308,8 @@ impl SyncWorkspace {
                 );
             }
         }
+        Ok(())
     }
-
-    // /// Read the Forc.toml and convert relative paths to absolute. Save into our temp directory.
-    // pub(crate) fn sync_manifest(&self) {
-    //     if let (Ok(manifest_dir), Some(manifest_path), Some(temp_manifest_path)) = (
-    //         self.manifest_dir(),
-    //         self.manifest_path(),
-    //         self.temp_manifest_path(),
-    //     ) {
-    //         if let Err(err) =
-    //             edit_manifest_dependency_paths(&manifest_dir, &manifest_path, &temp_manifest_path)
-    //         {
-    //             tracing::error!("Failed to edit manifest dependency paths: {}", err);
-    //         }
-    //     }
-    // }
 
     /// Return the path to the projects manifest directory.
     pub(crate) fn manifest_dir(&self) -> Result<PathBuf, DirectoryError> {

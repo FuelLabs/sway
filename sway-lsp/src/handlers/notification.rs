@@ -2,11 +2,10 @@
 //! Protocol. This module specifically handles notification messages sent by the Client.
 
 use crate::{
-    core::{document::Documents, session::Session, sync::SyncWorkspace},
-    error::{DocumentError, LanguageServerError},
+    core::{document::Documents, session::Session},
+    error::LanguageServerError,
     server_state::{CompilationContext, ServerState, TaskMessage},
 };
-use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
     DidSaveTextDocumentParams, FileChangeType, Url,
@@ -53,7 +52,7 @@ pub async fn handle_did_open_text_document(
             // `OnceLock::get_or_init_async` would be ideal but is not in std yet.
             // We will call our async helper and then try to set.
             // If another thread sets it in between, .set() will fail, which is acceptable.
-            match state.initialize_global_sync_workspace(file_uri).await {
+            match state.initialize_workspace_sync(file_uri).await {
                 Ok(initialized_sw) => {
                     match state.sync_workspace.set(initialized_sw.clone()) {
                         Ok(()) => {

@@ -2,14 +2,8 @@
 //! Protocol. This module specifically handles requests.
 
 use crate::{
-    capabilities,
-    core::{session::build_plan, sync::SyncWorkspace},
-    error::{DocumentError, LanguageServerError},
-    lsp_ext,
-    server_state::ServerState,
-    utils::debug,
+    capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
 };
-use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_tracing::{tracing_subscriber, FmtSpan, TracingWriter};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
@@ -21,7 +15,6 @@ use std::{
     fs::File,
     io::Write,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 use sway_types::{Ident, Spanned};
 use sway_utils::PerformanceData;
