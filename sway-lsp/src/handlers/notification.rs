@@ -20,10 +20,16 @@ pub async fn handle_did_open_text_document(
     state: &ServerState,
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
+    let file_uri = &params.text_document.uri;
+    // Initialize the SyncWorkspace if it doesn't exist.
+    let _ = state.get_or_init_global_sync_workspace(file_uri).await?;
+
+    // Get or create a session for the original file URI.
     let (uri, session) = state
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     state.documents.handle_open_file(&uri).await;
+
     // If the token map is empty, then we need to parse the project.
     // Otherwise, don't recompile the project when a new file in the project is opened
     // as the workspace is already compiled.
@@ -37,6 +43,7 @@ pub async fn handle_did_open_text_document(
                 optimized_build: false,
                 gc_options: state.config.read().garbage_collection.clone(),
                 file_versions: BTreeMap::new(),
+                sync: Some(state.sync_workspace.get().unwrap().clone()),
             }));
         state.is_compiling.store(true, Ordering::SeqCst);
         state.wait_for_parsing().await;
@@ -78,6 +85,7 @@ fn send_new_compilation_request(
             optimized_build,
             gc_options: state.config.read().garbage_collection.clone(),
             file_versions,
+            sync: Some(state.sync_workspace.get().unwrap().clone()),
         }));
 }
 
@@ -144,7 +152,6 @@ pub(crate) async fn handle_did_save_text_document(
     let (uri, session) = state
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
-    session.sync.resync()?;
     let file_versions = file_versions(&state.documents, &uri, None);
     send_new_compilation_request(state, session.clone(), &uri, None, false, file_versions);
     state.wait_for_parsing().await;
@@ -159,12 +166,12 @@ pub(crate) async fn handle_did_change_watched_files(
     params: DidChangeWatchedFilesParams,
 ) -> Result<(), LanguageServerError> {
     for event in params.changes {
-        let (uri, session) = state.uri_and_session_from_workspace(&event.uri).await?;
+        let (uri, _) = state.uri_and_session_from_workspace(&event.uri).await?;
 
         match event.typ {
             FileChangeType::CHANGED => {
                 if event.uri.to_string().contains("Forc.toml") {
-                    session.sync.sync_manifest();
+                    state.sync_workspace.get().unwrap().sync_manifest()?;
                     // TODO: Recompile the project | see https://github.com/FuelLabs/sway/issues/7103
                 }
             }

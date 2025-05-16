@@ -9,9 +9,10 @@ use sway_lsp::{
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, documents) = Runtime::new()
+    let (uri, session, state) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
+    let sync = state.sync_workspace.get().unwrap();
     let config = sway_lsp::config::Config::default();
     let keyword_docs = KeywordDocs::new();
     let position = Position::new(1717, 24);
@@ -46,6 +47,7 @@ fn benchmarks(c: &mut Criterion) {
                 &uri,
                 position,
                 LspClient::default(),
+                sync,
             )
         })
     });
@@ -55,11 +57,11 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("find_all_references", |b| {
-        b.iter(|| session.token_references(&uri, position))
+        b.iter(|| session.token_references(&uri, position, sync))
     });
 
     c.bench_function("goto_definition", |b| {
-        b.iter(|| session.token_definition_response(&uri, position))
+        b.iter(|| session.token_definition_response(&uri, position, sync))
     });
 
     c.bench_function("inlay_hints", |b| {
@@ -74,7 +76,7 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("prepare_rename", |b| {
-        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &uri, position))
+        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &uri, position, sync))
     });
 
     c.bench_function("rename", |b| {
@@ -84,6 +86,7 @@ fn benchmarks(c: &mut Criterion) {
                 "new_token_name".to_string(),
                 &uri,
                 position,
+                sync,
             )
         })
     });
@@ -108,12 +111,19 @@ fn benchmarks(c: &mut Criterion) {
                 text: "\n".to_string(),
             }],
         };
-        b.iter(|| capabilities::on_enter::on_enter(&config.on_enter, &documents, &uri, &params))
+        b.iter(|| {
+            capabilities::on_enter::on_enter(&config.on_enter, &state.documents, &uri, &params)
+        })
     });
 
     c.bench_function("format", |b| {
-        b.iter(|| capabilities::formatting::format_text(&documents, &uri))
+        b.iter(|| capabilities::formatting::format_text(&state.documents, &uri))
     });
+
+    // Remove the temp dir after the benchmarks are done
+    Runtime::new()
+        .unwrap()
+        .block_on(async { sync.remove_temp_dir() });
 }
 
 criterion_group! {

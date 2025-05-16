@@ -2,6 +2,7 @@ pub(crate) mod hover_link_contents;
 
 use self::hover_link_contents::HoverLinkContents;
 use crate::config::LspClient;
+use crate::core::sync::SyncWorkspace;
 use crate::{
     core::{
         session::Session,
@@ -26,6 +27,7 @@ pub fn hover_data(
     url: &Url,
     position: Position,
     client_config: LspClient,
+    sync: &SyncWorkspace,
 ) -> Option<lsp_types::Hover> {
     let t = session.token_map().token_at_position(url, position)?;
     let (ident, token) = t.pair();
@@ -61,6 +63,7 @@ pub fn hover_data(
                 decl_token,
                 &decl_ident.name,
                 client_config.clone(),
+                sync,
             )
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
@@ -71,6 +74,7 @@ pub fn hover_data(
             token,
             &ident.name,
             client_config.clone(),
+            sync,
         ),
     };
 
@@ -131,6 +135,7 @@ fn hover_format(
     token: &Token,
     ident_name: &str,
     client_config: LspClient,
+    sync: &SyncWorkspace,
 ) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
     let doc_comment = format_doc_attributes(engines, token);
@@ -141,7 +146,7 @@ fn hover_format(
     };
 
     // Used to collect all the information we need to generate links for the hover component.
-    let mut hover_link_contents = HoverLinkContents::new(session, engines);
+    let mut hover_link_contents = HoverLinkContents::new(session, engines, sync);
 
     let sway_block = token
         .as_typed()
