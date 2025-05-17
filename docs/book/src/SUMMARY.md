@@ -80,6 +80,8 @@
   - [Workspaces](./forc/workspaces.md)
   - [Dependencies](./forc/dependencies.md)
   - [Commands](./forc/commands/index.md)
+    - [forc add](./forc/commands/forc_add.md)
+    - [forc remove](./forc/commands/forc_remove.md)
     - [forc addr2line](./forc/commands/forc_addr2line.md)
     - [forc build](./forc/commands/forc_build.md)
     - [forc check](./forc/commands/forc_check.md)

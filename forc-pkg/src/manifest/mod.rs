@@ -1,4 +1,5 @@
 pub mod build_profile;
+pub mod dep_modifier;
 
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
@@ -62,6 +63,26 @@ pub trait GenericManifestFile {
 pub enum ManifestFile {
     Package(Box<PackageManifestFile>),
     Workspace(WorkspaceManifestFile),
+}
+
+impl ManifestFile {
+    pub fn is_workspace(&self) -> bool {
+        matches!(self, ManifestFile::Workspace(_))
+    }
+
+    pub fn root_dir(&self) -> PathBuf {
+        match self {
+            ManifestFile::Package(pkg_manifest_file) => pkg_manifest_file
+                .workspace()
+                .ok()
+                .flatten()
+                .map(|ws| ws.dir().to_path_buf())
+                .unwrap_or_else(|| pkg_manifest_file.dir().to_path_buf()),
+            ManifestFile::Workspace(workspace_manifest_file) => {
+                workspace_manifest_file.dir().to_path_buf()
+            }
+        }
+    }
 }
 
 impl GenericManifestFile for ManifestFile {
@@ -327,11 +348,28 @@ impl DependencyDetails {
             version,
             ipfs,
             namespace,
+            path,
             ..
         } = self;
 
         if git.is_none() && (branch.is_some() || tag.is_some() || rev.is_some()) {
             bail!("Details reserved for git sources used without a git field");
+        }
+
+        if git.is_some() && branch.is_some() && tag.is_some() && rev.is_some() {
+            bail!("Cannot specify `branch`, `tag`, and `rev` together for dependency with a Git source");
+        }
+
+        if git.is_some() && branch.is_some() && tag.is_some() {
+            bail!("Cannot specify both `branch` and `tag` for dependency with a Git source");
+        }
+
+        if git.is_some() && rev.is_some() && tag.is_some() {
+            bail!("Cannot specify both `rev` and `tag` for dependency with a Git source");
+        }
+
+        if git.is_some() && branch.is_some() && rev.is_some() {
+            bail!("Cannot specify both `branch` and `rev` for dependency with a Git source");
         }
 
         if version.is_some() && git.is_some() {
@@ -345,7 +383,16 @@ impl DependencyDetails {
         if version.is_none() && namespace.is_some() {
             bail!("Namespace can only be specified for sources with version");
         }
+
+        if version.is_some() && path.is_some() {
+            bail!("Both version and path details provided for same dependency");
+        }
+
         Ok(())
+    }
+
+    pub fn is_source_empty(&self) -> bool {
+        self.git.is_none() && self.path.is_none() && self.ipfs.is_none()
     }
 }
 
@@ -1404,7 +1451,7 @@ mod tests {
             version: None,
             path: None,
             git: Some(git_source_string),
-            branch: Some("test_branch".to_string()),
+            branch: None,
             tag: None,
             package: None,
             rev: Some("9f35b8e".to_string()),
