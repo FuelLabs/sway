@@ -22,12 +22,12 @@ pub(super) fn create_tagged_union_type(
     // getting one here anyway.  They don't need to be a tagged union either.
     let field_types: Vec<_> = variants
         .iter()
-        .map(|tev| {
+        .map(|variant| {
             convert_resolved_typeid_no_span(
                 type_engine,
                 decl_engine,
                 context,
-                tev.type_argument.type_id(),
+                variant.type_argument.type_id(),
             )
         })
         .collect::<Result<Vec<_>, CompileError>>()?;

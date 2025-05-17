@@ -6,6 +6,7 @@ use crate::{
     transform,
     type_system::*,
 };
+use ast_elements::type_parameter::ConstGenericExpr;
 use monomorphization::MonomorphizeHelper;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -107,11 +108,31 @@ impl MonomorphizeHelper for TyEnumDecl {
 impl MaterializeConstGenerics for TyEnumDecl {
     fn materialize_const_generics(
         &mut self,
-        _engines: &Engines,
-        _handler: &Handler,
-        _name: &str,
-        _value: &crate::language::ty::TyExpression,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &crate::language::ty::TyExpression,
     ) -> Result<(), ErrorEmitted> {
+        for p in self.generic_parameters.iter_mut() {
+            match p {
+                TypeParameter::Const(p) if p.name.as_str() == name => {
+                    p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                }
+                TypeParameter::Type(p) => {
+                    p.type_id
+                        .materialize_const_generics(engines, handler, name, value)?;
+                }
+                _ => {}
+            }
+        }
+
+        for variant in self.variants.iter_mut() {
+            variant
+                .type_argument
+                .type_id_mut()
+                .materialize_const_generics(engines, handler, name, value)?;
+        }
+
         Ok(())
     }
 }
