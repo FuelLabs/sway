@@ -33,7 +33,6 @@ pub mod cli;
 pub use ansiterm;
 pub use paste;
 pub use regex::Regex;
-pub use serial_test;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 pub const DEFAULT_ERROR_EXIT_CODE: u8 = 1;
