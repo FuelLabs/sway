@@ -28,6 +28,9 @@ pub enum Error {
 
     #[error("Forc.toml not found in the current directory")]
     ForcTomlNotFound,
+
+    #[error("Server error")]
+    ServerError,
 }
 
 #[derive(Deserialize)]

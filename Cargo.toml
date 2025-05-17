@@ -154,6 +154,7 @@ filecheck = "0.5"
 flate2 = "1.0"
 fs_extra = "1.2"
 futures = { version = "0.3", default-features = false }
+futures-util = "0.3"
 gag = "1.0"
 gimli = "0.31"
 git2 = "0.19"
