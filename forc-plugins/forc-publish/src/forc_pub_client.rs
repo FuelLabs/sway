@@ -41,6 +41,7 @@ impl ForcPubClient {
     /// Uploads the given file to the server
     pub async fn upload<P: AsRef<Path>>(&self, file_path: P, forc_version: &str) -> Result<Uuid> {
         use futures_util::StreamExt;
+        use std::io::{stdout, Write};
         let url = self
             .uri
             .join(&format!("upload_project?forc_version={}", forc_version))?;
@@ -58,7 +59,8 @@ impl ForcPubClient {
             let mut stream = response.bytes_stream();
 
             // Process the SSE stream.
-            // The server sends events in the format: "data: <event>\n\n"
+            // The server sends events in the format: "data: <event>\n\n" or
+            // ": <event>\n\n" for keep-alive events.
             // The first event is usually a progress event, and the last one contains the upload_id
             // or an error message. If the stream is open for more than 60 seconds, it will be closed
             // by the server, and we will return an HTTPError.
@@ -82,12 +84,13 @@ impl ForcPubClient {
                                 } else {
                                     // Print the event data, replacing the previous message.
                                     print!("\r\x1b[2K  =>  {}", data);
-                                    use std::io::{stdout, Write};
                                     stdout().flush().unwrap();
                                 }
-                            } else if event.starts_with(":") {
-                                // Do nothing. These are keep-alive events.
                             }
+                            // else if event.starts_with(":") {
+                            // These are keep-alive events. Uncomment if you need to debug them.
+                            // println!("Keep-alive event: {}", event);
+                            // }
                         }
                     }
                     Err(e) => {
