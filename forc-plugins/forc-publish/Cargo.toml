@@ -18,7 +18,6 @@ reqwest = { workspace = true, features = ["json", "stream"] }
 semver = { workspace = true, features = ["serde"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serial_test.workspace = true
 tar.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
@@ -30,4 +29,5 @@ uuid = { workspace = true, features = ["v4", "serde"] }
 walkdir.workspace = true
 
 [dev-dependencies]
+serial_test.workspace = true
 wiremock.workspace = true
