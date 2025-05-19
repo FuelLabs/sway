@@ -329,7 +329,7 @@ impl DataSection {
     /// Given an absolute index, calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
     pub(crate) fn absolute_idx_to_offset(&self, idx: usize) -> usize {
-        let sum_len = std::iter::repeat(true).take(idx).chain([false]);
+        let sum_len = std::iter::repeat_n(true, idx).chain([false]);
         self.iter_all_entries()
             .zip(sum_len)
             .fold(0, |mut offset, (entry, sum_len)| {
