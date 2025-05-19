@@ -204,8 +204,8 @@ fn type_check_transmute(
         (TypeInfo::UnsignedInteger(IntegerBits::SixtyFour), TypeInfo::RawUntypedPtr)
         | (TypeInfo::RawUntypedPtr, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)) => {}
         _ => {
-            forbid_ref_ptr_types(engines, handler, src_type, &type_arguments[0].span)?;
-            forbid_ref_ptr_types(engines, handler, return_type, &type_arguments[1].span)?;
+            forbid_ref_ptr_types(engines, handler, src_type, &type_arguments[0].span())?;
+            forbid_ref_ptr_types(engines, handler, return_type, &type_arguments[1].span())?;
         }
     }
 
