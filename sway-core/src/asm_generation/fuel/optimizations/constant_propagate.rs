@@ -84,8 +84,7 @@ impl Expr {
                         if let Some(x) = l.checked_add(r) {
                             simplified[i] = Expr::Const(x);
                             simplified.remove(i + 1);
-                        } else {
-                            i += 1;
+                            continue;
                         }
                     }
 
@@ -127,8 +126,7 @@ impl Expr {
                         if let Some(x) = l.checked_mul(r) {
                             simplified[i] = Expr::Const(x);
                             simplified.remove(i + 1);
-                        } else {
-                            i += 1;
+                            continue;
                         }
                     }
 
@@ -376,9 +374,10 @@ impl AbstractInstructionSet {
                     true
                 }
                 Either::Left(VirtualOp::EQ(dst, lhs, rhs)) => {
-                    if let (Some(l), Some(r)) =
-                        (known_values.resolve(lhs), known_values.resolve(rhs))
-                    {
+                    if let (Some(l), Some(r)) = (
+                        known_values.resolve(lhs).and_then(|v| v.integer()),
+                        known_values.resolve(rhs).and_then(|v| v.integer()),
+                    ) {
                         known_values.assign(dst.clone(), Expr::Const((l == r) as u64));
                         true
                     } else {
