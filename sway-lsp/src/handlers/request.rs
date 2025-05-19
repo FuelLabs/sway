@@ -48,6 +48,7 @@ pub fn handle_initialize(
             .init();
     }
     tracing::info!("Initializing the Sway Language Server");
+
     Ok(InitializeResult {
         server_info: None,
         capabilities: crate::server_capabilities(),
@@ -83,8 +84,9 @@ pub async fn handle_goto_definition(
         .await
     {
         Ok((uri, session)) => {
+            let sync = state.sync_workspace();
             let position = params.text_document_position_params.position;
-            Ok(session.token_definition_response(&uri, position))
+            Ok(session.token_definition_response(&uri, position, &sync))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -127,12 +129,14 @@ pub async fn handle_hover(
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
+            let sync = state.sync_workspace();
             Ok(capabilities::hover::hover_data(
                 session,
                 &state.keyword_docs,
                 &uri,
                 position,
                 state.config.read().client.clone(),
+                &sync,
             ))
         }
         Err(err) => {
@@ -151,7 +155,8 @@ pub async fn handle_prepare_rename(
         .await
     {
         Ok((uri, session)) => {
-            match capabilities::rename::prepare_rename(session, &uri, params.position) {
+            let sync = state.sync_workspace();
+            match capabilities::rename::prepare_rename(session, &uri, params.position, &sync) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -177,7 +182,8 @@ pub async fn handle_rename(
         Ok((uri, session)) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
-            match capabilities::rename::rename(session, new_name, &uri, position) {
+            let sync = state.sync_workspace();
+            match capabilities::rename::rename(session, new_name, &uri, position, &sync) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -225,7 +231,8 @@ pub async fn handle_references(
     {
         Ok((uri, session)) => {
             let position = params.text_document_position.position;
-            Ok(session.token_references(&uri, position))
+            let sync = state.sync_workspace();
+            Ok(session.token_references(&uri, position, &sync))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
