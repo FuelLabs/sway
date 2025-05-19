@@ -1,4 +1,6 @@
 use codspeed_criterion_compat::{black_box, criterion_group, Criterion};
+use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
+use lsp_types::Url;
 use std::sync::Arc;
 use sway_core::Engines;
 use sway_lsp::core::session;
@@ -59,6 +61,31 @@ fn benchmarks(c: &mut Criterion) {
         let engines = Engines::default();
         b.iter(|| {
             for _ in 0..NUM_DID_CHANGE_ITERATIONS {
+                let _ = black_box(
+                    session::compile(&build_plan, &engines, None, lsp_mode.as_ref()).unwrap(),
+                );
+            }
+        })
+    });
+
+    let examples_workspace_dir = super::sway_workspace_dir().join("examples");
+    let member_manifests = ManifestFile::from_dir(examples_workspace_dir)
+        .unwrap()
+        .member_manifests()
+        .unwrap();
+    c.bench_function("open_all_example_workspace_members", |b| {
+        b.iter(|| {
+            for (name, package_manifest) in &member_manifests {
+                let engines = Engines::default();
+                let dir = Url::from_file_path(
+                    package_manifest
+                        .path()
+                        .parent()
+                        .unwrap()
+                        .join("src/main.sw"),
+                )
+                .unwrap();
+                let build_plan = session::build_plan(&dir).unwrap();
                 let _ = black_box(
                     session::compile(&build_plan, &engines, None, lsp_mode.as_ref()).unwrap(),
                 );
