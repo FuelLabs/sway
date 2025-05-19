@@ -256,8 +256,6 @@ script {
 !25 = span !3 666 761
 !26 = fn_name_span !3 673 683
 !27 = (!25 !26)
-<<<<<<< HEAD
-<<<<<<< HEAD
 !28 = span !3 68767 68773
 !29 = span !3 68745 68840
 !30 = fn_name_span !3 68748 68758
@@ -265,31 +263,6 @@ script {
 !32 = span !3 68806 68834
 !33 = fn_call_path_span !3 68813 68825
 !34 = span !3 625 637
-=======
-<<<<<<< HEAD
-=======
->>>>>>> d62a6dd9d (fix tests)
-!28 = span !3 68735 68741
-!29 = span !3 68713 68808
-!30 = fn_name_span !3 68716 68726
-!31 = (!29 !30)
-!32 = span !3 68774 68802
-!33 = fn_call_path_span !3 68781 68793
-=======
-!28 = span !3 66134 66140
-!29 = span !3 66112 66207
-!30 = fn_name_span !3 66115 66125
-!31 = (!29 !30)
-!32 = span !3 66173 66201
-!33 = fn_call_path_span !3 66180 66192
-!28 = span !3 65527 65533
-!29 = span !3 65505 65600
-!30 = fn_name_span !3 65508 65518
-!31 = (!29 !30)
-!32 = span !3 65566 65594
-!33 = fn_call_path_span !3 65573 65585
-!34 = span !3 593 605
->>>>>>> b03b5d371 (allow indirect configurables for dynamic types such as vec, slices etc...)
 !35 = (!32 !33 !34)
 !36 = (!32 !33)
 !37 = span !3 2766 2847
