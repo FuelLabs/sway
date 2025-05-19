@@ -1,7 +1,9 @@
 //! Symbolic fuel-vm interpreter.
 
+use crate::asm_lang::VirtualImmediate18;
 use either::Either;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
+use std::collections::hash_map::Entry;
 use sway_types::Span;
 
 use crate::asm_lang::{
@@ -259,7 +261,7 @@ impl AbstractInstructionSet {
                     to,
                     type_: JumpType::NotZero(reg),
                 }) => {
-                    if let Some(con) = known_values.resolve(reg).and_then(|r| r.value()) {
+                    if let Some(con) = known_values.resolve(reg).and_then(|r| r.integer()) {
                         if con == 0 {
                             let Entry::Occupied(mut count) = jump_target_labels.entry(*to) else {
                                 unreachable!("Jump target label not found in jump_target_labels");
@@ -414,7 +416,7 @@ impl AbstractInstructionSet {
                         // If this is a jump target, then multiple jumps can reach it, and we can't
                         // assume to know register values.
                         ControlFlowOp::Label(label) => {
-                            if jump_target_labels.contains(label) {
+                            if jump_target_labels.contains_key(label) {
                                 ResetKnown::Full
                             } else {
                                 ResetKnown::Defs
