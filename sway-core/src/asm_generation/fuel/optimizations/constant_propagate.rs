@@ -56,7 +56,7 @@ impl Expr {
     fn simplify(self, ctx: &KnownValues) -> Self {
         match self {
             Expr::Eq(VirtualRegister::Constant(ConstantRegister::Zero)) => Self::Const(0),
-            Expr::Eq(VirtualRegister::Constant(ConstantRegister::One)) => Self::Const(0),
+            Expr::Eq(VirtualRegister::Constant(ConstantRegister::One)) => Self::Const(1),
             Expr::Eq(ref reg) => match ctx.resolve(reg) {
                 Some(res) => res.simplify(ctx),
                 None => self,
