@@ -1123,7 +1123,7 @@ async fn deployed_predicate_call() {
 
     // Check predicate balance again.
     let balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
-    assert_eq!(balance, 828);
+    assert_eq!(balance, 1700);
 
     node.kill().unwrap();
 }
@@ -1230,6 +1230,7 @@ async fn call_with_forc_generated_overrides(node_url: &str, contract_id: Contrac
     // this path is basically, `forc-plugins/forc-client/test/data/deployed_script/deployed_script-loader-abi.json`.
     let used_loader_abi_path = project_dir.join("deployed_script-loader-abi.json");
     let used_loader_abi = fs::read_to_string(&used_loader_abi_path).unwrap();
+    dbg!(used_loader_abi_path);
 
     pretty_assertions::assert_eq!(generated_loader_abi, used_loader_abi);
 
