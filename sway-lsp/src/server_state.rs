@@ -524,6 +524,20 @@ impl ServerState {
 
         Ok(sw)
     }
+
+    /// Returns a cloned `Arc` of the `SyncWorkspace`.
+    ///
+    /// Panics if `sync_workspace` has not been initialized by a prior call to
+    /// `get_or_init_global_sync_workspace`. This scenario is not expected in normal operation.
+    pub fn sync_workspace(&self) -> Arc<SyncWorkspace> {
+        // `sync_workspace` is initialized once during the first call to `get_or_init_global_sync_workspace`.
+        // After initialization, it's always expected to be `Some`.
+        // Using `expect` here simplifies the code, as the `None` case should not occur in normal operation.
+        self.sync_workspace
+            .get()
+            .expect("SyncWorkspace not initialized")
+            .clone()
+    }
 }
 
 /// A Least Recently Used (LRU) cache for storing and managing `Session` objects.
