@@ -1,6 +1,6 @@
 use super::super::abstract_instruction_set::AbstractInstructionSet;
 
-use crate::asm_lang::{Op, OrganizationalOp, VirtualOp, VirtualRegister};
+use crate::asm_lang::{JumpType, Op, OrganizationalOp, VirtualOp, VirtualRegister};
 
 use std::collections::HashSet;
 
@@ -15,7 +15,11 @@ impl AbstractInstructionSet {
             .enumerate()
             .filter_map(|(idx, ops)| match (&ops[0].opcode, &ops[1].opcode) {
                 (
-                    Either::Right(OrganizationalOp::Jump(dst_label)),
+                    Either::Right(OrganizationalOp::Jump {
+                        to: dst_label,
+                        type_: JumpType::Unconditional | JumpType::NotZero(_),
+                        ..
+                    }),
                     Either::Right(OrganizationalOp::Label(label)),
                 ) if dst_label == label => Some(idx),
                 _otherwise => None,

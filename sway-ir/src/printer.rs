@@ -216,7 +216,7 @@ fn module_to_doc<'a>(
     })
     .append(Doc::indent(
         4,
-        Doc::list_sep(
+        Doc::List(
             module
                 .global_variables
                 .iter()
@@ -241,9 +241,13 @@ fn module_to_doc<'a>(
                     )
                 })
                 .collect(),
-            Doc::line(Doc::Empty),
         ),
     ))
+    .append(if !module.global_variables.is_empty() {
+        Doc::line(Doc::Empty)
+    } else {
+        Doc::Empty
+    })
     .append(Doc::indent(
         4,
         Doc::list_sep(
