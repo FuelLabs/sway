@@ -372,6 +372,16 @@ impl AbstractInstructionSet {
                     }
                     true
                 }
+                Either::Left(VirtualOp::EQ(dst, lhs, rhs)) => {
+                    if let (Some(l), Some(r)) =
+                        (known_values.resolve(lhs), known_values.resolve(rhs))
+                    {
+                        known_values.assign(dst.clone(), Expr::Const((l == r) as u64));
+                        true
+                    } else {
+                        false
+                    }
+                }
                 _ => false,
             };
 
