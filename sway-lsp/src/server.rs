@@ -34,7 +34,9 @@ impl LanguageServer for ServerState {
         // Populate documents from temp dir
         if let Some(sw) = self.sync_workspace.get() {
             if let Ok(temp_dir) = sw.temp_dir() {
-                let _ = self.documents.store_sway_files_from_temp(temp_dir).await;
+                if let Err(err) = self.documents.store_sway_files_from_temp(temp_dir).await {
+                    tracing::warn!("Failed to populate documents from temp dir: {}", err);
+                }
             }
         }
         tracing::info!("Sway Language Server Initialized");
