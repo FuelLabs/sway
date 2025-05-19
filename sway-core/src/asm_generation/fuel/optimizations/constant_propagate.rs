@@ -93,7 +93,7 @@ impl Expr {
 
                     i += 1;
                 }
-                if simplified.len() == 0 {
+                if simplified.is_empty() {
                     Expr::Const(0)
                 } else if simplified.len() == 1 {
                     simplified.pop().expect("Checked in if condition")
@@ -131,7 +131,7 @@ impl Expr {
 
                     i += 1;
                 }
-                if simplified.len() == 0 {
+                if simplified.is_empty() {
                     Expr::Const(1)
                 } else if simplified.len() == 1 {
                     simplified.pop().expect("Checked in if condition")
@@ -140,8 +140,8 @@ impl Expr {
                 }
             }
             Expr::Sub(lhs, rhs) => {
-                let lhs = lhs.simplify(&ctx);
-                let rhs = rhs.simplify(&ctx);
+                let lhs = lhs.simplify(ctx);
+                let rhs = rhs.simplify(ctx);
                 if lhs == rhs {
                     return Expr::Const(0);
                 }
