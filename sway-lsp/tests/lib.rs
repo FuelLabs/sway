@@ -118,7 +118,7 @@ macro_rules! test_lsp_capability {
         let uri = init_and_open(&mut service, $entry_point).await;
 
         // Call the specific LSP capability function that was passed in.
-        let _ = $capability(&mut service.inner(), &uri).await;
+        let _ = $capability(&service.inner(), &uri).await;
         shutdown_and_exit(&mut service).await;
     }};
 }
