@@ -82,6 +82,15 @@ impl SyncWorkspace {
             DirectoryError::TempDirFailed
         })?;
 
+        let canonical_manifest_path = actual_workspace_root.canonicalize().map_err(|io_err| {
+            tracing::warn!(
+                "Failed to canonicalize manifest path {:?}: {}",
+                actual_workspace_root,
+                io_err
+            );
+            DirectoryError::CanonicalizeFailed
+        })?;
+
         let canonical_temp_path = temp_workspace_base.canonicalize().map_err(|io_err| {
             tracing::warn!(
                 "Failed to canonicalize temp path {:?}: {}",
@@ -92,7 +101,7 @@ impl SyncWorkspace {
         })?;
 
         self.directories
-            .insert(Directory::Manifest, actual_workspace_root.to_path_buf());
+            .insert(Directory::Manifest, canonical_manifest_path);
         self.directories
             .insert(Directory::Temp, canonical_temp_path.clone());
 
