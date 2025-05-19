@@ -105,6 +105,10 @@ impl Expr {
                 let mut simplified = Vec::new();
                 for v in vs {
                     let v = v.simplify(ctx);
+                    if v.integer() == Some(0) {
+                        simplified.clear();
+                        break;
+                    }
                     if v.integer() == Some(1) {
                         continue;
                     }
