@@ -41,8 +41,8 @@ impl SyncWorkspace {
             // So, we need to remove `random_dir` by getting the parent directory.
             if let Some(parent_dir) = dir.parent() {
                 if parent_dir
-                    .to_string_lossy()
-                    .contains(SyncWorkspace::LSP_TEMP_PREFIX)
+                    .file_name()
+                    .is_some_and(|name| name.to_string_lossy().starts_with(SyncWorkspace::LSP_TEMP_PREFIX))
                 {
                     if let Err(e) = fs::remove_dir_all(parent_dir) {
                         tracing::warn!("Failed to remove temp base dir {:?}: {}", parent_dir, e);
