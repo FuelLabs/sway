@@ -1,9 +1,7 @@
-//! Symbolic fuel-vm interpreter.
-
 use crate::asm_lang::VirtualImmediate18;
 use either::Either;
 use rustc_hash::FxHashMap;
-use std::collections::hash_map::Entry;
+use std::{collections::hash_map::Entry, vec};
 use sway_types::Span;
 
 use crate::asm_lang::{
@@ -106,7 +104,8 @@ impl Expr {
                 for v in vs {
                     let v = v.simplify(ctx);
                     if v.integer() == Some(0) {
-                        simplified.clear();
+                        // Short-circuit
+                        simplified = vec![Expr::Const(0)];
                         break;
                     }
                     if v.integer() == Some(1) {
@@ -234,7 +233,7 @@ impl AbstractInstructionSet {
             return self;
         }
 
-        // The set of labels that are jump targets
+        // The set of labels that are jump targets, and how many places jump to them.
         // todo: build proper control flow graph instead
         let mut jump_target_labels = FxHashMap::<Label, usize>::default();
         for op in &self.ops {
@@ -413,7 +412,7 @@ impl AbstractInstructionSet {
                     Either::Left(op) => match op {
                         // These always require a full reset
                         VirtualOp::ECAL(_, _, _, _) => ResetKnown::Full,
-                        // These ops are not known have register-related side effects
+                        // These ops are known to not have register-related side effects
                         VirtualOp::GT(_, _, _)
                         | VirtualOp::GTF(_, _, _)
                         | VirtualOp::MCP(_, _, _)
