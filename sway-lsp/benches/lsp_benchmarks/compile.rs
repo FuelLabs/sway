@@ -75,8 +75,8 @@ fn benchmarks(c: &mut Criterion) {
         .unwrap();
     c.bench_function("open_all_example_workspace_members", |b| {
         b.iter(|| {
+            let engines = Engines::default();
             for package_manifest in member_manifests.values() {
-                let engines = Engines::default();
                 let dir = Url::from_file_path(
                     package_manifest
                         .path()
