@@ -374,21 +374,18 @@ impl ServerState {
 
     /// Constructs and returns a tuple of `(Url, Arc<Session>)` from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
-    pub async fn uri_and_session_from_workspace(
+    pub fn uri_and_session_from_workspace(
         &self,
         workspace_uri: &Url,
     ) -> Result<(Url, Arc<Session>), LanguageServerError> {
-        let temp_uri = self.uri_from_workspace(workspace_uri).await?;
-        let session = self.url_to_session(workspace_uri).await?;
+        let temp_uri = self.uri_from_workspace(workspace_uri)?;
+        let session = self.url_to_session(workspace_uri)?;
         Ok((temp_uri, session))
     }
 
     /// Constructs and returns a [Url] from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
-    pub async fn uri_from_workspace(
-        &self,
-        workspace_uri: &Url,
-    ) -> Result<Url, LanguageServerError> {
+    pub fn uri_from_workspace(&self, workspace_uri: &Url) -> Result<Url, LanguageServerError> {
         let sw = self
             .sync_workspace
             .get()
@@ -399,7 +396,7 @@ impl ServerState {
         Ok(temp_uri)
     }
 
-    async fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
+    fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
         // Try to get the manifest directory from the cache
         let manifest_dir = if let Some(cached_dir) = self.manifest_cache.get(uri) {
             cached_dir.clone()

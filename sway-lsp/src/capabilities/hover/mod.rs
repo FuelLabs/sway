@@ -232,7 +232,7 @@ fn hover_format(
             engines.se(),
             &hover_link_contents.related_types,
             &hover_link_contents.implementations,
-            client_config,
+            &client_config,
         );
 
     lsp_types::HoverContents::Markup(markup_content(&content))

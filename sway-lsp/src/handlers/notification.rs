@@ -27,9 +27,7 @@ pub async fn handle_did_open_text_document(
     // eprintln!("version: {:?}", params.text_document.version);
 
     // Get or create a session for the original file URI.
-    let (uri, session) = state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await?;
+    let (uri, session) = state.uri_and_session_from_workspace(&params.text_document.uri)?;
     state.documents.handle_open_file(&uri).await;
 
     send_new_compilation_request(state, session.clone(), &uri, None, false);
@@ -91,9 +89,7 @@ pub async fn handle_did_change_text_document(
         tracing::warn!("Failed to mark file as dirty: {}", err);
     }
 
-    let (uri, session) = state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await?;
+    let (uri, session) = state.uri_and_session_from_workspace(&params.text_document.uri)?;
     state
         .documents
         .write_changes_to_file(&uri, &params.content_changes)
@@ -134,9 +130,7 @@ pub(crate) async fn handle_did_save_text_document(
     state
         .pid_locked_files
         .remove_dirty_flag(&params.text_document.uri)?;
-    let (uri, session) = state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await?;
+    let (uri, session) = state.uri_and_session_from_workspace(&params.text_document.uri)?;
     send_new_compilation_request(state, session.clone(), &uri, None, false);
     state.wait_for_parsing().await;
     state
@@ -150,7 +144,7 @@ pub(crate) async fn handle_did_change_watched_files(
     params: DidChangeWatchedFilesParams,
 ) -> Result<(), LanguageServerError> {
     for event in params.changes {
-        let (uri, _) = state.uri_and_session_from_workspace(&event.uri).await?;
+        let uri = state.uri_from_workspace(&event.uri)?;
 
         match event.typ {
             FileChangeType::CHANGED => {
