@@ -32,7 +32,7 @@ use std::{
         Arc, OnceLock,
     },
 };
-use sway_core::{Engines, LspConfig};
+use sway_core::Engines;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -175,8 +175,6 @@ impl ServerState {
                     TaskMessage::CompilationContext(ctx) => {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
-                        let sync = ctx.sync.as_ref().unwrap().clone();
-                        let engines_original = ctx.engines.clone();
                         let mut engines_clone = ctx.engines.read().clone();
 
                         // Perform garbage collection if enabled to manage memory usage.
@@ -192,22 +190,14 @@ impl ServerState {
                                 );
                             }
                         }
-                        let lsp_mode = Some(LspConfig {
-                            optimized_build: ctx.optimized_build,
-                            file_versions: ctx.file_versions,
-                        });
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(
                             &uri,
-                            engines_original,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
-                            lsp_mode,
-                            session.clone(),
-                            ctx.token_map.clone(),
-                            &sync,
+                            &ctx,
                         ) {
                             Ok(()) => {
                                 let path = uri.to_file_path().unwrap();

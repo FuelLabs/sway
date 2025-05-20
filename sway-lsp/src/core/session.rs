@@ -10,6 +10,7 @@ use crate::{
         token_map::{TokenMap, TokenMapExt},
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
+    server_state::CompilationContext,
     traverse::{
         dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree, typed_tree::TypedTree,
         ParseContext,
@@ -432,15 +433,19 @@ pub fn traverse(
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
 pub fn parse_project(
     uri: &Url,
-    engines_original: Arc<RwLock<Engines>>,
     engines_clone: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
-    lsp_mode: Option<LspConfig>,
-    session: Arc<Session>,
-    token_map: Arc<TokenMap>,
-    sync: &SyncWorkspace,
+    ctx: &CompilationContext,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
+    let engines_original = ctx.engines.clone();
+    let session = ctx.session.as_ref().unwrap().clone();
+    let sync = ctx.sync.as_ref().unwrap().clone();
+    let token_map = ctx.token_map.clone();
+    let lsp_mode = Some(LspConfig {
+        optimized_build: ctx.optimized_build,
+        file_versions: ctx.file_versions.clone(),
+    });
 
     let build_plan = session
         .build_plan_cache
@@ -750,6 +755,7 @@ impl BuildPlanCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::GarbageCollectionConfig;
     use sway_lsp_test_utils::{get_absolute_path, get_url};
 
     #[test]
@@ -758,20 +764,22 @@ mod tests {
         let uri = get_url(&dir);
         let engines_original = Arc::new(RwLock::new(Engines::default()));
         let engines = Engines::default();
-        let session = Arc::new(Session::new());
-        let sync = SyncWorkspace::new();
+        let session = Some(Arc::new(Session::new()));
+        let sync = Some(Arc::new(SyncWorkspace::new()));
         let token_map = Arc::new(TokenMap::new());
-        let result = parse_project(
-            &uri,
-            engines_original,
-            &engines,
-            None,
-            None,
+        let ctx = CompilationContext {
             session,
+            sync,
             token_map,
-            &sync,
-        )
-        .expect_err("expected ManifestFileNotFound");
+            engines: engines_original,
+            optimized_build: false,
+            file_versions: Default::default(),
+            uri: Some(uri.clone()),
+            version: None,
+            gc_options: GarbageCollectionConfig::default(),
+        };
+        let result =
+            parse_project(&uri, &engines, None, &ctx).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(
