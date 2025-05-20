@@ -318,7 +318,8 @@ pub mod tests {
 
     abigen!(Contract(
         name = "TestContract",
-        abi = "forc-plugins/forc-client/tests/data/contract_with_types/contract_with_types-abi.json"
+        abi = 
+            "forc-plugins/forc-client/tests/data/contract_with_types/contract_with_types-abi.json"
     ));
 
     pub async fn get_contract_instance() -> (TestContract<Wallet>, ContractId, Provider, SecretKey)
