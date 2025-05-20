@@ -3,14 +3,14 @@ pub mod requests;
 pub mod token_map;
 
 use lsp_types::Url;
-use parking_lot::RwLock;
+use sway_core::Engines;
 use std::{path::PathBuf, sync::Arc};
 use sway_lsp::{
     core::session::{self, Session},
     server_state::ServerState,
 };
 
-pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState) {
+pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState, Engines) {
     // Load the test project
     let uri = Url::from_file_path(benchmark_dir().join("src/main.sw")).unwrap();
     let state = ServerState::default();
@@ -28,16 +28,16 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState) {
     // Compile the project
     session::parse_project(
         &temp_uri,
-        &state.engines.read(),
+        state.engines.clone(),
         &engines_clone,
         None,
         lsp_mode,
         session.clone(),
+        state.token_map.clone(),
         &sync,
-        &state.token_map,
     )
     .unwrap();
-    (temp_uri, session, state)
+    (temp_uri, session, state, engines_clone)
 }
 
 pub fn sway_workspace_dir() -> PathBuf {

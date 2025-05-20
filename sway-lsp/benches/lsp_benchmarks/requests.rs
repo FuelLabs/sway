@@ -9,7 +9,7 @@ use sway_lsp::{
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, state) = Runtime::new()
+    let (uri, session, state, engines) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
     let sync = state.sync_workspace.get().unwrap();
@@ -25,7 +25,7 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("document_symbol", |b| {
         b.iter(|| {
             session
-                .document_symbols(&uri, &token_map, &state.engines.read())
+                .document_symbols(&uri, &state.token_map, &engines)
                 .map(DocumentSymbolResponse::Nested)
         })
     });
@@ -34,7 +34,7 @@ fn benchmarks(c: &mut Criterion) {
         let position = Position::new(1698, 28);
         b.iter(|| {
             session
-                .completion_items(&uri, position, ".", &token_map, &engines.read())
+                .completion_items(&uri, position, ".", &state.token_map, &engines)
                 .map(CompletionResponse::Array)
         })
     });
@@ -43,7 +43,7 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             capabilities::hover::hover_data(
                 session.clone(),
-                &state.engines.read()
+                &engines,
                 &state.token_map,
                 &keyword_docs,
                 &uri,
@@ -55,22 +55,22 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("highlight", |b| {
-        b.iter(|| capabilities::highlight::get_highlights(session.clone(), &state.engines.read(), &state.token_map, &uri, position))
+        b.iter(|| capabilities::highlight::get_highlights(session.clone(), &engines, &state.token_map, &uri, position))
     });
 
     c.bench_function("find_all_references", |b| {
-        b.iter(|| session.token_references(&uri, position, &state.token_map, &state.engines.read(), sync))
+        b.iter(|| session.token_references(&uri, position, &state.token_map, &engines, sync))
     });
 
     c.bench_function("goto_definition", |b| {
-        b.iter(|| session.token_definition_response(&uri, position, &state.engines.read(), &state.token_map, sync))
+        b.iter(|| session.token_definition_response(&uri, position, &engines, &state.token_map, sync))
     });
 
     c.bench_function("inlay_hints", |b| {
         b.iter(|| {
             capabilities::inlay_hints::inlay_hints(
-                &engines.read(),
-                &token_map,
+                &engines,
+                &state.token_map,
                 &uri,
                 &range,
                 &config.inlay_hints,
@@ -79,15 +79,15 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("prepare_rename", |b| {
-        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &state.engines.read(), &state.token_map, &uri, position, sync))
+        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &engines, &state.token_map, &uri, position, sync))
     });
 
     c.bench_function("rename", |b| {
         b.iter(|| {
             capabilities::rename::rename(
                 session.clone(),
-                &engines.read(),
-                &token_map,
+                &engines,
+                &state.token_map,
                 "new_token_name".to_string(),
                 &uri,
                 position,
@@ -101,8 +101,8 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             capabilities::code_actions::code_actions(
                 session.clone(),
-                &engines.read(),
-                &token_map,
+                &engines,
+                &state.token_map,
                 &range,
                 &uri,
                 &uri,
