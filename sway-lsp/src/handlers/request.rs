@@ -72,7 +72,7 @@ pub async fn handle_document_symbol(
     }
 }
 
-pub async fn handle_goto_definition(
+pub fn handle_goto_definition(
     state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
@@ -97,7 +97,7 @@ pub async fn handle_goto_definition(
     }
 }
 
-pub async fn handle_completion(
+pub fn handle_completion(
     state: &ServerState,
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
@@ -124,7 +124,7 @@ pub async fn handle_completion(
     }
 }
 
-pub async fn handle_hover(
+pub fn handle_hover(
     state: &ServerState,
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_types::Hover>> {
@@ -148,7 +148,7 @@ pub async fn handle_hover(
     }
 }
 
-pub async fn handle_prepare_rename(
+pub fn handle_prepare_rename(
     state: &ServerState,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
@@ -176,10 +176,7 @@ pub async fn handle_prepare_rename(
     }
 }
 
-pub async fn handle_rename(
-    state: &ServerState,
-    params: RenameParams,
-) -> Result<Option<WorkspaceEdit>> {
+pub fn handle_rename(state: &ServerState, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
     match state.uri_from_workspace(&params.text_document_position.text_document.uri) {
         Ok(uri) => {
             let new_name = params.new_name;
@@ -378,13 +375,13 @@ pub async fn handle_inlay_hints(
 /// A formatted AST is written to a temporary file and the URI is
 /// returned to the client so it can be opened and displayed in a
 /// separate side panel.
-pub async fn handle_show_ast(
+pub fn handle_show_ast(
     state: &ServerState,
-    params: lsp_ext::ShowAstParams,
+    params: &lsp_ext::ShowAstParams,
 ) -> Result<Option<TextDocumentIdentifier>> {
     match state.uri_and_session_from_workspace(&params.text_document.uri) {
         Ok((_, session)) => {
-            let current_open_file = params.text_document.uri;
+            let current_open_file = &params.text_document.uri;
             // Convert the Uri to a PathBuf
             let path = current_open_file.to_file_path().ok();
 
@@ -471,9 +468,9 @@ pub async fn handle_show_ast(
 }
 
 /// This method is triggered when the use hits enter or pastes a newline in the editor.
-pub async fn handle_on_enter(
+pub fn handle_on_enter(
     state: &ServerState,
-    params: lsp_ext::OnEnterParams,
+    params: &lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
     match state.uri_from_workspace(&params.text_document.uri) {
         Ok(uri) => {
@@ -495,7 +492,7 @@ pub async fn handle_on_enter(
 /// Returns a [String] of the GraphViz DOT representation of a graph.
 pub fn handle_visualize(
     _state: &ServerState,
-    params: lsp_ext::VisualizeParams,
+    params: &lsp_ext::VisualizeParams,
 ) -> Result<Option<String>> {
     match params.graph_kind.as_str() {
         "build_plan" => match build_plan(&params.text_document.uri) {
@@ -512,14 +509,14 @@ pub fn handle_visualize(
 }
 
 /// This method is triggered by the test suite to request the latest compilation metrics.
-pub(crate) async fn metrics(
+pub(crate) fn metrics(
     state: &ServerState,
-    params: lsp_ext::MetricsParams,
+    params: &lsp_ext::MetricsParams,
 ) -> Result<Option<Vec<(String, PerformanceData)>>> {
     match state.uri_and_session_from_workspace(&params.text_document.uri) {
         Ok((_, session)) => {
             let mut metrics = vec![];
-            for kv in session.metrics.iter() {
+            for kv in &session.metrics {
                 let path = state
                     .engines
                     .read()

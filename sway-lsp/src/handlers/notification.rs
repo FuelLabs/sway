@@ -139,7 +139,7 @@ pub(crate) async fn handle_did_save_text_document(
     Ok(())
 }
 
-pub(crate) async fn handle_did_change_watched_files(
+pub(crate) fn handle_did_change_watched_files(
     state: &ServerState,
     params: DidChangeWatchedFilesParams,
 ) -> Result<(), LanguageServerError> {

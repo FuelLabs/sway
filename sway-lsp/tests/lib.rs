@@ -196,7 +196,7 @@ fn did_open_all_members_in_examples() {
                 };
 
                 // Make sure that program was parsed and the token map is populated
-                let tmp_uri = service.inner().uri_from_workspace(&uri).await.unwrap();
+                let tmp_uri = service.inner().uri_from_workspace(&uri).unwrap();
                 let num_tokens_for_file =
                     service.inner().token_map.tokens_for_file(&tmp_uri).count();
                 assert!(num_tokens_for_file > 0);
@@ -249,7 +249,6 @@ fn sync_with_updates_to_manifest_in_workspace() {
         let (_, session) = service
             .inner()
             .uri_and_session_from_workspace(&uri)
-            .await
             .unwrap();
         let build_plan = session
             .build_plan_cache
@@ -2266,14 +2265,12 @@ fn test_url_to_session_existing_session() {
         let (first_uri, first_session) = service
             .inner()
             .uri_and_session_from_workspace(&uri)
-            .await
             .unwrap();
 
         // Second call to uri_and_session_from_workspace
         let (second_uri, second_session) = service
             .inner()
             .uri_and_session_from_workspace(&uri)
-            .await
             .unwrap();
 
         // Assert that the URIs are the same
