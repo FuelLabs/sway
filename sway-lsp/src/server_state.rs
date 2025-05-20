@@ -388,16 +388,25 @@ impl ServerState {
         &self,
         workspace_uri: &Url,
     ) -> Result<(Url, Arc<Session>), LanguageServerError> {
+        let temp_uri = self.uri_from_workspace(workspace_uri).await?;
+        let session = self.url_to_session(workspace_uri).await?;
+        Ok((temp_uri, session))
+    }
+
+    /// Constructs and returns a [Url] from a given workspace URI.
+    /// The returned URL represents the temp directory workspace.
+    pub async fn uri_from_workspace(
+        &self,
+        workspace_uri: &Url,
+    ) -> Result<Url, LanguageServerError> {
         let sw = self
             .sync_workspace
             .get()
             .ok_or(LanguageServerError::GlobalWorkspaceNotInitialized)?; // Should be initialized by now.
 
-        let session = self.url_to_session(workspace_uri).await?;
         // Convert the workspace URI to its corresponding temporary URI.
         let temp_uri = sw.workspace_to_temp_url(workspace_uri)?;
-
-        Ok((temp_uri, session))
+        Ok(temp_uri)
     }
 
     async fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
@@ -539,14 +548,14 @@ impl ServerState {
     ///
     /// Panics if `sync_workspace` has not been initialized by a prior call to
     /// `get_or_init_global_sync_workspace`. This scenario is not expected in normal operation.
-    pub fn sync_workspace(&self) -> Arc<SyncWorkspace> {
+    pub fn sync_workspace(&self) -> &SyncWorkspace {
         // `sync_workspace` is initialized once during the first call to `get_or_init_global_sync_workspace`.
         // After initialization, it's always expected to be `Some`.
         // Using `expect` here simplifies the code, as the `None` case should not occur in normal operation.
-        self.sync_workspace
+        &self
+            .sync_workspace
             .get()
             .expect("SyncWorkspace not initialized")
-            .clone()
     }
 }
 

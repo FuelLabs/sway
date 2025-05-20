@@ -1,6 +1,5 @@
 use crate::{
     core::{
-        session::Session,
         sync::SyncWorkspace,
         token::{SymbolKind, Token, TokenIdent, TypedAstToken},
         token_map::{TokenMap, TokenMapExt},
@@ -9,14 +8,13 @@ use crate::{
     utils::document::get_url_from_path,
 };
 use lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use sway_core::{language::ty, Engines};
 use sway_types::SourceEngine;
 
 const RAW_IDENTIFIER: &str = "r#";
 
 pub fn rename(
-    session: Arc<Session>,
     engines: &Engines,
     token_map: &TokenMap,
     new_name: String,
@@ -101,7 +99,6 @@ pub fn rename(
 }
 
 pub fn prepare_rename(
-    session: Arc<Session>,
     engines: &Engines,
     token_map: &TokenMap,
     url: &Url,

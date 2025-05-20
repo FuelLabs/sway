@@ -164,14 +164,10 @@ pub async fn handle_prepare_rename(
     state: &ServerState,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
-    match state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
-    {
-        Ok((uri, session)) => {
+    match state.uri_from_workspace(&params.text_document.uri).await {
+        Ok(uri) => {
             let sync = state.sync_workspace();
             match capabilities::rename::prepare_rename(
-                session,
                 &state.engines.read(),
                 &state.token_map,
                 &uri,
@@ -197,15 +193,14 @@ pub async fn handle_rename(
     params: RenameParams,
 ) -> Result<Option<WorkspaceEdit>> {
     match state
-        .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
+        .uri_from_workspace(&params.text_document_position.text_document.uri)
         .await
     {
-        Ok((uri, session)) => {
+        Ok(uri) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
             let sync = state.sync_workspace();
             match capabilities::rename::rename(
-                session,
                 &state.engines.read(),
                 &state.token_map,
                 new_name,

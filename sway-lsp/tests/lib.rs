@@ -196,11 +196,7 @@ fn did_open_all_members_in_examples() {
                 };
 
                 // Make sure that program was parsed and the token map is populated
-                let (tmp_uri, session) = service
-                    .inner()
-                    .uri_and_session_from_workspace(&uri)
-                    .await
-                    .unwrap();
+                let tmp_uri = service.inner().uri_from_workspace(&uri).await.unwrap();
                 let num_tokens_for_file =
                     service.inner().token_map.tokens_for_file(&tmp_uri).count();
                 assert!(num_tokens_for_file > 0);

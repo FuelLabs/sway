@@ -90,21 +90,13 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("prepare_rename", |b| {
         b.iter(|| {
-            capabilities::rename::prepare_rename(
-                session.clone(),
-                &engines,
-                &state.token_map,
-                &uri,
-                position,
-                sync,
-            )
+            capabilities::rename::prepare_rename(&engines, &state.token_map, &uri, position, sync)
         })
     });
 
     c.bench_function("rename", |b| {
         b.iter(|| {
             capabilities::rename::rename(
-                session.clone(),
                 &engines,
                 &state.token_map,
                 "new_token_name".to_string(),
