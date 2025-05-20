@@ -1,5 +1,3 @@
-use std::collections::VecDeque;
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -92,10 +90,7 @@ impl ty::TyConfigurableDecl {
                     .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
             });
 
-            let mut arguments = VecDeque::default();
-            arguments.push_back(engines.te().id_of_raw_slice());
-            arguments.push_back(engines.te().id_of_u64());
-            arguments.push_back(engines.te().id_of_raw_slice());
+            let abi_decode_in_place_fn_name = "abi_decode_in_place";
 
             let value_span = value
                 .as_ref()
@@ -107,7 +102,7 @@ impl ty::TyConfigurableDecl {
                     inner: CallPath {
                         prefixes: vec![],
                         suffix: sway_types::Ident::new_with_override(
-                            "abi_decode_in_place".into(),
+                            abi_decode_in_place_fn_name.into(),
                             value_span.clone(),
                         ),
                         callpath_type: CallPathType::Ambiguous,

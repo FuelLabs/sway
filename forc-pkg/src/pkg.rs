@@ -1967,6 +1967,8 @@ fn report_assembly_information(
             sway_core::asm_generation::Datum::Collection(items) => {
                 items.iter().map(calculate_entry_size).sum()
             }
+
+            sway_core::asm_generation::Datum::OffsetOf(_) => std::mem::size_of::<u64>() as u64,
         }
     }
 

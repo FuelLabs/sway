@@ -23,6 +23,16 @@ pub struct ModuleContent {
     pub configs: BTreeMap<String, ConfigContent>,
 }
 
+/// Specify if the configurable content will be stored directly inside the configurable section,
+/// or indirectly, which means an offset inside the configurable section with its
+/// content living inside the "dynamic section"
+#[derive(Clone, Default, Debug)]
+pub enum ConfigContentStorage {
+    #[default]
+    Direct,
+    Indirect,
+}
+
 #[derive(Clone, Debug)]
 pub enum ConfigContent {
     V0 {
@@ -39,7 +49,34 @@ pub enum ConfigContent {
         encoded_bytes: Vec<u8>,
         decode_fn: Cell<Function>,
         opt_metadata: Option<MetadataIndex>,
+        storage: ConfigContentStorage,
     },
+}
+
+const V1_INDIRECT_STORAGE_FLAG: u8 = 1;
+
+impl ConfigContent {
+    pub(crate) fn flags(&self) -> u8 {
+        match self {
+            ConfigContent::V0 { .. } => 0,
+            ConfigContent::V1 { storage, .. } => {
+                let mut flags = 0u8;
+                if matches!(storage, ConfigContentStorage::Indirect) {
+                    flags |= V1_INDIRECT_STORAGE_FLAG;
+                }
+                flags
+            }
+        }
+    }
+
+    pub(crate) fn v1_storage_from_flags(flags: u8) -> ConfigContentStorage {
+        let is_indirect = (flags & V1_INDIRECT_STORAGE_FLAG) == V1_INDIRECT_STORAGE_FLAG;
+        if is_indirect {
+            ConfigContentStorage::Indirect
+        } else {
+            ConfigContentStorage::Direct
+        }
+    }
 }
 
 /// The different 'kinds' of Sway module: `Contract`, `Library`, `Predicate` or `Script`.

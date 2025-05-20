@@ -9,13 +9,15 @@ use std::fmt;
 pub enum EntryName {
     NonConfigurable,
     Configurable(String),
+    Dynamic(String),
 }
 
 impl fmt::Display for EntryName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             EntryName::NonConfigurable => write!(f, "NonConfigurable"),
-            EntryName::Configurable(name) => write!(f, "<Configurable, {}>", name),
+            EntryName::Configurable(name) => write!(f, "Configurable_{}", name),
+            EntryName::Dynamic(name) => write!(f, "Dynamic_{}", name),
         }
     }
 }
@@ -27,6 +29,7 @@ pub struct Entry {
     pub value: Datum,
     pub padding: Padding,
     pub name: EntryName,
+    pub word_aligned: bool,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -36,6 +39,8 @@ pub enum Datum {
     ByteArray(Vec<u8>),
     Slice(Vec<u8>),
     Collection(Vec<Entry>),
+    /// Offset from the start of the Data Section
+    OffsetOf(DataId),
 }
 
 impl Entry {
@@ -44,6 +49,7 @@ impl Entry {
             value: Datum::Byte(value),
             padding: padding.unwrap_or(Padding::default_for_u8(value)),
             name,
+            word_aligned: true,
         }
     }
 
@@ -52,6 +58,7 @@ impl Entry {
             value: Datum::Word(value),
             padding: padding.unwrap_or(Padding::default_for_u64(value)),
             name,
+            word_aligned: true,
         }
     }
 
@@ -64,6 +71,7 @@ impl Entry {
             padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
             value: Datum::ByteArray(bytes),
             name,
+            word_aligned: true,
         }
     }
 
@@ -72,6 +80,7 @@ impl Entry {
             padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
             value: Datum::Slice(bytes),
             name,
+            word_aligned: true,
         }
     }
 
@@ -86,6 +95,16 @@ impl Entry {
             )),
             value: Datum::Collection(elements),
             name,
+            word_aligned: true,
+        }
+    }
+
+    pub(crate) fn new_offset_of(id: DataId, name: EntryName, padding: Option<Padding>) -> Entry {
+        Entry {
+            padding: padding.unwrap_or(Padding::default_for_u64(0)),
+            value: Datum::OffsetOf(id),
+            name,
+            word_aligned: true,
         }
     }
 
@@ -160,20 +179,27 @@ impl Entry {
         }
     }
 
+    fn to_bytes_len(&self) -> usize {
+        let bytes_len = match &self.value {
+            Datum::Byte(_) => 1,
+            Datum::Word(_) | Datum::OffsetOf(_) => 8,
+            Datum::ByteArray(bytes) | Datum::Slice(bytes) => bytes.len(),
+            Datum::Collection(items) => items.iter().map(|el| el.to_bytes_len()).sum(),
+        };
+
+        let final_padding = self.padding.target_size().saturating_sub(bytes_len);
+        bytes_len + final_padding
+    }
+
     /// Converts a literal to a big-endian representation. This is padded to words.
-    pub(crate) fn to_bytes(&self) -> Vec<u8> {
+    pub(crate) fn to_bytes(&self, ds: &DataSection) -> Vec<u8> {
         // Get the big-endian byte representation of the basic value.
         let bytes = match &self.value {
             Datum::Byte(value) => vec![*value],
             Datum::Word(value) => value.to_be_bytes().to_vec(),
-            Datum::ByteArray(bytes) | Datum::Slice(bytes) if bytes.len() % 8 == 0 => bytes.clone(),
-            Datum::ByteArray(bytes) | Datum::Slice(bytes) => bytes
-                .iter()
-                .chain([0; 8].iter())
-                .copied()
-                .take((bytes.len() + 7) & 0xfffffff8_usize)
-                .collect(),
-            Datum::Collection(items) => items.iter().flat_map(|el| el.to_bytes()).collect(),
+            Datum::ByteArray(bytes) | Datum::Slice(bytes) => bytes.clone(),
+            Datum::Collection(items) => items.iter().flat_map(|el| el.to_bytes(ds)).collect(),
+            Datum::OffsetOf(id) => ds.data_id_to_offset(id).to_be_bytes().to_vec(),
         };
 
         let final_padding = self.padding.target_size().saturating_sub(bytes.len());
@@ -219,10 +245,11 @@ impl Entry {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub enum DataIdEntryKind {
     NonConfigurable,
     Configurable,
+    Dynamic,
 }
 
 impl fmt::Display for DataIdEntryKind {
@@ -230,13 +257,14 @@ impl fmt::Display for DataIdEntryKind {
         match self {
             DataIdEntryKind::NonConfigurable => write!(f, "NonConfigurable"),
             DataIdEntryKind::Configurable => write!(f, "Configurable"),
+            DataIdEntryKind::Dynamic => write!(f, "Dynamic"),
         }
     }
 }
 
 /// An address which refers to a value in the data section of the asm.
-#[derive(Clone, Debug)]
-pub(crate) struct DataId {
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct DataId {
     pub(crate) idx: u32,
     pub(crate) kind: DataIdEntryKind,
 }
@@ -252,13 +280,14 @@ impl fmt::Display for DataId {
 pub struct DataSection {
     pub non_configurables: Vec<Entry>,
     pub configurables: Vec<Entry>,
+    pub dynamic: Vec<Entry>,
     pub(crate) pointer_id: FxHashMap<u64, DataId>,
 }
 
 impl DataSection {
     /// Get the number of entries
     pub fn num_entries(&self) -> usize {
-        self.non_configurables.len() + self.configurables.len()
+        self.non_configurables.len() + self.configurables.len() + self.dynamic.len()
     }
 
     /// Iterate over all entries, non-configurables followed by configurables
@@ -266,6 +295,7 @@ impl DataSection {
         self.non_configurables
             .iter()
             .chain(self.configurables.iter())
+            .chain(self.dynamic.iter())
             .cloned()
     }
 
@@ -274,14 +304,18 @@ impl DataSection {
         match id.kind {
             DataIdEntryKind::NonConfigurable => id.idx as usize,
             DataIdEntryKind::Configurable => id.idx as usize + self.non_configurables.len(),
+            DataIdEntryKind::Dynamic => {
+                id.idx as usize + self.non_configurables.len() + self.configurables.len()
+            }
         }
     }
 
     /// Get entry at id
-    fn get(&self, id: &DataId) -> Option<&Entry> {
+    pub fn get(&self, id: &DataId) -> Option<&Entry> {
         match id.kind {
             DataIdEntryKind::NonConfigurable => self.non_configurables.get(id.idx as usize),
             DataIdEntryKind::Configurable => self.configurables.get(id.idx as usize),
+            DataIdEntryKind::Dynamic => self.dynamic.get(id.idx as usize),
         }
     }
 
@@ -295,21 +329,32 @@ impl DataSection {
     /// Given an absolute index, calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
     pub(crate) fn absolute_idx_to_offset(&self, idx: usize) -> usize {
-        self.iter_all_entries().take(idx).fold(0, |offset, entry| {
-            //entries must be word aligned
-            size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
-        })
+        let sum_len = std::iter::repeat_n(true, idx).chain([false]);
+        self.iter_all_entries()
+            .zip(sum_len)
+            .fold(0, |mut offset, (entry, sum_len)| {
+                if entry.word_aligned {
+                    offset = size_bytes_round_up_to_word_alignment!(offset);
+                }
+
+                if sum_len {
+                    offset += entry.to_bytes_len();
+                }
+
+                offset
+            })
     }
 
     pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
         // not the exact right capacity but serves as a lower bound
         let mut buf = Vec::with_capacity(self.num_entries());
         for entry in self.iter_all_entries() {
-            buf.append(&mut entry.to_bytes());
+            if entry.word_aligned {
+                let aligned_len = size_bytes_round_up_to_word_alignment!(buf.len());
+                buf.extend(vec![0u8; aligned_len - buf.len()]);
+            }
 
-            //entries must be word aligned
-            let aligned_len = size_bytes_round_up_to_word_alignment!(buf.len());
-            buf.extend(vec![0u8; aligned_len - buf.len()]);
+            buf.append(&mut entry.to_bytes(self));
         }
         buf
     }
@@ -359,6 +404,7 @@ impl DataSection {
                 DataIdEntryKind::NonConfigurable,
             ),
             EntryName::Configurable(_) => (&mut self.configurables, DataIdEntryKind::Configurable),
+            EntryName::Dynamic(_) => (&mut self.dynamic, DataIdEntryKind::Dynamic),
         };
         match value_pairs.iter().position(|entry| entry.equiv(&new_entry)) {
             Some(num) => DataId {
@@ -381,6 +427,7 @@ impl DataSection {
         let value_pairs = match data_id.kind {
             DataIdEntryKind::NonConfigurable => &self.non_configurables,
             DataIdEntryKind::Configurable => &self.configurables,
+            DataIdEntryKind::Dynamic => &self.dynamic,
         };
         value_pairs.get(data_id.idx as usize).and_then(|entry| {
             if let Datum::Word(w) = entry.value {
@@ -394,7 +441,7 @@ impl DataSection {
 
 impl fmt::Display for DataSection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn display_entry(datum: &Datum) -> String {
+        fn display_entry(s: &DataSection, datum: &Datum) -> String {
             match datum {
                 Datum::Byte(w) => format!(".byte {w}"),
                 Datum::Word(w) => format!(".word {w}"),
@@ -403,23 +450,48 @@ impl fmt::Display for DataSection {
                 Datum::Collection(els) => format!(
                     ".collection {{ {} }}",
                     els.iter()
-                        .map(|el| display_entry(&el.value))
+                        .map(|el| display_entry(s, &el.value))
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),
+                Datum::OffsetOf(id) => {
+                    format!(".offset_of data_{}", s.get(id).unwrap().name)
+                }
             }
         }
 
         use std::fmt::Write;
         let mut data_buf = String::new();
         for (ix, entry) in self.iter_all_entries().enumerate() {
-            writeln!(
-                data_buf,
-                "data_{}_{} {}",
-                entry.name,
-                ix,
-                display_entry(&entry.value)
-            )?;
+            match entry.name {
+                EntryName::NonConfigurable => {
+                    writeln!(
+                        data_buf,
+                        "data_{}_{} {}",
+                        entry.name,
+                        ix,
+                        display_entry(self, &entry.value)
+                    )?;
+                }
+                EntryName::Configurable(_) => {
+                    writeln!(
+                        data_buf,
+                        "data_{} ({}) {}",
+                        entry.name,
+                        ix - self.non_configurables.len(),
+                        display_entry(self, &entry.value)
+                    )?;
+                }
+                EntryName::Dynamic(_) => {
+                    writeln!(
+                        data_buf,
+                        "data_{} ({}) {}",
+                        entry.name,
+                        ix - self.non_configurables.len() - self.configurables.len(),
+                        display_entry(self, &entry.value)
+                    )?;
+                }
+            }
         }
 
         write!(f, ".data:\n{data_buf}")
@@ -438,4 +510,75 @@ fn display_bytes_for_data_section(bs: &Vec<u8>, prefix: &str) -> String {
         });
     }
     format!("{prefix}[{}] {hex_str} {chr_str}", bs.len())
+}
+
+#[test]
+fn ok_data_section_to_string() {
+    let mut ds = DataSection::default();
+
+    let mut configurable_array_bytes = Entry::new_byte_array(
+        vec![1, 2, 3, 4, 5, 6],
+        EntryName::Dynamic("ARRAY_BYTES".into()),
+        None,
+    );
+    configurable_array_bytes.word_aligned = false; // IR compiler sets this to false
+    let configurable_array_bytes = ds.insert_data_value(configurable_array_bytes);
+
+    let mut configurable_array_2_bytes = Entry::new_byte_array(
+        vec![7, 8, 9],
+        EntryName::Dynamic("ARRAY_2_BYTES".into()),
+        None,
+    );
+    configurable_array_2_bytes.word_aligned = false; // IR compiler sets this to false
+    let configurable_array_2_bytes = ds.insert_data_value(configurable_array_2_bytes);
+
+    let configurable_u8 = ds.insert_data_value(Entry::new_byte(
+        1,
+        EntryName::Configurable("U8".into()),
+        None,
+    ));
+    let configurable_array_offset = ds.insert_data_value(Entry::new_offset_of(
+        configurable_array_bytes.clone(),
+        EntryName::Configurable("ARRAY_OFFSET".into()),
+        None,
+    ));
+    let _configurable_u8_2 = ds.insert_data_value(Entry::new_byte(
+        2,
+        EntryName::Configurable("U8_2".into()),
+        None,
+    ));
+
+    let non_configurable_u64_max = ds.insert_data_value(Entry::new_word(
+        0xffffffffffffffff_u64,
+        EntryName::NonConfigurable,
+        None,
+    ));
+    let non_configurable_u8_max =
+        ds.insert_data_value(Entry::new_word(0xff_u64, EntryName::NonConfigurable, None));
+
+    assert_eq!(
+        ds.serialize_to_bytes(),
+        [
+            // non configurable section
+            255, 255, 255, 255, 255, 255, 255, 255, // non_configurable_u64_max
+            0, 0, 0, 0, 0, 0, 0, 255, // non_configurable_u8_max
+            // configurable section
+            1, 0, 0, 0, 0, 0, 0, 0, // configurable_u8
+            0, 0, 0, 0, 0, 0, 0, 33, // configurable_array_offset
+            2,  // configurable_u8_2
+            // dynamic section
+            1, 2, 3, 4, 5, 6, // configurable_array_bytes
+            7, 8, 9, // configurable_array_2_bytes
+        ]
+    );
+
+    assert_eq!(ds.data_id_to_offset(&non_configurable_u64_max), 0);
+    assert_eq!(ds.data_id_to_offset(&non_configurable_u8_max), 8);
+
+    assert_eq!(ds.data_id_to_offset(&configurable_u8), 16);
+    assert_eq!(ds.data_id_to_offset(&configurable_array_offset), 24);
+    assert_eq!(ds.data_id_to_offset(&configurable_u8), 16);
+
+    assert_eq!(ds.data_id_to_offset(&configurable_array_bytes), 33);
+    assert_eq!(ds.data_id_to_offset(&configurable_array_2_bytes), 39);
 }

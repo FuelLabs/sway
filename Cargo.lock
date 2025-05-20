@@ -1918,7 +1918,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18e4fdb82bd54a12e42fb58a800dcae6b9e13982238ce2296dc3570b92148e1f"
 dependencies = [
  "data-encoding",
- "syn 2.0.99",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -3222,8 +3222,7 @@ checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 [[package]]
 name = "fuel-abi-types"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "026deca571c0d3304a4392a0d99c7477d58cade18b2861232c151eb0816dde0a"
+source = "git+https://github.com/FuelLabs/fuel-abi-types?branch=xunilrj%2Findirect-configurables#fd1be3841db866a533214e06800ecd423f2c390e"
 dependencies = [
  "itertools 0.10.5",
  "lazy_static",
@@ -9763,3 +9762,23 @@ dependencies = [
  "quote",
  "syn 2.0.99",
 ]
+
+[[patch.unused]]
+name = "fuels"
+version = "0.73.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#398588eaa4ebe5c42a5c34c98edf78c81e58e592"
+
+[[patch.unused]]
+name = "fuels-accounts"
+version = "0.73.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#398588eaa4ebe5c42a5c34c98edf78c81e58e592"
+
+[[patch.unused]]
+name = "fuels-code-gen"
+version = "0.73.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#398588eaa4ebe5c42a5c34c98edf78c81e58e592"
+
+[[patch.unused]]
+name = "fuels-core"
+version = "0.73.0"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=hal3e%2Fdynamic-configurables#398588eaa4ebe5c42a5c34c98edf78c81e58e592"

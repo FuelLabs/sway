@@ -13,8 +13,8 @@ library {
    Compiling script configurable_dedup_decode (test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode)
 // IR: Final
 script {
-    TUPLE = config { u64 }, abi_decode_in_place_0, 0x0000000000000002, !1
-    WRAPPED = config { u64 }, abi_decode_in_place_0, 0x0000000000000001, !2
+    TUPLE = config { u64 }, abi_decode_in_place_0, 0x0000000000000002, 0x00, !1
+    WRAPPED = config { u64 }, abi_decode_in_place_0, 0x0000000000000001, 0x00, !2
 
     pub fn abi_decode_in_place_0(ptr !4: u64, len !5: u64, target !6: u64) -> (), !10 {
         local { u64 } __ret_val
@@ -521,8 +521,8 @@ poph i524288                  ; restore registers 40..64
 popl i3                       ; restore registers 16..40
 jmp $$reta                    ; return from call
 .data:
-data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
-data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
+data_Configurable_TUPLE (0) .bytes[8] 00 00 00 00 00 00 00 02  ........
+data_Configurable_WRAPPED (1) .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
     Finished release [optimized + fuel] target(s) [648 B] in ???

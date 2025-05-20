@@ -1225,13 +1225,14 @@ async fn call_with_forc_generated_overrides(node_url: &str, contract_id: Contrac
     // we are ensuring forc-deploy indeed generated the files we are basing our
     // tests below.
     let generated_loader_abi_path = tmp_dir.path().join("out/deployed_script-loader-abi.json");
-    let generated_loader_abi = fs::read_to_string(generated_loader_abi_path).unwrap();
+    let generated_loader_abi = fs::read_to_string(&generated_loader_abi_path).unwrap();
 
     // this path is basically, `forc-plugins/forc-client/test/data/deployed_script/deployed_script-loader-abi.json`.
     let used_loader_abi_path = project_dir.join("deployed_script-loader-abi.json");
-    let used_loader_abi = fs::read_to_string(used_loader_abi_path).unwrap();
+    let used_loader_abi = fs::read_to_string(&used_loader_abi_path).unwrap();
+    dbg!(used_loader_abi_path);
 
-    assert_eq!(generated_loader_abi, used_loader_abi);
+    pretty_assertions::assert_eq!(generated_loader_abi, used_loader_abi);
 
     let generated_loader_bin = tmp_dir.path().join("out/deployed_script-loader.bin");
     abigen!(Script(

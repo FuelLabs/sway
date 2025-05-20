@@ -3109,9 +3109,6 @@ pub enum TypeNotAllowedReason {
     #[error("Returning `str` or a type containing `str` from `main()` is not allowed.")]
     StringSliceInMainReturn,
 
-    #[error("`str` or a type containing `str` on `configurables` is not allowed.")]
-    StringSliceInConfigurables,
-
     #[error("`str` or a type containing `str` on `const` is not allowed.")]
     StringSliceInConst,
 
