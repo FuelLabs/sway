@@ -91,7 +91,7 @@ pub async fn handle_goto_definition(
                 position,
                 &state.engines.read(),
                 &state.token_map,
-                &sync,
+                sync,
             ))
         }
         Err(err) => {
@@ -141,16 +141,12 @@ pub async fn handle_hover(
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
-            let sync = state.sync_workspace();
             Ok(capabilities::hover::hover_data(
-                session,
+                state,
                 &state.engines.read(),
-                &state.token_map,
-                &state.keyword_docs,
+                session,
                 &uri,
                 position,
-                state.config.read().client.clone(),
-                &sync,
             ))
         }
         Err(err) => {
@@ -172,7 +168,7 @@ pub async fn handle_prepare_rename(
                 &state.token_map,
                 &uri,
                 params.position,
-                &sync,
+                sync,
             ) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
@@ -206,7 +202,7 @@ pub async fn handle_rename(
                 new_name,
                 &uri,
                 position,
-                &sync,
+                sync,
             ) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
@@ -265,7 +261,7 @@ pub async fn handle_references(
                 position,
                 &state.token_map,
                 &state.engines.read(),
-                &sync,
+                sync,
             ))
         }
         Err(err) => {

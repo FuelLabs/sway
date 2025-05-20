@@ -3,9 +3,7 @@ use lsp_types::{
     CompletionResponse, DocumentSymbolResponse, Position, Range, TextDocumentContentChangeEvent,
     TextDocumentIdentifier,
 };
-use sway_lsp::{
-    capabilities, config::LspClient, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs,
-};
+use sway_lsp::{capabilities, lsp_ext::OnEnterParams};
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
@@ -14,7 +12,6 @@ fn benchmarks(c: &mut Criterion) {
         .block_on(async { black_box(super::compile_test_project().await) });
     let sync = state.sync_workspace.get().unwrap();
     let config = sway_lsp::config::Config::default();
-    let keyword_docs = KeywordDocs::new();
     let position = Position::new(1717, 24);
     let range = Range::new(Position::new(1628, 0), Position::new(1728, 0));
 
@@ -41,16 +38,7 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("hover", |b| {
         b.iter(|| {
-            capabilities::hover::hover_data(
-                session.clone(),
-                &engines,
-                &state.token_map,
-                &keyword_docs,
-                &uri,
-                position,
-                LspClient::default(),
-                sync,
-            )
+            capabilities::hover::hover_data(&state, &engines, session.clone(), &uri, position)
         })
     });
 
