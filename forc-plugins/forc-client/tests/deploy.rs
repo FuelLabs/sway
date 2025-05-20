@@ -530,7 +530,8 @@ async fn test_proxy_contract_re_routes_call() {
 
     abigen!(Contract(
         name = "ImplementationContract",
-        abi = "forc-plugins/forc-client/tests/data/standalone_contract/standalone_contract-abi.json"
+        abi = 
+            "forc-plugins/forc-client/tests/data/standalone_contract/standalone_contract-abi.json"
     ));
 
     let impl_contract_a = ImplementationContract::new(proxy_contract_id, wallet_unlocked.clone());
@@ -943,7 +944,8 @@ async fn deploy_script_calls() {
 
     abigen!(Script(
         name = "MyScript",
-        abi = "forc-plugins/forc-client/tests/data/deployed_script/deployed_script-abi.json"
+        abi = 
+            "forc-plugins/forc-client/tests/data/deployed_script/deployed_script-abi.json"
     ));
 
     let provider = Provider::connect(&node_url).await.unwrap();
