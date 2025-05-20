@@ -476,7 +476,7 @@ pub fn parse_project(
                 .ok()
                 .and_then(|typed| {
                     let program_id = typed.as_ref().namespace.current_package_ref().program_id();
-                    engines.se().get_manifest_path_from_program_id(&program_id)
+                    engines_clone.se().get_manifest_path_from_program_id(&program_id)
                 })
                 .is_some_and(|program_manifest_path| program_manifest_path == *member_path)
         })
@@ -767,6 +767,7 @@ mod tests {
             None,
             session,
             token_map,
+            &sync,
         )
         .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
