@@ -4,15 +4,10 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
-use forc_pkg::PackageManifestFile;
 use lsp_types::Url;
-use notify::RecursiveMode;
-use notify_debouncer_mini::new_debouncer;
-use parking_lot::RwLock;
 use std::{
     fs,
     path::{Path, PathBuf},
-    time::Duration,
 };
 use sway_types::{SourceEngine, Span};
 use sway_utils::{
@@ -20,8 +15,6 @@ use sway_utils::{
     SWAY_EXTENSION,
 };
 use tempfile::Builder;
-use tokio::task::JoinHandle;
-use tracing::error;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum Directory {
@@ -29,88 +22,102 @@ pub enum Directory {
     Temp,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SyncWorkspace {
     pub directories: DashMap<Directory, PathBuf>,
-    pub notify_join_handle: RwLock<Option<JoinHandle<()>>>,
 }
 
 impl SyncWorkspace {
     pub const LSP_TEMP_PREFIX: &'static str = "SWAY_LSP_TEMP_DIR";
 
-    pub(crate) fn new() -> Self {
-        Self {
-            directories: DashMap::new(),
-            notify_join_handle: RwLock::new(None),
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    /// Overwrite the contents of the tmp/folder with everything in
-    /// the current workspace.
-    pub fn resync(&self) -> Result<(), LanguageServerError> {
-        self.clone_manifest_dir_to_temp()?;
-        if let (Ok(manifest_dir), Some(manifest_path), Some(temp_manifest_path)) = (
-            self.manifest_dir(),
-            self.manifest_path(),
-            self.temp_manifest_path(),
-        ) {
-            edit_manifest_dependency_paths(&manifest_dir, &manifest_path, &temp_manifest_path)?;
-        }
-        Ok(())
-    }
-
-    /// Clean up the temp directory that was created once the
-    /// server closes down.
-    pub(crate) fn remove_temp_dir(&self) {
+    /// Clean up the temp directory that was created once the server closes down.
+    pub fn remove_temp_dir(&self) {
         if let Ok(dir) = self.temp_dir() {
-            dir.parent().map(fs::remove_dir);
+            // The `temp_path` we store is `random_dir/project_name`.
+            // So, we need to remove `random_dir` by getting the parent directory.
+            if let Some(parent_dir) = dir.parent() {
+                if parent_dir.file_name().is_some_and(|name| {
+                    name.to_string_lossy()
+                        .starts_with(SyncWorkspace::LSP_TEMP_PREFIX)
+                }) {
+                    if let Err(e) = fs::remove_dir_all(parent_dir) {
+                        tracing::warn!("Failed to remove temp base dir {:?}: {}", parent_dir, e);
+                    } else {
+                        tracing::debug!("Successfully removed temp base dir: {:?}", parent_dir);
+                    }
+                }
+            }
         }
     }
 
-    pub(crate) fn create_temp_dir_from_workspace(
+    pub fn create_temp_dir_from_workspace(
         &self,
-        manifest_dir: &Path,
+        actual_workspace_root: &Path,
     ) -> Result<(), LanguageServerError> {
-        let manifest = PackageManifestFile::from_dir(manifest_dir).map_err(|_| {
-            DocumentError::ManifestFileNotFound {
-                dir: manifest_dir.to_string_lossy().to_string(),
-            }
-        })?;
-
-        // strip Forc.toml from the path to get the manifest directory
-        let manifest_dir = manifest
-            .path()
-            .parent()
-            .ok_or(DirectoryError::ManifestDirNotFound)?;
-
-        // extract the project name from the path
-        let project_name = manifest_dir
+        let root_dir_name = actual_workspace_root
             .file_name()
             .and_then(|name| name.to_str())
-            .ok_or(DirectoryError::CantExtractProjectName {
-                dir: manifest_dir.to_string_lossy().to_string(),
+            .ok_or_else(|| DirectoryError::CantExtractProjectName {
+                dir: actual_workspace_root.to_string_lossy().to_string(),
             })?;
 
-        // Create a new temporary directory that we can clone the current workspace into.
-        let temp_dir = Builder::new()
+        let temp_dir_guard = Builder::new()
             .prefix(SyncWorkspace::LSP_TEMP_PREFIX)
             .tempdir()
             .map_err(|_| DirectoryError::TempDirFailed)?;
 
-        let temp_path = temp_dir
-            .into_path()
-            .canonicalize()
-            .map_err(|_| DirectoryError::CanonicalizeFailed)?
-            .join(project_name);
+        // Construct the path for our specific workspace clone *inside* the directory managed by temp_dir_guard.
+        let temp_workspace_base = temp_dir_guard.path().join(root_dir_name);
+
+        fs::create_dir_all(&temp_workspace_base).map_err(|io_err| {
+            tracing::error!(
+                "Failed to create subdirectory {:?} in temp: {}",
+                temp_workspace_base,
+                io_err
+            );
+            DirectoryError::TempDirFailed
+        })?;
+
+        let canonical_manifest_path = actual_workspace_root.canonicalize().map_err(|io_err| {
+            tracing::warn!(
+                "Failed to canonicalize manifest path {:?}: {}",
+                actual_workspace_root,
+                io_err
+            );
+            DirectoryError::CanonicalizeFailed
+        })?;
+
+        let canonical_temp_path = temp_workspace_base.canonicalize().map_err(|io_err| {
+            tracing::warn!(
+                "Failed to canonicalize temp path {:?}: {}",
+                temp_workspace_base,
+                io_err
+            );
+            DirectoryError::CanonicalizeFailed
+        })?;
 
         self.directories
-            .insert(Directory::Manifest, manifest_dir.to_path_buf());
-        self.directories.insert(Directory::Temp, temp_path);
+            .insert(Directory::Manifest, canonical_manifest_path);
+        self.directories
+            .insert(Directory::Temp, canonical_temp_path.clone());
+
+        // Consume the guard to disable auto-cleanup.
+        let _ = temp_dir_guard.into_path();
+
+        tracing::debug!(
+            "SyncWorkspace: Manifest dir set to {:?}, Temp dir set to {:?}",
+            actual_workspace_root,
+            canonical_temp_path
+        );
 
         Ok(())
     }
 
-    pub(crate) fn clone_manifest_dir_to_temp(&self) -> Result<(), DirectoryError> {
+    pub fn clone_manifest_dir_to_temp(&self) -> Result<(), DirectoryError> {
         copy_dir_contents(self.manifest_dir()?, self.temp_dir()?)
             .map_err(|_| DirectoryError::CopyContentsFailed)?;
 
@@ -118,7 +125,7 @@ impl SyncWorkspace {
     }
 
     /// Convert the Url path from the client to point to the same file in our temp folder
-    pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
+    pub fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
         convert_url(uri, &self.temp_dir()?, &self.manifest_dir()?)
     }
 
@@ -166,64 +173,149 @@ impl SyncWorkspace {
         }
     }
 
+    /// Returns the path to the Forc.toml of the workspace in the temp directory.
+    #[allow(dead_code)]
     pub(crate) fn temp_manifest_path(&self) -> Option<PathBuf> {
         self.temp_dir()
             .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
             .ok()
     }
 
-    pub fn manifest_path(&self) -> Option<PathBuf> {
+    /// Returns the path to the Forc.toml of the workspace.
+    pub fn workspace_manifest_path(&self) -> Option<PathBuf> {
         self.manifest_dir()
             .map(|dir| dir.join(sway_utils::constants::MANIFEST_FILE_NAME))
             .ok()
     }
 
-    /// Watch the manifest directory and check for any save events on Forc.toml
-    pub(crate) fn watch_and_sync_manifest(&self) {
-        if let (Ok(manifest_dir), Some(manifest_path), Some(temp_manifest_path)) = (
-            self.manifest_dir(),
-            self.manifest_path(),
-            self.temp_manifest_path(),
-        ) {
-            if let Err(err) =
-                edit_manifest_dependency_paths(&manifest_dir, &manifest_path, &temp_manifest_path)
-            {
-                error!("Failed to edit manifest dependency paths: {}", err);
+    /// Returns the path to the Forc.toml of the workspace member containing the given TEMP URI.
+    /// This function assumes the input URI points to a file within the temporary cloned workspace.
+    pub(crate) fn member_manifest_path(&self, temp_uri: &Url) -> Option<PathBuf> {
+        let file_path_in_temp_member = get_path_from_url(temp_uri).ok()?;
+        let temp_workspace_root_dir = self.temp_dir().ok()?;
+        let manifest_file = ManifestFile::from_dir(&temp_workspace_root_dir).ok()?;
+        match manifest_file {
+            ManifestFile::Package(pkg_manifest) => file_path_in_temp_member
+                .starts_with(pkg_manifest.dir())
+                .then(|| pkg_manifest.path().to_path_buf()),
+            ManifestFile::Workspace(ws_manifest) => ws_manifest
+                .member_pkg_manifests()
+                .ok()?
+                .filter_map(Result::ok)
+                .find(|member_pkg| file_path_in_temp_member.starts_with(member_pkg.dir()))
+                .map(|member_pkg| member_pkg.path().to_path_buf()),
+        }
+    }
+
+    pub fn member_path(&self, temp_uri: &Url) -> Option<PathBuf> {
+        let p = self.member_manifest_path(temp_uri)?;
+        let dir = p.parent()?;
+        Some(dir.to_path_buf())
+    }
+
+    /// Read the Forc.toml and convert relative paths to absolute. Save into our temp directory.
+    pub fn sync_manifest(&self) -> Result<(), LanguageServerError> {
+        let actual_manifest_dir = self.manifest_dir()?;
+        let temp_manifest_dir = self.temp_dir()?;
+
+        // Load the manifest from the *actual* workspace root to determine if it's a package or workspace
+        match ManifestFile::from_dir(&actual_manifest_dir) {
+            Ok(ManifestFile::Package(pkg_manifest_file)) => {
+                let actual_pkg_manifest_path = pkg_manifest_file.path();
+                let temp_pkg_manifest_path = temp_manifest_dir.join(
+                    actual_pkg_manifest_path
+                        .file_name()
+                        .unwrap_or_else(|| std::ffi::OsStr::new(MANIFEST_FILE_NAME)),
+                );
+                tracing::debug!(
+                    "Syncing single package manifest: {:?} to temp: {:?}",
+                    actual_pkg_manifest_path,
+                    temp_pkg_manifest_path
+                );
+                edit_manifest_dependency_paths(
+                    pkg_manifest_file.dir(),
+                    actual_pkg_manifest_path,
+                    &temp_pkg_manifest_path,
+                )?;
             }
+            Ok(ManifestFile::Workspace(ws_manifest_file)) => {
+                // Workspace: iterate through members and sync each member's manifest
+                tracing::debug!("Syncing workspace members in: {:?}", actual_manifest_dir);
+                match ws_manifest_file.member_pkg_manifests() {
+                    Ok(member_manifests_iter) => {
+                        for member_result in member_manifests_iter {
+                            match member_result {
+                                Ok(actual_member_pkg_manifest) => {
+                                    let actual_member_manifest_path =
+                                        actual_member_pkg_manifest.path();
+                                    if let Ok(relative_member_path) = actual_member_manifest_path
+                                        .strip_prefix(&actual_manifest_dir)
+                                    {
+                                        let temp_member_manifest_path =
+                                            temp_manifest_dir.join(relative_member_path);
 
-            let handle = tokio::spawn(async move {
-                let (tx, mut rx) = tokio::sync::mpsc::channel(10);
-                // Setup debouncer. No specific tickrate, max debounce time 500 milliseconds
-                let mut debouncer = new_debouncer(Duration::from_millis(500), move |event| {
-                    if let Ok(e) = event {
-                        let _ = tx.blocking_send(e);
+                                        tracing::debug!(
+                                            "Syncing workspace member manifest: {:?} to temp: {:?}",
+                                            actual_member_manifest_path,
+                                            temp_member_manifest_path
+                                        );
+                                        edit_manifest_dependency_paths(
+                                            actual_member_pkg_manifest.dir(),
+                                            actual_member_manifest_path,
+                                            &temp_member_manifest_path,
+                                        )?;
+                                    } else {
+                                        tracing::error!(
+                                            "Could not determine relative path for member: {:?}",
+                                            actual_member_manifest_path
+                                        );
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::error!(
+                                        "Failed to load workspace member manifest: {}",
+                                        e
+                                    );
+                                }
+                            }
+                        }
                     }
-                })
-                .unwrap();
-
-                debouncer
-                    .watcher()
-                    .watch(&manifest_dir, RecursiveMode::NonRecursive)
-                    .unwrap();
-                while let Some(_events) = rx.recv().await {
-                    // Rescan the Forc.toml and convert
-                    // relative paths to absolute. Save into our temp directory.
-                    if let Err(err) = edit_manifest_dependency_paths(
-                        &manifest_dir,
-                        &manifest_path,
-                        &temp_manifest_path,
-                    ) {
-                        error!("Failed to edit manifest dependency paths: {}", err);
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to get member manifests for workspace {:?}: {}",
+                            actual_manifest_dir,
+                            e
+                        );
                     }
                 }
-            });
 
-            // Store the join handle so we can clean up the thread on shutdown
-            {
-                let mut join_handle = self.notify_join_handle.write();
-                *join_handle = Some(handle);
+                // Sync the root workspace Forc.toml itself
+                let actual_root_workspace_toml_path = ws_manifest_file.path();
+                let temp_root_workspace_toml_path = temp_manifest_dir.join(
+                    actual_root_workspace_toml_path
+                        .file_name()
+                        .unwrap_or_else(|| std::ffi::OsStr::new(MANIFEST_FILE_NAME)),
+                );
+                tracing::debug!(
+                    "Syncing root workspace manifest for patches: {:?} to temp: {:?}",
+                    actual_root_workspace_toml_path,
+                    temp_root_workspace_toml_path
+                );
+                edit_manifest_dependency_paths(
+                    ws_manifest_file.dir(),
+                    actual_root_workspace_toml_path,
+                    &temp_root_workspace_toml_path,
+                )?;
+            }
+            Err(e) => {
+                tracing::error!(
+                    "Failed to load manifest from actual directory {:?}: {}. Cannot sync manifest.",
+                    actual_manifest_dir,
+                    e
+                );
             }
         }
+        Ok(())
     }
 
     /// Return the path to the projects manifest directory.

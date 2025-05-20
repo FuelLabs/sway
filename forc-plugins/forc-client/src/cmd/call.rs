@@ -4,7 +4,7 @@ use either::Either;
 use fuel_crypto::SecretKey;
 use fuels::programs::calls::CallParameters;
 use fuels_core::types::{Address, AssetId, ContractId};
-use std::{path::PathBuf, str::FromStr};
+use std::{io::Write, path::PathBuf, str::FromStr};
 use url::Url;
 
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
@@ -57,34 +57,34 @@ pub enum OutputFormat {
     Default,
     /// Raw unformatted output
     Raw,
+    /// JSON output with full tracing information (logs, errors, and result)
+    Json,
 }
 
-/// Verbosity level for log output
-#[derive(Debug, Clone, PartialEq, Default)]
-#[repr(transparent)]
-pub struct Verbosity(pub u8);
-
-impl Verbosity {
-    /// Verbose mode (-v)
-    pub(crate) fn v1(&self) -> bool {
-        self.0 >= 1
+impl Write for OutputFormat {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
+        match self {
+            OutputFormat::Default => std::io::stdout().write(buf),
+            OutputFormat::Raw => std::io::stdout().write(buf),
+            OutputFormat::Json => Ok(buf.len()), // no-op for json
+        }
     }
 
-    /// Very Verbose mode (-vv)
-    pub(crate) fn v2(&self) -> bool {
-        self.0 >= 2
-    }
-}
-
-impl From<u8> for Verbosity {
-    fn from(level: u8) -> Self {
-        Verbosity(level)
+    fn flush(&mut self) -> Result<(), std::io::Error> {
+        match self {
+            OutputFormat::Default => std::io::stdout().flush(),
+            OutputFormat::Raw => std::io::stdout().flush(),
+            OutputFormat::Json => Ok(()),
+        }
     }
 }
 
-impl From<Verbosity> for u8 {
-    fn from(verbosity: Verbosity) -> Self {
-        verbosity.0
+impl From<OutputFormat> for forc_tracing::TracingWriter {
+    fn from(format: OutputFormat) -> Self {
+        match format {
+            OutputFormat::Json => forc_tracing::TracingWriter::Json,
+            _ => forc_tracing::TracingWriter::Stdio,
+        }
     }
 }
 
@@ -163,76 +163,99 @@ pub enum Operation {
 /// Perform Fuel RPC calls from the comfort of your command line.
 #[derive(Debug, Parser, Clone)]
 #[clap(bin_name = "forc call", version)]
-#[clap(after_help = r#"EXAMPLES:
+#[clap(after_help = r#"
+## EXAMPLES:
 
-# Call a contract with function parameters
-» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+### Call a contract with function parameters
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --abi ./contract-abi.json \
     get_balance 0x0087675439e10a8351b1d5e4cf9d0ea6da77675623ff6b16470b5e3c58998423
+```
 
-# Call a contract with function parameters; additionally print logs, receipts and script json
-» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+### Call a contract with function parameters; additionally print logs, receipts and script json
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --abi ./contract-abi.json \
     get_balance 0x0087675439e10a8351b1d5e4cf9d0ea6da77675623ff6b16470b5e3c58998423 \
     -vv
+```
 
-# Call a contract without function parameters
-» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+### Call a contract without function parameters
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --abi ./contract-abi.json \
     get_name
+```
 
-# Call a contract that makes external contract calls
-» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+### Call a contract that makes external contract calls
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --abi ./contract-abi.json \
     transfer 0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07 \
     --contracts 0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07
+```
 
-# Call a contract in simulation mode
-» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+### Call a contract in simulation mode
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --abi ./contract-abi.json \
     add 1 2 \
     --mode simulate
+```
 
-# Call a contract in dry-run mode on custom node URL using explicit signing-key
-» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+### Call a contract in dry-run mode on custom node URL using explicit signing-key
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --node-url "http://127.0.0.1:4000/v1/graphql" \
     --signing-key 0x... \
     --abi ./contract-abi.json \
     add 1 2 \
     --mode dry-run
+```
 
-# Call a contract in live mode which performs state changes on testnet using forc-wallet
-» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+### Call a contract in live mode which performs state changes on testnet using forc-wallet
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --testnet \
     --wallet \
     --abi ./contract-abi.json \
     add 1 2 \
     --mode live
+```
 
-# Call a contract payable function which transfers value of native asset on mainnet
-» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+### Call a contract payable function which transfers value of native asset on mainnet
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --abi ./contract-abi.json \
     transfer 0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07 \
     --mode live \
     --amount 100
+```
 
-# Call a contract payable function which transfers value of custom asset
-» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+### Call a contract payable function which transfers value of custom asset
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --abi ./contract-abi.json \
     transfer 0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07 \
     --amount 100 \
     --asset-id 0x0087675439e10a8351b1d5e4cf9d0ea6da77675623ff6b16470b5e3c58998423 \
     --live
+```
 
-# List all available functions in a contract
-» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+### List all available functions in a contract
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --abi ./contract-abi.json \
     --list-functions
+```
 
-# Direct transfer of asset to a contract or address
-» forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+### Direct transfer of asset to a contract or address
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --amount 100 \
     --mode live
+```
 "#)]
 pub struct Command {
     /// The contract ID to call
@@ -293,7 +316,7 @@ pub struct Command {
     pub external_contracts: Option<Vec<ContractId>>,
 
     /// Output format for the call result
-    #[clap(long, default_value = "default", help_heading = "OUTPUT")]
+    #[clap(long, short = 'o', default_value = "default", help_heading = "OUTPUT")]
     pub output: OutputFormat,
 
     /// Set verbosity levels; currently only supports max 2 levels

@@ -22,6 +22,7 @@ jobs:
   verifications-complete:
     needs:
       - check-dependency-version-formats
+      - check-forc-manifest-version
       - build-sway-lib-std
       - build-sway-examples
       - build-reference-examples
@@ -74,6 +75,26 @@ jobs:
         run: |
           cargo run --manifest-path .github/workflows/scripts/check-dep-versions/Cargo.toml --release -- Cargo.toml
 
+  check-forc-manifest-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache check-forc-manifest-version build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: check-forc-manifest-version-${{ runner.os }}-${{ hashFiles('.github/scripts/check-forc-manifest-version/Cargo.lock') }}
+
+      - name: Check Forc Manifest Version
+        run: |
+          cargo run --manifest-path .github/workflows/scripts/check-forc-manifest-version/Cargo.toml --release -- Cargo.toml
+
   get-fuel-core-version:
     runs-on: buildjet-4vcpu-ubuntu-2204
     outputs:
@@ -106,7 +127,7 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
+        run: cargo install --locked --path ./forc
       - name: Build sway-lib-std
         run: forc build --path sway-lib-std
 
@@ -178,7 +199,7 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install forc-fmt
-        run: cargo install --locked --debug --path ./forc-plugins/forc-fmt
+        run: cargo install --locked --path ./forc-plugins/forc-fmt
       - name: Run the formatter against all sway projects and fail if any of them panic
         run: scripts/formatter/forc-fmt-check-panic.sh
 
@@ -218,22 +239,22 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
+        run: cargo install --locked --path ./forc
       - name: Install Forc plugins
         run: |
-          cargo install --locked --debug --path ./forc-plugins/forc-client
-          cargo install --locked --debug --path ./forc-plugins/forc-crypto
-          cargo install --locked --debug --path ./forc-plugins/forc-debug
-          cargo install --locked --debug --path ./forc-plugins/forc-doc
-          cargo install --locked --debug --path ./forc-plugins/forc-fmt
-          cargo install --locked --debug --path ./forc-plugins/forc-lsp
-          cargo install --locked --debug --path ./forc-plugins/forc-migrate
-          cargo install --locked --debug --path ./forc-plugins/forc-node
-          cargo install --locked --debug --path ./forc-plugins/forc-publish
-          cargo install --locked --debug --path ./forc-plugins/forc-tx
-          cargo install --locked --debug forc-explore
+          cargo install --locked --path ./forc-plugins/forc-client
+          cargo install --locked --path ./forc-plugins/forc-crypto
+          cargo install --locked --path ./forc-plugins/forc-debug
+          cargo install --locked --path ./forc-plugins/forc-doc
+          cargo install --locked --path ./forc-plugins/forc-fmt
+          cargo install --locked --path ./forc-plugins/forc-lsp
+          cargo install --locked --path ./forc-plugins/forc-migrate
+          cargo install --locked --path ./forc-plugins/forc-node
+          cargo install --locked --path ./forc-plugins/forc-publish
+          cargo install --locked --path ./forc-plugins/forc-tx
+          cargo install --locked forc-explore
       - name: Install mdbook-forc-documenter
-        run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
+        run: cargo install --locked --path ./scripts/mdbook-forc-documenter
 
       - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
@@ -274,10 +295,10 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
+        run: cargo install --locked --path ./forc
       - name: Install Forc plugins
         run: |
-          cargo install --locked --debug --path ./forc-plugins/forc-doc
+          cargo install --locked --path ./forc-plugins/forc-doc
       - name: Build sway-lib-std docs
         run: forc doc --path ./sway-lib-std
 
@@ -294,7 +315,7 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
+        run: cargo install --locked --path ./forc
       - name: Initialize test project
         run: forc new test-proj
       - name: Update project forc manifest to use local sway-lib-std
@@ -484,7 +505,7 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
+        run: cargo install --locked --path ./forc
       - name: Run benchmarks
         run: ./benchmark.sh
       - name: Checkout benchmark data
@@ -529,15 +550,23 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
-      - name: Run Std Unit Tests
-        run: forc build --path sway-lib-std && forc test --path sway-lib-std
-      - name: Run Std Unit Tests - Experimental feature 'error_type'
-        run: forc build --experimental error_type --path sway-lib-std && forc test --experimental error_type --path sway-lib-std
-      - name: Run In Language Unit Tests
-        run: forc build --path test/src/in_language_tests && forc test --path test/src/in_language_tests
-      - name: Run In Language Unit Tests - Experimental feature 'error_type'
-        run: forc build --experimental error_type --path test/src/in_language_tests && forc test --experimental error_type --path test/src/in_language_tests
+        run: cargo install --locked --path ./forc
+      - name: Run Std Unit Tests (Debug)
+        run: forc test --path sway-lib-std
+      - name: Run Std Unit Tests (Release)
+        run: forc test --release --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'error_type' (Debug)
+        run: forc test --experimental error_type --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'error_type' (Release)
+        run: forc test --release --experimental error_type --path sway-lib-std
+      - name: Run In Language Unit Tests (Debug)
+        run: forc test --path test/src/in_language_tests
+      - name: Run In Language Unit Tests (Release)
+        run: forc test --release --path test/src/in_language_tests
+      - name: Run In Language Unit Tests - Experimental feature 'error_type' (Debug)
+        run: forc test --experimental error_type --path test/src/in_language_tests
+      - name: Run In Language Unit Tests - Experimental feature 'error_type' (Release)
+        run: forc test --release --experimental error_type --path test/src/in_language_tests
 
   forc-pkg-fuels-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -882,9 +911,42 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
+  publish-sway-lib-std:
+    needs: [publish, build-and-release-forc-binaries]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Publish sway-lib-std
+        run: |
+          cd sway-lib-std
+          cargo run --locked -p forc-publish
+        env:
+          FORC_PUB_TOKEN: ${{ secrets.FORCPUB_TOKEN }}
+
+      - name: Notify if Job Fails
+        uses: ravsamhq/notify-slack-action@v2
+        if: always()
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+          footer: ""
+          notify_when: "failure"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+
   build-publish-release-image:
     # Build & Publish Docker Image Per Sway Release
-    needs: publish
+    needs: [publish]
     runs-on: buildjet-4vcpu-ubuntu-2204
     permissions:
       contents: read
@@ -941,7 +1003,7 @@ jobs:
     name: Build and upload forc binaries to release
     runs-on: ${{ matrix.job.os }}
     if: github.event_name == 'release' && github.event.action == 'published'
-    needs: publish
+    needs: [publish]
     strategy:
       matrix:
         job:

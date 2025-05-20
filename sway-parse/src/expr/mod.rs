@@ -4,12 +4,14 @@ use sway_ast::brackets::{Braces, Parens, SquareBrackets};
 use sway_ast::expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant};
 use sway_ast::keywords::{
     AbiToken, AddEqToken, AmpersandToken, AsmToken, CommaToken, ConfigurableToken, ConstToken,
-    DivEqToken, DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken,
-    LetToken, MutToken, OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken,
-    StarEqToken, StorageToken, StructToken, SubEqToken, TraitToken, TrueToken, TypeToken, UseToken,
+    DivEqToken, DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, HashToken, IfToken,
+    ImplToken, LetToken, MutToken, OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken,
+    ShrEqToken, StarEqToken, StorageToken, StructToken, SubEqToken, TraitToken, TrueToken,
+    TypeToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
+use sway_ast::token::DocComment;
 use sway_ast::{
     AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
     ExprTupleDescriptor, GenericArgs, IfCondition, IfExpr, LitInt, Literal, MatchBranch,
@@ -183,6 +185,8 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
         || parser.peek::<(AbiToken, Ident)>().is_some()
         || parser.peek::<ConstToken>().is_some()
         || parser.peek::<TypeToken>().is_some()
+        || parser.peek::<DocComment>().is_some()
+        || parser.peek::<HashToken>().is_some()
         || matches!(
             parser.peek::<(StorageToken, Delimiter)>(),
             Some((_, Delimiter::Brace))
@@ -703,7 +707,6 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         return Ok(Expr::AbiCast { abi_token, args });
     }
     if let Some(return_token) = parser.take() {
-        // TODO: how to handle this properly?
         if parser.is_empty()
             || parser.peek::<CommaToken>().is_some()
             || parser.peek::<SemicolonToken>().is_some()
@@ -718,6 +721,24 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
             return_token,
             expr_opt: Some(expr),
         });
+    }
+    if parser.experimental.error_type {
+        if let Some(panic_token) = parser.take() {
+            if parser.is_empty()
+                || parser.peek::<CommaToken>().is_some()
+                || parser.peek::<SemicolonToken>().is_some()
+            {
+                return Ok(Expr::Panic {
+                    panic_token,
+                    expr_opt: None,
+                });
+            }
+            let expr = parser.parse()?;
+            return Ok(Expr::Panic {
+                panic_token,
+                expr_opt: Some(expr),
+            });
+        }
     }
     if let Some(if_expr) = parser.guarded_parse::<IfToken, _>()? {
         return Ok(Expr::If(if_expr));

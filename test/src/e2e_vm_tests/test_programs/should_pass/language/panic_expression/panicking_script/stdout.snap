@@ -1,0 +1,52 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script --release --experimental error_type --test-threads 1 --logs --revert-codes
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
+   Compiling script panicking_script (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script)
+    Finished release [optimized + fuel] target(s) [3.904 KB] in ???
+     Running 11 tests, filtered 0 tests
+
+tested -- panicking_script
+
+      test test_panic_in_main ... ok (???, 388 gas)
+Decoded log value: C(true), log rb: 5503570629422409978
+Revert code: ffffffff00000000
+      test test_nested_panic_inlined ... ok (???, 806 gas)
+Decoded log value: E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 5503570629422409978
+Revert code: ffffffff00000001
+      test test_nested_panic_inlined_same_revert_code ... ok (???, 806 gas)
+Decoded log value: E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 5503570629422409978
+Revert code: ffffffff00000001
+      test test_nested_panic_not_inlined ... ok (???, 787 gas)
+Decoded log value: E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 5503570629422409978
+Revert code: ffffffff00000002
+      test test_nested_panic_not_inlined_same_revert_code ... ok (???, 787 gas)
+Decoded log value: E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 5503570629422409978
+Revert code: ffffffff00000002
+      test test_generic_panic_with_unit ... ok (???, 189 gas)
+Decoded log value: (), log rb: 3330666440490685604
+Revert code: ffffffff00000003
+      test test_generic_panic_with_unit_same_revert_code ... ok (???, 189 gas)
+Decoded log value: (), log rb: 3330666440490685604
+Revert code: ffffffff00000003
+      test test_generic_panic_with_str ... ok (???, 288 gas)
+Decoded log value: AsciiString { data: "generic panic with string" }, log rb: 10098701174489624218
+Revert code: ffffffff00000004
+      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 288 gas)
+Decoded log value: AsciiString { data: "generic panic with different string" }, log rb: 10098701174489624218
+Revert code: ffffffff00000004
+      test test_generic_panic_with_error_type_enum ... ok (???, 312 gas)
+Decoded log value: A, log rb: 5503570629422409978
+Revert code: ffffffff00000005
+      test test_generic_panic_with_error_type_enum_different_variant_same_revert_code ... ok (???, 369 gas)
+Decoded log value: B(42), log rb: 5503570629422409978
+Revert code: ffffffff00000005
+
+test result: OK. 11 passed; 0 failed; finished in ???
+
+    Finished in ???

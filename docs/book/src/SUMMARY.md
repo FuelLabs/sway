@@ -56,6 +56,7 @@
 - [Testing](./testing/index.md)
   - [Unit Testing](./testing/unit-testing.md)
   - [Testing with Rust](./testing/testing-with-rust.md)
+  - [Testing with Forc Call](./testing/testing_with_forc_call.md)
 - [Debugging](./debugging/index.md)
   - [Debugging with CLI](./debugging/debugging_with_cli.md)
   - [Debugging with IDE](./debugging/debugging_with_ide.md)

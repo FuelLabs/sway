@@ -5,7 +5,6 @@ use crate::{
         runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
     core::{
-        document::{Documents, TextDocument},
         sync::SyncWorkspace,
         token::{self, TypedAstToken},
         token_map::{TokenMap, TokenMapExt},
@@ -46,7 +45,7 @@ use sway_core::{
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{ProgramId, SourceEngine, Spanned};
-use sway_utils::{helpers::get_sway_files, PerformanceData};
+use sway_utils::PerformanceData;
 
 pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
 pub type ProjectDirectory = PathBuf;
@@ -69,7 +68,6 @@ pub struct Session {
     pub build_plan_cache: BuildPlanCache,
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
-    pub sync: SyncWorkspace,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
     pub metrics: DashMap<ProgramId, PerformanceData>,
@@ -90,36 +88,8 @@ impl Session {
             metrics: DashMap::new(),
             compiled_program: RwLock::new(CompiledProgram::default()),
             engines: <_>::default(),
-            sync: SyncWorkspace::new(),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }
-    }
-
-    pub async fn init(
-        &self,
-        uri: &Url,
-        documents: &Documents,
-    ) -> Result<ProjectDirectory, LanguageServerError> {
-        let manifest_dir = PathBuf::from(uri.path());
-        // Create a new temp dir that clones the current workspace
-        // and store manifest and temp paths
-        self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
-        self.sync.clone_manifest_dir_to_temp()?;
-        // iterate over the project dir, parse all sway files
-        let _ = self.store_sway_files(documents).await;
-        self.sync.watch_and_sync_manifest();
-        self.sync.manifest_dir().map_err(Into::into)
-    }
-
-    pub fn shutdown(&self) {
-        // shutdown the thread watching the manifest file
-        let handle = self.sync.notify_join_handle.read();
-        if let Some(join_handle) = &*handle {
-            join_handle.abort();
-        }
-
-        // Delete the temporary directory.
-        self.sync.remove_temp_dir();
     }
 
     /// Return a reference to the [TokenMap] of the current session.
@@ -131,9 +101,10 @@ impl Session {
     pub fn garbage_collect_program(
         &self,
         engines: &mut Engines,
+        sync: &SyncWorkspace,
     ) -> Result<(), LanguageServerError> {
         let _p = tracing::trace_span!("garbage_collect").entered();
-        let path = self.sync.temp_dir()?;
+        let path = sync.temp_dir()?;
         let program_id = { engines.se().get_program_id_from_manifest_path(&path) };
         if let Some(program_id) = program_id {
             engines.clear_program(&program_id);
@@ -154,7 +125,12 @@ impl Session {
         Ok(())
     }
 
-    pub fn token_references(&self, url: &Url, position: Position) -> Option<Vec<Location>> {
+    pub fn token_references(
+        &self,
+        url: &Url,
+        position: Position,
+        sync: &SyncWorkspace,
+    ) -> Option<Vec<Location>> {
         let _p = tracing::trace_span!("token_references").entered();
         let token_references: Vec<_> = self
             .token_map
@@ -166,8 +142,7 @@ impl Session {
             .filter_map(|item| {
                 let path = item.key().path.as_ref()?;
                 let uri = Url::from_file_path(path).ok()?;
-                self.sync
-                    .to_workspace_url(uri)
+                sync.to_workspace_url(uri)
                     .map(|workspace_url| Location::new(workspace_url, item.key().range))
             })
             .collect();
@@ -194,6 +169,7 @@ impl Session {
         &self,
         uri: &Url,
         position: Position,
+        sync: &SyncWorkspace,
     ) -> Option<GotoDefinitionResponse> {
         let _p = tracing::trace_span!("token_definition_response").entered();
         self.token_map
@@ -203,7 +179,7 @@ impl Session {
                 decl_ident.path.and_then(|path| {
                     // We use ok() here because we don't care about propagating the error from from_file_path
                     Url::from_file_path(path).ok().and_then(|url| {
-                        self.sync.to_workspace_url(url).map(|url| {
+                        sync.to_workspace_url(url).map(|url| {
                             GotoDefinitionResponse::Scalar(Location::new(url, decl_ident.range))
                         })
                     })
@@ -232,7 +208,6 @@ impl Session {
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
             if let Some(program) = &compiled_program.typed {
-                let engines = self.engines.read();
                 return Some(capabilities::completion::to_completion_items(
                     &program.namespace,
                     &engines,
@@ -271,16 +246,6 @@ impl Session {
                     &self.token_map,
                 )
             })
-    }
-
-    /// Populate [Documents] with sway files found in the workspace.
-    async fn store_sway_files(&self, documents: &Documents) -> Result<(), LanguageServerError> {
-        let temp_dir = self.sync.temp_dir()?;
-        // Store the documents.
-        for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
-            documents.store_document(TextDocument::build_from_path(path).await?)?;
-        }
-        Ok(())
     }
 }
 
@@ -335,6 +300,7 @@ pub fn compile(
 type CompileResults = (Vec<CompileError>, Vec<CompileWarning>);
 
 pub fn traverse(
+    member_path: PathBuf,
     results: Vec<(Option<Programs>, Handler)>,
     engines_clone: &Engines,
     session: Arc<Session>,
@@ -354,8 +320,7 @@ pub fn traverse(
 
     session.metrics.clear();
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
-    let results_len = results.len();
-    for (i, (value, handler)) in results.into_iter().enumerate() {
+    for (value, handler) in results.into_iter() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
         let current_diagnostics = handler.consume();
         diagnostics = current_diagnostics;
@@ -370,13 +335,24 @@ pub fn traverse(
             continue;
         };
 
+        let program_id = typed
+            .as_ref()
+            .unwrap()
+            .namespace
+            .current_package_ref()
+            .program_id;
+        let program_path = engines_clone
+            .se()
+            .get_manifest_path_from_program_id(&program_id)
+            .unwrap();
+
         // Check if the cached AST was returned by the compiler for the users workspace.
         // If it was, then we need to use the original engines for traversal.
         //
         // This is due to the garbage collector removing types from the engines_clone
         // and they have not been re-added due to compilation being skipped.
         let engines_ref = session.engines.read();
-        let engines = if i == results_len - 1 && metrics.reused_programs > 0 {
+        let engines = if program_path == member_path && metrics.reused_programs > 0 {
             &*engines_ref
         } else {
             engines_clone
@@ -416,8 +392,9 @@ pub fn traverse(
         // This operation is fast because we already have the compile results.
         let ctx = ParseContext::new(&session.token_map, engines, &root);
 
-        // The final element in the results is the main program.
-        if i == results_len - 1 {
+        // We do an extensive traversal of the users program to populate the token_map.
+        // Perhaps we should do this for the workspace now as well and not just the workspace member?
+        if program_path == member_path {
             // First, populate our token_map with sway keywords.
             let lexed_tree = LexedTree::new(&ctx);
             lexed_tree.collect_module_kinds(lexed);
@@ -465,11 +442,13 @@ pub fn parse_project(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
+    sync: &SyncWorkspace,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
+
     let build_plan = session
         .build_plan_cache
-        .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
+        .get_or_update(&sync.workspace_manifest_path(), || build_plan(uri))?;
 
     let results = compile(
         &build_plan,
@@ -478,14 +457,48 @@ pub fn parse_project(
         lsp_mode.as_ref(),
     )?;
 
-    // Check if the last result is None or if results is empty, indicating an error occurred in the compiler.
-    // If we don't return an error here, then we will likely crash when trying to access the Engines
-    // during traversal or when creating runnables.
-    if results.last().is_none_or(|(value, _)| value.is_none()) {
+    // First check if results is empty or if all program values are None,
+    // indicating an error occurred in the compiler
+    if results.is_empty()
+        || results
+            .iter()
+            .all(|(programs_opt, _)| programs_opt.is_none())
+    {
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
-    let diagnostics = traverse(results, engines, session.clone(), lsp_mode.as_ref())?;
+    let member_path = sync
+        .member_path(uri)
+        .ok_or(DirectoryError::TempMemberDirNotFound)?;
+
+    // Next check that the member path is present in the results.
+    let found_program_for_member = results.iter().any(|(programs_opt, _handler)| {
+        programs_opt.as_ref().is_some_and(|programs| {
+            programs
+                .typed
+                .as_ref()
+                .ok()
+                .and_then(|typed| {
+                    let program_id = typed.as_ref().namespace.current_package_ref().program_id();
+                    engines.se().get_manifest_path_from_program_id(&program_id)
+                })
+                .is_some_and(|program_manifest_path| program_manifest_path == *member_path)
+        })
+    });
+
+    if !found_program_for_member {
+        // If we don't return an error here, then we will likely crash when trying to access the Engines
+        // during traversal or when creating runnables.
+        return Err(LanguageServerError::MemberProgramNotFound);
+    }
+
+    let diagnostics = traverse(
+        member_path,
+        results,
+        engines,
+        session.clone(),
+        lsp_mode.as_ref(),
+    )?;
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.
         if !config.optimized_build {
@@ -745,7 +758,8 @@ mod tests {
         let uri = get_url(&dir);
         let engines = Engines::default();
         let session = Arc::new(Session::new());
-        let result = parse_project(&uri, &engines, None, None, session)
+        let sync = SyncWorkspace::new();
+        let result = parse_project(&uri, &engines, None, None, session, &sync)
             .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
