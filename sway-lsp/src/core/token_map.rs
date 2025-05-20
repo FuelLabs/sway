@@ -10,7 +10,7 @@ use dashmap::{
 use lsp_types::{Position, Url};
 use std::{path::PathBuf, thread, time::Duration};
 use sway_core::{engine_threading::SpannedWithEngines, language::ty, type_system::TypeId, Engines};
-use sway_types::Ident;
+use sway_types::{Ident, ProgramId};
 
 // Re-export the TokenMapExt trait.
 pub use crate::core::token_map_ext::TokenMapExt;
@@ -68,6 +68,20 @@ impl<'a> TokenMap {
             ident
         );
         None // Return None if all retries are exhausted
+    }
+
+    /// Return an Iterator of tokens belonging to the provided [ProgramId].
+    pub fn tokens_for_program(
+        &self,
+        program_id: ProgramId,
+    ) -> impl Iterator<Item = RefMulti<'_, TokenIdent, Token>> {
+        self.iter().filter_map(move |entry| {
+            entry
+                .key()
+                .program_id()
+                .filter(|&pid| pid == program_id)
+                .map(|_| entry)
+        })
     }
 
     /// Return an Iterator of tokens belonging to the provided [Url].

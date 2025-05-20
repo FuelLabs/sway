@@ -772,7 +772,7 @@ impl Parse for ElementAccess {
         match self {
             ElementAccess::Index { target, arg } => {
                 target.parse(ctx);
-                arg.get().parse(ctx)
+                arg.get().parse(ctx);
             }
             ElementAccess::FieldProjection { target, .. }
             | ElementAccess::TupleFieldProjection { target, .. } => {
