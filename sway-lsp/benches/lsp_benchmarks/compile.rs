@@ -1,8 +1,8 @@
 use codspeed_criterion_compat::{black_box, criterion_group, Criterion};
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use lsp_types::Url;
-use std::sync::Arc;
 use parking_lot::RwLock;
+use std::sync::Arc;
 use sway_core::Engines;
 use sway_lsp::core::session;
 use tokio::runtime::Runtime;

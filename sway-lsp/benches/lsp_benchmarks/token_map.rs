@@ -23,11 +23,19 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("idents_at_position", |b| {
-        b.iter(|| state.token_map.idents_at_position(position, state.token_map.iter()))
+        b.iter(|| {
+            state
+                .token_map
+                .idents_at_position(position, state.token_map.iter())
+        })
     });
 
     c.bench_function("tokens_at_position", |b| {
-        b.iter(|| state.token_map.tokens_at_position(&engines, &uri, position, None))
+        b.iter(|| {
+            state
+                .token_map
+                .tokens_at_position(&engines, &uri, position, None)
+        })
     });
 
     c.bench_function("token_at_position", |b| {
@@ -35,7 +43,11 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("parent_decl_at_position", |b| {
-        b.iter(|| state.token_map.parent_decl_at_position(&engines, &uri, position))
+        b.iter(|| {
+            state
+                .token_map
+                .parent_decl_at_position(&engines, &uri, position)
+        })
     });
 
     // Remove the temp dir after the benchmarks are done

@@ -55,7 +55,15 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("highlight", |b| {
-        b.iter(|| capabilities::highlight::get_highlights(session.clone(), &engines, &state.token_map, &uri, position))
+        b.iter(|| {
+            capabilities::highlight::get_highlights(
+                session.clone(),
+                &engines,
+                &state.token_map,
+                &uri,
+                position,
+            )
+        })
     });
 
     c.bench_function("find_all_references", |b| {
@@ -63,7 +71,9 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("goto_definition", |b| {
-        b.iter(|| session.token_definition_response(&uri, position, &engines, &state.token_map, sync))
+        b.iter(|| {
+            session.token_definition_response(&uri, position, &engines, &state.token_map, sync)
+        })
     });
 
     c.bench_function("inlay_hints", |b| {
@@ -79,7 +89,16 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("prepare_rename", |b| {
-        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &engines, &state.token_map, &uri, position, sync))
+        b.iter(|| {
+            capabilities::rename::prepare_rename(
+                session.clone(),
+                &engines,
+                &state.token_map,
+                &uri,
+                position,
+                sync,
+            )
+        })
     });
 
     c.bench_function("rename", |b| {

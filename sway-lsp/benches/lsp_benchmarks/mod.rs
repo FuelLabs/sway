@@ -3,8 +3,8 @@ pub mod requests;
 pub mod token_map;
 
 use lsp_types::Url;
-use sway_core::Engines;
 use std::{path::PathBuf, sync::Arc};
+use sway_core::Engines;
 use sway_lsp::{
     core::session::{self, Session},
     server_state::ServerState,

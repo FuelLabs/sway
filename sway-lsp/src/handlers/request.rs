@@ -86,7 +86,13 @@ pub async fn handle_goto_definition(
         Ok((uri, session)) => {
             let sync = state.sync_workspace();
             let position = params.text_document_position_params.position;
-            Ok(session.token_definition_response(&uri, position, &state.engines.read(), &state.token_map, &sync))
+            Ok(session.token_definition_response(
+                &uri,
+                position,
+                &state.engines.read(),
+                &state.token_map,
+                &sync,
+            ))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -164,7 +170,14 @@ pub async fn handle_prepare_rename(
     {
         Ok((uri, session)) => {
             let sync = state.sync_workspace();
-            match capabilities::rename::prepare_rename(session, &state.engines.read(), &state.token_map, &uri, params.position, &sync) {
+            match capabilities::rename::prepare_rename(
+                session,
+                &state.engines.read(),
+                &state.token_map,
+                &uri,
+                params.position,
+                &sync,
+            ) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -191,7 +204,15 @@ pub async fn handle_rename(
             let new_name = params.new_name;
             let position = params.text_document_position.position;
             let sync = state.sync_workspace();
-            match capabilities::rename::rename(session, &state.engines.read(), &state.token_map, new_name, &uri, position, &sync) {
+            match capabilities::rename::rename(
+                session,
+                &state.engines.read(),
+                &state.token_map,
+                new_name,
+                &uri,
+                position,
+                &sync,
+            ) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -244,7 +265,13 @@ pub async fn handle_references(
         Ok((uri, session)) => {
             let position = params.text_document_position.position;
             let sync = state.sync_workspace();
-            Ok(session.token_references(&uri, position, &state.token_map, &state.engines.read(), &sync))
+            Ok(session.token_references(
+                &uri,
+                position,
+                &state.token_map,
+                &state.engines.read(),
+                &sync,
+            ))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
