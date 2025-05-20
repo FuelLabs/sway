@@ -249,7 +249,7 @@ pub(crate) async fn show_ast_request(
         save_path: save_path.clone(),
     };
 
-    let response = request::handle_show_ast(server, params).await;
+    let response = request::handle_show_ast(server, &params);
     let expected = TextDocumentIdentifier {
         uri: Url::parse(&format!("{save_path}/{ast_kind}.rs")).unwrap(),
     };
@@ -262,7 +262,7 @@ pub(crate) async fn visualize_request(server: &ServerState, uri: &Url, graph_kin
         graph_kind: graph_kind.to_string(),
     };
 
-    let response = request::handle_visualize(server, params).unwrap().unwrap();
+    let response = request::handle_visualize(server, &params).unwrap().unwrap();
     let re = Regex::new(r#"digraph \{
     0 \[ label = "std" shape = box URL = "vscode://file/[[:ascii:]]+/sway-lib-std/Forc.toml"\]
     1 \[ label = "struct_field_access" shape = box URL = "vscode://file/[[:ascii:]]+/struct_field_access/Forc.toml"\]
@@ -650,9 +650,7 @@ pub(crate) async fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDe
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let res = request::handle_goto_definition(server, params.clone())
-        .await
-        .unwrap();
+    let res = request::handle_goto_definition(server, params.clone()).unwrap();
     let unwrapped_response = res.as_ref().unwrap_or_else(|| {
         panic!(
             "Failed to deserialize response: {:?} input: {:#?}",
@@ -715,7 +713,7 @@ pub(crate) async fn hover_request<'a>(
         },
         work_done_progress_params: Default::default(),
     };
-    let res = request::handle_hover(server, params.clone()).await.unwrap();
+    let res = request::handle_hover(server, params.clone()).unwrap();
     let unwrapped_response = res.as_ref().unwrap_or_else(|| {
         panic!(
             "Failed to deserialize hover: {:?} input: {:#?}",
@@ -750,9 +748,7 @@ pub(crate) async fn prepare_rename_request<'a>(
             character: rename.req_char,
         },
     };
-    request::handle_prepare_rename(server, params)
-        .await
-        .unwrap()
+    request::handle_prepare_rename(server, params).unwrap()
 }
 
 pub(crate) async fn rename_request<'a>(
@@ -772,7 +768,7 @@ pub(crate) async fn rename_request<'a>(
         new_name: rename.new_name.to_string(),
         work_done_progress_params: Default::default(),
     };
-    let workspace_edit = request::handle_rename(server, params).await.unwrap();
+    let workspace_edit = request::handle_rename(server, params).unwrap();
     workspace_edit.unwrap()
 }
 

@@ -62,9 +62,9 @@ impl Markup {
         source_engine: &SourceEngine,
         related_types: &[RelatedType],
         implementations: &[Span],
-        client_config: LspClient,
+        client_config: &LspClient,
     ) -> Self {
-        if client_config != LspClient::VsCode {
+        if client_config != &LspClient::VsCode {
             return self;
         }
 
