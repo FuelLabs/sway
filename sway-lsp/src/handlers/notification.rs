@@ -24,8 +24,6 @@ pub async fn handle_did_open_text_document(
     // Initialize the SyncWorkspace if it doesn't exist.
     let _ = state.get_or_init_global_sync_workspace(file_uri).await?;
 
-    // eprintln!("version: {:?}", params.text_document.version);
-
     // Get or create a session for the original file URI.
     let (uri, session) = state.uri_and_session_from_workspace(&params.text_document.uri)?;
     state.documents.handle_open_file(&uri).await;

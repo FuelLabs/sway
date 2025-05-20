@@ -479,7 +479,7 @@ pub fn handle_on_enter(
                 &state.config.read().on_enter,
                 &state.documents,
                 &uri,
-                &params,
+                params,
             ))
         }
         Err(err) => {
