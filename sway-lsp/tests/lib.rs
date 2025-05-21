@@ -150,7 +150,7 @@ fn initialize() {
 fn did_open() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let _ = init_and_open(&mut service, e2e_test_dir().join("src/iterator.sw")).await;
+        let _ = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
         service.inner().wait_for_parsing().await;
         shutdown_and_exit(&mut service).await;
     });
