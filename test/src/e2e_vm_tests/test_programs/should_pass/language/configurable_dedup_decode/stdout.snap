@@ -391,7 +391,7 @@ addi $r0 $$locbase i320       ; get offset to local
 sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
 srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
 addi $$reta $$reta i4         ; [call]: set new return address
-jmpf $zero i118               ; [call]: call main_8
+jmpf $zero i111               ; [call]: call main_8
 move $r1 $$retv               ; [call]: copy the return value
 movi $r2 i1024                ; initialize constant into register
 aloc $r2
@@ -473,7 +473,7 @@ move $$arg0 $r0               ; [call]: pass argument 0
 sub  $$reta $pc $is           ; get current instruction offset from instructions start ($is)
 srli $$reta $$reta i2         ; get current instruction offset in 32-bit words
 addi $$reta $$reta i4         ; [call]: set new return address
-jmpf $zero i21                ; [call]: call abi_decode_3
+jmpf $zero i16                ; [call]: call abi_decode_3
 sw   $$locbase $$retv i2      ; store word
 addi $r0 $$locbase i16        ; get offset to local
 movi $r1 i8                   ; initialize constant into register
@@ -484,31 +484,24 @@ move $$reta $r3               ; restore return address
 poph i524288                  ; restore registers 40..64
 popl i15                      ; restore registers 16..40
 jmp $$reta                    ; return from call
-pshl i3                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function from_parts_1
-move $r0 $$arg2               ; save argument 2 (__ret_value)
-move $r1 $$reta               ; save return address
 sw   $$arg2 $$arg0 i0         ; store word
-move $$retv $r0               ; set return value
-move $$reta $r1               ; restore return address
+move $$retv $$arg2            ; set return value
 poph i524288                  ; restore registers 40..64
-popl i3                       ; restore registers 16..40
 jmp $$reta                    ; return from call
-pshl i15                      ; save registers 16..40
+pshl i7                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function abi_decode_3
-move $r0 $$reta               ; save return address
+lw   $r0 $$arg0 i0            ; load word
+lw   $r0 $r0 i0               ; lw val ptr i0
 lw   $r1 $$arg0 i0            ; load word
-lw   $r1 $r1 i0               ; lw val ptr i0
-lw   $r2 $$arg0 i0            ; load word
-movi $r3 i8                   ; initialize constant into register
-add  $r2 $r2 $r3
-sw   $$arg0 $r2 i0            ; store word
-move $$retv $r1               ; set return value
-move $$reta $r0               ; restore return address
+movi $r2 i8                   ; initialize constant into register
+add  $r1 $r1 $r2
+sw   $$arg0 $r1 i0            ; store word
+move $$retv $r0               ; set return value
 poph i524288                  ; restore registers 40..64
-popl i15                      ; restore registers 16..40
+popl i7                       ; restore registers 16..40
 jmp $$reta                    ; return from call
 pshl i3                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
@@ -525,4 +518,4 @@ data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
 data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
-    Finished release [optimized + fuel] target(s) [648 B] in ???
+    Finished release [optimized + fuel] target(s) [624 B] in ???
