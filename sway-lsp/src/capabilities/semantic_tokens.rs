@@ -47,6 +47,8 @@ pub fn semantic_tokens(tokens_sorted: &[&RefMulti<TokenIdent, Token>]) -> Semant
     for entry in tokens_sorted {
         let (ident, token) = entry.pair();
         let ty = semantic_token_type(&token.kind);
+        eprintln!("name: {:?}", ident.name);
+        eprintln!("ty: {:?}", ty);
         let token_index = type_index(&ty);
         // TODO - improve with modifiers
         let modifier_bitset = 0;
@@ -151,6 +153,7 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::new("selfKeyword"),
     SemanticTokenType::new("selfTypeKeyword"),
     SemanticTokenType::new("typeAlias"),
+    SemanticTokenType::new("traitType"),
 ];
 
 pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
@@ -195,5 +198,12 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
 }
 
 fn type_index(ty: &SemanticTokenType) -> u32 {
-    SUPPORTED_TYPES.iter().position(|it| it == ty).unwrap() as u32
+    eprintln!("ty: {:?}", ty);
+    SUPPORTED_TYPES
+        .iter()
+        .position(|it| {
+            eprintln!("it: {:?} | ty: {:?}", it, ty);
+            it == ty
+        })
+        .unwrap() as u32
 }
