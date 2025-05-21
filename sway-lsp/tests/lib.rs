@@ -150,8 +150,32 @@ fn initialize() {
 fn did_open() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let _ = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
+        let _ = init_and_open(&mut service, std_lib_dir().join("src/iterator.sw")).await;
         service.inner().wait_for_parsing().await;
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
+#[test]
+fn did_open_all_std_lib_files() {
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let files = sway_utils::helpers::get_sway_files(std_lib_dir().join("src"));
+        for file in files {
+            eprintln!("opening file: {:?}", file.as_path());
+
+            // If the workspace is not initialized, we need to initialize it
+            // Otherwise, we can just open the file
+            let uri = if service.inner().sync_workspace.get().is_none() {
+                init_and_open(&mut service, file.to_path_buf()).await
+            } else {
+                open(service.inner(), file.to_path_buf()).await
+            };
+
+            // Make sure that semantic tokens are successfully returned for the file
+            let semantic_tokens = lsp::get_semantic_tokens_full(service.inner(), &uri).await;
+            assert!(!semantic_tokens.data.is_empty());
+        }
         shutdown_and_exit(&mut service).await;
     });
 }

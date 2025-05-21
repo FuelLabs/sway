@@ -58,6 +58,10 @@ pub fn e2e_test_dir() -> PathBuf {
         .join("struct_field_access")
 }
 
+pub fn std_lib_dir() -> PathBuf {
+    sway_workspace_dir().join("sway-lib-std")
+}
+
 pub fn runnables_test_dir() -> PathBuf {
     test_fixtures_dir().join("runnables")
 }
