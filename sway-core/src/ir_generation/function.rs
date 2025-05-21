@@ -2427,6 +2427,7 @@ impl<'eng> FnCompiler<'eng> {
         let de = self.engines.de();
 
         let return_type_ir_type = convert_resolved_type_id(te, de, context, return_type, span)?;
+        let return_type_ir_type_ptr = Type::new_ptr(context, return_type_ir_type);
 
         let first_argument_expr = &arguments[0];
         let first_argument_value = return_on_termination_or_extract!(
@@ -2448,7 +2449,11 @@ impl<'eng> FnCompiler<'eng> {
             ));
         }
 
-        let final_value = self.current_block.append(context).load(first_argument_ptr);
+        let casted_ptr = self
+            .current_block
+            .append(context)
+            .cast_ptr(first_argument_ptr, return_type_ir_type_ptr);
+        let final_value = self.current_block.append(context).load(casted_ptr);
         Ok(TerminatorValue::new(
             CompiledValue::InRegister(final_value),
             context,
