@@ -376,7 +376,6 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                             .and_then(|ret_val_ty| ret_val_ty.get_pointee_type(ctx))
                         {
                             if ret_val_pointee_ty == *ret_ty {
-                                dbg!();
                                 instrs_to_fix.push(TypeCorrection {
                                     actual_ty: ret_val.get_type(ctx).unwrap(),
                                     expected_ty: *ret_ty,

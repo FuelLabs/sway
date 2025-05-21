@@ -2463,46 +2463,50 @@ impl<'eng> FnCompiler<'eng> {
         _md_mgr: &mut MetadataManager,
     ) -> Result<(Value, TypeId), CompileError> {
         let te = self.engines.te();
+        let de = self.engines.de();
 
         let err = CompileError::TypeArgumentsNotAllowed {
             span: first_argument_expr.span.clone(),
         };
 
-        let first_argument_value = store_to_memory(
-            self,
-            context,
-            CompiledValue::InRegister(first_argument_value),
-        )?
-        .unwrap_memory();
-
-        let ptr_arg = AsmArg {
-            name: Ident::new_no_span("ptr".into()),
-            initializer: Some(first_argument_value),
-        };
-
-        let ptr_out_arg = AsmArg {
-            name: Ident::new_no_span("ptr_out".into()),
-            initializer: Some(first_argument_value),
-        };
-
-        let return_type = Type::get_uint64(context);
-        let ptr_to_first_element = self.current_block.append(context).asm_block(
-            vec![ptr_arg, ptr_out_arg],
-            vec![AsmInstruction::lw_no_span("ptr_out", "ptr", "i0")],
-            return_type,
-            Some(Ident::new_no_span("ptr_out".into())),
-        );
-
-        match &*te.get(first_argument_expr.return_type) {
+        let (is_slice, elem_ty) = match &*te.get(first_argument_expr.return_type) {
             TypeInfo::Ref {
                 referenced_type, ..
             } => match &*te.get(referenced_type.type_id()) {
-                TypeInfo::Array(elem_ty, _) | TypeInfo::Slice(elem_ty) => {
-                    Ok((ptr_to_first_element, elem_ty.type_id()))
-                }
+                TypeInfo::Array(elem_ty, _) => Ok((false, elem_ty.type_id())),
+                TypeInfo::Slice(elem_ty) => Ok((true, elem_ty.type_id())),
                 _ => Err(err),
             },
             _ => Err(err),
+        }?;
+
+        if is_slice {
+            // Load from the first element of the slice
+            let ptr_arg = AsmArg {
+                name: Ident::new_no_span("ptr".into()),
+                initializer: Some(first_argument_value),
+            };
+            let ptr_out_arg = AsmArg {
+                name: Ident::new_no_span("ptr_out".into()),
+                initializer: None,
+            };
+            let elem_ir_ty = convert_resolved_type_id(
+                te,
+                de,
+                context,
+                elem_ty,
+                &first_argument_expr.span.clone(),
+            )?;
+            let return_type = Type::new_ptr(context, elem_ir_ty);
+            let ptr_to_first_element = self.current_block.append(context).asm_block(
+                vec![ptr_arg, ptr_out_arg],
+                vec![AsmInstruction::lw_no_span("ptr_out", "ptr", "i0")],
+                return_type,
+                Some(Ident::new_no_span("ptr_out".into())),
+            );
+            Ok((ptr_to_first_element, elem_ty))
+        } else {
+            Ok((first_argument_value, elem_ty))
         }
     }
 
@@ -2551,7 +2555,7 @@ impl<'eng> FnCompiler<'eng> {
             initializer: Some(ptr),
         };
 
-        let return_type = Type::get_uint64(context);
+        let return_type = Type::new_ptr(context, elem_ir_type);
         let ptr = self.current_block.append(context).asm_block(
             vec![
                 idx_arg,
@@ -2647,12 +2651,12 @@ impl<'eng> FnCompiler<'eng> {
             .binary_op(BinaryOpKind::Sub, end, start);
 
         // compile the slice together
-        let uint64 = Type::get_uint64(context);
+        let ptr_to_elem_ty = Type::new_ptr(context, elem_ir_type);
         let return_type = Type::get_typed_slice(context, elem_ir_type);
         let slice_as_tuple = self.compile_tuple_from_values(
             context,
             vec![ptr_to_elem, slice_len],
-            vec![uint64, uint64],
+            vec![ptr_to_elem_ty, Type::get_uint64(context)],
             None,
         )?;
         let slice = self.current_block.append(context).asm_block(
