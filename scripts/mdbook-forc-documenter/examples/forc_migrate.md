@@ -127,7 +127,7 @@ In our example, the `my_project`'s `Forc.toml` file will have the `[dependencies
 ```toml
 [dependencies]
 std = { git = "https://github.com/FuelLabs/sway", tag = "v0.66.1" }
-third_party_lib = { git = "https://github.com/ThirdParty/swaylib", tag = "v1.0.0" }
+third_party_lib = { git = "https://github.com/third party, third-party/swaylib", tag = "v1.0.0" }
 ```
 
 Assuming that the `third_party_lib` version compatible with Sway v0.67.0 is the version v2.0.0 we will end up in the following changes:
@@ -137,7 +137,7 @@ Assuming that the `third_party_lib` version compatible with Sway v0.67.0 is the 
 # Changed v0.66.1 -> v0.67.0
 std = { git = "https://github.com/FuelLabs/sway", tag = "v0.67.0" }
 # Changed v1.0.0  -> v2.0.0
-third_party_lib = { git = "https://github.com/ThirdParty/swaylib", tag = "v2.0.0" }
+third_party_lib = { git = "https://github.com/third party, third-party/swaylib", tag = "v2.0.0" }
 ```
 
 Run `forc build` to make sure that the project still compiles. **At this point, it is very likely that you will need to compile the project with the experimental features turned on.** The reason is the likelihood that either the new `std` or the `third_party_lib` uses the new Sway features.
