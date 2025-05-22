@@ -155,6 +155,7 @@ pub(crate) struct TraitValue {
     pub(crate) trait_items: TraitItems,
     /// The span of the entire impl block.
     pub(crate) impl_span: Span,
+    pub(crate) is_impl_self: IsImplSelf,
 }
 
 #[derive(Clone, Debug)]
@@ -207,6 +208,7 @@ pub struct TraitMap {
     satisfied_cache: HashSet<u64>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum IsImplSelf {
     Yes,
     No,
@@ -285,6 +287,7 @@ impl TraitMap {
                     TraitValue {
                         trait_items: map_trait_items,
                         impl_span: existing_impl_span,
+                        is_impl_self: _,
                     },
             } in trait_impls.iter()
             {
@@ -467,6 +470,7 @@ impl TraitMap {
                 trait_decl_span,
                 unaliased_type_id,
                 impl_type_parameters,
+                is_impl_self.clone(),
                 trait_items,
                 engines,
             );
@@ -483,6 +487,7 @@ impl TraitMap {
         trait_decl_span: Option<Span>,
         type_id: TypeId,
         impl_type_parameters: Vec<TypeId>,
+        is_impl_self: IsImplSelf,
         trait_methods: TraitItems,
         engines: &Engines,
     ) {
@@ -495,6 +500,7 @@ impl TraitMap {
         let value = TraitValue {
             trait_items: trait_methods,
             impl_span,
+            is_impl_self,
         };
         let entry = TraitEntry { key, value };
         let mut trait_impls: TraitImpls = BTreeMap::<TypeRootFilter, Vec<TraitEntry>>::new();
@@ -696,6 +702,7 @@ impl TraitMap {
                          TraitValue {
                              trait_items: map_trait_items,
                              impl_span,
+                             is_impl_self,
                          },
                  }| {
                     if !type_engine.is_type_changeable(engines, &type_info)
@@ -707,6 +714,7 @@ impl TraitMap {
                             map_trait_decl_span.clone(),
                             *type_id,
                             map_impl_type_parameters.clone(),
+                            is_impl_self.clone(),
                             map_trait_items.clone(),
                             engines,
                         );
@@ -717,6 +725,7 @@ impl TraitMap {
                             map_trait_decl_span.clone(),
                             *map_type_id,
                             map_impl_type_parameters.clone(),
+                            is_impl_self.clone(),
                             Self::filter_dummy_methods(
                                 map_trait_items,
                                 *type_id,
