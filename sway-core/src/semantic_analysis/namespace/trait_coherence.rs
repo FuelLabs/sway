@@ -12,7 +12,7 @@ use crate::{
     TypeSubstMap, UnifyCheck,
 };
 
-use super::{Package, TraitMap};
+use super::{IsImplSelf, Package, TraitMap};
 
 // Given an impl of the form `impl<P1..=Pn> Trait<T1..=Tn>` for `T0`, the impl is allowed if:
 //  1. Trait is a local trait
@@ -209,6 +209,10 @@ pub(crate) fn check_impls_for_overlap(
 
     for key in trait_map.trait_impls.keys() {
         for self_entry in trait_map.trait_impls[key].iter() {
+            if self_entry.value.is_impl_self == IsImplSelf::Yes {
+                continue;
+            }
+
             let self_tcs: Vec<(CallPath, TypeId)> = self_entry
                 .key
                 .impl_type_parameters
@@ -230,10 +234,12 @@ pub(crate) fn check_impls_for_overlap(
                 .collect::<Vec<_>>();
 
             other.for_each_impls(engines, self_entry.key.type_id, true, |other_entry| {
-                if self_entry.key.name.eq(
-                    &*other_entry.key.name,
-                    &PartialEqWithEnginesContext::new(engines),
-                ) && self_entry.value.impl_span != other_entry.value.impl_span
+                if other_entry.value.is_impl_self == IsImplSelf::No
+                    && self_entry.key.name.eq(
+                        &*other_entry.key.name,
+                        &PartialEqWithEnginesContext::new(engines),
+                    )
+                    && self_entry.value.impl_span != other_entry.value.impl_span
                     && (unify_check.check(self_entry.key.type_id, other_entry.key.type_id)
                         || unify_check.check(other_entry.key.type_id, self_entry.key.type_id))
                 {
