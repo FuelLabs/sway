@@ -10,7 +10,7 @@ use crate::{
     },
     asm_lang::{
         virtual_register::{self, *},
-        Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+        JumpType, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
         VirtualOp,
     },
     decl_engine::DeclRef,
@@ -191,7 +191,10 @@ impl FuelAsmBuilder<'_, '_> {
         // Jump to function and insert return label.
         let (fn_label, _) = self.func_to_labels(function);
         self.cur_bytecode.push(Op {
-            opcode: Either::Right(OrganizationalOp::Call(fn_label)),
+            opcode: Either::Right(OrganizationalOp::Jump {
+                to: fn_label,
+                type_: JumpType::Call,
+            }),
             comment: format!("[call]: call {}", function.get_name(self.context)),
             owning_span: None,
         });

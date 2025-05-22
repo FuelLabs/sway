@@ -22,6 +22,7 @@ use ::ops::*;
 use ::primitive_conversions::u16::*;
 use ::raw_ptr::*;
 use ::codec::*;
+use ::debug::*;
 
 // GTF Opcode const selectors
 //

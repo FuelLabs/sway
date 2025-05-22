@@ -13,7 +13,7 @@ pub struct Package {
     // The contents of the package being compiled.
     root_module: Module,
     // Program id for the package.
-    program_id: ProgramId,
+    pub program_id: ProgramId,
     // True if the current package is a contract, false otherwise.
     is_contract_package: bool,
     // The external dependencies of the current package. Note that an external package is

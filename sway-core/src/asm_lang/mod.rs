@@ -16,7 +16,7 @@ pub(crate) use virtual_register::*;
 
 use crate::{
     asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool},
-    asm_lang::allocated_ops::{AllocatedOpcode, AllocatedRegister},
+    asm_lang::allocated_ops::{AllocatedInstruction, AllocatedRegister},
     language::AsmRegister,
     Ident,
 };
@@ -96,7 +96,7 @@ pub(crate) struct Op {
 
 #[derive(Clone, Debug)]
 pub(crate) struct AllocatedAbstractOp {
-    pub(crate) opcode: Either<AllocatedOpcode, ControlFlowOp<AllocatedRegister>>,
+    pub(crate) opcode: Either<AllocatedInstruction, ControlFlowOp<AllocatedRegister>>,
     /// A descriptive comment for ASM readability.
     ///
     /// For writing guidelines, see [Op::comment].
@@ -106,7 +106,7 @@ pub(crate) struct AllocatedAbstractOp {
 
 #[derive(Clone, Debug)]
 pub(crate) struct RealizedOp {
-    pub(crate) opcode: AllocatedOpcode,
+    pub(crate) opcode: AllocatedInstruction,
     /// A descriptive comment for ASM readability.
     ///
     /// For writing guidelines, see [Op::comment].
@@ -247,7 +247,10 @@ impl Op {
 
     pub(crate) fn jump_to_label(label: Label) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Jump(label)),
+            opcode: Either::Right(OrganizationalOp::Jump {
+                to: label,
+                type_: JumpType::Unconditional,
+            }),
             comment: String::new(),
             owning_span: None,
         }
@@ -255,7 +258,10 @@ impl Op {
 
     pub(crate) fn jump_to_label_comment(label: Label, comment: impl Into<String>) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Jump(label)),
+            opcode: Either::Right(OrganizationalOp::Jump {
+                to: label,
+                type_: JumpType::Unconditional,
+            }),
             comment: comment.into(),
             owning_span: None,
         }
@@ -264,7 +270,10 @@ impl Op {
     /// Jumps to [Label] `label` if the given [VirtualRegister] `reg0` is not equal to zero.
     pub(crate) fn jump_if_not_zero(reg0: VirtualRegister, label: Label) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::JumpIfNotZero(reg0, label)),
+            opcode: Either::Right(OrganizationalOp::Jump {
+                to: label,
+                type_: JumpType::NotZero(reg0),
+            }),
             comment: String::new(),
             owning_span: None,
         }
@@ -277,7 +286,10 @@ impl Op {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::JumpIfNotZero(reg0, label)),
+            opcode: Either::Right(OrganizationalOp::Jump {
+                to: label,
+                type_: JumpType::NotZero(reg0),
+            }),
             comment: comment.into(),
             owning_span: None,
         }
@@ -733,6 +745,13 @@ impl Op {
         }
     }
 
+    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut VirtualRegister> {
+        match &mut self.opcode {
+            Either::Left(virt_op) => virt_op.use_registers_mut(),
+            Either::Right(org_op) => org_op.use_registers_mut(),
+        }
+    }
+
     pub(crate) fn def_registers(&self) -> BTreeSet<&VirtualRegister> {
         match &self.opcode {
             Either::Left(virt_op) => virt_op.def_registers(),
@@ -776,7 +795,7 @@ impl Op {
     pub(crate) fn allocate_registers(
         &self,
         pool: &RegisterPool,
-    ) -> Either<AllocatedOpcode, ControlFlowOp<AllocatedRegister>> {
+    ) -> Either<AllocatedInstruction, ControlFlowOp<AllocatedRegister>> {
         match &self.opcode {
             Either::Left(virt_op) => Either::Left(virt_op.allocate_registers(pool)),
             Either::Right(org_op) => Either::Right(org_op.allocate_registers(pool)),
@@ -1270,6 +1289,16 @@ impl fmt::Display for AllocatedAbstractOp {
     }
 }
 
+#[derive(Debug, Clone)]
+pub(crate) enum JumpType<Reg> {
+    /// A simple unconditional jump
+    Unconditional,
+    /// A jump conditional on the register not being zero
+    NotZero(Reg),
+    /// Unconditional jump but semantically a call
+    Call,
+}
+
 // Convenience opcodes for the compiler -- will be optimized out or removed
 // these do not reflect actual ops in the VM and will be compiled to bytecode
 #[derive(Debug, Clone)]
@@ -1279,19 +1308,18 @@ pub(crate) enum ControlFlowOp<Reg> {
     // Just a comment that will be inserted into the asm without an op
     Comment,
     // Jumps to a label
-    Jump(Label),
-    // Jumps to a label if the register is not equal to zero
-    JumpIfNotZero(Reg, Label),
-    // Jumps to a label, similarly to Jump, though semantically expecting to return.
-    Call(Label),
+    Jump {
+        /// Target label
+        to: Label,
+        /// Jump type
+        type_: JumpType<Reg>,
+    },
     // Save a return label address in a register.
     SaveRetAddr(Reg, Label),
     // Placeholder for the offset into the configurables section.
     ConfigurablesOffsetPlaceholder,
     // placeholder for the DataSection offset
     DataSectionOffsetPlaceholder,
-    // Placeholder for loading an address from the data section.
-    LoadLabel(Reg, Label),
     // Save all currently live general purpose registers, using a label as a handle.
     PushAll(Label),
     // Restore all previously saved general purpose registers.
@@ -1308,16 +1336,17 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
             "{}",
             match self {
                 Label(lab) => format!("{lab}"),
-                Jump(lab) => format!("ji  {lab}"),
+                Jump { to, type_, .. } => match type_ {
+                    JumpType::Unconditional => format!("ji  {to}"),
+                    JumpType::NotZero(cond) => format!("jnzi {cond} {to}"),
+                    JumpType::Call => format!("fncall {to}"),
+                },
                 Comment => "".into(),
-                JumpIfNotZero(r1, lab) => format!("jnzi {r1} {lab}"),
-                Call(lab) => format!("fncall {lab}"),
                 SaveRetAddr(r1, lab) => format!("mova {r1} {lab}"),
                 DataSectionOffsetPlaceholder =>
                     "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
                 ConfigurablesOffsetPlaceholder =>
                     "CONFIGURABLES_OFFSET[0..32]\nCONFIGURABLES_OFFSET[32..64]".into(),
-                LoadLabel(r1, lab) => format!("lwlab {r1} {lab}"),
                 PushAll(lab) => format!("pusha {lab}"),
                 PopAll(lab) => format!("popa {lab}"),
             }
@@ -1331,14 +1360,18 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         (match self {
             Label(_)
             | Comment
-            | Jump(_)
-            | Call(_)
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
 
-            JumpIfNotZero(r1, _) | SaveRetAddr(r1, _) | LoadLabel(r1, _) => vec![r1],
+            SaveRetAddr(r1, _) => vec![r1],
+
+            Jump { type_, .. } => match type_ {
+                JumpType::Unconditional => vec![],
+                JumpType::NotZero(r1) => vec![r1],
+                JumpType::Call => vec![],
+            },
         })
         .into_iter()
         .collect()
@@ -1349,16 +1382,37 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         (match self {
             Label(_)
             | Comment
-            | Jump(_)
-            | Call(_)
             | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
-            | LoadLabel(..)
             | PushAll(_)
             | PopAll(_) => vec![],
 
-            JumpIfNotZero(r1, _) => vec![r1],
+            Jump { type_, .. } => match type_ {
+                JumpType::Unconditional => vec![],
+                JumpType::NotZero(r1) => vec![r1],
+                JumpType::Call => vec![],
+            },
+        })
+        .into_iter()
+        .collect()
+    }
+
+    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut Reg> {
+        use ControlFlowOp::*;
+        (match self {
+            Label(_)
+            | Comment
+            | SaveRetAddr(..)
+            | DataSectionOffsetPlaceholder
+            | ConfigurablesOffsetPlaceholder
+            | PushAll(_)
+            | PopAll(_) => vec![],
+            Jump { type_, .. } => match type_ {
+                JumpType::Unconditional => vec![],
+                JumpType::NotZero(r1) => vec![r1],
+                JumpType::Call => vec![],
+            },
         })
         .into_iter()
         .collect()
@@ -1367,13 +1421,11 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
     pub(crate) fn def_registers(&self) -> BTreeSet<&Reg> {
         use ControlFlowOp::*;
         (match self {
-            SaveRetAddr(reg, _) | LoadLabel(reg, _) => vec![reg],
+            SaveRetAddr(reg, _) => vec![reg],
 
             Label(_)
             | Comment
-            | Jump(_)
-            | JumpIfNotZero(..)
-            | Call(_)
+            | Jump { .. }
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
@@ -1394,16 +1446,20 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         match self {
             Comment
             | Label(_)
-            | Jump(_)
-            | Call(_)
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => self.clone(),
 
-            JumpIfNotZero(r1, label) => Self::JumpIfNotZero(update_reg(r1), *label),
+            Jump { to, type_ } => match type_ {
+                JumpType::NotZero(r1) => Self::Jump {
+                    to: *to,
+                    type_: JumpType::NotZero(update_reg(r1)),
+                },
+                _ => self.clone(),
+            },
+
             SaveRetAddr(r1, label) => Self::SaveRetAddr(update_reg(r1), *label),
-            LoadLabel(r1, label) => Self::LoadLabel(update_reg(r1), *label),
         }
     }
 
@@ -1417,24 +1473,35 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
 
         let mut next_ops = Vec::new();
 
-        if index + 1 < ops.len() && !matches!(self, Jump(_)) {
-            next_ops.push(index + 1);
-        };
-
         match self {
             Label(_)
             | Comment
-            | Call(_)
             | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
-            | LoadLabel(..)
             | PushAll(_)
-            | PopAll(_) => (),
-
-            Jump(jump_label) | JumpIfNotZero(_, jump_label) => {
-                next_ops.push(label_to_index[jump_label]);
+            | PopAll(_) => {
+                if index + 1 < ops.len() {
+                    next_ops.push(index + 1);
+                }
             }
+
+            Jump { to, type_, .. } => match type_ {
+                JumpType::Unconditional => {
+                    next_ops.push(label_to_index[to]);
+                }
+                JumpType::NotZero(_) => {
+                    next_ops.push(label_to_index[to]);
+                    if index + 1 < ops.len() {
+                        next_ops.push(index + 1);
+                    }
+                }
+                JumpType::Call => {
+                    if index + 1 < ops.len() {
+                        next_ops.push(index + 1);
+                    }
+                }
+            },
         };
 
         next_ops
@@ -1481,16 +1548,20 @@ impl ControlFlowOp<VirtualRegister> {
         match self {
             Label(label) => Label(*label),
             Comment => Comment,
-            Jump(label) => Jump(*label),
-            Call(label) => Call(*label),
+            Jump { to, type_ } => Jump {
+                to: *to,
+                type_: match type_ {
+                    JumpType::NotZero(r1) => JumpType::NotZero(map_reg(r1)),
+                    JumpType::Unconditional => JumpType::Unconditional,
+                    JumpType::Call => JumpType::Call,
+                },
+            },
             DataSectionOffsetPlaceholder => DataSectionOffsetPlaceholder,
             ConfigurablesOffsetPlaceholder => ConfigurablesOffsetPlaceholder,
             PushAll(label) => PushAll(*label),
             PopAll(label) => PopAll(*label),
 
-            JumpIfNotZero(r1, label) => JumpIfNotZero(map_reg(r1), *label),
             SaveRetAddr(r1, label) => SaveRetAddr(map_reg(r1), *label),
-            LoadLabel(r1, label) => LoadLabel(map_reg(r1), *label),
         }
     }
 }
