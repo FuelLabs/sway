@@ -1,0 +1,80 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --release
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
+   Compiling library std (sway-lib-std)
+   Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:10:15
+   |
+ 8 | }
+ 9 | 
+10 | impl<T, const N: u64> A for [T; N] {
+   |               ^ This needs "const_generics" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6860.
+11 |     fn my_len(self) -> u64 {
+12 |         N
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:16:19
+   |
+14 | }
+15 | 
+16 | struct S<T, const N: u64> {
+   |                   ^ This needs "const_generics" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6860.
+17 | }
+18 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:19:15
+   |
+17 | }
+18 | 
+19 | impl<T, const N: u64> S<T, N> {
+   |               ^ This needs "const_generics" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6860.
+20 |     pub fn len_xxx(self) -> u64 {
+21 |         N
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:26:19
+   |
+24 | 
+25 | #[inline(never)]
+26 | fn return_n<const NNN: u64>() -> u64 {
+   |                   ^^^ This needs "const_generics" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6860.
+27 |     NNN
+28 | }
+   |
+____
+
+  Aborting due to 4 errors.
+error: Failed to compile const_generics
+
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --experimental const_generics --test-threads 1 --logs --revert-codes
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
+   Compiling library std (sway-lib-std)
+   Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
+    Finished debug [unoptimized + fuel] target(s) [2.856 KB] in ???
+     Running 1 test, filtered 0 tests
+
+tested -- const_generics
+
+      test run_main ... ok (???, 4184 gas)
+[src/main.sw:31:13] a = [1, 2]
+[src/main.sw:40:13] s.len_xxx() = 3
+[src/main.sw:42:13] return_n::<3>() = 3
+[src/main.sw:43:13] return_n::<5>() = 5
+
+test result: OK. 1 passed; 0 failed; finished in ???
+
+    Finished in ???
