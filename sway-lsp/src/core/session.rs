@@ -330,9 +330,16 @@ pub fn traverse(
             continue;
         };
 
+        // Ensure that the typed program result is Ok before proceeding.
+        // If it's an Err, it indicates a failure in generating the typed AST,
+        // and we should return an error rather than panicking on unwrap.
+        if typed.is_err() {
+            return Err(LanguageServerError::FailedToParse);
+        }
+
         let program_id = typed
             .as_ref()
-            .unwrap()
+            .unwrap() // safe to unwrap because we checked for Err above
             .namespace
             .current_package_ref()
             .program_id;
