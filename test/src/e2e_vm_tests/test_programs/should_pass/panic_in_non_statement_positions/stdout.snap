@@ -286,42 +286,42 @@ warning
 ____
 
   Compiled library "panic_in_non_statement_positions" with 23 warnings.
-    Finished debug [unoptimized + fuel] target(s) [2.272 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [2.344 KB] in ???
      Running 16 tests, filtered 0 tests
 
 tested -- panic_in_non_statement_positions
 
-      test in_init ... ok (???, 332 gas)
+      test in_init ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_array ... ok (???, 332 gas)
+      test in_array ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_length_1_array ... ok (???, 332 gas)
+      test in_length_1_array ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_length_2_array_first ... ok (???, 332 gas)
+      test in_length_2_array_first ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_length_2_array_second ... ok (???, 332 gas)
+      test in_length_2_array_second ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_tuple ... ok (???, 332 gas)
+      test in_tuple ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_struct ... ok (???, 332 gas)
+      test in_struct ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_parentheses ... ok (???, 332 gas)
+      test in_parentheses ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_if_condition ... ok (???, 332 gas)
+      test in_if_condition ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_while_condition ... ok (???, 332 gas)
+      test in_while_condition ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_enum ... ok (???, 332 gas)
+      test in_enum ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_enum_multivariant ... ok (???, 332 gas)
+      test in_enum_multivariant ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_fun_arg ... ok (???, 332 gas)
+      test in_fun_arg ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_lazy_and ... ok (???, 332 gas)
+      test in_lazy_and ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_lazy_or ... ok (???, 332 gas)
+      test in_lazy_or ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
-      test in_match_scrutinee ... ok (???, 332 gas)
+      test in_match_scrutinee ... ok (???, 360 gas)
 Decoded log value: E(42), log rb: 5087777005172090899
 
 test result: OK. 16 passed; 0 failed; finished in ???
