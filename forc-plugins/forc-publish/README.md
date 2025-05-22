@@ -4,7 +4,7 @@ Forc subcommand for uploading a package to the registry.
 
 ## Authentication
 
-Requires either the `--token` argument to be passed, or a `~/.forc/credentials.toml` file like this:
+Requires either the `--token` argument to be passed, the environment variable `FORC_PUB_TOKEN`, or a `~/.forc/credentials.toml` file like this:
 
 ```toml
 [registry]

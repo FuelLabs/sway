@@ -18,7 +18,7 @@ use super::{
 
 use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{Ident, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 use std::{cell::Cell, collections::HashMap, sync::Arc};
 
@@ -159,7 +159,16 @@ pub(super) fn compile_contract(
     )
     .map_err(|err| vec![err])?;
 
-    if let Some(entry_function) = entry_function {
+    // In the case of the new encoding, we need to compile only the entry function.
+    // The compilation of the entry function will recursively compile all the
+    // ABI methods and the fallback function, if specified.
+    if context.experimental.new_encoding {
+        let Some(entry_function) = entry_function else {
+            return Err(vec![CompileError::Internal(
+                "Entry function not specified when compiling contract with new encoding.",
+                Span::dummy(),
+            )]);
+        };
         compile_entry_function(
             engines,
             context,
@@ -171,29 +180,28 @@ pub(super) fn compile_contract(
             None,
             cache,
         )?;
-    }
+    } else {
+        // In the case of the encoding v0, we need to compile individual ABI entries
+        // and the fallback function.
+        for decl in abi_entries {
+            compile_encoding_v0_abi_method(
+                context,
+                &mut md_mgr,
+                module,
+                decl,
+                logged_types_map,
+                messages_types_map,
+                engines,
+                cache,
+            )?;
+        }
 
-    for decl in abi_entries {
-        compile_abi_method(
-            context,
-            &mut md_mgr,
-            module,
-            decl,
-            logged_types_map,
-            messages_types_map,
-            engines,
-            cache,
-        )?;
-    }
-
-    if !context.experimental.new_encoding {
-        // Fallback function needs to be compiled
         for decl in declarations {
             if let ty::TyDecl::FunctionDecl(decl) = decl {
                 let decl_id = decl.decl_id;
                 let decl = engines.de().get(&decl_id);
                 if decl.is_fallback() {
-                    compile_abi_method(
+                    compile_encoding_v0_abi_method(
                         context,
                         &mut md_mgr,
                         module,
@@ -708,7 +716,7 @@ fn compile_fn(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn compile_abi_method(
+fn compile_encoding_v0_abi_method(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -718,33 +726,32 @@ fn compile_abi_method(
     engines: &Engines,
     cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
+    assert!(
+        !context.experimental.new_encoding,
+        "`new_encoding` was true while calling `compile_encoding_v0_abi_method`"
+    );
+
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let handler = Handler::default();
     let ast_fn_decl = engines.de().get_function(ast_fn_decl);
 
-    // method selector is only used for encoding v0
-    let selector = if context.experimental.new_encoding {
-        None
-    } else {
-        let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
-        let (errors, _warnings) = handler.consume();
-        let selector = match get_selector_result.ok() {
-            Some(selector) => selector,
-            None => {
-                return if !errors.is_empty() {
-                    Err(vec![errors[0].clone()])
-                } else {
-                    Err(vec![CompileError::InternalOwned(
-                        format!(
-                            "Cannot generate selector for ABI method: {}",
-                            ast_fn_decl.name.as_str()
-                        ),
-                        ast_fn_decl.name.span(),
-                    )])
-                };
-            }
-        };
-        Some(selector)
+    let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
+    let (errors, _warnings) = handler.consume();
+    let selector = match get_selector_result.ok() {
+        Some(selector) => selector,
+        None => {
+            return if !errors.is_empty() {
+                Err(vec![errors[0].clone()])
+            } else {
+                Err(vec![CompileError::InternalOwned(
+                    format!(
+                        "Cannot generate selector for ABI method: {}",
+                        ast_fn_decl.name.as_str()
+                    ),
+                    ast_fn_decl.name.span(),
+                )])
+            };
+        }
     };
 
     compile_fn(
@@ -758,7 +765,7 @@ fn compile_abi_method(
         !context.experimental.new_encoding,
         // ABI methods are always original entries
         true,
-        selector,
+        Some(selector),
         logged_types_map,
         messages_types_map,
         None,

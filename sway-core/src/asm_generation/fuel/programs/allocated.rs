@@ -32,8 +32,9 @@ impl AllocatedProgram {
                 .collect(),
         };
 
+        let far_jump_indices = abstract_ops.collect_far_jumps();
         let (realized_ops, mut label_offsets) =
-            abstract_ops.realize_labels(&mut self.data_section)?;
+            abstract_ops.realize_labels(&mut self.data_section, &far_jump_indices)?;
         let ops = realized_ops.allocated_ops();
 
         // Collect the entry point offsets.

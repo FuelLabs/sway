@@ -1,3 +1,4 @@
+pub mod add;
 pub mod addr2line;
 pub mod build;
 pub mod check;
@@ -9,6 +10,7 @@ pub mod new;
 pub mod parse_bytecode;
 pub mod plugins;
 pub mod predicate_root;
+pub mod remove;
 pub mod template;
 pub mod test;
 pub mod update;

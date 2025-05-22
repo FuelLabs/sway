@@ -4,9 +4,14 @@
 
 use crate::{GotoDefinition, HoverDocumentation, Rename};
 use assert_json_diff::assert_json_eq;
+use forc_pkg::manifest::GenericManifestFile;
+use forc_pkg::manifest::ManifestFile;
 use regex::Regex;
 use serde_json::json;
-use std::{borrow::Cow, path::Path};
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+};
 use sway_lsp::{
     handlers::request,
     lsp_ext::{ShowAstParams, VisualizeParams},
@@ -35,16 +40,62 @@ pub(crate) async fn call_request(
     service.ready().await?.call(req).await
 }
 
-pub(crate) async fn initialize_request(service: &mut LspService<ServerState>) -> Request {
-    let params = json!({ "capabilities": sway_lsp::server_capabilities() });
-    let initialize = build_request_with_id("initialize", params, 1);
-    let response = call_request(service, initialize.clone()).await;
-    let expected = Response::from_ok(
-        1.into(),
-        json!({ "capabilities": sway_lsp::server_capabilities() }),
+pub(crate) fn client_capabilities() -> ClientCapabilities {
+    ClientCapabilities {
+        workspace: Some(WorkspaceClientCapabilities {
+            workspace_folders: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }
+}
+
+pub(crate) async fn initialize_request(
+    service: &mut LspService<ServerState>,
+    entry_point: &Path,
+) -> Request {
+    let search_dir = entry_point.parent().unwrap_or_else(|| Path::new(""));
+    let project_root_path_for_uri: PathBuf = match ManifestFile::from_dir(search_dir) {
+        Ok(manifest_file) => {
+            // Found a Forc.toml, use its directory
+            manifest_file.dir().to_path_buf()
+        }
+        Err(_) => {
+            // Forc.toml not found, assume search_dir is the intended project root for this test fixture.
+            // This is common for minimal test cases that might only have a src/main.sw
+            search_dir.to_path_buf()
+        }
+    };
+
+    let root_uri = Url::from_directory_path(&project_root_path_for_uri).unwrap_or_else(|_| {
+        panic!(
+            "Failed to create directory URL from project root: {:?}",
+            project_root_path_for_uri
+        )
+    });
+
+    // Construct the InitializeParams using the defined client_capabilities
+    let params = json!({
+        "processId": Option::<u32>::None,
+        "rootUri": Some(root_uri),
+        "capabilities": client_capabilities(),
+        "initializationOptions": Option::<serde_json::Value>::None,
+    });
+
+    let initialize_request = build_request_with_id("initialize", params, 1); // Renamed for clarity
+    let response = call_request(service, initialize_request.clone()).await;
+
+    let expected_initialize_result = json!({ "capabilities": sway_lsp::server_capabilities() });
+    let expected_response = Response::from_ok(1.into(), expected_initialize_result);
+
+    assert!(
+        response.is_ok(),
+        "Initialize request failed: {:?}",
+        response.err()
     );
-    assert_json_eq!(expected, response.ok().unwrap());
-    initialize
+    assert_json_eq!(expected_response, response.ok().unwrap());
+
+    initialize_request
 }
 
 pub(crate) async fn initialized_notification(service: &mut LspService<ServerState>) {
@@ -198,7 +249,7 @@ pub(crate) async fn show_ast_request(
         save_path: save_path.clone(),
     };
 
-    let response = request::handle_show_ast(server, params).await;
+    let response = request::handle_show_ast(server, &params);
     let expected = TextDocumentIdentifier {
         uri: Url::parse(&format!("{save_path}/{ast_kind}.rs")).unwrap(),
     };
@@ -211,7 +262,7 @@ pub(crate) async fn visualize_request(server: &ServerState, uri: &Url, graph_kin
         graph_kind: graph_kind.to_string(),
     };
 
-    let response = request::handle_visualize(server, params).unwrap().unwrap();
+    let response = request::handle_visualize(server, &params).unwrap().unwrap();
     let re = Regex::new(r#"digraph \{
     0 \[ label = "std" shape = box URL = "vscode://file/[[:ascii:]]+/sway-lib-std/Forc.toml"\]
     1 \[ label = "struct_field_access" shape = box URL = "vscode://file/[[:ascii:]]+/struct_field_access/Forc.toml"\]
@@ -245,7 +296,7 @@ pub(crate) async fn metrics_request(
     res
 }
 
-pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn get_semantic_tokens_full(server: &ServerState, uri: &Url) -> SemanticTokens {
     let params = SemanticTokensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
@@ -255,76 +306,91 @@ pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
         .await
         .unwrap();
     if let Some(SemanticTokensResult::Tokens(tokens)) = response {
-        assert!(!tokens.data.is_empty());
+        tokens
+    } else {
+        panic!("Expected semantic tokens response");
     }
 }
 
-pub(crate) async fn document_symbols_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
+    let tokens = get_semantic_tokens_full(server, uri).await;
+    assert!(!tokens.data.is_empty());
+}
+
+pub(crate) async fn get_nested_document_symbols(
+    server: &ServerState,
+    uri: &Url,
+) -> Vec<DocumentSymbol> {
     let params = DocumentSymbolParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_document_symbol(server, params)
-        .await
-        .unwrap();
-
-    if let Some(DocumentSymbolResponse::Nested(symbols)) = response {
-        // Check for enum with its variants
-        let enum_symbol = symbols
-            .iter()
-            .find(|s| s.name == "NumberOrString")
-            .expect("Should find NumberOrString enum");
-        assert_eq!(enum_symbol.kind, SymbolKind::ENUM);
-        let variants = enum_symbol
-            .children
-            .as_ref()
-            .expect("Enum should have variants");
-        assert_eq!(variants.len(), 2);
-        assert!(variants.iter().any(|v| v.name == "Number"));
-        assert!(variants.iter().any(|v| v.name == "String"));
-
-        // Check for struct with its fields
-        let struct_symbol = symbols
-            .iter()
-            .find(|s| s.name == "Data")
-            .expect("Should find Data struct");
-        assert_eq!(struct_symbol.kind, SymbolKind::STRUCT);
-        let fields = struct_symbol
-            .children
-            .as_ref()
-            .expect("Struct should have fields");
-        assert_eq!(fields.len(), 2);
-        assert!(fields
-            .iter()
-            .any(|f| f.name == "value" && f.detail.as_deref() == Some("NumberOrString")));
-        assert!(fields
-            .iter()
-            .any(|f| f.name == "address" && f.detail.as_deref() == Some("u64")));
-
-        // Check for impl with nested function and variable
-        let impl_symbol = symbols
-            .iter()
-            .find(|s| s.name == "impl FooABI for Contract")
-            .expect("Should find impl block");
-        let impl_fns = impl_symbol
-            .children
-            .as_ref()
-            .expect("Impl should have functions");
-        let main_fn = impl_fns
-            .iter()
-            .find(|f| f.name == "main")
-            .expect("Should find main function");
-        let vars = main_fn
-            .children
-            .as_ref()
-            .expect("Function should have variables");
-        assert!(vars
-            .iter()
-            .any(|v| v.name == "_data" && v.detail.as_deref() == Some("Data")));
+    if let Some(DocumentSymbolResponse::Nested(symbols)) =
+        request::handle_document_symbol(server, params)
+            .await
+            .unwrap()
+    {
+        symbols
     } else {
         panic!("Expected nested document symbols response");
     }
+}
+
+pub(crate) async fn document_symbols_request(server: &ServerState, uri: &Url) {
+    let symbols = get_nested_document_symbols(server, uri).await;
+    // Check for enum with its variants
+    let enum_symbol = symbols
+        .iter()
+        .find(|s| s.name == "NumberOrString")
+        .expect("Should find NumberOrString enum");
+    assert_eq!(enum_symbol.kind, SymbolKind::ENUM);
+    let variants = enum_symbol
+        .children
+        .as_ref()
+        .expect("Enum should have variants");
+    assert_eq!(variants.len(), 2);
+    assert!(variants.iter().any(|v| v.name == "Number"));
+    assert!(variants.iter().any(|v| v.name == "String"));
+
+    // Check for struct with its fields
+    let struct_symbol = symbols
+        .iter()
+        .find(|s| s.name == "Data")
+        .expect("Should find Data struct");
+    assert_eq!(struct_symbol.kind, SymbolKind::STRUCT);
+    let fields = struct_symbol
+        .children
+        .as_ref()
+        .expect("Struct should have fields");
+    assert_eq!(fields.len(), 2);
+    assert!(fields
+        .iter()
+        .any(|f| f.name == "value" && f.detail.as_deref() == Some("NumberOrString")));
+    assert!(fields
+        .iter()
+        .any(|f| f.name == "address" && f.detail.as_deref() == Some("u64")));
+
+    // Check for impl with nested function and variable
+    let impl_symbol = symbols
+        .iter()
+        .find(|s| s.name == "impl FooABI for Contract")
+        .expect("Should find impl block");
+    let impl_fns = impl_symbol
+        .children
+        .as_ref()
+        .expect("Impl should have functions");
+    let main_fn = impl_fns
+        .iter()
+        .find(|f| f.name == "main")
+        .expect("Should find main function");
+    let vars = main_fn
+        .children
+        .as_ref()
+        .expect("Function should have variables");
+    assert!(vars
+        .iter()
+        .any(|v| v.name == "_data" && v.detail.as_deref() == Some("Data")));
 }
 
 pub(crate) async fn format_request(server: &ServerState, uri: &Url) {
@@ -584,9 +650,7 @@ pub(crate) async fn definition_check<'a>(server: &ServerState, go_to: &'a GotoDe
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let res = request::handle_goto_definition(server, params.clone())
-        .await
-        .unwrap();
+    let res = request::handle_goto_definition(server, params.clone()).unwrap();
     let unwrapped_response = res.as_ref().unwrap_or_else(|| {
         panic!(
             "Failed to deserialize response: {:?} input: {:#?}",
@@ -649,7 +713,7 @@ pub(crate) async fn hover_request<'a>(
         },
         work_done_progress_params: Default::default(),
     };
-    let res = request::handle_hover(server, params.clone()).await.unwrap();
+    let res = request::handle_hover(server, params.clone()).unwrap();
     let unwrapped_response = res.as_ref().unwrap_or_else(|| {
         panic!(
             "Failed to deserialize hover: {:?} input: {:#?}",
@@ -684,9 +748,7 @@ pub(crate) async fn prepare_rename_request<'a>(
             character: rename.req_char,
         },
     };
-    request::handle_prepare_rename(server, params)
-        .await
-        .unwrap()
+    request::handle_prepare_rename(server, params).unwrap()
 }
 
 pub(crate) async fn rename_request<'a>(
@@ -706,7 +768,7 @@ pub(crate) async fn rename_request<'a>(
         new_name: rename.new_name.to_string(),
         work_done_progress_params: Default::default(),
     };
-    let workspace_edit = request::handle_rename(server, params).await.unwrap();
+    let workspace_edit = request::handle_rename(server, params).unwrap();
     workspace_edit.unwrap()
 }
 
@@ -730,25 +792,48 @@ pub fn create_did_change_params(
     }
 }
 
-pub(crate) async fn inlay_hints_request(server: &ServerState, uri: &Url) -> Option<Vec<InlayHint>> {
+#[allow(dead_code)]
+pub(crate) fn range_from_start_and_end_line(start_line: u32, end_line: u32) -> Range {
+    Range {
+        start: Position {
+            line: start_line,
+            character: 0,
+        },
+        end: Position {
+            line: end_line,
+            character: 0,
+        },
+    }
+}
+
+pub(crate) async fn get_inlay_hints_for_range(
+    server: &ServerState,
+    uri: &Url,
+    range: Range,
+) -> Vec<InlayHint> {
     let params = InlayHintParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
-        range: Range {
-            start: Position {
-                line: 25,
-                character: 0,
-            },
-            end: Position {
-                line: 26,
-                character: 1,
-            },
-        },
+        range,
         work_done_progress_params: Default::default(),
     };
-    let res = request::handle_inlay_hints(server, params)
+    request::handle_inlay_hints(server, params)
         .await
         .unwrap()
-        .unwrap();
+        .unwrap()
+}
+
+pub(crate) async fn inlay_hints_request(server: &ServerState, uri: &Url) -> Option<Vec<InlayHint>> {
+    let range = Range {
+        start: Position {
+            line: 25,
+            character: 0,
+        },
+        end: Position {
+            line: 26,
+            character: 1,
+        },
+    };
+    let res = get_inlay_hints_for_range(server, uri, range).await;
     let expected = vec![
         InlayHint {
             position: Position {
