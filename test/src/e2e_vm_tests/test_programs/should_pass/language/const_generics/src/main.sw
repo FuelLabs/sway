@@ -28,7 +28,7 @@ fn return_n<const NNN: u64>() -> u64 {
 }
 
 fn main(a: [u64; 2]) {
-    __log(a);
+    let _ = __dbg(a);
 
     let a = [C {}].my_len();
     assert(a == 1);
@@ -37,8 +37,13 @@ fn main(a: [u64; 2]) {
     assert(b == 2);
 
     let s: S<u64, 3> = S { };
-    __log(s.len_xxx());
+    let _ = __dbg(s.len_xxx());
 
     let _ = __dbg(return_n::<3>());
     let _ = __dbg(return_n::<5>());
+}
+
+#[test]
+fn run_main() {
+    main([1, 2]);
 }

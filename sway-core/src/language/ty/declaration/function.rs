@@ -713,7 +713,7 @@ impl DebugWithEngines for TyFunctionSig {
                 self.type_parameters
                     .iter()
                     .map(|p| match p {
-                        TyFunctionSigTypeParameter::Type(t) => format!("{}", engines.help_out(t)),
+                        TyFunctionSigTypeParameter::Type(t) => format!("{:?}", engines.help_out(t)),
                         TyFunctionSigTypeParameter::Const(expr) =>
                             format!("{:?}", engines.help_out(expr)),
                     })
