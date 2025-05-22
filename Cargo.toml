@@ -238,7 +238,7 @@ thiserror = "1.0"
 tikv-jemallocator = "0.6"
 tokio = "1.12"
 toml = "0.8"
-toml_edit = "0.22"
+toml_edit = { version = "0.22", features = ["serde"] }
 tower = { version = "0.5", default-features = false }
 tower-lsp = "0.20"
 tracing = "0.1"

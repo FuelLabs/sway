@@ -3050,6 +3050,7 @@ dependencies = [
  "tar",
  "tempfile",
  "toml 0.8.20",
+ "toml_edit",
  "tracing",
  "url",
  "vec1",
