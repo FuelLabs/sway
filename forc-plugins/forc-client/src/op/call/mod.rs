@@ -227,45 +227,66 @@ pub(crate) struct CallData {
 
 /// Processes transaction receipts, logs, and displays transaction information
 pub(crate) fn process_transaction_output(
-    receipts: &[Receipt],
+    tx_status: TxStatus,
     tx_hash: &str,
-    program_abi: &sway_core::asm_generation::ProgramABI,
-    result: Option<String>,
     mode: &cmd::call::ExecutionMode,
     node: &crate::NodeTarget,
     verbosity: u8,
+    output: &mut impl std::io::Write,
+    call_data: Option<CallData>,
 ) -> Result<CallResponse> {
-    // print receipts
-    if verbosity >= 2 {
-        let formatted_receipts = forc_util::tx_utils::format_log_receipts(receipts, true)?;
-        forc_tracing::println_label_green("receipts:", &formatted_receipts);
-    }
+    let total_gas = tx_status.total_gas();
+    let receipts = tx_status.take_receipts();
+    print_receipts_and_trace(
+        total_gas,
+        &receipts,
+        verbosity,
+        call_data.as_ref().map(|cd| &cd.abis),
+        output,
+    )?;
 
-    let logs = receipts
-        .iter()
-        .filter_map(|receipt| match receipt {
-            Receipt::LogData {
-                rb,
-                data: Some(data),
-                ..
-            } => forc_util::tx_utils::decode_log_data(&rb.to_string(), data, program_abi)
-                .ok()
-                .map(|decoded| decoded.value),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
+    if verbosity >= 1 {
+        if let Some(CallData {
+            contract_id, abis, ..
+        }) = call_data.as_ref()
+        {
+            let logs = receipts
+                .iter()
+                .filter_map(|receipt| match receipt {
+                    Receipt::LogData {
+                        rb,
+                        data: Some(data),
+                        ..
+                    } => {
+                        let program_abi = abis
+                            .get(contract_id)
+                            .map(|abi| {
+                                sway_core::asm_generation::ProgramABI::Fuel(abi.program.clone())
+                            })
+                            .unwrap_or(sway_core::asm_generation::ProgramABI::Fuel(
+                                ProgramABI::default(),
+                            ));
+                        forc_util::tx_utils::decode_log_data(&rb.to_string(), data, &program_abi)
+                            .ok()
+                            .map(|decoded| decoded.value)
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
 
-    // display logs if verbosity is set
-    if verbosity >= 1 && !logs.is_empty() {
-        forc_tracing::println_green_bold("logs:");
-        for log in logs.iter() {
-            println!("  {:#}", log);
+            // print logs if there are any
+            if !logs.is_empty() {
+                forc_tracing::println_green_bold("logs:");
+                for log in logs.iter() {
+                    writeln!(output, "  {:#}", log)?;
+                }
+            }
         }
     }
 
     // print tx hash and result
     forc_tracing::println_label_green("tx hash:", tx_hash);
-    if let Some(result) = result.as_ref() {
+    if let Some(CallData { ref result, .. }) = call_data {
         forc_tracing::println_label_green("result:", result);
     }
 
@@ -281,15 +302,15 @@ pub(crate) fn process_transaction_output(
 
     Ok(CallResponse {
         tx_hash: tx_hash.to_string(),
-        result,
+        result: call_data.map(|cd| cd.result),
         receipts: if verbosity >= 2 {
             Some(receipts.to_vec())
         } else {
             None
         },
-        script: None,
-        logs,
+        script_json: None,
     })
+}
 }
 
 #[cfg(test)]
