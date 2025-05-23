@@ -1,3 +1,7 @@
+//! Engine for compiling a function and all of the AST nodes within.
+//!
+//! This is mostly recursively compiling expressions, as Sway is fairly heavily expression based.
+
 use super::{
     convert::*,
     lexical_map::LexicalMap,
@@ -36,30 +40,6 @@ use sway_types::{
 };
 
 use std::collections::HashMap;
-
-/// Engine for compiling a function and all of the AST nodes within.
-///
-/// This is mostly recursively compiling expressions, as Sway is fairly heavily expression based.
-///
-/// The rule here is to use `compile_expression_to_value()` when a value is desired, as opposed to a
-/// pointer. This is most of the time, as we try to be target agnostic and not make assumptions
-/// about which values must be used by reference.
-///
-/// `compile_expression_to_value()` will force the result to be a value, by using a temporary if
-/// necessary.
-///
-/// `compile_expression_to_ptr()` will compile the expression and force it to be a pointer, also by
-/// using a temporary if necessary. This can be slightly dangerous, if the reference is supposed
-/// to be to a particular value but is accidentally made to a temporary value then mutations or
-/// other side-effects might not be applied in the correct context.
-///
-/// `compile_expression()` will compile the expression without forcing anything. If the expression
-/// has a reference type, like getting a struct or an explicit ref arg, it will return a pointer
-/// value, but otherwise will return a value.
-///
-/// So in general the methods in [FnCompiler] will return a pointer if they can and will get it, be
-/// forced, into a value if that is desired. All the temporary values are manipulated with simple
-/// loads and stores, rather than anything more complicated like `mem_copy`s.
 
 /// The result of compiling an expression can be in memory, or in an (SSA) register.
 #[derive(Debug, Clone, Copy)]
