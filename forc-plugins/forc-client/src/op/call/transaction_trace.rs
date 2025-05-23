@@ -321,5 +321,24 @@ pub(crate) fn format_transaction_trace<W: std::io::Write>(
     abis: Option<&HashMap<ContractId, Abi>>,
     writer: &mut W,
 ) -> Result<()> {
+    let trace_tree = Node::try_from_with_abis(receipts, abis)?;
+
+    writeln!(writer, "Traces:")?;
+    write!(writer, "{}", trace_tree)?;
+    writeln!(writer, "")?;
+
+    match trace_tree.receipt {
+        Receipt::ScriptResult { result, .. } => match result {
+            fuel_tx::ScriptExecutionResult::Success => writeln!(
+                writer,
+                "{}",
+                Color::Green.paint("Transaction successfully executed.")
+            )?,
+            _ => writeln!(writer, "{}", Color::Red.paint("Transaction failed."))?,
+        },
+        _ => anyhow::bail!("Transaction trace is not a ScriptResult"),
+    }
+    writeln!(writer, "Gas used: {}", total_gas)?;
+
     Ok(())
 }
