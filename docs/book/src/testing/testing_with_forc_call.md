@@ -196,6 +196,71 @@ forc call <CONTRACT_ID> --abi <PATH> <FUNCTION> --gas-forwarded 1000
 forc call <CONTRACT_ID> --abi <PATH> <FUNCTION> --max-fee 5000
 ```
 
+### Transaction Tracing
+
+When you need to debug contract interactions or understand the execution flow, `forc call` provides detailed transaction traces with verbosity level 3 or higher (`-vvv` or `-v=3`).
+
+```sh
+# Enable transaction tracing
+forc call <CONTRACT_ID> --abi <PATH> <FUNCTION> -vvv
+```
+
+The transaction trace provides a hierarchical view of all contract calls, showing:
+- Gas consumption for each call (`[gas_amount]`)
+- Contract addresses being called
+- Return values and data
+- Emitted logs and events
+- Nested contract calls with proper indentation
+- Overall transaction result and gas usage
+
+#### Example Transaction Trace Output
+
+```bash
+forc call 0x9275a76531bce733cfafdbcb6727ea533ebbdc358d685152169b3c4eaa47b965 \
+  --abi ./demo/demo-caller-abi.json \
+  call_increment_count -vvv
+```
+
+Output:
+```log
+Traces:
+  [Script]
+    ├─ [124116] 0x9275a76531bce733cfafdbcb6727ea533ebbdc358d685152169b3c4eaa47b965
+    │    ├─ [111500] 0xb792b1e233a2c06bccec611711acc3bb61bdcb28f16abdde86d1478ee02f6e42
+    │    │    └─ ← ()
+    │    ├─ emit AsciiString { data: "incremented count" }
+    │    ├─ [86284] 0xb792b1e233a2c06bccec611711acc3bb61bdcb28f16abdde86d1478ee02f6e42
+    │    │    └─ ← 0x0000000000000002
+    │    ├─ emit 2
+    │    ├─ emit AsciiString { data: "done" }
+    │    ├─ [72699] 0xb792b1e233a2c06bccec611711acc3bb61bdcb28f16abdde86d1478ee02f6e42
+    │    │    └─ ← ()
+    │    ├─ [48287] 0xb792b1e233a2c06bccec611711acc3bb61bdcb28f16abdde86d1478ee02f6e42
+    │    │    └─ ← 0x0000000000000003
+    │    └─ ← 0x0000000000000003
+    └─ ← [Return] val: 1
+  [ScriptResult] result: Success, gas_used: 89279
+
+Transaction successfully executed.
+Gas used: 160676
+```
+
+#### Understanding the Trace Format
+
+- `[Script]` - The root transaction script
+- `├─ [gas_amount] 0xcontract_address` - A contract call with gas consumption
+- `│    └─ ← value` - Return value from the contract call
+- `emit data` - Log/event emitted by the contract
+- Indentation shows the call hierarchy (nested calls are indented further)
+- `[ScriptResult]` - Final transaction result with gas used by the script
+- `Gas used: <gas_used>` - Total gas used by the transaction
+
+This tracing feature is particularly useful for:
+- Debugging failed transactions
+- Understanding gas consumption patterns
+- Analyzing complex multi-contract interactions
+- Verifying expected contract behavior
+
 ### Common Use Cases
 
 #### Contract State Queries
