@@ -189,6 +189,37 @@ async fn get_wallet(
     }
 }
 
+pub(crate) struct Abi {
+    program: ProgramABI,
+    unified: UnifiedProgramABI,
+    #[allow(dead_code)]
+    type_lookup: HashMap<usize, UnifiedTypeDeclaration>,
+}
+
+impl FromStr for Abi {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let program: ProgramABI =
+            serde_json::from_str(&s).map_err(|err| format!("failed to parse ABI: {}", err))?;
+
+        let unified = UnifiedProgramABI::from_counterpart(&program)
+            .map_err(|err| format!("conversion to unified ABI format failed: {}", err))?;
+
+        let type_lookup = unified
+            .types
+            .iter()
+            .map(|decl| (decl.type_id, decl.clone()))
+            .collect::<HashMap<_, _>>();
+
+        Ok(Self {
+            program,
+            unified,
+            type_lookup,
+        })
+    }
+}
+
+
 /// Processes transaction receipts, logs, and displays transaction information
 pub(crate) fn process_transaction_output(
     receipts: &[Receipt],
