@@ -1,7 +1,8 @@
 use crate::{
     abi_generation::abi_str::AbiStrContext,
     decl_engine::{
-        parsed_id::ParsedDeclId, DeclEngineInsert as _, DeclMapping, InterfaceItemMap, ItemMap, ParsedDeclEngineGet as _,
+        parsed_id::ParsedDeclId, DeclEngineInsert as _, DeclMapping, InterfaceItemMap, ItemMap,
+        ParsedDeclEngineGet as _,
     },
     engine_threading::*,
     has_changes,
