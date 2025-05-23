@@ -206,7 +206,7 @@ impl FromStr for Abi {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let program: ProgramABI =
-            serde_json::from_str(&s).map_err(|err| format!("failed to parse ABI: {}", err))?;
+            serde_json::from_str(s).map_err(|err| format!("failed to parse ABI: {}", err))?;
 
         let unified = UnifiedProgramABI::from_counterpart(&program)
             .map_err(|err| format!("conversion to unified ABI format failed: {}", err))?;
@@ -326,7 +326,7 @@ pub(crate) fn print_receipts_and_trace(
     writer: &mut impl std::io::Write,
 ) -> Result<()> {
     if verbosity >= 2 {
-        let formatted_receipts = forc_util::tx_utils::format_log_receipts(&receipts, true)
+        let formatted_receipts = forc_util::tx_utils::format_log_receipts(receipts, true)
             .map_err(|e| anyhow!("Failed to format receipts: {}", e))?;
         forc_tracing::println_label_green("receipts:", &formatted_receipts);
         if verbosity >= 3 {
