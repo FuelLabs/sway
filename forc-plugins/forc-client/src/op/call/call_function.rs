@@ -876,7 +876,7 @@ pub mod tests {
             .await
             .unwrap_err()
             .to_string()
-            .contains("PanicInstruction { reason: NotEnoughBalance"));
+            .contains("Failed to process transaction; reason: \"NotEnoughBalance\""));
         assert_eq!(get_contract_balance(id, provider.clone()).await, 1);
 
         // contract call transfer funds to another address
