@@ -206,6 +206,7 @@ forc call <CONTRACT_ID> --abi <PATH> <FUNCTION> -vvv
 ```
 
 The transaction trace provides a hierarchical view of all contract calls, showing:
+
 - Gas consumption for each call (`[gas_amount]`)
 - Contract addresses being called
 - Return values and data
@@ -221,7 +222,8 @@ forc call 0x9275a76531bce733cfafdbcb6727ea533ebbdc358d685152169b3c4eaa47b965 \
   call_increment_count -vvv
 ```
 
-Output:
+**Output:**
+
 ```log
 Traces:
   [Script]
@@ -256,6 +258,7 @@ Gas used: 160676
 - `Gas used: <gas_used>` - Total gas used by the transaction
 
 This tracing feature is particularly useful for:
+
 - Debugging failed transactions
 - Understanding gas consumption patterns
 - Analyzing complex multi-contract interactions
