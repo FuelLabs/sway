@@ -33,11 +33,10 @@ use sway_core;
 pub struct CallResponse {
     pub tx_hash: String,
     pub result: Option<String>,
-    pub logs: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub receipts: Option<Vec<Receipt>>,
-    #[serde(rename = "Script", skip_serializing_if = "Option::is_none")]
-    pub script: Option<serde_json::Value>,
+    #[serde(rename = "script", skip_serializing_if = "Option::is_none")]
+    pub script_json: Option<serde_json::Value>,
 }
 
 /// A command for calling a contract function.
