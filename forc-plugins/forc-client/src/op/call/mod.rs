@@ -2,29 +2,35 @@ mod call_function;
 mod list_functions;
 mod missing_contracts;
 mod parser;
+mod transaction_trace;
 mod transfer;
 
 use crate::{
     cmd,
     constants::DEFAULT_PRIVATE_KEY,
     op::call::{
-        call_function::call_function, list_functions::list_contract_functions, transfer::transfer,
+        call_function::call_function, list_functions::list_contract_functions,
+        transaction_trace::format_transaction_trace, transfer::transfer,
     },
     util::tx::{prompt_forc_wallet_password, select_local_wallet_account},
 };
 use anyhow::{anyhow, Result};
 use either::Either;
-use fuel_abi_types::abi::{program::ProgramABI, unified_program::UnifiedProgramABI};
+use fuel_abi_types::abi::{
+    program::ProgramABI,
+    unified_program::{UnifiedProgramABI, UnifiedTypeDeclaration},
+};
 use fuel_tx::Receipt;
 use fuels::{
     accounts::{
         provider::Provider, signers::private_key::PrivateKeySigner, wallet::Wallet, ViewOnlyAccount,
     },
     crypto::SecretKey,
+    types::tx_status::TxStatus,
 };
-use fuels_core::types::{transaction::TxPolicies, AssetId};
+use fuels_core::types::{transaction::TxPolicies, AssetId, ContractId};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 use sway_core;
 
 /// Response returned from a contract call operation
