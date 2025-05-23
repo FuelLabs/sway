@@ -326,7 +326,8 @@ pub(crate) fn print_receipts_and_trace(
     writer: &mut impl std::io::Write,
 ) -> Result<()> {
     if verbosity >= 2 {
-        let formatted_receipts = forc_util::tx_utils::format_log_receipts(&receipts, true).unwrap();
+        let formatted_receipts = forc_util::tx_utils::format_log_receipts(&receipts, true)
+            .map_err(|e| anyhow!("Failed to format receipts: {}", e))?;
         forc_tracing::println_label_green("receipts:", &formatted_receipts);
         if verbosity >= 3 {
             format_transaction_trace(total_gas, receipts, abis, writer)
