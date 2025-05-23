@@ -7,4 +7,6 @@
 #[cfg(invalid)]
 #[deprecated(invalid)]
 #[fallback(invalid)]
+#[error_type(invalid)]
+#[error(invalid)]
 library;

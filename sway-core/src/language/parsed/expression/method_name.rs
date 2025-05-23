@@ -1,7 +1,7 @@
 use crate::engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext};
 use crate::language::CallPath;
 use crate::type_system::TypeBinding;
-use crate::{Ident, TypeArgument, TypeId, TypeInfo};
+use crate::{GenericArgument, Ident, TypeId, TypeInfo};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -24,7 +24,7 @@ pub enum MethodName {
     /// Represents a method lookup with a fully qualified path.
     /// like <S as Trait>::method()
     FromQualifiedPathRoot {
-        ty: TypeArgument,
+        ty: GenericArgument,
         as_trait: TypeId,
         method_name: Ident,
     },

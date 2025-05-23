@@ -15,9 +15,9 @@ use sway_core::{
     },
     transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
-    Engines, TraitConstraint, TypeArgument, TypeEngine,
+    Engines, GenericArgument, TraitConstraint, TypeEngine,
 };
-use sway_types::{Ident, SourceEngine, Span, Spanned};
+use sway_types::{Ident, ProgramId, SourceEngine, SourceId, Span, Spanned};
 
 /// The `ParsedAstToken` holds the types produced by the [sway_core::language::parsed::ParseProgram].
 /// These tokens have not been type-checked.
@@ -52,7 +52,7 @@ pub enum ParsedAstToken {
     Supertrait(Supertrait),
     TraitConstraint(TraitConstraint),
     TraitFn(ParsedDeclId<TraitFn>),
-    TypeArgument(TypeArgument),
+    TypeArgument(GenericArgument),
     TypeParameter(TypeParameter),
     UseStatement(UseStatement),
 }
@@ -79,7 +79,7 @@ pub enum TypedAstToken {
     TypedStorageAccess(ty::TyStorageAccess),
     TypedStorageAccessDescriptor(ty::TyStorageAccessDescriptor),
     TypedReassignment(ty::TyReassignment),
-    TypedArgument(TypeArgument),
+    TypedArgument(GenericArgument),
     TypedParameter(TypeParameter),
     TypedTraitConstraint(TraitConstraint),
     TypedModuleName,
@@ -217,25 +217,29 @@ pub struct TokenIdent {
     pub name: String,
     pub range: Range,
     pub path: Option<PathBuf>,
+    pub source_id: Option<SourceId>,
     pub is_raw_ident: bool,
 }
 
 impl TokenIdent {
     pub fn new(ident: &Ident, se: &SourceEngine) -> Self {
-        let path = ident
-            .span()
-            .source_id()
-            .map(|source_id| se.get_path(source_id));
+        let source_id = ident.span().source_id().copied();
+        let path = source_id.as_ref().map(|source_id| se.get_path(source_id));
         Self {
             name: ident.span().str(),
             range: get_range_from_span(&ident.span()),
             path,
+            source_id,
             is_raw_ident: ident.is_raw_ident(),
         }
     }
 
     pub fn is_raw_ident(&self) -> bool {
         self.is_raw_ident
+    }
+
+    pub fn program_id(&self) -> Option<ProgramId> {
+        self.source_id.map(|source_id| source_id.program_id())
     }
 }
 
@@ -303,11 +307,11 @@ pub fn type_info_to_symbol_kind(
         }
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
-            let type_info = type_engine.get(elem_ty.type_id);
+            let type_info = type_engine.get(elem_ty.type_id());
             type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
         }
         TypeInfo::Slice(elem_ty) => {
-            let type_info = type_engine.get(elem_ty.type_id);
+            let type_info = type_engine.get(elem_ty.type_id());
             type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
         }
         _ => SymbolKind::Unknown,
@@ -316,8 +320,8 @@ pub fn type_info_to_symbol_kind(
 
 /// Given a [Span], convert into a [Range] and return.
 pub fn get_range_from_span(span: &Span) -> Range {
-    let start = span.start_pos().line_col();
-    let end = span.end_pos().line_col();
+    let start = span.start_line_col_one_index();
+    let end = span.end_line_col_one_index();
     Range {
         start: Position::new(start.line as u32 - 1, start.col as u32 - 1),
         end: Position::new(end.line as u32 - 1, end.col as u32 - 1),

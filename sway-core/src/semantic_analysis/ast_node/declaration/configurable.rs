@@ -9,6 +9,7 @@ use sway_types::{style::is_screaming_snake_case, Spanned};
 use symbol_collection_context::SymbolCollectionContext;
 
 use crate::{
+    ast_elements::{type_argument::GenericTypeArgument, type_parameter::GenericTypeParameter},
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, ReplaceDecls,
     },
@@ -18,7 +19,7 @@ use crate::{
         CallPath, CallPathType,
     },
     semantic_analysis::*,
-    EnforceTypeArguments, Engines, SubstTypes, TypeArgument, TypeBinding, TypeCheckTypeBinding,
+    EnforceTypeArguments, Engines, GenericArgument, SubstTypes, TypeBinding, TypeCheckTypeBinding,
 };
 
 impl ty::TyConfigurableDecl {
@@ -59,18 +60,18 @@ impl ty::TyConfigurableDecl {
             block_keyword_span,
         } = decl;
 
-        type_ascription.type_id = ctx
+        *type_ascription.type_id_mut() = ctx
             .resolve_type(
                 handler,
-                type_ascription.type_id,
-                &type_ascription.span,
+                type_ascription.type_id(),
+                &type_ascription.span(),
                 EnforceTypeArguments::No,
                 None,
             )
             .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        type_ascription.type_id.subst(&ctx.subst_ctx());
+        type_ascription.type_id_mut().subst(&ctx.subst_ctx());
 
         if !is_screaming_snake_case(name.as_str()) {
             handler.emit_warn(CompileWarning {
@@ -111,12 +112,14 @@ impl ty::TyConfigurableDecl {
                         ),
                         callpath_type: CallPathType::Ambiguous,
                     },
-                    type_arguments: crate::TypeArgs::Regular(vec![TypeArgument {
-                        type_id: type_ascription.type_id,
-                        initial_type_id: type_ascription.type_id,
-                        span: sway_types::Span::dummy(),
-                        call_path_tree: None,
-                    }]),
+                    type_arguments: crate::TypeArgs::Regular(vec![GenericArgument::Type(
+                        GenericTypeArgument {
+                            type_id: type_ascription.type_id(),
+                            initial_type_id: type_ascription.type_id(),
+                            span: sway_types::Span::dummy(),
+                            call_path_tree: None,
+                        },
+                    )]),
                     span: value_span.clone(),
                 },
                 &abi_decode_in_place_handler,
@@ -136,7 +139,7 @@ impl ty::TyConfigurableDecl {
 
             let decode_fn_id = *decode_fn_ref.id();
             let mut decode_fn_decl = (*engines.de().get_function(&decode_fn_id)).clone();
-            let decl_mapping = crate::TypeParameter::gather_decl_mapping_from_trait_constraints(
+            let decl_mapping = GenericTypeParameter::gather_decl_mapping_from_trait_constraints(
                 handler,
                 ctx.by_ref(),
                 &decode_fn_decl.type_parameters,
@@ -157,7 +160,7 @@ impl ty::TyConfigurableDecl {
             // while configurables using encoding v0 will typed as the configurable type itself
             let mut ctx = ctx
                 .by_ref()
-                .with_type_annotation(type_ascription.type_id)
+                .with_type_annotation(type_ascription.type_id())
                 .with_help_text(
                     "This declaration's type annotation does not match up with the assigned \
             expression's type.",
@@ -177,7 +180,7 @@ impl ty::TyConfigurableDecl {
         Ok(ty::TyConfigurableDecl {
             call_path,
             attributes,
-            return_type: type_ascription.type_id,
+            return_type: type_ascription.type_id(),
             type_ascription,
             span,
             value,

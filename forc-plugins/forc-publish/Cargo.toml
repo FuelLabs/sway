@@ -13,7 +13,8 @@ clap = { workspace = true, features = ["derive", "env"] }
 flate2.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
-reqwest = { workspace = true, features = ["json"] }
+futures-util.workspace = true
+reqwest = { workspace = true, features = ["json", "stream"] }
 semver = { workspace = true, features = ["serde"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
@@ -28,4 +29,5 @@ uuid = { workspace = true, features = ["v4", "serde"] }
 walkdir.workspace = true
 
 [dev-dependencies]
+serial_test.workspace = true
 wiremock.workspace = true

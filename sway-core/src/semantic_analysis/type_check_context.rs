@@ -18,7 +18,7 @@ use crate::{
         ast_node::{AbiMode, ConstShadowingMode},
         Namespace,
     },
-    type_system::{SubstTypes, TypeArgument, TypeId, TypeInfo},
+    type_system::{GenericArgument, SubstTypes, TypeId, TypeInfo},
     EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap,
     UnifyCheck,
 };
@@ -316,6 +316,7 @@ impl<'a> TypeCheckContext<'a> {
             mod_name.clone(),
             visibility,
             module_span.clone(),
+            true,
         )?;
 
         self.collection_ctx.enter_submodule(
@@ -531,7 +532,7 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         value: &mut T,
-        type_arguments: &mut [TypeArgument],
+        type_arguments: &mut [GenericArgument],
         const_generics: BTreeMap<String, TyExpression>,
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
@@ -879,13 +880,13 @@ impl<'a> TypeCheckContext<'a> {
                         .parameters
                         .iter()
                         .zip(arguments_types.iter().skip(args_len_diff))
-                        .all(|(p, a)| coercion_check.check(*a, p.type_argument.type_id))
+                        .all(|(p, a)| coercion_check.check(*a, p.type_argument.type_id()))
                     && (matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
                         || matches!(
-                            &*type_engine.get(method.return_type.type_id),
+                            &*type_engine.get(method.return_type.type_id()),
                             TypeInfo::Never
                         )
-                        || coercion_check.check(annotation_type, method.return_type.type_id))
+                        || coercion_check.check(annotation_type, method.return_type.type_id()))
                 {
                     maybe_method_decl_refs.push(decl_ref);
                 }
@@ -895,7 +896,7 @@ impl<'a> TypeCheckContext<'a> {
                 let mut trait_methods = HashMap::<
                     (
                         CallPath,
-                        Vec<WithEngines<TypeArgument>>,
+                        Vec<WithEngines<GenericArgument>>,
                         Option<WithEngines<TypeInfo>>,
                     ),
                     DeclRefFunction,
@@ -945,15 +946,15 @@ impl<'a> TypeCheckContext<'a> {
                                             {
                                                 let p1_type_id = self.resolve_type(
                                                     handler,
-                                                    p1.type_id,
-                                                    &p1.span,
+                                                    p1.type_id(),
+                                                    &p1.span(),
                                                     EnforceTypeArguments::Yes,
                                                     None,
                                                 )?;
                                                 let p2_type_id = self.resolve_type(
                                                     handler,
-                                                    p2.type_id,
-                                                    &p2.span,
+                                                    p2.type_id(),
+                                                    &p2.span(),
                                                     EnforceTypeArguments::Yes,
                                                     None,
                                                 )?;
@@ -1042,7 +1043,7 @@ impl<'a> TypeCheckContext<'a> {
                         } else {
                             fn to_string(
                                 trait_name: CallPath,
-                                trait_type_args: Vec<WithEngines<TypeArgument>>,
+                                trait_type_args: Vec<WithEngines<GenericArgument>>,
                             ) -> String {
                                 format!(
                                     "{}{}",
@@ -1102,10 +1103,10 @@ impl<'a> TypeCheckContext<'a> {
                         method
                             .parameters
                             .iter()
-                            .map(|p| self.engines.help_out(p.type_argument.type_id).to_string())
+                            .map(|p| self.engines.help_out(p.type_argument.type_id()).to_string())
                             .collect::<Vec<_>>()
                             .join(", "),
-                        self.engines.help_out(method.return_type.type_id),
+                        self.engines.help_out(method.return_type.type_id()),
                         if let Some(implementing_for_type_id) = method.implementing_for_typeid {
                             format!(" in {}", self.engines.help_out(implementing_for_type_id))
                         } else {
@@ -1290,7 +1291,7 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         trait_name: CallPath,
-        trait_type_args: Vec<TypeArgument>,
+        trait_type_args: Vec<GenericArgument>,
         type_id: TypeId,
         mut impl_type_parameters: Vec<TypeParameter>,
         items: &[ty::TyImplItem],
@@ -1303,11 +1304,13 @@ impl<'a> TypeCheckContext<'a> {
 
         // Use trait name with full path, improves consistency between
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
-        impl_type_parameters.iter_mut().for_each(|tp| {
-            tp.trait_constraints.iter_mut().for_each(|tc| {
-                tc.trait_name = tc.trait_name.to_fullpath(self.engines(), self.namespace())
-            })
-        });
+        for tc in impl_type_parameters
+            .iter_mut()
+            .filter_map(|x| x.as_type_parameter_mut())
+            .flat_map(|x| x.trait_constraints.iter_mut())
+        {
+            tc.trait_name = tc.trait_name.to_fullpath(self.engines(), self.namespace())
+        }
 
         let impl_type_parameters_ids = impl_type_parameters
             .iter()
@@ -1354,7 +1357,7 @@ impl<'a> TypeCheckContext<'a> {
         &self,
         type_id: TypeId,
         trait_name: &CallPath,
-        trait_type_args: &[TypeArgument],
+        trait_type_args: &[GenericArgument],
     ) -> Vec<ty::TyTraitItem> {
         // CallPath::to_fullpath gives a resolvable path, but is not guaranteed to provide the path
         // to the actual trait declaration. Since the path of the trait declaration is used as a key

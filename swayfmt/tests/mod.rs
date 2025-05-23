@@ -1,16 +1,14 @@
 use indoc::indoc;
-use std::sync::Arc;
 use swayfmt::{config::user_def::FieldAlignment, Formatter};
 use test_macros::assert_eq_pretty;
 
 /// Takes a configured formatter as input and formats a given input and checks the actual output against an
 /// expected output. There are two format passes to ensure that the received output does not change on a second pass.
 fn check_with_formatter(unformatted: &str, expected: &str, formatter: &mut Formatter) {
-    let first_formatted = Formatter::format(formatter, Arc::from(unformatted)).unwrap();
+    let first_formatted = Formatter::format(formatter, unformatted.into()).unwrap();
     assert_eq_pretty!(first_formatted, expected);
 
-    let second_formatted =
-        Formatter::format(formatter, Arc::from(first_formatted.clone())).unwrap();
+    let second_formatted = Formatter::format(formatter, first_formatted.as_str().into()).unwrap();
     assert_eq_pretty!(second_formatted, first_formatted);
 }
 
@@ -1267,7 +1265,7 @@ fn impl_spacing() {
             fn is_baz_true(self) -> bool;
         }
 
-        impl<A ,     B>    Qux<A, B> for
+        impl<A ,     B ,  const  N   :     u64>    Qux<A, B> for
         Foo
         where
             A    : Qux,
@@ -1287,7 +1285,7 @@ fn impl_spacing() {
             fn is_baz_true(self) -> bool;
         }
 
-        impl<A, B> Qux<A, B> for Foo
+        impl<A, B, const N: u64> Qux<A, B> for Foo
         where
             A: Qux,
             B: Qux,

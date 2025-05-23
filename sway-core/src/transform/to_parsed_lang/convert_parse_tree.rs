@@ -11,7 +11,10 @@ use crate::{
     type_system::*,
     BuildTarget, Engines,
 };
-use either::Either;
+use ast_elements::{
+    type_argument::{GenericConstArgument, GenericTypeArgument},
+    type_parameter::{ConstGenericExpr, GenericTypeParameter},
+};
 use itertools::Itertools;
 use sway_ast::{
     assignable::ElementAccess,
@@ -185,7 +188,13 @@ pub fn item_to_ast_nodes(
         }
         ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration({
             item_const_to_constant_declaration(
-                context, handler, engines, item_const, attributes, true,
+                context,
+                handler,
+                engines,
+                item_const,
+                Visibility::Private,
+                attributes,
+                true,
             )?
         })),
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
@@ -398,7 +407,7 @@ fn item_struct_to_struct_declaration(
 
     handler.scope(|handler| {
         if fields.iter().any(
-            |field| matches!(&&*engines.te().get(field.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
+            |field| matches!(&&*engines.te().get(field.type_argument.type_id()), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
         ) {
             handler.emit_err(ConvertParseTreeError::RecursiveType { span: span.clone() }.into());
         }
@@ -417,7 +426,7 @@ fn item_struct_to_struct_declaration(
         Ok(())
     })?;
 
-    let (type_parameters, _) = generic_params_opt_to_type_parameters(
+    let generic_parameters = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
@@ -428,7 +437,7 @@ fn item_struct_to_struct_declaration(
         name: item_struct.name,
         attributes,
         fields,
-        type_parameters,
+        type_parameters: generic_parameters,
         visibility: pub_token_opt_to_visibility(item_struct.visibility),
         span,
     });
@@ -481,7 +490,7 @@ fn item_enum_to_enum_declaration(
 
     handler.scope(|handler| {
         if variants.iter().any(|variant| {
-        matches!(&&*engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
+        matches!(&&*engines.te().get(variant.type_argument.type_id()), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
         }) {
             handler.emit_err(ConvertParseTreeError::RecursiveType { span: span.clone() }.into());
         }
@@ -500,7 +509,7 @@ fn item_enum_to_enum_declaration(
         Ok(())
     })?;
 
-    let (type_parameters, _) = generic_params_opt_to_type_parameters(
+    let type_parameters = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
@@ -534,12 +543,12 @@ pub fn item_fn_to_function_declaration(
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
         None => {
             let type_id = engines.te().id_of_unit();
-            TypeArgument {
+            GenericArgument::Type(GenericTypeArgument {
                 type_id,
                 initial_type_id: type_id,
                 span: item_fn.fn_signature.span(),
                 call_path_tree: None,
-            }
+            })
         }
     };
 
@@ -552,16 +561,28 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
-    let (type_parameters, const_generic_parameters) =
-        generic_params_opt_to_type_parameters_with_parent(
-            context,
-            handler,
-            engines,
-            item_fn.fn_signature.generics,
-            parent_generic_params_opt,
-            item_fn.fn_signature.where_clause_opt.clone(),
-            parent_where_clause_opt,
-        )?;
+    let mut generic_parameters = generic_params_opt_to_type_parameters_with_parent(
+        context,
+        handler,
+        engines,
+        item_fn.fn_signature.generics,
+        parent_generic_params_opt,
+        item_fn.fn_signature.where_clause_opt.clone(),
+        parent_where_clause_opt,
+    )?;
+
+    for p in generic_parameters.iter_mut() {
+        match p {
+            TypeParameter::Type(_) => {}
+            TypeParameter::Const(p) => {
+                p.id = Some(engines.pe().insert(ConstGenericDeclaration {
+                    name: p.name.clone(),
+                    ty: p.ty,
+                    span: p.span.clone(),
+                }));
+            }
+        }
+    }
 
     let fn_decl = FunctionDeclaration {
         purity: attributes.purity(),
@@ -577,8 +598,7 @@ pub fn item_fn_to_function_declaration(
         )?,
         span,
         return_type,
-        type_parameters,
-        const_generic_parameters,
+        type_parameters: generic_parameters,
         where_clause: item_fn
             .fn_signature
             .where_clause_opt
@@ -620,7 +640,7 @@ fn item_trait_to_trait_declaration(
     attributes: Attributes,
 ) -> Result<ParsedDeclId<TraitDeclaration>, ErrorEmitted> {
     let span = item_trait.span();
-    let (type_parameters, _) = generic_params_opt_to_type_parameters(
+    let type_parameters = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
@@ -652,7 +672,13 @@ fn item_trait_to_trait_declaration(
                         .map(TraitItem::TraitFn)
                 }
                 ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
-                    context, handler, engines, const_decl, attributes, false,
+                    context,
+                    handler,
+                    engines,
+                    const_decl,
+                    Visibility::Public,
+                    attributes,
+                    false,
                 )
                 .map(TraitItem::Constant),
                 ItemTraitItem::Type(trait_type, _) => trait_type_to_trait_type_declaration(
@@ -733,7 +759,7 @@ pub fn item_impl_to_declaration(
 ) -> Result<Declaration, ErrorEmitted> {
     let block_span = item_impl.span();
     let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
-    let impl_item_parent = (&*engines.te().get(implementing_for.type_id)).into();
+    let impl_item_parent = (&*engines.te().get(implementing_for.type_id())).into();
 
     let items = item_impl
         .contents
@@ -765,7 +791,13 @@ pub fn item_impl_to_declaration(
                 )
                 .map(ImplItem::Fn),
                 sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
-                    context, handler, engines, const_item, attributes, false,
+                    context,
+                    handler,
+                    engines,
+                    const_item,
+                    Visibility::Private,
+                    attributes,
+                    false,
                 )
                 .map(ImplItem::Constant),
                 sway_ast::ItemImplItem::Type(type_item) => trait_type_to_trait_type_declaration(
@@ -782,25 +814,26 @@ pub fn item_impl_to_declaration(
         .filter_map_ok(|item| item)
         .collect::<Result<_, _>>()?;
 
-    let (impl_type_parameters, impl_const_generics_parameters) =
-        generic_params_opt_to_type_parameters(
-            context,
-            handler,
-            engines,
-            item_impl.generic_params_opt,
-            item_impl.where_clause_opt,
-        )?;
+    let mut impl_type_parameters = generic_params_opt_to_type_parameters(
+        context,
+        handler,
+        engines,
+        item_impl.generic_params_opt,
+        item_impl.where_clause_opt,
+    )?;
 
-    let impl_const_generics_parameters = impl_const_generics_parameters
-        .iter()
-        .map(|param| {
-            engines.pe().insert(ConstGenericDeclaration {
-                name: param.name.clone(),
-                ty: param.ty,
-                span: param.span.clone(),
-            })
-        })
-        .collect::<Vec<_>>();
+    for p in impl_type_parameters.iter_mut() {
+        match p {
+            TypeParameter::Type(_) => {}
+            TypeParameter::Const(p) => {
+                p.id = Some(engines.pe().insert(ConstGenericDeclaration {
+                    name: p.name.clone(),
+                    ty: p.ty,
+                    span: p.span.clone(),
+                }));
+            }
+        }
+    }
 
     match item_impl.trait_opt {
         Some((path_type, _)) => {
@@ -809,7 +842,6 @@ pub fn item_impl_to_declaration(
             let impl_trait = ImplSelfOrTrait {
                 is_self: false,
                 impl_type_parameters,
-                impl_const_generics_parameters,
                 trait_name: trait_name.to_call_path(handler)?,
                 trait_type_arguments,
                 trait_decl_ref: None,
@@ -820,7 +852,7 @@ pub fn item_impl_to_declaration(
             let impl_trait = engines.pe().insert(impl_trait);
             Ok(Declaration::ImplSelfOrTrait(impl_trait))
         }
-        None => match &*engines.te().get(implementing_for.type_id) {
+        None => match &*engines.te().get(implementing_for.type_id()) {
             TypeInfo::Contract => Err(handler
                 .emit_err(ConvertParseTreeError::SelfImplForContract { span: block_span }.into())),
             _ => {
@@ -835,7 +867,6 @@ pub fn item_impl_to_declaration(
                     trait_type_arguments: vec![],
                     implementing_for,
                     impl_type_parameters,
-                    impl_const_generics_parameters,
                     items,
                     block_span,
                 };
@@ -851,7 +882,7 @@ fn path_type_to_call_path_and_type_arguments(
     handler: &Handler,
     engines: &Engines,
     path_type: PathType,
-) -> Result<(QualifiedCallPath, Vec<TypeArgument>), ErrorEmitted> {
+) -> Result<(QualifiedCallPath, Vec<GenericArgument>), ErrorEmitted> {
     let root_opt = path_type.root_opt.clone();
     let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type.clone())?;
 
@@ -935,7 +966,13 @@ fn item_abi_to_abi_declaration(
                             Ok(TraitItem::TraitFn(trait_fn))
                         }
                         ItemTraitItem::Const(const_decl, _) => item_const_to_constant_declaration(
-                            context, handler, engines, const_decl, attributes, false,
+                            context,
+                            handler,
+                            engines,
+                            const_decl,
+                            Visibility::Public,
+                            attributes,
+                            false,
                         )
                         .map(TraitItem::Constant),
                         ItemTraitItem::Type(type_decl, _) => trait_type_to_trait_type_declaration(
@@ -1015,6 +1052,7 @@ pub(crate) fn item_const_to_constant_declaration(
     handler: &Handler,
     engines: &Engines,
     item_const: ItemConst,
+    default_visibility: Visibility,
     attributes: Attributes,
     require_expression: bool,
 ) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
@@ -1047,11 +1085,16 @@ pub(crate) fn item_const_to_constant_declaration(
         }
     };
 
+    let visibility = match item_const.pub_token {
+        Some(pub_token) => pub_token_opt_to_visibility(Some(pub_token)),
+        None => default_visibility,
+    };
+
     let const_decl = ConstantDeclaration {
         name: item_const.name,
         type_ascription,
         value: expr,
-        visibility: pub_token_opt_to_visibility(item_const.visibility),
+        visibility,
         attributes,
         span,
     };
@@ -1283,7 +1326,7 @@ fn generic_params_opt_to_type_parameters(
     engines: &Engines,
     generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
-) -> Result<(Vec<TypeParameter>, Vec<ConstGenericParameter>), ErrorEmitted> {
+) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     generic_params_opt_to_type_parameters_with_parent(
         context,
         handler,
@@ -1303,7 +1346,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
     parent_generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
     parent_where_clause_opt: Option<WhereClause>,
-) -> Result<(Vec<TypeParameter>, Vec<ConstGenericParameter>), ErrorEmitted> {
+) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     let type_engine = engines.te();
 
     let trait_constraints = match where_clause_opt {
@@ -1330,11 +1373,11 @@ fn generic_params_opt_to_type_parameters_with_parent(
             .parameters
             .into_inner()
             .into_iter()
-            .partition_map(|param| {
+            .map(|param| {
                 match param {
                     GenericParam::Trait { ident } => {
                         let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
-                        Either::Left(TypeParameter {
+                        TypeParameter::Type(GenericTypeParameter {
                             type_id: custom_type,
                             initial_type_id: custom_type,
                             name: ident,
@@ -1353,41 +1396,51 @@ fn generic_params_opt_to_type_parameters_with_parent(
                                     .error_because_is_disabled(&ident.span()),
                             );
                         }
-                        Either::Right(ConstGenericParameter {
+                        TypeParameter::Const(ConstGenericParameter {
                             span: ident.span().clone(),
                             name: ident,
                             ty: type_engine.id_of_u64(),
                             is_from_parent,
+                            id: None,
+                            expr: None,
                         })
                     }
                 }
-            }),
-        None => (vec![], vec![]),
+            })
+            .collect(),
+        None => vec![],
     };
 
-    let (mut trait_params, mut const_generic_params) =
-        generics_to_params(generic_params_opt, false);
-    let (trait_parent_params, mut const_generic_parent_params) =
-        generics_to_params(parent_generic_params_opt, true);
-
-    const_generic_params.append(&mut const_generic_parent_params);
+    let mut params = generics_to_params(generic_params_opt, false);
+    let parent_params = generics_to_params(parent_generic_params_opt, true);
+    params.extend(
+        parent_params
+            .iter()
+            .filter(|x| x.as_const_parameter().is_some())
+            .cloned(),
+    );
 
     let mut errors = Vec::new();
     for (ty_name, bounds) in trait_constraints
         .into_iter()
         .chain(parent_trait_constraints)
     {
-        let param_to_edit = if let Some(o) = trait_params
+        let param_to_edit = if let Some(o) = params
             .iter_mut()
-            .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
+            .filter_map(|x| x.as_type_parameter_mut())
+            .find(|GenericTypeParameter { name, .. }| name.as_str() == ty_name.as_str())
         {
             o
-        } else if let Some(o2) = trait_parent_params
-            .iter()
-            .find(|TypeParameter { name, .. }| name.as_str() == ty_name.as_str())
-        {
-            trait_params.push(o2.clone());
-            trait_params.last_mut().unwrap()
+        } else if let Some(o2) = parent_params.iter().find(|t| match t {
+            TypeParameter::Type(p) => p.name.as_str() == ty_name.as_str(),
+            TypeParameter::Const(_) => false,
+        }) {
+            params.push(o2.clone());
+            params
+                .last_mut()
+                .unwrap()
+                .as_type_parameter_mut()
+                .expect("must be type parameter")
         } else {
             errors.push(ConvertParseTreeError::ConstrainedNonExistentType {
                 ty_name: ty_name.clone(),
@@ -1397,7 +1450,6 @@ fn generic_params_opt_to_type_parameters_with_parent(
         };
 
         param_to_edit.trait_constraints_span = Span::join(ty_name.span(), &bounds.span());
-
         param_to_edit
             .trait_constraints
             .extend(traits_to_trait_constraints(
@@ -1408,7 +1460,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
         return Err(errors);
     }
 
-    Ok((trait_params, const_generic_params))
+    Ok(params)
 }
 
 fn pub_token_opt_to_visibility(pub_token_opt: Option<PubToken>) -> Visibility {
@@ -1504,12 +1556,12 @@ fn fn_args_to_function_parameters(
                 is_reference: ref_self.is_some(),
                 is_mutable: mutable_self.is_some(),
                 mutability_span,
-                type_argument: TypeArgument {
+                type_argument: GenericArgument::Type(GenericTypeArgument {
                     type_id,
                     initial_type_id: type_id,
                     span: self_token.span(),
                     call_path_tree: None,
-                },
+                }),
             }];
             if let Some((_comma_token, args)) = args_opt {
                 for arg in args {
@@ -1576,7 +1628,12 @@ fn ty_to_type_info(
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
                 ty_to_type_argument(context, handler, engines, *ty_array_descriptor.ty)?,
-                expr_to_length(context, engines, handler, *ty_array_descriptor.length)?,
+                Length(expr_to_const_generic_expr(
+                    context,
+                    engines,
+                    handler,
+                    ty_array_descriptor.length.as_ref(),
+                )?),
             )
         }
         Ty::StringSlice(..) => TypeInfo::StringSlice,
@@ -1602,6 +1659,7 @@ fn ty_to_type_info(
             }
         }
         Ty::Never { .. } => TypeInfo::Never,
+        Ty::Expr(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
     };
     Ok(type_info)
 }
@@ -1682,23 +1740,31 @@ fn ty_to_type_argument(
     handler: &Handler,
     engines: &Engines,
     ty: Ty,
-) -> Result<TypeArgument, ErrorEmitted> {
+) -> Result<GenericArgument, ErrorEmitted> {
     let type_engine = engines.te();
     let span = ty.span();
-    let call_path_tree = ty_to_call_path_tree(context, handler, engines, ty.clone())?;
-    let initial_type_id = type_engine.insert(
-        engines,
-        ty_to_type_info(context, handler, engines, ty.clone())?,
-        ty.span().source_id(),
-    );
 
-    let type_argument = TypeArgument {
-        type_id: initial_type_id,
-        initial_type_id,
-        call_path_tree,
-        span,
-    };
-    Ok(type_argument)
+    match ty {
+        Ty::Expr(expr) => Ok(GenericArgument::Const(GenericConstArgument {
+            expr: expr_to_const_generic_expr(context, engines, handler, expr.as_ref())?,
+        })),
+        ty => {
+            let call_path_tree = ty_to_call_path_tree(context, handler, engines, ty.clone())?;
+            let initial_type_id = type_engine.insert(
+                engines,
+                ty_to_type_info(context, handler, engines, ty.clone())?,
+                ty.span().source_id(),
+            );
+
+            let type_argument = GenericArgument::Type(GenericTypeArgument {
+                type_id: initial_type_id,
+                initial_type_id,
+                call_path_tree,
+                span,
+            });
+            Ok(type_argument)
+        }
+    }
 }
 
 fn fn_signature_to_trait_fn(
@@ -1712,13 +1778,13 @@ fn fn_signature_to_trait_fn(
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty.clone())?,
         None => {
             let type_id = engines.te().id_of_unit();
-            TypeArgument {
+            GenericArgument::Type(GenericTypeArgument {
                 type_id,
                 initial_type_id: type_id,
                 // TODO: Fix as part of https://github.com/FuelLabs/sway/issues/3635
                 span: fn_signature.span(),
                 call_path_tree: None,
-            }
+            })
         }
     };
 
@@ -1900,7 +1966,7 @@ fn method_call_fields_to_method_application_expression(
 
     let span = match &*type_arguments {
         [] => method_name.span(),
-        [.., last] => Span::join(method_name.span(), &last.span),
+        [.., last] => Span::join(method_name.span(), &last.span()),
     };
 
     let method_name_binding = TypeBinding {
@@ -1991,7 +2057,7 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
-    let arguments = args
+    let arguments: Vec<Expression> = args
         .into_inner()
         .into_iter()
         .map(|expr| expr_to_expression(context, handler, engines, expr))
@@ -2004,11 +2070,20 @@ fn expr_func_app_to_expression_kind(
 
     let (type_arguments, type_arguments_span) = convert_ty_args(context, call_seg.generics_opt)?;
 
-    // Route intrinsic calls to different AST node.
+    // Transform the AST of some intrinsics
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
+        // "__log(arg)" becomes "__log(encode(arg))"
         Some(Intrinsic::Log)
             if context.experimental.new_encoding && last.is_none() && !is_relative_to_root =>
         {
+            if arguments.len() != 1 {
+                return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+                    name: Intrinsic::Log.to_string(),
+                    expected: 1,
+                    span: span.clone(),
+                }));
+            }
+
             let span = name_args_span(span, type_arguments_span);
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
@@ -2016,28 +2091,254 @@ fn expr_func_app_to_expression_kind(
                     kind_binding: TypeBinding {
                         inner: Intrinsic::Log,
                         type_arguments: TypeArgs::Regular(vec![]),
-                        span: span.clone(),
+                        span,
                     },
-                    arguments: vec![Expression {
-                        kind: ExpressionKind::FunctionApplication(Box::new(
-                            FunctionApplicationExpression {
-                                call_path_binding: TypeBinding {
-                                    inner: CallPath {
-                                        prefixes: vec![],
-                                        suffix: Ident::new_no_span("encode".into()),
-                                        callpath_type: CallPathType::Ambiguous,
+                    arguments: vec![wrap_logged_expr_into_encode_call(
+                        arguments.into_iter().next().unwrap(),
+                    )],
+                },
+            ));
+        }
+        // "__dbg(arg)" in debug becomes "{
+        //      let mut f = Formatter { };
+        //      f.print_str("[{current_file}:{current_line}:{current_col}] {span} = ");
+        //      let arg = arg;
+        //      arg.fmt(f);
+        //      f.flush();
+        //      arg
+        // }"
+        Some(Intrinsic::Dbg)
+            if context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root =>
+        {
+            if arguments.len() != 1 {
+                return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+                    name: Intrinsic::Dbg.to_string(),
+                    expected: 1,
+                    span,
+                }));
+            }
+
+            let f_id: String = format!("f_{}", context.next_for_unique_suffix());
+            let f_ident = BaseIdent::new_no_span(f_id.to_string());
+
+            let f_tid = engines.te().new_unknown();
+            let f_decl_pid = engines.pe().insert(VariableDeclaration {
+                name: f_ident.clone(),
+                type_ascription: GenericArgument::Type(GenericTypeArgument {
+                    type_id: f_tid,
+                    initial_type_id: f_tid,
+                    span: span.clone(),
+                    call_path_tree: None,
+                }),
+                body: Expression {
+                    kind: ExpressionKind::Struct(Box::new(StructExpression {
+                        resolved_call_path_binding: None,
+                        call_path_binding: TypeBinding {
+                            inner: CallPath {
+                                prefixes: vec![],
+                                suffix: BaseIdent::new_no_span("Formatter".into()),
+                                callpath_type: CallPathType::Ambiguous,
+                            },
+                            type_arguments: TypeArgs::Regular(vec![]),
+                            span: span.clone(),
+                        },
+                        fields: vec![],
+                    })),
+                    span: span.clone(),
+                },
+                is_mutable: true,
+            });
+
+            fn get_current_file_from_span(engines: &Engines, span: &Span) -> String {
+                let Some(source_id) = span.source_id() else {
+                    return String::new();
+                };
+                let current_file = engines.se().get_path(source_id);
+
+                // find the manifest path of the current span
+                let program_id = engines
+                    .se()
+                    .get_program_id_from_manifest_path(&current_file)
+                    .unwrap();
+                let manifest_path = engines
+                    .se()
+                    .get_manifest_path_from_program_id(&program_id)
+                    .unwrap();
+                let current_file = current_file
+                    .display()
+                    .to_string()
+                    .replace(&manifest_path.display().to_string(), "");
+                if let Some(current_file) = current_file.strip_prefix("/") {
+                    current_file.to_string()
+                } else {
+                    current_file
+                }
+            }
+
+            fn ast_node_to_print_str(f_ident: BaseIdent, s: &str, span: &Span) -> AstNode {
+                AstNode {
+                    content: AstNodeContent::Expression(Expression {
+                        kind: ExpressionKind::MethodApplication(Box::new(
+                            MethodApplicationExpression {
+                                method_name_binding: TypeBinding {
+                                    inner: MethodName::FromModule {
+                                        method_name: BaseIdent::new_no_span("print_str".into()),
                                     },
-                                    type_arguments: TypeArgs::Regular(type_arguments),
+                                    type_arguments: TypeArgs::Regular(vec![]),
                                     span: span.clone(),
                                 },
-                                resolved_call_path_binding: None,
-                                arguments,
+                                contract_call_params: vec![],
+                                arguments: vec![
+                                    Expression {
+                                        kind: ExpressionKind::Variable(f_ident.clone()),
+                                        span: span.clone(),
+                                    },
+                                    Expression {
+                                        kind: ExpressionKind::Literal(Literal::String(
+                                            Span::from_string(s.to_string()),
+                                        )),
+                                        span: span.clone(),
+                                    },
+                                ],
                             },
                         )),
                         span: span.clone(),
-                    }],
-                },
-            ));
+                    }),
+                    span: span.clone(),
+                }
+            }
+
+            let current_file = get_current_file_from_span(engines, &span);
+            let start_line_col = span.start_line_col_one_index();
+
+            let arg_id: String = format!("arg_{}", context.next_for_unique_suffix());
+            let arg_ident = BaseIdent::new_no_span(arg_id.to_string());
+
+            let block = CodeBlock {
+                contents: vec![
+                    // let arg = arguments[0];
+                    statement_let_to_ast_nodes_unfold(
+                        context,
+                        handler,
+                        engines,
+                        Pattern::AmbiguousSingleIdent(arg_ident.clone()),
+                        None,
+                        arguments[0].clone(),
+                        Span::dummy(),
+                    )
+                    .unwrap()
+                    .pop()
+                    .unwrap(),
+                    // let mut f = Formatter { };
+                    AstNode {
+                        content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                            f_decl_pid,
+                        )),
+                        span: Span::dummy(),
+                    },
+                    // f.print_str("[{current_file}:{current_line}:{current_col}] {span} = ");
+                    ast_node_to_print_str(
+                        f_ident.clone(),
+                        &format!(
+                            "[{}:{}:{}] {} = ",
+                            current_file,
+                            start_line_col.line,
+                            start_line_col.col,
+                            match swayfmt::parse::parse_format::<Expr>(
+                                arguments[0].span.as_str(),
+                                context.experimental
+                            ) {
+                                Ok(s) => s,
+                                _ => arguments[0].span.as_str().to_string(),
+                            }
+                        ),
+                        &span,
+                    ),
+                    // arg.fmt(f);
+                    AstNode {
+                        content: AstNodeContent::Expression(Expression {
+                            kind: ExpressionKind::MethodApplication(Box::new(
+                                MethodApplicationExpression {
+                                    method_name_binding: TypeBinding {
+                                        inner: MethodName::FromModule {
+                                            method_name: BaseIdent::new_no_span("fmt".into()),
+                                        },
+                                        type_arguments: TypeArgs::Regular(vec![]),
+                                        span: Span::dummy(),
+                                    },
+                                    contract_call_params: vec![],
+                                    arguments: vec![
+                                        Expression {
+                                            kind: ExpressionKind::Variable(arg_ident.clone()),
+                                            span: Span::dummy(),
+                                        },
+                                        Expression {
+                                            kind: ExpressionKind::Variable(f_ident.clone()),
+                                            span: Span::dummy(),
+                                        },
+                                    ],
+                                },
+                            )),
+                            span: Span::dummy(),
+                        }),
+                        span: Span::dummy(),
+                    },
+                    // f.print_str(<newline>);
+                    ast_node_to_print_str(f_ident.clone(), "\n", &span),
+                    // f.flush();
+                    AstNode {
+                        content: AstNodeContent::Expression(Expression {
+                            kind: ExpressionKind::MethodApplication(Box::new(
+                                MethodApplicationExpression {
+                                    method_name_binding: TypeBinding {
+                                        inner: MethodName::FromModule {
+                                            method_name: BaseIdent::new_no_span("flush".into()),
+                                        },
+                                        type_arguments: TypeArgs::Regular(vec![]),
+                                        span: span.clone(),
+                                    },
+                                    contract_call_params: vec![],
+                                    arguments: vec![Expression {
+                                        kind: ExpressionKind::Variable(f_ident.clone()),
+                                        span: span.clone(),
+                                    }],
+                                },
+                            )),
+                            span: span.clone(),
+                        }),
+                        span: span.clone(),
+                    },
+                    // arg
+                    AstNode {
+                        content: AstNodeContent::Expression(Expression {
+                            kind: ExpressionKind::ImplicitReturn(Box::new(Expression {
+                                kind: ExpressionKind::AmbiguousVariableExpression(
+                                    arg_ident.clone(),
+                                ),
+                                span: Span::dummy(),
+                            })),
+                            span: Span::dummy(),
+                        }),
+                        span: Span::dummy(),
+                    },
+                ],
+                whole_block_span: Span::dummy(),
+            };
+
+            return Ok(ExpressionKind::CodeBlock(block));
+        }
+        // ... and in release becomes "arg"
+        Some(Intrinsic::Dbg)
+            if !context.is_dbg_generation_full() && last.is_none() && !is_relative_to_root =>
+        {
+            if arguments.len() != 1 {
+                return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+                    name: Intrinsic::Dbg.to_string(),
+                    expected: 1,
+                    span,
+                }));
+            }
+            return Ok(arguments[0].kind.clone());
         }
         Some(intrinsic) if last.is_none() && !is_relative_to_root => {
             return Ok(ExpressionKind::IntrinsicFunction(
@@ -2224,6 +2525,26 @@ fn expr_to_expression(
             };
             Expression {
                 kind: ExpressionKind::Return(Box::new(expression)),
+                span,
+            }
+        }
+        Expr::Panic { expr_opt, .. } => {
+            let expression = match expr_opt {
+                Some(expr) => expr_to_expression(context, handler, engines, *expr)?,
+                None => Expression {
+                    kind: ExpressionKind::Tuple(Vec::new()),
+                    span: span.clone(),
+                },
+            };
+
+            let expression = if context.experimental.new_encoding {
+                wrap_logged_expr_into_encode_call(expression)
+            } else {
+                expression
+            };
+
+            Expression {
+                kind: ExpressionKind::Panic(Box::new(expression)),
                 span,
             }
         }
@@ -2604,6 +2925,29 @@ fn expr_to_expression(
     Ok(expression)
 }
 
+/// Wraps the `logged_expr` that needs to be logged into an `encode` call: `encode(<logged_expr>)`.
+/// Wrapping is needed in the `__log` intrinsic and the `revert` expression in the case of
+/// the new encoding.
+fn wrap_logged_expr_into_encode_call(logged_expr: Expression) -> Expression {
+    let expression_span = logged_expr.span();
+    Expression {
+        kind: ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
+            call_path_binding: TypeBinding {
+                inner: CallPath {
+                    prefixes: vec![],
+                    suffix: Ident::new_no_span("encode".into()),
+                    callpath_type: CallPathType::Ambiguous,
+                },
+                type_arguments: TypeArgs::Regular(vec![]),
+                span: expression_span.clone(),
+            },
+            resolved_call_path_binding: None,
+            arguments: vec![logged_expr],
+        })),
+        span: expression_span,
+    }
+}
+
 fn op_call(
     name: &'static str,
     op_span: Span,
@@ -2848,23 +3192,23 @@ fn fn_arg_to_function_parameter(
     Ok(function_parameter)
 }
 
-fn expr_to_length(
+fn expr_to_const_generic_expr(
     context: &mut Context,
     engines: &Engines,
     handler: &Handler,
-    expr: Expr,
-) -> Result<Length, ErrorEmitted> {
+    expr: &Expr,
+) -> Result<ConstGenericExpr, ErrorEmitted> {
     let span = expr.span();
     match &expr {
-        Expr::Literal(..) => Ok(Length::literal(
-            expr_to_usize(context, handler, expr)?,
+        Expr::Literal(..) => Ok(ConstGenericExpr::literal(
+            expr_to_usize(context, handler, expr.clone())?,
             Some(span),
         )),
         _ => {
-            let expr = expr_to_expression(context, handler, engines, expr)?;
+            let expr = expr_to_expression(context, handler, engines, expr.clone())?;
             match expr.kind {
                 ExpressionKind::AmbiguousVariableExpression(ident) => {
-                    Ok(Length::AmbiguousVariableExpression { ident })
+                    Ok(ConstGenericExpr::AmbiguousVariableExpression { ident })
                 }
                 _ => Err(handler.emit_err(CompileError::LengthExpressionNotSupported { span })),
             }
@@ -2986,7 +3330,7 @@ fn path_expr_segment_to_ident_or_type_argument(
     handler: &Handler,
     engines: &Engines,
     PathExprSegment { name, generics_opt }: PathExprSegment,
-) -> Result<(Ident, Vec<TypeArgument>), ErrorEmitted> {
+) -> Result<(Ident, Vec<GenericArgument>), ErrorEmitted> {
     let type_args = match generics_opt {
         Some((_, x)) => generic_args_to_type_arguments(context, handler, engines, x)?,
         None => Vec::default(),
@@ -3178,12 +3522,12 @@ fn match_expr_to_expression(
     let var_decl = engines.pe().insert(VariableDeclaration {
         type_ascription: {
             let type_id = engines.te().new_unknown();
-            TypeArgument {
+            GenericArgument::Type(GenericTypeArgument {
                 type_id,
                 initial_type_id: type_id,
                 span: var_decl_name.span(),
                 call_path_tree: None,
-            }
+            })
         },
         name: var_decl_name,
         is_mutable: false,
@@ -3262,12 +3606,12 @@ fn for_expr_to_expression(
     let iterable_decl = engines.pe().insert(VariableDeclaration {
         type_ascription: {
             let type_id = engines.te().new_unknown();
-            TypeArgument {
+            GenericArgument::Type(GenericTypeArgument {
                 type_id,
                 initial_type_id: type_id,
                 span: iterable_ident.clone().span(),
                 call_path_tree: None,
-            }
+            })
         },
         name: iterable_ident,
         is_mutable: true,
@@ -3295,12 +3639,12 @@ fn for_expr_to_expression(
     let value_opt_to_next_decl = engines.pe().insert(VariableDeclaration {
         type_ascription: {
             let type_id = engines.te().new_unknown();
-            TypeArgument {
+            GenericArgument::Type(GenericTypeArgument {
                 type_id,
                 initial_type_id: type_id,
                 span: value_opt_ident.clone().span(),
                 call_path_tree: None,
-            }
+            })
         },
         name: value_opt_ident,
         is_mutable: true,
@@ -3959,12 +4303,12 @@ fn statement_let_to_ast_nodes_unfold(
                 Some(ty) => ty_to_type_argument(context, handler, engines, ty)?,
                 None => {
                     let type_id = engines.te().new_unknown();
-                    TypeArgument {
+                    GenericArgument::Type(GenericTypeArgument {
                         type_id,
                         initial_type_id: type_id,
                         span: name.span(),
                         call_path_tree: None,
-                    }
+                    })
                 }
             };
             let var_decl = engines.pe().insert(VariableDeclaration {
@@ -4009,12 +4353,12 @@ fn statement_let_to_ast_nodes_unfold(
                 Some(ty) => ty_to_type_argument(context, handler, engines, ty.clone())?,
                 None => {
                     let type_id = engines.te().new_unknown();
-                    TypeArgument {
+                    GenericArgument::Type(GenericTypeArgument {
                         type_id,
                         initial_type_id: type_id,
                         span: destructured_struct_name.span(),
                         call_path_tree: None,
-                    }
+                    })
                 }
             };
 
@@ -4110,9 +4454,11 @@ fn statement_let_to_ast_nodes_unfold(
                             // The first `pat.span()` will point to "a", while the second one will indeed point to "_".
                             // However, their `pat.span()`s will always be in the source file in which the placeholder
                             // is logically situated.
-                            engines.te().new_placeholder(TypeParameter::new_placeholder(
-                                engines.te().new_unknown(),
-                                pat.span(),
+                            engines.te().new_placeholder(TypeParameter::Type(
+                                GenericTypeParameter::new_placeholder(
+                                    engines.te().new_unknown(),
+                                    pat.span(),
+                                ),
                             ))
                         })
                         .collect(),
@@ -4120,12 +4466,12 @@ fn statement_let_to_ast_nodes_unfold(
 
                 // The type argument is a tuple of place holders of unknowns pointing to
                 // the tuple pattern.
-                TypeArgument {
+                GenericArgument::Type(GenericTypeArgument {
                     type_id,
                     initial_type_id: type_id,
                     span: pat_tuple.span(),
                     call_path_tree: None,
-                }
+                })
             };
 
             // Parse the type ascription and the type ascription span.
@@ -4441,15 +4787,16 @@ fn ty_to_type_parameter(
         Ty::Path(path_type) => path_type_to_ident(context, handler, path_type)?,
         Ty::Infer { underscore_token } => {
             let unknown_type = type_engine.new_unknown();
-            return Ok(TypeParameter {
+            return Ok(TypeParameter::Type(GenericTypeParameter {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
                 name: underscore_token.into(),
                 trait_constraints: Vec::default(),
                 trait_constraints_span: Span::dummy(),
                 is_from_parent: false,
-            });
+            }));
         }
+        Ty::Expr(_) => panic!("expr are not allowed in this position"),
         Ty::Tuple(..) => panic!("tuple types are not allowed in this position"),
         Ty::Array(..) => panic!("array types are not allowed in this position"),
         Ty::StringSlice(..) => panic!("str slice types are not allowed in this position"),
@@ -4460,14 +4807,14 @@ fn ty_to_type_parameter(
         Ty::Never { .. } => panic!("never types are not allowed in this position"),
     };
     let custom_type = type_engine.new_custom_from_name(engines, name.clone());
-    Ok(TypeParameter {
+    Ok(TypeParameter::Type(GenericTypeParameter {
         type_id: custom_type,
         initial_type_id: custom_type,
         name,
         trait_constraints: Vec::new(),
         trait_constraints_span: Span::dummy(),
         is_from_parent: false,
-    })
+    }))
 }
 
 fn path_type_to_ident(
@@ -4694,7 +5041,7 @@ fn generic_args_to_type_arguments(
     handler: &Handler,
     engines: &Engines,
     generic_args: GenericArgs,
-) -> Result<Vec<TypeArgument>, ErrorEmitted> {
+) -> Result<Vec<GenericArgument>, ErrorEmitted> {
     generic_args
         .parameters
         .into_inner()
@@ -4708,7 +5055,7 @@ fn ty_tuple_descriptor_to_type_arguments(
     handler: &Handler,
     engines: &Engines,
     ty_tuple_descriptor: TyTupleDescriptor,
-) -> Result<Vec<TypeArgument>, ErrorEmitted> {
+) -> Result<Vec<GenericArgument>, ErrorEmitted> {
     let type_arguments = match ty_tuple_descriptor {
         TyTupleDescriptor::Nil => vec![],
         TyTupleDescriptor::Cons { head, tail, .. } => {
@@ -4851,10 +5198,14 @@ fn error_if_self_param_is_not_allowed(
     fn_kind: &str,
 ) -> Result<(), ErrorEmitted> {
     for param in parameters {
-        if engines.te().get(param.type_argument.type_id).is_self_type() {
+        if engines
+            .te()
+            .get(param.type_argument.type_id())
+            .is_self_type()
+        {
             let error = ConvertParseTreeError::SelfParameterNotAllowedForFn {
                 fn_kind: fn_kind.to_owned(),
-                span: param.type_argument.span.clone(),
+                span: param.type_argument.span(),
             };
             return Err(handler.emit_err(error.into()));
         }

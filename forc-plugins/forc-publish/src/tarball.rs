@@ -68,11 +68,13 @@ fn copy_project_excluding_out(temp_project_dir: &Path) -> Result<()> {
 mod test {
     use super::*;
     use flate2::read::GzDecoder;
+    use serial_test::serial;
     use std::{env, fs};
     use tar::Archive;
     use tempfile::tempdir;
 
     #[test]
+    #[serial]
     fn test_create_tarball_success() {
         // Create a temporary directory
         let temp_project_dir = tempdir().unwrap();
@@ -112,6 +114,7 @@ mod test {
     }
 
     #[test]
+    #[serial]
     fn test_create_tarball_fails_without_forc_toml() {
         // Create a temporary directory that DOES NOT contain Forc.toml
         let temp_project_dir = tempdir().unwrap();
@@ -127,6 +130,7 @@ mod test {
     }
 
     #[test]
+    #[serial]
     fn test_create_tarball_excludes_out_dir() {
         let temp_project_dir = tempdir().unwrap();
 

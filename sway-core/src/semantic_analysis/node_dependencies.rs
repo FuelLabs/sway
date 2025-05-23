@@ -1,12 +1,14 @@
-use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
-
 use crate::{
+    decl_engine::ParsedDeclEngineGet,
     language::{parsed::*, CallPath},
     type_system::*,
     Engines,
 };
-
+use hashbrown::{HashMap, HashSet};
+use std::{
+    hash::{DefaultHasher, Hash, Hasher},
+    iter::FromIterator,
+};
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::integer_bits::IntegerBits;
@@ -66,11 +68,11 @@ fn find_recursive_decl(
     dep_sym: &DependentSymbol,
 ) -> Option<CompileError> {
     match dep_sym {
-        DependentSymbol::Fn(_, Some(fn_span)) => {
+        DependentSymbol::Fn(_, _, Some(fn_span)) => {
             let mut chain = Vec::new();
             find_recursive_call_chain(decl_dependencies, dep_sym, fn_span, &mut chain)
         }
-        DependentSymbol::Symbol(_) => {
+        DependentSymbol::Symbol(_, _) => {
             let mut chain = Vec::new();
             find_recursive_type_chain(decl_dependencies, dep_sym, &mut chain)
         }
@@ -84,7 +86,7 @@ fn find_recursive_call_chain(
     fn_span: &Span,
     chain: &mut Vec<Ident>,
 ) -> Option<CompileError> {
-    if let DependentSymbol::Fn(fn_sym_ident, _) = fn_sym {
+    if let DependentSymbol::Fn(_, fn_sym_ident, _) = fn_sym {
         if chain.contains(fn_sym_ident) {
             // We've found a recursive loop, but it's possible this function is not actually in the
             // loop, but is instead just calling into the loop.  Only if this function is at the
@@ -117,7 +119,7 @@ fn find_recursive_type_chain(
     dep_sym: &DependentSymbol,
     chain: &mut Vec<Ident>,
 ) -> Option<CompileError> {
-    if let DependentSymbol::Symbol(sym_ident) = dep_sym {
+    if let DependentSymbol::Symbol(_, sym_ident) = dep_sym {
         if chain.contains(sym_ident) {
             // See above about it only being an error if we're referring back to the start.
             return if &chain[0] != sym_ident {
@@ -201,7 +203,38 @@ fn build_recursive_type_error(name: Ident, chain: &[Ident]) -> CompileError {
 // -------------------------------------------------------------------------------------------------
 // Dependency gathering.
 
-type DependencyMap = HashMap<DependentSymbol, Dependencies>;
+#[derive(Default)]
+struct MemoizedBuildHasher {}
+
+impl std::hash::BuildHasher for MemoizedBuildHasher {
+    type Hasher = MemoizedHasher;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        MemoizedHasher { last_u64: None }
+    }
+}
+
+// Only works with `write_u64`, because it returns the last "hashed" u64, as is.
+struct MemoizedHasher {
+    last_u64: Option<u64>,
+}
+
+impl std::hash::Hasher for MemoizedHasher {
+    fn finish(&self) -> u64 {
+        *self.last_u64.as_ref().unwrap()
+    }
+
+    fn write(&mut self, _bytes: &[u8]) {
+        unimplemented!("Only works with write_u64");
+    }
+
+    fn write_u64(&mut self, i: u64) {
+        self.last_u64 = Some(i);
+    }
+}
+
+type DependencyMap = HashMap<DependentSymbol, Dependencies, MemoizedBuildHasher>;
+type DependencySet = HashSet<DependentSymbol, MemoizedBuildHasher>;
 
 fn insert_into_ordered_nodes(
     engines: &Engines,
@@ -269,7 +302,7 @@ fn depends_on(
 
 #[derive(Debug)]
 struct Dependencies {
-    deps: HashSet<DependentSymbol>,
+    deps: DependencySet,
 }
 
 impl Dependencies {
@@ -282,7 +315,7 @@ impl Dependencies {
                 (
                     name,
                     Dependencies {
-                        deps: HashSet::new(),
+                        deps: DependencySet::default(),
                     }
                     .gather_from_decl(engines, decl),
                 )
@@ -622,12 +655,12 @@ impl Dependencies {
                         // so this could be referring to `Enum::Variant`,
                         // so we want to depend on `Enum` but not `Variant`.
                         this.deps
-                            .insert(DependentSymbol::Symbol(before.inner.clone()));
+                            .insert(DependentSymbol::new_symbol(before.inner.clone()));
                     } else {
                         // We have just `Foo`, and nothing before `Foo`,
                         // so this is could either an enum variant or a function application
                         // so we want to depend on it as a function
-                        this.deps.insert(DependentSymbol::Fn(
+                        this.deps.insert(DependentSymbol::new_fn(
                             call_path_binding.inner.suffix.suffix.clone(),
                             None,
                         ));
@@ -699,6 +732,7 @@ impl Dependencies {
             ExpressionKind::ImplicitReturn(expr) | ExpressionKind::Return(expr) => {
                 self.gather_from_expr(engines, expr)
             }
+            ExpressionKind::Panic(expr) => self.gather_from_expr(engines, expr),
             ExpressionKind::Ref(RefExpression { value: expr, .. })
             | ExpressionKind::Deref(expr) => self.gather_from_expr(engines, expr),
         }
@@ -749,41 +783,49 @@ impl Dependencies {
         if call_path.prefixes.is_empty() {
             // We can just use the suffix.
             self.deps.insert(if is_fn_app {
-                DependentSymbol::Fn(call_path.suffix.clone(), None)
+                DependentSymbol::new_fn(call_path.suffix.clone(), None)
             } else {
-                DependentSymbol::Symbol(call_path.suffix.clone())
+                DependentSymbol::new_symbol(call_path.suffix.clone())
             });
         } else if use_prefix && call_path.prefixes.len() == 1 {
             // Here we can use the prefix (e.g., for 'Enum::Variant' -> 'Enum') as long is it's
             // only a single element.
             self.deps
-                .insert(DependentSymbol::Symbol(call_path.prefixes[0].clone()));
+                .insert(DependentSymbol::new_symbol(call_path.prefixes[0].clone()));
         }
         self
     }
 
     fn gather_from_type_parameters(self, type_parameters: &[TypeParameter]) -> Self {
-        self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
-            deps.gather_from_iter(
-                type_parameter.trait_constraints.iter(),
-                |deps, constraint| deps.gather_from_call_path(&constraint.trait_name, false, false),
-            )
+        self.gather_from_iter(type_parameters.iter(), |deps, p| match p {
+            TypeParameter::Type(p) => deps
+                .gather_from_iter(p.trait_constraints.iter(), |deps, constraint| {
+                    deps.gather_from_call_path(&constraint.trait_name, false, false)
+                }),
+            TypeParameter::Const(_) => deps,
         })
     }
 
     fn gather_from_type_arguments(
         self,
         engines: &Engines,
-        type_arguments: &[TypeArgument],
+        type_arguments: &[GenericArgument],
     ) -> Self {
         self.gather_from_iter(type_arguments.iter(), |deps, type_argument| {
             deps.gather_from_type_argument(engines, type_argument)
         })
     }
 
-    fn gather_from_type_argument(self, engines: &Engines, type_argument: &TypeArgument) -> Self {
-        let type_engine = engines.te();
-        self.gather_from_typeinfo(engines, &type_engine.get(type_argument.type_id))
+    fn gather_from_type_argument(self, engines: &Engines, type_argument: &GenericArgument) -> Self {
+        match type_argument {
+            GenericArgument::Type(a) => {
+                let type_engine = engines.te();
+                self.gather_from_typeinfo(engines, &type_engine.get(a.type_id))
+            }
+            GenericArgument::Const(_) => Dependencies {
+                deps: HashSet::default(),
+            },
+        }
     }
 
     fn gather_from_typeinfo(mut self, engines: &Engines, type_info: &TypeInfo) -> Self {
@@ -798,7 +840,7 @@ impl Dependencies {
                 type_arguments,
             } => {
                 self.deps
-                    .insert(DependentSymbol::Symbol(name.clone().call_path.suffix));
+                    .insert(DependentSymbol::new_symbol(name.clone().call_path.suffix));
                 match type_arguments {
                     Some(type_arguments) => {
                         self.gather_from_type_arguments(engines, type_arguments)
@@ -840,50 +882,66 @@ impl Dependencies {
 
 #[derive(Debug, Eq)]
 enum DependentSymbol {
-    Symbol(Ident),
-    Fn(Ident, Option<Span>),
-    Impl(Ident, String, String), // Trait or self, type implementing for, and method names concatenated.
+    Symbol(u64, Ident),
+    Fn(u64, Ident, Option<Span>),
+    Impl(u64),
 }
 
-// We'll use a custom Hash and PartialEq here to explicitly ignore the span in the Fn variant.
+impl Hash for DependentSymbol {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.cached_hash().hash(state);
+    }
+}
 
-impl PartialEq for DependentSymbol {
-    fn eq(&self, rhs: &Self) -> bool {
-        match (self, rhs) {
-            (DependentSymbol::Symbol(l), DependentSymbol::Symbol(r)) => l.eq(r),
-            (DependentSymbol::Fn(l, _), DependentSymbol::Fn(r, _)) => l.eq(r),
-            (DependentSymbol::Impl(lt, ls, lm), DependentSymbol::Impl(rt, rs, rm)) => {
-                lt.eq(rt) && ls.eq(rs) && lm.eq(rm)
-            }
-            _ => false,
+impl DependentSymbol {
+    pub fn new_symbol(name: Ident) -> Self {
+        let mut hasher = DefaultHasher::new();
+        0.hash(&mut hasher);
+        name.hash(&mut hasher);
+        Self::Symbol(hasher.finish(), name)
+    }
+
+    pub fn new_fn(name: Ident, span: Option<Span>) -> Self {
+        let mut hasher = DefaultHasher::new();
+        1.hash(&mut hasher);
+        name.hash(&mut hasher);
+        // TODO span?
+        Self::Fn(hasher.finish(), name, span)
+    }
+
+    pub fn new_impl(name: Ident, impl_for: String, method_names: String) -> Self {
+        let mut hasher = DefaultHasher::new();
+        2.hash(&mut hasher);
+        name.hash(&mut hasher);
+        impl_for.hash(&mut hasher);
+        method_names.hash(&mut hasher);
+        Self::Impl(hasher.finish())
+    }
+
+    pub fn cached_hash(&self) -> u64 {
+        match self {
+            DependentSymbol::Symbol(hash, ..) => *hash,
+            DependentSymbol::Fn(hash, ..) => *hash,
+            DependentSymbol::Impl(hash, ..) => *hash,
         }
     }
 }
 
-use std::hash::{Hash, Hasher};
-
-impl Hash for DependentSymbol {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            DependentSymbol::Symbol(s) => s.hash(state),
-            DependentSymbol::Fn(s, _) => s.hash(state),
-            DependentSymbol::Impl(t, s, m) => {
-                t.hash(state);
-                s.hash(state);
-                m.hash(state)
-            }
-        }
+impl PartialEq for DependentSymbol {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.cached_hash().eq(&rhs.cached_hash())
     }
 }
 
 fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
     let type_engine = engines.te();
-    let dep_sym = |name| Some(DependentSymbol::Symbol(name));
+    let dep_sym = |name| Some(DependentSymbol::new_symbol(name));
+
     // `method_names` is the concatenation of all the method names defined in an impl block.
     // This is needed because there can exist multiple impl self blocks for a single type in a
     // file and we need some way to disambiguate them.
     let impl_sym = |trait_name, type_info: &TypeInfo, method_names| {
-        Some(DependentSymbol::Impl(
+        Some(DependentSymbol::new_impl(
             trait_name,
             type_info_name(type_info),
             method_names,
@@ -894,7 +952,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
         // These declarations can depend upon other declarations.
         Declaration::FunctionDeclaration(decl_id) => {
             let decl = engines.pe().get_function(decl_id);
-            Some(DependentSymbol::Fn(
+            Some(DependentSymbol::new_fn(
                 decl.name.clone(),
                 Some(decl.span.clone()),
             ))
@@ -938,53 +996,35 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
         }
         Declaration::ImplSelfOrTrait(decl_id) => {
             let decl = engines.pe().get_impl_self_or_trait(decl_id);
+            let method_names = decl.items.iter().enumerate().fold(
+                String::with_capacity(1024),
+                |mut s, (idx, item)| {
+                    if idx > 0 {
+                        s.push(',');
+                    }
+                    match item {
+                        ImplItem::Fn(id) => engines.pe().map(id, |x| s.push_str(x.name.as_str())),
+                        ImplItem::Constant(id) => {
+                            engines.pe().map(id, |x| s.push_str(x.name.as_str()))
+                        }
+                        ImplItem::Type(id) => engines.pe().map(id, |x| s.push_str(x.name.as_str())),
+                    }
+                    s
+                },
+            );
             if decl.is_self {
                 let trait_name =
                     Ident::new_with_override("self".into(), decl.implementing_for.span());
                 impl_sym(
                     trait_name,
-                    &type_engine.get(decl.implementing_for.type_id),
-                    decl.items
-                        .iter()
-                        .map(|item| match item {
-                            ImplItem::Fn(fn_decl_id) => {
-                                let fn_decl = engines.pe().get_function(fn_decl_id);
-                                fn_decl.name.to_string()
-                            }
-                            ImplItem::Constant(decl_id) => {
-                                let const_decl = engines.pe().get_constant(decl_id);
-                                const_decl.name.to_string()
-                            }
-                            ImplItem::Type(decl_id) => {
-                                let type_decl = engines.pe().get_trait_type(decl_id);
-                                type_decl.name.to_string()
-                            }
-                        })
-                        .collect::<Vec<String>>()
-                        .join(","),
+                    &type_engine.get(decl.implementing_for.type_id()),
+                    method_names,
                 )
             } else if decl.trait_name.prefixes.is_empty() {
                 impl_sym(
                     decl.trait_name.suffix.clone(),
-                    &type_engine.get(decl.implementing_for.type_id),
-                    decl.items
-                        .iter()
-                        .map(|item| match item {
-                            ImplItem::Fn(fn_decl_id) => {
-                                let fn_decl = engines.pe().get_function(fn_decl_id);
-                                fn_decl.name.to_string()
-                            }
-                            ImplItem::Constant(decl_id) => {
-                                let const_decl = engines.pe().get_constant(decl_id);
-                                const_decl.name.to_string()
-                            }
-                            ImplItem::Type(decl_id) => {
-                                let type_decl = engines.pe().get_trait_type(decl_id);
-                                type_decl.name.to_string()
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                        .join(","),
+                    &type_engine.get(decl.implementing_for.type_id()),
+                    method_names,
                 )
             } else {
                 None
@@ -1050,7 +1090,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
 
 /// Checks if any dependant depends on a dependee via a chain of dependencies.
 fn recursively_depends_on(
-    set: &HashSet<DependentSymbol>,
+    set: &DependencySet,
     dependee: &DependentSymbol,
     decl_dependencies: &DependencyMap,
 ) -> bool {

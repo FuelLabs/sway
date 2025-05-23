@@ -11,7 +11,7 @@ use sway_types::{ident::Ident, span::Span, Named, Spanned};
 pub struct TypeAliasDeclaration {
     pub name: Ident,
     pub attributes: transform::Attributes,
-    pub ty: TypeArgument,
+    pub ty: GenericArgument,
     pub visibility: Visibility,
     pub span: Span,
 }

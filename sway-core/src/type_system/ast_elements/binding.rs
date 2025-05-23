@@ -70,16 +70,16 @@ use sway_types::{Span, Spanned};
 /// Each of these 4 examples generates a valid struct expression for `Data`
 /// and passes type checking. But each does so in a unique way:
 /// - `data1` has no type ascription and no type arguments in the `TypeBinding`,
-///     so both are inferred from the value passed to `value`
+///   so both are inferred from the value passed to `value`
 /// - `data2` has no type ascription but does have type arguments in the
-///     `TypeBinding`, so the type ascription and type of the value passed to
-///     `value` are both unified to the `TypeBinding`
+///   `TypeBinding`, so the type ascription and type of the value passed to
+///   `value` are both unified to the `TypeBinding`
 /// - `data3` has a type ascription but no type arguments in the `TypeBinding`,
-///     so the type arguments in the `TypeBinding` and the type of the value
-///     passed to `value` are both unified to the type ascription
+///   so the type arguments in the `TypeBinding` and the type of the value
+///   passed to `value` are both unified to the type ascription
 /// - `data4` has a type ascription and has type arguments in the `TypeBinding`,
-///     so, with the type from the value passed to `value`, all three are unified
-///     together
+///   so, with the type from the value passed to `value`, all three are unified
+///   together
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeBinding<T> {
     pub inner: T,
@@ -108,27 +108,27 @@ pub struct TypeBinding<T> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TypeArgs {
     /// `Regular` variant indicates the type arguments are located after the suffix.
-    Regular(Vec<TypeArgument>),
+    Regular(Vec<GenericArgument>),
     /// `Prefix` variant indicates the type arguments are located between the last
     /// prefix and the suffix.
-    Prefix(Vec<TypeArgument>),
+    Prefix(Vec<GenericArgument>),
 }
 
 impl TypeArgs {
-    pub fn to_vec(&self) -> Vec<TypeArgument> {
+    pub fn to_vec(&self) -> Vec<GenericArgument> {
         match self {
             TypeArgs::Regular(vec) => vec.to_vec(),
             TypeArgs::Prefix(vec) => vec.to_vec(),
         }
     }
 
-    pub fn as_slice(&self) -> &[TypeArgument] {
+    pub fn as_slice(&self) -> &[GenericArgument] {
         match self {
             TypeArgs::Regular(vec) | TypeArgs::Prefix(vec) => vec,
         }
     }
 
-    pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<TypeArgument> {
+    pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<GenericArgument> {
         match self {
             TypeArgs::Regular(vec) => vec,
             TypeArgs::Prefix(vec) => vec,
@@ -319,6 +319,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         let fn_ref = unknown_decl.to_fn_ref(handler, ctx.engines())?;
         // Get a new copy from the declaration engine.
         let mut new_copy = (*decl_engine.get_function(fn_ref.id())).clone();
+
         match self.type_arguments {
             // Monomorphize the copy, in place.
             TypeArgs::Regular(_) => {
@@ -336,8 +337,8 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                 for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
                     ctx.resolve_type(
                         handler,
-                        type_argument.type_id,
-                        &type_argument.span,
+                        type_argument.type_id(),
+                        &type_argument.span(),
                         EnforceTypeArguments::Yes,
                         None,
                     )
@@ -352,6 +353,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                 decl_engine.get_parsed_decl_id(fn_ref.id()).as_ref(),
             )
             .with_parent(ctx.engines.de(), fn_ref.id().into());
+
         Ok((new_fn_ref, None, None))
     }
 }

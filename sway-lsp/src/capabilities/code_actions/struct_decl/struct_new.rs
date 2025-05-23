@@ -63,7 +63,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
         } else {
             // Otherwise, generate the impl block with the `new` function inside.
             self.impl_string(
-                self.type_param_string(&self.decl.type_parameters),
+                self.type_param_string(&self.decl.generic_parameters),
                 format!("\n{new_fn}\n"),
                 None,
             )
@@ -76,7 +76,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
             Some(decl) => {
                 let LineCol {
                     line: first_line, ..
-                } = decl.span.start_pos().line_col();
+                } = decl.span.start_line_col_one_index();
                 Position {
                     line: first_line as u32,
                     character: 0,
@@ -86,7 +86,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
                 // If we're inserting a whole new impl block, default to the line after the struct declaration.
                 let LineCol {
                     line: last_line, ..
-                } = self.decl().span().end_pos().line_col();
+                } = self.decl().span().end_line_col_one_index();
                 Position {
                     line: last_line as u32,
                     character: 0,
@@ -143,7 +143,7 @@ impl StructNewCodeAction<'_> {
     fn params_string(params: &[TyStructField]) -> String {
         params
             .iter()
-            .map(|field| format!("{}: {}", field.name, field.type_argument.span.as_str()))
+            .map(|field| format!("{}: {}", field.name, field.type_argument.span().as_str()))
             .collect::<Vec<String>>()
             .join(", ")
     }

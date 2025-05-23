@@ -15,12 +15,14 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.85.0
-  NIGHTLY_RUST_VERSION: nightly-2024-10-21
+  RUST_VERSION: 1.86.0
+  NIGHTLY_RUST_VERSION: nightly-2025-03-20
 
 jobs:
   verifications-complete:
     needs:
+      - check-dependency-version-formats
+      - check-forc-manifest-version
       - build-sway-lib-std
       - build-sway-examples
       - build-reference-examples
@@ -52,6 +54,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "pass"
+
+  check-dependency-version-formats:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache check-dep-versions build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: check-dep-versions-${{ runner.os }}-${{ hashFiles('.github/scripts/check-dep-versions/Cargo.lock') }}
+
+      - name: Check Workspace Dependency Version Formats
+        run: |
+          cargo run --manifest-path .github/workflows/scripts/check-dep-versions/Cargo.toml --release -- Cargo.toml
+
+  check-forc-manifest-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache check-forc-manifest-version build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: check-forc-manifest-version-${{ runner.os }}-${{ hashFiles('.github/scripts/check-forc-manifest-version/Cargo.lock') }}
+
+      - name: Check Forc Manifest Version
+        run: |
+          cargo run --manifest-path .github/workflows/scripts/check-forc-manifest-version/Cargo.toml --release -- Cargo.toml
+
   get-fuel-core-version:
     runs-on: buildjet-4vcpu-ubuntu-2204
     outputs:
@@ -84,7 +127,7 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
+        run: cargo install --locked --path ./forc
       - name: Build sway-lib-std
         run: forc build --path sway-lib-std
 
@@ -156,7 +199,7 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install forc-fmt
-        run: cargo install --locked --debug --path ./forc-plugins/forc-fmt
+        run: cargo install --locked --path ./forc-plugins/forc-fmt
       - name: Run the formatter against all sway projects and fail if any of them panic
         run: scripts/formatter/forc-fmt-check-panic.sh
 
@@ -196,21 +239,15 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
+        run: cargo install --locked --path ./forc
       - name: Install Forc plugins
         run: |
-          cargo install --locked --debug --path ./forc-plugins/forc-fmt
-          cargo install --locked --debug --path ./forc-plugins/forc-lsp
-          cargo install --locked --debug --path ./forc-plugins/forc-client
-          cargo install --locked --debug --path ./forc-plugins/forc-debug
-          cargo install --locked --debug --path ./forc-plugins/forc-doc
-          cargo install --locked --debug --path ./forc-plugins/forc-tx
-          cargo install --locked --debug --path ./forc-plugins/forc-crypto
-          cargo install --locked --debug --path ./forc-plugins/forc-node
-          cargo install --locked --debug --path ./forc-plugins/forc-migrate
-          cargo install --locked --debug forc-explore
+          for dir in ./forc-plugins/*/; do
+                cargo install --locked --path "$dir"
+          done
+          cargo install --locked forc-explore
       - name: Install mdbook-forc-documenter
-        run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
+        run: cargo install --locked --path ./scripts/mdbook-forc-documenter
 
       - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
@@ -251,10 +288,10 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
+        run: cargo install --locked --path ./forc
       - name: Install Forc plugins
         run: |
-          cargo install --locked --debug --path ./forc-plugins/forc-doc
+          cargo install --locked --path ./forc-plugins/forc-doc
       - name: Build sway-lib-std docs
         run: forc doc --path ./sway-lib-std
 
@@ -271,7 +308,7 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
+        run: cargo install --locked --path ./forc
       - name: Initialize test project
         run: forc new test-proj
       - name: Update project forc manifest to use local sway-lib-std
@@ -461,7 +498,7 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
+        run: cargo install --locked --path ./forc
       - name: Run benchmarks
         run: ./benchmark.sh
       - name: Checkout benchmark data
@@ -506,15 +543,23 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
-      - name: Run Std Unit Tests
-        run: forc build --path sway-lib-std && forc test --path sway-lib-std
-      - name: Run Std Unit Tests - Experimental feature 'error_type'
-        run: forc build --experimental error_type --path sway-lib-std && forc test --experimental error_type --path sway-lib-std
-      - name: Run In Language Unit Tests
-        run: forc build --path test/src/in_language_tests && forc test --path test/src/in_language_tests
-      - name: Run In Language Unit Tests - Experimental feature 'error_type'
-        run: forc build --experimental error_type --path test/src/in_language_tests && forc test --experimental error_type --path test/src/in_language_tests
+        run: cargo install --locked --path ./forc
+      - name: Run Std Unit Tests (Debug)
+        run: forc test --path sway-lib-std
+      - name: Run Std Unit Tests (Release)
+        run: forc test --release --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'error_type' (Debug)
+        run: forc test --experimental error_type --path sway-lib-std
+      - name: Run Std Unit Tests - Experimental feature 'error_type' (Release)
+        run: forc test --release --experimental error_type --path sway-lib-std
+      - name: Run In Language Unit Tests (Debug)
+        run: forc test --path test/src/in_language_tests
+      - name: Run In Language Unit Tests (Release)
+        run: forc test --release --path test/src/in_language_tests
+      - name: Run In Language Unit Tests - Experimental feature 'error_type' (Debug)
+        run: forc test --experimental error_type --path test/src/in_language_tests
+      - name: Run In Language Unit Tests - Experimental feature 'error_type' (Release)
+        run: forc test --release --experimental error_type --path test/src/in_language_tests
 
   forc-pkg-fuels-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -807,11 +852,11 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/fuellabs/forc
@@ -826,17 +871,17 @@ jobs:
             org.opencontainers.image.description=Fuel Orchestrator.
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to the ghcr.io registry
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push the image to ghcr.io
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: deployment/Dockerfile
@@ -859,9 +904,42 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
+  publish-sway-lib-std:
+    needs: [publish, build-and-release-forc-binaries]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Publish sway-lib-std
+        run: |
+          cd sway-lib-std
+          cargo run --locked -p forc-publish
+        env:
+          FORC_PUB_TOKEN: ${{ secrets.FORCPUB_TOKEN }}
+
+      - name: Notify if Job Fails
+        uses: ravsamhq/notify-slack-action@v2
+        if: always()
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}> : <{run_url}|View Run Results>"
+          footer: ""
+          notify_when: "failure"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
+
   build-publish-release-image:
     # Build & Publish Docker Image Per Sway Release
-    needs: publish
+    needs: [publish]
     runs-on: buildjet-4vcpu-ubuntu-2204
     permissions:
       contents: read
@@ -869,11 +947,11 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/fuellabs/sway
@@ -881,17 +959,17 @@ jobs:
             type=semver,pattern={{raw}}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to the ghcr.io registry
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push the image to ghcr.io
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: deployment/Dockerfile
@@ -918,16 +996,16 @@ jobs:
     name: Build and upload forc binaries to release
     runs-on: ${{ matrix.job.os }}
     if: github.event_name == 'release' && github.event.action == 'published'
-    needs: publish
+    needs: [publish]
     strategy:
       matrix:
         job:
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             platform: linux
             target: x86_64-unknown-linux-gnu
             arch: amd64
             svm_target_platform: linux-amd64
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             platform: linux
             target: aarch64-unknown-linux-gnu
             arch: arm64
@@ -970,13 +1048,13 @@ jobs:
       - name: Strip release binaries x86_64-linux-gnu
         if: matrix.job.target == 'x86_64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node forc-publish; do
             strip "target/${{ matrix.job.target }}/release/$BINARY"
           done
       - name: Strip release binaries aarch64-linux-gnu
         if: matrix.job.target == 'aarch64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node forc-publish; do
             docker run --rm -v \
             "$PWD/target:/target:Z" \
             ghcr.io/cross-rs/${{ matrix.job.target }}:main \
@@ -986,7 +1064,7 @@ jobs:
       - name: Strip release binaries mac
         if: matrix.job.os == 'macos-latest'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node forc-publish; do
             strip -x "target/${{ matrix.job.target }}/release/$BINARY"
           done
 
@@ -1000,7 +1078,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-crypto forc-tx forc-submit forc-migrate forc-node forc-publish; do
             cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

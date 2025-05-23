@@ -2,6 +2,14 @@ library;
 
 use ::ops::*;
 
+impl PartialEq for raw_ptr {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
+impl Eq for raw_ptr {}
+
 impl raw_ptr {
     /// Returns `true` if the pointer is null.
     ///

@@ -1,3 +1,3 @@
 library;
 
-// Fallback attribute does not expect any arguments.
+// `fallback` attribute does not expect any arguments.

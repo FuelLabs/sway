@@ -44,7 +44,7 @@ impl Spanned for EnumDeclaration {
 pub struct EnumVariant {
     pub name: Ident,
     pub attributes: transform::Attributes,
-    pub type_argument: TypeArgument,
+    pub type_argument: GenericArgument,
     pub(crate) tag: usize,
     pub(crate) span: Span,
 }

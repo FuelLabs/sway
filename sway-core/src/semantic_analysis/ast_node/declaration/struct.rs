@@ -5,7 +5,9 @@ use crate::{
     type_system::*,
     Engines,
 };
+use ast_elements::type_parameter::GenericTypeParameter;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::Spanned;
 use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyStructDecl {
@@ -47,7 +49,7 @@ impl ty::TyStructDecl {
         // create a namespace for the decl, used to create a scope for generics
         ctx.scoped(handler, Some(span.clone()), |ctx| {
             // Type check the type parameters.
-            let new_type_parameters = TypeParameter::type_check_type_params(
+            let new_type_parameters = GenericTypeParameter::type_check_type_params(
                 handler,
                 ctx.by_ref(),
                 type_parameters,
@@ -65,7 +67,7 @@ impl ty::TyStructDecl {
             // create the struct decl
             let decl = ty::TyStructDecl {
                 call_path: path,
-                type_parameters: new_type_parameters,
+                generic_parameters: new_type_parameters,
                 fields: new_fields,
                 visibility,
                 span,
@@ -86,11 +88,11 @@ impl ty::TyStructField {
         let type_engine = ctx.engines.te();
 
         let mut type_argument = field.type_argument;
-        type_argument.type_id = ctx
+        *type_argument.type_id_mut() = ctx
             .resolve_type(
                 handler,
-                type_argument.type_id,
-                &type_argument.span,
+                type_argument.type_id(),
+                &type_argument.span(),
                 EnforceTypeArguments::Yes,
                 None,
             )

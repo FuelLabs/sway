@@ -19,6 +19,7 @@ use sway_core::language::ty::{
     TyConstantDecl, TyEnumVariant, TyFunctionDecl, TyImplSelfOrTrait, TyStorageField,
     TyStructField, TyTraitFn, TyTraitItem, TyTraitType,
 };
+use sway_types::Spanned;
 
 /// The actual context of the item displayed by [ItemContext].
 /// This uses [ContextType] to determine how to represent the context of an item.
@@ -59,7 +60,7 @@ impl Renderable for Context {
                 for field in fields {
                     let struct_field_id = format!("structfield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        (*render_plan.engines.te().get(field.type_argument.type_id)).clone(),
+                        (*render_plan.engines.te().get(field.type_argument.type_id())).clone(),
                         &render_plan,
                         &self.module_info,
                     );
@@ -71,7 +72,7 @@ impl Renderable for Context {
                                 @ if let Ok(type_anchor) = type_anchor {
                                     : type_anchor;
                                 } else {
-                                    : field.type_argument.span.as_str();
+                                    : field.type_argument.span().as_str();
                                 }
                             }
                         }
@@ -87,7 +88,7 @@ impl Renderable for Context {
                 for field in fields {
                     let storage_field_id = format!("storagefield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        (*render_plan.engines.te().get(field.type_argument.type_id)).clone(),
+                        (*render_plan.engines.te().get(field.type_argument.type_id())).clone(),
                         &render_plan,
                         &self.module_info,
                     );
@@ -99,7 +100,7 @@ impl Renderable for Context {
                                 @ if let Ok(type_anchor) = type_anchor {
                                     : type_anchor;
                                 } else {
-                                    : field.type_argument.span.as_str();
+                                    : field.type_argument.span().as_str();
                                 }
                             }
                         }
@@ -115,7 +116,11 @@ impl Renderable for Context {
                 for variant in variants {
                     let enum_variant_id = format!("variant.{}", variant.name.as_str());
                     let type_anchor = render_type_anchor(
-                        (*render_plan.engines.te().get(variant.type_argument.type_id)).clone(),
+                        (*render_plan
+                            .engines
+                            .te()
+                            .get(variant.type_argument.type_id()))
+                        .clone(),
                         &render_plan,
                         &self.module_info,
                     );
@@ -127,7 +132,7 @@ impl Renderable for Context {
                                 @ if let Ok(type_anchor) = type_anchor {
                                     : type_anchor;
                                 } else {
-                                    : variant.type_argument.span.as_str();
+                                    : variant.type_argument.span().as_str();
                                 }
                             }
                         }
@@ -158,11 +163,11 @@ impl Renderable for Context {
                                 fn_sig,
                                 "{} {},",
                                 param.name.as_str(),
-                                param.type_argument.span.as_str()
+                                param.type_argument.span().as_str()
                             )?;
                         }
                     }
-                    write!(fn_sig, ") -> {}", method.return_type.span.as_str())?;
+                    write!(fn_sig, ") -> {}", method.return_type.span().as_str())?;
                     let multiline = fn_sig.chars().count() >= 60;
                     let fn_sig = format!("fn {}(", method.name);
                     let method_id = format!("tymethod.{}", method.name.as_str());
@@ -192,7 +197,7 @@ impl Renderable for Context {
                                         } else {
                                             : param.name.as_str();
                                             : ": ";
-                                            : param.type_argument.span.as_str();
+                                            : param.type_argument.span().as_str();
                                             : ","
                                         }
                                     }
@@ -211,7 +216,7 @@ impl Renderable for Context {
                                         } else {
                                             : param.name.as_str();
                                             : ": ";
-                                            : param.type_argument.span.as_str();
+                                            : param.type_argument.span().as_str();
                                         }
                                         @ if param.name.as_str()
                                             != method.parameters.last()
@@ -222,9 +227,9 @@ impl Renderable for Context {
                                     }
                                     : ")";
                                 }
-                                @ if !method.return_type.span.as_str().contains(&fn_sig) {
+                                @ if !method.return_type.span().as_str().contains(&fn_sig) {
                                     : " -> ";
-                                    : method.return_type.span.as_str();
+                                    : method.return_type.span().as_str();
                                 }
                             }
                         }
@@ -282,7 +287,7 @@ impl DocImplTrait {
         self.impl_trait
             .trait_type_arguments
             .iter()
-            .map(|arg| arg.span.as_str().to_string())
+            .map(|arg| arg.span().as_str().to_string())
             .collect()
     }
 
@@ -298,7 +303,7 @@ impl DocImplTrait {
     // If the trait name is the same as the declaration's name, it's an inherent implementation.
     // Otherwise, it's a trait implementation.
     pub fn is_inherent(&self) -> bool {
-        self.short_name() == self.impl_trait.implementing_for.span.as_str()
+        self.short_name() == self.impl_trait.implementing_for.span().as_str()
             || self.short_name() == "r#Self"
     }
 }
@@ -560,7 +565,7 @@ impl Renderable for DocImplTrait {
                         }
                         : " for ";
                     }
-                    : implementing_for.span.as_str();
+                    : implementing_for.span().as_str();
                 }
             }
         }
@@ -609,7 +614,7 @@ impl Renderable for TyFunctionDecl {
         let attributes = self.attributes.to_html_string();
 
         let mut fn_sig = format!("fn {}(", self.name.as_str());
-        for param in &self.parameters {
+        for param in self.parameters.iter() {
             let mut param_str = String::new();
             if param.is_reference {
                 write!(param_str, "ref ")?;
@@ -624,11 +629,11 @@ impl Renderable for TyFunctionDecl {
                     fn_sig,
                     "{} {},",
                     param.name.as_str(),
-                    param.type_argument.span.as_str()
+                    param.type_argument.span().as_str()
                 )?;
             }
         }
-        write!(fn_sig, ") -> {}", self.return_type.span.as_str())?;
+        write!(fn_sig, ") -> {}", self.return_type.span().as_str())?;
         let multiline = fn_sig.chars().count() >= 60;
 
         let method_id = format!("method.{}", self.name.as_str());
@@ -646,7 +651,7 @@ impl Renderable for TyFunctionDecl {
                             }
                             : "(";
                             @ if multiline {
-                                @ for param in &self.parameters {
+                                @ for param in self.parameters.iter() {
                                     br;
                                     : "    ";
                                     @ if param.is_reference {
@@ -660,14 +665,14 @@ impl Renderable for TyFunctionDecl {
                                     } else {
                                         : param.name.as_str();
                                         : ": ";
-                                        : param.type_argument.span.as_str();
+                                        : param.type_argument.span().as_str();
                                         : ","
                                     }
                                 }
                                 br;
                                 : ")";
                             } else {
-                                @ for param in &self.parameters {
+                                @ for param in self.parameters.iter() {
                                     @ if param.is_reference {
                                         : "ref";
                                     }
@@ -679,7 +684,7 @@ impl Renderable for TyFunctionDecl {
                                     } else {
                                         : param.name.as_str();
                                         : ": ";
-                                        : param.type_argument.span.as_str();
+                                        : param.type_argument.span().as_str();
                                     }
                                     @ if param.name.as_str()
                                         != self.parameters.last()
@@ -692,7 +697,7 @@ impl Renderable for TyFunctionDecl {
                             }
                             @ if self.span.as_str().contains("->") {
                                 : " -> ";
-                                : self.return_type.span.as_str();
+                                : self.return_type.span().as_str();
                             }
                         }
                     }

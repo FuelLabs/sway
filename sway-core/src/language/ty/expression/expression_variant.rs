@@ -9,6 +9,7 @@ use crate::{
     },
     type_system::*,
 };
+use ast_elements::type_parameter::GenericTypeParameter;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -176,6 +177,7 @@ pub enum TyExpressionVariant {
     Reassignment(Box<TyReassignment>),
     ImplicitReturn(Box<TyExpression>),
     Return(Box<TyExpression>),
+    Panic(Box<TyExpression>),
     Ref(Box<TyExpression>),
     Deref(Box<TyExpression>),
 }
@@ -664,6 +666,9 @@ impl HashWithEngines for TyExpressionVariant {
             Self::ImplicitReturn(exp) | Self::Return(exp) => {
                 exp.hash(state, engines);
             }
+            Self::Panic(exp) => {
+                exp.hash(state, engines);
+            }
             Self::Ref(exp) | Self::Deref(exp) => {
                 exp.hash(state, engines);
             }
@@ -815,6 +820,7 @@ impl SubstTypes for TyExpressionVariant {
             Continue => HasChanges::No,
             Reassignment(reassignment) => reassignment.subst(ctx),
             ImplicitReturn(expr) | Return(expr) => expr.subst(ctx),
+            Panic(expr) => expr.subst(ctx),
             Ref(exp) | Deref(exp) => exp.subst(ctx),
         }
     }
@@ -861,7 +867,7 @@ impl ReplaceDecls for TyExpressionVariant {
                                 implementing_for_typeid,
                                 &[ctx.namespace().current_package_name().clone()],
                                 &call_path.suffix,
-                                method.return_type.type_id,
+                                method.return_type.type_id(),
                                 &arguments
                                     .iter()
                                     .map(|a| a.1.return_type)
@@ -875,7 +881,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
                     let mut inner_decl_mapping =
-                        TypeParameter::gather_decl_mapping_from_trait_constraints(
+                        GenericTypeParameter::gather_decl_mapping_from_trait_constraints(
                             handler,
                             ctx.by_ref(),
                             &method.type_parameters,
@@ -1036,6 +1042,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 ImplicitReturn(expr) | Return(expr) => {
                     expr.replace_decls(decl_mapping, handler, ctx)
                 }
+                Panic(expr) => expr.replace_decls(decl_mapping, handler, ctx),
                 Ref(exp) | Deref(exp) => exp.replace_decls(decl_mapping, handler, ctx),
             }
         })
@@ -1077,7 +1084,7 @@ impl TypeCheckAnalysis for TyExpressionVariant {
                     unifier.unify(
                         handler,
                         arg.1.return_type,
-                        decl_param.type_argument.type_id,
+                        decl_param.type_argument.type_id(),
                         &Span::dummy(),
                         false,
                     );
@@ -1177,8 +1184,11 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::Reassignment(node) => {
                 node.type_check_analyze(handler, ctx)?;
             }
-            TyExpressionVariant::ImplicitReturn(node) | TyExpressionVariant::Return(node) => {
-                node.type_check_analyze(handler, ctx)?;
+            TyExpressionVariant::ImplicitReturn(exp) | TyExpressionVariant::Return(exp) => {
+                exp.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::Panic(exp) => {
+                exp.type_check_analyze(handler, ctx)?;
             }
             TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
                 exp.type_check_analyze(handler, ctx)?;
@@ -1196,9 +1206,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
     ) -> Result<(), ErrorEmitted> {
         handler.scope(|handler| {
             match self {
-                TyExpressionVariant::ConstGenericExpression { .. } => {
-                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-                }
+                TyExpressionVariant::ConstGenericExpression { .. } => {}
                 TyExpressionVariant::Literal(_) => {}
                 TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for (_, arg) in arguments.iter_mut() {
@@ -1307,8 +1315,11 @@ impl TypeCheckFinalization for TyExpressionVariant {
                 TyExpressionVariant::Reassignment(node) => {
                     node.type_check_finalize(handler, ctx)?;
                 }
-                TyExpressionVariant::ImplicitReturn(node) | TyExpressionVariant::Return(node) => {
-                    node.type_check_finalize(handler, ctx)?;
+                TyExpressionVariant::ImplicitReturn(exp) | TyExpressionVariant::Return(exp) => {
+                    exp.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::Panic(exp) => {
+                    exp.type_check_finalize(handler, ctx)?;
                 }
                 TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
                     exp.type_check_finalize(handler, ctx)?;
@@ -1427,9 +1438,10 @@ impl UpdateConstantExpression for TyExpressionVariant {
             Reassignment(reassignment) => {
                 reassignment.update_constant_expression(engines, implementing_type)
             }
-            ImplicitReturn(expr) | Return(expr) => {
-                expr.update_constant_expression(engines, implementing_type)
+            ImplicitReturn(exp) | Return(exp) => {
+                exp.update_constant_expression(engines, implementing_type)
             }
+            Panic(exp) => exp.update_constant_expression(engines, implementing_type),
             Ref(exp) | Deref(exp) => exp.update_constant_expression(engines, implementing_type),
         }
     }
@@ -1646,6 +1658,9 @@ impl DebugWithEngines for TyExpressionVariant {
             }
             TyExpressionVariant::Return(exp) => {
                 format!("return {:?}", engines.help_out(&**exp))
+            }
+            TyExpressionVariant::Panic(exp) => {
+                format!("panic {:?}", engines.help_out(&**exp))
             }
             TyExpressionVariant::Ref(exp) => {
                 format!("&({:?})", engines.help_out(&**exp))

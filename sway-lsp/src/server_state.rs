@@ -5,15 +5,20 @@ use crate::{
     core::{
         document::{Documents, PidLockedFiles},
         session::{self, Session},
+        sync::SyncWorkspace,
+        token_map::TokenMap,
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::{debug, keyword_docs::KeywordDocs},
 };
 use crossbeam_channel::{Receiver, Sender};
 use dashmap::{mapref::multiple::RefMulti, DashMap};
-use forc_pkg::manifest::GenericManifestFile;
+use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::PackageManifestFile;
-use lsp_types::{Diagnostic, Url};
+use lsp_types::{
+    Diagnostic, DidChangeWatchedFilesRegistrationOptions, FileSystemWatcher, GlobPattern,
+    Registration, Url, WatchKind,
+};
 use parking_lot::{Mutex, RwLock};
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -24,10 +29,10 @@ use std::{
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, OnceLock,
     },
 };
-use sway_core::LspConfig;
+use sway_core::Engines;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -37,6 +42,9 @@ const DEFAULT_SESSION_CACHE_CAPACITY: usize = 4;
 pub struct ServerState {
     pub(crate) client: Option<Client>,
     pub config: Arc<RwLock<Config>>,
+    pub sync_workspace: OnceLock<Arc<SyncWorkspace>>,
+    pub token_map: Arc<TokenMap>,
+    pub engines: Arc<RwLock<Engines>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
     /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
@@ -59,7 +67,10 @@ impl Default for ServerState {
         let (cb_tx, cb_rx) = crossbeam_channel::bounded(1);
         let state = ServerState {
             client: None,
+            token_map: Arc::new(TokenMap::new()),
+            engines: Arc::new(RwLock::new(Engines::default())),
             config: Arc::new(RwLock::new(Config::default())),
+            sync_workspace: OnceLock::new(),
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: LruSessionCache::new(DEFAULT_SESSION_CACHE_CAPACITY),
             documents: Documents::new(),
@@ -100,6 +111,9 @@ pub enum TaskMessage {
 #[derive(Debug, Default)]
 pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
+    pub sync: Option<Arc<SyncWorkspace>>,
+    pub token_map: Arc<TokenMap>,
+    pub engines: Arc<RwLock<Engines>>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
     pub optimized_build: bool,
@@ -113,6 +127,35 @@ impl ServerState {
             client: Some(client),
             ..Default::default()
         }
+    }
+
+    /// Registers a file system watcher for Forc.toml files with the client.
+    pub async fn register_forc_toml_watcher(&self) -> Result<(), LanguageServerError> {
+        let client = self
+            .client
+            .as_ref()
+            .ok_or(LanguageServerError::ClientNotInitialized)?;
+
+        let watchers = vec![FileSystemWatcher {
+            glob_pattern: GlobPattern::String("**/Forc.toml".to_string()),
+            kind: Some(WatchKind::Create | WatchKind::Change),
+        }];
+        let registration_options = DidChangeWatchedFilesRegistrationOptions { watchers };
+        let registration = Registration {
+            id: "forc-toml-watcher".to_string(),
+            method: "workspace/didChangeWatchedFiles".to_string(),
+            register_options: Some(
+                serde_json::to_value(registration_options)
+                    .expect("Failed to serialize registration options"),
+            ),
+        };
+
+        client
+            .register_capability(vec![registration])
+            .await
+            .map_err(|err| LanguageServerError::ClientRequestError(err.to_string()))?;
+
+        Ok(())
     }
 
     /// Spawns a new thread dedicated to handling compilation tasks. This thread listens for
@@ -132,7 +175,7 @@ impl ServerState {
                     TaskMessage::CompilationContext(ctx) => {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
-                        let mut engines_clone = session.engines.read().clone();
+                        let mut engines_clone = ctx.engines.read().clone();
 
                         // Perform garbage collection if enabled to manage memory usage.
                         if ctx.gc_options.gc_enabled {
@@ -147,10 +190,6 @@ impl ServerState {
                                 );
                             }
                         }
-                        let lsp_mode = Some(LspConfig {
-                            optimized_build: ctx.optimized_build,
-                            file_versions: ctx.file_versions,
-                        });
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
@@ -158,8 +197,7 @@ impl ServerState {
                             &uri,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
-                            lsp_mode,
-                            session.clone(),
+                            &ctx,
                         ) {
                             Ok(()) => {
                                 let path = uri.to_file_path().unwrap();
@@ -179,7 +217,7 @@ impl ServerState {
                                                 // The compiler did not reuse the workspace AST.
                                                 // We need to overwrite the old engines with the engines clone.
                                                 mem::swap(
-                                                    &mut *session.engines.write(),
+                                                    &mut *ctx.engines.write(),
                                                     &mut engines_clone,
                                                 );
                                             }
@@ -279,10 +317,11 @@ impl ServerState {
             .send(TaskMessage::Terminate)
             .expect("failed to send terminate message");
 
-        let _ = self.sessions.iter().map(|item| {
-            let session = item.value();
-            session.shutdown();
-        });
+        // Delete the temporary directory.
+        if let Some(sw) = self.sync_workspace.get() {
+            sw.remove_temp_dir();
+        }
+
         Ok(())
     }
 
@@ -305,7 +344,7 @@ impl ServerState {
     fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
         let mut diagnostics_to_publish = vec![];
         let config = &self.config.read();
-        let tokens = session.token_map().tokens_for_file(uri);
+        let tokens = self.token_map.tokens_for_file(uri);
         match config.debug.show_collected_tokens_as_warnings {
             // If collected_tokens_as_warnings is Parsed or Typed,
             // take over the normal error and warning display behavior
@@ -335,16 +374,29 @@ impl ServerState {
 
     /// Constructs and returns a tuple of `(Url, Arc<Session>)` from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
-    pub async fn uri_and_session_from_workspace(
+    pub fn uri_and_session_from_workspace(
         &self,
         workspace_uri: &Url,
     ) -> Result<(Url, Arc<Session>), LanguageServerError> {
-        let session = self.url_to_session(workspace_uri).await?;
-        let uri = session.sync.workspace_to_temp_url(workspace_uri)?;
-        Ok((uri, session))
+        let temp_uri = self.uri_from_workspace(workspace_uri)?;
+        let session = self.url_to_session(workspace_uri)?;
+        Ok((temp_uri, session))
     }
 
-    async fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
+    /// Constructs and returns a [Url] from a given workspace URI.
+    /// The returned URL represents the temp directory workspace.
+    pub fn uri_from_workspace(&self, workspace_uri: &Url) -> Result<Url, LanguageServerError> {
+        let sw = self
+            .sync_workspace
+            .get()
+            .ok_or(LanguageServerError::GlobalWorkspaceNotInitialized)?; // Should be initialized by now.
+
+        // Convert the workspace URI to its corresponding temporary URI.
+        let temp_uri = sw.workspace_to_temp_url(workspace_uri)?;
+        Ok(temp_uri)
+    }
+
+    fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
         // Try to get the manifest directory from the cache
         let manifest_dir = if let Some(cached_dir) = self.manifest_cache.get(uri) {
             cached_dir.clone()
@@ -374,11 +426,122 @@ impl ServerState {
 
         // If no session can be found, then we need to call init and insert a new session into the map
         let session = Arc::new(Session::new());
-        session.init(uri, &self.documents).await?;
         self.sessions
             .insert((*manifest_dir).clone(), session.clone());
 
         Ok(session)
+    }
+
+    /// Gets the existing SyncWorkspace or initializes it if it doesn't exist.
+    /// This is specific to a single SyncWorkspace managed by an OnceLock.
+    pub async fn get_or_init_global_sync_workspace(
+        &self,
+        uri: &Url,
+    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
+        if let Some(sw_arc) = self.sync_workspace.get() {
+            Ok(sw_arc.clone())
+        } else {
+            match self.initialize_workspace_sync(uri).await {
+                Ok(initialized_sw) => {
+                    if self.sync_workspace.set(initialized_sw).is_ok() {
+                        tracing::info!("SyncWorkspace successfully initialized and set.");
+                    } else {
+                        tracing::debug!(
+                            "SyncWorkspace was set by another concurrent operation after check."
+                        );
+                    }
+                    Ok(self.sync_workspace.get().unwrap().clone())
+                }
+                Err(e) => {
+                    tracing::error!("Failed to initialize global SyncWorkspace: {:?}. LSP functions requiring it may fail.", e);
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    pub async fn initialize_workspace_sync(
+        &self,
+        file_uri_triggering_init: &Url,
+    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
+        let path = PathBuf::from(file_uri_triggering_init.path());
+        let search_dir = path.parent().unwrap_or(&path);
+
+        // Find the initial manifest (could be package or workspace)
+        let initial_manifest_file = ManifestFile::from_dir(search_dir).map_err(|_| {
+            DocumentError::ManifestFileNotFound {
+                dir: search_dir.to_string_lossy().into(),
+            }
+        })?;
+
+        // Determine the true workspace root.
+        // If the initial manifest is a package that's part of a workspace, get that workspace root.
+        // Otherwise, the initial manifest's directory is the root.
+        let actual_sync_root = match &initial_manifest_file {
+            ManifestFile::Package(pkg_mf) => {
+                // Check if this package is part of a workspace
+                match pkg_mf
+                    .workspace()
+                    .map_err(|e| DocumentError::WorkspaceManifestNotFound { err: e.to_string() })?
+                {
+                    Some(ws_mf) => {
+                        // It's part of a workspace, use the workspace's directory
+                        tracing::debug!(
+                            "Package {:?} is part of workspace {:?}. Using workspace root.",
+                            pkg_mf.path(),
+                            ws_mf.path()
+                        );
+                        ws_mf.dir().to_path_buf()
+                    }
+                    None => {
+                        // It's a standalone package, use its directory
+                        tracing::debug!(
+                            "Package {:?} is standalone. Using package root.",
+                            pkg_mf.path()
+                        );
+                        initial_manifest_file.dir().to_path_buf()
+                    }
+                }
+            }
+            ManifestFile::Workspace(ws_mf) => {
+                // It's already a workspace manifest, use its directory
+                tracing::debug!(
+                    "Initial manifest is a workspace: {:?}. Using its root.",
+                    ws_mf.path()
+                );
+                initial_manifest_file.dir().to_path_buf()
+            }
+        };
+
+        tracing::debug!(
+            "Determined actual root for SyncWorkspace: {:?}",
+            actual_sync_root
+        );
+
+        let sw = Arc::new(SyncWorkspace::new());
+        sw.create_temp_dir_from_workspace(&actual_sync_root)?;
+        sw.clone_manifest_dir_to_temp()?;
+        sw.sync_manifest()?;
+
+        let temp_dir_for_docs = sw.temp_dir()?;
+        self.documents
+            .store_sway_files_from_temp(temp_dir_for_docs)
+            .await?;
+
+        Ok(sw)
+    }
+
+    /// Returns a cloned `Arc` of the `SyncWorkspace`.
+    ///
+    /// Panics if `sync_workspace` has not been initialized by a prior call to
+    /// `get_or_init_global_sync_workspace`. This scenario is not expected in normal operation.
+    pub fn sync_workspace(&self) -> &SyncWorkspace {
+        // `sync_workspace` is initialized once during the first call to `get_or_init_global_sync_workspace`.
+        // After initialization, it's always expected to be `Some`.
+        // Using `expect` here simplifies the code, as the `None` case should not occur in normal operation.
+        self.sync_workspace
+            .get()
+            .expect("SyncWorkspace not initialized")
     }
 }
 

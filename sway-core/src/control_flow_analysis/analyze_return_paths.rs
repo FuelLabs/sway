@@ -12,7 +12,7 @@ use crate::{
 };
 use petgraph::prelude::NodeIndex;
 use sway_error::error::CompileError;
-use sway_types::{ident::Ident, span::Span, IdentUnique};
+use sway_types::{ident::Ident, span::Span, IdentUnique, Spanned};
 
 impl<'cfg> ControlFlowGraph<'cfg> {
     pub(crate) fn construct_return_path_graph<'eng: 'cfg>(
@@ -136,7 +136,11 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 enum NodeConnection {
     /// This represents a node that steps on to the next node.
     NextStep(Option<NodeIndex>),
-    /// This represents a return or implicit return node, which aborts the stepwise flow.
+    /// This represents a node which aborts the stepwise flow.
+    /// Such nodes are:
+    /// - return expressions,
+    /// - implicit returns,
+    /// - panic expressions.
     Return(NodeIndex),
 }
 
@@ -153,6 +157,10 @@ fn connect_node<'eng: 'cfg, 'cfg>(
         })
         | ty::TyAstNodeContent::Expression(ty::TyExpression {
             expression: ty::TyExpressionVariant::ImplicitReturn(..),
+            ..
+        })
+        | ty::TyAstNodeContent::Expression(ty::TyExpression {
+            expression: ty::TyExpressionVariant::Panic(..),
             ..
         }) => {
             let this_index = graph.add_node(ControlFlowGraphNode::from_node(node));
@@ -312,7 +320,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
         entry_point: entry_node,
         exit_point: fn_exit_node,
         return_type: type_engine
-            .to_typeinfo(fn_decl.return_type.type_id, &fn_decl.return_type.span)
+            .to_typeinfo(fn_decl.return_type.type_id(), &fn_decl.return_type.span())
             .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new())),
     };
     graph.namespace.insert_function(fn_decl, namespace_entry);

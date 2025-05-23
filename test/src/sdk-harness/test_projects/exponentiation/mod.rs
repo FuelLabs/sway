@@ -1,4 +1,3 @@
-use fuels::accounts::wallet::WalletUnlocked;
 use fuels::prelude::*;
 use fuels::types::ContractId;
 
@@ -107,9 +106,7 @@ async fn overflowing_pow_u8_panics_max() {
         .unwrap();
 }
 
-async fn get_pow_test_instance(
-    wallet: WalletUnlocked,
-) -> (TestPowContract<WalletUnlocked>, ContractId) {
+async fn get_pow_test_instance(wallet: Wallet) -> (TestPowContract<Wallet>, ContractId) {
     let pow_id = Contract::load_from(
         "test_artifacts/pow/out/release/pow.bin",
         LoadConfiguration::default(),
@@ -117,7 +114,8 @@ async fn get_pow_test_instance(
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     let pow_instance = TestPowContract::new(pow_id.clone(), wallet);
 

@@ -1,0 +1,8 @@
+[[package]]
+name = "panicking_lib"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-536F622DDC48C878"

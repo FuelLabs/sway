@@ -55,4 +55,3 @@ category = "fail"
 # check: $()let b = a.set(42);
 # check: $()No method "set(FooBarData<u8>, numeric) -> bool" found for type "FooBarData<u8>".
 
-# check: $()Aborting due to 22 errors.

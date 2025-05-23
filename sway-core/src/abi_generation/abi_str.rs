@@ -1,6 +1,6 @@
-use sway_types::integer_bits::IntegerBits;
+use sway_types::{integer_bits::IntegerBits, Named};
 
-use crate::{language::CallPath, Engines, TypeArgument, TypeId, TypeInfo};
+use crate::{language::CallPath, Engines, GenericArgument, TypeId, TypeInfo};
 
 #[derive(Clone)]
 pub struct AbiStrContext {
@@ -32,7 +32,7 @@ impl TypeId {
                     .get(resolved_type_id)
                     .abi_str(ctx, engines, true),
                 (_, TypeInfo::Alias { ty, .. }) => {
-                    ty.type_id.get_abi_type_str(ctx, engines, ty.type_id)
+                    ty.type_id().get_abi_type_str(ctx, engines, ty.type_id())
                 }
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
@@ -40,7 +40,7 @@ impl TypeId {
                         .iter()
                         .map(|f| {
                             if ctx.abi_with_fully_specified_types {
-                                type_engine.get(f.type_id).abi_str(ctx, engines, false)
+                                type_engine.get(f.type_id()).abi_str(ctx, engines, false)
                             } else {
                                 "_".to_string()
                             }
@@ -50,22 +50,22 @@ impl TypeId {
                 }
                 (TypeInfo::Array(_, length), TypeInfo::Array(type_arg, resolved_length)) => {
                     assert_eq!(
-                        length.as_literal_val().unwrap(),
-                        resolved_length.as_literal_val().unwrap()
+                        length.expr().as_literal_val().unwrap(),
+                        resolved_length.expr().as_literal_val().unwrap()
                     );
                     let inner_type = if ctx.abi_with_fully_specified_types {
                         type_engine
-                            .get(type_arg.type_id)
+                            .get(type_arg.type_id())
                             .abi_str(ctx, engines, false)
                     } else {
                         "_".to_string()
                     };
-                    format!("[{}; {:?}]", inner_type, engines.help_out(length))
+                    format!("[{}; {:?}]", inner_type, engines.help_out(length.expr()))
                 }
                 (TypeInfo::Slice(type_arg), TypeInfo::Slice(_)) => {
                     let inner_type = if ctx.abi_with_fully_specified_types {
                         type_engine
-                            .get(type_arg.type_id)
+                            .get(type_arg.type_id())
                             .abi_str(ctx, engines, false)
                     } else {
                         "_".to_string()
@@ -87,13 +87,12 @@ impl TypeInfo {
     pub fn abi_str(&self, ctx: &AbiStrContext, engines: &Engines, is_root: bool) -> String {
         use TypeInfo::*;
         let decl_engine = engines.de();
-        let type_engine = engines.te();
         match self {
             Unknown => "unknown".into(),
             Never => "never".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
-            TypeParam(param) => format!("typeparam({})", param.name),
+            TypeParam(param) => format!("typeparam({})", param.name()),
             StringSlice => "str".into(),
             StringArray(length) => format!("str[{}]", length.val()),
             UnsignedInteger(x) => match x {
@@ -131,15 +130,15 @@ impl TypeInfo {
             Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 let type_params = if (ctx.abi_root_type_without_generic_type_parameters && is_root)
-                    || decl.type_parameters.is_empty()
+                    || decl.generic_parameters.is_empty()
                 {
                     "".into()
                 } else {
                     format!(
                         "<{}>",
-                        decl.type_parameters
+                        decl.generic_parameters
                             .iter()
-                            .map(|p| type_engine.get(p.type_id).abi_str(ctx, engines, false))
+                            .map(|p| p.abi_str(engines, ctx, false))
                             .collect::<Vec<_>>()
                             .join(",")
                     )
@@ -153,15 +152,15 @@ impl TypeInfo {
             Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
                 let type_params = if (ctx.abi_root_type_without_generic_type_parameters && is_root)
-                    || decl.type_parameters.is_empty()
+                    || decl.generic_parameters.is_empty()
                 {
                     "".into()
                 } else {
                     format!(
                         "<{}>",
-                        decl.type_parameters
+                        decl.generic_parameters
                             .iter()
-                            .map(|p| type_engine.get(p.type_id).abi_str(ctx, engines, false))
+                            .map(|p| p.abi_str(engines, ctx, false))
                             .collect::<Vec<_>>()
                             .join(",")
                     )
@@ -179,7 +178,7 @@ impl TypeInfo {
                 format!(
                     "[{}; {:?}]",
                     elem_ty.abi_str(ctx, engines, false),
-                    engines.help_out(length)
+                    engines.help_out(length.expr())
                 )
             }
             RawUntypedPtr => "raw untyped ptr".into(),
@@ -200,7 +199,7 @@ impl TypeInfo {
                 referenced_type,
             } => {
                 format!(
-                    "__ref {}{}", // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
+                    "__ref {}{}", // TODO: (REFERENCES) No references in ABIs according to the RFC. Or we want to have them?
                     if *to_mutable_value { "mut " } else { "" },
                     referenced_type.abi_str(ctx, engines, false)
                 )
@@ -228,11 +227,11 @@ fn call_path_display(ctx: &AbiStrContext, call_path: &CallPath) -> String {
     buf
 }
 
-impl TypeArgument {
+impl GenericArgument {
     pub(self) fn abi_str(&self, ctx: &AbiStrContext, engines: &Engines, is_root: bool) -> String {
         engines
             .te()
-            .get(self.type_id)
+            .get(self.type_id())
             .abi_str(ctx, engines, is_root)
     }
 }

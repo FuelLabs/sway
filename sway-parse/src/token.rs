@@ -1,7 +1,6 @@
 use core::mem;
 use extension_trait::extension_trait;
 use num_bigint::BigUint;
-use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
     Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, DocComment,
@@ -10,6 +9,7 @@ use sway_ast::token::{
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::lex_error::{LexError, LexErrorKind};
+use sway_types::span::Source;
 use sway_types::{
     ast::{Delimiter, PunctKind},
     Ident, SourceId, Span, Spanned,
@@ -90,14 +90,14 @@ type Result<T> = core::result::Result<T, ErrorEmitted>;
 
 struct Lexer<'l> {
     handler: &'l Handler,
-    src: &'l Arc<str>,
+    src: &'l Source,
     source_id: &'l Option<SourceId>,
     stream: &'l mut CharIndices<'l>,
 }
 
 pub fn lex(
     handler: &Handler,
-    src: &Arc<str>,
+    src: Source,
     start: usize,
     end: usize,
     source_id: Option<SourceId>,
@@ -107,19 +107,19 @@ pub fn lex(
 
 pub fn lex_commented(
     handler: &Handler,
-    src: &Arc<str>,
+    src: Source,
     start: usize,
     end: usize,
     source_id: &Option<SourceId>,
 ) -> Result<CommentedTokenStream> {
     let stream = &mut CharIndicesInner {
-        src: &src[..end],
+        src: &src.text[..end],
         position: start,
     }
     .peekable();
     let mut l = Lexer {
         handler,
-        src,
+        src: &src,
         source_id,
         stream,
     };
@@ -153,7 +153,7 @@ pub fn lex_commented(
                         })
                         .unwrap_or_default();
 
-                    let has_newline = src[search_end..index]
+                    let has_newline = src.text[search_end..index]
                         .chars()
                         .rev()
                         .take_while(|c| c.is_whitespace())
@@ -301,7 +301,7 @@ pub fn lex_commented(
 
         token_trees = lex_close_delimiter(
             &mut l,
-            src.len(),
+            src.text.len(),
             parent,
             token_trees,
             open_index,
@@ -383,7 +383,7 @@ fn lex_block_comment(l: &mut Lexer<'_>, index: usize) -> Option<CommentedTokenTr
     let mut unclosed_indices = vec![index];
 
     let unclosed_multiline_comment = |l: &Lexer<'_>, unclosed_indices: Vec<_>| {
-        let span = span(l, *unclosed_indices.last().unwrap(), l.src.len() - 1);
+        let span = span(l, *unclosed_indices.last().unwrap(), l.src.text.len() - 1);
         let kind = LexErrorKind::UnclosedMultilineComment { unclosed_indices };
         error(l.handler, LexError { kind, span });
         None
@@ -450,15 +450,15 @@ fn lex_string(
         };
         let (next_index, next_character) = l.stream.next().ok_or_else(|| {
             // last character may not be a unicode boundary
-            let mut end = l.src.len() - 1;
-            while !l.src.is_char_boundary(end) {
+            let mut end = l.src.text.len() - 1;
+            while !l.src.text.is_char_boundary(end) {
                 end -= 1;
             }
             unclosed_string_lit(l, end)
         })?;
         parsed.push(match next_character {
             '\\' => parse_escape_code(l)
-                .map_err(|e| e.unwrap_or_else(|| unclosed_string_lit(l, l.src.len())))?,
+                .map_err(|e| e.unwrap_or_else(|| unclosed_string_lit(l, l.src.text.len())))?,
             '"' => break,
             // do not allow text direction codepoints
             ALM | FSI | LRE | LRI | LRM | LRO | PDF | PDI | RLE | RLI | RLM | RLO => {
@@ -491,7 +491,7 @@ fn lex_char(
     let unclosed_char_lit = |l: &Lexer<'_>| {
         let err = LexError {
             kind: LexErrorKind::UnclosedCharLiteral { position: index },
-            span: span(l, index, l.src.len()),
+            span: span(l, index, l.src.text.len()),
         };
         error(l.handler, err)
     };
@@ -655,7 +655,7 @@ fn lex_int_lit(
         let end_opt = parse_digits(&mut big_uint, l, 10);
         (big_uint, end_opt)
     };
-    let (radix, (big_uint, end_opt)) = if digit == 0 {
+    let (big_uint, end_opt) = if digit == 0 {
         let prefixed_int_lit = |l: &mut Lexer<'_>, radix| {
             let _ = l.stream.next();
             let d = l.stream.next();
@@ -669,7 +669,7 @@ fn lex_int_lit(
                 let span = span(l, index, end);
                 error(l.handler, LexError { kind, span })
             };
-            let (digit_pos, digit) = d.ok_or_else(|| incomplete_int_lit(l.src.len()))?;
+            let (digit_pos, digit) = d.ok_or_else(|| incomplete_int_lit(l.src.text.len()))?;
             let radix_digit = digit
                 .to_digit(radix)
                 .ok_or_else(|| incomplete_int_lit(digit_pos))?;
@@ -679,34 +679,21 @@ fn lex_int_lit(
         };
 
         match l.stream.peek() {
-            Some((_, 'x')) => (16, prefixed_int_lit(l, 16)?),
-            Some((_, 'o')) => (8, prefixed_int_lit(l, 8)?),
-            Some((_, 'b')) => (2, prefixed_int_lit(l, 2)?),
-            Some((_, '_' | '0'..='9')) => (10, decimal_int_lit(l, 0)),
-            Some(&(next_index, _)) => (10, (BigUint::from(0u32), Some(next_index))),
-            None => (10, (BigUint::from(0u32), None)),
+            Some((_, 'x')) => prefixed_int_lit(l, 16)?,
+            Some((_, 'o')) => prefixed_int_lit(l, 8)?,
+            Some((_, 'b')) => prefixed_int_lit(l, 2)?,
+            Some((_, '_' | '0'..='9')) => decimal_int_lit(l, 0),
+            Some(&(next_index, _)) => (BigUint::from(0u32), Some(next_index)),
+            None => (BigUint::from(0u32), None),
         }
     } else {
-        (10, decimal_int_lit(l, digit))
+        decimal_int_lit(l, digit)
     };
 
     let ty_opt = lex_int_ty_opt(l)?;
 
-    // Only accepts u256 literals in hex form
-    if let Some((LitIntType::U256, span)) = &ty_opt {
-        if radix != 16 {
-            return Err(error(
-                l.handler,
-                LexError {
-                    kind: LexErrorKind::U256NotInHex,
-                    span: span.clone(),
-                },
-            ));
-        }
-    }
-
     let literal = Literal::Int(LitInt {
-        span: span(l, index, end_opt.unwrap_or(l.src.len())),
+        span: span(l, index, end_opt.unwrap_or(l.src.text.len())),
         parsed: big_uint,
         ty_opt,
         is_generated_b256: false,
@@ -728,7 +715,7 @@ fn lex_int_ty_opt(l: &mut Lexer<'_>) -> Result<Option<(LitIntType, Span)>> {
                 let _ = l.stream.next();
             }
             Some((pos, _)) => break *pos,
-            None => break l.src.len(),
+            None => break l.src.text.len(),
         }
     };
     // Parse the suffix to a known one, or if unknown, recover by throwing it away.
@@ -795,7 +782,7 @@ fn lex_punctuation(l: &mut Lexer<'_>, index: usize, character: char) -> Option<C
 }
 
 fn span_until(l: &mut Lexer<'_>, start: usize) -> Span {
-    let end = l.stream.peek().map_or(l.src.len(), |(end, _)| *end);
+    let end = l.stream.peek().map_or(l.src.text.len(), |(end, _)| *end);
     span(l, start, end)
 }
 
@@ -816,7 +803,6 @@ fn error(handler: &Handler, error: LexError) -> ErrorEmitted {
 mod tests {
     use super::*;
     use assert_matches::assert_matches;
-    use std::sync::Arc;
     use sway_ast::{
         literal::{LitChar, Literal},
         token::{
@@ -851,7 +837,7 @@ mod tests {
         let end = input.len();
         let path = None;
         let handler = Handler::default();
-        let _stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
+        let _stream = lex_commented(&handler, input.into(), start, end, &path).unwrap();
         let (errors, warnings) = handler.consume();
         assert_eq!(warnings.len(), 0);
         assert_eq!(errors.len(), 5);
@@ -887,7 +873,7 @@ mod tests {
         let end = input.len();
         let path = None;
         let handler = Handler::default();
-        let stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
+        let stream = lex_commented(&handler, input.into(), start, end, &path).unwrap();
         assert!(handler.consume().0.is_empty());
         let mut tts = stream.token_trees().iter();
         assert_eq!(tts.next().unwrap().span().as_str(), "//");
@@ -937,7 +923,7 @@ mod tests {
         let end = input.len();
         let path = None;
         let handler = Handler::default();
-        let stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
+        let stream = lex_commented(&handler, input.into(), start, end, &path).unwrap();
         assert!(handler.consume().0.is_empty());
         let mut tts = stream.token_trees().iter();
 
@@ -1001,7 +987,7 @@ mod tests {
         let end = input.len();
         let path = None;
         let handler = Handler::default();
-        let stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
+        let stream = lex_commented(&handler, input.into(), start, end, &path).unwrap();
         assert!(handler.consume().0.is_empty());
         let mut tts = stream.token_trees().iter();
         assert_matches!(
@@ -1059,7 +1045,7 @@ mod tests {
         '\''
         ";
         let handler = Handler::default();
-        let stream = lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
+        let stream = lex(&handler, input.into(), 0, input.len(), None).unwrap();
         assert!(handler.consume().0.is_empty());
         let mut tts = stream.token_trees().iter();
         assert_matches!(

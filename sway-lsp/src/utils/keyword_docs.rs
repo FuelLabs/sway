@@ -680,6 +680,36 @@ impl KeywordDocs {
             mod continue_keyword {}
         };
 
+        let abi_keyword: ItemMod = parse_quote! {
+            /// Defines an Application Binary Interface (ABI).
+            ///
+            /// An `abi` block defines a set of methods that a contract exposes externally. It acts as the
+            /// public interface for interacting with a smart contract. Only one `abi` block is allowed per
+            /// contract.
+            ///
+            /// The methods defined within an `abi` block must be implemented in an associated [`impl`] block
+            /// for the contract.
+            ///
+            /// ```sway
+            /// contract;
+            ///
+            /// abi MyContract {
+            ///     #[storage(read, write)]
+            ///     fn update_counter(amount: u64) -> u64;
+            /// }
+            ///
+            /// impl MyContract for Contract {
+            ///     #[storage(read, write)]
+            ///     fn update_counter(amount: u64) -> u64 {
+            ///         let current = storage.counter;
+            ///         storage.counter = current + amount;
+            ///         storage.counter
+            ///     }
+            /// }
+            /// ```
+            mod abi_keyword {}
+        };
+
         // TODO
         let str_keyword: ItemMod = parse_quote! {
             mod str_keyword {}
@@ -726,11 +756,6 @@ impl KeywordDocs {
         };
 
         // TODO
-        let abi_keyword: ItemMod = parse_quote! {
-            mod abi_keyword {}
-        };
-
-        // TODO
         let storage_keyword: ItemMod = parse_quote! {
             mod storage_keyword {}
         };
@@ -753,6 +778,11 @@ impl KeywordDocs {
         // TODO
         let type_keyword: ItemMod = parse_quote! {
             mod type_keyword {}
+        };
+
+        // TODO
+        let panic_keyword: ItemMod = parse_quote! {
+            mod panic_keyword {}
         };
 
         let mut keyword_docs = HashMap::new();
@@ -794,6 +824,7 @@ impl KeywordDocs {
             deref_keyword,
             configurable_keyword,
             type_keyword,
+            panic_keyword,
         ];
 
         for keyword in &keywords {

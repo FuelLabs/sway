@@ -300,8 +300,8 @@ pub(crate) fn struct_instantiation(
         .scoped(handler, None, |scoped_ctx| {
             // Insert struct type parameter into namespace.
             // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
-            for type_parameter in struct_decl.type_parameters.iter() {
-                type_parameter.insert_into_namespace_self(handler, scoped_ctx.by_ref())?;
+            for p in struct_decl.generic_parameters.iter() {
+                p.insert_into_namespace_self(handler, scoped_ctx.by_ref())?;
             }
 
             type_id.check_type_parameter_bounds(handler, scoped_ctx.by_ref(), &span, None)?;
@@ -396,7 +396,7 @@ fn type_check_field_arguments(
                     let ctx = ctx
                         .by_ref()
                         .with_help_text(help_text)
-                        .with_type_annotation(struct_field.type_argument.type_id)
+                        .with_type_annotation(struct_field.type_argument.type_id())
                         .with_unify_generic(true);
 
                     // TODO: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
@@ -470,7 +470,7 @@ fn unify_field_arguments_and_struct_fields(
                     handler,
                     engines,
                     typed_field.value.return_type,
-                    struct_field.type_argument.type_id,
+                    struct_field.type_argument.type_id(),
                     &typed_field.value.span, // Use the span of the initialization value.
                     help_text,
                     None,

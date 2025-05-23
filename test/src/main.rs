@@ -179,7 +179,7 @@ async fn main() -> Result<()> {
         verbose: cli.verbose,
         release: cli.release,
         build_target,
-        experimental: cli.experimental.clone(),
+        experimental: cli.experimental,
         update_output_files: cli.update_output_files,
         print_ir: cli
             .print_ir

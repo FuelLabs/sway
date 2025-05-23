@@ -3,10 +3,10 @@ use fuel_vm::fuel_tx::{ContractId, Input as TxInput};
 use fuels::core::codec::EncoderConfig;
 use fuels::types::transaction_builders::TransactionBuilder;
 use fuels::{
-    accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
+    accounts::{predicate::Predicate, signers::private_key::PrivateKeySigner},
     prelude::*,
     tx::StorageSlot,
-    types::{input::Input as SdkInput, output::Output as SdkOutput, Bits256},
+    types::{input::Input as SdkInput, output::Output as SdkOutput, Bits256, ChainId},
 };
 use std::fs;
 
@@ -66,25 +66,18 @@ abigen!(
     )
 );
 
-async fn get_contracts(
-    msg_has_data: bool,
-) -> (
-    TxContractTest<WalletUnlocked>,
-    ContractId,
-    WalletUnlocked,
-    WalletUnlocked,
-) {
-    let mut wallet = WalletUnlocked::new_random(None);
-    let mut deployment_wallet = WalletUnlocked::new_random(None);
+async fn get_contracts(msg_has_data: bool) -> (TxContractTest<Wallet>, ContractId, Wallet, Wallet) {
+    let wallet_signer = PrivateKeySigner::random(&mut rand::thread_rng());
+    let deployment_signer = PrivateKeySigner::random(&mut rand::thread_rng());
 
     let mut deployment_coins = setup_single_asset_coins(
-        deployment_wallet.address(),
+        deployment_signer.address(),
         AssetId::BASE,
         120,
         DEFAULT_COIN_AMOUNT,
     );
 
-    let mut coins = setup_single_asset_coins(wallet.address(), AssetId::BASE, 100, 1000);
+    let mut coins = setup_single_asset_coins(wallet_signer.address(), AssetId::BASE, 100, 1000);
 
     coins.append(&mut deployment_coins);
 
@@ -93,7 +86,7 @@ async fn get_contracts(
             hrp: "".to_string(),
             hash: Default::default(),
         },
-        wallet.address(),
+        wallet_signer.address(),
         DEFAULT_COIN_AMOUNT,
         69.into(),
         if msg_has_data {
@@ -106,26 +99,23 @@ async fn get_contracts(
     let provider = setup_test_provider(coins.clone(), vec![msg], None, None)
         .await
         .unwrap();
-
-    wallet.set_provider(provider.clone());
-    deployment_wallet.set_provider(provider);
+    let wallet = Wallet::new(wallet_signer, provider.clone());
+    let deployment_wallet = Wallet::new(deployment_signer, provider);
 
     let contract_id = Contract::load_from(TX_CONTRACT_BYTECODE_PATH, LoadConfiguration::default())
         .unwrap()
         .deploy(&deployment_wallet, TxPolicies::default())
         .await
-        .unwrap();
+        .unwrap()
+        .contract_id;
 
     let instance = TxContractTest::new(contract_id.clone(), wallet.clone());
 
     (instance, contract_id.into(), wallet, deployment_wallet)
 }
 
-async fn generate_predicate_inputs(
-    amount: u64,
-    wallet: &WalletUnlocked,
-) -> (Vec<u8>, SdkInput, TxInput) {
-    let provider = wallet.provider().unwrap();
+async fn generate_predicate_inputs(amount: u64, wallet: &Wallet) -> (Vec<u8>, SdkInput, TxInput) {
+    let provider = wallet.provider();
     let predicate = Predicate::load_from(TX_FIELDS_PREDICATE_BYTECODE_PATH)
         .unwrap()
         .with_provider(provider.clone());
@@ -149,7 +139,7 @@ async fn generate_predicate_inputs(
         .unwrap();
 
     let predicate_input = predicate
-        .get_asset_inputs_for_amount(AssetId::default(), amount, None)
+        .get_asset_inputs_for_amount(AssetId::default(), amount.into(), None)
         .await
         .unwrap()
         .first()
@@ -175,7 +165,7 @@ async fn generate_predicate_inputs(
 async fn setup_output_predicate(
     index: u64,
     expected_output_type: SwayOutput,
-) -> (WalletUnlocked, WalletUnlocked, Predicate, AssetId, AssetId) {
+) -> (Wallet, Wallet, Predicate, AssetId, AssetId) {
     let asset_id1 = AssetId::default();
     let asset_id2 = AssetId::new([2u8; 32]);
     let wallets_config = WalletsConfig::new_multiple_assets(
@@ -311,6 +301,72 @@ mod tx {
     }
 
     #[tokio::test]
+    async fn can_get_expiration() {
+        let (contract_instance, _, wallet, _) = get_contracts(true).await;
+
+        let provider = wallet.try_provider().unwrap();
+
+        // This should be an error because we are not at the genesis block
+        let err = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(0))
+            .call()
+            .await
+            .expect_err("expiration reached");
+
+        assert!(err.to_string().contains("TransactionExpiration"));
+
+        let result = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(10))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, Some(10 as u32));
+
+        let result = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(1234567890))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, Some(1234567890 as u32));
+
+        let result = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(u32::MAX.into()))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, Some(u32::MAX));
+
+        // Assert none is returned with no expiration
+        let no_expiration = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(no_expiration.value, None);
+
+        // Assert tx errors after expiration
+        let _ = provider.produce_blocks(15, None).await;
+        let err = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(10))
+            .call()
+            .await
+            .expect_err("expiration reached");
+
+        assert!(err.to_string().contains("TransactionExpiration"));
+    }
+
+    #[tokio::test]
     async fn can_get_script_length() {
         let (contract_instance, _, _, _) = get_contracts(true).await;
         // TODO use programmatic script length https://github.com/FuelLabs/fuels-rs/issues/181
@@ -344,40 +400,17 @@ mod tx {
     async fn can_get_inputs_count() {
         let (contract_instance, _, wallet, _) = get_contracts(false).await;
         let message = &wallet.get_messages().await.unwrap()[0];
-        let provider = wallet.provider().unwrap();
 
-        let mut builder = contract_instance
+        let response = contract_instance
             .methods()
             .get_tx_inputs_count()
-            .transaction_builder()
+            .with_inputs(vec![SdkInput::ResourceSigned {
+                resource: CoinType::Message(message.clone()),
+            }])
+            .call()
             .await
             .unwrap();
-
-        builder.inputs_mut().push(SdkInput::ResourceSigned {
-            resource: CoinType::Message(message.clone()),
-        });
-
-        builder.add_signer(wallet.clone()).unwrap();
-
-        let tx = builder.enable_burn(true).build(provider).await.unwrap();
-
-        let tx_inputs = tx.inputs().clone();
-
-        let provider = wallet.provider().unwrap();
-        let tx_id = provider.send_transaction(tx).await.unwrap();
-
-        let receipts = provider
-            .tx_status(&tx_id)
-            .await
-            .unwrap()
-            .take_receipts_checked(None)
-            .unwrap();
-
-        assert_eq!(tx_inputs.len() as u64, 2u64);
-        assert_eq!(
-            receipts[1].data(),
-            Some((tx_inputs.len() as u64).to_be_bytes().as_slice())
-        );
+        assert_eq!(response.value, 2u64);
     }
 
     #[tokio::test]
@@ -435,12 +468,9 @@ mod tx {
         let tx = handler.build_tx().await.unwrap();
         let witnesses = tx.witnesses().clone();
 
-        let provider = wallet.provider().unwrap();
-        let tx_id = provider.send_transaction(tx).await.unwrap();
-        let receipts = provider
-            .tx_status(&tx_id)
-            .await
-            .unwrap()
+        let provider = wallet.provider();
+        let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+        let receipts = tx_status
             .take_receipts_checked(None)
             .unwrap();
 
@@ -481,16 +511,13 @@ mod tx {
         let handler = contract_instance.methods().get_tx_id();
         let tx = handler.build_tx().await.unwrap();
 
-        let provider = wallet.provider().unwrap();
-        let tx_id = provider.send_transaction(tx).await.unwrap();
-        let receipts = provider
-            .tx_status(&tx_id)
-            .await
-            .unwrap()
+        let provider = wallet.provider();
+        let tx_status = provider.send_transaction_and_await_commit(tx.clone()).await.unwrap();
+        let receipts = tx_status
             .take_receipts_checked(None)
             .unwrap();
 
-        let byte_array: [u8; 32] = tx_id.into();
+        let byte_array: [u8; 32] = *tx.id(ChainId::new(0));
 
         assert_eq!(receipts[1].data().unwrap(), byte_array);
     }
@@ -498,10 +525,11 @@ mod tx {
     #[tokio::test]
     async fn can_get_tx_upload() {
         // Prepare wallet and provider
-        let mut wallet = WalletUnlocked::new_random(None);
+        let signer = PrivateKeySigner::random(&mut rand::thread_rng());
+
         let num_coins = 100;
         let coins = setup_single_asset_coins(
-            wallet.address(),
+            &signer.address(),
             AssetId::zeroed(),
             num_coins,
             DEFAULT_COIN_AMOUNT,
@@ -509,7 +537,7 @@ mod tx {
         let provider = setup_test_provider(coins, vec![], None, None)
             .await
             .unwrap();
-        wallet.set_provider(provider.clone());
+        let wallet = Wallet::new(signer, provider.clone());
         let consensus_params = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_params.base_asset_id();
 
@@ -580,7 +608,7 @@ mod tx {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
         }
 
         // The predicate has spent it's funds
@@ -591,10 +619,11 @@ mod tx {
     #[tokio::test]
     async fn can_get_witness_in_tx_upload() {
         // Prepare wallet and provider
-        let mut wallet = WalletUnlocked::new_random(None);
+        let signer = PrivateKeySigner::random(&mut rand::thread_rng());
+
         let num_coins = 100;
         let coins = setup_single_asset_coins(
-            wallet.address(),
+            &signer.address(),
             AssetId::zeroed(),
             num_coins,
             DEFAULT_COIN_AMOUNT,
@@ -602,7 +631,7 @@ mod tx {
         let provider = setup_test_provider(coins, vec![], None, None)
             .await
             .unwrap();
-        wallet.set_provider(provider.clone());
+        let wallet = Wallet::new(signer, provider.clone());
         let consensus_params = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_params.base_asset_id();
 
@@ -678,7 +707,7 @@ mod tx {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -689,10 +718,11 @@ mod tx {
     #[tokio::test]
     async fn can_get_tx_blob() {
         // Prepare wallet and provider
-        let mut wallet = WalletUnlocked::new_random(None);
+        let signer = PrivateKeySigner::random(&mut rand::thread_rng());
+
         let num_coins = 100;
         let coins = setup_single_asset_coins(
-            wallet.address(),
+            signer.address(),
             AssetId::zeroed(),
             num_coins,
             DEFAULT_COIN_AMOUNT,
@@ -701,7 +731,7 @@ mod tx {
         let provider = setup_test_provider(coins, vec![], None, None)
             .await
             .unwrap();
-        wallet.set_provider(provider.clone());
+        let wallet = Wallet::new(signer, provider.clone());
         let consensus_params = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_params.base_asset_id();
 
@@ -781,10 +811,11 @@ mod tx {
     #[tokio::test]
     async fn can_get_witness_in_tx_blob() {
         // Prepare wallet and provider
-        let mut wallet = WalletUnlocked::new_random(None);
+        let signer = PrivateKeySigner::random(&mut rand::thread_rng());
+
         let num_coins = 100;
         let coins = setup_single_asset_coins(
-            wallet.address(),
+            signer.address(),
             AssetId::zeroed(),
             num_coins,
             DEFAULT_COIN_AMOUNT,
@@ -793,7 +824,7 @@ mod tx {
         let provider = setup_test_provider(coins, vec![], None, None)
             .await
             .unwrap();
-        wallet.set_provider(provider.clone());
+        let wallet = Wallet::new(signer, provider.clone());
         let consensus_params = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_params.base_asset_id();
 
@@ -867,7 +898,7 @@ mod tx {
 
         let tx = builder.build(provider.clone()).await.unwrap();
 
-        provider.send_transaction(tx).await.unwrap();
+        provider.send_transaction_and_await_commit(tx).await.unwrap();
 
         // The predicate has spent it's funds
         let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -964,7 +995,7 @@ mod inputs {
             let (contract_instance, _, wallet, _) = get_contracts(true).await;
             let (predicate_bytes, predicate_coin, _) =
                 generate_predicate_inputs(100, &wallet).await;
-            let provider = wallet.provider().unwrap();
+            let provider = wallet.provider();
 
             // Add predicate coin to inputs and call contract
             let handler = contract_instance
@@ -976,14 +1007,13 @@ mod inputs {
 
             let tx = tb.enable_burn(true).build(provider).await.unwrap();
 
-            let provider = wallet.provider().unwrap();
+            let provider = wallet.provider();
 
             let tx_status = provider
                 .send_transaction_and_await_commit(tx)
                 .await
                 .unwrap();
-            let receipts = tx_status.take_receipts_checked(None).unwrap();
-            let response = handler.get_response(receipts).unwrap();
+            let response = handler.get_response(tx_status).unwrap();
 
             assert!(response.value);
 
@@ -1001,10 +1031,11 @@ mod inputs {
         #[tokio::test]
         async fn can_get_input_count_in_tx_upload() {
             // Prepare wallet and provider
-            let mut wallet = WalletUnlocked::new_random(None);
+            let signer = PrivateKeySigner::random(&mut rand::thread_rng());
+
             let num_coins = 100;
             let coins = setup_single_asset_coins(
-                wallet.address(),
+                signer.address(),
                 AssetId::zeroed(),
                 num_coins,
                 DEFAULT_COIN_AMOUNT,
@@ -1012,7 +1043,7 @@ mod inputs {
             let provider = setup_test_provider(coins, vec![], None, None)
                 .await
                 .unwrap();
-            wallet.set_provider(provider.clone());
+            let wallet = Wallet::new(signer, provider.clone());
             let consensus_params = provider.consensus_parameters().await.unwrap();
             let base_asset_id = consensus_params.base_asset_id();
 
@@ -1080,7 +1111,7 @@ mod inputs {
 
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
-                provider.send_transaction(tx).await.unwrap();
+                provider.send_transaction_and_await_commit(tx).await.unwrap();
 
                 // The predicate has spent it's funds
                 let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1091,10 +1122,11 @@ mod inputs {
         #[tokio::test]
         async fn can_get_input_count_in_tx_blob() {
             // Prepare wallet and provider
-            let mut wallet = WalletUnlocked::new_random(None);
+            let signer = PrivateKeySigner::random(&mut rand::thread_rng());
+
             let num_coins = 100;
             let coins = setup_single_asset_coins(
-                wallet.address(),
+                signer.address(),
                 AssetId::zeroed(),
                 num_coins,
                 DEFAULT_COIN_AMOUNT,
@@ -1102,7 +1134,7 @@ mod inputs {
             let provider = setup_test_provider(coins, vec![], None, None)
                 .await
                 .unwrap();
-            wallet.set_provider(provider.clone());
+            let wallet = Wallet::new(signer, provider.clone());
             let consensus_params = provider.consensus_parameters().await.unwrap();
             let base_asset_id = consensus_params.base_asset_id();
 
@@ -1168,7 +1200,7 @@ mod inputs {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1183,35 +1215,21 @@ mod inputs {
             #[tokio::test]
             async fn can_get_input_message_sender() {
                 let (contract_instance, _, wallet, _) = get_contracts(false).await;
-                let provider = wallet.provider().unwrap();
 
                 let message = &wallet.get_messages().await.unwrap()[0];
-                let mut builder = contract_instance
+                let response = contract_instance
                     .methods()
-                    .get_input_message_sender(1)
-                    .transaction_builder()
+                    .get_input_message_sender(0)
+                    .with_inputs(vec![SdkInput::ResourceSigned {
+                        resource: CoinType::Message(message.clone()),
+                    }])
+                    .call()
                     .await
                     .unwrap();
-
-                builder.inputs_mut().push(SdkInput::ResourceSigned {
-                    resource: CoinType::Message(message.clone()),
-                });
-
-                builder.add_signer(wallet.clone()).unwrap();
-
-                let tx = builder.enable_burn(true).build(provider).await.unwrap();
-
-                let provider = wallet.provider().unwrap();
-                let tx_id = provider.send_transaction(tx).await.unwrap();
-
-                let receipts = provider
-                    .tx_status(&tx_id)
-                    .await
-                    .unwrap()
-                    .take_receipts_checked(None)
-                    .unwrap();
-
-                assert_eq!(receipts[1].data().unwrap()[8..40], *message.sender.hash());
+                assert_eq!(
+                    response.value.unwrap().as_slice(),
+                    message.sender.hash().as_slice()
+                );
 
                 // Assert none returned when transaction type is not a message
                 let none_result = contract_instance
@@ -1220,35 +1238,25 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-
                 assert_eq!(none_result.value, None);
             }
 
             #[tokio::test]
             async fn can_get_input_message_recipient() {
                 let (contract_instance, _, wallet, _) = get_contracts(false).await;
-                let provider = wallet.provider().unwrap();
 
                 let message = &wallet.get_messages().await.unwrap()[0];
                 let recipient = message.recipient.hash;
-                let handler = contract_instance.methods().get_input_message_recipient(1);
-                let mut builder = handler.transaction_builder().await.unwrap();
-                builder.inputs_mut().push(SdkInput::ResourceSigned {
-                    resource: CoinType::Message(message.clone()),
-                });
-                // This message will pay for the tx fee - hence no need to use adjust_for_fee
-                builder.add_signer(wallet.clone()).unwrap();
 
-                let tx = builder.enable_burn(true).build(provider).await.unwrap();
-
-                let provider = wallet.provider().unwrap();
-                let tx_status = provider
-                    .send_transaction_and_await_commit(tx)
+                let response = contract_instance
+                    .methods()
+                    .get_input_message_recipient(0)
+                    .with_inputs(vec![SdkInput::ResourceSigned {
+                        resource: CoinType::Message(message.clone()),
+                    }])
+                    .call()
                     .await
                     .unwrap();
-                let receipts = tx_status.take_receipts_checked(None).unwrap();
-                let response = handler.get_response(receipts).unwrap();
-
                 assert_eq!(response.value.unwrap().as_slice(), recipient.as_slice());
 
                 // Assert none returned when transaction type is not a message
@@ -1258,37 +1266,25 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-
                 assert_eq!(none_result.value, None);
             }
 
             #[tokio::test]
             async fn can_get_input_message_nonce() {
                 let (contract_instance, _, wallet, _) = get_contracts(false).await;
-                let provider = wallet.provider().unwrap();
 
                 let message = &wallet.get_messages().await.unwrap()[0];
                 let nonce = message.nonce;
 
-                let handler = contract_instance.methods().get_input_message_nonce(1);
-                let mut builder = handler.transaction_builder().await.unwrap();
-
-                builder.inputs_mut().push(SdkInput::ResourceSigned {
-                    resource: CoinType::Message(message.clone()),
-                });
-
-                builder.add_signer(wallet.clone()).unwrap();
-
-                let tx = builder.enable_burn(true).build(provider).await.unwrap();
-
-                let provider = wallet.provider().unwrap();
-                let tx_status = provider
-                    .send_transaction_and_await_commit(tx)
+                let response = contract_instance
+                    .methods()
+                    .get_input_message_nonce(0)
+                    .with_inputs(vec![SdkInput::ResourceSigned {
+                        resource: CoinType::Message(message.clone()),
+                    }])
+                    .call()
                     .await
                     .unwrap();
-                let receipts = tx_status.take_receipts_checked(None).unwrap();
-                let response = handler.get_response(receipts).unwrap();
-
                 assert_eq!(response.value.unwrap().0.as_slice(), nonce.as_slice());
 
                 // Assert none returned when transaction type is not a message
@@ -1298,7 +1294,6 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-
                 assert_eq!(none_result.value, None);
             }
 
@@ -1311,7 +1306,6 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-
                 assert_eq!(result.value, Some(0));
 
                 // Assert none returned when not a valid index
@@ -1321,41 +1315,24 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-
                 assert_eq!(none_result.value, None);
             }
 
             #[tokio::test]
             async fn can_get_input_message_data_length() {
                 let (contract_instance, _, wallet, _) = get_contracts(true).await;
-                let provider = wallet.provider().unwrap();
 
                 let message = &wallet.get_messages().await.unwrap()[0];
 
-                let handler = contract_instance.methods().get_input_message_data_length(1);
-                let mut builder = handler.transaction_builder().await.unwrap();
-
-                builder.inputs_mut().push(SdkInput::ResourceSigned {
-                    resource: CoinType::Message(message.clone()),
-                });
-
-                wallet
-                    .adjust_for_fee(&mut builder, 1_000_000_000)
+                let response = contract_instance
+                    .methods()
+                    .get_input_message_data_length(0)
+                    .with_inputs(vec![SdkInput::ResourceSigned {
+                        resource: CoinType::Message(message.clone()),
+                    }])
+                    .call()
                     .await
                     .unwrap();
-
-                builder.add_signer(wallet.clone()).unwrap();
-
-                let tx = builder.build(provider).await.unwrap();
-
-                let provider = wallet.provider().unwrap();
-                let tx_status = provider
-                    .send_transaction_and_await_commit(tx)
-                    .await
-                    .unwrap();
-                let receipts = tx_status.take_receipts_checked(None).unwrap();
-                let response = handler.get_response(receipts).unwrap();
-
                 assert_eq!(response.value.unwrap(), 3);
 
                 // Assert none returned when transaction type is not a message
@@ -1365,7 +1342,6 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-
                 assert_eq!(none_result.value, None);
             }
 
@@ -1374,30 +1350,15 @@ mod inputs {
                 let (contract_instance, _, wallet, _) = get_contracts(true).await;
                 let (predicate_bytecode, message, _) =
                     generate_predicate_inputs(100, &wallet).await;
-                let provider = wallet.provider().unwrap();
 
-                let handler = contract_instance.methods().get_input_predicate_length(1);
-                let mut builder = handler.transaction_builder().await.unwrap();
-
-                builder.inputs_mut().push(message);
-
-                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
-
-                builder.add_signer(wallet.clone()).unwrap();
-
-                let tx = builder.build(provider).await.unwrap();
-
-                let provider = wallet.provider().unwrap();
-
-                let tx_status = provider
-                    .send_transaction_and_await_commit(tx)
+                let response = contract_instance
+                    .methods()
+                    .get_input_predicate_length(0)
+                    .with_inputs(vec![message])
+                    .call()
                     .await
                     .unwrap();
-                let receipts = tx_status.take_receipts_checked(None).unwrap();
-                let response = handler.get_response(receipts).unwrap();
-
-                let expected_length = predicate_bytecode.len() as u64;
-                assert_eq!(response.value.unwrap(), expected_length);
+                assert_eq!(response.value.unwrap(), predicate_bytecode.len() as u64);
 
                 // Assert none returned when index is invalid
                 let none_result = contract_instance
@@ -1406,7 +1367,6 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-
                 assert_eq!(none_result.value, None);
             }
 
@@ -1414,30 +1374,22 @@ mod inputs {
             async fn can_get_input_message_predicate_data_length() {
                 let (contract_instance, _, wallet, _) = get_contracts(true).await;
                 let (_, message, _) = generate_predicate_inputs(100, &wallet).await;
-                let provider = wallet.provider().unwrap();
+                let provider = wallet.provider();
 
                 let mut builder = contract_instance
                     .methods()
-                    .get_input_predicate_data_length(1)
+                    .get_input_predicate_data_length(0)
+                    .with_inputs(vec![message])
                     .transaction_builder()
                     .await
                     .unwrap();
 
                 wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
-
-                builder.inputs_mut().push(message);
-
-                builder.add_signer(wallet.clone()).unwrap();
-
+                builder.add_signer(wallet.signer().clone()).unwrap();
                 let tx = builder.build(provider).await.unwrap();
 
-                let provider = wallet.provider().unwrap();
-
-                let tx_id = provider.send_transaction(tx).await.unwrap();
-                let receipts = provider
-                    .tx_status(&tx_id)
-                    .await
-                    .unwrap()
+                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let receipts = tx_status
                     .take_receipts_checked(None)
                     .unwrap();
 
@@ -1453,7 +1405,6 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-
                 assert_eq!(none_result.value, None);
             }
 
@@ -1461,36 +1412,17 @@ mod inputs {
             async fn can_get_input_message_data() {
                 let (contract_instance, _, wallet, _) = get_contracts(true).await;
                 let message = &wallet.get_messages().await.unwrap()[0];
-                let provider = wallet.provider().unwrap();
 
-                let handler = contract_instance.methods().get_input_message_data(
-                    1,
-                    0,
-                    Bytes(MESSAGE_DATA.into()),
-                );
-                let mut builder = handler.transaction_builder().await.unwrap();
-
-                builder.inputs_mut().push(SdkInput::ResourceSigned {
-                    resource: CoinType::Message(message.clone()),
-                });
-
-                wallet
-                    .adjust_for_fee(&mut builder, 1_000_000_000)
+                // Assert none returned when transaction type is not a message
+                let response = contract_instance
+                    .methods()
+                    .get_input_message_data(0, 0, Bytes(MESSAGE_DATA.into()))
+                    .with_inputs(vec![SdkInput::ResourceSigned {
+                        resource: CoinType::Message(message.clone()),
+                    }])
+                    .call()
                     .await
                     .unwrap();
-
-                builder.add_signer(wallet.clone()).unwrap();
-
-                let tx = builder.build(provider).await.unwrap();
-
-                let provider = wallet.provider().unwrap();
-                let tx_status = provider
-                    .send_transaction_and_await_commit(tx)
-                    .await
-                    .unwrap();
-                let receipts = tx_status.take_receipts_checked(None).unwrap();
-                let response = handler.get_response(receipts).unwrap();
-
                 assert!(response.value);
 
                 // Assert none returned when transaction type is not a message
@@ -1500,7 +1432,6 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-
                 assert_eq!(none_result.value, false);
             }
 
@@ -1508,76 +1439,17 @@ mod inputs {
             async fn can_get_input_message_data_with_offset() {
                 let (contract_instance, _, wallet, _) = get_contracts(true).await;
                 let message = &wallet.get_messages().await.unwrap()[0];
-                let provider = wallet.provider().unwrap();
 
-                let handler = contract_instance.methods().get_input_message_data(
-                    1,
-                    1,
-                    Bytes(MESSAGE_DATA[1..].into()),
-                );
-                let mut builder = handler.transaction_builder().await.unwrap();
-
-                builder.inputs_mut().push(SdkInput::ResourceSigned {
-                    resource: CoinType::Message(message.clone()),
-                });
-
-                wallet
-                    .adjust_for_fee(&mut builder, 1_000_000_000)
-                    .await
-                    .unwrap();
-
-                builder.add_signer(wallet.clone()).unwrap();
-
-                let tx = builder.build(provider).await.unwrap();
-
-                let provider = wallet.provider().unwrap();
-                let tx_status = provider
-                    .send_transaction_and_await_commit(tx)
-                    .await
-                    .unwrap();
-                let receipts = tx_status.take_receipts_checked(None).unwrap();
-                let response = handler.get_response(receipts).unwrap();
-                assert!(response.value);
-            }
-
-            #[tokio::test]
-            async fn input_message_data_none_when_offset_exceeds_length() {
-                let (contract_instance, _, wallet, _) = get_contracts(true).await;
-                let message = &wallet.get_messages().await.unwrap()[0];
-                let provider = wallet.provider().unwrap();
-
-                let mut builder = contract_instance
+                let response = contract_instance
                     .methods()
-                    .get_input_message_data(
-                        3,
-                        (MESSAGE_DATA.len() + 1) as u64,
-                        Bytes(MESSAGE_DATA.into()),
-                    )
-                    .transaction_builder()
+                    .get_input_message_data(0, 1, Bytes(MESSAGE_DATA[1..].into()))
+                    .with_inputs(vec![SdkInput::ResourceSigned {
+                        resource: CoinType::Message(message.clone()),
+                    }])
+                    .call()
                     .await
                     .unwrap();
-
-                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
-
-                builder.inputs_mut().push(SdkInput::ResourceSigned {
-                    resource: CoinType::Message(message.clone()),
-                });
-
-                builder.add_signer(wallet.clone()).unwrap();
-
-                let tx = builder.build(provider).await.unwrap();
-
-                let provider = wallet.provider().unwrap();
-                let tx_id = provider.send_transaction(tx).await.unwrap();
-
-                let receipts = provider
-                    .tx_status(&tx_id)
-                    .await
-                    .unwrap()
-                    .take_receipts_checked(None)
-                    .unwrap();
-
-                assert_eq!(receipts[1].data(), Some(&[0][..]));
+                assert!(response.value);
             }
 
             #[tokio::test]
@@ -1585,31 +1457,14 @@ mod inputs {
                 let (contract_instance, _, wallet, _) = get_contracts(true).await;
                 let (predicate_bytecode, message, _) =
                     generate_predicate_inputs(100, &wallet).await;
-                let provider = wallet.provider().unwrap();
 
-                let handler = contract_instance
+                let response = contract_instance
                     .methods()
-                    .get_input_predicate(1, predicate_bytecode.clone());
-
-                let mut builder = handler.transaction_builder().await.unwrap();
-
-                builder.inputs_mut().push(message);
-
-                wallet.adjust_for_fee(&mut builder, 1000).await.unwrap();
-
-                builder.add_signer(wallet.clone()).unwrap();
-
-                let tx = builder.build(provider).await.unwrap();
-
-                let provider = wallet.provider().unwrap();
-                let tx_status = provider
-                    .send_transaction_and_await_commit(tx)
+                    .get_input_predicate(0, predicate_bytecode.clone())
+                    .with_inputs(vec![message])
+                    .call()
                     .await
                     .unwrap();
-                let receipts = tx_status.take_receipts_checked(None).unwrap();
-
-                // Use the handler to get and decode the response using the receipt
-                let response = handler.get_response(receipts).unwrap();
                 assert!(response.value);
 
                 // Assert none returned when index is invalid
@@ -1720,7 +1575,7 @@ mod outputs {
 
             // Inputs
             let inputs = predicate
-                .get_asset_inputs_for_amount(*base_asset_id, predicate_coin_amount, None)
+                .get_asset_inputs_for_amount(*base_asset_id, predicate_coin_amount.into(), None)
                 .await
                 .unwrap();
 
@@ -1801,10 +1656,10 @@ mod outputs {
         #[tokio::test]
         async fn can_get_output_count_in_tx_upload() {
             // Prepare wallet and provider
-            let mut wallet = WalletUnlocked::new_random(None);
+            let signer = PrivateKeySigner::random(&mut rand::thread_rng());
             let num_coins = 100;
             let coins = setup_single_asset_coins(
-                wallet.address(),
+                signer.address(),
                 AssetId::zeroed(),
                 num_coins,
                 DEFAULT_COIN_AMOUNT,
@@ -1812,7 +1667,7 @@ mod outputs {
             let provider = setup_test_provider(coins, vec![], None, None)
                 .await
                 .unwrap();
-            wallet.set_provider(provider.clone());
+            let wallet = Wallet::new(signer, provider.clone());
             let consensus_params = provider.consensus_parameters().await.unwrap();
             let base_asset_id = consensus_params.base_asset_id();
 
@@ -1875,7 +1730,7 @@ mod outputs {
 
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
-                provider.send_transaction(tx).await.unwrap();
+                provider.send_transaction_and_await_commit(tx).await.unwrap();
 
                 // The predicate has spent it's funds
                 let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1886,10 +1741,11 @@ mod outputs {
         #[tokio::test]
         async fn can_get_output_count_in_tx_blob() {
             // Prepare wallet and provider
-            let mut wallet = WalletUnlocked::new_random(None);
+            let signer = PrivateKeySigner::random(&mut rand::thread_rng());
+
             let num_coins = 100;
             let coins = setup_single_asset_coins(
-                wallet.address(),
+                signer.address(),
                 AssetId::zeroed(),
                 num_coins,
                 DEFAULT_COIN_AMOUNT,
@@ -1897,7 +1753,7 @@ mod outputs {
             let provider = setup_test_provider(coins, vec![], None, None)
                 .await
                 .unwrap();
-            wallet.set_provider(provider.clone());
+            let wallet = Wallet::new(signer, provider.clone());
             let consensus_params = provider.consensus_parameters().await.unwrap();
             let base_asset_id = consensus_params.base_asset_id();
 
@@ -1959,7 +1815,7 @@ mod outputs {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1969,11 +1825,12 @@ mod outputs {
         #[tokio::test]
         async fn can_get_tx_output_change_details() {
             // Prepare predicate
-            let (wallet, _, predicate, asset_id, _) =
+            let (wallet, wallet_2, predicate, asset_id, _) =
                 setup_output_predicate(2, SwayOutput::Change).await;
-            let provider = wallet.try_provider().unwrap().clone();
+            let provider = wallet.provider();
 
-            let balance = predicate.get_asset_balance(&asset_id).await.unwrap();
+            let predicate_balance_before = predicate.get_asset_balance(&asset_id).await.unwrap();
+            let wallet_2_balance_before = wallet_2.get_asset_balance(&asset_id).await.unwrap();
 
             // Deploy contract
             let contract_id = Contract::load_from(
@@ -1983,7 +1840,8 @@ mod outputs {
             .unwrap()
             .deploy(&wallet, TxPolicies::default())
             .await
-            .unwrap();
+            .unwrap()
+            .contract_id;
 
             let instance = TxOutputContract::new(contract_id.clone(), wallet.clone());
             // Send tokens to the contract
@@ -1991,6 +1849,8 @@ mod outputs {
                 .force_transfer_to_contract(&contract_id, 10, asset_id, TxPolicies::default())
                 .await
                 .unwrap();
+
+            let wallet_1_balance_before = wallet.get_asset_balance(&asset_id).await.unwrap();
 
             // Build transaction
             let call_handler =
@@ -2000,32 +1860,38 @@ mod outputs {
             let mut tb = call_handler.transaction_builder().await.unwrap();
 
             // Inputs for predicate
-            let transfer_amount = 99;
+            let transfer_amount = 50u64;
             let predicate_inputs = predicate
-                .get_asset_inputs_for_amount(asset_id, transfer_amount, None)
+                .get_asset_inputs_for_amount(asset_id, transfer_amount.into(), None)
                 .await
                 .unwrap();
 
             // Outputs for predicate
             let predicate_outputs =
-                wallet.get_asset_outputs_for_amount(wallet.address(), asset_id, transfer_amount);
+                wallet.get_asset_outputs_for_amount(wallet_2.address(), asset_id, transfer_amount);
 
             // Append the inputs and outputs to the transaction
             tb.inputs.extend(predicate_inputs);
             tb.outputs.extend(predicate_outputs);
 
             let tx = tb.build(provider.clone()).await.unwrap();
-            use fuels::types::transaction::Transaction;
-            dbg!(&tx.outputs());
-            let _ = provider
+            let tx_status = provider
                 .send_transaction_and_await_commit(tx)
                 .await
                 .unwrap();
 
-            // Assert the predicate balance has changed
-            let new_balance = predicate.get_asset_balance(&asset_id).await.unwrap();
-            let expected_fee = 1;
-            assert_eq!(balance - transfer_amount - expected_fee, new_balance);
+            // Assert the predicate balance is empty
+            let predicate_balance = predicate.get_asset_balance(&asset_id).await.unwrap();
+            assert_eq!(predicate_balance, 0);
+
+            // Assert the wallet 1 has received the change
+            let wallet_1_balance = wallet.get_asset_balance(&asset_id).await.unwrap();
+            let change_amount = predicate_balance_before - transfer_amount - tx_status.total_fee();
+            assert_eq!(wallet_1_balance, wallet_1_balance_before + change_amount);
+
+            // Assert the wallet 2 has received the transfer amount
+            let wallet_2_balance = wallet_2.get_asset_balance(&asset_id).await.unwrap();
+            assert_eq!(wallet_2_balance, wallet_2_balance_before + transfer_amount);
         }
 
         #[tokio::test]
@@ -2041,7 +1907,8 @@ mod outputs {
             .unwrap()
             .deploy(&wallet, TxPolicies::default())
             .await
-            .unwrap();
+            .unwrap()
+            .contract_id;
 
             let instance = TxOutputContract::new(contract_id.clone(), wallet.clone());
 

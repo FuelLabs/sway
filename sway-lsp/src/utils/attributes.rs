@@ -110,7 +110,7 @@ where
             .of_kind(transform::AttributeKind::DocComment)
             .collect::<Vec<_>>();
         if !attrs.is_empty() {
-            callback(attrs.as_slice())
+            callback(attrs.as_slice());
         }
     });
 }
@@ -124,7 +124,7 @@ where
             .of_kind(transform::AttributeKind::Storage)
             .collect::<Vec<_>>();
         if !attrs.is_empty() {
-            callback(attrs.as_slice())
+            callback(attrs.as_slice());
         }
     });
 }

@@ -152,7 +152,7 @@ impl Declaration {
             Declaration::StructDeclaration(decl_id) => Ok(*decl_id),
             Declaration::TypeAliasDeclaration(decl_id) => {
                 let alias = engines.pe().get_type_alias(decl_id);
-                let struct_decl_id = engines.te().get(alias.ty.type_id).expect_struct(
+                let struct_decl_id = engines.te().get(alias.ty.type_id()).expect_struct(
                     handler,
                     engines,
                     &self.span(engines),

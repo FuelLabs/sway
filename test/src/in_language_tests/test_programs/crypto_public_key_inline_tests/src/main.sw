@@ -333,3 +333,9 @@ fn public_key_hash() {
     let result_2 = sha256(one_public_key);
     assert(result_2 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
 }
+
+#[test]
+fn public_key_codec() {
+    let public_key = PublicKey::new();
+    log(public_key);
+}

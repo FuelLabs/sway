@@ -22,7 +22,7 @@ pub struct TyConstantDecl {
     pub visibility: Visibility,
     pub attributes: transform::Attributes,
     pub return_type: TypeId,
-    pub type_ascription: TypeArgument,
+    pub type_ascription: GenericArgument,
     pub span: Span,
 }
 

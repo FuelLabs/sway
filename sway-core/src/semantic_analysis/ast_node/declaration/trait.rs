@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use ast_elements::type_parameter::GenericTypeParameter;
 use parsed_id::ParsedDeclId;
 use sway_error::{
     error::CompileError,
@@ -99,14 +100,14 @@ impl TyTraitDecl {
         // Create a new type parameter for the self type.
         // The span of the `trait_decl` `name` points to the file (use site) in which
         // the trait is getting declared, so we can use it as the `use_site_span`.
-        let self_type_param = TypeParameter::new_self_type(engines, name.span());
+        let self_type_param = GenericTypeParameter::new_self_type(engines, name.span());
         let self_type = self_type_param.type_id;
 
         // A temporary namespace for checking within the trait's scope.
         ctx.with_self_type(Some(self_type))
             .scoped(handler, Some(span.clone()), |ctx| {
                 // Type check the type parameters.
-                let new_type_parameters = TypeParameter::type_check_type_params(
+                let new_type_parameters = GenericTypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
                     type_parameters,
@@ -265,7 +266,7 @@ impl TyTraitDecl {
                 let typed_trait_decl = ty::TyTraitDecl {
                     name: name.clone(),
                     type_parameters: new_type_parameters,
-                    self_type: self_type_param,
+                    self_type: TypeParameter::Type(self_type_param),
                     interface_surface: new_interface_surface,
                     items: new_items,
                     supertraits,
@@ -338,7 +339,7 @@ impl TyTraitDecl {
         ctx: &TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
-        type_arguments: &[TypeArgument],
+        type_arguments: &[GenericArgument],
     ) -> (InterfaceItemMap, ItemMap, ItemMap) {
         let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
         let mut item_refs: ItemMap = BTreeMap::new();
@@ -391,12 +392,14 @@ impl TyTraitDecl {
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
             type_parameters
                 .iter()
-                .map(|type_param| type_param.type_id)
+                .map(|t| {
+                    let t = t
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
+                    t.type_id
+                })
                 .collect(),
-            type_arguments
-                .iter()
-                .map(|type_arg| type_arg.type_id)
-                .collect(),
+            type_arguments.iter().map(|t| t.type_id()).collect(),
         );
 
         for item in ctx
@@ -480,7 +483,7 @@ impl TyTraitDecl {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         trait_name: &CallPath,
-        type_arguments: &[TypeArgument],
+        type_arguments: &[GenericArgument],
         type_id: TypeId,
     ) {
         let decl_engine = ctx.engines.de();
@@ -501,12 +504,14 @@ impl TyTraitDecl {
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
             type_parameters
                 .iter()
-                .map(|type_param| type_param.type_id)
+                .map(|t| {
+                    let t = t
+                        .as_type_parameter()
+                        .expect("only works with type parameters");
+                    t.type_id
+                })
                 .collect(),
-            type_arguments
-                .iter()
-                .map(|type_arg| type_arg.type_id)
-                .collect(),
+            type_arguments.iter().map(|t| t.type_id()).collect(),
         );
 
         let mut const_symbols = HashMap::<Ident, ty::TyDecl>::new();

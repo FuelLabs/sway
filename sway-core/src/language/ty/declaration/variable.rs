@@ -13,7 +13,7 @@ pub struct TyVariableDecl {
     pub body: TyExpression,
     pub mutability: VariableMutability,
     pub return_type: TypeId,
-    pub type_ascription: TypeArgument,
+    pub type_ascription: GenericArgument,
 }
 
 impl TyDeclParsedType for TyVariableDecl {

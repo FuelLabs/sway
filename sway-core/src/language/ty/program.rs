@@ -3,7 +3,8 @@ use std::sync::Arc;
 use crate::{
     decl_engine::*,
     fuel_prelude::fuel_tx::StorageSlot,
-    language::{parsed, ty::*, Purity},
+    language::{parsed, ty::*, Purity, Visibility},
+    namespace::{check_impls_for_overlap, check_orphan_rules_for_impls, TraitMap},
     semantic_analysis::namespace,
     transform::AllowDeprecatedState,
     type_system::*,
@@ -49,7 +50,7 @@ fn get_type_not_allowed_error(
 
 fn check_no_ref_main(engines: &Engines, handler: &Handler, main_function: &DeclId<TyFunctionDecl>) {
     let main_function = engines.de().get_function(main_function);
-    for param in &main_function.parameters {
+    for param in main_function.parameters.iter() {
         if param.is_reference && param.is_mutable {
             handler.emit_err(CompileError::RefMutableNotAllowedInMain {
                 param_name: param.name.clone(),
@@ -60,6 +61,69 @@ fn check_no_ref_main(engines: &Engines, handler: &Handler, main_function: &DeclI
 }
 
 impl TyProgram {
+    pub fn validate_coherence(
+        handler: &Handler,
+        engines: &Engines,
+        root: &TyModule,
+        root_namespace: &mut namespace::Namespace,
+    ) -> Result<(), ErrorEmitted> {
+        // check orphan rules for all traits
+        check_orphan_rules_for_impls(handler, engines, root_namespace.current_package_ref())?;
+
+        // check trait overlap
+        let mut unified_trait_map = root_namespace
+            .current_package_ref()
+            .root_module()
+            .root_lexical_scope()
+            .items
+            .implemented_traits
+            .clone();
+
+        Self::validate_coherence_overlap(
+            handler,
+            engines,
+            root,
+            root_namespace,
+            &mut unified_trait_map,
+        )?;
+
+        Ok(())
+    }
+
+    pub fn validate_coherence_overlap(
+        handler: &Handler,
+        engines: &Engines,
+        module: &TyModule,
+        root_namespace: &mut namespace::Namespace,
+        unified_trait_map: &mut TraitMap,
+    ) -> Result<(), ErrorEmitted> {
+        let other_trait_map = unified_trait_map.clone();
+        check_impls_for_overlap(unified_trait_map, handler, other_trait_map, engines)?;
+
+        for (submod_name, submodule) in module.submodules.iter() {
+            root_namespace.push_submodule(
+                handler,
+                engines,
+                submod_name.clone(),
+                Visibility::Public,
+                submodule.mod_name_span.clone(),
+                false,
+            )?;
+
+            Self::validate_coherence_overlap(
+                handler,
+                engines,
+                &submodule.module,
+                root_namespace,
+                unified_trait_map,
+            )?;
+
+            root_namespace.pop_submodule();
+        }
+
+        Ok(())
+    }
+
     /// Validate the root module given the expected program kind.
     pub fn validate_root(
         handler: &Handler,
@@ -77,17 +141,14 @@ impl TyProgram {
         // Validate all submodules
         let mut configurables = vec![];
         for (_, submodule) in &root.submodules {
-            match Self::validate_root(
+            let _ = Self::validate_root(
                 handler,
                 engines,
                 &submodule.module,
                 parsed::TreeType::Library,
                 package_name,
                 experimental,
-            ) {
-                Ok(_) => {}
-                Err(_) => continue,
-            }
+            );
         }
 
         let mut entries = Vec::new();
@@ -138,7 +199,7 @@ impl TyProgram {
                         ..
                     } = &*impl_trait_decl;
                     if matches!(
-                        &*ty_engine.get(implementing_for.type_id),
+                        &*ty_engine.get(implementing_for.type_id()),
                         TypeInfo::Contract
                     ) {
                         // add methods to the ABI only if they come from an ABI implementation
@@ -179,7 +240,7 @@ impl TyProgram {
         // Some checks that are specific to non-contracts
         if kind != parsed::TreeType::Contract {
             // impure functions are disallowed in non-contracts
-            if !matches!(kind, parsed::TreeType::Library { .. }) {
+            if !matches!(kind, parsed::TreeType::Library) {
                 for err in disallow_impure_functions(decl_engine, &declarations, &entries) {
                     handler.emit_err(err);
                 }
@@ -208,7 +269,7 @@ impl TyProgram {
                         for field in storage_decl.fields.iter() {
                             if let Some(error) = get_type_not_allowed_error(
                                 engines,
-                                field.type_argument.type_id,
+                                field.type_argument.type_id(),
                                 &field.type_argument,
                                 |t| match t {
                                     TypeInfo::StringSlice => {
@@ -289,7 +350,7 @@ impl TyProgram {
                 };
 
                 let main_fn = decl_engine.get(&main_fn_id);
-                if !ty_engine.get(main_fn.return_type.type_id).is_bool() {
+                if !ty_engine.get(main_fn.return_type.type_id()).is_bool() {
                     handler.emit_err(CompileError::PredicateMainDoesNotReturnBool(
                         main_fn.span.clone(),
                     ));
@@ -343,7 +404,7 @@ impl TyProgram {
                     for p in main_fn.parameters() {
                         if let Some(error) = get_type_not_allowed_error(
                             engines,
-                            p.type_argument.type_id,
+                            p.type_argument.type_id(),
                             &p.type_argument,
                             |t| match t {
                                 TypeInfo::StringSlice => {
@@ -362,7 +423,7 @@ impl TyProgram {
                     // Check main return type is valid
                     if let Some(error) = get_type_not_allowed_error(
                         engines,
-                        main_fn.return_type.type_id,
+                        main_fn.return_type.type_id(),
                         &main_fn.return_type,
                         |t| match t {
                             TypeInfo::StringSlice => {
@@ -376,7 +437,7 @@ impl TyProgram {
                     ) {
                         // Let main return `raw_slice` directly
                         if !matches!(
-                            &*engines.te().get(main_fn.return_type.type_id),
+                            &*engines.te().get(main_fn.return_type.type_id()),
                             TypeInfo::RawUntypedSlice
                         ) {
                             handler.emit_err(error);

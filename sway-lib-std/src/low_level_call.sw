@@ -7,6 +7,7 @@ use ::asset_id::AssetId;
 use ::bytes::Bytes;
 use ::contract_id::ContractId;
 use ::codec::*;
+use ::debug::*;
 use ::option::Option;
 use ::revert::require;
 use ::vec::Vec;

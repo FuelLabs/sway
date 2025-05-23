@@ -44,19 +44,19 @@ pub(crate) struct CodeActionContext<'a> {
 
 pub fn code_actions(
     session: Arc<Session>,
+    engines: &Engines,
+    token_map: &TokenMap,
     range: &Range,
     uri: &Url,
     temp_uri: &Url,
     diagnostics: &Vec<Diagnostic>,
 ) -> Option<CodeActionResponse> {
-    let t = session
-        .token_map()
-        .token_at_position(temp_uri, range.start)?;
+    let t = token_map.token_at_position(temp_uri, range.start)?;
     let token = t.value();
 
     let ctx = CodeActionContext {
-        engines: &session.engines.read(),
-        tokens: session.token_map(),
+        engines,
+        tokens: token_map,
         token,
         uri,
         temp_uri,
@@ -110,7 +110,7 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
     fn title(&self) -> String;
 
     fn indentation(&self) -> String {
-        let LineCol { col, .. } = self.decl().span().start_pos().line_col();
+        let LineCol { col, .. } = self.decl().span().start_line_col_one_index();
         " ".repeat(col - 1)
     }
 
@@ -153,7 +153,7 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
     fn range_after(&self) -> Range {
         let LineCol {
             line: last_line, ..
-        } = self.decl().span().end_pos().line_col();
+        } = self.decl().span().end_line_col_one_index();
         let insertion_position = Position {
             line: last_line as u32,
             character: 0,
@@ -168,7 +168,7 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
     fn range_before(&self) -> Range {
         let LineCol {
             line: first_line, ..
-        } = self.decl().span().start_pos().line_col();
+        } = self.decl().span().start_line_col_one_index();
         let insertion_position = Position {
             line: first_line as u32 - 1,
             character: 0,

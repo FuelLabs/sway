@@ -1,15 +1,14 @@
-use sway_error::handler::Handler;
-
 use crate::{priv_prelude::ParseToEnd, Parse, Parser};
-use std::sync::Arc;
+use sway_error::handler::Handler;
+use sway_features::ExperimentalFeatures;
 
 pub fn parse<T>(input: &str) -> T
 where
     T: Parse,
 {
     let handler = Handler::default();
-    let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-    let r = Parser::new(&handler, &ts).parse();
+    let ts = crate::token::lex(&handler, input.into(), 0, input.len(), None).unwrap();
+    let r = Parser::new(&handler, &ts, ExperimentalFeatures::default()).parse();
 
     if handler.has_errors() || handler.has_warnings() {
         panic!("{:?}", handler.consume());
@@ -23,8 +22,10 @@ where
     T: ParseToEnd,
 {
     let handler = <_>::default();
-    let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-    let r = Parser::new(&handler, &ts).parse_to_end().map(|(m, _)| m);
+    let ts = crate::token::lex(&handler, input.into(), 0, input.len(), None).unwrap();
+    let r = Parser::new(&handler, &ts, ExperimentalFeatures::default())
+        .parse_to_end()
+        .map(|(m, _)| m);
 
     if handler.has_errors() || handler.has_warnings() {
         panic!("{:?}", handler.consume());

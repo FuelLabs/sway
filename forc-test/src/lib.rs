@@ -1,3 +1,4 @@
+pub mod ecal;
 pub mod execute;
 pub mod setup;
 
@@ -5,6 +6,7 @@ use crate::execute::TestExecutor;
 use crate::setup::{
     ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
 };
+use ecal::EcalSyscallHandler;
 use forc_pkg::{self as pkg, BuildOpts};
 use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
@@ -74,6 +76,8 @@ pub struct TestResult {
     pub logs: Vec<fuel_tx::Receipt>,
     /// Gas used while executing this test.
     pub gas_used: u64,
+    /// EcalState of the execution
+    pub ecal: Box<EcalSyscallHandler>,
 }
 
 const TEST_METADATA_SEED: u64 = 0x7E57u64;
@@ -137,6 +141,8 @@ pub struct TestOpts {
     /// If the argument provided ends with .json, a JSON is emitted,
     /// otherwise, an ELF file containing DWARF is emitted.
     pub debug_outfile: Option<String>,
+    /// If set, generates a JSON file containing the hex-encoded script binary.
+    pub hex_outfile: Option<String>,
     /// Build target to use.
     pub build_target: BuildTarget,
     /// Name of the build profile to use.
@@ -447,6 +453,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             minify: val.minify,
             binary_outfile: val.binary_outfile,
             debug_outfile: val.debug_outfile,
+            hex_outfile: val.hex_outfile,
             build_target: val.build_target,
             build_profile: val.build_profile,
             release: val.release,
@@ -471,6 +478,7 @@ impl TestOpts {
             minify: self.minify,
             binary_outfile: self.binary_outfile,
             debug_outfile: self.debug_outfile,
+            hex_outfile: self.hex_outfile,
             build_target: self.build_target,
             build_profile: self.build_profile,
             release: self.release,

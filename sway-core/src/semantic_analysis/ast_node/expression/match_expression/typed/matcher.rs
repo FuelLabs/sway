@@ -155,10 +155,10 @@ impl ReqDeclNode {
 /// };
 ///
 /// match p {
-///     Point { x, y: 5 } => { x },                        // 1.                 
+///     Point { x, y: 5 } => { x },                        // 1.
 ///     Point { x, y: 5 } | Point { x, y: 10 } => { x },   // 2.
-///     Point { x: 10, y: 24 } => { 1 },                   // 3.    
-///     Point { x: 22, .. } => { 2 },                      // 4.          
+///     Point { x: 10, y: 24 } => { 1 },                   // 3.
+///     Point { x: 22, .. } => { 2 },                      // 4.
 ///     Point { .. } => { 3 },                             // 5.
 ///     _ => 0                                             // 6.
 /// }
@@ -169,19 +169,19 @@ impl ReqDeclNode {
 ///
 /// ```ignore
 /// 1.
-///               &&  
+///               &&
 ///              /  \
 /// [let x = p.x]    [p.y == 5]
 ///
 /// 2.
-///                             ||       
+///                             ||
 ///                 ___________/  \____________
-///               &&                           &&    
-///              /  \                         /  \  
+///               &&                           &&
+///              /  \                         /  \
 /// [let x = p.x]    [p.y == 5]  [let x = p.x]    [p.y == 10]
 ///
 /// 3.
-///             &&  
+///             &&
 ///            /  \
 /// [p.x == 10]    [p.y == 24]
 ///
@@ -401,7 +401,7 @@ fn match_constant(
     span: Span,
 ) -> ReqDeclTree {
     let name = const_decl.name().clone();
-    let return_type = const_decl.type_ascription.type_id;
+    let return_type = const_decl.type_ascription.type_id();
 
     let req = (
         exp.to_owned(),

@@ -5,6 +5,7 @@ use std::{
     vec,
 };
 
+use ast_elements::type_parameter::GenericTypeParameter;
 use sway_error::{
     error::{CompileError, InterfaceName},
     handler::{ErrorEmitted, Handler},
@@ -54,7 +55,13 @@ impl TyImplSelfOrTrait {
             impl_trait.block_span.clone(),
             Some(decl),
             |scoped_ctx| {
-                for const_generic_parameter in &impl_trait.impl_const_generics_parameters {
+                let const_generic_parameters = impl_trait
+                    .impl_type_parameters
+                    .iter()
+                    .filter_map(|x| x.as_const_parameter())
+                    .filter_map(|x| x.id.as_ref());
+
+                for const_generic_parameter in const_generic_parameters {
                     let const_generic_decl = engines.pe().get(const_generic_parameter);
                     scoped_ctx.insert_parsed_symbol(
                         handler,
@@ -121,7 +128,6 @@ impl TyImplSelfOrTrait {
 
         let ImplSelfOrTrait {
             impl_type_parameters,
-            impl_const_generics_parameters,
             trait_name,
             mut trait_type_arguments,
             trait_decl_ref: _,
@@ -141,7 +147,7 @@ impl TyImplSelfOrTrait {
         // the code in the source file in which the self type is used in the implementation.
         let self_type_use_site_span = block_span.clone();
         let self_type_param =
-            TypeParameter::new_self_type(engines, self_type_use_site_span.clone());
+            GenericTypeParameter::new_self_type(engines, self_type_use_site_span.clone());
         let self_type_id = self_type_param.type_id;
 
         // create a namespace for the impl
@@ -150,8 +156,12 @@ impl TyImplSelfOrTrait {
             .with_self_type(Some(self_type_id))
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |ctx| {
-                for const_generic_decl_id in impl_const_generics_parameters {
-                    let const_generic_decl = engines.pe().get(&const_generic_decl_id);
+                let const_generic_parameters = impl_type_parameters
+                    .iter()
+                    .filter_map(|x| x.as_const_parameter())
+                    .filter_map(|x| x.id.as_ref());
+                for const_generic_decl_id in const_generic_parameters {
+                    let const_generic_decl = engines.pe().get(const_generic_decl_id);
 
                     let decl_ref = engines.de().insert(
                         TyConstGenericDecl {
@@ -164,7 +174,7 @@ impl TyImplSelfOrTrait {
                             return_type: const_generic_decl.ty,
                             value: None,
                         },
-                        Some(&const_generic_decl_id),
+                        Some(const_generic_decl_id),
                     );
 
                     ctx.insert_symbol(
@@ -177,7 +187,7 @@ impl TyImplSelfOrTrait {
                 }
 
                 // Type check the type parameters
-                let new_impl_type_parameters = TypeParameter::type_check_type_params(
+                let new_impl_type_parameters = GenericTypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
                     impl_type_parameters,
@@ -186,10 +196,10 @@ impl TyImplSelfOrTrait {
 
                 // resolve the types of the trait type arguments
                 for type_arg in trait_type_arguments.iter_mut() {
-                    type_arg.type_id = ctx.resolve_type(
+                    *type_arg.type_id_mut() = ctx.resolve_type(
                         handler,
-                        type_arg.type_id,
-                        &type_arg.span,
+                        type_arg.type_id(),
+                        &type_arg.span(),
                         EnforceTypeArguments::Yes,
                         None,
                     )?;
@@ -197,21 +207,21 @@ impl TyImplSelfOrTrait {
 
                 // type check the type that we are implementing for
 
-                implementing_for.type_id = ctx.resolve_type(
+                *implementing_for.type_id_mut() = ctx.resolve_type(
                     handler,
-                    implementing_for.type_id,
-                    &implementing_for.span,
+                    implementing_for.type_id(),
+                    &implementing_for.span(),
                     EnforceTypeArguments::Yes,
                     None,
                 )?;
 
                 // check to see if this type is supported in impl blocks
                 type_engine
-                    .get(implementing_for.type_id)
+                    .get(implementing_for.type_id())
                     .expect_is_supported_in_impl_blocks_self(
                         handler,
                         Some(&trait_name.suffix),
-                        &implementing_for.span,
+                        &implementing_for.span(),
                     )?;
 
                 // check for unconstrained type parameters
@@ -220,7 +230,7 @@ impl TyImplSelfOrTrait {
                     engines,
                     &new_impl_type_parameters,
                     &trait_type_arguments,
-                    implementing_for.type_id,
+                    implementing_for.type_id(),
                 )?;
 
                 // Unify the "self" type param and the type that we are implementing for
@@ -228,9 +238,9 @@ impl TyImplSelfOrTrait {
                     type_engine.unify_with_self(
                         h,
                         engines,
-                        implementing_for.type_id,
+                        implementing_for.type_id(),
                         self_type_id,
-                        &implementing_for.span,
+                        &implementing_for.span(),
                         "",
                         None,
                     );
@@ -242,7 +252,7 @@ impl TyImplSelfOrTrait {
                     .by_ref()
                     .with_help_text("")
                     .with_type_annotation(type_engine.new_unknown())
-                    .with_self_type(Some(implementing_for.type_id));
+                    .with_self_type(Some(implementing_for.type_id()));
 
                 let impl_trait = match ctx.resolve_call_path(handler, &trait_name).ok() {
                     Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -276,13 +286,13 @@ impl TyImplSelfOrTrait {
                             ctx.by_ref(),
                             &trait_name,
                             &trait_type_arguments,
-                            implementing_for.type_id,
+                            implementing_for.type_id(),
                         );
 
                         let (new_items, supertrait_items) = type_check_trait_implementation(
                             handler,
                             ctx.by_ref(),
-                            implementing_for.type_id,
+                            implementing_for.type_id(),
                             &new_impl_type_parameters,
                             &trait_decl.type_parameters,
                             &trait_type_arguments,
@@ -318,27 +328,27 @@ impl TyImplSelfOrTrait {
 
                         let abi = decl_engine.get_abi(&decl_id);
 
-                        if !type_engine.get(implementing_for.type_id).eq(
+                        if !type_engine.get(implementing_for.type_id()).eq(
                             &TypeInfo::Contract,
                             &PartialEqWithEnginesContext::new(engines),
                         ) {
                             handler.emit_err(CompileError::ImplAbiForNonContract {
                                 span: implementing_for.span(),
-                                ty: engines.help_out(implementing_for.type_id).to_string(),
+                                ty: engines.help_out(implementing_for.type_id()).to_string(),
                             });
                         }
 
                         let self_type_param =
-                            TypeParameter::new_self_type(engines, self_type_use_site_span);
+                            GenericTypeParameter::new_self_type(engines, self_type_use_site_span);
                         // Unify the "self" type param from the abi declaration with
                         // the type that we are implementing for.
                         handler.scope(|h| {
                             type_engine.unify_with_self(
                                 h,
                                 engines,
-                                implementing_for.type_id,
+                                implementing_for.type_id(),
                                 self_type_param.type_id,
-                                &implementing_for.span,
+                                &implementing_for.span(),
                                 "",
                                 None,
                             );
@@ -353,14 +363,14 @@ impl TyImplSelfOrTrait {
                             handler,
                             decl_id,
                             ctx.by_ref(),
-                            implementing_for.type_id,
+                            implementing_for.type_id(),
                             None,
                         );
 
                         let (new_items, supertrait_items) = type_check_trait_implementation(
                             handler,
                             ctx.by_ref(),
-                            implementing_for.type_id,
+                            implementing_for.type_id(),
                             &[], // this is empty because abi definitions don't support generics,
                             &[], // this is empty because abi definitions don't support generics,
                             &[], // this is empty because abi definitions don't support generics,
@@ -435,15 +445,45 @@ impl TyImplSelfOrTrait {
         ctx.with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |ctx| {
+                let const_generic_parameters = impl_type_parameters
+                    .iter()
+                    .filter_map(|x| x.as_const_parameter())
+                    .filter_map(|x| x.id.as_ref());
+                for const_generic_decl_id in const_generic_parameters {
+                    let const_generic_decl = engines.pe().get(const_generic_decl_id);
+
+                    let decl_ref = engines.de().insert(
+                        TyConstGenericDecl {
+                            call_path: CallPath {
+                                prefixes: vec![],
+                                suffix: const_generic_decl.name.clone(),
+                                callpath_type: CallPathType::Ambiguous,
+                            },
+                            span: const_generic_decl.span.clone(),
+                            return_type: const_generic_decl.ty,
+                            value: None,
+                        },
+                        Some(const_generic_decl_id),
+                    );
+
+                    ctx.insert_symbol(
+                        handler,
+                        const_generic_decl.name.clone(),
+                        TyDecl::ConstGenericDecl(ConstGenericDecl {
+                            decl_id: *decl_ref.id(),
+                        }),
+                    )?;
+                }
+
                 // Create a new type parameter for the self type.
                 let self_type_param =
                     // Same as with impl trait or ABI, we take the `block_span` as the `use_site_span`
                     // of the self type.
-                    TypeParameter::new_self_type(engines, block_span.clone());
+                    GenericTypeParameter::new_self_type(engines, block_span.clone());
                 let self_type_id = self_type_param.type_id;
 
                 // create the trait name
-                let suffix = match &&*type_engine.get(implementing_for.type_id) {
+                let suffix = match &&*type_engine.get(implementing_for.type_id()) {
                     TypeInfo::Custom {
                         qualified_call_path: call_path,
                         ..
@@ -452,7 +492,7 @@ impl TyImplSelfOrTrait {
                 };
                 let trait_name = CallPath::ident_to_fullpath(suffix, ctx.namespace());
                 // Type check the type parameters.
-                let new_impl_type_parameters = TypeParameter::type_check_type_params(
+                let new_impl_type_parameters = GenericTypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
                     impl_type_parameters,
@@ -460,21 +500,21 @@ impl TyImplSelfOrTrait {
                 )?;
 
                 // type check the type that we are implementing for
-                implementing_for.type_id = ctx.resolve_type(
+                *implementing_for.type_id_mut() = ctx.resolve_type(
                     handler,
-                    implementing_for.type_id,
-                    &implementing_for.span,
+                    implementing_for.type_id(),
+                    &implementing_for.span(),
                     EnforceTypeArguments::Yes,
                     None,
                 )?;
 
                 // check to see if this type is supported in impl blocks
                 type_engine
-                    .get(implementing_for.type_id)
+                    .get(implementing_for.type_id())
                     .expect_is_supported_in_impl_blocks_self(
                         handler,
                         None,
-                        &implementing_for.span,
+                        &implementing_for.span(),
                     )?;
 
                 // check for unconstrained type parameters
@@ -483,13 +523,13 @@ impl TyImplSelfOrTrait {
                     engines,
                     &new_impl_type_parameters,
                     &[],
-                    implementing_for.type_id,
+                    implementing_for.type_id(),
                 )?;
 
-                implementing_for.type_id.check_type_parameter_bounds(
+                implementing_for.type_id().check_type_parameter_bounds(
                     handler,
                     ctx.by_ref(),
-                    &implementing_for.span,
+                    &implementing_for.span(),
                     None,
                 )?;
 
@@ -498,9 +538,9 @@ impl TyImplSelfOrTrait {
                     type_engine.unify_with_self(
                         h,
                         engines,
-                        implementing_for.type_id,
+                        implementing_for.type_id(),
                         self_type_id,
-                        &implementing_for.span,
+                        &implementing_for.span(),
                         "",
                         None,
                     );
@@ -526,7 +566,7 @@ impl TyImplSelfOrTrait {
                                     &fn_decl,
                                     true,
                                     true,
-                                    Some(implementing_for.type_id),
+                                    Some(implementing_for.type_id()),
                                 ) {
                                     Ok(res) => res,
                                     Err(_) => continue,
@@ -589,7 +629,7 @@ impl TyImplSelfOrTrait {
                         handler,
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
-                        impl_trait.implementing_for.type_id,
+                        impl_trait.implementing_for.type_id(),
                         impl_trait.impl_type_parameters.clone(),
                         &impl_trait.items,
                         &impl_trait.span,
@@ -747,12 +787,9 @@ impl TyImplSelfOrTrait {
             );
 
             // Do a topological sort to compute an ordered list of nodes (by function calls).
-            let sorted = match petgraph::algo::toposort(&sub_graph, None) {
-                Ok(value) => Some(value),
-                // If the dependency graph contains cycles, then this means there are recursive
-                // function calls, which we will report later.
-                Err(_) => None,
-            };
+            // If the dependency graph contains cycles, then this means there are recursive
+            // function calls, which we will report later.
+            let sorted = petgraph::algo::toposort(&sub_graph, None).ok();
 
             Ok(sorted)
         })
@@ -766,7 +803,7 @@ fn type_check_trait_implementation(
     implementing_for: TypeId,
     impl_type_parameters: &[TypeParameter],
     trait_type_parameters: &[TypeParameter],
-    trait_type_arguments: &[TypeArgument],
+    trait_type_arguments: &[GenericArgument],
     trait_supertraits: &[Supertrait],
     trait_interface_surface: &[TyTraitInterfaceItem],
     trait_items: &[TyImplItem],
@@ -799,7 +836,7 @@ fn type_check_trait_implementation(
         })?;
 
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
-        type_arg.type_id.check_type_parameter_bounds(
+        type_arg.type_id().check_type_parameter_bounds(
             handler,
             ctx.by_ref(),
             &type_arg.span(),
@@ -963,7 +1000,7 @@ fn type_check_trait_implementation(
                                 type_decl.name.clone(),
                                 implementing_for,
                             )],
-                            vec![type_arg.type_id],
+                            vec![type_arg.type_id()],
                         ),
                     );
                     trait_type_mapping.extend(
@@ -973,7 +1010,7 @@ fn type_check_trait_implementation(
                                 type_decl.name.clone(),
                                 self_type_id,
                             )],
-                            vec![type_arg.type_id],
+                            vec![type_arg.type_id()],
                         ),
                     );
                 }
@@ -1076,11 +1113,16 @@ fn type_check_trait_implementation(
     let mut type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
         trait_type_parameters
             .iter()
-            .map(|type_param| type_param.type_id)
+            .map(|p| {
+                let p = p
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
+                p.type_id
+            })
             .collect(),
         trait_type_arguments
             .iter()
-            .map(|type_arg| type_arg.type_id)
+            .map(|type_arg| type_arg.type_id())
             .collect(),
     );
     type_mapping.extend(&trait_type_mapping);
@@ -1112,10 +1154,7 @@ fn type_check_trait_implementation(
                     &mut impl_type_parameters
                         .iter()
                         .cloned()
-                        .map(|mut t| {
-                            t.is_from_parent = true;
-                            t
-                        })
+                        .map(|t| t.with_is_from_parent(true))
                         .collect::<Vec<_>>(),
                 );
 
@@ -1306,7 +1345,7 @@ fn type_check_impl_method(
         for (impl_method_signature_param, impl_method_param) in impl_method_signature
             .parameters
             .iter_mut()
-            .zip(&mut impl_method.parameters)
+            .zip(impl_method.parameters.iter_mut())
         {
             // TODO use trait constraints as part of the type here to
             // implement trait constraint solver */
@@ -1328,11 +1367,11 @@ fn type_check_impl_method(
             }
 
             // this subst is required to replace associated types, namely TypeInfo::TraitType.
-            let mut impl_method_param_type_id = impl_method_param.type_argument.type_id;
+            let mut impl_method_param_type_id = impl_method_param.type_argument.type_id();
             impl_method_param_type_id.subst(&ctx.subst_ctx());
 
             let mut impl_method_signature_param_type_id =
-                impl_method_signature_param.type_argument.type_id;
+                impl_method_signature_param.type_argument.type_id();
             impl_method_signature_param_type_id.subst(&ctx.subst_ctx());
 
             if !UnifyCheck::non_dynamic_equality(engines).check(
@@ -1341,7 +1380,7 @@ fn type_check_impl_method(
             ) {
                 handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
-                    span: impl_method_param.type_argument.span.clone(),
+                    span: impl_method_param.type_argument.span(),
                     decl_type: "function".to_string(),
                     given: engines.help_out(impl_method_param_type_id).to_string(),
                     expected: engines
@@ -1403,11 +1442,11 @@ fn type_check_impl_method(
         }
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        let mut impl_method_return_type_id = impl_method.return_type.type_id;
+        let mut impl_method_return_type_id = impl_method.return_type.type_id();
         impl_method_return_type_id.subst(&ctx.subst_ctx());
 
         let mut impl_method_signature_return_type_type_id =
-            impl_method_signature.return_type.type_id;
+            impl_method_signature.return_type.type_id();
         impl_method_signature_return_type_type_id.subst(&ctx.subst_ctx());
 
         if !UnifyCheck::non_dynamic_equality(engines).check(
@@ -1417,7 +1456,7 @@ fn type_check_impl_method(
             return Err(
                 handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
-                    span: impl_method.return_type.span.clone(),
+                    span: impl_method.return_type.span(),
                     decl_type: "function".to_string(),
                     expected: engines
                         .help_out(impl_method_signature_return_type_type_id)
@@ -1442,10 +1481,7 @@ fn type_check_impl_method(
             &mut impl_type_parameters
                 .iter()
                 .cloned()
-                .map(|mut t| {
-                    t.is_from_parent = true;
-                    t
-                })
+                .map(|t| t.with_is_from_parent(true))
                 .collect::<Vec<_>>(),
         );
 
@@ -1511,7 +1547,7 @@ fn type_check_const_decl(
     let engines = ctx.engines();
 
     // Create a new type parameter for the "self type".
-    let self_type_param = TypeParameter::new_self_type(engines, const_decl.span.clone());
+    let self_type_param = GenericTypeParameter::new_self_type(engines, const_decl.span.clone());
     let self_type_id = self_type_param.type_id;
 
     let mut ctx = ctx
@@ -1572,10 +1608,10 @@ fn type_check_const_decl(
     };
 
     // this subst is required to replace associated types, namely TypeInfo::TraitType.
-    let mut const_decl_type_id = const_decl.type_ascription.type_id;
+    let mut const_decl_type_id = const_decl.type_ascription.type_id();
     const_decl_type_id.subst(&ctx.subst_ctx());
 
-    let mut const_decl_signature_type_id = const_decl_signature.type_ascription.type_id;
+    let mut const_decl_signature_type_id = const_decl_signature.type_ascription.type_id();
     const_decl_signature_type_id.subst(&ctx.subst_ctx());
 
     // unify the types from the constant with the constant signature
@@ -1691,7 +1727,7 @@ fn check_for_unconstrained_type_parameters(
     handler: &Handler,
     engines: &Engines,
     type_parameters: &[TypeParameter],
-    trait_type_arguments: &[TypeArgument],
+    trait_type_arguments: &[GenericArgument],
     self_type: TypeId,
 ) -> Result<(), ErrorEmitted> {
     // Create a list of defined generics, with the generic and a span.
@@ -1699,14 +1735,15 @@ fn check_for_unconstrained_type_parameters(
     let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
-            .map(|x| ((*engines.te().get(x.type_id)).clone(), x.span()))
+            .filter_map(|x| x.as_type_parameter())
+            .map(|p| ((*engines.te().get(p.type_id)).clone(), p.span()))
             .map(|(thing, sp)| (WithEngines::new(thing, engines), sp)),
     );
 
     // create a list of the generics in use in the impl signature
     let mut generics_in_use = HashSet::new();
     for type_arg in trait_type_arguments.iter() {
-        generics_in_use.extend(type_arg.type_id.extract_nested_generics(engines));
+        generics_in_use.extend(type_arg.type_id().extract_nested_generics(engines));
     }
     generics_in_use.extend(self_type.extract_nested_generics(engines));
 

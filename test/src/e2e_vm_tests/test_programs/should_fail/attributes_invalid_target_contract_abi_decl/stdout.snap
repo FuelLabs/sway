@@ -1,6 +1,5 @@
 ---
-source: test/tests/tests.rs
-assertion_line: 115
+source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl
 exit status: 1
@@ -81,20 +80,40 @@ error: Attribute cannot annotate item
 ____
 
 error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl/src/main.sw:11:7
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl/src/main.sw:10:3
    |
 ...
-11 |     #[test(invalid)]
+10 | #[error_type(invalid)]
+   |   ^^^^^^^^^^ "error_type" attribute cannot annotate an ABI declaration.
+   |
+   = help: "error_type" attribute can only annotate enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl/src/main.sw:11:3
+   |
+...
+11 | #[error(invalid)]
+   |   ^^^^^ "error" attribute cannot annotate an ABI declaration.
+   |
+   = help: "error" attribute can only annotate enum variants of enums annotated with the "error_type" attribute.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl/src/main.sw:13:7
+   |
+...
+13 |     #[test(invalid)]
    |       ^^^^ "test" attribute cannot annotate a function signature.
    |
    = help: "test" attribute can only annotate module functions.
 ____
 
 error: Inner doc comment (`//!`) cannot document item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl/src/main.sw:12:5
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl/src/main.sw:14:5
    |
 ...
-12 |     //! Invalid inner comment.
+14 |     //! Invalid inner comment.
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a function signature.
    |
    = help: Inner doc comments (`//!`) can only document modules and must be
@@ -102,24 +121,34 @@ error: Inner doc comment (`//!`) cannot document item
 ____
 
 error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl/src/main.sw:13:7
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl/src/main.sw:15:7
    |
 ...
-13 |     #[deprecated(invalid)]
+15 |     #[deprecated(invalid)]
    |       ^^^^^^^^^^ "deprecated" attribute cannot annotate a function signature.
    |
    = help: "deprecated" attribute is currently not implemented for all elements that could be deprecated.
 ____
 
 error: Attribute cannot annotate item
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl/src/main.sw:14:7
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl/src/main.sw:16:7
    |
 ...
-14 |     #[fallback(invalid)]
+16 |     #[fallback(invalid)]
    |       ^^^^^^^^ "fallback" attribute cannot annotate a function signature.
    |
    = help: "fallback" attribute can only annotate module functions in a contract module.
 ____
 
-  Aborting due to 11 errors.
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_abi_decl/src/main.sw:17:7
+   |
+...
+17 |     #[error(invalid)]
+   |       ^^^^^ "error" attribute cannot annotate a function signature.
+   |
+   = help: "error" attribute can only annotate enum variants of enums annotated with the "error_type" attribute.
+____
+
+  Aborting due to 14 errors.
 error: Failed to compile attributes_invalid_target_contract_abi_decl

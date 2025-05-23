@@ -3,12 +3,16 @@ use fuels::{prelude::*, tx::Receipt, types::transaction_builders::ScriptTransact
 
 async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
-    let provider = wallet.provider().unwrap();
+    let provider = wallet.provider();
 
     let wallet_coins = wallet
         .get_asset_inputs_for_amount(
             AssetId::default(),
-            wallet.get_asset_balance(&AssetId::default()).await.unwrap(),
+            wallet
+                .get_asset_balance(&AssetId::default())
+                .await
+                .unwrap()
+                .into(),
             None,
         )
         .await
@@ -22,16 +26,13 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
             .with_script_data(script_data)
             .enable_burn(true);
 
-    tx.add_signer(wallet.clone()).unwrap();
+    tx.add_signer(wallet.signer().clone()).unwrap();
 
     let tx = tx.build(provider).await?;
 
-    let provider = wallet.provider().unwrap();
-    let tx_id = provider.send_transaction(tx).await.unwrap();
-    provider
-        .tx_status(&tx_id)
-        .await
-        .unwrap()
+    let provider = wallet.provider();
+    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    tx_status
         .take_receipts_checked(None)
 }
 

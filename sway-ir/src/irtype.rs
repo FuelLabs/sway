@@ -333,7 +333,7 @@ impl Type {
         matches!(*self.get_content(context), TypeContent::Slice)
     }
 
-    // TODO-IG: Check all the usages of `is_ptr`.
+    // TODO: (REFERENCES) Check all the usages of `is_ptr`.
     /// Returns true if `self` is a pointer type.
     pub fn is_ptr(&self, context: &Context) -> bool {
         matches!(*self.get_content(context), TypeContent::Pointer(_))
@@ -633,7 +633,7 @@ impl TypeSize {
 
     /// Returns the size of the type in words (aligned to word boundary).
     pub fn in_words(&self) -> u64 {
-        (self.size_in_bytes + 7) / 8
+        self.size_in_bytes.div_ceil(8)
     }
 }
 

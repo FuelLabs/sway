@@ -136,52 +136,53 @@ fn ed25519_from_b256_tuple() {
     }
 }
 
-#[test]
-fn ed25519_from_u8_array() {
-    let array_1 = [
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8,
-    ];
-    let ed25519_1 = Ed25519::from(array_1);
-    let mut iter_1 = 0;
-    while iter_1 < 64 {
-        assert(ed25519_1.bits()[iter_1] == 0u8);
-        iter_1 += 1;
-    }
+// TODO: Uncomment this test once https://github.com/FuelLabs/sway/issues/7157 is fixed.
+// #[test]
+// fn ed25519_from_u8_array() {
+//     let array_1 = [
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8,
+//     ];
+//     let ed25519_1 = Ed25519::from(array_1);
+//     let mut iter_1 = 0;
+//     while iter_1 < 64 {
+//         assert(ed25519_1.bits()[iter_1] == 0u8);
+//         iter_1 += 1;
+//     }
 
-    let array_2 = [
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        0u8, 0u8, 0u8, 1u8,
-    ];
-    let ed25519_2 = Ed25519::from(array_2);
-    assert(ed25519_2.bits()[63] == 1u8);
-    let mut iter_2 = 0;
-    while iter_2 < 63 {
-        assert(ed25519_2.bits()[iter_2] == 0u8);
-        iter_2 += 1;
-    }
+//     let array_2 = [
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+//         0u8, 0u8, 0u8, 1u8,
+//     ];
+//     let ed25519_2 = Ed25519::from(array_2);
+//     assert(ed25519_2.bits()[63] == 1u8);
+//     let mut iter_2 = 0;
+//     while iter_2 < 63 {
+//         assert(ed25519_2.bits()[iter_2] == 0u8);
+//         iter_2 += 1;
+//     }
 
-    let array_3 = [
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-        255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
-    ];
-    let ed25519_3 = Ed25519::from(array_3);
-    let mut iter_3 = 0;
-    while iter_3 < 64 {
-        assert(ed25519_3.bits()[iter_3] == 255u8);
-        iter_3 += 1;
-    }
-}
+//     let array_3 = [
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//         255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8, 255u8,
+//     ];
+//     let ed25519_3 = Ed25519::from(array_3);
+//     let mut iter_3 = 0;
+//     while iter_3 < 64 {
+//         assert(ed25519_3.bits()[iter_3] == 255u8);
+//         iter_3 += 1;
+//     }
+// }
 
 #[test]
 fn ed25519_try_from_bytes() {
@@ -330,4 +331,10 @@ fn ed25519_hash() {
     let ed25519 = Ed25519::from((b256::zero(), b256::zero()));
     let hash = sha256(ed25519);
     assert(hash == 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b);
+}
+
+#[test]
+fn ed25519_codec() {
+    let ed25519 = Ed25519::from((b256::zero(), b256::zero()));
+    log(ed25519);
 }

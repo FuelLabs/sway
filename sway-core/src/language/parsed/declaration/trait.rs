@@ -116,7 +116,7 @@ pub struct TraitFn {
     pub attributes: transform::Attributes,
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
-    pub return_type: TypeArgument,
+    pub return_type: GenericArgument,
 }
 
 impl Spanned for TraitFn {
@@ -129,7 +129,7 @@ impl Spanned for TraitFn {
 pub struct TraitTypeDeclaration {
     pub name: Ident,
     pub attributes: transform::Attributes,
-    pub ty_opt: Option<TypeArgument>,
+    pub ty_opt: Option<GenericArgument>,
     pub span: Span,
 }
 

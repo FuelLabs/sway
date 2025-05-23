@@ -1,0 +1,6 @@
+category = "fail"
+
+#check: $()Type contains duplicate declarations
+#check: $()Method "foo" already declared in type "S<S<u32>>".
+#check: $()Trait "foo" is already implemented for type "S<S<Z>>".
+#check: $()Trait "foo" is already implemented for type "S<S<u32>>".

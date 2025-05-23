@@ -530,6 +530,7 @@ impl<'eng> FnCompiler<'eng> {
                     )
                 } else {
                     let function_decl = self.engines.de().get_function(fn_ref);
+
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -729,7 +730,7 @@ impl<'eng> FnCompiler<'eng> {
                     }),
                 }
             }
-            ty::TyExpressionVariant::Continue { .. } => match self.block_to_continue_to {
+            ty::TyExpressionVariant::Continue => match self.block_to_continue_to {
                 // If `self.block_to_continue_to` is not None, then it has been set inside
                 // a loop and the use of `continue` here is legal, so create a branch
                 // instruction. Error out otherwise.
@@ -753,6 +754,9 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::Return(exp) => {
                 self.compile_return(context, md_mgr, exp, span_md_idx)
+            }
+            ty::TyExpressionVariant::Panic(exp) => {
+                self.compile_panic(context, md_mgr, exp, span_md_idx)
             }
             ty::TyExpressionVariant::Ref(exp) => {
                 self.compile_ref(context, md_mgr, exp, span_md_idx)
@@ -893,7 +897,7 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        i @ ty::TyIntrinsicFunctionKind {
+        ty::TyIntrinsicFunctionKind {
             kind,
             arguments,
             type_arguments,
@@ -960,8 +964,8 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    targ.type_id,
-                    &targ.span,
+                    targ.type_id(),
+                    &targ.span(),
                 )?;
                 let val = ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
                 Ok(TerminatorValue::new(val, context))
@@ -972,8 +976,8 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    targ.type_id,
-                    &targ.span,
+                    targ.type_id(),
+                    &targ.span(),
                 )?;
                 let val = ConstantContent::get_uint(
                     context,
@@ -984,14 +988,14 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
-                let is_val = !engines.te().get_unaliased(targ.type_id).is_copy_type();
+                let is_val = !engines.te().get_unaliased(targ.type_id()).is_copy_type();
                 let val = ConstantContent::get_bool(context, is_val);
                 Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::IsStrArray => {
                 let targ = type_arguments[0].clone();
                 let is_val = matches!(
-                    &*engines.te().get_unaliased(targ.type_id),
+                    &*engines.te().get_unaliased(targ.type_id()),
                     TypeInfo::StringArray(_) | TypeInfo::StringSlice
                 );
                 let val = ConstantContent::get_bool(context, is_val);
@@ -1003,17 +1007,15 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    targ.type_id,
-                    &targ.span,
+                    targ.type_id(),
+                    &targ.span(),
                 )?;
                 match ir_type.get_content(context) {
                     TypeContent::StringSlice | TypeContent::StringArray(_) => {
                         let val = ConstantContent::get_unit(context);
                         Ok(TerminatorValue::new(val, context))
                     }
-                    _ => Err(CompileError::NonStrGenericType {
-                        span: targ.span.clone(),
-                    }),
+                    _ => Err(CompileError::NonStrGenericType { span: targ.span() }),
                 }
             }
             Intrinsic::ToStrArray => match arguments[0].expression.extract_literal_value() {
@@ -1082,8 +1084,8 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    target_type.type_id,
-                    &target_type.span,
+                    target_type.type_id(),
+                    &target_type.span(),
                 )?;
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -1099,7 +1101,7 @@ impl<'eng> FnCompiler<'eng> {
                 // `T`. This requires an `int_to_ptr` instruction if `T` is a reference type.
                 if engines
                     .te()
-                    .get_unaliased(target_type.type_id)
+                    .get_unaliased(target_type.type_id())
                     .is_copy_type()
                 {
                     let val = self
@@ -1256,19 +1258,19 @@ impl<'eng> FnCompiler<'eng> {
                     });
                 }
 
-                // The log value and the log ID are just Value.
                 let log_val = return_on_termination_or_extract!(self.compile_expression_to_value(
                     context,
                     md_mgr,
                     &arguments[0]
                 )?);
-                let logged_type = i
-                    .get_logged_type(context.experimental.new_encoding)
-                    .expect("Could not return logged type.");
-                let log_id = match self.logged_types_map.get(&logged_type) {
+                let logged_type_id = TypeMetadata::get_logged_type_id(
+                    &arguments[0],
+                    context.experimental.new_encoding,
+                )?;
+                let log_id = match self.logged_types_map.get(&logged_type_id) {
                     None => {
                         return Err(CompileError::Internal(
-                            "Unable to determine ID for log instance.",
+                            "Unable to determine log instance ID for `__log` intrinsic.",
                             span,
                         ));
                     }
@@ -1279,7 +1281,7 @@ impl<'eng> FnCompiler<'eng> {
 
                 match log_val.get_type(context) {
                     None => Err(CompileError::Internal(
-                        "Unable to determine type for logged value.",
+                        "Unable to determine logged value type in the `__log` intrinsic.",
                         span,
                     )),
                     Some(log_ty) => {
@@ -1367,8 +1369,8 @@ impl<'eng> FnCompiler<'eng> {
                     engines.te(),
                     engines.de(),
                     context,
-                    len.type_id,
-                    &len.span,
+                    len.type_id(),
+                    &len.span(),
                 )?;
                 let len_value =
                     ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
@@ -2212,6 +2214,9 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::Transmute => {
                 self.compile_intrinsic_transmute(arguments, return_type, context, md_mgr, &span)
             }
+            Intrinsic::Dbg => {
+                unreachable!("__dbg should not exist in the typed tree")
+            }
         }
     }
 
@@ -2300,9 +2305,9 @@ impl<'eng> FnCompiler<'eng> {
         match &*te.get(first_argument_expr.return_type) {
             TypeInfo::Ref {
                 referenced_type, ..
-            } => match &*te.get(referenced_type.type_id) {
+            } => match &*te.get(referenced_type.type_id()) {
                 TypeInfo::Array(elem_ty, _) | TypeInfo::Slice(elem_ty) => {
-                    Ok((ptr_to_first_element, elem_ty.type_id))
+                    Ok((ptr_to_first_element, elem_ty.type_id()))
                 }
                 _ => Err(err),
             },
@@ -2493,6 +2498,71 @@ impl<'eng> FnCompiler<'eng> {
             })
     }
 
+    fn compile_panic(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        ast_expr: &ty::TyExpression,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<TerminatorValue, CompileError> {
+        // In predicates, we only revert and do not log.
+        if context.program_kind != Kind::Predicate {
+            // TODO: Currently, we log all the values.
+            //       In the next step, ABI generation, if the `ast_expr` const evaluates to
+            //       a string slice, we will neither log it, nor leave it in the generated
+            //       bytecode, but just create a "msg" entry in the ABI.
+
+            let panic_val = return_on_termination_or_extract!(
+                self.compile_expression_to_value(context, md_mgr, ast_expr)?
+            );
+            let logged_type_id =
+                TypeMetadata::get_logged_type_id(ast_expr, context.experimental.new_encoding)?;
+            let log_id = match self.logged_types_map.get(&logged_type_id) {
+                None => {
+                    return Err(CompileError::Internal(
+                        "Unable to determine log instance ID for `panic` expression.",
+                        ast_expr.span.clone(),
+                    ));
+                }
+                Some(log_id) => convert_literal_to_value(context, &Literal::U64(log_id.hash_id)),
+            };
+
+            match panic_val.get_type(context) {
+                None => {
+                    return Err(CompileError::Internal(
+                        "Unable to determine logged value type in the `panic` expression.",
+                        ast_expr.span.clone(),
+                    ))
+                }
+                Some(log_ty) => {
+                    let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
+
+                    // The `log` instruction
+                    self.current_block
+                        .append(context)
+                        .log(panic_val, log_ty, log_id)
+                        .add_metadatum(context, span_md_idx);
+                }
+            };
+        } else {
+            // TODO: Consider using `__dbg` intrinsic in predicates, once it is implemented.
+        }
+
+        let revert_code = context.get_next_panic_revert_code();
+        let revert_code_const = ConstantContent::new_uint(context, 64, revert_code);
+        let revert_code_const = Constant::unique(context, revert_code_const);
+        let revert_code_val = Value::new_constant(context, revert_code_const);
+
+        // The `revert` instruction
+        let val = self
+            .current_block
+            .append(context)
+            .revert(revert_code_val)
+            .add_metadatum(context, span_md_idx);
+
+        Ok(TerminatorValue::new(val, context))
+    }
+
     fn compile_ref(
         &mut self,
         context: &mut Context,
@@ -2504,7 +2574,7 @@ impl<'eng> FnCompiler<'eng> {
             self.compile_expression_to_ptr(context, md_mgr, ast_expr)?
         );
 
-        // TODO-IG: Do we need to convert to `u64` here? Can we use `Ptr` directly? Investigate.
+        // TODO: (REFERENCES) Do we need to convert to `u64` here? Can we use `Ptr` directly? Investigate.
         let int_ty = Type::get_uint64(context);
         let val = self
             .current_block
@@ -2585,7 +2655,7 @@ impl<'eng> FnCompiler<'eng> {
             TypeInfo::Ref {
                 ref referenced_type,
                 ..
-            } => Ok(referenced_type.type_id),
+            } => Ok(referenced_type.type_id()),
             _ => Err(CompileError::Internal(
                 "Cannot dereference a non-reference expression.",
                 ast_expr.span.clone(),
@@ -3664,7 +3734,7 @@ impl<'eng> FnCompiler<'eng> {
                 referenced_type, ..
             } = &*self.engines.te().get_unaliased(cur_type_id)
             {
-                cur_type_id = referenced_type.type_id;
+                cur_type_id = referenced_type.type_id();
             }
             let cur_type_info_arc = self.engines.te().get_unaliased(cur_type_id);
             let cur_type_info = &*cur_type_info_arc;
@@ -3696,11 +3766,11 @@ impl<'eng> FnCompiler<'eng> {
                     }
                 }
                 (ProjectionKind::TupleField { index, .. }, TypeInfo::Tuple(field_tys)) => {
-                    cur_type_id = field_tys[*index].type_id;
+                    cur_type_id = field_tys[*index].type_id();
                     gep_indices.push(ConstantContent::get_uint(context, 64, *index as u64));
                 }
                 (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
-                    cur_type_id = elem_ty.type_id;
+                    cur_type_id = elem_ty.type_id();
                     let val = self.compile_expression_to_value(context, md_mgr, index)?;
                     if val.is_terminator {
                         return Ok((Some(val), vec![]));

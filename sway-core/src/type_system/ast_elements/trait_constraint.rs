@@ -22,10 +22,12 @@ use sway_error::{
 };
 use sway_types::Spanned;
 
+use super::type_argument::GenericTypeArgument;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraitConstraint {
     pub trait_name: CallPath,
-    pub type_arguments: Vec<TypeArgument>,
+    pub type_arguments: Vec<GenericArgument>,
 }
 
 impl HashWithEngines for TraitConstraint {
@@ -122,7 +124,7 @@ impl CollectTypesMetadata for TraitConstraint {
         handler.scope(|handler| {
             for type_arg in &self.type_arguments {
                 res.extend(
-                    match type_arg.type_id.collect_types_metadata(handler, ctx) {
+                    match type_arg.type_id().collect_types_metadata(handler, ctx) {
                         Ok(res) => res,
                         Err(_) => continue,
                     },
@@ -166,11 +168,11 @@ impl TraitConstraint {
 
         // Type check the type arguments.
         for type_argument in &mut self.type_arguments {
-            type_argument.type_id = ctx
+            *type_argument.type_id_mut() = ctx
                 .resolve_type(
                     handler,
-                    type_argument.type_id,
-                    &type_argument.span,
+                    type_argument.type_id(),
+                    &type_argument.span(),
                     EnforceTypeArguments::Yes,
                     None,
                 )
@@ -209,12 +211,12 @@ impl TraitConstraint {
                 trait_decl
                     .type_parameters
                     .push(trait_decl.self_type.clone());
-                type_arguments.push(TypeArgument {
+                type_arguments.push(GenericArgument::Type(GenericTypeArgument {
                     type_id,
                     initial_type_id: type_id,
                     span: trait_name.span(),
                     call_path_tree: None,
-                });
+                }));
 
                 // Monomorphize the trait declaration.
                 ctx.monomorphize(

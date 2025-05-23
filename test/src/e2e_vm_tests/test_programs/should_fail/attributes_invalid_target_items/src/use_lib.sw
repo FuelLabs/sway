@@ -8,4 +8,6 @@ library;
 #[allow(invalid)]
 #[deprecated(invalid)]
 #[fallback(invalid)]
+#[error_type(invalid)]
+#[error(invalid)]
 use ::ok_lib::*;

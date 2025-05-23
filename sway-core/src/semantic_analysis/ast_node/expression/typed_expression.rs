@@ -28,13 +28,14 @@ use crate::{
         },
         *,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf},
+    namespace::{IsExtendingExistingImpl, IsImplSelf, TraitMap},
     semantic_analysis::{expression::ReachableReport, *},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
     Engines,
 };
 
+use ast_elements::{type_argument::GenericTypeArgument, type_parameter::ConstGenericExpr};
 use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
 use either::Either;
 use indexmap::IndexMap;
@@ -139,7 +140,7 @@ impl ty::TyExpression {
                 contract_call_params: IndexMap::new(),
                 contract_caller: None,
             },
-            return_type: return_type.type_id,
+            return_type: return_type.type_id(),
             span,
         };
         Ok(exp)
@@ -274,6 +275,9 @@ impl ty::TyExpression {
             }
             ExpressionKind::ImplicitReturn(expr) => Self::collect(handler, engines, ctx, expr)?,
             ExpressionKind::Return(expr) => {
+                Self::collect(handler, engines, ctx, expr)?;
+            }
+            ExpressionKind::Panic(expr) => {
                 Self::collect(handler, engines, ctx, expr)?;
             }
             ExpressionKind::Ref(expr) => {
@@ -568,6 +572,9 @@ impl ty::TyExpression {
                     span,
                 };
                 Ok(typed_expr)
+            }
+            ExpressionKind::Panic(expr) => {
+                type_check_panic(handler, ctx.by_ref(), engines, expr, span)
             }
             ExpressionKind::Ref(RefExpression {
                 to_mutable_value,
@@ -1181,26 +1188,26 @@ impl ty::TyExpression {
                 .map(|field_type_ids| field_type_ids[i].clone())
                 .unwrap_or_else(|| {
                     let initial_type_id = type_engine.new_unknown();
-                    TypeArgument {
+                    GenericArgument::Type(GenericTypeArgument {
                         type_id: initial_type_id,
                         initial_type_id,
                         span: Span::dummy(),
                         call_path_tree: None,
-                    }
+                    })
                 });
             let field_span = field.span();
             let ctx = ctx
                 .by_ref()
                 .with_help_text("tuple field type does not match the expected type")
-                .with_type_annotation(field_type.type_id);
+                .with_type_annotation(field_type.type_id());
             let typed_field = ty::TyExpression::type_check(handler, ctx, field)
                 .unwrap_or_else(|err| ty::TyExpression::error(err, field_span, engines));
-            typed_field_types.push(TypeArgument {
+            typed_field_types.push(GenericArgument::Type(GenericTypeArgument {
                 type_id: typed_field.return_type,
-                initial_type_id: field_type.type_id,
+                initial_type_id: field_type.type_id(),
                 span: typed_field.span.clone(),
                 call_path_tree: None,
-            });
+            }));
             typed_fields.push(typed_field);
         }
         let exp = ty::TyExpression {
@@ -1283,12 +1290,12 @@ impl ty::TyExpression {
 
         // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
         // type of the data that the `StorageKey` "points" to.
-        let mut type_arguments = vec![TypeArgument {
+        let mut type_arguments = vec![GenericArgument::Type(GenericTypeArgument {
             initial_type_id: access_type,
             type_id: access_type,
             span: span.clone(),
             call_path_tree: None,
-        }];
+        })];
 
         // Monomorphize the generic `StorageKey` type given the type argument specified above
         let mut ctx = ctx;
@@ -2036,7 +2043,7 @@ impl ty::TyExpression {
         // otherwise, fallback to Unknown.
         let elem_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
             TypeInfo::Array(element_type, _) => {
-                let element_type = (*ctx.engines().te().get(element_type.type_id)).clone();
+                let element_type = (*ctx.engines().te().get(element_type.type_id())).clone();
                 if matches!(element_type, TypeInfo::Never) {
                     TypeInfo::Unknown //Even if array element type is Never other elements may not be of type Never.
                 } else {
@@ -2046,12 +2053,12 @@ impl ty::TyExpression {
             _ => TypeInfo::Unknown,
         };
         let elem_type = type_engine.insert(engines, elem_type, None);
-        let elem_type_arg = TypeArgument {
+        let elem_type_arg = GenericArgument::Type(GenericTypeArgument {
             type_id: elem_type,
             initial_type_id: elem_type,
             span: span.clone(),
             call_path_tree: None,
-        };
+        });
 
         let value_ctx = ctx
             .by_ref()
@@ -2066,18 +2073,7 @@ impl ty::TyExpression {
             .with_type_annotation(type_engine.id_of_u64());
         let length_expr = Self::type_check(handler, length_ctx, length)
             .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
-        let length = match &length_expr.expression {
-            TyExpressionVariant::Literal(Literal::U64(val)) => Length::Literal {
-                val: *val as usize,
-                span: span.clone(),
-            },
-            TyExpressionVariant::ConstGenericExpression { call_path, .. } => {
-                Length::AmbiguousVariableExpression {
-                    ident: call_path.suffix.clone(),
-                }
-            }
-            _ => return Err(handler.emit_err(CompileError::ConstGenericNotSupportedHere { span })),
-        };
+        let length = Length(ConstGenericExpr::from_ty_expression(handler, &length_expr)?);
 
         let return_type = type_engine.insert_array(engines, elem_type_arg, length);
         Ok(ty::TyExpression {
@@ -2116,7 +2112,7 @@ impl ty::TyExpression {
         // otherwise, fallback to Unknown.
         let initial_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
             TypeInfo::Array(element_type, _) => {
-                let element_type = (*ctx.engines().te().get(element_type.type_id)).clone();
+                let element_type = (*ctx.engines().te().get(element_type.type_id())).clone();
                 if matches!(element_type, TypeInfo::Never) {
                     TypeInfo::Unknown //Even if array element type is Never other elements may not be of type Never.
                 } else {
@@ -2217,7 +2213,7 @@ impl ty::TyExpression {
                 TypeInfo::Ref {
                     referenced_type, ..
                 } => {
-                    let referenced_type_id = referenced_type.type_id;
+                    let referenced_type_id = referenced_type.type_id();
 
                     current_prefix_te = Box::new(ty::TyExpression {
                         expression: ty::TyExpressionVariant::Deref(current_prefix_te),
@@ -2254,7 +2250,7 @@ impl ty::TyExpression {
                 prefix: current_prefix_te,
                 index: Box::new(index_te),
             },
-            return_type: array_type_argument.type_id,
+            return_type: array_type_argument.type_id(),
             span,
         })
     }
@@ -2727,7 +2723,7 @@ impl ty::TyExpression {
                                 }));
                             }
 
-                            struct_field.type_argument.type_id
+                            struct_field.type_argument.type_id()
                         }
                         None => {
                             return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
@@ -2751,7 +2747,8 @@ impl ty::TyExpression {
                     let field_type_opt = {
                         fields
                             .get(*index)
-                            .map(|TypeArgument { type_id, .. }| type_id)
+                            .and_then(|x| x.as_type_argument())
+                            .map(|GenericTypeArgument { type_id, .. }| type_id)
                     };
                     let field_type = match field_type_opt {
                         Some(field_type) => field_type,
@@ -2775,14 +2772,14 @@ impl ty::TyExpression {
                         referenced_type, ..
                     } = actually
                     {
-                        actually = (*engines.te().get(referenced_type.type_id)).clone();
+                        actually = (*engines.te().get(referenced_type.type_id())).clone();
                     }
                     match actually {
                         TypeInfo::Array(elem_ty, array_length)
-                            if array_length.as_literal_val().is_some() =>
+                            if array_length.expr().as_literal_val().is_some() =>
                         {
                             parent_rover = symbol;
-                            symbol = elem_ty.type_id;
+                            symbol = elem_ty.type_id();
                             symbol_span = index_span.clone();
 
                             if let Some(index_literal) = index
@@ -2792,6 +2789,7 @@ impl ty::TyExpression {
                             {
                                 // SAFETY: safe by the guard above
                                 let array_length = array_length
+                                    .expr()
                                     .as_literal_val()
                                     .expect("unexpected non literal array length")
                                     as u64;
@@ -2876,7 +2874,7 @@ impl ty::TyExpression {
         let type_annotation = match &*type_engine.get(ctx.type_annotation()) {
             TypeInfo::Ref {
                 referenced_type, ..
-            } => referenced_type.type_id,
+            } => referenced_type.type_id(),
             _ => type_engine.new_unknown(),
         };
 
@@ -2998,7 +2996,7 @@ impl ty::TyExpression {
             TypeInfo::Ref {
                 referenced_type: ref exp,
                 ..
-            } => Ok(exp.type_id), // Get the referenced type.
+            } => Ok(exp.type_id()), // Get the referenced type.
             _ => Err(
                 handler.emit_err(CompileError::ExpressionCannotBeDereferenced {
                     expression_type: engines.help_out(expr.return_type).to_string(),
@@ -3104,6 +3102,66 @@ impl ty::TyExpression {
             }
         }
     }
+}
+
+fn type_check_panic(
+    handler: &Handler,
+    ctx: TypeCheckContext<'_>,
+    engines: &Engines,
+    expr: &Expression,
+    span: Span,
+) -> Result<ty::TyExpression, ErrorEmitted> {
+    let mut ctx = ctx.with_type_annotation(engines.te().new_unknown());
+    let expr_span = expr.span();
+    let expr = ty::TyExpression::type_check(handler, ctx.by_ref(), expr)
+        .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+
+    let expr_type_id = if ctx.experimental.new_encoding {
+        // The type checked expression is either an `encode` call or an error.
+        match &expr.expression {
+            ty::TyExpressionVariant::FunctionApplication {
+                call_path,
+                arguments,
+                ..
+            } => {
+                if !(call_path.suffix.as_str() == "encode" && arguments.len() == 1) {
+                    return Err(handler.emit_err(CompileError::Internal(
+                        "In case of the new encoding, the `panic` expression argument must be a call to an \"encode\" function.",
+                        expr_span
+                    )));
+                } else {
+                    arguments[0].1.return_type
+                }
+            }
+            _ => expr.return_type, // Error. We just pass the type id through.
+        }
+    } else {
+        expr.return_type
+    };
+
+    // TODO: (REFERENCES) Once we continue work on references, implement support for panicking on references
+    //       of types that implement `std::marker::Error`.
+
+    if !TraitMap::type_implements_trait(
+        ctx.namespace().current_module(),
+        engines,
+        expr_type_id,
+        |trait_entry| trait_entry.is_std_marker_error_trait(),
+    ) {
+        return Err(
+            handler.emit_err(CompileError::PanicExpressionArgumentIsNotError {
+                argument_type: engines.help_out(expr_type_id).to_string(),
+                span: expr.span.clone(),
+            }),
+        );
+    }
+
+    let typed_expr = ty::TyExpression {
+        expression: ty::TyExpressionVariant::Panic(Box::new(expr)),
+        return_type: engines.te().id_of_never(),
+        span,
+    };
+    Ok(typed_expr)
 }
 
 fn check_asm_block_validity(

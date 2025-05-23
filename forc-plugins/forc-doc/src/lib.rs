@@ -15,11 +15,13 @@ use forc_pkg::{
 use forc_tracing::println_action_green;
 use forc_util::default_output_directory;
 use render::RenderedDocumentation;
+use std::sync::Arc;
 use std::{
     fs,
     path::{Path, PathBuf},
 };
 use sway_core::{language::ty::TyProgram, BuildTarget, Engines};
+use sway_features::ExperimentalFeatures;
 
 pub const ASSETS_DIR_NAME: &str = "static.files";
 
@@ -46,7 +48,7 @@ impl<'e> RenderPlan<'e> {
 }
 
 pub struct ProgramInfo<'a> {
-    pub ty_program: TyProgram,
+    pub ty_program: Arc<TyProgram>,
     pub engines: &'a Engines,
     pub manifest: &'a ManifestFile,
     pub pkg_manifest: &'a PackageManifestFile,
@@ -109,6 +111,7 @@ pub fn compile_html(
         None,
         &build_instructions.experimental.experimental,
         &build_instructions.experimental.no_experimental,
+        sway_core::DbgGeneration::Full,
     )?;
 
     let raw_docs = if build_instructions.no_deps {
@@ -172,14 +175,22 @@ fn build_docs(
     let Command {
         document_private_items,
         no_deps,
+        experimental,
         ..
-    } = *build_instructions;
+    } = build_instructions;
     let ProgramInfo {
         ty_program,
         engines,
         manifest,
         pkg_manifest,
     } = program_info;
+
+    let experimental = ExperimentalFeatures::new(
+        &pkg_manifest.project.experimental,
+        &experimental.experimental,
+        &experimental.no_experimental,
+    )
+    .map_err(|err| anyhow::anyhow!("{err}"))?;
 
     println_action_green(
         "Building",
@@ -194,10 +205,11 @@ fn build_docs(
         engines,
         pkg_manifest.project_name(),
         &ty_program,
-        document_private_items,
+        *document_private_items,
+        experimental,
     )?;
     let root_attributes = (!ty_program.root_module.attributes.is_empty())
-        .then_some(ty_program.root_module.attributes);
+        .then_some(ty_program.root_module.attributes.clone());
     let forc_version = pkg_manifest
         .project
         .forc_version
@@ -206,7 +218,7 @@ fn build_docs(
     // render docs to HTML
     let rendered_docs = RenderedDocumentation::from_raw_docs(
         raw_docs.clone(),
-        RenderPlan::new(no_deps, document_private_items, engines),
+        RenderPlan::new(*no_deps, *document_private_items, engines),
         root_attributes,
         &ty_program.kind,
         forc_version,

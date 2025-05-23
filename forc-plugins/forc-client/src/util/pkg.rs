@@ -18,7 +18,7 @@ pub const PROXY_STORAGE_SLOTS_FILE_NAME: &str = "proxy-storage_slots.json";
 
 /// Updates the given package manifest file such that the address field under the proxy table updated to the given value.
 /// Updated manifest file is written back to the same location, without thouching anything else such as comments etc.
-/// A safety check is done to ensure the proxy table exists before attempting to udpdate the value.
+/// A safety check is done to ensure the proxy table exists before attempting to update the value.
 pub(crate) fn update_proxy_address_in_manifest(
     address: &str,
     manifest: &PackageManifestFile,

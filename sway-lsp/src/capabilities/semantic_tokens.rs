@@ -1,35 +1,31 @@
 use crate::core::{
-    session::Session,
     token::{SymbolKind, Token, TokenIdent},
+    token_map::TokenMap,
 };
 use dashmap::mapref::multiple::RefMulti;
 use lsp_types::{
     Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
     SemanticTokensRangeResult, SemanticTokensResult, Url,
 };
-use std::sync::{
-    atomic::{AtomicU32, Ordering},
-    Arc,
-};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
 
 /// Get the semantic tokens for the entire file.
-pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<SemanticTokensResult> {
-    let tokens: Vec<_> = session.token_map().tokens_for_file(url).collect();
+pub fn semantic_tokens_full(token_map: &TokenMap, url: &Url) -> Option<SemanticTokensResult> {
+    let tokens: Vec<_> = token_map.tokens_for_file(url).collect();
     let sorted_tokens_refs = sort_tokens(&tokens);
     Some(semantic_tokens(&sorted_tokens_refs[..]).into())
 }
 
 /// Get the semantic tokens within a range.
 pub fn semantic_tokens_range(
-    session: Arc<Session>,
+    token_map: &TokenMap,
     url: &Url,
     range: &Range,
 ) -> Option<SemanticTokensRangeResult> {
     let _p = tracing::trace_span!("semantic_tokens_range").entered();
-    let tokens: Vec<_> = session
-        .token_map()
+    let tokens: Vec<_> = token_map
         .tokens_for_file(url)
         .filter(|item| {
             // make sure the token_ident range is within the range that was passed in
@@ -51,10 +47,13 @@ pub fn semantic_tokens(tokens_sorted: &[&RefMulti<TokenIdent, Token>]) -> Semant
     for entry in tokens_sorted {
         let (ident, token) = entry.pair();
         let ty = semantic_token_type(&token.kind);
-        let token_index = type_index(&ty);
-        // TODO - improve with modifiers
-        let modifier_bitset = 0;
-        builder.push(ident.range, token_index, modifier_bitset);
+        if let Some(token_index) = type_index(&ty) {
+            // TODO - improve with modifiers
+            let modifier_bitset = 0;
+            builder.push(ident.range, token_index, modifier_bitset);
+        } else {
+            tracing::error!("Unsupported token type: {:?} for token: {:#?}", ty, token);
+        }
     }
     builder.build()
 }
@@ -155,6 +154,7 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::new("selfKeyword"),
     SemanticTokenType::new("selfTypeKeyword"),
     SemanticTokenType::new("typeAlias"),
+    SemanticTokenType::new("traitType"),
 ];
 
 pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
@@ -198,6 +198,9 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
     }
 }
 
-fn type_index(ty: &SemanticTokenType) -> u32 {
-    SUPPORTED_TYPES.iter().position(|it| it == ty).unwrap() as u32
+fn type_index(ty: &SemanticTokenType) -> Option<u32> {
+    SUPPORTED_TYPES
+        .iter()
+        .position(|it| it == ty)
+        .map(|x| x as u32)
 }

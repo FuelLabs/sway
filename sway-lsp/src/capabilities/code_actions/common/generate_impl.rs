@@ -2,7 +2,7 @@ use sway_core::{
     transform::{AttributeKind, Attributes},
     TypeParameter,
 };
-use sway_types::Spanned;
+use sway_types::{Named, Spanned};
 
 use crate::capabilities::code_actions::CodeAction;
 
@@ -21,7 +21,7 @@ pub(crate) trait GenerateImplCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
             Some(
                 type_params
                     .iter()
-                    .map(|param| param.name.to_string())
+                    .map(|param| param.name().to_string())
                     .collect::<Vec<_>>()
                     .join(", "),
             )
@@ -59,7 +59,7 @@ pub(crate) trait GenerateImplCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
         let attr_string = attributes
             .all()
             .filter_map(|attr| match attr.kind {
-                AttributeKind::DocComment { .. } => {
+                AttributeKind::DocComment => {
                     if include_comments {
                         return Some(format!("{}{}", TAB, attr.span.as_str()));
                     }

@@ -1,8 +1,78 @@
 //! Sets of arguments that are shared between commands.
-use clap::{Args, Parser};
+use clap::{ArgGroup, Args, Parser};
 use forc_pkg::source::IPFSNode;
 use sway_core::{BuildTarget, PrintAsm, PrintIr};
 use sway_ir::PassManager;
+
+#[derive(Debug, Args)]
+#[command(group(
+    ArgGroup::new("source")
+        .required(false)
+        .args(["path", "git", "ipfs"]),
+))]
+pub struct SourceArgs {
+    /// Local path to the package.
+    #[arg(long)]
+    pub path: Option<String>,
+
+    /// Git URI for the package.
+    #[arg(long, value_name = "URI")]
+    pub git: Option<String>,
+
+    /// Git reference options like `branch`, `rev`, etc.
+    #[clap(flatten)]
+    pub git_ref: GitRef,
+
+    /// IPFS CID for the package.
+    #[arg(long, value_name = "CID")]
+    pub ipfs: Option<String>,
+}
+
+#[derive(Args, Debug, Default)]
+#[command(group(
+    ArgGroup::new("git_ref")
+        .args(["branch", "tag", "rev"])
+        .multiple(false)
+        .requires("git")
+))]
+pub struct GitRef {
+    /// The branch to use.
+    #[arg(long)]
+    pub branch: Option<String>,
+
+    /// The tag to use.
+    #[arg(long)]
+    pub tag: Option<String>,
+
+    /// The specific revision to use.
+    #[arg(long)]
+    pub rev: Option<String>,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct SectionArgs {
+    /// Treats dependency as contract dependencies.
+    #[arg(long = "contract-dep")]
+    pub contract_deps: bool,
+
+    /// Salt value for contract deployment.
+    #[arg(long = "salt")]
+    pub salt: Option<String>,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ManifestArgs {
+    /// Path to the manifest file.
+    #[arg(long, value_name = "PATH")]
+    pub manisfest_path: Option<String>,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct PackagesSelectionArgs {
+    /// Package to perform action on.
+    #[arg(long, short = 'p', value_name = "SPEC")]
+    pub package: Option<String>,
+}
 
 /// Args that can be shared between all commands that `build` a package. E.g. `build`, `test`,
 /// `deploy`.
@@ -34,6 +104,10 @@ pub struct BuildOutput {
     /// If the file extension is .json, JSON format is used. Otherwise, an .elf file containing DWARF format is emitted.
     #[clap(long = "output-debug", short = 'g')]
     pub debug_file: Option<String>,
+
+    /// Generates a JSON file containing the hex-encoded script binary.
+    #[clap(long = "output-hexfile")]
+    pub hex_file: Option<String>,
 }
 
 /// Build profile options.
@@ -155,7 +229,7 @@ pub struct Pkg {
     pub locked: bool,
     /// The IPFS node to use for fetching IPFS sources.
     ///
-    /// [possible values: PUBLIC, LOCAL, <GATEWAY_URL>]
+    /// [possible values: FUEL, PUBLIC, LOCAL, <GATEWAY_URL>]
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
 }

@@ -1,11 +1,11 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
+use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestStorageMapNestedContract",
     abi = "test_projects/storage_map_nested/out/release/storage_map_nested-abi.json",
 ));
 
-async fn test_storage_map_nested_instance() -> TestStorageMapNestedContract<WalletUnlocked> {
+async fn test_storage_map_nested_instance() -> TestStorageMapNestedContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/storage_map_nested/out/release/storage_map_nested.bin",
@@ -14,7 +14,8 @@ async fn test_storage_map_nested_instance() -> TestStorageMapNestedContract<Wall
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
     .await
-    .unwrap();
+    .unwrap()
+    .contract_id;
 
     TestStorageMapNestedContract::new(id.clone(), wallet)
 }

@@ -1,40 +1,122 @@
 # Dependencies
 
-Forc has a dependency management system which can pull packages using git and `ipfs`. This allows users to build and share Forc libraries.
+Forc has a dependency management system which can pull packages using `git`, `ipfs`, `path`, or the community `registry`. This allows users to build and share Forc libraries.
 
-## Adding a dependency
+## Adding Dependencies
 
-If your `Forc.toml` doesn't already have a `[dependencies]` table, add one. Below, list the package name alongside its source. Currently, `forc` supports `git`, `ipfs` and `path` sources.
+You can add dependencies manually in your `Forc.toml`, or by using the `forc add` command.
 
-If a `git` source is specified, `forc` will fetch the git repository at the given URL and then search for a `Forc.toml` for a package with the given name anywhere inside the git repository.
+### Using `forc add`
 
-The following example adds a library dependency named `custom_lib`. For git dependencies you may optionally specify a `branch`, `tag`, or `rev` (i.e. commit hash) reference.
+The `forc add` CLI supports various sources and optional flags:
 
-```toml
-[dependencies]
-custom_lib = { git = "https://github.com/FuelLabs/custom_lib", branch = "master" }
-# custom_lib = { git = "https://github.com/FuelLabs/custom_lib", tag = "v0.0.1" }
-# custom_lib = { git = "https://github.com/FuelLabs/custom_lib", rev = "87f80bdf323e2d64e213895d0a639ad468f4deff" }
+```bash
+forc add <dep> [--path <PATH>] [--git <URL> --tag <TAG>] [--ipfs <CID>] [--contract-dep]
 ```
 
-Depending on a local library using `path`:
+#### Add Examples
+
+* From a Git branch:
+
+  ```bash
+  forc add custom_lib --git https://github.com/FuelLabs/custom_lib --branch master
+  ```
+
+* From a local path:
+
+  ```bash
+  forc add custom_lib --path ../custom_lib
+  ```
+
+* From IPFS:
+
+  ```bash
+  forc add custom_lib --ipfs QmYwAPJzv5CZsnA...
+  ```
+
+* From registry (forc.pub):
+
+  ```bash
+  forc add custom_lib@0.0.1
+  ```
+
+* Add as a contract dependency:
+
+  ```bash
+  forc add my_contract --git https://github.com/example/contract --contract-dep
+  ```
+
+Optional:
+
+* `--salt <HEX>` for custom contract salt.
+* `--package <NAME>` to target a specific package in a workspace.
+* `--manifest-path <PATH>` to specify a manifest file.
+
+> ⚠️ **Note:**
+> We do not currently support offline mode for projects that use **registry** sources.
+> Also wildcard declarations `(ex: custom_lib = *)` to get the latest version available for that package or caret declarations `(ex: custom_lib = ^0.1)` to get `SemVer` compatible latest available option for a given dependency is not supported yet.
+
+Once the package is added, running `forc build` will automatically fetch and resolve the dependencies.
+
+### Manually Editing `Forc.toml`
+
+If your `Forc.toml` doesn't already have a `[dependencies]` or `[contract-dependencies]` table, add one. Below, list the package name and its source.
+
+#### Local Path
 
 ```toml
 [dependencies]
 custom_lib = { path = "../custom_lib" }
 ```
 
-For `ipfs` sources, `forc` will fetch the specified `cid` using either a local `ipfs` node or a public gateway. `forc` automatically tries to connect to local `ipfs` node. If it fails, it defaults to using `https://ipfs.io/` as a gateway.
-
-The following example adds a dependency with an `ipfs` source.
+#### IPFS Source
 
 ```toml
 [dependencies]
-custom_lib = { ipfs = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG" }
+custom_lib = { ipfs = "QmYwAPJzv5CZsnA..." }
 ```
 
-Once the package is added, running `forc build` will automatically download added dependencies.
+#### Registry Source (forc.pub)
 
-## Updating dependencies
+```toml
+[dependencies]
+custom_lib = "0.0.1"
+```
 
-To update dependencies in your Forc directory you can run `forc update`. For `path` and `ipfs` dependencies this will have no effect. For `git` dependencies with a `branch` reference, this will update the project to use the latest commit for the given branch.
+## Removing Dependencies
+
+You can remove one or more dependencies using the `forc remove` command:
+
+```bash
+forc remove <dep> [--contract-dep] [--package <NAME>] [--manifest-path <PATH>]
+```
+
+### Remove Examples
+
+* Remove from `[dependencies]`:
+
+  ```bash
+  forc remove custom_lib
+  ```
+
+* Remove from `[contract-dependencies]`:
+
+  ```bash
+  forc remove my_contract --contract-dep
+  ```
+
+* Target a specific package in a workspace:
+
+  ```bash
+  forc remove custom_lib --package my_project
+  ```
+
+## Updating Dependencies
+
+To update dependencies in your Forc directory you can run:
+
+```bash
+forc update
+```
+
+For path and ipfs dependencies this will have no effect. For git dependencies with a branch reference, this will update the project to use the latest commit for the given branch.

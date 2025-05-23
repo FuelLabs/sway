@@ -7,6 +7,7 @@ use sway_core::{
     language::ty::{TyAstNodeContent, TyDecl, TyFunctionDecl, TyFunctionParameter},
     Engines, Namespace, TypeId, TypeInfo,
 };
+use sway_types::Spanned;
 
 pub(crate) fn to_completion_items(
     namespace: &Namespace,
@@ -36,7 +37,7 @@ fn completion_items_for_type_id(
                 kind: Some(CompletionItemKind::FIELD),
                 label: field.name.as_str().to_string(),
                 label_details: Some(CompletionItemLabelDetails {
-                    description: Some(field.type_argument.span.clone().str()),
+                    description: Some(field.type_argument.span().clone().str()),
                     detail: None,
                 }),
                 ..Default::default()
@@ -103,7 +104,11 @@ fn fn_signature_string(
         .parameters
         .iter()
         .map(|p| {
-            replace_self_with_type_str(engines, p.type_argument.clone().span.str(), parent_type_id)
+            replace_self_with_type_str(
+                engines,
+                p.type_argument.clone().span().str(),
+                parent_type_id,
+            )
         })
         .collect::<Vec<String>>()
         .join(", ");
@@ -112,7 +117,7 @@ fn fn_signature_string(
         params_str,
         replace_self_with_type_str(
             engines,
-            fn_decl.return_type.clone().span.str(),
+            fn_decl.return_type.clone().span().str(),
             parent_type_id
         )
     )
@@ -165,7 +170,7 @@ fn type_id_of_raw_ident(
                                 .de()
                                 .get_function(&method.id().clone())
                                 .return_type
-                                .type_id,
+                                .type_id(),
                         );
                     }
                     None
@@ -176,7 +181,7 @@ fn type_id_of_raw_ident(
                 .fields
                 .iter()
                 .find(|field| field.name.as_str() == parts[i])
-                .map(|field| field.type_argument.type_id);
+                .map(|field| field.type_argument.type_id());
         }
         i += 1;
     }
@@ -192,7 +197,7 @@ fn type_id_of_local_ident(ident_name: &str, fn_decl: &TyFunctionDecl) -> Option<
         .find_map(|param| {
             // Check if this ident is a function parameter
             if param.name.as_str() == ident_name {
-                return Some(param.type_argument.type_id);
+                return Some(param.type_argument.type_id());
             }
             None
         })

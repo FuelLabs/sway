@@ -1,5 +1,5 @@
 use crate::{
-    core::{session::Session, token::get_range_from_span},
+    core::{session::Session, sync::SyncWorkspace, token::get_range_from_span},
     utils::document::get_url_from_span,
 };
 use std::sync::Arc;
@@ -30,15 +30,17 @@ pub struct HoverLinkContents<'a> {
     pub implementations: Vec<Span>,
     session: Arc<Session>,
     engines: &'a Engines,
+    sync: &'a SyncWorkspace,
 }
 
 impl<'a> HoverLinkContents<'a> {
-    pub fn new(session: Arc<Session>, engines: &'a Engines) -> Self {
+    pub fn new(session: Arc<Session>, engines: &'a Engines, sync: &'a SyncWorkspace) -> Self {
         Self {
             related_types: Vec::new(),
             implementations: Vec::new(),
             session,
             engines,
+            sync,
         }
     }
 
@@ -53,8 +55,9 @@ impl<'a> HoverLinkContents<'a> {
                     &decl.span(),
                     decl.call_path.clone(),
                 );
-                decl.type_parameters
+                decl.generic_parameters
                     .iter()
+                    .filter_map(|x| x.as_type_parameter())
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
             }
             TypeInfo::Struct(decl_id) => {
@@ -64,8 +67,9 @@ impl<'a> HoverLinkContents<'a> {
                     &decl.span(),
                     decl.call_path.clone(),
                 );
-                decl.type_parameters
+                decl.generic_parameters
                     .iter()
+                    .filter_map(|x| x.as_type_parameter())
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
             }
             _ => {}
@@ -75,7 +79,7 @@ impl<'a> HoverLinkContents<'a> {
     /// Adds a single type to the list of related types.
     fn add_related_type(&mut self, name: String, span: &Span, callpath: CallPath) {
         if let Ok(mut uri) = get_url_from_span(self.engines.se(), span) {
-            let converted_url = self.session.sync.temp_to_workspace_url(&uri);
+            let converted_url = self.sync.temp_to_workspace_url(&uri);
             if let Ok(url) = converted_url {
                 uri = url;
             }
@@ -131,10 +135,7 @@ impl<'a> HoverLinkContents<'a> {
         all_spans.append(&mut impl_spans);
         all_spans.dedup();
         for span in &all_spans {
-            let span_result = self
-                .session
-                .sync
-                .temp_to_workspace_span(self.engines.se(), span);
+            let span_result = self.sync.temp_to_workspace_span(self.engines.se(), span);
             if let Ok(span) = span_result {
                 self.implementations.push(span);
             }

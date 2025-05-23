@@ -141,3 +141,9 @@ fn scalar_b256_try_from() {
     let other_u256 = b256::try_from(other).unwrap();
     assert(other_u256 == 0x1000000000000000000000000000000000000000000000000000000000000001);
 }
+
+#[test]
+fn scalar_codec() {
+    let scalar = Scalar::new();
+    log(scalar);
+}

@@ -1,4 +1,5 @@
 pub mod build_profile;
+pub mod dep_modifier;
 
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
@@ -12,10 +13,10 @@ use std::{
     fmt::Display,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
 };
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
 use sway_error::handler::Handler;
+use sway_types::span::Source;
 use sway_utils::{
     constants, find_nested_manifest_dir, find_parent_manifest_dir,
     find_parent_manifest_dir_with_check,
@@ -62,6 +63,26 @@ pub trait GenericManifestFile {
 pub enum ManifestFile {
     Package(Box<PackageManifestFile>),
     Workspace(WorkspaceManifestFile),
+}
+
+impl ManifestFile {
+    pub fn is_workspace(&self) -> bool {
+        matches!(self, ManifestFile::Workspace(_))
+    }
+
+    pub fn root_dir(&self) -> PathBuf {
+        match self {
+            ManifestFile::Package(pkg_manifest_file) => pkg_manifest_file
+                .workspace()
+                .ok()
+                .flatten()
+                .map(|ws| ws.dir().to_path_buf())
+                .unwrap_or_else(|| pkg_manifest_file.dir().to_path_buf()),
+            ManifestFile::Workspace(workspace_manifest_file) => {
+                workspace_manifest_file.dir().to_path_buf()
+            }
+        }
+    }
 }
 
 impl GenericManifestFile for ManifestFile {
@@ -213,6 +234,7 @@ pub struct Project {
     #[serde(default)]
     pub experimental: HashMap<String, bool>,
     pub metadata: Option<toml::Value>,
+    pub force_dbg_in_release: Option<bool>,
 }
 
 // Validation function for the `name` field
@@ -290,6 +312,7 @@ pub enum Dependency {
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
+    pub(crate) namespace: Option<String>,
     pub path: Option<String>,
     pub(crate) git: Option<String>,
     pub(crate) branch: Option<String>,
@@ -322,6 +345,10 @@ impl DependencyDetails {
             branch,
             tag,
             rev,
+            version,
+            ipfs,
+            namespace,
+            path,
             ..
         } = self;
 
@@ -329,7 +356,43 @@ impl DependencyDetails {
             bail!("Details reserved for git sources used without a git field");
         }
 
+        if git.is_some() && branch.is_some() && tag.is_some() && rev.is_some() {
+            bail!("Cannot specify `branch`, `tag`, and `rev` together for dependency with a Git source");
+        }
+
+        if git.is_some() && branch.is_some() && tag.is_some() {
+            bail!("Cannot specify both `branch` and `tag` for dependency with a Git source");
+        }
+
+        if git.is_some() && rev.is_some() && tag.is_some() {
+            bail!("Cannot specify both `rev` and `tag` for dependency with a Git source");
+        }
+
+        if git.is_some() && branch.is_some() && rev.is_some() {
+            bail!("Cannot specify both `branch` and `rev` for dependency with a Git source");
+        }
+
+        if version.is_some() && git.is_some() {
+            bail!("Both version and git details provided for same dependency");
+        }
+
+        if version.is_some() && ipfs.is_some() {
+            bail!("Both version and ipfs details provided for same dependency");
+        }
+
+        if version.is_none() && namespace.is_some() {
+            bail!("Namespace can only be specified for sources with version");
+        }
+
+        if version.is_some() && path.is_some() {
+            bail!("Both version and path details provided for same dependency");
+        }
+
         Ok(())
+    }
+
+    pub fn is_source_empty(&self) -> bool {
+        self.git.is_none() && self.path.is_none() && self.ipfs.is_none()
     }
 }
 
@@ -402,10 +465,10 @@ impl PackageManifestFile {
     }
 
     /// Produces the string of the entry point file.
-    pub fn entry_string(&self) -> Result<Arc<str>> {
+    pub fn entry_string(&self) -> Result<Source> {
         let entry_path = self.entry_path();
         let entry_string = std::fs::read_to_string(entry_path)?;
-        Ok(Arc::from(entry_string))
+        Ok(entry_string.as_str().into())
     }
 
     /// Parse and return the associated project's program type.
@@ -865,7 +928,7 @@ fn implicit_std_dep() -> Dependency {
 
     if let Some((_, build_metadata)) = det.tag.as_ref().and_then(|tag| tag.split_once('+')) {
         // Nightlies are in the format v<version>+nightly.<date>.<hash>
-        let rev = build_metadata.split('.').last().map(|r| r.to_string());
+        let rev = build_metadata.split('.').next_back().map(|r| r.to_string());
 
         // If some revision is available and parsed from the 'nightly' build metadata,
         // we always prefer the revision over the tag.
@@ -1098,6 +1161,7 @@ impl std::ops::Deref for WorkspaceManifestFile {
 ///
 /// Returns the path to the package on success, or `None` in the case it could not be found.
 pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+    use crate::source::reg::REG_DIR_NAME;
     use sway_types::constants::STD;
     const SWAY_STD_FOLDER: &str = "sway-lib-std";
     walkdir::WalkDir::new(dir)
@@ -1111,11 +1175,13 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
             let path = entry.path();
             let manifest = PackageManifest::from_file(path).ok()?;
             // If the package is STD, make sure it is coming from correct folder.
+            // That is either sway-lib-std, by fetching the sway repo (for std added as git dependency)
+            // or from registry folder (for std added as a registry dependency).
             if (manifest.project.name == pkg_name && pkg_name != STD)
                 || (manifest.project.name == STD
-                    && path
-                        .components()
-                        .any(|comp| comp.as_os_str() == SWAY_STD_FOLDER))
+                    && path.components().any(|comp| {
+                        comp.as_os_str() == SWAY_STD_FOLDER || comp.as_os_str() == REG_DIR_NAME
+                    }))
             {
                 Some(path.to_path_buf())
             } else {
@@ -1167,6 +1233,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
 
         let dependency_details_branch = DependencyDetails {
@@ -1189,6 +1256,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
 
         let dependency_details_tag = DependencyDetails {
@@ -1211,6 +1279,7 @@ mod tests {
             package: None,
             ipfs: None,
             rev: Some("9f35b8e".to_string()),
+            namespace: None,
         };
 
         let dependency_details_rev = DependencyDetails {
@@ -1289,6 +1358,23 @@ mod tests {
             Some(expected_mismatch_error.to_string())
         );
     }
+    #[test]
+    #[should_panic(expected = "Namespace can only be specified for sources with version")]
+    fn test_error_namespace_without_version() {
+        PackageManifest::from_dir("./tests/invalid/namespace_without_version").unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Both version and git details provided for same dependency")]
+    fn test_error_version_with_git_for_same_dep() {
+        PackageManifest::from_dir("./tests/invalid/version_and_git_same_dep").unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Both version and ipfs details provided for same dependency")]
+    fn test_error_version_with_ipfs_for_same_dep() {
+        PackageManifest::from_dir("./tests/invalid/version_and_ipfs_same_dep").unwrap();
+    }
 
     #[test]
     #[should_panic(expected = "duplicate key `foo` in table `dependencies`")]
@@ -1335,6 +1421,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
 
         let git_source_string = "https://github.com/FuelLabs/sway".to_string();
@@ -1347,6 +1434,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
         let dependency_details_git_branch = DependencyDetails {
             version: None,
@@ -1357,16 +1445,18 @@ mod tests {
             package: None,
             rev: None,
             ipfs: None,
+            namespace: None,
         };
         let dependency_details_git_rev = DependencyDetails {
             version: None,
             path: None,
             git: Some(git_source_string),
-            branch: Some("test_branch".to_string()),
+            branch: None,
             tag: None,
             package: None,
             rev: Some("9f35b8e".to_string()),
             ipfs: None,
+            namespace: None,
         };
 
         let dependency_details_ipfs = DependencyDetails {
@@ -1378,6 +1468,7 @@ mod tests {
             package: None,
             rev: None,
             ipfs: Some("QmVxgEbiDDdHpG9AesCpZAqNvHYp1P3tWLFdrpUBWPMBcc".to_string()),
+            namespace: None,
         };
 
         assert!(dependency_details_path.validate().is_ok());
@@ -1406,6 +1497,7 @@ mod tests {
             forc_version: None,
             experimental: HashMap::new(),
             metadata: Some(toml::Value::from(toml::value::Table::new())),
+            force_dbg_in_release: None,
         };
 
         let serialized = toml::to_string(&project).unwrap();
@@ -1434,6 +1526,7 @@ mod tests {
             forc_version: None,
             experimental: HashMap::new(),
             metadata: None,
+            force_dbg_in_release: None,
         };
 
         let serialized = toml::to_string(&project).unwrap();
@@ -1486,7 +1579,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata
             description = "Invalid TOML"
         "#;
@@ -1499,7 +1592,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             ] = "Invalid key"
         "#;
@@ -1512,7 +1605,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             nested = { key = "value1" }
 
@@ -1535,7 +1628,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             boolean = true
             integer = 42
@@ -1571,13 +1664,13 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
             description = "A test workspace"
             version = "1.0.0"
             authors = ["Test Author"]
             homepage = "https://example.com"
-            
+
             [workspace.metadata.ci]
             workflow = "main"
             timeout = 3600
@@ -1616,7 +1709,7 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
         "#;
 
@@ -1631,15 +1724,15 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
             numbers = [1, 2, 3]
             strings = ["a", "b", "c"]
             mixed = [1, "two", true]
-            
+
             [workspace.metadata.nested]
             key = "value"
-            
+
             [workspace.metadata.nested.deep]
             another = "value"
         "#;

@@ -15,8 +15,8 @@ use crate::{
     namespace::{ModulePath, ResolvedDeclaration},
     semantic_analysis::type_resolve::{resolve_type, VisibilityCheck},
     type_system::ast_elements::create_type_id::CreateTypeId,
-    EnforceTypeArguments, Engines, Namespace, SubstTypes, SubstTypesContext, TypeArgument, TypeId,
-    TypeParameter, TypeSubstMap,
+    EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes, SubstTypesContext,
+    TypeId, TypeParameter, TypeSubstMap,
 };
 
 pub(crate) trait MonomorphizeHelper {
@@ -34,7 +34,7 @@ pub(crate) fn prepare_type_subst_map_for_monomorphize<T>(
     engines: &Engines,
     namespace: &Namespace,
     value: &T,
-    type_arguments: &mut [TypeArgument],
+    type_arguments: &mut [GenericArgument],
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,
@@ -80,7 +80,7 @@ where
         (0, num_type_args) => {
             let type_arguments_span = type_arguments
                 .iter()
-                .map(|x| x.span.clone())
+                .map(|x| x.span().clone())
                 .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
                 .unwrap_or_else(|| value.name().span());
             Err(handler.emit_err(make_type_arity_mismatch_error(
@@ -99,7 +99,7 @@ where
             let non_parent_type_params = value
                 .type_parameters()
                 .iter()
-                .filter(|x| !x.is_from_parent)
+                .filter(|x| !x.is_from_parent())
                 .count()
                 - adjust_for_trait_decl;
 
@@ -107,7 +107,7 @@ where
             if non_parent_type_params != num_type_args {
                 let type_arguments_span = type_arguments
                     .iter()
-                    .map(|x| x.span.clone())
+                    .map(|x| x.span())
                     .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
                     .unwrap_or_else(|| value.name().span());
 
@@ -119,7 +119,10 @@ where
                 )));
             }
 
-            for type_argument in type_arguments.iter_mut() {
+            let args = type_arguments
+                .iter_mut()
+                .filter_map(|x| x.as_type_argument_mut());
+            for type_argument in args {
                 type_argument.type_id = resolve_type(
                     handler,
                     engines,
@@ -135,18 +138,33 @@ where
                 )
                 .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }
-            let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-                value
-                    .type_parameters()
-                    .iter()
-                    .map(|type_param| type_param.type_id)
-                    .collect(),
-                type_arguments
-                    .iter()
-                    .map(|type_arg| type_arg.type_id)
-                    .collect(),
-            );
-            Ok(type_mapping)
+
+            let mut params = vec![];
+            let mut args = vec![];
+            let mut consts = BTreeMap::new();
+            for (p, a) in value.type_parameters().iter().zip(type_arguments.iter()) {
+                match (p, a) {
+                    (TypeParameter::Type(p), GenericArgument::Type(a)) => {
+                        params.push(p.type_id);
+                        args.push(a.type_id);
+                    }
+                    (TypeParameter::Const(p), GenericArgument::Const(a)) => {
+                        consts.insert(
+                            p.name.as_str().to_string(),
+                            a.expr.to_ty_expression(engines),
+                        );
+                    }
+                    // TODO const generic was not materialized yet
+                    (TypeParameter::Const(_), GenericArgument::Type(_)) => {}
+                    x => todo!("{x:?}"),
+                }
+            }
+
+            Ok(
+                TypeSubstMap::from_type_parameters_and_type_arguments_and_const_generics(
+                    params, args, consts,
+                ),
+            )
         }
     }
 }
@@ -169,25 +187,25 @@ where
 /// There are 4 cases that are handled in this function:
 ///
 /// 1. `value` does not have type parameters + `type_arguments` is empty:
-///     1a. return ok
+///    1a. return ok
 /// 2. `value` has type parameters + `type_arguments` is empty:
-///     2a. if the [EnforceTypeArguments::Yes] variant is provided, then
-///         error
-///     2b. refresh the generic types with a [TypeSubstMapping]
+///    2a. if the [EnforceTypeArguments::Yes] variant is provided, then
+///    error
+///    2b. refresh the generic types with a [TypeSubstMapping]
 /// 3. `value` does have type parameters + `type_arguments` is nonempty:
-///     3a. error
+///    3a. error
 /// 4. `value` has type parameters + `type_arguments` is nonempty:
-///     4a. check to see that the type parameters and `type_arguments` have
-///         the same length
-///     4b. for each type argument in `type_arguments`, resolve the type
-///     4c. refresh the generic types with a [TypeSubstMapping]
+///    4a. check to see that the type parameters and `type_arguments` have
+///    the same length
+///    4b. for each type argument in `type_arguments`, resolve the type
+///    4c. refresh the generic types with a [TypeSubstMapping]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn monomorphize_with_modpath<T>(
     handler: &Handler,
     engines: &Engines,
     namespace: &Namespace,
     value: &mut T,
-    type_arguments: &mut [TypeArgument],
+    type_arguments: &mut [GenericArgument],
     const_generics: BTreeMap<String, TyExpression>,
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
@@ -216,6 +234,10 @@ where
         let _ = value.materialize_const_generics(engines, handler, name, expr);
     }
 
+    for (name, expr) in type_mapping.const_generics_materialization.iter() {
+        let _ = value.materialize_const_generics(engines, handler, name, expr);
+    }
+
     Ok(())
 }
 
@@ -229,7 +251,7 @@ pub(crate) fn type_decl_opt_to_type_id(
     span: &Span,
     enforce_type_arguments: EnforceTypeArguments,
     mod_path: &ModulePath,
-    type_arguments: Option<Vec<TypeArgument>>,
+    type_arguments: Option<Vec<GenericArgument>>,
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
 ) -> Result<TypeId, ErrorEmitted> {
@@ -318,7 +340,7 @@ pub(crate) fn type_decl_opt_to_type_id(
             let decl_type = decl_engine.get_type(&decl_id);
 
             if let Some(ty) = &decl_type.ty {
-                ty.type_id
+                ty.type_id()
             } else if let Some(implementing_type) = self_type {
                 type_engine.insert_trait_type(engines, decl_type.name.clone(), implementing_type)
             } else {
@@ -327,6 +349,9 @@ pub(crate) fn type_decl_opt_to_type_id(
                     span.clone(),
                 )));
             }
+        }
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::ConstGenericDecl(_))) => {
+            return Ok(engines.te().id_of_u64())
         }
         _ => {
             let err = handler.emit_err(CompileError::UnknownTypeName {

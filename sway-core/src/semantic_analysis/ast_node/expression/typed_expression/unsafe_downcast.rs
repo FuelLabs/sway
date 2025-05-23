@@ -20,7 +20,7 @@ pub(crate) fn instantiate_enum_unsafe_downcast(
             variant: variant.clone(),
             call_path_decl,
         },
-        return_type: variant.type_argument.type_id,
+        return_type: variant.type_argument.type_id(),
         span,
     }
 }

@@ -79,7 +79,7 @@ impl CompiledFunctionCache {
                     name: Ident::new(Span::from_string(format!(
                         "{}_{}",
                         decl.name,
-                        context.get_unique_id()
+                        context.get_unique_symbol_id()
                     ))),
                     parameters: decl.parameters.clone(),
                     ..decl.clone()

@@ -3,7 +3,7 @@ use crate::{
     error::{DocumentError, LanguageServerError},
 };
 use lsp_types::{Position, Range, TextEdit, Url};
-use std::sync::Arc;
+use sway_types::span::Source;
 use swayfmt::Formatter;
 
 pub fn format_text(documents: &Documents, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
@@ -14,20 +14,20 @@ pub fn format_text(documents: &Documents, url: &Url) -> Result<Vec<TextEdit>, La
         }
     })?;
 
-    get_page_text_edit(Arc::from(document.get_text()), &mut <_>::default())
+    get_page_text_edit(document.get_text().into(), &mut <_>::default())
         .map(|page_text_edit| vec![page_text_edit])
 }
 
 pub fn get_page_text_edit(
-    text: Arc<str>,
+    src: Source,
     formatter: &mut Formatter,
 ) -> Result<TextEdit, LanguageServerError> {
     // we only format if code is correct
     let formatted_code = formatter
-        .format(text.clone())
+        .format(src.clone())
         .map_err(LanguageServerError::FormatError)?;
 
-    let text_lines_count = text.split('\n').count();
+    let text_lines_count = src.text.split('\n').count();
     let num_of_lines = formatted_code.split('\n').count();
     let line_end = std::cmp::max(num_of_lines, text_lines_count) as u32;
 

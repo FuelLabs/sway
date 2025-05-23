@@ -165,69 +165,9 @@ impl Session {
         sync: &SyncWorkspace,
     ) -> Option<GotoDefinitionResponse> {
         let _p = tracing::trace_span!("token_definition_response").entered();
-        let token_at_pos = token_map.token_at_position(uri, position)?;
-        let token = token_at_pos.value();
-        // If this is a type parameter, check if we're inside a struct declaration and restrict lookup
-        if let Some(crate::core::token::TypedAstToken::TypedParameter(_)) = token.as_typed() {
-            // Find the parent struct declaration token that contains this range
-            let param_range = &token_at_pos.key().range;
-            // Limit the number of struct tokens checked to prevent stack overflow
-            let mut struct_token = None;
-            let mut checked = 0;
-            for entry in token_map.tokens_for_file(uri) {
-                if checked > 1000 {
-                    break; // Prevent pathological cases
-                }
-                checked += 1;
-                let t = entry.value();
-                if let Some(crate::core::token::TypedAstToken::TypedDeclaration(
-                    sway_core::language::ty::TyDecl::StructDecl(_),
-                )) = t.as_typed() {
-                    let struct_range = &entry.key().range;
-                    if struct_range.start <= param_range.start && struct_range.end >= param_range.end {
-                        struct_token = Some(entry);
-                        break;
-                    }
-                }
-            }
-            if let Some(struct_token) = struct_token {
-                // Only consider type parameters from this struct
-                let struct_range = &struct_token.key().range;
-                let mut struct_type_params = Vec::new();
-                let mut checked = 0;
-                for entry in token_map.tokens_for_file(uri) {
-                    if checked > 1000 {
-                        break; // Prevent pathological cases
-                    }
-                    checked += 1;
-                    let t = entry.value();
-                    if matches!(t.as_typed(), Some(crate::core::token::TypedAstToken::TypedParameter(_))) {
-                        let param_range = &entry.key().range;
-                        // Type params that are within the struct's range
-                        if param_range.start >= struct_range.start && param_range.end <= struct_range.end {
-                            struct_type_params.push(entry);
-                        }
-                    }
-                }
-                // Find the matching type parameter by name
-                let name = &token_at_pos.key().name;
-                for entry in struct_type_params {
-                    if &entry.key().name == name {
-                        if let Some(decl_ident) = entry.value().declared_token_ident(engines) {
-                            if let Some(path) = decl_ident.path {
-                                if let Ok(url) = Url::from_file_path(path) {
-                                    if let Some(url) = sync.to_workspace_url(url) {
-                                        return Some(GotoDefinitionResponse::Scalar(Location::new(url, decl_ident.range)));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        // Fallback to original logic
-        token.declared_token_ident(engines)
+        token_map
+            .token_at_position(uri, position)
+            .and_then(|item| item.value().declared_token_ident(engines))
             .and_then(|decl_ident| {
                 decl_ident.path.and_then(|path| {
                     Url::from_file_path(path).ok().and_then(|url| {
@@ -418,7 +358,7 @@ pub fn traverse(
         } else {
             engines_clone
         };
-
+        
         // Convert the source_id to a path so we can use the manifest path to get the program_id.
         // This is used to store the metrics for the module.
         if let Some(source_id) = lexed.root.tree.value.span().source_id() {

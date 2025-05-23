@@ -11,7 +11,7 @@ use crate::{
     },
     transform::Attributes,
     type_system::TypeInfo,
-    Engines, TypeArgument, TypeEngine, TypeId,
+    Engines, GenericArgument, TypeEngine, TypeId,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::{BTreeSet, HashMap};
@@ -44,7 +44,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
                 _ => false,
             }
         }
-        TreeType::Contract | TreeType::Library { .. } => match node {
+        TreeType::Contract | TreeType::Library => match node {
             TyAstNode {
                 content:
                     TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl { decl_id })),
@@ -527,7 +527,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             if let Ok(ref vec) = result {
                 if !vec.is_empty() {
                     // Connect variable declaration node to its type ascription.
-                    connect_type_id(engines, type_ascription.type_id, graph, entry_node)?;
+                    connect_type_id(engines, type_ascription.type_id(), graph, entry_node)?;
                 }
             }
 
@@ -581,7 +581,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 .namespace
                 .insert_configurable(call_path.suffix.clone(), entry_node);
 
-            connect_type_id(engines, type_ascription.type_id, graph, entry_node)?;
+            connect_type_id(engines, type_ascription.type_id(), graph, entry_node)?;
 
             if let Some(value) = &value {
                 connect_expression(
@@ -707,7 +707,7 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
     //
     // this is important because if the struct is public, you want to be able to signal that all
     // fields are accessible by just adding an edge to the struct declaration node
-    if matches!(tree_type, TreeType::Contract | TreeType::Library { .. })
+    if matches!(tree_type, TreeType::Contract | TreeType::Library)
         && *visibility == Visibility::Public
     {
         for (_name, node) in &field_nodes {
@@ -738,7 +738,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     entry_node: NodeIndex,
     tree_type: &TreeType,
     trait_decl_ref: &Option<DeclRef<InterfaceDeclId>>,
-    implementing_for: &TypeArgument,
+    implementing_for: &GenericArgument,
     options: NodeConnectionOptions,
 ) -> Result<(), CompileError> {
     let decl_engine = engines.de();
@@ -758,7 +758,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
         };
     }
 
-    connect_type_id(engines, implementing_for.type_id, graph, entry_node)?;
+    connect_type_id(engines, implementing_for.type_id(), graph, entry_node)?;
 
     let trait_entry = graph.namespace.find_trait(trait_name).cloned();
     // Collect the methods that are directly implemented in the trait.
@@ -791,7 +791,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                         if let Some(trait_entry) = trait_entry.clone() {
                             matches!(
                                 trait_entry.module_tree_type,
-                                TreeType::Library { .. } | TreeType::Contract
+                                TreeType::Library | TreeType::Contract
                             )
                         } else {
                             // trait_entry not found which means it is an external trait.
@@ -800,7 +800,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                             true
                         }
                     } else {
-                        matches!(tree_type, TreeType::Library { .. } | TreeType::Contract)
+                        matches!(tree_type, TreeType::Library | TreeType::Contract)
                     };
                 if add_edge_to_fn_decl {
                     graph.add_edge(entry_node, fn_decl_entry_node, "".into());
@@ -898,7 +898,7 @@ fn connect_abi_declaration(
                 if let Some(TypeInfo::Struct(decl_ref)) = get_struct_type_info_from_type_id(
                     type_engine,
                     decl_engine,
-                    fn_decl.return_type.type_id,
+                    fn_decl.return_type.type_id(),
                 )? {
                     let decl = decl_engine.get_struct(&decl_ref);
                     if let Some(ns) = graph.namespace.get_struct(&decl.call_path.suffix).cloned() {
@@ -925,9 +925,12 @@ fn get_struct_type_info_from_type_id(
     match type_info {
         TypeInfo::Enum(decl_ref) => {
             let decl = decl_engine.get_enum(&decl_ref);
-            for param in decl.type_parameters.iter() {
+            for p in decl.generic_parameters.iter() {
+                let p = p
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
                 if let Ok(Some(type_info)) =
-                    get_struct_type_info_from_type_id(type_engine, decl_engine, param.type_id)
+                    get_struct_type_info_from_type_id(type_engine, decl_engine, p.type_id)
                 {
                     return Ok(Some(type_info));
                 }
@@ -936,7 +939,7 @@ fn get_struct_type_info_from_type_id(
                 if let Ok(Some(type_info)) = get_struct_type_info_from_type_id(
                     type_engine,
                     decl_engine,
-                    var.type_argument.type_id,
+                    var.type_argument.type_id(),
                 ) {
                     return Ok(Some(type_info));
                 }
@@ -946,7 +949,7 @@ fn get_struct_type_info_from_type_id(
         TypeInfo::Tuple(type_args) => {
             for arg in type_args.iter() {
                 if let Ok(Some(type_info)) =
-                    get_struct_type_info_from_type_id(type_engine, decl_engine, arg.type_id)
+                    get_struct_type_info_from_type_id(type_engine, decl_engine, arg.type_id())
                 {
                     return Ok(Some(type_info));
                 }
@@ -957,7 +960,7 @@ fn get_struct_type_info_from_type_id(
             if let Some(type_arguments) = type_arguments {
                 for arg in type_arguments.iter() {
                     if let Ok(Some(type_info)) =
-                        get_struct_type_info_from_type_id(type_engine, decl_engine, arg.type_id)
+                        get_struct_type_info_from_type_id(type_engine, decl_engine, arg.type_id())
                     {
                         return Ok(Some(type_info));
                     }
@@ -967,10 +970,10 @@ fn get_struct_type_info_from_type_id(
         }
         TypeInfo::Struct { .. } => Ok(Some(type_info)),
         TypeInfo::Array(type_arg, _) => {
-            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id)
+            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id())
         }
         TypeInfo::Slice(type_arg) => {
-            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id)
+            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id())
         }
         _ => Ok(None),
     }
@@ -1028,7 +1031,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
             param_name: fn_param.name.clone(),
             is_self: engines
                 .te()
-                .get(fn_param.type_argument.initial_type_id)
+                .get(fn_param.type_argument.initial_type_id())
                 .is_self_type(),
         });
         graph.add_edge(entry_node, fn_param_node, "".into());
@@ -1042,7 +1045,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
 
         connect_type_id(
             engines,
-            fn_param.type_argument.type_id,
+            fn_param.type_argument.type_id(),
             graph,
             fn_param_node,
         )?;
@@ -1070,7 +1073,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     // not sure how correct it is to default to Unit here...
     // I think types should all be resolved by now.
     let ty = type_engine
-        .to_typeinfo(fn_decl.return_type.type_id, &span)
+        .to_typeinfo(fn_decl.return_type.type_id(), &span)
         .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
     let namespace_entry = FunctionNamespaceEntry {
@@ -1096,9 +1099,11 @@ fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
     fn_decl_entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     let type_engine = engines.te();
-    for fn_param in &fn_decl.parameters {
-        let ty = type_engine
-            .to_typeinfo(fn_param.type_argument.type_id, &fn_param.type_argument.span)?;
+    for fn_param in fn_decl.parameters.iter() {
+        let ty = type_engine.to_typeinfo(
+            fn_param.type_argument.type_id(),
+            &fn_param.type_argument.span(),
+        )?;
         match ty {
             TypeInfo::Enum(decl_ref) => {
                 let decl = engines.de().get_enum(&decl_ref);
@@ -2112,8 +2117,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 options,
             )
         }
-        ImplicitReturn(exp) | Return(exp) => {
-            let this_index = graph.add_node("return entry".into());
+        ImplicitReturn(exp) | Return(exp) | Panic(exp) => {
+            let return_type = match expr_variant {
+                ImplicitReturn(_) => "implicit return",
+                Return(_) => "return",
+                Panic(_) => "panic",
+                _ => unreachable!(
+                    "the `expr_variant` is checked to be `ImplicitReturn`, `Return`, or `Panic`"
+                ),
+            };
+
+            let this_index = graph.add_node(format!("{return_type} entry").into());
             for leaf in leaves {
                 graph.add_edge(*leaf, this_index, "".into());
             }
@@ -2128,14 +2142,14 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 exp.span.clone(),
                 options,
             )?;
-            if let Return(_) = expr_variant {
+            if let Return(_) | Panic(_) = expr_variant {
                 // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
                 // node?
                 for leaf in return_contents {
                     graph.add_edge(this_index, leaf, "".into());
                 }
                 if let Some(exit_node) = exit_node {
-                    graph.add_edge(this_index, exit_node, "return".into());
+                    graph.add_edge(this_index, exit_node, return_type.into());
                 }
                 Ok(vec![])
             } else {
@@ -2480,7 +2494,7 @@ fn connect_type_alias_declaration<'eng: 'cfg, 'cfg>(
         .insert_alias(decl.name().clone(), entry_node);
 
     let ty::TyTypeAliasDecl { ty, .. } = decl;
-    connect_type_id(engines, ty.type_id, graph, entry_node)?;
+    connect_type_id(engines, ty.type_id(), graph, entry_node)?;
 
     Ok(())
 }
@@ -2501,8 +2515,11 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(enum_idx) = enum_idx.cloned() {
                 graph.add_edge(entry_node, enum_idx, "".into());
             }
-            for type_param in &decl.type_parameters {
-                connect_type_id(engines, type_param.type_id, graph, entry_node)?;
+            for p in &decl.generic_parameters {
+                let p = p
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
+                connect_type_id(engines, p.type_id, graph, entry_node)?;
             }
         }
         TypeInfo::Struct(decl_ref) => {
@@ -2511,8 +2528,12 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
             if let Some(struct_idx) = struct_idx.cloned() {
                 graph.add_edge(entry_node, struct_idx, "".into());
             }
-            for type_param in &decl.type_parameters {
-                connect_type_id(engines, type_param.type_id, graph, entry_node)?;
+            for p in decl
+                .generic_parameters
+                .iter()
+                .filter_map(|x| x.as_type_parameter())
+            {
+                connect_type_id(engines, p.type_id, graph, entry_node)?;
             }
         }
         TypeInfo::Alias { name, .. } => {

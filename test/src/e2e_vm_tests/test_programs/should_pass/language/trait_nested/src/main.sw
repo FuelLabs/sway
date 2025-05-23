@@ -26,13 +26,6 @@ where
     T::trait_fn()
 }
 
-impl PartialEq for (u64, ) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0
-    }
-}
-impl Eq for (u64, ) {}
-
 fn main() -> bool {
     assert_eq(f::<(u64, )>(), (42, ));
 

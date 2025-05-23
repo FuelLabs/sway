@@ -69,11 +69,11 @@ impl ty::TyTraitFn {
 
             // Type check the return type.
             let mut new_return_type = return_type.clone();
-            new_return_type.type_id = ctx
+            *new_return_type.type_id_mut() = ctx
                 .resolve_type(
                     handler,
-                    return_type.type_id,
-                    &return_type.span,
+                    return_type.type_id(),
+                    &return_type.span(),
                     EnforceTypeArguments::Yes,
                     None,
                 )
@@ -103,7 +103,7 @@ impl ty::TyTraitFn {
         ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
-            body: ty::TyCodeBlock::default(),
+            body: <_>::default(),
             parameters: self.parameters.clone(),
             implementing_type: match abi_mode.clone() {
                 AbiMode::ImplAbiFn(_abi_name, abi_decl_id) => {
@@ -124,7 +124,6 @@ impl ty::TyTraitFn {
             return_type: self.return_type.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
-            const_generic_parameters: vec![],
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
             is_trait_method_dummy: true,

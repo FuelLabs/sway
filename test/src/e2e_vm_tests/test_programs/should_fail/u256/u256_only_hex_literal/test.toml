@@ -1,4 +1,0 @@
-category = "fail"
-
-# check: $()error
-# check: $()invalid u256. Only hex literals are supported

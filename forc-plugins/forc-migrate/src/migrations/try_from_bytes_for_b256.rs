@@ -165,7 +165,7 @@ fn replace_bytes_into_b256_with_try_into_b256_step(
             let method_return_type = ctx
                 .engines
                 .te()
-                .get(ty_method_call_info.fn_decl.return_type.type_id);
+                .get(ty_method_call_info.fn_decl.return_type.type_id());
             let method_target_is_bytes_struct = match ctx
                 .engines
                 .te()

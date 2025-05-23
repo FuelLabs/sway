@@ -140,7 +140,7 @@ impl TypeCheckFinalization for TyExpression {
         let res = self.expression.type_check_finalize(handler, ctx);
         if let TyExpressionVariant::FunctionApplication { fn_ref, .. } = &self.expression {
             let method = ctx.engines.de().get_function(fn_ref);
-            self.return_type = method.return_type.type_id;
+            self.return_type = method.return_type.type_id();
         }
         res
     }
@@ -169,13 +169,17 @@ impl CollectTypesMetadata for TyExpression {
                 let function_decl = decl_engine.get_function(fn_ref);
 
                 ctx.call_site_push();
-                for (idx, type_parameter) in function_decl.type_parameters.iter().enumerate() {
-                    ctx.call_site_insert(type_parameter.type_id, call_path.span());
+                for (idx, p) in function_decl
+                    .type_parameters
+                    .iter()
+                    .filter_map(|x| x.as_type_parameter())
+                    .enumerate()
+                {
+                    ctx.call_site_insert(p.type_id, call_path.span());
 
                     // Verify type arguments are concrete
                     res.extend(
-                        type_parameter
-                            .type_id
+                        p.type_id
                             .collect_types_metadata(handler, ctx)?
                             .into_iter()
                             // try to use the caller span for better error messages
@@ -186,7 +190,7 @@ impl CollectTypesMetadata for TyExpression {
                                         .and_then(|type_binding| {
                                             type_binding.type_arguments.as_slice().get(idx)
                                         })
-                                        .map(|type_argument| Some(type_argument.span.clone()))
+                                        .map(|type_argument| Some(type_argument.span()))
                                         .unwrap_or(original_span);
                                     TypeMetadata::UnresolvedType(ident, span)
                                 }
@@ -219,13 +223,23 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 let struct_decl = decl_engine.get_struct(struct_id);
-                for type_parameter in &struct_decl.type_parameters {
-                    ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
+                for p in &struct_decl.generic_parameters {
+                    match p {
+                        TypeParameter::Type(p) => {
+                            ctx.call_site_insert(p.type_id, instantiation_span.clone());
+                        }
+                        TypeParameter::Const(_) => {}
+                    }
                 }
                 if let TypeInfo::Struct(decl_ref) = &*ctx.engines.te().get(self.return_type) {
                     let decl = decl_engine.get_struct(decl_ref);
-                    for type_parameter in &decl.type_parameters {
-                        ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
+                    for p in &decl.generic_parameters {
+                        match p {
+                            TypeParameter::Type(p) => {
+                                ctx.call_site_insert(p.type_id, instantiation_span.clone());
+                            }
+                            TypeParameter::Const(_) => {}
+                        }
                     }
                 }
                 for field in fields.iter() {
@@ -298,8 +312,11 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
-                for type_param in enum_decl.type_parameters.iter() {
-                    ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
+                for p in enum_decl.generic_parameters.iter() {
+                    let p = p
+                        .as_type_parameter()
+                        .expect("only works for type parameters");
+                    ctx.call_site_insert(p.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
                     res.append(&mut contents.collect_types_metadata(handler, ctx)?);
@@ -308,12 +325,15 @@ impl CollectTypesMetadata for TyExpression {
                     res.append(
                         &mut variant
                             .type_argument
-                            .type_id
+                            .type_id()
                             .collect_types_metadata(handler, ctx)?,
                     );
                 }
-                for type_param in enum_decl.type_parameters.iter() {
-                    res.append(&mut type_param.type_id.collect_types_metadata(handler, ctx)?);
+                for p in enum_decl.generic_parameters.iter() {
+                    let p = p
+                        .as_type_parameter()
+                        .expect("only works for type parameters");
+                    res.append(&mut p.type_id.collect_types_metadata(handler, ctx)?);
                 }
             }
             AbiCast { address, .. } => {
@@ -334,7 +354,7 @@ impl CollectTypesMetadata for TyExpression {
                 res.append(
                     &mut variant
                         .type_argument
-                        .type_id
+                        .type_id()
                         .collect_types_metadata(handler, ctx)?,
                 );
             }
@@ -348,6 +368,21 @@ impl CollectTypesMetadata for TyExpression {
                 res.append(&mut desugared.collect_types_metadata(handler, ctx)?);
             }
             ImplicitReturn(exp) | Return(exp) => {
+                res.append(&mut exp.collect_types_metadata(handler, ctx)?)
+            }
+            Panic(exp) => {
+                // Register the type of the `panic` argument as a logged type.
+                let logged_type_id =
+                    TypeMetadata::get_logged_type_id(exp, ctx.experimental.new_encoding)
+                        .map_err(|err| handler.emit_err(err))?;
+                res.push(TypeMetadata::new_logged_type(
+                    ctx.engines,
+                    logged_type_id,
+                    ctx.program_name.clone(),
+                ));
+
+                // We still need to dive into the expression because it can have additional types to collect.
+                // E.g., `revert some_function_that_returns_error_enum_and_internally_logs_some_types()`;
                 res.append(&mut exp.collect_types_metadata(handler, ctx)?)
             }
             Ref(exp) | Deref(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
@@ -383,6 +418,12 @@ impl MaterializeConstGenerics for TyExpression {
         self.return_type
             .materialize_const_generics(engines, handler, name, value)?;
         match &mut self.expression {
+            TyExpressionVariant::CodeBlock(block) => {
+                for node in block.contents.iter_mut() {
+                    node.materialize_const_generics(engines, handler, name, value)?;
+                }
+                Ok(())
+            }
             TyExpressionVariant::ConstGenericExpression { decl, .. } => {
                 decl.materialize_const_generics(engines, handler, name, value)
             }
@@ -393,7 +434,29 @@ impl MaterializeConstGenerics for TyExpression {
                 for (_, expr) in arguments {
                     expr.materialize_const_generics(engines, handler, name, value)?;
                 }
-
+                Ok(())
+            }
+            TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+                arguments, ..
+            }) => {
+                for expr in arguments {
+                    expr.materialize_const_generics(engines, handler, name, value)?;
+                }
+                Ok(())
+            }
+            TyExpressionVariant::Return(expr) => {
+                expr.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.materialize_const_generics(engines, handler, name, value)?;
+                then.materialize_const_generics(engines, handler, name, value)?;
+                if let Some(e) = r#else.as_mut() {
+                    e.materialize_const_generics(engines, handler, name, value)?;
+                }
                 Ok(())
             }
             TyExpressionVariant::WhileLoop { condition, body } => {
@@ -406,12 +469,6 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::ArrayIndex { prefix, index } => {
                 prefix.materialize_const_generics(engines, handler, name, value)?;
                 index.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::IntrinsicFunction(kind) => {
-                for expr in kind.arguments.iter_mut() {
-                    expr.materialize_const_generics(engines, handler, name, value)?;
-                }
-                Ok(())
             }
             TyExpressionVariant::Literal(_) | TyExpressionVariant::VariableExpression { .. } => {
                 Ok(())
@@ -426,6 +483,9 @@ impl MaterializeConstGenerics for TyExpression {
                 length.materialize_const_generics(engines, handler, name, value)
             }
             TyExpressionVariant::Ref(r) => {
+                r.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::Deref(r) => {
                 r.materialize_const_generics(engines, handler, name, value)
             }
             _ => Err(handler.emit_err(
@@ -522,7 +582,7 @@ impl TyExpression {
                 let fn_ty = engines.de().get(fn_ref);
                 if let Some(TyDecl::ImplSelfOrTrait(t)) = &fn_ty.implementing_type {
                     let t = &engines.de().get(&t.decl_id).implementing_for;
-                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
+                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id()) {
                         let s = engines.de().get(struct_id);
                         emit_warning_if_deprecated(
                             &s.attributes,
@@ -758,6 +818,9 @@ impl TyExpression {
                 expr.check_deprecated(engines, handler, allow_deprecated);
             }
             TyExpressionVariant::Return(expr) => {
+                expr.check_deprecated(engines, handler, allow_deprecated);
+            }
+            TyExpressionVariant::Panic(expr) => {
                 expr.check_deprecated(engines, handler, allow_deprecated);
             }
             TyExpressionVariant::Ref(expr) => {

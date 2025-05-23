@@ -8,11 +8,54 @@ use crate::reduced_std_libs::REDUCED_STD_LIBS_DIR_NAME;
 
 pub(crate) fn check() -> Result<()> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let all_tests_dir = format!("{manifest_dir}/src");
+    let all_tests_dir = PathBuf::from(format!("{manifest_dir}/src"));
 
-    check_test_forc_tomls(&PathBuf::from(all_tests_dir))?;
+    check_test_forc_tomls(&all_tests_dir)?;
+
+    check_redundant_gitignore_files(&all_tests_dir)?;
 
     Ok(())
+}
+
+fn check_redundant_gitignore_files(all_tests_dir: &Path) -> Result<()> {
+    let mut gitignores = vec![];
+    find_gitignores(&PathBuf::from(all_tests_dir), &mut gitignores);
+
+    return if gitignores.is_empty() {
+        Ok(())
+    } else {
+        let mut gitignores = gitignores
+            .iter()
+            .map(|file| file.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        gitignores.sort();
+
+        Err(anyhow!("Redundant .gitignore files.\nTo fix the error, delete these redundant .gitignore files:\n{}", gitignores.join("\n")))
+    };
+
+    fn find_gitignores(path: &Path, gitignores: &mut Vec<PathBuf>) {
+        const IN_LANGUAGE_TESTS_GITIGNORE: &str = "in_language_tests/.gitignore";
+
+        if path.is_dir() {
+            for entry in std::fs::read_dir(path).unwrap() {
+                let entry = entry.unwrap().path();
+                let entry_name = entry.to_str().unwrap();
+                if entry_name.contains(REDUCED_STD_LIBS_DIR_NAME)
+                    || entry_name.contains(IN_LANGUAGE_TESTS_GITIGNORE)
+                {
+                    continue;
+                }
+                find_gitignores(&entry, gitignores);
+            }
+        } else if path.is_file()
+            && path
+                .file_name()
+                .map(|f| f.eq_ignore_ascii_case(".gitignore"))
+                .unwrap_or(false)
+        {
+            gitignores.push(path.to_path_buf());
+        }
+    }
 }
 
 /// Checks that every Forc.toml file has the authors, license,
