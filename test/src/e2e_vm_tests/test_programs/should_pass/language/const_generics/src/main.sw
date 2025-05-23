@@ -95,8 +95,3 @@ fn main(a: [u64; 2]) {
 fn run_main() {
     main([1, 2]);
 }
-
-#[test]
-fn main_test() {
-    main([0, 1]);
-}

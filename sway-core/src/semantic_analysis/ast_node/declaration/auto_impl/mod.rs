@@ -251,7 +251,9 @@ where
             _ => unreachable!("unexpected node; expected `Declaration::ImplSelfOrTrait`"),
         };
 
-        assert!(!handler.has_errors(), "{:?}", handler);
+        if handler.has_errors() {
+            return Err(handler);
+        }
 
         let mut ctx = self.ctx.by_ref();
         let _r = TyDecl::collect(
