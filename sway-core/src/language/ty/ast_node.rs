@@ -10,6 +10,7 @@ use crate::{
     type_system::*,
     types::*,
 };
+use ast_elements::type_parameter::ConstGenericExpr;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug},
@@ -148,9 +149,24 @@ impl MaterializeConstGenerics for TyAstNode {
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
         match &mut self.content {
-            TyAstNodeContent::Declaration(TyDecl::VariableDecl(decl)) => decl
-                .body
-                .materialize_const_generics(engines, handler, name, value),
+            TyAstNodeContent::Declaration(TyDecl::VariableDecl(decl)) => {
+                decl.body
+                    .materialize_const_generics(engines, handler, name, value)?;
+                decl.return_type
+                    .materialize_const_generics(engines, handler, name, value)?;
+                match &mut decl.type_ascription {
+                    GenericArgument::Type(arg) => arg
+                        .type_id
+                        .materialize_const_generics(engines, handler, name, value)?,
+                    GenericArgument::Const(arg) => {
+                        if matches!(&arg.expr, ConstGenericExpr::AmbiguousVariableExpression { ident } if ident.as_str() == name)
+                        {
+                            arg.expr = ConstGenericExpr::from_ty_expression(handler, value)?;
+                        }
+                    }
+                }
+                Ok(())
+            }
             TyAstNodeContent::Expression(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
             }
