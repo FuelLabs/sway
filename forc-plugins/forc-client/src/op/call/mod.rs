@@ -219,6 +219,11 @@ impl FromStr for Abi {
     }
 }
 
+pub(crate) struct CallData {
+    contract_id: ContractId,
+    abis: HashMap<ContractId, Abi>,
+    result: String,
+}
 
 /// Processes transaction receipts, logs, and displays transaction information
 pub(crate) fn process_transaction_output(
