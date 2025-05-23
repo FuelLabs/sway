@@ -19,7 +19,7 @@ use std::{
 /// Configures the node with testnet configuration to connect the node to latest testnet.
 /// Returns `None` if this is a dry_run and no child process created for fuel-core.
 pub(crate) async fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
-    check_and_update_chain_config(ChainConfig::Testnet).await?;
+    check_and_update_chain_config(ChainConfig::Ignition).await?;
     let keypair = if let (Some(peer_id), Some(secret)) = (
         &cmd.connection_settings.peer_id,
         &cmd.connection_settings.secret,
