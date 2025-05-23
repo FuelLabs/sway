@@ -13,7 +13,7 @@ pub(crate) struct Node<'a> {
     abis: Option<&'a HashMap<ContractId, Abi>>,
 }
 
-impl<'a> Node<'a> {
+impl<'a> Node<'_> {
     /// Create a new Node from receipts with ABI information
     pub(crate) fn try_from_with_abis<'b>(
         receipts: &[Receipt],
@@ -174,8 +174,8 @@ impl<'a> Node<'a> {
     }
 }
 
-impl<'a> Display for Node<'a> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl Display for Node<'_> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match &self.receipt {
             Receipt::ScriptResult { result, gas_used } => {
                 writeln!(f, "  [Script]")?;
@@ -193,7 +193,7 @@ impl<'a> Display for Node<'a> {
     }
 }
 
-impl<'a> Node<'a> {
+impl Node<'_> {
     fn fmt_with_depth(&self, f: &mut Formatter<'_>, depth: usize) -> fmt::Result {
         let indent = if depth > 0 {
             "    │".repeat(depth)
@@ -273,7 +273,7 @@ impl<'a> Node<'a> {
                                     &program_abi,
                                 )
                                 .ok()
-                                .and_then(|decoded| Some(decoded.value))
+                                .map(|decoded| decoded.value)
                                 .unwrap_or(hex_str)
                             }
                             None => hex_str,
@@ -325,7 +325,7 @@ pub(crate) fn format_transaction_trace<W: std::io::Write>(
 
     writeln!(writer, "Traces:")?;
     write!(writer, "{}", trace_tree)?;
-    writeln!(writer, "")?;
+    writeln!(writer)?;
 
     match trace_tree.receipt {
         Receipt::ScriptResult { result, .. } => match result {
