@@ -2115,10 +2115,6 @@ impl TypeEngine {
     }
 
     fn touch_last_replace(&self) {
-        // eprintln!(
-        //     "    touch_last_replace {}",
-        //     std::backtrace::Backtrace::force_capture()
-        // );
         let mut write_last_change = self.last_replace.write();
         *write_last_change = Instant::now();
     }
