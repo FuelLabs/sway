@@ -29,7 +29,7 @@ fn main() -> u64 {
 
 // check: fn $ID(x $MD: u64) -> u64
 // check:     entry(x: u64):
-// check:     ret u64 x
+// check:     ret u64 $VAL
 // check: }
 
 // check: fn $ID(x $MD: u64, y $MD: u64) -> u64
@@ -42,15 +42,15 @@ fn main() -> u64 {
 //
 // Matching fn a() here, which just returns its arg:
 //
-// check: move $$$$retv $$$$arg0
+// check: move $$$$retv $REG
 // check: jmp $$$$reta
 //
 // Matching fn b() here, which has a local bool var, initialised to false/$zero:
 //
 // check: move $$$$locbase $$sp
-// check: cfei i8
+// check: cfei i24
 //
 // check: sb   $$$$locbase $$zero i0
 // ...
-// check: cfsi i8
+// check: cfsi i24
 // check: jmp $$$$reta

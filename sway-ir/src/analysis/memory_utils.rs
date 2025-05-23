@@ -431,7 +431,9 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
             InstOp::Nop => (),
             InstOp::PtrToInt(v, _) => add_from_val(&mut result, v, &mut is_complete),
             InstOp::Ret(_, _) => (),
-            InstOp::Store { .. } => (),
+            InstOp::Store { stored_val, .. } => {
+                add_from_val(&mut result, stored_val, &mut is_complete)
+            }
         }
     }
 

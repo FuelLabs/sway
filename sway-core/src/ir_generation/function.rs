@@ -1,3 +1,7 @@
+//! Engine for compiling a function and all of the AST nodes within.
+//!
+//! This is mostly recursively compiling expressions, as Sway is fairly heavily expression based.
+
 use super::{
     convert::*,
     lexical_map::LexicalMap,
@@ -37,38 +41,57 @@ use sway_types::{
 
 use std::collections::HashMap;
 
-/// Engine for compiling a function and all of the AST nodes within.
-///
-/// This is mostly recursively compiling expressions, as Sway is fairly heavily expression based.
-///
-/// The rule here is to use `compile_expression_to_value()` when a value is desired, as opposed to a
-/// pointer. This is most of the time, as we try to be target agnostic and not make assumptions
-/// about which values must be used by reference.
-///
-/// `compile_expression_to_value()` will force the result to be a value, by using a temporary if
-/// necessary.
-///
-/// `compile_expression_to_ptr()` will compile the expression and force it to be a pointer, also by
-/// using a temporary if necessary. This can be slightly dangerous, if the reference is supposed
-/// to be to a particular value but is accidentally made to a temporary value then mutations or
-/// other side-effects might not be applied in the correct context.
-///
-/// `compile_expression()` will compile the expression without forcing anything. If the expression
-/// has a reference type, like getting a struct or an explicit ref arg, it will return a pointer
-/// value, but otherwise will return a value.
-///
-/// So in general the methods in [FnCompiler] will return a pointer if they can and will get it, be
-/// forced, into a value if that is desired. All the temporary values are manipulated with simple
-/// loads and stores, rather than anything more complicated like `mem_copy`s.
-///
+/// The result of compiling an expression can be in memory, or in an (SSA) register.
+#[derive(Debug, Clone, Copy)]
+enum CompiledValue {
+    /// The value is in memory, and the pointer to it is returned.
+    InMemory(Value),
+    /// The value is in a register, and the value is returned.
+    InRegister(Value),
+}
+
+impl CompiledValue {
+    fn value(&self) -> Value {
+        match self {
+            CompiledValue::InMemory(value) | CompiledValue::InRegister(value) => *value,
+        }
+    }
+
+    fn is_terminator(&self, context: &Context) -> bool {
+        self.value().is_terminator(context)
+    }
+
+    fn get_type(&self, context: &Context) -> Option<Type> {
+        self.value().get_type(context)
+    }
+
+    fn get_constant(&self, context: &Context) -> Option<Constant> {
+        self.value().get_constant(context).cloned()
+    }
+
+    fn unwrap_memory(self) -> Value {
+        match self {
+            CompiledValue::InMemory(value) => value,
+            CompiledValue::InRegister(_) => panic!("Expected InMemory, got InRegister"),
+        }
+    }
+
+    fn unwrap_register(self) -> Value {
+        match self {
+            CompiledValue::InMemory(_) => panic!("Expected InRegister, got InMemory"),
+            CompiledValue::InRegister(value) => value,
+        }
+    }
+}
+
 /// Wrapper around Value to enforce distinction between terminating and non-terminating values.
 struct TerminatorValue {
-    value: Value,
+    value: CompiledValue,
     is_terminator: bool,
 }
 
 impl TerminatorValue {
-    pub fn new(value: Value, context: &Context) -> Self {
+    pub fn new(value: CompiledValue, context: &Context) -> Self {
         Self {
             value,
             is_terminator: value.is_terminator(context),
@@ -97,6 +120,8 @@ pub(crate) struct FnCompiler<'eng> {
     block_to_continue_to: Option<Block>,
     current_fn_param: Option<ty::TyFunctionParameter>,
     lexical_map: LexicalMap,
+    // TODO: This field and all its uses must go once we have references properly implemented.
+    pub ref_mut_args: rustc_hash::FxHashSet<String>,
     cache: &'eng mut CompiledFunctionCache,
     // This is a map from the type IDs of a logged type and the ID of the corresponding log
     logged_types_map: HashMap<TypeId, LogId>,
@@ -110,22 +135,43 @@ fn to_constant(_s: &mut FnCompiler<'_>, context: &mut Context, value: u64) -> Va
     Value::new_constant(context, c)
 }
 
-fn save_to_local_return_ptr(
+/// Store a register value to a new local variable and return CompiledValue::InMemory(_).
+fn store_to_memory(
     s: &mut FnCompiler<'_>,
     context: &mut Context,
-    value: Value,
-) -> Result<Value, CompileError> {
-    let temp_arg_name = s.lexical_map.insert_anon();
+    value: CompiledValue,
+) -> Result<CompiledValue, CompileError> {
+    match value {
+        CompiledValue::InMemory(_) => Ok(value),
+        CompiledValue::InRegister(val) => {
+            let temp_arg_name = s.lexical_map.insert_anon();
+            let value_type = val.get_type(context).unwrap();
+            let local_var = s
+                .function
+                .new_local_var(context, temp_arg_name, value_type, None, false)
+                .map_err(|ir_error| {
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                })?;
+            let local_var_ptr = s.current_block.append(context).get_local(local_var);
+            let _ = s.current_block.append(context).store(local_var_ptr, val);
+            Ok(CompiledValue::InMemory(local_var_ptr))
+        }
+    }
+}
 
-    let value_type = value.get_type(context).unwrap();
-    let local_var = s
-        .function
-        .new_local_var(context, temp_arg_name, value_type, None, false)
-        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
-
-    let local_var_ptr = s.current_block.append(context).get_local(local_var);
-    let _ = s.current_block.append(context).store(local_var_ptr, value);
-    Ok(local_var_ptr)
+/// If a value is in memory, load it into a register and return the register value.
+fn load_to_register(
+    s: &mut FnCompiler<'_>,
+    context: &mut Context,
+    value: CompiledValue,
+) -> CompiledValue {
+    match value {
+        CompiledValue::InMemory(ptr) => {
+            let val = s.current_block.append(context).load(ptr);
+            CompiledValue::InRegister(val)
+        }
+        CompiledValue::InRegister(_) => value,
+    }
 }
 
 fn calc_addr_as_ptr(
@@ -172,6 +218,7 @@ impl<'eng> FnCompiler<'eng> {
             block_to_break_to: None,
             block_to_continue_to: None,
             lexical_map,
+            ref_mut_args: rustc_hash::FxHashSet::default(),
             cache,
             current_fn_param: None,
             logged_types_map: logged_types_map.clone(),
@@ -189,13 +236,46 @@ impl<'eng> FnCompiler<'eng> {
         result
     }
 
-    pub(super) fn compile_code_block_to_value(
+    pub(super) fn compile_fn_to_value(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_block: &ty::TyCodeBlock,
     ) -> Result<Value, Vec<CompileError>> {
-        Ok(self.compile_code_block(context, md_mgr, ast_block)?.value)
+        // Function arguments, like all locals need to be in memory, so that their addresses
+        // can be taken. So we create locals for each argument and store the value there.
+        let entry = self.function.get_entry_block(context);
+        for (arg_name, arg_value) in self
+            .function
+            .args_iter(context)
+            .cloned()
+            .collect::<Vec<_>>()
+        {
+            let local_name = self.lexical_map.insert(arg_name.as_str().to_owned());
+            let local_var = self.function.new_unique_local_var(
+                context,
+                local_name.clone(),
+                arg_value.get_type(context).unwrap(),
+                None,
+                false,
+            );
+            if self.ref_mut_args.contains(&arg_name) {
+                self.ref_mut_args.insert(local_name.clone());
+            }
+            let local_val = entry.append(context).get_local(local_var);
+            entry.append(context).store(local_val, arg_value);
+        }
+        match self.compile_code_block(context, md_mgr, ast_block)?.value {
+            // Final value must always be a value, not a pointer.
+            CompiledValue::InRegister(val) => Ok(val),
+            CompiledValue::InMemory(_val) => {
+                // Return an error indicating that the final value is in memory.
+                Err(vec![CompileError::Internal(
+                    "Final value is in memory",
+                    ast_block.whole_block_span.clone(),
+                )])
+            }
+        }
     }
 
     fn compile_code_block(
@@ -212,7 +292,10 @@ impl<'eng> FnCompiler<'eng> {
                 let ast_node = match ast_nodes.next() {
                     Some(ast_node) => ast_node,
                     None => {
-                        break TerminatorValue::new(ConstantContent::get_unit(context), context)
+                        break TerminatorValue::new(
+                            CompiledValue::InRegister(ConstantContent::get_unit(context)),
+                            context,
+                        )
                     }
                 };
                 match fn_compiler.compile_ast_node(context, md_mgr, ast_node) {
@@ -299,11 +382,11 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyAstNodeContent::Expression(te) => {
                 match &te.expression {
                     TyExpressionVariant::ImplicitReturn(exp) => self
-                        .compile_expression_to_value(context, md_mgr, exp)
+                        .compile_expression_to_register(context, md_mgr, exp)
                         .map(Some),
                     _ => {
                         // An expression with an ignored return value... I assume.
-                        let value = self.compile_expression_to_value(context, md_mgr, te)?;
+                        let value = self.compile_expression_to_register(context, md_mgr, te)?;
                         // Terminating values should end the compilation of the block
                         if value.is_terminator {
                             Ok(Some(value))
@@ -322,30 +405,23 @@ impl<'eng> FnCompiler<'eng> {
         }
     }
 
-    fn compile_expression_to_value(
+    // Compiled expression, and if the compiled result is in memory, load it to a register.
+    fn compile_expression_to_register(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
     ) -> Result<TerminatorValue, CompileError> {
-        // Compile expression which *may* be a pointer.  We can't return a pointer value here
-        // though, so add a `load` to it.
-        self.compile_expression(context, md_mgr, ast_expr)
-            .map(|val| {
-                if val
-                    .value
-                    .get_type(context)
-                    .is_some_and(|ty| ty.is_ptr(context))
-                {
-                    let load_val = self.current_block.append(context).load(val.value);
-                    TerminatorValue::new(load_val, context)
-                } else {
-                    val
-                }
-            })
+        let compiled =
+            return_on_termination_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
+        Ok(TerminatorValue::new(
+            load_to_register(self, context, compiled),
+            context,
+        ))
     }
 
-    fn compile_expression_to_ptr(
+    // Compile expression, and if the compiled result is in a register, store it to memory.
+    fn compile_expression_to_memory(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
@@ -354,41 +430,11 @@ impl<'eng> FnCompiler<'eng> {
         // Compile expression which *may* be a pointer.
         let val =
             return_on_termination_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
-        let ty = match val.get_type(context) {
-            Some(ty) if !ty.is_ptr(context) => ty,
-            _ => return Ok(TerminatorValue::new(val, context)),
-        };
 
-        let is_argument = val.get_argument(context).is_some_and(|arg| {
-            arg.block.get_function(context).get_entry_block(context) == arg.block
-        });
-
-        let ptr_val = if is_argument {
-            // The `ptr_to_int` instructions gets the address of a variable into an integer.
-            // We then cast it back to a pointer.
-            let ptr_ty = Type::new_ptr(context, ty);
-            let int_ty = Type::get_uint64(context);
-            let ptr_to_int = self.current_block.append(context).ptr_to_int(val, int_ty);
-            let int_to_ptr = self
-                .current_block
-                .append(context)
-                .int_to_ptr(ptr_to_int, ptr_ty);
-            int_to_ptr
-        } else {
-            // We can't return a value so create a temporary here, store the value and return its pointer.
-            let temp_name = self.lexical_map.insert_anon();
-            let tmp_var = self
-                .function
-                .new_local_var(context, temp_name, ty, None, false)
-                .map_err(|ir_error| {
-                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                })?;
-            let tmp_val = self.current_block.append(context).get_local(tmp_var);
-            self.current_block.append(context).store(tmp_val, val);
-            tmp_val
-        };
-
-        Ok(TerminatorValue::new(ptr_val, context))
+        Ok(TerminatorValue::new(
+            store_to_memory(self, context, val)?,
+            context,
+        ))
     }
 
     fn compile_string_slice(
@@ -471,7 +517,10 @@ impl<'eng> FnCompiler<'eng> {
             .mem_copy_bytes(slice_val, struct_val, 16);
 
         // return the slice
-        Ok(TerminatorValue::new(slice_val, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InMemory(slice_val),
+            context,
+        ))
     }
 
     fn compile_expression(
@@ -501,11 +550,17 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 let val = convert_literal_to_value(context, &implied_lit)
                     .add_metadatum(context, span_md_idx);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             ty::TyExpressionVariant::Literal(l) => {
                 let val = convert_literal_to_value(context, l).add_metadatum(context, span_md_idx);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             ty::TyExpressionVariant::FunctionApplication {
                 call_path: name,
@@ -591,7 +646,7 @@ impl<'eng> FnCompiler<'eng> {
                 ast_expr.span.clone(),
             )),
             ty::TyExpressionVariant::MatchExp { desugared, .. } => {
-                self.compile_expression_to_value(context, md_mgr, desugared)
+                self.compile_expression_to_register(context, md_mgr, desugared)
             }
             ty::TyExpressionVariant::IfExp {
                 condition,
@@ -666,7 +721,10 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::AbiCast { span, .. } => {
                 let span_md_idx = md_mgr.span_to_md(context, span);
                 let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
                 let span_md_idx: Option<MetadataIndex> = md_mgr.span_to_md(context, &access.span());
@@ -697,7 +755,10 @@ impl<'eng> FnCompiler<'eng> {
                 let c = ConstantContent::new_unit(context);
                 let c = Constant::unique(context, c);
                 let val = Value::new_constant(context, c);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             ty::TyExpressionVariant::UnsafeDowncast {
                 exp,
@@ -723,7 +784,10 @@ impl<'eng> FnCompiler<'eng> {
                             .current_block
                             .append(context)
                             .branch(block_to_break_to, vec![]);
-                        Ok(TerminatorValue::new(val, context))
+                        Ok(TerminatorValue::new(
+                            CompiledValue::InRegister(val),
+                            context,
+                        ))
                     }
                     None => Err(CompileError::BreakOutsideLoop {
                         span: ast_expr.span.clone(),
@@ -739,7 +803,10 @@ impl<'eng> FnCompiler<'eng> {
                         .current_block
                         .append(context)
                         .branch(block_to_continue_to, vec![]);
-                    Ok(TerminatorValue::new(val, context))
+                    Ok(TerminatorValue::new(
+                        CompiledValue::InRegister(val),
+                        context,
+                    ))
                 }
                 None => Err(CompileError::ContinueOutsideLoop {
                     span: ast_expr.span.clone(),
@@ -773,7 +840,7 @@ impl<'eng> FnCompiler<'eng> {
         ptr: Value,
         cap: Value,
         len: Value,
-    ) -> Result<Value, CompileError> {
+    ) -> Result<CompiledValue, CompileError> {
         let uint64 = Type::get_uint64(context);
 
         assert!(ptr.get_type(context).unwrap().is_ptr(context));
@@ -817,7 +884,7 @@ impl<'eng> FnCompiler<'eng> {
             .is_uint64(context));
         assert!(buffer_type.get_field_type(context, 3).is_none());
 
-        Ok(buffer)
+        Ok(CompiledValue::InRegister(buffer))
     }
 
     fn compile_buffer_into_parts(
@@ -954,9 +1021,12 @@ impl<'eng> FnCompiler<'eng> {
                     exp.return_type,
                     &exp.span,
                 )?;
-                self.compile_expression_to_value(context, md_mgr, exp)?;
+                self.compile_expression_to_register(context, md_mgr, exp)?;
                 let val = ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
@@ -968,7 +1038,10 @@ impl<'eng> FnCompiler<'eng> {
                     &targ.span(),
                 )?;
                 let val = ConstantContent::get_uint(context, 64, ir_type.size(context).in_bytes());
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::SizeOfStr => {
                 let targ = type_arguments[0].clone();
@@ -984,13 +1057,19 @@ impl<'eng> FnCompiler<'eng> {
                     64,
                     ir_type.get_string_len(context).unwrap_or_default(),
                 );
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
                 let is_val = !engines.te().get_unaliased(targ.type_id()).is_copy_type();
                 let val = ConstantContent::get_bool(context, is_val);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::IsStrArray => {
                 let targ = type_arguments[0].clone();
@@ -999,7 +1078,10 @@ impl<'eng> FnCompiler<'eng> {
                     TypeInfo::StringArray(_) | TypeInfo::StringSlice
                 );
                 let val = ConstantContent::get_bool(context, is_val);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::AssertIsStrArray => {
                 let targ = type_arguments[0].clone();
@@ -1013,7 +1095,10 @@ impl<'eng> FnCompiler<'eng> {
                 match ir_type.get_content(context) {
                     TypeContent::StringSlice | TypeContent::StringArray(_) => {
                         let val = ConstantContent::get_unit(context);
-                        Ok(TerminatorValue::new(val, context))
+                        Ok(TerminatorValue::new(
+                            CompiledValue::InRegister(val),
+                            context,
+                        ))
                     }
                     _ => Err(CompileError::NonStrGenericType { span: targ.span() }),
                 }
@@ -1022,7 +1107,10 @@ impl<'eng> FnCompiler<'eng> {
                 Some(Literal::String(span)) => {
                     let val =
                         ConstantContent::get_string(context, span.as_str().as_bytes().to_vec());
-                    Ok(TerminatorValue::new(val, context))
+                    Ok(TerminatorValue::new(
+                        CompiledValue::InRegister(val),
+                        context,
+                    ))
                 }
                 _ => unreachable!(),
             },
@@ -1030,11 +1118,13 @@ impl<'eng> FnCompiler<'eng> {
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
                 let lhs_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, lhs)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, lhs)?
+                )
+                .unwrap_register();
                 let rhs_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, rhs)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, rhs)?
+                )
+                .unwrap_register();
                 let pred = match kind {
                     Intrinsic::Eq => Predicate::Equal,
                     Intrinsic::Gt => Predicate::GreaterThan,
@@ -1045,15 +1135,17 @@ impl<'eng> FnCompiler<'eng> {
                     .current_block
                     .append(context)
                     .cmp(pred, lhs_value, rhs_value);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::Gtf => {
                 // The index is just a Value
-                let index = return_on_termination_or_extract!(self.compile_expression_to_value(
-                    context,
-                    md_mgr,
-                    &arguments[0]
-                )?);
+                let index = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &arguments[0])?
+                )
+                .unwrap_register();
 
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
@@ -1109,7 +1201,10 @@ impl<'eng> FnCompiler<'eng> {
                         .append(context)
                         .bitcast(gtf_reg, target_ir_type)
                         .add_metadatum(context, span_md_idx);
-                    Ok(TerminatorValue::new(val, context))
+                    Ok(TerminatorValue::new(
+                        CompiledValue::InRegister(val),
+                        context,
+                    ))
                 } else {
                     let ptr_ty = Type::new_ptr(context, target_ir_type);
                     let val = self
@@ -1117,14 +1212,15 @@ impl<'eng> FnCompiler<'eng> {
                         .append(context)
                         .int_to_ptr(gtf_reg, ptr_ty)
                         .add_metadatum(context, span_md_idx);
-                    Ok(TerminatorValue::new(val, context))
+                    Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
                 }
             }
             Intrinsic::AddrOf => {
                 let exp = &arguments[0];
                 let value = return_on_termination_or_extract!(
-                    self.compile_expression(context, md_mgr, exp)?
-                );
+                    self.compile_expression_to_memory(context, md_mgr, exp)?
+                )
+                .unwrap_memory();
                 let int_ty = Type::new_uint(context, 64);
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let val = self
@@ -1132,17 +1228,22 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .ptr_to_int(value, int_ty)
                     .add_metadatum(context, span_md_idx);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::StateClear => {
                 let key_exp = arguments[0].clone();
                 let number_of_slots_exp = arguments[1].clone();
                 let key_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, &key_exp)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, &key_exp)?
+                )
+                .unwrap_register();
                 let number_of_slots_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, &number_of_slots_exp)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, &number_of_slots_exp)?
+                )
+                .unwrap_register();
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let val = self
@@ -1150,13 +1251,17 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .state_clear(key_var, number_of_slots_value)
                     .add_metadatum(context, span_md_idx);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::StateLoadWord => {
                 let exp = &arguments[0];
                 let value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, exp)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, exp)?
+                )
+                .unwrap_register();
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, value, span_md_idx)?;
                 let val = self
@@ -1164,7 +1269,10 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .state_load_word(key_var)
                     .add_metadatum(context, span_md_idx);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::StateStoreWord => {
                 let key_exp = &arguments[0];
@@ -1180,11 +1288,13 @@ impl<'eng> FnCompiler<'eng> {
                     });
                 }
                 let key_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, key_exp)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, key_exp)?
+                )
+                .unwrap_register();
                 let val_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, val_exp)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, val_exp)?
+                )
+                .unwrap_register();
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let val = self
@@ -1192,7 +1302,10 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .state_store_word(val_value, key_var)
                     .add_metadatum(context, span_md_idx);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
                 let key_exp = arguments[0].clone();
@@ -1212,23 +1325,25 @@ impl<'eng> FnCompiler<'eng> {
                     });
                 }
                 let key_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, &key_exp)?
-                );
-                let val_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, &val_exp)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, &key_exp)?
+                )
+                .unwrap_register();
+                let val_ptr = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &val_exp)?
+                )
+                .unwrap_register();
                 let number_of_slots_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, &number_of_slots_exp)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, &number_of_slots_exp)?
+                )
+                .unwrap_register();
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let b256_ty = Type::get_b256(context);
                 let b256_ptr_ty = Type::new_ptr(context, b256_ty);
-                // For quad word, the IR instructions take in a pointer rather than a raw u64.
                 let val_ptr = self
                     .current_block
                     .append(context)
-                    .int_to_ptr(val_value, b256_ptr_ty)
+                    .int_to_ptr(val_ptr, b256_ptr_ty)
                     .add_metadatum(context, span_md_idx);
                 match kind {
                     Intrinsic::StateLoadQuad => {
@@ -1237,7 +1352,10 @@ impl<'eng> FnCompiler<'eng> {
                             .append(context)
                             .state_load_quad_word(val_ptr, key_var, number_of_slots_value)
                             .add_metadatum(context, span_md_idx);
-                        Ok(TerminatorValue::new(val, context))
+                        Ok(TerminatorValue::new(
+                            CompiledValue::InRegister(val),
+                            context,
+                        ))
                     }
                     Intrinsic::StateStoreQuad => {
                         let val = self
@@ -1245,7 +1363,10 @@ impl<'eng> FnCompiler<'eng> {
                             .append(context)
                             .state_store_quad_word(val_ptr, key_var, number_of_slots_value)
                             .add_metadatum(context, span_md_idx);
-                        Ok(TerminatorValue::new(val, context))
+                        Ok(TerminatorValue::new(
+                            CompiledValue::InRegister(val),
+                            context,
+                        ))
                     }
                     _ => unreachable!(),
                 }
@@ -1258,11 +1379,10 @@ impl<'eng> FnCompiler<'eng> {
                     });
                 }
 
-                let log_val = return_on_termination_or_extract!(self.compile_expression_to_value(
-                    context,
-                    md_mgr,
-                    &arguments[0]
-                )?);
+                let log_val = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &arguments[0])?
+                )
+                .unwrap_register();
                 let logged_type_id = TypeMetadata::get_logged_type_id(
                     &arguments[0],
                     context.experimental.new_encoding,
@@ -1293,7 +1413,10 @@ impl<'eng> FnCompiler<'eng> {
                             .append(context)
                             .log(log_val, log_ty, log_id)
                             .add_metadatum(context, span_md_idx);
-                        Ok(TerminatorValue::new(val, context))
+                        Ok(TerminatorValue::new(
+                            CompiledValue::InRegister(val),
+                            context,
+                        ))
                     }
                 }
             }
@@ -1323,21 +1446,27 @@ impl<'eng> FnCompiler<'eng> {
                 let lhs = &arguments[0];
                 let rhs = &arguments[1];
                 let lhs_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, lhs)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, lhs)?
+                )
+                .unwrap_register();
                 let rhs_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, rhs)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, rhs)?
+                )
+                .unwrap_register();
                 let val = self
                     .current_block
                     .append(context)
                     .binary_op(op, lhs_value, rhs_value);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::Revert => {
                 let revert_code_val = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, &arguments[0])?
-                );
+                    self.compile_expression_to_register(context, md_mgr, &arguments[0])?
+                )
+                .unwrap_register();
 
                 // The `revert` instruction
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -1346,7 +1475,10 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .revert(revert_code_val)
                     .add_metadatum(context, span_md_idx);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::JmpMem => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -1355,7 +1487,10 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .jmp_mem()
                     .add_metadatum(context, span_md_idx);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::PtrAdd | Intrinsic::PtrSub => {
                 let op = match kind {
@@ -1378,11 +1513,13 @@ impl<'eng> FnCompiler<'eng> {
                 let lhs = &arguments[0];
                 let count = &arguments[1];
                 let lhs_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, lhs)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, lhs)?
+                )
+                .unwrap_register();
                 let count_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, count)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, count)?
+                )
+                .unwrap_register();
                 let rhs_value = self.current_block.append(context).binary_op(
                     BinaryOpKind::Mul,
                     len_value,
@@ -1392,15 +1529,19 @@ impl<'eng> FnCompiler<'eng> {
                     .current_block
                     .append(context)
                     .binary_op(op, lhs_value, rhs_value);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::Smo => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
                 /* First operand: recipient */
                 let recipient_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, &arguments[0])?
-                );
+                    self.compile_expression_to_register(context, md_mgr, &arguments[0])?
+                )
+                .unwrap_register();
                 let recipient_md_idx = md_mgr.span_to_md(context, &span);
                 let recipient_var =
                     store_key_in_local_mem(self, context, recipient_value, recipient_md_idx)?;
@@ -1408,8 +1549,9 @@ impl<'eng> FnCompiler<'eng> {
                 /* Second operand: message data */
                 // Step 1: compile the user data and get its type
                 let user_message = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, &arguments[1])?
-                );
+                    self.compile_expression_to_register(context, md_mgr, &arguments[1])?
+                )
+                .unwrap_register();
 
                 let user_message_type = user_message.get_type(context).ok_or_else(|| {
                     CompileError::Internal(
@@ -1485,55 +1627,60 @@ impl<'eng> FnCompiler<'eng> {
                     ConstantContent::get_uint(context, 64, user_message_size);
 
                 /* Fourth operand: the amount of coins to send */
-                let coins = return_on_termination_or_extract!(self.compile_expression_to_value(
-                    context,
-                    md_mgr,
-                    &arguments[2]
-                )?);
+                let coins = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &arguments[2])?
+                )
+                .unwrap_register();
 
                 let val = self
                     .current_block
                     .append(context)
                     .smo(recipient_var, message, user_message_size_val, coins)
                     .add_metadatum(context, span_md_idx);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::Not => {
                 assert!(arguments.len() == 1);
 
                 let op = &arguments[0];
                 let value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, op)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, op)?
+                )
+                .unwrap_register();
 
                 let val = self
                     .current_block
                     .append(context)
                     .unary_op(UnaryOpKind::Not, value);
-                Ok(TerminatorValue::new(val, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::ContractCall => {
                 assert!(type_arguments.is_empty());
 
                 // Contract method arguments
-                let params = return_on_termination_or_extract!(self.compile_expression_to_value(
-                    context,
-                    md_mgr,
-                    &arguments[0]
-                )?);
+                let params = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &arguments[0])?
+                )
+                .unwrap_register();
 
                 // Coins
-                let coins = return_on_termination_or_extract!(self.compile_expression_to_value(
-                    context,
-                    md_mgr,
-                    &arguments[1]
-                )?);
+                let coins = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &arguments[1])?
+                )
+                .unwrap_register();
 
                 // AssetId
                 let b256_ty = Type::get_b256(context);
                 let asset_id = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, &arguments[2])?
-                );
+                    self.compile_expression_to_register(context, md_mgr, &arguments[2])?
+                )
+                .unwrap_register();
                 let tmp_asset_id_name = self.lexical_map.insert_anon();
                 let tmp_var = self
                     .function
@@ -1546,11 +1693,12 @@ impl<'eng> FnCompiler<'eng> {
                 let asset_id = self.current_block.append(context).get_local(tmp_var);
 
                 // Gas
-                let gas = return_on_termination_or_extract!(self.compile_expression_to_value(
+                let gas = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
                     &arguments[3]
-                )?);
+                )?)
+                .unwrap_register();
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
@@ -1563,27 +1711,32 @@ impl<'eng> FnCompiler<'eng> {
                     .contract_call(return_type, None, params, coins, asset_id, gas)
                     .add_metadatum(context, span_md_idx);
 
-                Ok(TerminatorValue::new(returned_value, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(returned_value),
+                    context,
+                ))
             }
             Intrinsic::ContractRet => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
-                let ptr = return_on_termination_or_extract!(self.compile_expression_to_value(
+                let ptr = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
                     &arguments[0]
-                )?);
-                let len = return_on_termination_or_extract!(self.compile_expression_to_value(
+                )?)
+                .unwrap_register();
+                let len = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
                     &arguments[1]
-                )?);
+                )?)
+                .unwrap_register();
                 let r = self
                     .current_block
                     .append(context)
                     .retd(ptr, len)
                     .add_metadatum(context, span_md_idx);
-                Ok(TerminatorValue::new(r, context))
+                Ok(TerminatorValue::new(CompiledValue::InRegister(r), context))
             }
             Intrinsic::EncodeBufferEmpty => {
                 assert!(arguments.is_empty());
@@ -1633,8 +1786,9 @@ impl<'eng> FnCompiler<'eng> {
 
                 let buffer = &arguments[0];
                 let buffer = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, buffer)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, buffer)?
+                )
+                .unwrap_register();
 
                 let (ptr, cap, len) = self.compile_buffer_into_parts(context, buffer)?;
 
@@ -1643,8 +1797,9 @@ impl<'eng> FnCompiler<'eng> {
                 let item_span = item.span.clone();
                 let item_type = engines.te().get(item.return_type);
                 let item = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, item)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, item)?
+                )
+                .unwrap_register();
 
                 fn increase_len(
                     current_block: &mut Block,
@@ -1735,7 +1890,8 @@ impl<'eng> FnCompiler<'eng> {
                     offset: u64,
                 ) -> Result<Value, CompileError> {
                     // save to local and offset
-                    let item_ptr = save_to_local_return_ptr(s, context, item)?;
+                    let item_ptr = store_to_memory(s, context, CompiledValue::InRegister(item))?
+                        .unwrap_memory();
 
                     let offset_value = ConstantContent::new_uint(context, 64, offset);
                     let offset_value = Constant::unique(context, offset_value);
@@ -2020,7 +2176,9 @@ impl<'eng> FnCompiler<'eng> {
                     }
                     TypeInfo::UnsignedInteger(IntegerBits::V256) | TypeInfo::B256 => {
                         // Save to local and return ptr to local
-                        let item_ptr = save_to_local_return_ptr(self, context, item)?;
+                        let item_ptr =
+                            store_to_memory(self, context, CompiledValue::InRegister(item))?
+                                .unwrap_memory();
                         let addr = calc_addr_as_ptr(
                             &mut self.current_block,
                             context,
@@ -2035,7 +2193,9 @@ impl<'eng> FnCompiler<'eng> {
                     }
                     TypeInfo::StringArray(string_len) => {
                         // Save to local and return ptr to local
-                        let item_ptr = save_to_local_return_ptr(self, context, item)?;
+                        let item_ptr =
+                            store_to_memory(self, context, CompiledValue::InRegister(item))?
+                                .unwrap_memory();
                         let addr = calc_addr_as_ptr(
                             &mut self.current_block,
                             context,
@@ -2058,7 +2218,9 @@ impl<'eng> FnCompiler<'eng> {
                     TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
                         let uint64 = Type::get_uint64(context);
 
-                        let item_ptr = save_to_local_return_ptr(self, context, item)?;
+                        let item_ptr =
+                            store_to_memory(self, context, CompiledValue::InRegister(item))?
+                                .unwrap_memory();
                         let addr = calc_addr_as_ptr(
                             &mut self.current_block,
                             context,
@@ -2180,8 +2342,9 @@ impl<'eng> FnCompiler<'eng> {
 
                 let buffer = &arguments[0];
                 let buffer = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, buffer)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, buffer)?
+                )
+                .unwrap_register();
 
                 let uint64 = Type::get_uint64(context);
                 let (ptr, _, len) = self.compile_buffer_into_parts(context, buffer)?;
@@ -2207,7 +2370,10 @@ impl<'eng> FnCompiler<'eng> {
                     Some(Ident::new_no_span("s".into())),
                 );
 
-                Ok(TerminatorValue::new(buffer, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(buffer),
+                    context,
+                ))
             }
             Intrinsic::Slice => self.compile_intrinsic_slice(arguments, context, md_mgr),
             Intrinsic::ElemAt => self.compile_intrinsic_elem_at(arguments, context, md_mgr),
@@ -2238,12 +2404,13 @@ impl<'eng> FnCompiler<'eng> {
 
         let first_argument_expr = &arguments[0];
         let first_argument_value = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
+            self.compile_expression_to_register(context, md_mgr, first_argument_expr)?
         );
         let first_argument_type = first_argument_value
             .get_type(context)
             .expect("transmute first argument type not found");
-        let first_argument_ptr = save_to_local_return_ptr(self, context, first_argument_value)?;
+        let first_argument_ptr =
+            store_to_memory(self, context, first_argument_value)?.unwrap_memory();
 
         // check IR sizes match
         let first_arg_size = first_argument_type.size(context).in_bytes();
@@ -2255,18 +2422,15 @@ impl<'eng> FnCompiler<'eng> {
             ));
         }
 
-        let u64 = Type::get_uint64(context);
-        let first_argument_ptr = self
+        let casted_ptr = self
             .current_block
             .append(context)
-            .ptr_to_int(first_argument_ptr, u64);
-        let first_argument_ptr = self
-            .current_block
-            .append(context)
-            .int_to_ptr(first_argument_ptr, return_type_ir_type_ptr);
-
-        let final_value = self.current_block.append(context).load(first_argument_ptr);
-        Ok(TerminatorValue::new(final_value, context))
+            .cast_ptr(first_argument_ptr, return_type_ir_type_ptr);
+        let final_value = self.current_block.append(context).load(casted_ptr);
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(final_value),
+            context,
+        ))
     }
 
     fn ptr_to_first_element(
@@ -2277,41 +2441,50 @@ impl<'eng> FnCompiler<'eng> {
         _md_mgr: &mut MetadataManager,
     ) -> Result<(Value, TypeId), CompileError> {
         let te = self.engines.te();
+        let de = self.engines.de();
 
         let err = CompileError::TypeArgumentsNotAllowed {
             span: first_argument_expr.span.clone(),
         };
 
-        let first_argument_value = save_to_local_return_ptr(self, context, first_argument_value)?;
-
-        let ptr_arg = AsmArg {
-            name: Ident::new_no_span("ptr".into()),
-            initializer: Some(first_argument_value),
-        };
-
-        let ptr_out_arg = AsmArg {
-            name: Ident::new_no_span("ptr_out".into()),
-            initializer: Some(first_argument_value),
-        };
-
-        let return_type = Type::get_uint64(context);
-        let ptr_to_first_element = self.current_block.append(context).asm_block(
-            vec![ptr_arg, ptr_out_arg],
-            vec![AsmInstruction::lw_no_span("ptr_out", "ptr", "i0")],
-            return_type,
-            Some(Ident::new_no_span("ptr_out".into())),
-        );
-
-        match &*te.get(first_argument_expr.return_type) {
+        let (is_slice, elem_ty) = match &*te.get(first_argument_expr.return_type) {
             TypeInfo::Ref {
                 referenced_type, ..
             } => match &*te.get(referenced_type.type_id()) {
-                TypeInfo::Array(elem_ty, _) | TypeInfo::Slice(elem_ty) => {
-                    Ok((ptr_to_first_element, elem_ty.type_id()))
-                }
+                TypeInfo::Array(elem_ty, _) => Ok((false, elem_ty.type_id())),
+                TypeInfo::Slice(elem_ty) => Ok((true, elem_ty.type_id())),
                 _ => Err(err),
             },
             _ => Err(err),
+        }?;
+
+        if is_slice {
+            // Load from the first element of the slice
+            let ptr_arg = AsmArg {
+                name: Ident::new_no_span("ptr".into()),
+                initializer: Some(first_argument_value),
+            };
+            let ptr_out_arg = AsmArg {
+                name: Ident::new_no_span("ptr_out".into()),
+                initializer: None,
+            };
+            let elem_ir_ty = convert_resolved_type_id(
+                te,
+                de,
+                context,
+                elem_ty,
+                &first_argument_expr.span.clone(),
+            )?;
+            let return_type = Type::new_ptr(context, elem_ir_ty);
+            let ptr_to_first_element = self.current_block.append(context).asm_block(
+                vec![ptr_arg, ptr_out_arg],
+                vec![AsmInstruction::lw_no_span("ptr_out", "ptr", "i0")],
+                return_type,
+                Some(Ident::new_no_span("ptr_out".into())),
+            );
+            Ok((ptr_to_first_element, elem_ty))
+        } else {
+            Ok((first_argument_value, elem_ty))
         }
     }
 
@@ -2360,7 +2533,7 @@ impl<'eng> FnCompiler<'eng> {
             initializer: Some(ptr),
         };
 
-        let return_type = Type::get_uint64(context);
+        let return_type = Type::new_ptr(context, elem_ir_type);
         let ptr = self.current_block.append(context).asm_block(
             vec![
                 idx_arg,
@@ -2390,15 +2563,17 @@ impl<'eng> FnCompiler<'eng> {
 
         let first_argument_expr = &arguments[0];
         let first_argument_value = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
-        );
+            self.compile_expression_to_register(context, md_mgr, first_argument_expr)?
+        )
+        .unwrap_register();
         let (ptr_to_first_elem, elem_type_id) =
             self.ptr_to_first_element(context, first_argument_expr, first_argument_value, md_mgr)?;
 
         let idx = &arguments[1];
         let idx = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, idx)?
-        );
+            self.compile_expression_to_register(context, md_mgr, idx)?
+        )
+        .unwrap_register();
         let (ptr_to_elem, _) = self.advance_ptr_n_elements(
             context,
             first_argument_expr,
@@ -2407,7 +2582,10 @@ impl<'eng> FnCompiler<'eng> {
             idx,
         )?;
 
-        Ok(TerminatorValue::new(ptr_to_elem, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(ptr_to_elem),
+            context,
+        ))
     }
 
     fn compile_intrinsic_slice(
@@ -2420,15 +2598,17 @@ impl<'eng> FnCompiler<'eng> {
 
         let first_argument_expr = &arguments[0];
         let first_argument_value = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
-        );
+            self.compile_expression_to_register(context, md_mgr, first_argument_expr)?
+        )
+        .unwrap_register();
         let (ptr_to_first_elem, elem_type_id) =
             self.ptr_to_first_element(context, first_argument_expr, first_argument_value, md_mgr)?;
 
         let start = &arguments[1];
         let start = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, start)?
-        );
+            self.compile_expression_to_register(context, md_mgr, start)?
+        )
+        .unwrap_register();
         let (ptr_to_elem, elem_ir_type) = self.advance_ptr_n_elements(
             context,
             first_argument_expr,
@@ -2439,8 +2619,9 @@ impl<'eng> FnCompiler<'eng> {
 
         let end = &arguments[2];
         let end = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, end)?
-        );
+            self.compile_expression_to_register(context, md_mgr, end)?
+        )
+        .unwrap_register();
 
         let slice_len = self
             .current_block
@@ -2448,12 +2629,12 @@ impl<'eng> FnCompiler<'eng> {
             .binary_op(BinaryOpKind::Sub, end, start);
 
         // compile the slice together
-        let uint64 = Type::get_uint64(context);
+        let ptr_to_elem_ty = Type::new_ptr(context, elem_ir_type);
         let return_type = Type::get_typed_slice(context, elem_ir_type);
         let slice_as_tuple = self.compile_tuple_from_values(
             context,
             vec![ptr_to_elem, slice_len],
-            vec![uint64, uint64],
+            vec![ptr_to_elem_ty, Type::get_uint64(context)],
             None,
         )?;
         let slice = self.current_block.append(context).asm_block(
@@ -2466,7 +2647,10 @@ impl<'eng> FnCompiler<'eng> {
             Some(Ident::new_no_span("s".into())),
         );
 
-        Ok(TerminatorValue::new(slice, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(slice),
+            context,
+        ))
     }
 
     fn compile_return(
@@ -2477,8 +2661,9 @@ impl<'eng> FnCompiler<'eng> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let ret_value = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, ast_expr)?
-        );
+            self.compile_expression_to_register(context, md_mgr, ast_expr)?
+        )
+        .unwrap_register();
 
         ret_value
             .get_type(context)
@@ -2488,7 +2673,7 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .ret(ret_value, ret_ty)
                     .add_metadatum(context, span_md_idx);
-                TerminatorValue::new(val, context)
+                TerminatorValue::new(CompiledValue::InRegister(val), context)
             })
             .ok_or_else(|| {
                 CompileError::Internal(
@@ -2513,8 +2698,9 @@ impl<'eng> FnCompiler<'eng> {
             //       bytecode, but just create a "msg" entry in the ABI.
 
             let panic_val = return_on_termination_or_extract!(
-                self.compile_expression_to_value(context, md_mgr, ast_expr)?
-            );
+                self.compile_expression_to_register(context, md_mgr, ast_expr)?
+            )
+            .unwrap_register();
             let logged_type_id =
                 TypeMetadata::get_logged_type_id(ast_expr, context.experimental.new_encoding)?;
             let log_id = match self.logged_types_map.get(&logged_type_id) {
@@ -2560,7 +2746,10 @@ impl<'eng> FnCompiler<'eng> {
             .revert(revert_code_val)
             .add_metadatum(context, span_md_idx);
 
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(val),
+            context,
+        ))
     }
 
     fn compile_ref(
@@ -2568,20 +2757,18 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-        span_md_idx: Option<MetadataIndex>,
+        _span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let value = return_on_termination_or_extract!(
-            self.compile_expression_to_ptr(context, md_mgr, ast_expr)?
-        );
+            self.compile_expression_to_memory(context, md_mgr, ast_expr)?
+        )
+        .unwrap_memory();
 
-        // TODO: (REFERENCES) Do we need to convert to `u64` here? Can we use `Ptr` directly? Investigate.
-        let int_ty = Type::get_uint64(context);
-        let val = self
-            .current_block
-            .append(context)
-            .ptr_to_int(value, int_ty)
-            .add_metadatum(context, span_md_idx);
-        Ok(TerminatorValue::new(val, context))
+        // Taking a reference is just converting the pointer into a "register" value.
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(value),
+            context,
+        ))
     }
 
     fn compile_deref(
@@ -2589,26 +2776,27 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-        span_md_idx: Option<MetadataIndex>,
+        _span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let (ptr, referenced_ast_type) =
-            self.compile_deref_up_to_ptr(context, md_mgr, ast_expr, span_md_idx)?;
+        let (ptr, referenced_ast_type) = self.compile_deref_up_to_ptr(context, md_mgr, ast_expr)?;
 
-        let ptr = return_on_termination_or_extract!(ptr);
+        let ptr = return_on_termination_or_extract!(ptr).unwrap_memory();
 
         let referenced_type = self.engines.te().get_unaliased(referenced_ast_type);
 
-        let result = if referenced_type.is_copy_type() || referenced_type.is_reference() {
+        if referenced_type.is_copy_type() || referenced_type.is_reference() {
             // For non aggregates, we need to return the value.
             // This means, loading the value the `ptr` is pointing to.
-            self.current_block.append(context).load(ptr)
+            let result = self.current_block.append(context).load(ptr);
+            Ok(TerminatorValue::new(
+                CompiledValue::InRegister(result),
+                context,
+            ))
         } else {
             // For aggregates, we access them via pointer, so we just
             // need to return the `ptr`.
-            ptr
-        };
-
-        Ok(TerminatorValue::new(result, context))
+            Ok(TerminatorValue::new(CompiledValue::InMemory(ptr), context))
+        }
     }
 
     /// Compiles a [ty::TyExpression] of the variant [TyExpressionVariant::Deref]
@@ -2628,16 +2816,15 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-        span_md_idx: Option<MetadataIndex>,
     ) -> Result<(TerminatorValue, TypeId), CompileError> {
-        let ref_value = self.compile_expression(context, md_mgr, ast_expr)?;
+        let ref_value = self.compile_expression_to_memory(context, md_mgr, ast_expr)?;
         let ref_value = if ref_value.is_terminator {
             return Ok((ref_value, 0usize.into()));
         } else {
-            ref_value.value
+            ref_value.value.unwrap_memory()
         };
 
-        let ptr_as_int = if ref_value
+        let ptr = if ref_value
             .get_type(context)
             .is_some_and(|ref_value_type| ref_value_type.is_ptr(context))
         {
@@ -2662,22 +2849,10 @@ impl<'eng> FnCompiler<'eng> {
             )),
         }?;
 
-        let referenced_ir_type = convert_resolved_type_id(
-            self.engines.te(),
-            self.engines.de(),
-            context,
+        Ok((
+            TerminatorValue::new(CompiledValue::InMemory(ptr), context),
             referenced_ast_type,
-            &ast_expr.span.clone(),
-        )?;
-
-        let ptr_type = Type::new_ptr(context, referenced_ir_type);
-        let ptr = self
-            .current_block
-            .append(context)
-            .int_to_ptr(ptr_as_int, ptr_type)
-            .add_metadatum(context, span_md_idx);
-
-        Ok((TerminatorValue::new(ptr, context), referenced_ast_type))
+        ))
     }
 
     fn compile_lazy_op(
@@ -2690,8 +2865,9 @@ impl<'eng> FnCompiler<'eng> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let lhs_val = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, ast_lhs)?
-        );
+            self.compile_expression_to_register(context, md_mgr, ast_lhs)?
+        )
+        .unwrap_register();
         // Short-circuit: if LHS is true for AND we still must eval the RHS block; for OR we can
         // skip the RHS block, and vice-versa.
         let cond_block_end = self.current_block;
@@ -2720,18 +2896,21 @@ impl<'eng> FnCompiler<'eng> {
         .add_metadatum(context, span_md_idx);
 
         self.current_block = rhs_block;
-        let rhs_val = self.compile_expression_to_value(context, md_mgr, ast_rhs)?;
+        let rhs_val = self.compile_expression_to_register(context, md_mgr, ast_rhs)?;
 
         if !rhs_val.is_terminator {
             self.current_block
                 .append(context)
-                .branch(final_block, vec![rhs_val.value])
+                .branch(final_block, vec![rhs_val.value.unwrap_register()])
                 .add_metadatum(context, span_md_idx);
         }
 
         self.current_block = final_block;
         let val = final_block.get_arg(context, merge_val_arg_idx).unwrap();
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(val),
+            context,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -2753,8 +2932,9 @@ impl<'eng> FnCompiler<'eng> {
         let mut compiled_args = Vec::<Value>::new();
         for (_, arg) in ast_args.iter() {
             let val = return_on_termination_or_extract!(
-                self.compile_expression_to_value(context, md_mgr, arg)?
-            );
+                self.compile_expression_to_register(context, md_mgr, arg)?
+            )
+            .unwrap_register();
             compiled_args.push(val)
         }
 
@@ -2879,11 +3059,12 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Insert the contract address
-        let addr = return_on_termination_or_extract!(self.compile_expression_to_value(
+        let addr = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
             &call_params.contract_address
-        )?);
+        )?)
+        .unwrap_register();
         let gep_val =
             self.current_block
                 .append(context)
@@ -2928,15 +3109,18 @@ impl<'eng> FnCompiler<'eng> {
         {
             Some(coins_expr) => {
                 return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, coins_expr)?
+                    self.compile_expression_to_register(context, md_mgr, coins_expr)?
                 )
             }
-            None => convert_literal_to_value(
-                context,
-                &Literal::U64(constants::CONTRACT_CALL_COINS_PARAMETER_DEFAULT_VALUE),
-            )
-            .add_metadatum(context, span_md_idx),
-        };
+            None => CompiledValue::InRegister(
+                convert_literal_to_value(
+                    context,
+                    &Literal::U64(constants::CONTRACT_CALL_COINS_PARAMETER_DEFAULT_VALUE),
+                )
+                .add_metadatum(context, span_md_idx),
+            ),
+        }
+        .unwrap_register();
 
         // As this is Fuel VM specific we can compile the asset ID directly to a `ptr b256`
         // pointer.
@@ -2944,7 +3128,7 @@ impl<'eng> FnCompiler<'eng> {
             .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
         {
             Some(asset_id_expr) => {
-                return_on_termination_or_extract!(self.compile_expression_to_ptr(
+                return_on_termination_or_extract!(self.compile_expression_to_memory(
                     context,
                     md_mgr,
                     asset_id_expr
@@ -2968,18 +3152,18 @@ impl<'eng> FnCompiler<'eng> {
                 self.current_block
                     .append(context)
                     .store(tmp_val, asset_id_val);
-                tmp_val
+                CompiledValue::InMemory(tmp_val)
             }
-        };
+        }
+        .unwrap_memory();
 
         let gas = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
         {
-            Some(gas_expr) => {
-                return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, gas_expr)?
-                )
-            }
+            Some(gas_expr) => return_on_termination_or_extract!(
+                self.compile_expression_to_register(context, md_mgr, gas_expr)?
+            )
+            .unwrap_register(),
             None => self
                 .current_block
                 .append(context)
@@ -3025,7 +3209,10 @@ impl<'eng> FnCompiler<'eng> {
         } else {
             self.current_block.append(context).load(call_val)
         };
-        Ok(TerminatorValue::new(res, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(res),
+            context,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -3052,12 +3239,12 @@ impl<'eng> FnCompiler<'eng> {
         let mut args = Vec::with_capacity(ast_args.len());
         for ((_, expr), param) in ast_args.iter().zip(callee.parameters.iter()) {
             self.current_fn_param = Some(param.clone());
-            let arg =
-                return_on_termination_or_extract!(if param.is_reference && param.is_mutable {
-                    self.compile_expression_to_ptr(context, md_mgr, expr)
-                } else {
-                    self.compile_expression_to_value(context, md_mgr, expr)
-                }?);
+
+            let arg = return_on_termination_or_extract!(
+                self.compile_expression_to_register(context, md_mgr, expr)?
+            )
+            .unwrap_register();
+
             self.current_fn_param = None;
             args.push(arg);
         }
@@ -3071,7 +3258,10 @@ impl<'eng> FnCompiler<'eng> {
             .call(new_callee, &args)
             .add_metadatum(context, md_idx);
 
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(val),
+            context,
+        ))
     }
 
     fn compile_if(
@@ -3086,11 +3276,12 @@ impl<'eng> FnCompiler<'eng> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
         let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
-        let cond_value = return_on_termination_or_extract!(self.compile_expression_to_value(
+        let cond_value = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
             ast_condition
-        )?);
+        )?)
+        .unwrap_register();
         let cond_block = self.current_block;
 
         // To keep the blocks in a nice order we create them only as we populate them.  It's
@@ -3108,14 +3299,17 @@ impl<'eng> FnCompiler<'eng> {
 
         let true_block_begin = self.function.create_block(context, None);
         self.current_block = true_block_begin;
-        let true_value = self.compile_expression_to_value(context, md_mgr, ast_then)?;
+        let true_value = self.compile_expression_to_register(context, md_mgr, ast_then)?;
         let true_block_end = self.current_block;
 
         let false_block_begin = self.function.create_block(context, None);
         self.current_block = false_block_begin;
         let false_value = match ast_else {
-            None => TerminatorValue::new(ConstantContent::get_unit(context), context),
-            Some(expr) => self.compile_expression_to_value(context, md_mgr, expr)?,
+            None => TerminatorValue::new(
+                CompiledValue::InRegister(ConstantContent::get_unit(context)),
+                context,
+            ),
+            Some(expr) => self.compile_expression_to_register(context, md_mgr, expr)?,
         };
         let false_block_end = self.current_block;
 
@@ -3152,17 +3346,20 @@ impl<'eng> FnCompiler<'eng> {
             if !true_value.is_terminator {
                 true_block_end
                     .append(context)
-                    .branch(merge_block, vec![true_value.value]);
+                    .branch(merge_block, vec![true_value.value.unwrap_register()]);
             }
             if !false_value.is_terminator {
                 false_block_end
                     .append(context)
-                    .branch(merge_block, vec![false_value.value]);
+                    .branch(merge_block, vec![false_value.value.unwrap_register()]);
             }
             self.current_block = merge_block;
             merge_block.get_arg(context, merge_val_arg_idx).unwrap()
         };
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(val),
+            context,
+        ))
     }
 
     fn compile_unsafe_downcast(
@@ -3191,8 +3388,9 @@ impl<'eng> FnCompiler<'eng> {
 
         // Compile the struct expression.
         let compiled_value = return_on_termination_or_extract!(
-            self.compile_expression_to_ptr(context, md_mgr, exp)?
-        );
+            self.compile_expression_to_memory(context, md_mgr, exp)?
+        )
+        .unwrap_memory();
 
         // Get the variant type.
         let variant_type = enum_type
@@ -3210,7 +3408,7 @@ impl<'eng> FnCompiler<'eng> {
             variant_type,
             &[1, variant.tag as u64],
         );
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
 
     fn compile_enum_tag(
@@ -3221,8 +3419,9 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<TerminatorValue, CompileError> {
         let tag_span_md_idx = md_mgr.span_to_md(context, &exp.span);
         let struct_val = return_on_termination_or_extract!(
-            self.compile_expression_to_ptr(context, md_mgr, &exp)?
-        );
+            self.compile_expression_to_memory(context, md_mgr, &exp)?
+        )
+        .unwrap_memory();
 
         let u64_ty = Type::get_uint64(context);
         let val = self
@@ -3230,7 +3429,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .get_elem_ptr_with_idx(struct_val, u64_ty, 0)
             .add_metadatum(context, tag_span_md_idx);
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
 
     fn compile_while_loop(
@@ -3262,8 +3461,9 @@ impl<'eng> FnCompiler<'eng> {
         // Compile the condition
         self.current_block = cond_block;
         let cond_value = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, condition)?
-        );
+            self.compile_expression_to_register(context, md_mgr, condition)?
+        )
+        .unwrap_register();
         let cond_end_block = self.current_block;
 
         // Create the break block.
@@ -3318,7 +3518,10 @@ impl<'eng> FnCompiler<'eng> {
 
         self.current_block = final_block;
         let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(val),
+            context,
+        ))
     }
 
     pub(crate) fn get_function_var(&self, context: &mut Context, name: &str) -> Option<LocalVar> {
@@ -3374,7 +3577,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .get_config(self.module, name.to_string())
             .add_metadatum(context, span_md_idx);
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
 
     fn compile_var_expr(
@@ -3396,9 +3599,12 @@ impl<'eng> FnCompiler<'eng> {
                 .append(context)
                 .get_local(var)
                 .add_metadatum(context, span_md_idx);
-            Ok(TerminatorValue::new(val, context))
+            Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
         } else if let Some(val) = self.function.get_arg(context, name.as_str()) {
-            Ok(TerminatorValue::new(val, context))
+            Ok(TerminatorValue::new(
+                CompiledValue::InRegister(val),
+                context,
+            ))
         } else if let Some(global_val) = self
             .module
             .get_global_variable(context, &call_path.as_vec_string())
@@ -3408,7 +3614,7 @@ impl<'eng> FnCompiler<'eng> {
                 .append(context)
                 .get_global(global_val)
                 .add_metadatum(context, span_md_idx);
-            Ok(TerminatorValue::new(val, context))
+            Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
         } else if self
             .module
             .get_config(context, &call_path.suffix.to_string())
@@ -3420,7 +3626,10 @@ impl<'eng> FnCompiler<'eng> {
                 self.current_block,
                 InstOp::GetConfig(self.module, name),
             );
-            Ok(TerminatorValue::new(config_val, context))
+            Ok(TerminatorValue::new(
+                CompiledValue::InMemory(config_val),
+                context,
+            ))
         } else {
             Err(CompileError::InternalOwned(
                 format!("Unable to resolve variable '{}'.", name.as_str()),
@@ -3457,7 +3666,7 @@ impl<'eng> FnCompiler<'eng> {
         // However, the declared name must be added to the local environment before the error is
         // thrown - otherwise we will get an internal compiler error later on when the name is
         // accessed and isn't present in the environment.
-        let init_val = self.compile_expression_to_value(context, md_mgr, body);
+        let init_val = self.compile_expression_to_register(context, md_mgr, body);
 
         let return_type = convert_resolved_type_id(
             self.engines.te(),
@@ -3492,7 +3701,7 @@ impl<'eng> FnCompiler<'eng> {
                 .add_metadatum(context, span_md_idx);
             self.current_block
                 .append(context)
-                .store(local_ptr, val.value)
+                .store(local_ptr, val.value.unwrap_register())
                 .add_metadatum(context, span_md_idx);
         }
         Ok(None)
@@ -3527,11 +3736,14 @@ impl<'eng> FnCompiler<'eng> {
                 Some(self),
                 call_path,
                 value,
-            );
+            )?;
 
             if is_expression {
                 // No declaration. Throw any error, and return on success.
-                Ok(TerminatorValue::new(const_expr_val?, context))
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(const_expr_val),
+                    context,
+                ))
             } else {
                 // Declaration. The name needs to be added to the local environment
                 let local_name = self
@@ -3559,10 +3771,13 @@ impl<'eng> FnCompiler<'eng> {
                     })?;
 
                 // The name has now been added, so we can check if the initializer threw an error
-                let val = const_expr_val?;
+                let val = const_expr_val;
 
                 if val.is_terminator(context) {
-                    return Ok(TerminatorValue::new(val, context));
+                    return Ok(TerminatorValue::new(
+                        CompiledValue::InRegister(val),
+                        context,
+                    ));
                 };
 
                 // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
@@ -3579,9 +3794,9 @@ impl<'eng> FnCompiler<'eng> {
                         .append(context)
                         .store(local_val, val)
                         .add_metadatum(context, span_md_idx);
-                    TerminatorValue::new(val, context)
+                    TerminatorValue::new(CompiledValue::InRegister(val), context)
                 } else {
-                    TerminatorValue::new(val, context)
+                    TerminatorValue::new(CompiledValue::InRegister(val), context)
                 })
             }
         } else {
@@ -3596,11 +3811,12 @@ impl<'eng> FnCompiler<'eng> {
         ast_reassignment: &ty::TyReassignment,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let rhs = return_on_termination_or_extract!(self.compile_expression_to_value(
+        let rhs = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
             &ast_reassignment.rhs
-        )?);
+        )?)
+        .unwrap_register();
 
         let lhs_ptr = match &ast_reassignment.lhs {
             ty::TyReassignmentTarget::ElementAccess {
@@ -3636,8 +3852,17 @@ impl<'eng> FnCompiler<'eng> {
                     })?;
 
                 if indices.is_empty() {
-                    // A non-aggregate; use a direct `store`.
-                    lhs_val
+                    if self.ref_mut_args.contains(name) {
+                        // If the LHS is a mutable reference, then we need to dereference it to get the
+                        // pointer to the value.
+                        self.current_block
+                            .append(context)
+                            .load(lhs_val)
+                            .add_metadatum(context, span_md_idx)
+                    } else {
+                        // A non-aggregate; use a direct `store`.
+                        lhs_val
+                    }
                 } else {
                     let (terminator, gep_indices) =
                         self.compile_indices(context, md_mgr, *base_type, indices)?;
@@ -3673,12 +3898,11 @@ impl<'eng> FnCompiler<'eng> {
                     ));
                 };
 
-                let (ptr, _) =
-                    self.compile_deref_up_to_ptr(context, md_mgr, reference_exp, span_md_idx)?;
+                let (ptr, _) = self.compile_deref_up_to_ptr(context, md_mgr, reference_exp)?;
 
                 if indices.is_empty() {
                     // A non-aggregate;
-                    return_on_termination_or_extract!(ptr)
+                    return_on_termination_or_extract!(ptr).unwrap_memory()
                 } else {
                     let (terminator, gep_indices) = self.compile_indices(
                         context,
@@ -3703,7 +3927,7 @@ impl<'eng> FnCompiler<'eng> {
                     // Create the GEP.
                     self.current_block
                         .append(context)
-                        .get_elem_ptr(ptr.value, field_type, gep_indices)
+                        .get_elem_ptr(ptr.value.unwrap_memory(), field_type, gep_indices)
                         .add_metadatum(context, span_md_idx)
                 }
             }
@@ -3715,7 +3939,10 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(val),
+            context,
+        ))
     }
 
     fn compile_indices(
@@ -3771,11 +3998,11 @@ impl<'eng> FnCompiler<'eng> {
                 }
                 (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
                     cur_type_id = elem_ty.type_id();
-                    let val = self.compile_expression_to_value(context, md_mgr, index)?;
+                    let val = self.compile_expression_to_register(context, md_mgr, index)?;
                     if val.is_terminator {
                         return Ok((Some(val), vec![]));
                     }
-                    gep_indices.push(val.value);
+                    gep_indices.push(val.value.unwrap_register());
                 }
                 _ => {
                     return Err(CompileError::Internal(
@@ -3830,8 +4057,9 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         let value_value = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, value_expr)?
-        );
+            self.compile_expression_to_register(context, md_mgr, value_expr)?
+        )
+        .unwrap_register();
 
         if length_as_u64 > 5 {
             self.compile_array_init_loop(
@@ -3856,7 +4084,10 @@ impl<'eng> FnCompiler<'eng> {
             }
         }
 
-        Ok(TerminatorValue::new(array_value, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InMemory(array_value),
+            context,
+        ))
     }
 
     fn compile_array_explicit_expr(
@@ -3906,7 +4137,8 @@ impl<'eng> FnCompiler<'eng> {
                 .iter()
                 .map(|e| {
                     Ok::<_, CompileError>(
-                        self.compile_expression_to_value(context, md_mgr, e)?.value,
+                        self.compile_expression_to_register(context, md_mgr, e)?
+                            .value,
                     )
                 })
                 .collect::<Result<Vec<_>, _>>()?;
@@ -3925,7 +4157,7 @@ impl<'eng> FnCompiler<'eng> {
                     context,
                     array_value,
                     elem_type,
-                    *const_initializer,
+                    const_initializer.unwrap_register(),
                     contents.len() as u64,
                     span_md_idx,
                 );
@@ -3939,18 +4171,22 @@ impl<'eng> FnCompiler<'eng> {
                     );
                     self.current_block
                         .append(context)
-                        .store(gep_val, *elem_value)
+                        .store(gep_val, elem_value.unwrap_register())
                         .add_metadatum(context, span_md_idx);
                 }
             }
-            return Ok(TerminatorValue::new(array_value, context));
+            return Ok(TerminatorValue::new(
+                CompiledValue::InMemory(array_value),
+                context,
+            ));
         }
 
         // Compile each element and insert it immediately.
         for (idx, elem_expr) in contents.iter().enumerate() {
             let elem_value = return_on_termination_or_extract!(
-                self.compile_expression_to_value(context, md_mgr, elem_expr)?
-            );
+                self.compile_expression_to_register(context, md_mgr, elem_expr)?
+            )
+            .unwrap_register();
             let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                 array_value,
                 elem_type,
@@ -3961,7 +4197,10 @@ impl<'eng> FnCompiler<'eng> {
                 .store(gep_val, elem_value)
                 .add_metadatum(context, span_md_idx);
         }
-        Ok(TerminatorValue::new(array_value, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InMemory(array_value),
+            context,
+        ))
     }
 
     // initialize an array with all elements equals to "init_value",
@@ -4041,8 +4280,9 @@ impl<'eng> FnCompiler<'eng> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let array_val = return_on_termination_or_extract!(
-            self.compile_expression_to_ptr(context, md_mgr, array_expr)?
-        );
+            self.compile_expression_to_memory(context, md_mgr, array_expr)?
+        )
+        .unwrap_memory();
 
         // Get the array type and confirm it's an array.
         let array_type = array_val
@@ -4084,8 +4324,9 @@ impl<'eng> FnCompiler<'eng> {
         }
 
         let index_val = return_on_termination_or_extract!(
-            self.compile_expression_to_value(context, md_mgr, index_expr)?
-        );
+            self.compile_expression_to_register(context, md_mgr, index_expr)?
+        )
+        .unwrap_register();
 
         let elem_type = array_type.get_array_elem_type(context).ok_or_else(|| {
             CompileError::Internal(
@@ -4099,7 +4340,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .get_elem_ptr(array_val, elem_type, vec![index_val])
             .add_metadatum(context, span_md_idx);
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
 
     fn compile_struct_expr(
@@ -4120,11 +4361,9 @@ impl<'eng> FnCompiler<'eng> {
         let mut insert_values = Vec::with_capacity(fields.len());
         let mut field_types = Vec::with_capacity(fields.len());
         for struct_field in fields.iter() {
-            let insert_val = return_on_termination_or_extract!(self.compile_expression_to_value(
-                context,
-                md_mgr,
-                &struct_field.value
-            )?);
+            let insert_val = return_on_termination_or_extract!(
+                self.compile_expression_to_register(context, md_mgr, &struct_field.value)?
+            );
             insert_values.push(insert_val);
 
             let field_type = convert_resolved_typeid_no_span(
@@ -4163,12 +4402,15 @@ impl<'eng> FnCompiler<'eng> {
 
                 self.current_block
                     .append(context)
-                    .store(gep_val, insert_val)
+                    .store(gep_val, insert_val.unwrap_register())
                     .add_metadatum(context, span_md_idx);
             });
 
         // Return the pointer.
-        Ok(TerminatorValue::new(struct_val, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InMemory(struct_val),
+            context,
+        ))
     }
 
     fn compile_struct_field_expr(
@@ -4180,11 +4422,12 @@ impl<'eng> FnCompiler<'eng> {
         ast_field: &ty::TyStructField,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let struct_val = return_on_termination_or_extract!(self.compile_expression_to_ptr(
+        let struct_val = return_on_termination_or_extract!(self.compile_expression_to_memory(
             context,
             md_mgr,
             ast_struct_expr
-        )?);
+        )?)
+        .unwrap_memory();
 
         // Get the struct type info, with field names.
         let decl = self.engines.te().get_unaliased(struct_type_id);
@@ -4223,7 +4466,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .get_elem_ptr_with_idx(struct_val, field_type, field_idx)
             .add_metadatum(context, span_md_idx);
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
 
     fn compile_enum_expr(
@@ -4281,8 +4524,9 @@ impl<'eng> FnCompiler<'eng> {
             // Only store if the value does not diverge.
             let contents_expr = contents.unwrap();
             let contents_value = return_on_termination_or_extract!(
-                self.compile_expression_to_value(context, md_mgr, contents_expr)?
-            );
+                self.compile_expression_to_register(context, md_mgr, contents_expr)?
+            )
+            .unwrap_register();
             let contents_type = contents_value.get_type(context).ok_or_else(|| {
                 CompileError::Internal(
                     "Unable to get type for enum contents.",
@@ -4315,7 +4559,10 @@ impl<'eng> FnCompiler<'eng> {
         }
 
         // Return the pointer.
-        Ok(TerminatorValue::new(enum_ptr, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InMemory(enum_ptr),
+            context,
+        ))
     }
 
     fn compile_tuple_from_values(
@@ -4371,15 +4618,19 @@ impl<'eng> FnCompiler<'eng> {
             // This is a Unit.  We're still debating whether Unit should just be an empty tuple in
             // the IR or not... it is a special case for now.
             let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
-            Ok(TerminatorValue::new(val, context))
+            Ok(TerminatorValue::new(
+                CompiledValue::InRegister(val),
+                context,
+            ))
         } else {
             let mut init_values = Vec::with_capacity(fields.len());
             let mut init_types = Vec::with_capacity(fields.len());
 
             for field_expr in fields {
                 let init_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, field_expr)?
-                );
+                    self.compile_expression_to_register(context, md_mgr, field_expr)?
+                )
+                .unwrap_register();
                 let init_type = convert_resolved_typeid_no_span(
                     self.engines.te(),
                     self.engines.de(),
@@ -4392,7 +4643,10 @@ impl<'eng> FnCompiler<'eng> {
 
             let value =
                 self.compile_tuple_from_values(context, init_values, init_types, span_md_idx)?;
-            Ok(TerminatorValue::new(value, context))
+            Ok(TerminatorValue::new(
+                CompiledValue::InMemory(value),
+                context,
+            ))
         }
     }
 
@@ -4406,8 +4660,9 @@ impl<'eng> FnCompiler<'eng> {
         span: Span,
     ) -> Result<TerminatorValue, CompileError> {
         let tuple_value = return_on_termination_or_extract!(
-            self.compile_expression_to_ptr(context, md_mgr, tuple)?
-        );
+            self.compile_expression_to_memory(context, md_mgr, tuple)?
+        )
+        .unwrap_memory();
         let tuple_type = convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
@@ -4429,7 +4684,7 @@ impl<'eng> FnCompiler<'eng> {
                 "Invalid (non-aggregate?) tuple type for TupleElemAccess.",
                 span,
             ))?;
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
 
     fn compile_storage_access(
@@ -4495,36 +4750,13 @@ impl<'eng> FnCompiler<'eng> {
                 } => {
                     // Take the optional initialiser, map it to an Option<Result<TerminatorValue>>,
                     // transpose that to Result<Option<TerminatorValue>> and map that to an AsmArg.
-                    //
-                    // Here we need to compile based on the Sway 'copy-type' vs 'ref-type' since
-                    // ASM args aren't explicitly typed, and if we send in a temporary it might
-                    // be mutated and then discarded.  It *must* be a ptr to *the* ref-type value,
-                    // *or* the value of the copy-type value.
                     let init_expr = initializer.as_ref().unwrap();
                     // I'm not sure if a register declaration can diverge, but check just to be safe
                     let initializer_val = return_on_termination_or_extract!(
-                        self.compile_expression(context, md_mgr, init_expr)?
-                    );
-                    let init_type = self.engines.te().get_unaliased(init_expr.return_type);
-                    if initializer_val
-                        .get_type(context)
-                        .is_some_and(|ty| ty.is_ptr(context))
-                        && (init_type.is_copy_type() || init_type.is_reference())
-                    {
-                        // It's a pointer to a copy type, or a reference behind a pointer. We need to dereference it.
-                        // We can get a reference behind a pointer if a reference variable is passed to the ASM block.
-                        // By "reference" we mean th `u64` value that represents the memory address of the referenced
-                        // value.
-                        (
-                            Some(self.current_block.append(context).load(initializer_val)),
-                            name,
-                        )
-                    } else {
-                        // If we have a direct value (not behind a pointer), we just passe it as the initial value.
-                        // Note that if the `init_val` is a reference (`u64` representing the memory address) it
-                        // behaves the same as any other value, we just passe it as the initial value to the register.
-                        (Some(initializer_val), name)
-                    }
+                        self.compile_expression_to_register(context, md_mgr, init_expr)?
+                    )
+                    .unwrap_register();
+                    (Some(initializer_val), name)
                 }
             };
             compiled_registers.push(AsmArg {
@@ -4569,7 +4801,10 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .asm_block(compiled_registers, body, return_type, returns)
             .add_metadatum(context, whole_block_span_md_idx);
-        Ok(TerminatorValue::new(val, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(val),
+            context,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -4685,6 +4920,9 @@ impl<'eng> FnCompiler<'eng> {
             .store(gep_2_val, field_id)
             .add_metadatum(context, span_md_idx);
 
-        Ok(TerminatorValue::new(storage_key, context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InMemory(storage_key),
+            context,
+        ))
     }
 }
