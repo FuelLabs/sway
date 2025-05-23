@@ -605,6 +605,7 @@ impl<'eng> FnCompiler<'eng> {
                     )
                 } else {
                     let function_decl = self.engines.de().get_function(fn_ref);
+
                     self.compile_fn_call(
                         context,
                         md_mgr,
