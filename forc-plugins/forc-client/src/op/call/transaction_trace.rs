@@ -444,7 +444,7 @@ pub(crate) mod tests {
         // Compare the results, ignoring whitespace differences
         assert_eq!(
             normalize(&trace_output),
-            normalize(&expected_output),
+            normalize(expected_output),
             "\nExpected:\n{}\n\nActual:\n{}\n",
             expected_output,
             trace_output
@@ -515,7 +515,7 @@ pub(crate) mod tests {
 
         assert_eq!(
             normalize(&trace_output),
-            normalize(&expected_output),
+            normalize(expected_output),
             "\nExpected:\n{}\n\nActual:\n{}\n",
             expected_output,
             trace_output
@@ -601,7 +601,7 @@ pub(crate) mod tests {
         // Compare the results, ignoring whitespace differences
         assert_eq!(
             normalize(&trace_output),
-            normalize(&expected_output),
+            normalize(expected_output),
             "\nExpected:\n{}\n\nActual:\n{}\n",
             expected_output,
             trace_output
@@ -703,7 +703,7 @@ pub(crate) mod tests {
 
         assert_eq!(
             normalize(&trace_output),
-            normalize(&expected_output),
+            normalize(expected_output),
             "\nExpected:\n{}\n\nActual:\n{}\n",
             expected_output,
             trace_output
@@ -815,7 +815,7 @@ pub(crate) mod tests {
         // Compare the results, ignoring whitespace differences
         assert_eq!(
             normalize(&trace_output),
-            normalize(&expected_output),
+            normalize(expected_output),
             "\nExpected:\n{}\n\nActual:\n{}\n",
             expected_output,
             trace_output
@@ -1006,7 +1006,7 @@ pub(crate) mod tests {
 
         assert_eq!(
             normalize(&trace_output),
-            normalize(&expected_output),
+            normalize(expected_output),
             "\nExpected:\n{}\n\nActual:\n{}\n",
             expected_output,
             trace_output
