@@ -2804,6 +2804,7 @@ dependencies = [
 name = "forc-client"
 version = "0.68.5"
 dependencies = [
+ "ansiterm",
  "anyhow",
  "async-trait",
  "aws-config",
