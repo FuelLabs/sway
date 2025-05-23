@@ -549,8 +549,8 @@ impl InstructionVerifier<'_, '_> {
                 }
             }
             BinaryOpKind::Add => {
-                if (!arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context))
-                    && !(arg1_ty.is_ptr(self.context) && arg2_ty.is_uint64(self.context))
+                if !(arg1_ty.eq(self.context, &arg2_ty) && arg1_ty.is_uint(self.context)
+                    || arg1_ty.is_ptr(self.context) && arg2_ty.is_uint64(self.context))
                 {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }

@@ -588,12 +588,17 @@ impl InstOp {
                 elem_ptr_ty: _,
                 indices,
             } => {
-                if idx < indices.len() {
-                    indices[idx] = replacement;
-                } else if idx == indices.len() {
-                    *base = replacement;
-                } else {
-                    panic!("Invalid index for GetElemPtr");
+                use std::cmp::Ordering;
+                match idx.cmp(&indices.len()) {
+                    Ordering::Less => {
+                        indices[idx] = replacement;
+                    }
+                    Ordering::Equal => {
+                        *base = replacement;
+                    }
+                    Ordering::Greater => {
+                        panic!("Invalid index for GetElemPtr");
+                    }
                 }
             }
             InstOp::GetLocal(_local_var) => {
