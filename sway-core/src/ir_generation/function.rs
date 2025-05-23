@@ -85,14 +85,6 @@ impl CompiledValue {
         self.value().get_type(context)
     }
 
-    fn get_argument(&self, context: &Context) -> Option<BlockArgument> {
-        self.value().get_argument(context).cloned()
-    }
-
-    fn get_instruction(&self, context: &Context) -> Option<Instruction> {
-        self.value().get_instruction(context).cloned()
-    }
-
     fn get_constant(&self, context: &Context) -> Option<Constant> {
         self.value().get_constant(context).cloned()
     }
@@ -170,7 +162,7 @@ fn store_to_memory(
     value: CompiledValue,
 ) -> Result<CompiledValue, CompileError> {
     match value {
-        CompiledValue::InMemory(_) => return Ok(value),
+        CompiledValue::InMemory(_) => Ok(value),
         CompiledValue::InRegister(val) => {
             let temp_arg_name = s.lexical_map.insert_anon();
             let value_type = val.get_type(context).unwrap();
@@ -299,7 +291,7 @@ impl<'eng> FnCompiler<'eng> {
             CompiledValue::InMemory(_val) => {
                 // Return an error indicating that the final value is in memory.
                 Err(vec![CompileError::Internal(
-                    &"Final value is in memory",
+                    "Final value is in memory",
                     ast_block.whole_block_span.clone(),
                 )])
             }
@@ -2784,7 +2776,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-        span_md_idx: Option<MetadataIndex>,
+        _span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let value = return_on_termination_or_extract!(
             self.compile_expression_to_memory(context, md_mgr, ast_expr)?
@@ -2803,7 +2795,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
-        span_md_idx: Option<MetadataIndex>,
+        _span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let (ptr, referenced_ast_type) = self.compile_deref_up_to_ptr(context, md_mgr, ast_expr)?;
 

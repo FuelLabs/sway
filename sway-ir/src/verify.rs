@@ -549,10 +549,10 @@ impl InstructionVerifier<'_, '_> {
                 }
             }
             BinaryOpKind::Add => {
-                if !arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context) {
-                    if !(arg1_ty.is_ptr(self.context) && arg2_ty.is_uint64(self.context)) {
-                        return Err(IrError::VerifyBinaryOpIncorrectArgType);
-                    }
+                if (!arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context))
+                    && !(arg1_ty.is_ptr(self.context) && arg2_ty.is_uint64(self.context))
+                {
+                    return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }
             }
             BinaryOpKind::Sub | BinaryOpKind::Mul | BinaryOpKind::Div | BinaryOpKind::Mod => {
@@ -795,8 +795,6 @@ impl InstructionVerifier<'_, '_> {
         elem_ptr_ty: &Type,
         indices: &[Value],
     ) -> Result<(), IrError> {
-        use crate::constant::ConstantValue;
-
         let base_ty =
             self.get_ptr_type(base, |s| IrError::VerifyGepFromNonPointer(s, Some(*ins)))?;
         if !base_ty.is_aggregate(self.context) {
