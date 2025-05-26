@@ -86,7 +86,7 @@ fuel-abi-types = "0.8"
 
 # Dependencies from the `fuel-core` repository:
 #
-# Although ALL verions are "X.Y", we need the complete semver for
+# Although ALL versions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball
 fuel-core-client = { version = "0.43.2", default-features = false }
