@@ -29,6 +29,7 @@ members = [
     "sway-utils",
     "swayfmt",
     "test",
+    "test/src/sdk-harness",
 ]
 exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
@@ -82,7 +83,7 @@ sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.68.5" }
 #
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.8"
+fuel-abi-types = { path = "fuel-abi-types/", version = "0.9.0" }
 
 # Dependencies from the `fuel-core` repository:
 #
@@ -94,9 +95,9 @@ fuel-core-types = { version = "0.43", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.72"
-fuels-core = "0.72"
-fuels-accounts = "0.72"
+fuels = { path = "../fuels-rs/packages/fuels", version = "0.72" }
+fuels-core = { path = "../fuels-rs/packages/fuels-core", version = "0.72" }
+fuels-accounts = { path = "../fuels-rs/packages/fuels-accounts", version = "0.72" }
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.60"

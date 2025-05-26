@@ -4,16 +4,75 @@ Attributes are a form of metadata that can additionally instruct Sway compiler o
 
 Below is the list of attributes supported by the Sway compiler, ordered alphabetically:
 
+- [ABI Name](#abi-name)
 - [Allow](#allow)
 - [Cfg](#cfg)
 - [Deprecated](#deprecated)
 - [Error](#error)
 - [Error Type](#error-type)
+- [Event](#event--indexed)
 - [Fallback](#fallback)
+- [Indexed](#event--indexed)
 - [Inline](#inline)
 - [Payable](#payable)
 - [Storage](#payable)
 - [Test](#test)
+
+## ABI Name
+
+The `#[abi_name]` attribute allows to specify the ABI name for an item.
+This means that when a contract ABI JSON file is generated, the name that is output is the one specified
+by the attribute. This can be useful to allow renaming items, while allowing for keeping backwards
+compatibility at the contract ABI level.
+
+> **Note**: At the moment, only enum and struct types support the attribute.
+
+In the example that follows, we originally had a `MyStruct` and `MyEnum` types, which we renamed in Sway:
+
+```sway
+contract;
+
+#[abi_name(name = "MyStruct")]
+struct RenamedMyStruct {}
+
+#[abi_name(name = "MyEnum")]
+enum RenamedMyEnum {
+  A: ()
+}
+
+abi MyAbi {
+    fn my_struct() -> RenamedMyStruct;
+    fn my_enum() -> RenamedMyEnum;
+}
+
+impl MyAbi for Contract {
+  fn my_struct() -> RenamedMyStruct { RenamedMyStruct{} }
+  fn my_enum() -> RenamedMyEnum { RenamedMyEnum::A }
+}
+```
+
+This generates the following JSON ABI:
+
+```json
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "215af2bca9e1aa8fec647dab22a0cd36c63ce5ed051a132d51323807e28c0d67",
+      "metadataTypeId": 1,
+      "type": "enum MyEnum"
+    },
+    {
+      "concreteTypeId": "d31db280ac133d726851d8003bd2f06ec2d3fc76a46f1007d13914088fbd0791",
+      "type": "struct MyStruct"
+    }
+  ],
+  ...
+}
+```
+
+We get the same JSON ABI output both before and after renaming the types, due to attributing them with
+`#[abi_name(name = ...)]`, which forces them to be generated with the previous Sway name.
+This means consumers of this contract will still get the original names, keeping compatibility at the ABI level.
 
 ## Allow
 
@@ -64,6 +123,43 @@ enum SomeErrors {
 All variants of an error type enum must be annotated with the [`#[error]` attribute](#error). Error type enums are meant to be use in `panic` expressions for rich error reporting.
 
 > **Note**: Error types are still an experimental feature. For more info, see the [tracking issue for "Error types"](https://github.com/FuelLabs/sway/issues/6765).
+
+## Event / Indexed
+
+The `#[event]` attribute marks a struct or enum as an event that can be emitted by a contract.
+
+The `#[indexed]` attribute can be applied to fields within structs that are attributed with `#[event]`. This is particularly useful for event structs, allowing for efficient filtering and searching of emitted events based on the values of these fields.
+
+When using this attribute, the indexed fields must be applied sequentially to the initial set of fields in a struct.
+
+This attribute can only be applied to fields whose type is an exact size ABI type. The exact size ABI types include:
+
+- `bool`
+- `u8`, `u16`, `u32`, `u64`, `u256`
+- `numeric`
+- `b256`
+- `str[N]`
+- Tuples containing only exact size types
+- Structs containing only exact size types
+- Arrays of exact size types with a literal length
+- Type aliases to exact size types
+
+Additionally it causes the event types to be included in the JSON ABI representation for the contract.
+
+```sway
+#[event]
+struct MyEventStruct {
+    #[indexed]
+    id: u64,
+    sender: Identity,
+}
+
+#[event]
+enum MyEventEnum {
+    A: (),
+    B: (),
+}
+```
 
 ## Fallback
 
