@@ -331,4 +331,14 @@ impl ConstantContent {
             _ => None,
         }
     }
+
+    pub fn as_string(&self) -> Option<String> {
+        match &self.value {
+            ConstantValue::String(v) => Some(
+                String::from_utf8(v.clone())
+                    .expect("compilation ensures that the string slice is a valid UTF-8 sequence"),
+            ),
+            _ => None,
+        }
+    }
 }

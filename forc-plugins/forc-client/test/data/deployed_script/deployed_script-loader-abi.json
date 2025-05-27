@@ -225,6 +225,7 @@
   ],
   "functions": [
     {
+      "name": "main",
       "inputs": [
         {
           "name": "a",
@@ -235,7 +236,6 @@
           "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         }
       ],
-      "name": "main",
       "output": "25fbba860b8a1983ebcfa3f135136266a7edb7ca3a7e1f8ec988135c12a9f873",
       "attributes": null
     }
@@ -251,62 +251,75 @@
     {
       "name": "BOOL",
       "concreteTypeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
-      "offset": 136
+      "offset": 136,
+      "indirect": false
     },
     {
       "name": "U8",
       "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
-      "offset": 248
+      "offset": 248,
+      "indirect": false
     },
     {
       "name": "U16",
       "concreteTypeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
-      "offset": 192
+      "offset": 192,
+      "indirect": false
     },
     {
       "name": "U32",
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
-      "offset": 232
+      "offset": 232,
+      "indirect": false
     },
     {
       "name": "U64",
       "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
-      "offset": 240
+      "offset": 240,
+      "indirect": false
     },
     {
       "name": "U256",
       "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
-      "offset": 200
+      "offset": 200,
+      "indirect": false
     },
     {
       "name": "B256",
       "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
-      "offset": 104
+      "offset": 104,
+      "indirect": false
     },
     {
       "name": "STR_4",
       "concreteTypeId": "94f0fa95c830be5e4f711963e83259fe7e8bc723278ab6ec34449e791a99b53a",
-      "offset": 176
+      "offset": 176,
+      "indirect": false
     },
     {
       "name": "TUPLE",
       "concreteTypeId": "e0128f7be9902d1fe16326cafe703b52038064a7997b03ebfc1c9dd607e1536c",
-      "offset": 184
+      "offset": 184,
+      "indirect": false
     },
     {
       "name": "ARRAY",
       "concreteTypeId": "d9fac01ab38fe10950758ae9604da330d6406a71fda3ef1ea818121261132d56",
-      "offset": 88
+      "offset": 88,
+      "indirect": false
     },
     {
       "name": "STRUCT",
       "concreteTypeId": "563310524b4f4447a10d0e50556310253dfb3b5eb4b29c3773222b737c8b7075",
-      "offset": 160
+      "offset": 160,
+      "indirect": false
     },
     {
       "name": "ENUM",
       "concreteTypeId": "37cd1cba311039a851ac8bfa614cc41359b4ad95c8656fcef2e8f504fe7a1272",
-      "offset": 144
+      "offset": 144,
+      "indirect": false
     }
-  ]
+  ],
+  "errorCodes": {}
 }
