@@ -1,12 +1,11 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 145
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --asm final | grep ecal
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --asm final | sub ecal
 ecal $r4 $r0 $r1 $r3          ; ecal id fd buf count
 ecal $r2 $r1 $zero $zero      ; ecal id fd zero zero
 
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --release --asm final | grep ecal
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --release --asm final | sub ecal
 ecal $r4 $r5 $r2 $r3          ; ecal id fd buf count
 ecal $r2 $r3 $zero $zero      ; ecal id fd zero zero
 ecal $r0 $r2 $zero $zero      ; ecal id fd zero zero

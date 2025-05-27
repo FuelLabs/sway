@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 162
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib --release --experimental error_type --test-threads 1 --logs --revert-codes
 exit status: 0
@@ -7,7 +8,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
-    Finished release [optimized + fuel] target(s) [6.136 KB] in ???
+    Finished release [optimized + fuel] target(s) [5.912 KB] in ???
      Running 18 tests, filtered 0 tests
 
 tested -- panicking_lib
@@ -30,10 +31,10 @@ Revert code: ffffffff00000002
       test test_generic_panic_with_unit_same_revert_code ... ok (???, 190 gas)
 Decoded log value: (), log rb: 3330666440490685604
 Revert code: ffffffff00000002
-      test test_generic_panic_with_str ... ok (???, 324 gas)
+      test test_generic_panic_with_str ... ok (???, 290 gas)
 Decoded log value: AsciiString { data: "generic panic with string" }, log rb: 10098701174489624218
 Revert code: ffffffff00000003
-      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 324 gas)
+      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 290 gas)
 Decoded log value: AsciiString { data: "generic panic different string" }, log rb: 10098701174489624218
 Revert code: ffffffff00000003
       test test_generic_panic_with_error_type_enum_variant ... ok (???, 351 gas)
@@ -48,8 +49,7 @@ Revert code: ffffffff00000005
       test test_panic_with_unit ... ok (???, 190 gas)
 Decoded log value: (), log rb: 3330666440490685604
 Revert code: ffffffff00000006
-      test test_panic_with_str ... ok (???, 309 gas)
-Decoded log value: AsciiString { data: "panic with string" }, log rb: 10098701174489624218
+      test test_panic_with_str ... ok (???, 19 gas)
 Revert code: ffffffff00000007
       test test_panic_with_error_type_enum ... ok (???, 445 gas)
 Decoded log value: C(true), log rb: 2721958641300806892

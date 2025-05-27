@@ -74,6 +74,10 @@ pub fn generic_panic<T>(t: T) where T: Error {
     panic t;
 }
 
+pub fn generic_function_with_non_generic_panic<T>() {
+    panic "This is a non-generic panic in a generic function.";
+}
+
 #[test(should_revert)]
 fn test_generic_panic_with_unit() {
     generic_panic(());
@@ -116,7 +120,7 @@ fn test_panic_with_unit() {
 
 #[test(should_revert)]
 fn test_panic_with_str() {
-    panic "panic with string";
+    panic "panic with string"; // No log emitted here.
 }
 
 #[test(should_revert)]

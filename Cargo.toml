@@ -82,21 +82,21 @@ sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.68.5" }
 #
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.8"
+fuel-abi-types = "0.12"
 
 # Dependencies from the `fuel-core` repository:
 #
-# Although ALL verions are "X.Y", we need the complete semver for
+# Although ALL versions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
-# the correct tarball
+# the correct tarball.
 fuel-core-client = { version = "0.43.2", default-features = false }
 fuel-core-types = { version = "0.43", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.72"
-fuels-core = "0.72"
-fuels-accounts = "0.72"
+fuels = "0.73"
+fuels-core = "0.73"
+fuels-accounts = "0.73"
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.60"
