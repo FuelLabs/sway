@@ -25,18 +25,26 @@ pub enum LanguageServerError {
     FormatError(FormatterError),
     #[error("No Programs were returned from the compiler")]
     ProgramsIsNone,
+    #[error("Member program not found in the compiler results")]
+    MemberProgramNotFound,
     #[error("Unable to acquire a semaphore permit for parsing")]
     UnableToAcquirePermit,
     #[error("Client is not initialized")]
     ClientNotInitialized,
     #[error("Client request error: {0}")]
     ClientRequestError(String),
+    #[error("Global workspace not initialized")]
+    GlobalWorkspaceNotInitialized,
+    #[error("SyncWorkspace already initialized")]
+    SyncWorkspaceAlreadyInitialized,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum DocumentError {
     #[error("No document found at {:?}", path)]
     DocumentNotFound { path: String },
+    #[error("Workspace manifest not found. {:?}", err)]
+    WorkspaceManifestNotFound { err: String },
     #[error("Missing Forc.toml in {:?}", dir)]
     ManifestFileNotFound { dir: String },
     #[error("Cannot get member manifest files for the manifest at {:?}", dir)]
@@ -66,6 +74,8 @@ pub enum DirectoryError {
     TempDirNotFound,
     #[error("Can't find manifest directory")]
     ManifestDirNotFound,
+    #[error("Can't find temporary member directory")]
+    TempMemberDirNotFound,
     #[error("Can't extract project name from {:?}", dir)]
     CantExtractProjectName { dir: String },
     #[error("Failed to create hidden .lsp_locks directory: {0}")]

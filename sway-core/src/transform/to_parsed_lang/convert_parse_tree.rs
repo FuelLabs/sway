@@ -561,7 +561,7 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
-    let generic_parameters = generic_params_opt_to_type_parameters_with_parent(
+    let mut generic_parameters = generic_params_opt_to_type_parameters_with_parent(
         context,
         handler,
         engines,
@@ -570,6 +570,19 @@ pub fn item_fn_to_function_declaration(
         item_fn.fn_signature.where_clause_opt.clone(),
         parent_where_clause_opt,
     )?;
+
+    for p in generic_parameters.iter_mut() {
+        match p {
+            TypeParameter::Type(_) => {}
+            TypeParameter::Const(p) => {
+                p.id = Some(engines.pe().insert(ConstGenericDeclaration {
+                    name: p.name.clone(),
+                    ty: p.ty,
+                    span: p.span.clone(),
+                }));
+            }
+        }
+    }
 
     let fn_decl = FunctionDeclaration {
         purity: attributes.purity(),

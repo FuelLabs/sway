@@ -24,6 +24,14 @@ pub fn sway_workspace_dir() -> PathBuf {
     env::current_dir().unwrap().parent().unwrap().to_path_buf()
 }
 
+pub fn in_language_test_dir() -> PathBuf {
+    PathBuf::from("test/src/in_language_tests")
+}
+
+pub fn sdk_harness_test_projects_dir() -> PathBuf {
+    PathBuf::from("test/src/sdk-harness")
+}
+
 pub fn e2e_language_dir() -> PathBuf {
     PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/language")
 }
@@ -48,6 +56,10 @@ pub fn e2e_test_dir() -> PathBuf {
     sway_workspace_dir()
         .join(e2e_language_dir())
         .join("struct_field_access")
+}
+
+pub fn std_lib_dir() -> PathBuf {
+    sway_workspace_dir().join("sway-lib-std")
 }
 
 pub fn runnables_test_dir() -> PathBuf {

@@ -8,10 +8,6 @@
       "concreteTypeId": "4936d108619f9cd75cdeea2f3fe11241b06d22b856d4b61fa3ae412370b10a6a",
       "metadataTypeId": 0,
       "type": "[u64; 2]"
-    },
-    {
-      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
-      "type": "u64"
     }
   ],
   "configurables": [],
@@ -30,27 +26,22 @@
       "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
     }
   ],
-  "loggedTypes": [
-    {
-      "concreteTypeId": "4936d108619f9cd75cdeea2f3fe11241b06d22b856d4b61fa3ae412370b10a6a",
-      "logId": "5275633847438908631"
-    },
-    {
-      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
-      "logId": "1515152261580153489"
-    }
-  ],
+  "loggedTypes": [],
   "messagesTypes": [],
   "metadataTypes": [
     {
       "components": [
         {
           "name": "__array_element",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+          "typeId": 1
         }
       ],
       "metadataTypeId": 0,
       "type": "[_; 2]"
+    },
+    {
+      "metadataTypeId": 1,
+      "type": "u64"
     }
   ],
   "programType": "script",

@@ -242,16 +242,9 @@ jobs:
         run: cargo install --locked --path ./forc
       - name: Install Forc plugins
         run: |
-          cargo install --locked --path ./forc-plugins/forc-client
-          cargo install --locked --path ./forc-plugins/forc-crypto
-          cargo install --locked --path ./forc-plugins/forc-debug
-          cargo install --locked --path ./forc-plugins/forc-doc
-          cargo install --locked --path ./forc-plugins/forc-fmt
-          cargo install --locked --path ./forc-plugins/forc-lsp
-          cargo install --locked --path ./forc-plugins/forc-migrate
-          cargo install --locked --path ./forc-plugins/forc-node
-          cargo install --locked --path ./forc-plugins/forc-publish
-          cargo install --locked --path ./forc-plugins/forc-tx
+          for dir in ./forc-plugins/*/; do
+                cargo install --locked --path "$dir"
+          done
           cargo install --locked forc-explore
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --path ./scripts/mdbook-forc-documenter

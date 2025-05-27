@@ -34,7 +34,7 @@ exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
-version = "0.68.4"
+version = "0.68.5"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
@@ -45,37 +45,37 @@ repository = "https://github.com/FuelLabs/sway"
 # Internal dependencies in order to propagate `workspace.version`
 #
 
-forc = { path = "forc/", version = "0.68.4" }
-forc-pkg = { path = "forc-pkg/", version = "0.68.4" }
-forc-test = { path = "forc-test/", version = "0.68.4" }
-forc-tracing = { path = "forc-tracing/", version = "0.68.4" }
-forc-util = { path = "forc-util/", version = "0.68.4" }
+forc = { path = "forc/", version = "0.68.5" }
+forc-pkg = { path = "forc-pkg/", version = "0.68.5" }
+forc-test = { path = "forc-test/", version = "0.68.5" }
+forc-tracing = { path = "forc-tracing/", version = "0.68.5" }
+forc-util = { path = "forc-util/", version = "0.68.5" }
 
 # Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.68.4" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.68.4" }
-forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.68.4" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.68.4" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.68.4" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.68.4" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.68.4" }
-forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.68.4" }
-forc-publish = { path = "forc-plugins/forc-publish/", version = "0.68.4" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.68.4" }
+forc-plugins = { path = "forc-plugins/", version = "0.68.5" }
+forc-client = { path = "forc-plugins/forc-client/", version = "0.68.5" }
+forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.68.5" }
+forc-debug = { path = "forc-plugins/forc-debug/", version = "0.68.5" }
+forc-doc = { path = "forc-plugins/forc-doc/", version = "0.68.5" }
+forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.68.5" }
+forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.68.5" }
+forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.68.5" }
+forc-publish = { path = "forc-plugins/forc-publish/", version = "0.68.5" }
+forc-tx = { path = "forc-plugins/forc-tx/", version = "0.68.5" }
 
-sway-ast = { path = "sway-ast/", version = "0.68.4" }
-sway-core = { path = "sway-core/", version = "0.68.4" }
-sway-error = { path = "sway-error/", version = "0.68.4" }
-sway-features = { path = "sway-features/", version = "0.68.4" }
-sway-lsp = { path = "sway-lsp/", version = "0.68.4" }
-sway-parse = { path = "sway-parse/", version = "0.68.4" }
-sway-types = { path = "sway-types/", version = "0.68.4" }
-sway-utils = { path = "sway-utils/", version = "0.68.4" }
-swayfmt = { path = "swayfmt/", version = "0.68.4" }
+sway-ast = { path = "sway-ast/", version = "0.68.5" }
+sway-core = { path = "sway-core/", version = "0.68.5" }
+sway-error = { path = "sway-error/", version = "0.68.5" }
+sway-features = { path = "sway-features/", version = "0.68.5" }
+sway-lsp = { path = "sway-lsp/", version = "0.68.5" }
+sway-parse = { path = "sway-parse/", version = "0.68.5" }
+sway-types = { path = "sway-types/", version = "0.68.5" }
+sway-utils = { path = "sway-utils/", version = "0.68.5" }
+swayfmt = { path = "swayfmt/", version = "0.68.5" }
 
 # Sway IR
-sway-ir = { path = "sway-ir/", version = "0.68.4" }
-sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.68.4" }
+sway-ir = { path = "sway-ir/", version = "0.68.5" }
+sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.68.5" }
 
 #
 # External Fuel dependencies
@@ -154,6 +154,7 @@ filecheck = "0.5"
 flate2 = "1.0"
 fs_extra = "1.2"
 futures = { version = "0.3", default-features = false }
+futures-util = "0.3"
 gag = "1.0"
 gimli = "0.31"
 git2 = "0.19"
@@ -237,7 +238,7 @@ thiserror = "1.0"
 tikv-jemallocator = "0.6"
 tokio = "1.12"
 toml = "0.8"
-toml_edit = "0.22"
+toml_edit = { version = "0.22", features = ["serde"] }
 tower = { version = "0.5", default-features = false }
 tower-lsp = "0.20"
 tracing = "0.1"
