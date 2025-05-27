@@ -19,7 +19,7 @@ use fuels::{
 use fuels_core::{
     codec::{
         encode_fn_selector, log_formatters_lookup, ABIDecoder, ABIEncoder, DecoderConfig,
-        EncoderConfig, LogDecoder,
+        EncoderConfig, ErrorDetails, LogDecoder,
     },
     types::{
         bech32::Bech32ContractId,
@@ -84,7 +84,27 @@ pub async fn call_function(
 
     // Setup variable output policy and log decoder
     let variable_output_policy = VariableOutputPolicy::Exactly(call_parameters.amount as usize);
-    let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id));
+    let error_codes = unified_program_abi
+        .error_codes
+        .map_or(HashMap::new(), |error_codes| {
+            error_codes
+                .iter()
+                .map(|(revert_code, error_details)| {
+                    (
+                        *revert_code,
+                        ErrorDetails::new(
+                            error_details.pos.pkg.clone(),
+                            error_details.pos.file.clone(),
+                            error_details.pos.line,
+                            error_details.pos.column,
+                            error_details.log_id.clone(),
+                            error_details.msg.clone(),
+                        ),
+                    )
+                })
+                .collect()
+        });
+    let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id), error_codes);
 
     // Get external contracts (either provided or auto-detected)
     let external_contracts = match external_contracts {
