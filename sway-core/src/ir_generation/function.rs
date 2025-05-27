@@ -2734,9 +2734,9 @@ impl<'a> FnCompiler<'a> {
             // In predicates, we only revert and do not log.
             if context.program_kind != Kind::Predicate {
                 let panic_val = return_on_termination_or_extract!(
-                self.compile_expression_to_register(context, md_mgr, ast_expr)?
-            )
-            .unwrap_register();
+                    self.compile_expression_to_register(context, md_mgr, ast_expr)?
+                )
+                .unwrap_register();
                 let logged_type_id = logged_expression.return_type;
                 let log_id = match self.logged_types_map.get(&logged_type_id) {
                     None => {
