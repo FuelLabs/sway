@@ -2756,8 +2756,7 @@ where
 
 
 #[cfg(experimental_const_generics = true)]
-impl<const N: u64> Debug for str[N]
-{
+impl<const N: u64> Debug for str[N] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
