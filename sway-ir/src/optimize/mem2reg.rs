@@ -9,9 +9,9 @@ use std::collections::HashSet;
 use sway_utils::mapped_stack::MappedStack;
 
 use crate::{
-    function_print, AnalysisResults, Block, BranchToWithArgs, Constant, Context, DomFronts,
-    DomTree, Function, InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, PostOrder,
-    ScopedPass, Type, Value, ValueDatum, DOMINATORS_NAME, DOM_FRONTS_NAME, POSTORDER_NAME,
+    AnalysisResults, Block, BranchToWithArgs, Constant, Context, DomFronts, DomTree, Function,
+    InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, PostOrder, ScopedPass, Type,
+    Value, ValueDatum, DOMINATORS_NAME, DOM_FRONTS_NAME, POSTORDER_NAME,
 };
 
 pub const MEM2REG_NAME: &str = "mem2reg";
