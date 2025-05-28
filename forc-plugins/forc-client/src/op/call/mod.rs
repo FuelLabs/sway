@@ -249,13 +249,7 @@ pub(crate) fn process_transaction_output(
         Some(CallData { abis, .. }) => abis,
         None => &HashMap::new(),
     };
-    print_receipts_and_trace(
-        total_gas,
-        &receipts,
-        verbosity,
-        abis,
-        output,
-    )?;
+    print_receipts_and_trace(total_gas, &receipts, verbosity, abis, output)?;
 
     if verbosity >= 1 {
         if let Some(CallData {

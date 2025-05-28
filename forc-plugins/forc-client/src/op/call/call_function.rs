@@ -84,7 +84,8 @@ pub async fn call_function(
 
     // Setup variable output policy and log decoder
     let variable_output_policy = VariableOutputPolicy::Exactly(call_parameters.amount as usize);
-    let error_codes = abi.unified
+    let error_codes = abi
+        .unified
         .error_codes
         .as_ref()
         .map_or(HashMap::new(), |error_codes| {
