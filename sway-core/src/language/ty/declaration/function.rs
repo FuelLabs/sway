@@ -190,7 +190,8 @@ impl DeclRefFunction {
     pub fn get_method_safe_to_unify(&self, engines: &Engines, type_id: TypeId) -> Self {
         let decl_engine = engines.de();
 
-        let mut method = (*decl_engine.get_function(self)).clone();
+        let original = &*decl_engine.get_function(self);
+        let mut method = original.clone();
 
         if let Some(method_implementing_for_typeid) = method.implementing_for_typeid {
             let mut type_id_type_subst_map = TypeSubstMap::new();
@@ -241,6 +242,11 @@ impl DeclRefFunction {
                         type_id_type_subst_map.insert(p.type_id, type_id);
                     }
                 }
+            }
+
+            for p in method.parameters.iter_mut() {
+                let t = engines.te().get(p.type_argument.type_id());
+                *p.type_argument.type_id_mut() = engines.te().insert(engines, TypeInfo::clone(&t), None);
             }
 
             let mut method_type_subst_map = TypeSubstMap::new();

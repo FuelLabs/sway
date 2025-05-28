@@ -128,19 +128,48 @@ pub(crate) fn type_check_method_application(
         let b = engines
             .te()
             .get(args_opt_buf[0].0.as_ref().unwrap().return_type);
-        if let (
-            TypeInfo::Array(_, Length(ConstGenericExpr::AmbiguousVariableExpression { ident })),
-            TypeInfo::Array(_, Length(ConstGenericExpr::Literal { val, .. })),
-        ) = (&*a, &*b)
-        {
-            const_generics.insert(
-                ident.as_str().to_string(),
-                TyExpression {
-                    expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
-                    return_type: engines.te().id_of_u64(),
-                    span: Span::dummy(),
-                },
-            );
+        match (&*a, &*b) {
+            (
+                TypeInfo::Array(_, Length(ConstGenericExpr::AmbiguousVariableExpression { ident })),
+                TypeInfo::Array(_, Length(ConstGenericExpr::Literal { val, .. })),
+            ) => {
+                const_generics.insert(
+                    ident.as_str().to_string(),
+                    TyExpression {
+                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                        return_type: engines.te().id_of_u64(),
+                        span: Span::dummy(),
+                    },
+                );
+            }
+            (
+                TypeInfo::StringArray(Length(ConstGenericExpr::Literal { .. })),
+                TypeInfo::StringArray(Length(ConstGenericExpr::Literal { val, .. })),
+            ) => {
+                //TODO
+                const_generics.insert(
+                    "N".to_string(),
+                    TyExpression {
+                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                        return_type: engines.te().id_of_u64(),
+                        span: Span::dummy(),
+                    },
+                );
+            }
+            (
+                TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression { ident })),
+                TypeInfo::StringArray(Length(ConstGenericExpr::Literal { val, .. })),
+            ) => {
+                const_generics.insert(
+                    ident.as_str().to_string(),
+                    TyExpression {
+                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                        return_type: engines.te().id_of_u64(),
+                        span: Span::dummy(),
+                    },
+                );
+            }
+            _ => {},
         }
     }
 

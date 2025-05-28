@@ -1,5 +1,5 @@
 use crate::{
-    ast_elements::{length::NumericLength, type_parameter::ConstGenericParameter},
+    ast_elements::type_parameter::ConstGenericParameter,
     attr_decls_to_attributes,
     compiler_generated::{
         generate_destructured_struct_var_name, generate_matched_value_var_name,
@@ -1637,11 +1637,12 @@ fn ty_to_type_info(
             )
         }
         Ty::StringSlice(..) => TypeInfo::StringSlice,
-        Ty::StringArray { length, .. } => TypeInfo::StringArray(expr_to_numeric_length(
+        Ty::StringArray { length, .. } => TypeInfo::StringArray(Length(expr_to_const_generic_expr(
             context,
+            engines,
             handler,
-            *length.into_inner(),
-        )?),
+            length.get(),
+        )?)),
         Ty::Infer { .. } => TypeInfo::Unknown,
         Ty::Ptr { ty, .. } => {
             let type_argument = ty_to_type_argument(context, handler, engines, *ty.into_inner())?;
@@ -3187,16 +3188,6 @@ fn expr_to_const_generic_expr(
             }
         }
     }
-}
-
-fn expr_to_numeric_length(
-    context: &mut Context,
-    handler: &Handler,
-    expr: Expr,
-) -> Result<NumericLength, ErrorEmitted> {
-    let span = expr.span();
-    let val = expr_to_usize(context, handler, expr)?;
-    Ok(NumericLength { val, span })
 }
 
 fn expr_to_usize(

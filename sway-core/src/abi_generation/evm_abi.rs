@@ -71,7 +71,7 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
         Placeholder(_) => "_".to_string(),
         TypeParam(param) => format!("typeparam({})", param.name()),
         StringSlice => "str".into(),
-        StringArray(x) => format!("str[{}]", x.val()),
+        StringArray(length) => format!("str[{:?}]", engines.help_out(length.expr())),
         UnsignedInteger(x) => match x {
             IntegerBits::Eight => "uint8",
             IntegerBits::Sixteen => "uint16",
@@ -153,8 +153,8 @@ pub fn abi_param_type(type_info: &TypeInfo, engines: &Engines) -> ethabi::ParamT
     let type_engine = engines.te();
     let decl_engine = engines.de();
     match type_info {
-        StringArray(x) => {
-            ethabi::ParamType::FixedArray(Box::new(ethabi::ParamType::String), x.val())
+        StringArray(length) => {
+            ethabi::ParamType::FixedArray(Box::new(ethabi::ParamType::String), length.expr().as_literal_val().unwrap())
         }
         UnsignedInteger(x) => match x {
             IntegerBits::Eight => ethabi::ParamType::Uint(8),
