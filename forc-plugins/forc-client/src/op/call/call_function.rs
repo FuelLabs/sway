@@ -84,8 +84,9 @@ pub async fn call_function(
 
     // Setup variable output policy and log decoder
     let variable_output_policy = VariableOutputPolicy::Exactly(call_parameters.amount as usize);
-    let error_codes = unified_program_abi
+    let error_codes = abi.unified
         .error_codes
+        .as_ref()
         .map_or(HashMap::new(), |error_codes| {
             error_codes
                 .iter()
@@ -215,7 +216,7 @@ pub async fn call_function(
                 tx_status.total_gas(),
                 &tx_status.clone().take_receipts(),
                 cmd.verbosity,
-                Some(&abi_map),
+                &abi_map,
                 &mut output,
             )?;
             match tx_status {

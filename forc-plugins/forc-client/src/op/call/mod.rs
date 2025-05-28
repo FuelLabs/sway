@@ -243,11 +243,15 @@ pub(crate) fn process_transaction_output(
 ) -> Result<CallResponse> {
     let total_gas = tx_status.total_gas();
     let receipts = tx_status.take_receipts();
+    let abis = match &call_data {
+        Some(CallData { abis, .. }) => abis,
+        None => &HashMap::new(),
+    };
     print_receipts_and_trace(
         total_gas,
         &receipts,
         verbosity,
-        call_data.as_ref().map(|cd| &cd.abis),
+        abis,
         output,
     )?;
 
@@ -322,7 +326,7 @@ pub(crate) fn print_receipts_and_trace(
     total_gas: u64,
     receipts: &[Receipt],
     verbosity: u8,
-    abis: Option<&HashMap<ContractId, Abi>>,
+    abis: &HashMap<ContractId, Abi>,
     writer: &mut impl std::io::Write,
 ) -> Result<()> {
     if verbosity >= 2 {

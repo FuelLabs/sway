@@ -10,14 +10,14 @@ use std::fmt::{self, Display, Formatter};
 pub(crate) struct Node<'a> {
     receipt: Receipt,
     children: Vec<Node<'a>>,
-    abis: Option<&'a HashMap<ContractId, Abi>>,
+    abis: &'a HashMap<ContractId, Abi>,
 }
 
 impl<'a> Node<'_> {
     /// Create a new Node from receipts with ABI information
     pub(crate) fn try_from_with_abis<'b>(
         receipts: &[Receipt],
-        abis: Option<&'b HashMap<ContractId, Abi>>,
+        abis: &'b HashMap<ContractId, Abi>,
     ) -> Result<Node<'b>, anyhow::Error> {
         // Find the script result receipt
         let script_result_receipt = receipts
@@ -51,7 +51,7 @@ impl<'a> Node<'_> {
         receipts: &[Receipt],
         start_index: usize,
         parent_id: &ContractId,
-        abis: Option<&'a HashMap<ContractId, Abi>>,
+        abis: &'a HashMap<ContractId, Abi>,
     ) -> (usize, Option<Node<'a>>) {
         if start_index >= receipts.len() {
             return (start_index, None);
@@ -262,7 +262,7 @@ impl Node<'_> {
                 let data_str = match data {
                     Some(data) => {
                         let hex_str = format!("0x{}", hex::encode(data));
-                        match self.abis.and_then(|abis| abis.get(id)) {
+                        match self.abis.get(id) {
                             Some(abi) => {
                                 let program_abi = sway_core::asm_generation::ProgramABI::Fuel(
                                     abi.program.clone(),
@@ -318,7 +318,7 @@ impl Node<'_> {
 pub(crate) fn format_transaction_trace<W: std::io::Write>(
     total_gas: u64,
     receipts: &[Receipt],
-    abis: Option<&HashMap<ContractId, Abi>>,
+    abis: &HashMap<ContractId, Abi>,
     writer: &mut W,
 ) -> Result<()> {
     let trace_tree = Node::try_from_with_abis(receipts, abis)?;
@@ -424,7 +424,8 @@ pub(crate) mod tests {
 
         // Format the transaction trace
         let mut output = Vec::new();
-        format_transaction_trace(0, &receipts, None, &mut output).unwrap();
+        let empty_abis = HashMap::new();
+        format_transaction_trace(0, &receipts, &empty_abis, &mut output).unwrap();
         let trace_output = String::from_utf8(output).unwrap();
 
         // Expected output
@@ -497,7 +498,8 @@ pub(crate) mod tests {
         // Get trace output from receipts JSON
         let receipts: Vec<Receipt> = serde_json::from_str(receipts_json).unwrap();
         let mut buffer = Vec::new();
-        format_transaction_trace(0, &receipts, None, &mut buffer).unwrap();
+        let empty_abis = HashMap::new();
+        format_transaction_trace(0, &receipts, &empty_abis, &mut buffer).unwrap();
         let trace_output = String::from_utf8(buffer).unwrap();
 
         // Expected output
@@ -581,7 +583,8 @@ pub(crate) mod tests {
         // Get trace output from receipts JSON
         let receipts: Vec<Receipt> = serde_json::from_str(receipts_json).unwrap();
         let mut buffer = Vec::new();
-        format_transaction_trace(0, &receipts, None, &mut buffer).unwrap();
+        let empty_abis = HashMap::new();
+        format_transaction_trace(0, &receipts, &empty_abis, &mut buffer).unwrap();
         let trace_output = String::from_utf8(buffer).unwrap();
 
         // Expected output
@@ -682,7 +685,8 @@ pub(crate) mod tests {
         // Get trace output from receipts JSON
         let receipts: Vec<Receipt> = serde_json::from_str(receipts_json).unwrap();
         let mut buffer = Vec::new();
-        format_transaction_trace(0, &receipts, None, &mut buffer).unwrap();
+        let empty_abis = HashMap::new();
+        format_transaction_trace(0, &receipts, &empty_abis, &mut buffer).unwrap();
         let trace_output = String::from_utf8(buffer).unwrap();
 
         // Expected output
@@ -793,7 +797,8 @@ pub(crate) mod tests {
         // Get trace output from receipts JSON
         let receipts: Vec<Receipt> = serde_json::from_str(receipts_json).unwrap();
         let mut buffer = Vec::new();
-        format_transaction_trace(0, &receipts, None, &mut buffer).unwrap();
+        let empty_abis = HashMap::new();
+        format_transaction_trace(0, &receipts, &empty_abis, &mut buffer).unwrap();
         let trace_output = String::from_utf8(buffer).unwrap();
 
         // Expected output
@@ -979,7 +984,8 @@ pub(crate) mod tests {
         // Get trace output from receipts JSON
         let receipts: Vec<Receipt> = serde_json::from_str(receipts_json).unwrap();
         let mut buffer = Vec::new();
-        format_transaction_trace(0, &receipts, None, &mut buffer).unwrap();
+        let empty_abis = HashMap::new();
+        format_transaction_trace(0, &receipts, &empty_abis, &mut buffer).unwrap();
         let trace_output = String::from_utf8(buffer).unwrap();
 
         // Expected output
@@ -1074,7 +1080,8 @@ pub(crate) mod tests {
         // Get trace output from receipts JSON
         let receipts: Vec<Receipt> = serde_json::from_str(receipts_json).unwrap();
         let mut buffer = Vec::new();
-        format_transaction_trace(0, &receipts, None, &mut buffer).unwrap();
+        let empty_abis = HashMap::new();
+        format_transaction_trace(0, &receipts, &empty_abis, &mut buffer).unwrap();
         let trace_output = String::from_utf8(buffer).unwrap();
 
         // Expected output - validate spaces and colours
@@ -1148,7 +1155,8 @@ Gas used: 0
         // Get trace output from receipts JSON
         let receipts: Vec<Receipt> = serde_json::from_str(receipts_json).unwrap();
         let mut buffer = Vec::new();
-        format_transaction_trace(0, &receipts, None, &mut buffer).unwrap();
+        let empty_abis = HashMap::new();
+        format_transaction_trace(0, &receipts, &empty_abis, &mut buffer).unwrap();
         let trace_output = String::from_utf8(buffer).unwrap();
 
         // Expected output
