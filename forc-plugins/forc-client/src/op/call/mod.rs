@@ -198,6 +198,8 @@ async fn get_wallet(
 pub(crate) struct Abi {
     program: ProgramABI,
     unified: UnifiedProgramABI,
+    // TODO: required for vm interpreter step through
+    // ↳ gh issue: https://github.com/FuelLabs/sway/issues/7197
     #[allow(dead_code)]
     type_lookup: HashMap<usize, UnifiedTypeDeclaration>,
 }
