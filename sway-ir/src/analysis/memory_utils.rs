@@ -413,7 +413,7 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
             InstOp::Call(_, args) => args
                 .iter()
                 .for_each(|v| add_from_val(&mut result, v, &mut is_complete)),
-            InstOp::CastPtr(_, _) => (),
+            InstOp::CastPtr(ptr, _) => add_from_val(&mut result, ptr, &mut is_complete),
             InstOp::Cmp(_, _, _) => (),
             InstOp::ConditionalBranch { .. } => (),
             InstOp::ContractCall { params, .. } => {
