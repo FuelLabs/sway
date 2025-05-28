@@ -2049,17 +2049,10 @@ impl<'a> FnCompiler<'a> {
                             len,
                             Type::get_uint8(context),
                         );
-                        self.current_block.append(context).mem_copy_bytes(
-                            addr,
-                            item_ptr,
-                            string_len,
-                        );
-                        increase_len(
-                            &mut self.current_block,
-                            context,
-                            len,
-                            string_len,
-                        )
+                        self.current_block
+                            .append(context)
+                            .mem_copy_bytes(addr, item_ptr, string_len);
+                        increase_len(&mut self.current_block, context, len, string_len)
                     }
                     TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
                         let uint64 = Type::get_uint64(context);

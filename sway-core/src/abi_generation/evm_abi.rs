@@ -153,9 +153,10 @@ pub fn abi_param_type(type_info: &TypeInfo, engines: &Engines) -> ethabi::ParamT
     let type_engine = engines.te();
     let decl_engine = engines.de();
     match type_info {
-        StringArray(length) => {
-            ethabi::ParamType::FixedArray(Box::new(ethabi::ParamType::String), length.expr().as_literal_val().unwrap())
-        }
+        StringArray(length) => ethabi::ParamType::FixedArray(
+            Box::new(ethabi::ParamType::String),
+            length.expr().as_literal_val().unwrap(),
+        ),
         UnsignedInteger(x) => match x {
             IntegerBits::Eight => ethabi::ParamType::Uint(8),
             IntegerBits::Sixteen => ethabi::ParamType::Uint(16),

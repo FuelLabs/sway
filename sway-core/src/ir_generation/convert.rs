@@ -103,7 +103,9 @@ fn convert_resolved_type_info(
         TypeInfo::Boolean => Type::get_bool(context),
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::StringSlice => Type::get_slice(context),
-        TypeInfo::StringArray(length) if length.expr().as_literal_val().is_some() => Type::new_string_array(context, length.expr().as_literal_val().unwrap() as u64),
+        TypeInfo::StringArray(length) if length.expr().as_literal_val().is_some() => {
+            Type::new_string_array(context, length.expr().as_literal_val().unwrap() as u64)
+        }
         TypeInfo::Struct(decl_ref) => super::types::get_struct_for_types(
             type_engine,
             decl_engine,

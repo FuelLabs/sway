@@ -157,7 +157,9 @@ pub(crate) fn type_check_method_application(
                 );
             }
             (
-                TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression { ident })),
+                TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
+                    ident,
+                })),
                 TypeInfo::StringArray(Length(ConstGenericExpr::Literal { val, .. })),
             ) => {
                 const_generics.insert(
@@ -169,7 +171,7 @@ pub(crate) fn type_check_method_application(
                     },
                 );
             }
-            _ => {},
+            _ => {}
         }
     }
 

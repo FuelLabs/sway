@@ -880,9 +880,7 @@ impl<'a> TypeCheckContext<'a> {
                         .parameters
                         .iter()
                         .zip(arguments_types.iter().skip(args_len_diff))
-                        .all(|(p, a)| {
-                            coercion_check.check(*a, p.type_argument.type_id())
-                        })
+                        .all(|(p, a)| coercion_check.check(*a, p.type_argument.type_id()))
                     && (matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
                         || matches!(
                             &*type_engine.get(method.return_type.type_id()),

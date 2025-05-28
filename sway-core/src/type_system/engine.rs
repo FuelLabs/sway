@@ -26,10 +26,7 @@ use sway_types::{
     integer_bits::IntegerBits, span::Span, Ident, Named, ProgramId, SourceId, Spanned,
 };
 
-use super::{
-    ast_elements::type_parameter::ConstGenericExpr,
-    unify::unifier::UnifyKind,
-};
+use super::{ast_elements::type_parameter::ConstGenericExpr, unify::unifier::UnifyKind};
 
 /// To be able to garbage-collect [TypeInfo]s from the [TypeEngine]
 /// we need to track which types need to be GCed when a particular
@@ -611,10 +608,7 @@ impl TypeEngine {
         engines: &Engines,
         length: usize,
     ) -> TypeId {
-        self.insert_string_array(
-            engines,
-            Length(ConstGenericExpr::literal(length, None)),
-        )
+        self.insert_string_array(engines, Length(ConstGenericExpr::literal(length, None)))
     }
 
     /// Inserts a new [TypeInfo::ContractCaller] into the [TypeEngine] and returns its [TypeId].

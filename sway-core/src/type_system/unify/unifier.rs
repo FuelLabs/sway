@@ -134,7 +134,16 @@ impl<'a> Unifier<'a> {
             (RawUntypedSlice, RawUntypedSlice) => (),
             (StringSlice, StringSlice) => (),
             (StringArray(r), StringArray(e)) => {
-                self.unify_strs(handler, received, &*r_type_source_info, expected, &*e_type_source_info, span, r, e);
+                self.unify_strs(
+                    handler,
+                    received,
+                    &r_type_source_info,
+                    expected,
+                    &e_type_source_info,
+                    span,
+                    r,
+                    e,
+                );
             }
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
                 self.unify_tuples(handler, rfs, efs);
@@ -362,6 +371,7 @@ impl<'a> Unifier<'a> {
         OccursCheck::new(self.engines).check(generic, other)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn unify_strs(
         &self,
         handler: &Handler,
@@ -374,13 +384,24 @@ impl<'a> Unifier<'a> {
         e: &Length,
     ) {
         match (r.expr(), e.expr()) {
-            (ConstGenericExpr::Literal { val: r_val, .. }, ConstGenericExpr::Literal { val: e_val, .. }) if r_val == e_val => {},
-            (ConstGenericExpr::Literal { .. }, ConstGenericExpr::AmbiguousVariableExpression { .. }) => {
+            (
+                ConstGenericExpr::Literal { val: r_val, .. },
+                ConstGenericExpr::Literal { val: e_val, .. },
+            ) if r_val == e_val => {}
+            (
+                ConstGenericExpr::Literal { .. },
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+            ) => {
                 self.replace_expected_with_received(expected, received_type_info, span);
-            },
-            (ConstGenericExpr::AmbiguousVariableExpression { .. }, ConstGenericExpr::Literal { .. }) => todo!(),
-            (ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident }, ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident }) 
-                if r_ident == e_ident => {},
+            }
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+                ConstGenericExpr::Literal { .. },
+            ) => todo!(),
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
+                ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
+            ) if r_ident == e_ident => {}
             _ => {
                 let (received, expected) = self.assign_args(received, expected);
                 handler.emit_err(

@@ -1,12 +1,16 @@
 use crate::{
-    decl_engine::{parsed_id::ParsedDeclId, DeclEngine, DeclEngineGet, DeclId}, engine_threading::{
+    decl_engine::{parsed_id::ParsedDeclId, DeclEngine, DeclEngineGet, DeclId},
+    engine_threading::{
         DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
         OrdWithEngines, OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
-    }, language::{
+    },
+    language::{
         parsed::{EnumDeclaration, StructDeclaration},
         ty::{self, TyEnumDecl, TyStructDecl},
         CallPath, CallPathType, QualifiedCallPath,
-    }, type_system::priv_prelude::*, Ident
+    },
+    type_system::priv_prelude::*,
+    Ident,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -21,9 +25,7 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, span::Span, Named};
 
-use super::ast_elements::{
-    type_argument::GenericTypeArgument, type_parameter::ConstGenericExpr,
-};
+use super::ast_elements::{type_argument::GenericTypeArgument, type_parameter::ConstGenericExpr};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum AbiName {
@@ -451,13 +453,13 @@ impl OrdWithEngines for TypeInfo {
                 .then_with(|| l_type_args.as_deref().cmp(&r_type_args.as_deref(), ctx)),
             (Self::StringArray(l), Self::StringArray(r)) => {
                 if let Some(ord) = l.expr().partial_cmp(r.expr()) {
-                        ord
-                    } else {
-                        l.expr()
-                            .discriminant_value()
-                            .cmp(&r.expr().discriminant_value())
-                    }
-            },
+                    ord
+                } else {
+                    l.expr()
+                        .discriminant_value()
+                        .cmp(&r.expr().discriminant_value())
+                }
+            }
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
             (Self::Enum(l_decl_id), Self::Enum(r_decl_id)) => {
                 let l_decl = decl_engine.get_enum(l_decl_id);
@@ -575,7 +577,7 @@ impl DisplayWithEngines for TypeInfo {
                     }
                 };
                 format!("str[{}]", length)
-            },
+            }
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
@@ -708,11 +710,8 @@ impl DebugWithEngines for TypeInfo {
             TypeParam(param) => format!("typeparam({})", param.name()),
             StringSlice => "str".into(),
             StringArray(length) => {
-                format!(
-                    "str[{:?}]",
-                    engines.help_out(length.expr()),
-                )
-            },
+                format!("str[{:?}]", engines.help_out(length.expr()),)
+            }
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
@@ -967,7 +966,7 @@ impl TypeInfo {
                     .as_literal_val()
                     .expect("unexpected non literal length");
                 format!("str[{}]", len)
-            },
+            }
             UnsignedInteger(bits) => {
                 use IntegerBits::{Eight, Sixteen, SixtyFour, ThirtyTwo, V256};
                 match bits {
@@ -1684,12 +1683,10 @@ impl TypeInfo {
                 }
             }
 
-            TypeInfo::StringArray(len) => {
-                match len.expr() {
-                    ConstGenericExpr::Literal { val, .. } => AbiEncodeSizeHint::Exact(*val),
-                    ConstGenericExpr::AmbiguousVariableExpression { .. } => {
-                        AbiEncodeSizeHint::PotentiallyInfinite
-                    }
+            TypeInfo::StringArray(len) => match len.expr() {
+                ConstGenericExpr::Literal { val, .. } => AbiEncodeSizeHint::Exact(*val),
+                ConstGenericExpr::AmbiguousVariableExpression { .. } => {
+                    AbiEncodeSizeHint::PotentiallyInfinite
                 }
             },
 
@@ -1758,11 +1755,8 @@ impl TypeInfo {
             TypeParam(param) => format!("typeparam({})", param.name()),
             StringSlice => "str".into(),
             StringArray(length) => {
-                format!(
-                    "str[{:?}]",
-                    engines.help_out(length.expr())
-                )
-            },
+                format!("str[{:?}]", engines.help_out(length.expr()))
+            }
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",

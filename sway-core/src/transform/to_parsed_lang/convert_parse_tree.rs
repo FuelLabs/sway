@@ -1637,12 +1637,9 @@ fn ty_to_type_info(
             )
         }
         Ty::StringSlice(..) => TypeInfo::StringSlice,
-        Ty::StringArray { length, .. } => TypeInfo::StringArray(Length(expr_to_const_generic_expr(
-            context,
-            engines,
-            handler,
-            length.get(),
-        )?)),
+        Ty::StringArray { length, .. } => TypeInfo::StringArray(Length(
+            expr_to_const_generic_expr(context, engines, handler, length.get())?,
+        )),
         Ty::Infer { .. } => TypeInfo::Unknown,
         Ty::Ptr { ty, .. } => {
             let type_argument = ty_to_type_argument(context, handler, engines, *ty.into_inner())?;

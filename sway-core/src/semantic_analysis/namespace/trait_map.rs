@@ -878,7 +878,6 @@ impl TraitMap {
                 true,
                 |entry| {
                     if unify_check.check(type_id, entry.key.type_id) {
-                        
                         let trait_items = Self::filter_dummy_methods(
                             &entry.value.trait_items,
                             type_id,

@@ -246,7 +246,8 @@ impl DeclRefFunction {
 
             for p in method.parameters.iter_mut() {
                 let t = engines.te().get(p.type_argument.type_id());
-                *p.type_argument.type_id_mut() = engines.te().insert(engines, TypeInfo::clone(&t), None);
+                *p.type_argument.type_id_mut() =
+                    engines.te().insert(engines, TypeInfo::clone(&t), None);
             }
 
             let mut method_type_subst_map = TypeSubstMap::new();
