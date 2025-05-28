@@ -9,9 +9,9 @@ use std::collections::HashSet;
 use sway_utils::mapped_stack::MappedStack;
 
 use crate::{
-    AnalysisResults, Block, BranchToWithArgs, Constant, Context, DomFronts, DomTree, Function,
-    InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, PostOrder, ScopedPass, Type,
-    Value, ValueDatum, DOMINATORS_NAME, DOM_FRONTS_NAME, POSTORDER_NAME,
+    function_print, AnalysisResults, Block, BranchToWithArgs, Constant, Context, DomFronts,
+    DomTree, Function, InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, PostOrder,
+    ScopedPass, Type, Value, ValueDatum, DOMINATORS_NAME, DOM_FRONTS_NAME, POSTORDER_NAME,
 };
 
 pub const MEM2REG_NAME: &str = "mem2reg";
@@ -66,12 +66,19 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
             ValueDatum::Instruction(Instruction {
                 op: InstOp::Load(_),
                 ..
-            })
-            | ValueDatum::Instruction(Instruction {
-                op: InstOp::Store { .. },
+            }) => {}
+            ValueDatum::Instruction(Instruction {
+                op:
+                    InstOp::Store {
+                        dst_val_ptr: _,
+                        stored_val,
+                    },
                 ..
             }) => {
-                // We understand load and store, so no problem.
+                // Make sure that a local ('s address) isn't stored.
+                if let Some((local, _)) = get_validate_local_var(context, function, &stored_val) {
+                    locals.remove(&local);
+                }
             }
             _ => {
                 // Make sure that no local escapes into instructions we don't understand.
