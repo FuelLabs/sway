@@ -248,3 +248,4 @@ evm
 AbiEncode
 AbiDecode
 Durations
+durations
