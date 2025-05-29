@@ -144,17 +144,9 @@ pub(crate) fn type_check_method_application(
             }
             (
                 TypeInfo::StringArray(Length(ConstGenericExpr::Literal { .. })),
-                TypeInfo::StringArray(Length(ConstGenericExpr::Literal { val, .. })),
+                TypeInfo::StringArray(Length(ConstGenericExpr::Literal { .. })),
             ) => {
-                //TODO
-                const_generics.insert(
-                    "N".to_string(),
-                    TyExpression {
-                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
-                        return_type: engines.te().id_of_u64(),
-                        span: Span::dummy(),
-                    },
-                );
+                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860");
             }
             (
                 TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {

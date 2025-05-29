@@ -397,7 +397,7 @@ impl<'a> Unifier<'a> {
             (
                 ConstGenericExpr::AmbiguousVariableExpression { .. },
                 ConstGenericExpr::Literal { .. },
-            ) => todo!(),
+            ) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
             (
                 ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
                 ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },

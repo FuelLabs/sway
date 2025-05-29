@@ -244,10 +244,11 @@ impl DeclRefFunction {
                 }
             }
 
-            for p in method.parameters.iter_mut() {
-                let t = engines.te().get(p.type_argument.type_id());
-                *p.type_argument.type_id_mut() =
-                    engines.te().insert(engines, TypeInfo::clone(&t), None);
+            // Duplicate arguments to avoid changing TypeId inside TraitMap
+            for parameter in method.parameters.iter_mut() {
+                *parameter.type_argument.type_id_mut() = engines
+                    .te()
+                    .duplicate(engines, parameter.type_argument.type_id())
             }
 
             let mut method_type_subst_map = TypeSubstMap::new();
