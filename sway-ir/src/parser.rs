@@ -221,6 +221,7 @@ mod ir_builder {
                 / op_wide_unary()
                 / op_wide_binary()
                 / op_wide_cmp()
+                / op_retd()
                 / op_branch()
                 / op_bitcast()
                 / op_unary()
@@ -295,6 +296,11 @@ mod ir_builder {
             rule op_wide_cmp() -> IrAstOperation
                 = "wide" _ "cmp" _ op:cmp_pred() arg1:id() arg2:id() {
                     IrAstOperation::WideCmp(op, arg1, arg2)
+                }
+
+            rule op_retd() -> IrAstOperation
+                = "retd" _ arg1:id() _ arg2:id() {
+                    IrAstOperation::Retd(arg1, arg2)
                 }
 
             rule op_binary() -> IrAstOperation
@@ -808,6 +814,7 @@ mod ir_builder {
         WideBinaryOp(BinaryOpKind, String, String, String),
         WideCmp(Predicate, String, String),
         WideModularOp(BinaryOpKind, String, String, String, String),
+        Retd(String, String),
     }
 
     #[derive(Debug)]
@@ -1238,6 +1245,13 @@ mod ir_builder {
                             op,
                             *val_map.get(&arg1).unwrap(),
                             *val_map.get(&arg2).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Retd(ret_ptr, ret_len) => block
+                        .append(context)
+                        .retd(
+                            *val_map.get(&ret_ptr).unwrap(),
+                            *val_map.get(&ret_len).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::BinaryOp(op, arg1, arg2) => block

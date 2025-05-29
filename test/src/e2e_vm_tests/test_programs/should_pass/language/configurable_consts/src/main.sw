@@ -69,10 +69,10 @@ fn main() {
     assert(sha256_str_array(STR_4) == sha256("abcd"));
 
     // Assert address do not change
-    let addr_1 = asm(addr: __addr_of(&BOOL)) {
+    let addr_1 = asm(addr: &BOOL) {
         addr: u64
     };
-    let addr_2 = asm(addr: __addr_of(&BOOL)) {
+    let addr_2 = asm(addr: &BOOL) {
         addr: u64
     };
     assert(addr_1 == addr_2);

@@ -9,7 +9,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     asm::AsmArg,
     block::Block,
-    call_graph,
+    call_graph, compute_post_order,
     context::Context,
     error::IrError,
     function::Function,
@@ -372,12 +372,16 @@ pub fn inline_function_call(
         block_map
     });
 
+    // Use a reverse-post-order traversal to ensure that definitions are seen before uses.
+    let inlined_block_iter = compute_post_order(context, &inlined_function)
+        .po_to_block
+        .into_iter()
+        .rev();
     // We now have a mapping from old blocks to new (currently empty) blocks, and a mapping from
     // old values (locals and args at this stage) to new values.  We can copy instructions over,
     // translating their blocks and values to refer to the new ones.  The value map is still live
     // as we add new instructions which replace the old ones to it too.
-    let inlined_blocks = context.functions[inlined_function.0].blocks.clone();
-    for block in &inlined_blocks {
+    for ref block in inlined_block_iter {
         for ins in block.instruction_iter(context) {
             inline_instruction(
                 context,

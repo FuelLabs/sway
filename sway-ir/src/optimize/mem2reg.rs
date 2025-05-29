@@ -66,12 +66,19 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
             ValueDatum::Instruction(Instruction {
                 op: InstOp::Load(_),
                 ..
-            })
-            | ValueDatum::Instruction(Instruction {
-                op: InstOp::Store { .. },
+            }) => {}
+            ValueDatum::Instruction(Instruction {
+                op:
+                    InstOp::Store {
+                        dst_val_ptr: _,
+                        stored_val,
+                    },
                 ..
             }) => {
-                // We understand load and store, so no problem.
+                // Make sure that a local ('s address) isn't stored.
+                if let Some((local, _)) = get_validate_local_var(context, function, &stored_val) {
+                    locals.remove(&local);
+                }
             }
             _ => {
                 // Make sure that no local escapes into instructions we don't understand.
