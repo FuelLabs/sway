@@ -91,7 +91,10 @@ fn main(a: [u64; 2]) {
     assert(b == 3);
     //__dbg(e);
 
+    // standalone fns
+    assert(return_n::<3>() == 3);
     let _ = __dbg(return_n::<3>());
+    assert(return_n::<5>() == 5);
     let _ = __dbg(return_n::<5>());
 
     // string arrays
