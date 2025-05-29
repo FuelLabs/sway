@@ -102,12 +102,12 @@ fn time_duration_minutes() {
 fn time_duration_hours() {
     let one_hour = Duration::hours(1);
     let twenty_four_hours = Duration::hours(24);
-    let fourty_eight_hours = Duration::hours(48);
+    let forty_eight_hours = Duration::hours(48);
     let week_hours = Duration::hours(168);
 
     assert(one_hour == Duration::HOUR);
     assert(twenty_four_hours == Duration::DAY);
-    assert(fourty_eight_hours == Duration::days(2));
+    assert(forty_eight_hours == Duration::days(2));
     assert(week_hours == Duration::WEEK);
 }
 
