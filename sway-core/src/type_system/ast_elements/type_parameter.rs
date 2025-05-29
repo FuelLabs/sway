@@ -1052,7 +1052,9 @@ pub struct ConstGenericParameter {
 
 impl HashWithEngines for ConstGenericParameter {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let ConstGenericParameter { name, ty, id, expr, .. } = self;
+        let ConstGenericParameter {
+            name, ty, id, expr, ..
+        } = self;
         let type_engine = engines.te();
         type_engine.get(*ty).hash(state, engines);
         name.hash(state);
