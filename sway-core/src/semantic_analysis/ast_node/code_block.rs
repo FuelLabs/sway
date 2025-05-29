@@ -75,7 +75,7 @@ impl ty::TyCodeBlock {
                 Ok(())
             })?;
 
-        ctx.engines.te().reapply_unifications(ctx.engines());
+        ctx.engines.te().reapply_unifications(ctx.engines(), 0);
 
         ctx.by_ref()
             .scoped(handler, Some(code_block.span()), |ctx| {

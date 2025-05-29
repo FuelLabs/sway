@@ -75,13 +75,14 @@ impl CompiledFunctionCache {
         let new_callee = match item {
             Some(func) => func,
             None => {
+                let name = Ident::new(Span::from_string(format!(
+                    "{}_{}",
+                    decl.name,
+                    context.get_unique_symbol_id()
+                )));
                 let callee_fn_decl = ty::TyFunctionDecl {
                     type_parameters: Vec::new(),
-                    name: Ident::new(Span::from_string(format!(
-                        "{}_{}",
-                        decl.name,
-                        context.get_unique_symbol_id()
-                    ))),
+                    name,
                     parameters: decl.parameters.clone(),
                     ..decl.clone()
                 };
