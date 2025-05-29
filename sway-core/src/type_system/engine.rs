@@ -969,7 +969,9 @@ impl TypeEngine {
             | TypeInfo::Placeholder(_)
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Array(.., Length(ConstGenericExpr::AmbiguousVariableExpression { .. }))
-            | TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression { .. }))
+            | TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
+                ..
+            }))
             | TypeInfo::Struct(_)
             | TypeInfo::Enum(_) => true,
             TypeInfo::ContractCaller { abi_name, address } => {
