@@ -40,6 +40,7 @@
   - [Access Control](./blockchain-development/access_control.md)
   - [Calling Contracts](./blockchain-development/calling_contracts.md)
   - [External Code](./blockchain-development/external_code.md)
+  - [Time](./blockchain-development/time.md)
 - [Advanced Concepts](./advanced/index.md)
   - [Advanced Types](./advanced/advanced_types.md)
   - [Advanced Storage](./advanced/advanced_storage.md)
