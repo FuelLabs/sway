@@ -49,6 +49,7 @@ mod storage_vec_to_vec;
 mod string_slice;
 mod superabi;
 mod superabi_supertrait;
+mod time;
 mod tx_fields;
 mod type_aliases;
 mod vec_in_abi;
