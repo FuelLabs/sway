@@ -2516,10 +2516,12 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
                 graph.add_edge(entry_node, enum_idx, "".into());
             }
             for p in &decl.generic_parameters {
-                let p = p
-                    .as_type_parameter()
-                    .expect("only works with type parameters");
-                connect_type_id(engines, p.type_id, graph, entry_node)?;
+                match p {
+                    crate::TypeParameter::Type(p) => {
+                        connect_type_id(engines, p.type_id, graph, entry_node)?;
+                    }
+                    crate::TypeParameter::Const(_) => {}
+                }
             }
         }
         TypeInfo::Struct(decl_ref) => {

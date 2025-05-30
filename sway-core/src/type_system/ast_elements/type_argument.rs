@@ -76,6 +76,13 @@ impl GenericArgument {
             .type_id
     }
 
+    pub fn type_id_mut(&mut self) -> &mut TypeId {
+        &mut self
+            .as_type_argument_mut()
+            .expect("only works with type arguments")
+            .type_id
+    }
+
     pub fn initial_type_id(&self) -> TypeId {
         self.as_type_argument()
             .expect("only works with type arguments")
@@ -98,13 +105,6 @@ impl GenericArgument {
                 todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
         }
-    }
-
-    pub fn type_id_mut(&mut self) -> &mut TypeId {
-        &mut self
-            .as_type_argument_mut()
-            .expect("only works with type arguments")
-            .type_id
     }
 
     /// Returns true if `self` is annotated by having either

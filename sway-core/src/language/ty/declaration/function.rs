@@ -793,7 +793,9 @@ impl TyFunctionSig {
                         TyFunctionSigTypeParameter::Const(p) => {
                             match p {
                                 ConstGenericExpr::Literal { val, .. } => val.to_string(),
-                                ConstGenericExpr::AmbiguousVariableExpression { .. } => todo!(),
+                                ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+                                    ident.as_str().to_string()
+                                }
                             }
                         }
                     })
