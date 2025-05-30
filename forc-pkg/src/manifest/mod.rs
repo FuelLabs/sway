@@ -900,40 +900,49 @@ fn implicit_std_dep() -> Dependency {
         });
     }
 
-    // Here, we use the `forc-pkg` crate version formatted with the `v` prefix (e.g. "v1.2.3"),
-    // or the revision commit hash (e.g. "abcdefg").
-    //
-    // This git tag or revision is used during `PackageManifest` construction to pin the version of the
-    // implicit `std` dependency to the `forc-pkg` version.
-    //
-    // This is important to ensure that the version of `sway-core` that is baked into `forc-pkg` is
-    // compatible with the version of the `std` lib.
-    let tag = std::env::var("FORC_IMPLICIT_STD_GIT_TAG")
-        .ok()
-        .unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")));
-    const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
-
-    // only use tag/rev if the branch is None
+    let tag = std::env::var("FORC_IMPLICIT_STD_GIT_TAG").ok();
     let branch = std::env::var("FORC_IMPLICIT_STD_GIT_BRANCH").ok();
-    let tag = branch.as_ref().map_or_else(|| Some(tag), |_| None);
+    let git_target = std::env::var("FORC_IMPLICIT_STD_GIT").ok();
 
-    let mut det = DependencyDetails {
-        git: std::env::var("FORC_IMPLICIT_STD_GIT")
-            .ok()
-            .or_else(|| Some(SWAY_GIT_REPO_URL.to_string())),
-        tag,
-        branch,
-        ..Default::default()
-    };
+    // If any onf the git based std variables is set, we select the git version
+    // for std.
+    let det = if tag.is_some() || branch.is_some() || git_target.is_some() {
+        const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
+        // Here, we use the `forc-pkg` crate version formatted with the `v` prefix (e.g. "v1.2.3"),
+        // or the revision commit hash (e.g. "abcdefg").
+        //
+        // This git tag or revision is used during `PackageManifest` construction to pin the version of the
+        // implicit `std` dependency to the `forc-pkg` version.
+        //
+        // This is important to ensure that the version of `sway-core` that is baked into `forc-pkg` is
+        // compatible with the version of the `std` lib.
+        let tag = tag.unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")));
 
-    if let Some((_, build_metadata)) = det.tag.as_ref().and_then(|tag| tag.split_once('+')) {
-        // Nightlies are in the format v<version>+nightly.<date>.<hash>
-        let rev = build_metadata.split('.').next_back().map(|r| r.to_string());
+        // only use tag/rev if the branch is None
+        let tag = branch.as_ref().map_or_else(|| Some(tag), |_| None);
+        let mut det = DependencyDetails {
+            git: git_target.or_else(|| Some(SWAY_GIT_REPO_URL.to_string())),
+            tag,
+            branch,
+            ..Default::default()
+        };
 
-        // If some revision is available and parsed from the 'nightly' build metadata,
-        // we always prefer the revision over the tag.
-        det.tag = None;
-        det.rev = rev;
+        if let Some((_, build_metadata)) = det.tag.as_ref().and_then(|tag| tag.split_once('+')) {
+            // Nightlies are in the format v<version>+nightly.<date>.<hash>
+            let rev = build_metadata.split('.').next_back().map(|r| r.to_string());
+
+            // If some revision is available and parsed from the 'nightly' build metadata,
+            // we always prefer the revision over the tag.
+            det.tag = None;
+            det.rev = rev;
+        };
+        det
+    } else {
+        let current_version = env!("CARGO_PKG_VERSION").to_string();
+        DependencyDetails {
+            version: Some(current_version),
+            ..Default::default()
+        }
     };
 
     Dependency::Detailed(det)
