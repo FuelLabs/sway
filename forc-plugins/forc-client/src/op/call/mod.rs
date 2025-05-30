@@ -2,29 +2,35 @@ mod call_function;
 mod list_functions;
 mod missing_contracts;
 mod parser;
+mod transaction_trace;
 mod transfer;
 
 use crate::{
     cmd,
     constants::DEFAULT_PRIVATE_KEY,
     op::call::{
-        call_function::call_function, list_functions::list_contract_functions, transfer::transfer,
+        call_function::call_function, list_functions::list_contract_functions,
+        transaction_trace::format_transaction_trace, transfer::transfer,
     },
     util::tx::{prompt_forc_wallet_password, select_local_wallet_account},
 };
 use anyhow::{anyhow, Result};
 use either::Either;
-use fuel_abi_types::abi::{program::ProgramABI, unified_program::UnifiedProgramABI};
+use fuel_abi_types::abi::{
+    program::ProgramABI,
+    unified_program::{UnifiedProgramABI, UnifiedTypeDeclaration},
+};
 use fuel_tx::Receipt;
 use fuels::{
     accounts::{
         provider::Provider, signers::private_key::PrivateKeySigner, wallet::Wallet, ViewOnlyAccount,
     },
     crypto::SecretKey,
+    types::tx_status::TxStatus,
 };
-use fuels_core::types::{transaction::TxPolicies, AssetId};
+use fuels_core::types::{transaction::TxPolicies, AssetId, ContractId};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 use sway_core;
 
 /// Response returned from a contract call operation
@@ -33,11 +39,10 @@ use sway_core;
 pub struct CallResponse {
     pub tx_hash: String,
     pub result: Option<String>,
-    pub logs: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub receipts: Option<Vec<Receipt>>,
-    #[serde(rename = "Script", skip_serializing_if = "Option::is_none")]
-    pub script: Option<serde_json::Value>,
+    #[serde(rename = "script", skip_serializing_if = "Option::is_none")]
+    pub script_json: Option<serde_json::Value>,
 }
 
 /// A command for calling a contract function.
@@ -190,47 +195,104 @@ async fn get_wallet(
     }
 }
 
+pub(crate) struct Abi {
+    program: ProgramABI,
+    unified: UnifiedProgramABI,
+    // TODO: required for vm interpreter step through
+    // ↳ gh issue: https://github.com/FuelLabs/sway/issues/7197
+    #[allow(dead_code)]
+    type_lookup: HashMap<usize, UnifiedTypeDeclaration>,
+}
+
+impl FromStr for Abi {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let program: ProgramABI =
+            serde_json::from_str(s).map_err(|err| format!("failed to parse ABI: {}", err))?;
+
+        let unified = UnifiedProgramABI::from_counterpart(&program)
+            .map_err(|err| format!("conversion to unified ABI format failed: {}", err))?;
+
+        let type_lookup = unified
+            .types
+            .iter()
+            .map(|decl| (decl.type_id, decl.clone()))
+            .collect::<HashMap<_, _>>();
+
+        Ok(Self {
+            program,
+            unified,
+            type_lookup,
+        })
+    }
+}
+
+pub(crate) struct CallData {
+    contract_id: ContractId,
+    abis: HashMap<ContractId, Abi>,
+    result: String,
+}
+
 /// Processes transaction receipts, logs, and displays transaction information
 pub(crate) fn process_transaction_output(
-    receipts: &[Receipt],
+    tx_status: TxStatus,
     tx_hash: &str,
-    program_abi: &sway_core::asm_generation::ProgramABI,
-    result: Option<String>,
     mode: &cmd::call::ExecutionMode,
     node: &crate::NodeTarget,
     verbosity: u8,
+    output: &mut impl std::io::Write,
+    call_data: Option<CallData>,
 ) -> Result<CallResponse> {
-    // print receipts
-    if verbosity >= 2 {
-        let formatted_receipts = forc_util::tx_utils::format_log_receipts(receipts, true)?;
-        forc_tracing::println_label_green("receipts:", &formatted_receipts);
-    }
+    let total_gas = tx_status.total_gas();
+    let receipts = tx_status.take_receipts();
+    let abis = match &call_data {
+        Some(CallData { abis, .. }) => abis,
+        None => &HashMap::new(),
+    };
+    print_receipts_and_trace(total_gas, &receipts, verbosity, abis, output)?;
 
-    let logs = receipts
-        .iter()
-        .filter_map(|receipt| match receipt {
-            Receipt::LogData {
-                rb,
-                data: Some(data),
-                ..
-            } => forc_util::tx_utils::decode_log_data(&rb.to_string(), data, program_abi)
-                .ok()
-                .map(|decoded| decoded.value),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
+    if verbosity >= 1 {
+        if let Some(CallData {
+            contract_id, abis, ..
+        }) = call_data.as_ref()
+        {
+            let logs = receipts
+                .iter()
+                .filter_map(|receipt| match receipt {
+                    Receipt::LogData {
+                        rb,
+                        data: Some(data),
+                        ..
+                    } => {
+                        let program_abi = abis
+                            .get(contract_id)
+                            .map(|abi| {
+                                sway_core::asm_generation::ProgramABI::Fuel(abi.program.clone())
+                            })
+                            .unwrap_or(sway_core::asm_generation::ProgramABI::Fuel(
+                                ProgramABI::default(),
+                            ));
+                        forc_util::tx_utils::decode_log_data(&rb.to_string(), data, &program_abi)
+                            .ok()
+                            .map(|decoded| decoded.value)
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
 
-    // display logs if verbosity is set
-    if verbosity >= 1 && !logs.is_empty() {
-        forc_tracing::println_green_bold("logs:");
-        for log in logs.iter() {
-            println!("  {:#}", log);
+            // print logs if there are any
+            if !logs.is_empty() {
+                forc_tracing::println_green_bold("logs:");
+                for log in logs.iter() {
+                    writeln!(output, "  {:#}", log)?;
+                }
+            }
         }
     }
 
     // print tx hash and result
     forc_tracing::println_label_green("tx hash:", tx_hash);
-    if let Some(result) = result.as_ref() {
+    if let Some(CallData { ref result, .. }) = call_data {
         forc_tracing::println_label_green("result:", result);
     }
 
@@ -246,15 +308,33 @@ pub(crate) fn process_transaction_output(
 
     Ok(CallResponse {
         tx_hash: tx_hash.to_string(),
-        result,
+        result: call_data.map(|cd| cd.result),
         receipts: if verbosity >= 2 {
             Some(receipts.to_vec())
         } else {
             None
         },
-        script: None,
-        logs,
+        script_json: None,
     })
+}
+
+pub(crate) fn print_receipts_and_trace(
+    total_gas: u64,
+    receipts: &[Receipt],
+    verbosity: u8,
+    abis: &HashMap<ContractId, Abi>,
+    writer: &mut impl std::io::Write,
+) -> Result<()> {
+    if verbosity >= 2 {
+        let formatted_receipts = forc_util::tx_utils::format_log_receipts(receipts, true)
+            .map_err(|e| anyhow!("Failed to format receipts: {}", e))?;
+        forc_tracing::println_label_green("receipts:", &formatted_receipts);
+        if verbosity >= 3 {
+            format_transaction_trace(total_gas, receipts, abis, writer)
+                .map_err(|e| anyhow!("Failed to format transaction trace: {e}"))?;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
