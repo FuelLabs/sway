@@ -372,7 +372,8 @@ impl Module {
         let mut items = vec![];
         self.append_items_for_type(engines, type_id, &mut items);
 
-        items.into_iter()
+        items
+            .into_iter()
             .filter_map(|item| match item {
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),
                 ResolvedTraitImplItem::Typed(item) => match item {

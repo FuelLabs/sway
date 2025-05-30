@@ -53,7 +53,7 @@ pub fn resolve_type(
                 engines,
                 namespace,
                 module_path,
-                &qualified_call_path,
+                qualified_call_path,
                 self_type,
                 subst_ctx,
                 check_visibility,
@@ -141,7 +141,7 @@ pub fn resolve_type(
                 namespace.current_package_root_module(),
                 handler,
                 engines,
-                &name,
+                name,
                 *trait_type_id,
                 None,
             )?;
@@ -350,7 +350,7 @@ pub(super) fn resolve_symbol_and_mod_path(
             self_type,
         )
     } else {
-        match namespace.get_external_package(&mod_path[0].as_str()) {
+        match namespace.get_external_package(mod_path[0].as_str()) {
             Some(ext_package) => {
                 // The path must be resolved in an external package.
                 // The root module in that package may have a different name than the name we

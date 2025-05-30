@@ -89,12 +89,11 @@ impl Package {
         assert!(!mod_path.is_empty());
         let package_relative_path = Self::package_relative_path(mod_path);
         if mod_path[0] == *self.root_module.name() {
-            self.root_module.submodule(&package_relative_path)
-        } else if let Some(external_package) = self.external_packages.get(mod_path[0].as_str())
-        {
+            self.root_module.submodule(package_relative_path)
+        } else if let Some(external_package) = self.external_packages.get(mod_path[0].as_str()) {
             external_package
                 .root_module()
-                .submodule(&package_relative_path)
+                .submodule(package_relative_path)
         } else {
             None
         }

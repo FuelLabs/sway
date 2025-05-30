@@ -801,9 +801,9 @@ pub(crate) fn type_check_method_application(
     }
 
     let expression = ty::TyExpressionVariant::FunctionApplication {
-        call_path: call_path,
+        call_path,
         arguments,
-        fn_ref: fn_ref,
+        fn_ref,
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
         call_path_typeid: Some(call_path_typeid),
@@ -843,11 +843,13 @@ fn unify_arguments_and_parameters(
                     param.type_argument.type_id(),
                     &arg.span,
                     "This argument's type is not castable to the declared parameter type.",
-                    || Some(CompileError::ArgumentParameterTypeMismatch {
-                        span: arg.span.clone(),
-                        provided: engines.help_out(arg.return_type).to_string(),
-                        should_be: engines.help_out(param.type_argument.type_id()).to_string(),
-                    }),
+                    || {
+                        Some(CompileError::ArgumentParameterTypeMismatch {
+                            span: arg.span.clone(),
+                            provided: engines.help_out(arg.return_type).to_string(),
+                            should_be: engines.help_out(param.type_argument.type_id()).to_string(),
+                        })
+                    },
                 );
                 Ok(())
             });
@@ -893,10 +895,10 @@ pub(crate) fn resolve_method_name(
             let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
-                &type_info_prefix,
+                type_info_prefix,
                 method_name,
                 ctx.type_annotation(),
-                &arguments_types,
+                arguments_types,
                 None,
             )?;
 
@@ -940,7 +942,7 @@ pub(crate) fn resolve_method_name(
                 &module_path,
                 &call_path.suffix,
                 ctx.type_annotation(),
-                &arguments_types,
+                arguments_types,
                 None,
             )?;
 
@@ -963,7 +965,7 @@ pub(crate) fn resolve_method_name(
                 module_path.as_slice(),
                 method_name,
                 ctx.type_annotation(),
-                &arguments_types,
+                arguments_types,
                 None,
             )?;
 
@@ -984,10 +986,10 @@ pub(crate) fn resolve_method_name(
             let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
-                &module_path,
+                module_path,
                 method_name,
                 ctx.type_annotation(),
-                &arguments_types,
+                arguments_types,
                 Some(*as_trait),
             )?;
 

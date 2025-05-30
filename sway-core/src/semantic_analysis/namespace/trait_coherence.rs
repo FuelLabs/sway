@@ -52,7 +52,11 @@ fn check_orphan_rules_for_impls_in_scope(
     for key in trait_map.trait_impls.keys() {
         for trait_entry in trait_map.trait_impls[key].iter() {
             // 0. If it's a contract then skip it as it's not relevant to coherence.
-            if engines.te().get(trait_entry.inner.key.type_id).is_contract() {
+            if engines
+                .te()
+                .get(trait_entry.inner.key.type_id)
+                .is_contract()
+            {
                 continue;
             }
 
@@ -235,8 +239,10 @@ pub(crate) fn check_impls_for_overlap(
                     &*other_entry.inner.key.name,
                     &PartialEqWithEnginesContext::new(engines),
                 ) && self_entry.inner.value.impl_span != other_entry.inner.value.impl_span
-                    && (unify_check.check(self_entry.inner.key.type_id, other_entry.inner.key.type_id)
-                        || unify_check.check(other_entry.inner.key.type_id, self_entry.inner.key.type_id))
+                    && (unify_check
+                        .check(self_entry.inner.key.type_id, other_entry.inner.key.type_id)
+                        || unify_check
+                            .check(other_entry.inner.key.type_id, self_entry.inner.key.type_id))
                 {
                     let other_tcs: Vec<(CallPath, TypeId)> = other_entry
                         .inner
@@ -309,11 +315,13 @@ pub(crate) fn check_impls_for_overlap(
                                                     .help_out(self_entry.inner.key.type_id)
                                                     .to_string(),
                                                 existing_impl_span: self_entry
-                                                    .inner.value
+                                                    .inner
+                                                    .value
                                                     .impl_span
                                                     .clone(),
                                                 second_impl_span: other_entry
-                                                    .inner.value
+                                                    .inner
+                                                    .value
                                                     .impl_span
                                                     .clone(),
                                             },

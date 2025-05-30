@@ -2343,7 +2343,15 @@ impl TypeEngine {
             | TypeInfo::Alias { .. }
             | TypeInfo::TraitType { .. } => {}
             TypeInfo::Numeric => {
-                self.unify(handler, engines, type_id, self.id_of_u64(), span, "", || None);
+                self.unify(
+                    handler,
+                    engines,
+                    type_id,
+                    self.id_of_u64(),
+                    span,
+                    "",
+                    || None,
+                );
             }
         }
         Ok(())

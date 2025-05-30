@@ -1,5 +1,5 @@
 #![allow(clippy::mutable_key_type)]
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclRefFunction, MaterializeConstGenerics},
@@ -743,42 +743,49 @@ impl<'a> TypeCheckContext<'a> {
             .namespace()
             .require_module_from_absolute_path(handler, &self.namespace().current_mod_path)?;
 
-        
         // grab the local items from the local module
         let mut matching_item_decl_refs = vec![];
-        let mut filter_item = |item, _| {
-            match &item {
-                ResolvedTraitImplItem::Parsed(_) => todo!(),
-                ResolvedTraitImplItem::Typed(item) => match item {
-                    ty::TyTraitItem::Fn(decl_ref) => {
-                        if decl_ref.name() == item_name {
-                            matching_item_decl_refs.push(item.clone());
-                        }
+        let mut filter_item = |item, _| match &item {
+            ResolvedTraitImplItem::Parsed(_) => todo!(),
+            ResolvedTraitImplItem::Typed(item) => match item {
+                ty::TyTraitItem::Fn(decl_ref) => {
+                    if decl_ref.name() == item_name {
+                        matching_item_decl_refs.push(item.clone());
                     }
-                    ty::TyTraitItem::Constant(decl_ref) => {
-                        if decl_ref.name() == item_name {
-                            matching_item_decl_refs.push(item.clone());
-                        }
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    if decl_ref.name() == item_name {
+                        matching_item_decl_refs.push(item.clone());
                     }
-                    ty::TyTraitItem::Type(decl_ref) => {
-                        if decl_ref.name() == item_name {
-                            matching_item_decl_refs.push(item.clone());
-                        }
+                }
+                ty::TyTraitItem::Type(decl_ref) => {
+                    if decl_ref.name() == item_name {
+                        matching_item_decl_refs.push(item.clone());
                     }
-                },
-            }
+                }
+            },
         };
 
-        TraitMap::find_items_and_trait_key_for_type(local_module, self.engines, type_id, &mut filter_item);
+        TraitMap::find_items_and_trait_key_for_type(
+            local_module,
+            self.engines,
+            type_id,
+            &mut filter_item,
+        );
 
         if item_prefix != self.namespace().current_mod_path.as_slice() {
             // grab the module where the type itself is declared
             let type_module = self
                 .namespace()
-                .require_module_from_absolute_path(handler, &item_prefix)?;
+                .require_module_from_absolute_path(handler, item_prefix)?;
 
             // grab the items from where the type is declared
-            TraitMap::find_items_and_trait_key_for_type(type_module, self.engines, type_id, &mut filter_item);
+            TraitMap::find_items_and_trait_key_for_type(
+                type_module,
+                self.engines,
+                type_id,
+                &mut filter_item,
+            );
         }
 
         Ok(matching_item_decl_refs)
@@ -858,7 +865,9 @@ impl<'a> TypeCheckContext<'a> {
             .collect::<Vec<_>>();
 
         let mut qualified_call_path = None;
-        let matching_method_decl_ref: Option<crate::decl_engine::DeclRef<crate::decl_engine::DeclId<ty::TyFunctionDecl>>> = {
+        let matching_method_decl_ref: Option<
+            crate::decl_engine::DeclRef<crate::decl_engine::DeclId<ty::TyFunctionDecl>>,
+        > = {
             // Case where multiple methods exist with the same name
             // This is the case of https://github.com/FuelLabs/sway/issues/3633
             // where multiple generic trait impls use the same method name but with different parameter types
@@ -889,7 +898,7 @@ impl<'a> TypeCheckContext<'a> {
             }
 
             if !maybe_method_decl_refs.is_empty() {
-                let mut trait_methods = HashMap::<
+                let mut trait_methods = BTreeMap::<
                     (
                         CallPath,
                         Vec<WithEngines<GenericArgument>>,
@@ -1036,7 +1045,11 @@ impl<'a> TypeCheckContext<'a> {
                         }
 
                         if exact_matching_methods.len() == 1 {
-                            let a: Option<crate::decl_engine::DeclRef<crate::decl_engine::DeclId<ty::TyFunctionDecl>>> = exact_matching_methods.into_iter().next();
+                            let a: Option<
+                                crate::decl_engine::DeclRef<
+                                    crate::decl_engine::DeclId<ty::TyFunctionDecl>,
+                                >,
+                            > = exact_matching_methods.into_iter().next();
                             a
                         } else {
                             fn to_string(
@@ -1060,7 +1073,7 @@ impl<'a> TypeCheckContext<'a> {
                                     },
                                 )
                             }
-                            
+
                             let mut trait_strings = trait_methods
                                 .keys()
                                 .map(|t| {
@@ -1075,7 +1088,7 @@ impl<'a> TypeCheckContext<'a> {
                                     )
                                 })
                                 .collect::<Vec<(String, String)>>();
-                            
+
                             // Sort so the output of the error is always the same.
                             trait_strings.sort();
                             return Err(handler.emit_err(
@@ -1092,7 +1105,11 @@ impl<'a> TypeCheckContext<'a> {
                     // When we use a qualified path the expected method should be in trait_methods.
                     None
                 } else {
-                    let a: Option<&crate::decl_engine::DeclRef<crate::decl_engine::DeclId<ty::TyFunctionDecl>>>  = maybe_method_decl_refs.first();
+                    let a: Option<
+                        &crate::decl_engine::DeclRef<
+                            crate::decl_engine::DeclId<ty::TyFunctionDecl>,
+                        >,
+                    > = maybe_method_decl_refs.first();
                     a.cloned()
                 }
             } else {

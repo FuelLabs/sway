@@ -336,7 +336,8 @@ fn collect_struct_constructors(
     namespace.current_module().read(engines, |m| {
         let mut items = vec![];
         m.append_items_for_type(engines, struct_type_id, &mut items);
-        items.iter()
+        items
+            .iter()
             .filter_map(|item| match item {
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),
                 ResolvedTraitImplItem::Typed(item) => match item {

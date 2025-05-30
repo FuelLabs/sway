@@ -171,11 +171,11 @@ pub(crate) struct SharedTraitEntry {
 impl SharedTraitEntry {
     pub fn fork_if_non_unique(&mut self) -> &mut Self {
         match Arc::get_mut(&mut self.inner) {
-            Some(_) => {},
+            Some(_) => {}
             None => {
-                let data =  TraitEntry::clone(&self.inner);
+                let data = TraitEntry::clone(&self.inner);
                 self.inner = Arc::new(data);
-            },
+            }
         }
 
         self
@@ -296,8 +296,7 @@ impl TraitMap {
             let trait_impls = self.get_impls_mut(engines, unaliased_type_id);
 
             // check to see if adding this trait will produce a conflicting definition
-            for entry in trait_impls.iter()
-            {
+            for entry in trait_impls.iter() {
                 let TraitEntry {
                     key:
                         TraitKey {
@@ -523,7 +522,9 @@ impl TraitMap {
         let mut trait_impls: TraitImpls = BTreeMap::new();
         let type_root_filter = Self::get_type_root_filter(engines, type_id);
         let entry = TraitEntry { key, value };
-        let impls_vector = vec![SharedTraitEntry{ inner: Arc::new(entry) }];
+        let impls_vector = vec![SharedTraitEntry {
+            inner: Arc::new(entry),
+        }];
         trait_impls.insert(type_root_filter, impls_vector);
 
         let trait_map = TraitMap {
@@ -542,14 +543,15 @@ impl TraitMap {
             let self_vec = if let Some(self_vec) = self.trait_impls.get_mut(impls_key) {
                 self_vec
             } else {
-                self.trait_impls
-                    .insert(impls_key.clone(), Vec::<_>::new());
+                self.trait_impls.insert(impls_key.clone(), Vec::<_>::new());
                 self.trait_impls.get_mut(impls_key).unwrap()
             };
 
             for oe in oe_vec.iter() {
                 let pos = self_vec.binary_search_by(|se| {
-                    se.inner.key.cmp(&oe.inner.key, &OrdWithEnginesContext::new(engines))
+                    se.inner
+                        .key
+                        .cmp(&oe.inner.key, &OrdWithEnginesContext::new(engines))
                 });
 
                 match pos {
@@ -598,9 +600,7 @@ impl TraitMap {
                         if let Some(trait_map_vec) = trait_map.trait_impls.get_mut(key) {
                             trait_map_vec
                         } else {
-                            trait_map
-                                .trait_impls
-                                .insert(key.clone(), Vec::<_>::new());
+                            trait_map.trait_impls.insert(key.clone(), Vec::<_>::new());
                             trait_map.trait_impls.get_mut(key).unwrap()
                         };
 
@@ -706,58 +706,52 @@ impl TraitMap {
         let mut trait_map = TraitMap::default();
         for type_id in all_types.iter_mut() {
             let type_info = type_engine.get(*type_id);
-            self.for_each_impls(
-                engines,
-                *type_id,
-                true,
-                |entry| {
-                    let TraitEntry {
-                        key:
-                            TraitKey {
-                                name: map_trait_name,
-                                type_id: map_type_id,
-                                trait_decl_span: map_trait_decl_span,
-                                impl_type_parameters: map_impl_type_parameters,
-                            },
-                        value:
-                            TraitValue {
-                                trait_items: map_trait_items,
-                                impl_span,
-                            },
-                    } = entry.inner.as_ref();
+            self.for_each_impls(engines, *type_id, true, |entry| {
+                let TraitEntry {
+                    key:
+                        TraitKey {
+                            name: map_trait_name,
+                            type_id: map_type_id,
+                            trait_decl_span: map_trait_decl_span,
+                            impl_type_parameters: map_impl_type_parameters,
+                        },
+                    value:
+                        TraitValue {
+                            trait_items: map_trait_items,
+                            impl_span,
+                        },
+                } = entry.inner.as_ref();
 
-                    if !type_engine.is_type_changeable(engines, &type_info)
-                        && *type_id == *map_type_id
-                    {
-                        trait_map.insert_inner(
-                            map_trait_name.clone(),
-                            impl_span.clone(),
-                            map_trait_decl_span.clone(),
+                if !type_engine.is_type_changeable(engines, &type_info) && *type_id == *map_type_id
+                {
+                    trait_map.insert_inner(
+                        map_trait_name.clone(),
+                        impl_span.clone(),
+                        map_trait_decl_span.clone(),
+                        *type_id,
+                        map_impl_type_parameters.clone(),
+                        map_trait_items.clone(),
+                        engines,
+                    );
+                } else if decider(*type_id, *map_type_id) {
+                    trait_map.insert_inner(
+                        map_trait_name.clone(),
+                        impl_span.clone(),
+                        map_trait_decl_span.clone(),
+                        *map_type_id,
+                        map_impl_type_parameters.clone(),
+                        Self::filter_dummy_methods(
+                            map_trait_items,
                             *type_id,
-                            map_impl_type_parameters.clone(),
-                            map_trait_items.clone(),
-                            engines,
-                        );
-                    } else if decider(*type_id, *map_type_id) {
-                        trait_map.insert_inner(
-                            map_trait_name.clone(),
-                            impl_span.clone(),
-                            map_trait_decl_span.clone(),
                             *map_type_id,
-                            map_impl_type_parameters.clone(),
-                            Self::filter_dummy_methods(
-                                map_trait_items,
-                                *type_id,
-                                *map_type_id,
-                                engines,
-                            )
-                            .map(|(name, item)| (name.to_string(), item))
-                            .collect(),
                             engines,
-                        );
-                    }
-                },
-            );
+                        )
+                        .map(|(name, item)| (name.to_string(), item))
+                        .collect(),
+                        engines,
+                    );
+                }
+            });
         }
         trait_map
     }
@@ -876,7 +870,7 @@ impl TraitMap {
         module: &Module,
         engines: &Engines,
         type_id: TypeId,
-        items: &mut Vec<ResolvedTraitImplItem> 
+        items: &mut Vec<ResolvedTraitImplItem>,
     ) {
         TraitMap::find_items_and_trait_key_for_type(module, engines, type_id, &mut |item, _| {
             items.push(item);
@@ -891,7 +885,7 @@ impl TraitMap {
     ) {
         let type_engine = engines.te();
         let type_id = engines.te().get_unaliased_type_id(type_id);
-        
+
         // small performance gain in bad case
         if matches!(&*type_engine.get(type_id), TypeInfo::ErrorRecovery(_)) {
             return;
@@ -1061,8 +1055,11 @@ impl TraitMap {
                             .zip(e.inner.key.name.suffix.args.iter())
                             .all(|(t1, t2)| unify_check.check(t1.type_id(), t2.type_id()))
                     {
-                        let type_mapping =
-                            TypeSubstMap::from_superset_and_subset(engines, e.inner.key.type_id, type_id);
+                        let type_mapping = TypeSubstMap::from_superset_and_subset(
+                            engines,
+                            e.inner.key.type_id,
+                            type_id,
+                        );
 
                         let mut trait_items = Self::filter_dummy_methods(
                             &e.inner.value.trait_items,
@@ -1144,7 +1141,8 @@ impl TraitMap {
                             suffix: entry.inner.key.name.suffix.name.clone(),
                             callpath_type: entry.inner.key.name.callpath_type,
                         };
-                        trait_names.push((trait_call_path, entry.inner.key.name.suffix.args.clone()));
+                        trait_names
+                            .push((trait_call_path, entry.inner.key.name.suffix.args.clone()));
                     }
                 },
             );
@@ -1203,8 +1201,11 @@ impl TraitMap {
 
         let mut candidates = HashMap::<String, ResolvedTraitImplItem>::new();
 
-        TraitMap::find_items_and_trait_key_for_type(module, engines, type_id, &mut |trait_item, trait_key| {
-            match trait_item {
+        TraitMap::find_items_and_trait_key_for_type(
+            module,
+            engines,
+            type_id,
+            &mut |trait_item, trait_key| match trait_item {
                 ResolvedTraitImplItem::Parsed(impl_item) => match impl_item {
                     ImplItem::Fn(fn_ref) => {
                         let decl = engines.pe().get_function(&fn_ref);
@@ -1287,8 +1288,8 @@ impl TraitMap {
                         }
                     }
                 },
-            }
-        });
+            },
+        );
 
         match candidates.len().cmp(&1) {
             Ordering::Greater => Err(handler.emit_err(
