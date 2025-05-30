@@ -1,15 +1,5 @@
 use crate::{
-    create_arg_demotion_pass, create_ccp_pass, create_const_demotion_pass,
-    create_const_folding_pass, create_cse_pass, create_dce_pass, create_dom_fronts_pass,
-    create_dominators_pass, create_escaped_symbols_pass, create_fn_dedup_debug_profile_pass,
-    create_fn_dedup_release_profile_pass, create_fn_inline_pass, create_globals_dce_pass,
-    create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass,
-    create_module_printer_pass, create_module_verifier_pass, create_postorder_pass,
-    create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass, Context, Function,
-    IrError, Module, ARG_DEMOTION_NAME, CCP_NAME, CONST_DEMOTION_NAME, CONST_FOLDING_NAME,
-    CSE_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME,
-    GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
-    SIMPLIFY_CFG_NAME, SROA_NAME,
+    create_arg_demotion_pass, create_branchless, create_ccp_pass, create_const_demotion_pass, create_const_folding_pass, create_cse_pass, create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass, create_fn_dedup_debug_profile_pass, create_fn_dedup_release_profile_pass, create_fn_inline_pass, create_globals_dce_pass, create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_module_printer_pass, create_module_verifier_pass, create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass, Context, Function, IrError, Module, ARG_DEMOTION_NAME, BRANCHLESS_NAME, CCP_NAME, CONST_DEMOTION_NAME, CONST_FOLDING_NAME, CSE_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME
 };
 use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
@@ -164,7 +154,8 @@ pub struct PassManager {
 }
 
 impl PassManager {
-    pub const OPTIMIZATION_PASSES: [&'static str; 14] = [
+    pub const OPTIMIZATION_PASSES: [&'static str; 15] = [
+        BRANCHLESS_NAME,
         FN_INLINE_NAME,
         SIMPLIFY_CFG_NAME,
         SROA_NAME,
@@ -395,6 +386,7 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_fn_dedup_debug_profile_pass());
     pm.register(create_mem2reg_pass());
     pm.register(create_sroa_pass());
+    pm.register(create_branchless());
     pm.register(create_fn_inline_pass());
     pm.register(create_const_folding_pass());
     pm.register(create_ccp_pass());
@@ -415,6 +407,7 @@ pub fn create_o1_pass_group() -> PassGroup {
     // Configure to run our passes.
     o1.append_pass(MEM2REG_NAME);
     o1.append_pass(FN_DEDUP_RELEASE_PROFILE_NAME);
+    o1.append_pass(BRANCHLESS_NAME);
     o1.append_pass(FN_INLINE_NAME);
     o1.append_pass(SIMPLIFY_CFG_NAME);
     o1.append_pass(GLOBALS_DCE_NAME);
