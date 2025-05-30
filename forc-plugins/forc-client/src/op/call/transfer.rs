@@ -1,11 +1,12 @@
 use anyhow::anyhow;
-use fuel_abi_types::abi::program::ProgramABI;
 use fuels::{
     accounts::{wallet::Wallet, Account},
-    types::bech32::{Bech32Address, Bech32ContractId},
+    types::{
+        bech32::{Bech32Address, Bech32ContractId},
+        tx_status::TxStatus,
+    },
 };
 use fuels_core::types::{transaction::TxPolicies, Address, AssetId};
-use sway_core;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn transfer(
@@ -48,16 +49,14 @@ pub async fn transfer(
             .map_err(|e| anyhow!("Failed to transfer funds to contract: {}", e))?
     };
 
-    // We don't need to load the ABI for a simple transfer
-    let program_abi = sway_core::asm_generation::ProgramABI::Fuel(ProgramABI::default());
     super::process_transaction_output(
-        &tx_response.tx_status.receipts,
+        TxStatus::Success(tx_response.tx_status),
         &tx_response.tx_id.to_string(),
-        &program_abi,
-        None,
         &crate::cmd::call::ExecutionMode::Live,
         node,
         verbosity,
+        writer,
+        None,
     )
 }
 
