@@ -26,6 +26,7 @@ use sway_utils::constants;
 pub mod bytecode;
 pub mod fs_locking;
 pub mod restricted;
+pub mod workspace;
 
 #[macro_use]
 pub mod cli;
