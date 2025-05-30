@@ -9,6 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+ansiterm.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 aws-config.workspace = true
