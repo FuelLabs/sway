@@ -43,7 +43,7 @@ pub fn resolve_type(
 ) -> Result<TypeId, ErrorEmitted> {
     let type_engine = engines.te();
     let module_path = type_info_prefix.unwrap_or(mod_path);
-    let type_id = match (*type_engine.get(type_id)).clone() {
+    let type_id = match type_engine.get(type_id).as_ref() {
         TypeInfo::Custom {
             qualified_call_path,
             type_arguments,
@@ -74,7 +74,8 @@ pub fn resolve_type(
                 subst_ctx,
             )?
         }
-        TypeInfo::Array(mut elem_ty, length) => {
+        TypeInfo::Array(elem_ty, length) => {
+            let mut elem_ty = elem_ty.clone();
             *elem_ty.type_id_mut() = resolve_type(
                 handler,
                 engines,
@@ -90,9 +91,10 @@ pub fn resolve_type(
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
-            engines.te().insert_array(engines, elem_ty, length)
+            engines.te().insert_array(engines, elem_ty, length.clone())
         }
-        TypeInfo::Slice(mut elem_ty) => {
+        TypeInfo::Slice(elem_ty) => {
+            let mut elem_ty = elem_ty.clone();
             *elem_ty.type_id_mut() = resolve_type(
                 handler,
                 engines,
@@ -110,7 +112,8 @@ pub fn resolve_type(
 
             engines.te().insert_slice(engines, elem_ty)
         }
-        TypeInfo::Tuple(mut type_arguments) => {
+        TypeInfo::Tuple(type_arguments) => {
+            let mut type_arguments = type_arguments.clone();
             for type_argument in type_arguments.iter_mut() {
                 *type_argument.type_id_mut() = resolve_type(
                     handler,
@@ -139,7 +142,7 @@ pub fn resolve_type(
                 handler,
                 engines,
                 &name,
-                trait_type_id,
+                *trait_type_id,
                 None,
             )?;
 
@@ -158,9 +161,10 @@ pub fn resolve_type(
             }
         }
         TypeInfo::Ref {
-            referenced_type: mut ty,
+            referenced_type,
             to_mutable_value,
         } => {
+            let mut ty = referenced_type.clone();
             *ty.type_id_mut() = resolve_type(
                 handler,
                 engines,
@@ -176,7 +180,7 @@ pub fn resolve_type(
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
-            engines.te().insert_ref(engines, to_mutable_value, ty)
+            engines.te().insert_ref(engines, *to_mutable_value, ty)
         }
         _ => type_id,
     };
@@ -346,7 +350,7 @@ pub(super) fn resolve_symbol_and_mod_path(
             self_type,
         )
     } else {
-        match namespace.get_external_package(&mod_path[0].to_string()) {
+        match namespace.get_external_package(&mod_path[0].as_str()) {
             Some(ext_package) => {
                 // The path must be resolved in an external package.
                 // The root module in that package may have a different name than the name we

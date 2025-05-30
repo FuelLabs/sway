@@ -289,7 +289,7 @@ pub(crate) fn struct_instantiation(
                 type_id,
                 &span,
                 help_text,
-                None,
+                || None,
             );
             Ok(())
         })?;
@@ -334,8 +334,9 @@ fn collect_struct_constructors(
     // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
     // that we wish to encourage.
     namespace.current_module().read(engines, |m| {
-        m.get_items_for_type(engines, struct_type_id)
-            .iter()
+        let mut items = vec![];
+        m.append_items_for_type(engines, struct_type_id, &mut items);
+        items.iter()
             .filter_map(|item| match item {
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),
                 ResolvedTraitImplItem::Typed(item) => match item {
@@ -473,7 +474,7 @@ fn unify_field_arguments_and_struct_fields(
                     struct_field.type_argument.type_id(),
                     &typed_field.value.span, // Use the span of the initialization value.
                     help_text,
-                    None,
+                    || None,
                 );
             }
         }

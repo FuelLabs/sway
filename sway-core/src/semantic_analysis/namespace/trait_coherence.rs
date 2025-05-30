@@ -52,21 +52,21 @@ fn check_orphan_rules_for_impls_in_scope(
     for key in trait_map.trait_impls.keys() {
         for trait_entry in trait_map.trait_impls[key].iter() {
             // 0. If it's a contract then skip it as it's not relevant to coherence.
-            if engines.te().get(trait_entry.key.type_id).is_contract() {
+            if engines.te().get(trait_entry.inner.key.type_id).is_contract() {
                 continue;
             }
 
             // 1. Check if trait is local to the current package
-            let package_name = trait_entry.key.name.prefixes.first().unwrap();
+            let package_name = trait_entry.inner.key.name.prefixes.first().unwrap();
 
             let package_program_id = current_package.program_id();
 
-            let trait_impl_program_id = match trait_entry.value.impl_span.source_id() {
+            let trait_impl_program_id = match trait_entry.inner.value.impl_span.source_id() {
                 Some(source_id) => source_id.program_id(),
                 None => {
                     return Err(handler.emit_err(CompileError::Internal(
                         "Expected a valid source id",
-                        trait_entry.value.impl_span.clone(),
+                        trait_entry.inner.value.impl_span.clone(),
                     )))
                 }
             };
@@ -138,14 +138,14 @@ fn check_orphan_rules_for_impls_in_scope(
 
             // 2. Now the trait is necessarily upstream to the current package
             let mut has_local_type = false;
-            for arg in &trait_entry.key.name.suffix.args {
+            for arg in &trait_entry.inner.key.name.suffix.args {
                 has_local_type |= references_local_type(engines, current_package, arg.type_id());
                 if has_local_type {
                     break;
                 }
             }
 
-            'tp: for type_id in &trait_entry.key.impl_type_parameters {
+            'tp: for type_id in &trait_entry.inner.key.impl_type_parameters {
                 let tp = engines.te().get(*type_id);
                 match tp.as_ref() {
                     TypeInfo::TypeParam(tp) => match tp {
@@ -165,11 +165,11 @@ fn check_orphan_rules_for_impls_in_scope(
             }
 
             has_local_type |=
-                references_local_type(engines, current_package, trait_entry.key.type_id);
+                references_local_type(engines, current_package, trait_entry.inner.key.type_id);
 
             if !has_local_type {
                 handler.emit_err(CompileError::IncoherentImplDueToOrphanRule {
-                    span: trait_entry.value.impl_span.clone(),
+                    span: trait_entry.inner.value.impl_span.clone(),
                 });
             }
         }
@@ -210,6 +210,7 @@ pub(crate) fn check_impls_for_overlap(
     for key in trait_map.trait_impls.keys() {
         for self_entry in trait_map.trait_impls[key].iter() {
             let self_tcs: Vec<(CallPath, TypeId)> = self_entry
+                .inner
                 .key
                 .impl_type_parameters
                 .iter()
@@ -229,15 +230,16 @@ pub(crate) fn check_impls_for_overlap(
                 })
                 .collect::<Vec<_>>();
 
-            other.for_each_impls(engines, self_entry.key.type_id, true, |other_entry| {
-                if self_entry.key.name.eq(
-                    &*other_entry.key.name,
+            other.for_each_impls(engines, self_entry.inner.key.type_id, true, |other_entry| {
+                if self_entry.inner.key.name.eq(
+                    &*other_entry.inner.key.name,
                     &PartialEqWithEnginesContext::new(engines),
-                ) && self_entry.value.impl_span != other_entry.value.impl_span
-                    && (unify_check.check(self_entry.key.type_id, other_entry.key.type_id)
-                        || unify_check.check(other_entry.key.type_id, self_entry.key.type_id))
+                ) && self_entry.inner.value.impl_span != other_entry.inner.value.impl_span
+                    && (unify_check.check(self_entry.inner.key.type_id, other_entry.inner.key.type_id)
+                        || unify_check.check(other_entry.inner.key.type_id, self_entry.inner.key.type_id))
                 {
                     let other_tcs: Vec<(CallPath, TypeId)> = other_entry
+                        .inner
                         .key
                         .impl_type_parameters
                         .iter()
@@ -261,13 +263,13 @@ pub(crate) fn check_impls_for_overlap(
                             tc_type_ids.iter().any(|tc_type_id| {
                                 let mut type_mapping = TypeSubstMap::new();
                                 type_mapping.insert(*tp_type_id, *tc_type_id);
-                                let mut type_id = other_entry.key.type_id;
+                                let mut type_id = other_entry.inner.key.type_id;
                                 type_id.subst(&SubstTypesContext::new(
                                     engines,
                                     &type_mapping,
                                     false,
                                 ));
-                                unify_check.check(self_entry.key.type_id, type_id)
+                                unify_check.check(self_entry.inner.key.type_id, type_id)
                             })
                         } else {
                             false
@@ -279,13 +281,13 @@ pub(crate) fn check_impls_for_overlap(
                             tc_type_ids.iter().any(|tc_type_id| {
                                 let mut type_mapping = TypeSubstMap::new();
                                 type_mapping.insert(*tp_type_id, *tc_type_id);
-                                let mut type_id = self_entry.key.type_id;
+                                let mut type_id = self_entry.inner.key.type_id;
                                 type_id.subst(&SubstTypesContext::new(
                                     engines,
                                     &type_mapping,
                                     false,
                                 ));
-                                unify_check.check(other_entry.key.type_id, type_id)
+                                unify_check.check(other_entry.inner.key.type_id, type_id)
                             })
                         } else {
                             false
@@ -293,25 +295,25 @@ pub(crate) fn check_impls_for_overlap(
                     });
 
                     if other_tcs_satisfied && self_tcs_satisfied {
-                        for trait_item_name1 in self_entry.value.trait_items.keys() {
-                            for trait_item_name2 in other_entry.value.trait_items.keys() {
+                        for trait_item_name1 in self_entry.inner.value.trait_items.keys() {
+                            for trait_item_name2 in other_entry.inner.value.trait_items.keys() {
                                 if trait_item_name1 == trait_item_name2 {
                                     overlap_err = Some(
                                         handler.emit_err(
                                             CompileError::ConflictingImplsForTraitAndType {
                                                 trait_name: trait_item_name1.to_string(),
                                                 type_implementing_for: engines
-                                                    .help_out(self_entry.key.type_id)
+                                                    .help_out(self_entry.inner.key.type_id)
                                                     .to_string(),
                                                 type_implementing_for_unaliased: engines
-                                                    .help_out(self_entry.key.type_id)
+                                                    .help_out(self_entry.inner.key.type_id)
                                                     .to_string(),
                                                 existing_impl_span: self_entry
-                                                    .value
+                                                    .inner.value
                                                     .impl_span
                                                     .clone(),
                                                 second_impl_span: other_entry
-                                                    .value
+                                                    .inner.value
                                                     .impl_span
                                                     .clone(),
                                             },

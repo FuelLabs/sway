@@ -89,7 +89,7 @@ impl Namespace {
 
     pub fn current_module_mut(&mut self) -> &mut Module {
         let package_relative_path = Package::package_relative_path(&self.current_mod_path);
-        self.current_package_root_module_mut()
+        self.current_package.root_module_mut()
             .submodule_mut(&package_relative_path)
             .unwrap_or_else(|| {
                 panic!(
@@ -158,17 +158,13 @@ impl Namespace {
         self.current_package.root_module()
     }
 
-    fn current_package_root_module_mut(&mut self) -> &mut Module {
-        self.current_package.root_module_mut()
-    }
-
     pub fn external_packages(
         &self,
     ) -> &im::HashMap<ModuleName, Package, BuildHasherDefault<FxHasher>> {
         &self.current_package.external_packages
     }
 
-    pub(crate) fn get_external_package(&self, package_name: &String) -> Option<&Package> {
+    pub(crate) fn get_external_package(&self, package_name: &str) -> Option<&Package> {
         self.current_package.external_packages.get(package_name)
     }
 
@@ -176,7 +172,7 @@ impl Namespace {
         self.get_external_package(package_name).is_some()
     }
 
-    pub fn module_from_absolute_path(&self, path: &ModulePathBuf) -> Option<&Module> {
+    pub fn module_from_absolute_path(&self, path: &[Ident]) -> Option<&Module> {
         self.current_package.module_from_absolute_path(path)
     }
 
@@ -184,7 +180,7 @@ impl Namespace {
     pub fn require_module_from_absolute_path(
         &self,
         handler: &Handler,
-        path: &ModulePathBuf,
+        path: &[Ident],
     ) -> Result<&Module, ErrorEmitted> {
         if path.is_empty() {
             return Err(handler.emit_err(CompileError::Internal(

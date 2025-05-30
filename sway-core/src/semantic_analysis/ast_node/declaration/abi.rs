@@ -112,7 +112,7 @@ impl ty::TyAbiDecl {
                             &mod_path,
                             &method_name.clone(),
                             ctx.type_annotation(),
-                            &Default::default(),
+                            &[],
                             None,
                         ) {
                             let superabi_impl_method =
@@ -278,7 +278,7 @@ impl ty::TyAbiDecl {
                                 &mod_path,
                                 &method.name.clone(),
                                 ctx.type_annotation(),
-                                &Default::default(),
+                                &[],
                                 None,
                             ) {
                                 let superabi_method =
@@ -352,7 +352,7 @@ impl ty::TyAbiDecl {
                             &mod_path,
                             &method.name.clone(),
                             ctx.type_annotation(),
-                            &Default::default(),
+                            &[],
                             None,
                         ) {
                             let superabi_impl_method =
