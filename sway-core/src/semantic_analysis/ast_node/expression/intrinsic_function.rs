@@ -216,7 +216,7 @@ fn type_check_transmute(
         src_type,
         &first_argument_typed_expr.span,
         "",
-        None,
+        || None,
     );
 
     let mut final_type_arguments = type_arguments.to_vec();

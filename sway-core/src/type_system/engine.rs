@@ -2037,7 +2037,7 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
     ) {
         Self::unify_helper(
             handler,
@@ -2068,7 +2068,7 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
     ) {
         Self::unify_helper(
             handler,
@@ -2099,7 +2099,7 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
     ) {
         Self::unify_helper(
             handler,
@@ -2127,14 +2127,14 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
         unify_kind: UnifyKind,
         push_unification: bool,
     ) {
         if !UnifyCheck::coercion(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
-            match err_override {
+            match err_override() {
                 Some(err_override) => {
                     handler.emit_err(err_override);
                 }
@@ -2154,7 +2154,7 @@ impl TypeEngine {
         let unifier = Unifier::new(engines, help_text, unify_kind);
         unifier.unify(handler, received, expected, span, push_unification);
 
-        match err_override {
+        match err_override() {
             Some(err_override) if h.has_errors() => {
                 handler.emit_err(err_override);
             }
@@ -2186,7 +2186,7 @@ impl TypeEngine {
                 unification.expected,
                 &unification.span,
                 &unification.help_text,
-                None,
+                || None,
                 unification.unify_kind.clone(),
                 false,
             )
@@ -2343,7 +2343,15 @@ impl TypeEngine {
             | TypeInfo::Alias { .. }
             | TypeInfo::TraitType { .. } => {}
             TypeInfo::Numeric => {
-                self.unify(handler, engines, type_id, self.id_of_u64(), span, "", None);
+                self.unify(
+                    handler,
+                    engines,
+                    type_id,
+                    self.id_of_u64(),
+                    span,
+                    "",
+                    || None,
+                );
             }
         }
         Ok(())

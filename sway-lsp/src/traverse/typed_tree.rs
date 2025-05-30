@@ -119,7 +119,7 @@ impl Parse for ty::TySideEffect {
 
                         if let Some(span) = ctx
                             .namespace
-                            .module_from_absolute_path(&mod_path.to_vec())
+                            .module_from_absolute_path(mod_path)
                             .and_then(|tgt_submod| tgt_submod.span().clone())
                         {
                             token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
@@ -1349,7 +1349,7 @@ fn collect_call_path_prefixes(ctx: &ParseContext, prefixes: &[Ident], callpath_t
             token.ast_node = TokenAstNode::Typed(TypedAstToken::Ident(ident.clone()));
             if let Some(span) = ctx
                 .namespace
-                .module_from_absolute_path(&mod_path.to_vec())
+                .module_from_absolute_path(mod_path)
                 .and_then(|tgt_submod| tgt_submod.span().clone())
             {
                 token.kind = SymbolKind::Module;

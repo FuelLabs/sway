@@ -42,7 +42,7 @@ pub(crate) fn instantiate_if_expression(
             ty_to_check,
             &then.span,
             "`then` branch must return expected type.",
-            None,
+            || None,
         );
     }
 
@@ -56,7 +56,7 @@ pub(crate) fn instantiate_if_expression(
                 ty_to_check,
                 &r#else.span,
                 "`else` branch must return expected type.",
-                None,
+                || None,
             );
         }
         Box::new(r#else)

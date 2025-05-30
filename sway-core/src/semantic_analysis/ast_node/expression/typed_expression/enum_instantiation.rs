@@ -167,7 +167,7 @@ pub(crate) fn instantiate_enum(
                         enum_variant.type_argument.type_id(),
                         &single_expr.span, // Use the span of the instantiator expression.
                         help_text,
-                        None,
+                        || None,
                     );
                     Ok(())
                 })?;
@@ -184,7 +184,7 @@ pub(crate) fn instantiate_enum(
                         type_id,
                         &enum_variant_name.span(),
                         help_text,
-                        None,
+                        || None,
                     );
                     Ok(())
                 })?;

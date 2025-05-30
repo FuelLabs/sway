@@ -215,7 +215,7 @@ pub(super) fn matcher(
 
     // unify the type of the scrutinee with the type of the expression
     handler.scope(|h| {
-        type_engine.unify(h, ctx.engines, type_id, exp.return_type, &span, "", None);
+        type_engine.unify(h, ctx.engines, type_id, exp.return_type, &span, "", || None);
         Ok(())
     })?;
 

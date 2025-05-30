@@ -242,7 +242,7 @@ impl TyImplSelfOrTrait {
                         self_type_id,
                         &implementing_for.span(),
                         "",
-                        None,
+                        || None,
                     );
                     Ok(())
                 })?;
@@ -350,7 +350,7 @@ impl TyImplSelfOrTrait {
                                 self_type_param.type_id,
                                 &implementing_for.span(),
                                 "",
-                                None,
+                                || None,
                             );
                             Ok(())
                         })?;
@@ -542,7 +542,7 @@ impl TyImplSelfOrTrait {
                         self_type_id,
                         &implementing_for.span(),
                         "",
-                        None,
+                        || None,
                     );
                     Ok(())
                 })?;
