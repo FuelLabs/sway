@@ -449,3 +449,17 @@ impl b256 {
         0x0000000000000000000000000000000000000000000000000000000000000000
     }
 }
+
+#[cfg(experimental_const_generics = true)]
+impl<T, const N: u64> [T; N] {
+    pub fn len(self) -> u64 {
+        N
+    }
+}
+
+#[cfg(experimental_const_generics = true)]
+impl<const N: u64> str[N] {
+    pub fn len(self) -> u64 {
+        N
+    }
+}

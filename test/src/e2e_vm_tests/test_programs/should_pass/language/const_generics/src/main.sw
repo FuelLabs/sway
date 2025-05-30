@@ -66,9 +66,13 @@ fn main(a: [u64; 2]) {
 
     let a = [C {}].my_len();
     assert(a == 1);
+    let _ = __dbg([C {}].len());
+    assert([C {}].len() == 1);
 
     let b = [C {}, C{}].my_len();
     assert(b == 2);
+    let _ = __dbg([C {}, C{}].len());
+    assert([C {}, C{}].len() == 2);
 
     let s: S<u64, 3> = S { };
     let _ = __dbg(s.len_xxx());
@@ -87,8 +91,20 @@ fn main(a: [u64; 2]) {
     assert(b == 3);
     //__dbg(e);
 
+    // standalone fns
+    assert(return_n::<3>() == 3);
     let _ = __dbg(return_n::<3>());
+    assert(return_n::<5>() == 5);
     let _ = __dbg(return_n::<5>());
+
+    // string arrays
+    let a: str[3] = __to_str_array("ABC");
+    assert(a.len() == 3);
+    let _ = __dbg(a.len());
+
+    let a: str[5] = __to_str_array("ABCDE");
+    assert(a.len() == 5);
+    let _ = __dbg(a.len());
 }
 
 #[test]

@@ -238,7 +238,7 @@ remove_generated_code "STRARRAY_DEBUG" "debug.sw"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="impl Debug for str[$i] { fn fmt(self, ref mut f: Formatter) { use ::str::*; from_str_array(self).fmt(f); } }"
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl Debug for str[$i] { fn fmt(self, ref mut f: Formatter) { use ::str::*; from_str_array(self).fmt(f); } }"
     sed -i "s/\/\/ BEGIN STRARRAY_DEBUG/\/\/ BEGIN STRARRAY_DEBUG\n$CODE/g" ./src/debug.sw
 done
 

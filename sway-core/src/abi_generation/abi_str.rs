@@ -94,7 +94,7 @@ impl TypeInfo {
             Placeholder(_) => "_".to_string(),
             TypeParam(param) => format!("typeparam({})", param.name()),
             StringSlice => "str".into(),
-            StringArray(length) => format!("str[{}]", length.val()),
+            StringArray(length) => format!("str[{:?}]", engines.help_out(length.expr())),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",

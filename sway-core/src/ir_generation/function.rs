@@ -1927,8 +1927,9 @@ impl<'a> FnCompiler<'a> {
                         let needed_size = to_constant(self, context, 32);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
-                    TypeInfo::StringArray(string_len) => {
-                        let needed_size = to_constant(self, context, string_len.val() as u64);
+                    TypeInfo::StringArray(length) => {
+                        let value = length.expr().as_literal_val().unwrap() as u64;
+                        let needed_size = to_constant(self, context, value);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
                     TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
@@ -2037,7 +2038,8 @@ impl<'a> FnCompiler<'a> {
                             .mem_copy_bytes(addr, item_ptr, 32);
                         increase_len(&mut self.current_block, context, len, 32)
                     }
-                    TypeInfo::StringArray(string_len) => {
+                    TypeInfo::StringArray(length) => {
+                        let string_len = length.expr().as_literal_val().unwrap() as u64;
                         // Save to local and return ptr to local
                         let item_ptr = save_to_local_return_ptr(self, context, item)?;
                         let addr = calc_addr_as_ptr(
@@ -2047,17 +2049,10 @@ impl<'a> FnCompiler<'a> {
                             len,
                             Type::get_uint8(context),
                         );
-                        self.current_block.append(context).mem_copy_bytes(
-                            addr,
-                            item_ptr,
-                            string_len.val() as u64,
-                        );
-                        increase_len(
-                            &mut self.current_block,
-                            context,
-                            len,
-                            string_len.val() as u64,
-                        )
+                        self.current_block
+                            .append(context)
+                            .mem_copy_bytes(addr, item_ptr, string_len);
+                        increase_len(&mut self.current_block, context, len, string_len)
                     }
                     TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
                         let uint64 = Type::get_uint64(context);

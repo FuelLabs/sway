@@ -206,7 +206,7 @@ fn type_check_transmute(
             .by_ref()
             .with_help_text("")
             .with_type_annotation(arg_type);
-        ty::TyExpression::type_check(handler, ctx, &arguments[0]).unwrap()
+        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
     };
 
     engines.te().unify(
