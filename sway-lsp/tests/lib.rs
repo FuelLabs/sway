@@ -166,7 +166,8 @@ fn did_open_all_std_lib_files() {
 
             // If the workspace is not initialized, we need to initialize it
             // Otherwise, we can just open the file
-            let uri = if service.inner().sync_workspace.get().is_none() {
+            let file_url = Url::from_file_path(&file).unwrap();
+            let uri = if !service.inner().is_workspace_initialized(&file_url) {
                 init_and_open(&mut service, file.to_path_buf()).await
             } else {
                 open(service.inner(), file.to_path_buf()).await
@@ -180,27 +181,22 @@ fn did_open_all_std_lib_files() {
     });
 }
 
-// Opens all members in the examples workspace and assert that we are able to return semantic tokens for each workspace member.
-// This test is expected to run for a while although should be much faster once https://github.com/FuelLabs/sway/pull/7139 is merged.
+// Opens all members in the workspaces and assert that we are able to return semantic tokens for each workspace member.
 #[test]
 fn did_open_all_members_in_examples() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
         let examples_workspace_dir = sway_workspace_dir().join("examples");
-        let _test_programs_workspace_dir = sway_workspace_dir().join(in_language_test_dir());
-        let _sdk_harness_workspace_dir = sway_workspace_dir().join(sdk_harness_test_projects_dir());
+        let test_programs_workspace_dir = sway_workspace_dir().join(in_language_test_dir());
+        let sdk_harness_workspace_dir = sway_workspace_dir().join(sdk_harness_test_projects_dir());
 
-        // TODO: Support multiple workspaces: https://github.com/FuelLabs/sway/issues/7177
         let workspace_dirs = vec![
             &examples_workspace_dir,
-            //&test_programs_workspace_dir,
-            //&sdk_harness_workspace_dir,
+            &test_programs_workspace_dir,
+            &sdk_harness_workspace_dir,
         ];
 
-        //----------------------------------
         for workspace_dir in workspace_dirs {
-            // we need to init and open if this is the first time we are opening a workspace
-            // TODO: https://github.com/FuelLabs/sway/issues/7177
             let member_manifests = ManifestFile::from_dir(workspace_dir)
                 .unwrap()
                 .member_manifests()
@@ -213,10 +209,11 @@ fn did_open_all_members_in_examples() {
 
                 // If the workspace is not initialized, we need to initialize it
                 // Otherwise, we can just open the file
-                let uri = if service.inner().sync_workspace.get().is_none() {
-                    init_and_open(&mut service, dir.join("src/main.sw")).await
+                let path = dir.join("src/main.sw"); 
+                let uri = if service.inner().sync_workspaces.len() == 0 {
+                    init_and_open(&mut service, path).await
                 } else {
-                    open(service.inner(), dir.join("src/main.sw")).await
+                    open(service.inner(), path).await
                 };
 
                 // Make sure that program was parsed and the token map is populated
@@ -251,7 +248,7 @@ fn sync_with_updates_to_manifest_in_workspace() {
         let (mut service, _) = LspService::new(ServerState::new);
         let workspace_dir = test_fixtures_dir().join("workspace");
         let path = workspace_dir.join("test-contract/src/main.sw");
-        let uri = init_and_open(&mut service, path).await;
+        let uri = init_and_open(&mut service, path.clone()).await;
 
         // add test-library as a dependency to the test-contract manifest file
         let test_lib_string = "test-library = { path = \"../test-library\" }";
@@ -270,7 +267,7 @@ fn sync_with_updates_to_manifest_in_workspace() {
         lsp::did_change_watched_files_notification(&mut service, params).await;
 
         // Check that the build plan now has 3 items
-        let (_, session) = service
+        let (uri, session) = service
             .inner()
             .uri_and_session_from_workspace(&uri)
             .unwrap();
@@ -279,8 +276,8 @@ fn sync_with_updates_to_manifest_in_workspace() {
             .get_or_update(
                 &service
                     .inner()
-                    .sync_workspace
-                    .get()
+                    .sync_workspaces
+                    .get(&path)
                     .unwrap()
                     .workspace_manifest_path(),
                 || sway_lsp::core::session::build_plan(&uri),

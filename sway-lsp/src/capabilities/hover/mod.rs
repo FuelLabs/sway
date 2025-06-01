@@ -52,6 +52,7 @@ pub fn hover_data(
     }
 
     let client_config = state.config.read().client.clone();
+    let sync = state.get_sync_workspace_for_uri(&url).unwrap();
     let contents = match &token.declared_token_ident(engines) {
         Some(decl_ident) => {
             let t = state.token_map.try_get(decl_ident).try_unwrap()?;
@@ -62,7 +63,7 @@ pub fn hover_data(
                 decl_token,
                 &decl_ident.name,
                 client_config,
-                state.sync_workspace(),
+                &sync,
             )
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
@@ -73,7 +74,7 @@ pub fn hover_data(
             token,
             &ident.name,
             client_config,
-            state.sync_workspace(),
+            &sync,
         ),
     };
 
