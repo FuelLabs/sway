@@ -17,7 +17,7 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState, Engines)
     let state = ServerState::default();
     let engines_clone = state.engines.read().clone();
     let session = Arc::new(Session::new());
-    let sync = state.get_or_init_global_sync_workspace(&uri).await.unwrap();
+    let sync = state.get_or_init_sync_workspace(&uri).await.unwrap();
     let temp_uri = sync.workspace_to_temp_url(&uri).unwrap();
 
     state.documents.handle_open_file(&temp_uri).await;

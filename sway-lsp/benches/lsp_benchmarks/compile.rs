@@ -14,7 +14,7 @@ fn benchmarks(c: &mut Criterion) {
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
 
-    let sync = state.sync_workspace.get().unwrap();
+    let sync = state.get_sync_workspace_for_uri(&uri).unwrap();
     let build_plan = session
         .build_plan_cache
         .get_or_update(&sync.workspace_manifest_path(), || {
