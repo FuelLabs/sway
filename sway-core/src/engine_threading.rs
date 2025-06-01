@@ -1,5 +1,6 @@
 use crate::{
     decl_engine::{parsed_engine::ParsedDeclEngine, DeclEngine},
+    language::CallPath,
     query_engine::QueryEngine,
     type_system::TypeEngine,
 };
@@ -442,4 +443,8 @@ where
 
 pub trait SpannedWithEngines {
     fn span(&self, engines: &Engines) -> Span;
+}
+
+pub trait GetCallPathWithEngines {
+    fn call_path(&self, engines: &Engines) -> Option<CallPath>;
 }
