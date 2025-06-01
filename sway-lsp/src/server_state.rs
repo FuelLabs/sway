@@ -29,7 +29,7 @@ use std::{
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, OnceLock,
+        Arc,
     },
 };
 use sway_core::{Engines, LspConfig};
@@ -42,7 +42,7 @@ const DEFAULT_SESSION_CACHE_CAPACITY: usize = 4;
 pub struct ServerState {
     pub(crate) client: Option<Client>,
     pub config: Arc<RwLock<Config>>,
-    pub sync_workspace: OnceLock<Arc<SyncWorkspace>>,
+    pub sync_workspaces: DashMap<PathBuf, Arc<SyncWorkspace>>,
     pub token_map: Arc<TokenMap>,
     pub engines: Arc<RwLock<Engines>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
@@ -70,7 +70,7 @@ impl Default for ServerState {
             token_map: Arc::new(TokenMap::new()),
             engines: Arc::new(RwLock::new(Engines::default())),
             config: Arc::new(RwLock::new(Config::default())),
-            sync_workspace: OnceLock::new(),
+            sync_workspaces: DashMap::new(),
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: LruSessionCache::new(DEFAULT_SESSION_CACHE_CAPACITY),
             documents: Documents::new(),
@@ -325,9 +325,9 @@ impl ServerState {
             .send(TaskMessage::Terminate)
             .expect("failed to send terminate message");
 
-        // Delete the temporary directory.
-        if let Some(sw) = self.sync_workspace.get() {
-            sw.remove_temp_dir();
+        // Delete all temporary directories.
+        for entry in self.sync_workspaces.iter() {
+            entry.value().remove_temp_dir();
         }
 
         Ok(())
@@ -394,10 +394,7 @@ impl ServerState {
     /// Constructs and returns a [Url] from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
     pub fn uri_from_workspace(&self, workspace_uri: &Url) -> Result<Url, LanguageServerError> {
-        let sw = self
-            .sync_workspace
-            .get()
-            .ok_or(LanguageServerError::GlobalWorkspaceNotInitialized)?; // Should be initialized by now.
+        let sw = self.get_sync_workspace_for_uri(workspace_uri)?;
 
         // Convert the workspace URI to its corresponding temporary URI.
         let temp_uri = sw.workspace_to_temp_url(workspace_uri)?;
@@ -440,39 +437,12 @@ impl ServerState {
         Ok(session)
     }
 
-    /// Gets the existing SyncWorkspace or initializes it if it doesn't exist.
-    /// This is specific to a single SyncWorkspace managed by an OnceLock.
-    pub async fn get_or_init_global_sync_workspace(
+    /// Determines the workspace root for the given file URI.
+    fn find_workspace_root_for_uri(
         &self,
-        uri: &Url,
-    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
-        if let Some(sw_arc) = self.sync_workspace.get() {
-            Ok(sw_arc.clone())
-        } else {
-            match self.initialize_workspace_sync(uri).await {
-                Ok(initialized_sw) => {
-                    if self.sync_workspace.set(initialized_sw).is_ok() {
-                        tracing::info!("SyncWorkspace successfully initialized and set.");
-                    } else {
-                        tracing::debug!(
-                            "SyncWorkspace was set by another concurrent operation after check."
-                        );
-                    }
-                    Ok(self.sync_workspace.get().unwrap().clone())
-                }
-                Err(e) => {
-                    tracing::error!("Failed to initialize global SyncWorkspace: {:?}. LSP functions requiring it may fail.", e);
-                    Err(e)
-                }
-            }
-        }
-    }
-
-    pub async fn initialize_workspace_sync(
-        &self,
-        file_uri_triggering_init: &Url,
-    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
-        let path = PathBuf::from(file_uri_triggering_init.path());
+        file_uri: &Url,
+    ) -> Result<PathBuf, LanguageServerError> {
+        let path = PathBuf::from(file_uri.path());
         let search_dir = path.parent().unwrap_or(&path);
 
         // Find the initial manifest (could be package or workspace)
@@ -521,8 +491,57 @@ impl ServerState {
             }
         };
 
+        Ok(actual_sync_root)
+    }
+
+    /// Gets the SyncWorkspace for the given URI.
+    pub fn get_sync_workspace_for_uri(
+        &self,
+        uri: &Url,
+    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
+        let workspace_root = self.find_workspace_root_for_uri(uri)?;
+        self.sync_workspaces
+            .get(&workspace_root)
+            .map(|entry| entry.value().clone())
+            .ok_or(LanguageServerError::GlobalWorkspaceNotInitialized)
+    }
+
+    /// Gets the existing SyncWorkspace for a file URI or initializes it if it doesn't exist.
+    pub async fn get_or_init_sync_workspace(
+        &self,
+        uri: &Url,
+    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
+        // First try to find the workspace root for this URI
+        let workspace_root = self.find_workspace_root_for_uri(uri)?;
+        
+        // Check if we already have a SyncWorkspace for this root
+        if let Some(sw_arc) = self.sync_workspaces.get(&workspace_root) {
+            Ok(sw_arc.value().clone())
+        } else {
+            // Initialize a new workspace sync for this root
+            match self.initialize_workspace_sync(uri).await {
+                Ok(initialized_sw) => {
+                    let canonical_root = workspace_root.canonicalize().unwrap_or(workspace_root.clone());
+                    self.sync_workspaces.insert(canonical_root.clone(), initialized_sw.clone());
+                    tracing::info!("SyncWorkspace successfully initialized for {:?}", canonical_root);
+                    Ok(initialized_sw)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to initialize SyncWorkspace for {:?}: {:?}", workspace_root, e);
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    pub async fn initialize_workspace_sync(
+        &self,
+        file_uri_triggering_init: &Url,
+    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
+        let actual_sync_root = self.find_workspace_root_for_uri(file_uri_triggering_init)?;
+
         tracing::debug!(
-            "Determined actual root for SyncWorkspace: {:?}",
+            "Initializing SyncWorkspace for root: {:?}",
             actual_sync_root
         );
 
@@ -539,18 +558,32 @@ impl ServerState {
         Ok(sw)
     }
 
-    /// Returns a cloned `Arc` of the `SyncWorkspace`.
-    ///
-    /// Panics if `sync_workspace` has not been initialized by a prior call to
-    /// `get_or_init_global_sync_workspace`. This scenario is not expected in normal operation.
-    pub fn sync_workspace(&self) -> &SyncWorkspace {
-        // `sync_workspace` is initialized once during the first call to `get_or_init_global_sync_workspace`.
-        // After initialization, it's always expected to be `Some`.
-        // Using `expect` here simplifies the code, as the `None` case should not occur in normal operation.
-        self.sync_workspace
-            .get()
-            .expect("SyncWorkspace not initialized")
+    /// Checks if a workspace is already initialized for the given URI
+    pub fn is_workspace_initialized(&self, uri: &Url) -> bool {
+        if let Ok(workspace_root) = self.find_workspace_root_for_uri(uri) {
+            self.sync_workspaces.contains_key(&workspace_root)
+        } else {
+            false
+        }
     }
+
+    // /// Returns a reference to the `SyncWorkspace` for backward compatibility.
+    // /// This will panic if called with a URI that doesn't have an initialized workspace.
+    // /// 
+    // /// @deprecated Use `get_sync_workspace_for_uri` instead for proper error handling.
+    // pub fn sync_workspace(&self) -> &SyncWorkspace {
+    //     // This is a temporary compatibility method.
+    //     // In the old implementation, this would panic if called before initialization.
+    //     // We maintain that behavior here but log a warning.
+    //     tracing::warn!("sync_workspace() called without URI context - this is deprecated");
+        
+    //     // Return the first workspace if any exists, otherwise panic
+    //     self.sync_workspaces
+    //         .iter()
+    //         .next()
+    //         .map(|entry| entry.value().as_ref())
+    //         .expect("SyncWorkspace not initialized")
+    // }
 }
 
 /// Determines if expensive operations (traversal, GC, etc.) should be performed

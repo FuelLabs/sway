@@ -10,7 +10,7 @@ fn benchmarks(c: &mut Criterion) {
     let (uri, session, state, engines) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
-    let sync = state.sync_workspace.get().unwrap();
+    let sync = state.get_sync_workspace_for_uri(&uri).unwrap();
     let config = sway_lsp::config::Config::default();
     let position = Position::new(1717, 24);
     let range = Range::new(Position::new(1628, 0), Position::new(1728, 0));
@@ -55,12 +55,12 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("find_all_references", |b| {
-        b.iter(|| session.token_references(&uri, position, &state.token_map, &engines, sync))
+        b.iter(|| session.token_references(&uri, position, &state.token_map, &engines, &sync))
     });
 
     c.bench_function("goto_definition", |b| {
         b.iter(|| {
-            session.token_definition_response(&uri, position, &engines, &state.token_map, sync)
+            session.token_definition_response(&uri, position, &engines, &state.token_map, &sync)
         })
     });
 
@@ -78,7 +78,7 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("prepare_rename", |b| {
         b.iter(|| {
-            capabilities::rename::prepare_rename(&engines, &state.token_map, &uri, position, sync)
+            capabilities::rename::prepare_rename(&engines, &state.token_map, &uri, position, &sync)
         })
     });
 
@@ -90,7 +90,7 @@ fn benchmarks(c: &mut Criterion) {
                 "new_token_name".to_string(),
                 &uri,
                 position,
-                sync,
+                &sync,
             )
         })
     });
