@@ -10,7 +10,7 @@ use crate::{
         token_map::{TokenMap, TokenMapExt},
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
-    server_state::CompilationContext,
+    server_state::{self, CompilationContext},
     traverse::{
         dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree, typed_tree::TypedTree,
         ParseContext,
@@ -299,19 +299,29 @@ pub fn traverse(
     engines_clone: &Engines,
     session: Arc<Session>,
     token_map: &TokenMap,
-    lsp_mode: Option<&LspConfig>,
+    modified_file: Option<PathBuf>,
+    // lsp_mode: Option<&LspConfig>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     let _p = tracing::trace_span!("traverse").entered();
-    let modified_file = lsp_mode.and_then(|mode| {
-        mode.file_versions
-            .iter()
-            .find_map(|(path, version)| version.map(|_| path.clone()))
-    });
+    // let modified_file = lsp_mode.and_then(|mode| {
+    //     mode.file_versions
+    //         .iter()
+    //         .find_map(|(path, version)| version.map(|_| path.clone()))
+    // });
+
+    eprintln!("modified file: {:?}", modified_file);
+    eprintln!("member path: {:?}", member_path);
+    //let ps = token_map.iter().map(|item| item.key().path.clone()).collect::<Vec<_>>();
+    // eprintln!("tokens: {:#?}", ps);
+
     if let Some(path) = &modified_file {
+        eprintln!("removing tokens for file: {:?}", path);
         token_map.remove_tokens_for_file(path);
-    } else {
-        token_map.clear();
     }
+    //  else {
+    //     eprintln!("clearing token map");
+    //     token_map.clear();
+    // }
 
     session.metrics.clear();
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
@@ -443,27 +453,29 @@ pub fn parse_project(
     engines_clone: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     ctx: &CompilationContext,
+    lsp_mode: Option<&LspConfig>,
 ) -> Result<(), LanguageServerError> {
+    let p_now = std::time::Instant::now();
     let _p = tracing::trace_span!("parse_project").entered();
+    let path = uri.to_file_path().unwrap();
+    let program_id = program_id_from_path(&path, engines_clone)?;
     let engines_original = ctx.engines.clone();
     let session = ctx.session.as_ref().unwrap().clone();
     let sync = ctx.sync.as_ref().unwrap().clone();
     let token_map = ctx.token_map.clone();
-    let lsp_mode = Some(LspConfig {
-        optimized_build: ctx.optimized_build,
-        file_versions: ctx.file_versions.clone(),
-    });
 
     let build_plan = session
         .build_plan_cache
         .get_or_update(&sync.workspace_manifest_path(), || build_plan(uri))?;
 
+    let now = std::time::Instant::now();
     let results = compile(
         &build_plan,
         engines_clone,
         retrigger_compilation,
-        lsp_mode.as_ref(),
+        lsp_mode,
     )?;
+    eprintln!("time taken to compile: {:?}", now.elapsed());
 
     // First check if results is empty or if all program values are None,
     // indicating an error occurred in the compiler
@@ -502,44 +514,60 @@ pub fn parse_project(
         return Err(LanguageServerError::MemberProgramNotFound);
     }
 
-    let diagnostics = traverse(
-        member_path,
-        results,
-        engines_original.clone(),
-        engines_clone,
-        session.clone(),
-        &token_map,
-        lsp_mode.as_ref(),
-    )?;
-    if let Some(config) = &lsp_mode {
-        // Only write the diagnostics results on didSave or didOpen.
-        if !config.optimized_build {
+    // Check if tokens exist for this path
+    // let has_tokens = token_map.iter().any(|item| item.key().path.as_ref() == Some(&path));
+    // let modified_file = lsp_mode.as_ref().and_then(|mode| {
+    //     mode.file_versions
+    //         .iter()
+    //         .find_map(|(path, version)| version.map(|_| path.clone()))
+    // });
+
+
+    let now = std::time::Instant::now();
+    let (needs_reprocessing, modified_file) = server_state::needs_reprocessing(&ctx.token_map, &path, lsp_mode);
+
+    // Only traverse and create runnables if we have no tokens yet, or if a file was modified
+    if needs_reprocessing {
+        let diagnostics = traverse(
+            member_path,
+            results,
+            engines_original.clone(),
+            engines_clone,
+            session.clone(),
+            &token_map,
+            modified_file,
+        )?;
+        
+        // Write diagnostics if not optimized build
+        if let Some(LspConfig { optimized_build: false, .. }) = &lsp_mode {
             if let Some((errors, warnings)) = &diagnostics {
-                *session.diagnostics.write() =
+                *session.diagnostics.write() = 
                     capabilities::diagnostic::get_diagnostics(warnings, errors, engines_clone.se());
             }
         }
-    }
 
-    session.runnables.clear();
-    let path = uri.to_file_path().unwrap();
-    let program_id = program_id_from_path(&path, engines_clone)?;
-    if let Some(metrics) = session.metrics.get(&program_id) {
-        // Check if the cached AST was returned by the compiler for the users workspace.
-        // If it was, then we need to use the original engines.
-        let engines = if metrics.reused_programs > 0 {
-            &*engines_original.read()
-        } else {
-            engines_clone
-        };
-        let compiled_program = session.compiled_program.read();
-        create_runnables(
-            &session.runnables,
-            compiled_program.typed.as_deref(),
-            engines.de(),
-            engines.se(),
-        );
+        eprintln!("time taken to traverse: {:?}", now.elapsed());
+
+        session.runnables.clear();
+        if let Some(metrics) = session.metrics.get(&program_id) {
+            // Check if the cached AST was returned by the compiler for the users workspace.
+            // If it was, then we need to use the original engines.
+            let engines = if metrics.reused_programs > 0 {
+                &*engines_original.read()
+            } else {
+                engines_clone
+            };
+            let compiled_program = session.compiled_program.read();
+            create_runnables(
+                &session.runnables,
+                compiled_program.typed.as_deref(),
+                engines.de(),
+                engines.se(),
+            );
+        }
     }
+    
+    eprintln!("time taken to parse project: {:?}", p_now.elapsed());
     Ok(())
 }
 
@@ -786,7 +814,7 @@ mod tests {
             gc_options: GarbageCollectionConfig::default(),
         };
         let result =
-            parse_project(&uri, &engines, None, &ctx).expect_err("expected ManifestFileNotFound");
+            parse_project(&uri, &engines, None, &ctx, None).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

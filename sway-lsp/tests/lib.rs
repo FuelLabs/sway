@@ -49,7 +49,10 @@ pub(crate) struct Rename<'a> {
 }
 
 async fn open(server: &ServerState, entry_point: PathBuf) -> Url {
+    let now = std::time::Instant::now();
     let (uri, sway_program) = load_sway_example(entry_point);
+    eprintln!("time taken to load sway example: {:?}", now.elapsed());
+
     let params = DidOpenTextDocumentParams {
         text_document: TextDocumentItem {
             uri: uri.clone(),
@@ -161,9 +164,11 @@ fn did_open_all_std_lib_files() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
         let files = sway_utils::helpers::get_sway_files(std_lib_dir().join("src"));
+        let now = std::time::Instant::now();
         for file in files {
-            eprintln!("opening file: {:?}", file.as_path());
+            //eprintln!("opening file: {:?}", file.as_path());
 
+            let now2 = std::time::Instant::now();
             // If the workspace is not initialized, we need to initialize it
             // Otherwise, we can just open the file
             let uri = if service.inner().sync_workspace.get().is_none() {
@@ -171,11 +176,13 @@ fn did_open_all_std_lib_files() {
             } else {
                 open(service.inner(), file.to_path_buf()).await
             };
+            eprintln!("time taken to open file: {:?} | {:?}", now2.elapsed(), file.as_path());
 
             // Make sure that semantic tokens are successfully returned for the file
             let semantic_tokens = lsp::get_semantic_tokens_full(service.inner(), &uri).await;
             assert!(!semantic_tokens.data.is_empty());
         }
+        eprintln!("total time taken: {:?}", now.elapsed());
         shutdown_and_exit(&mut service).await;
     });
 }
