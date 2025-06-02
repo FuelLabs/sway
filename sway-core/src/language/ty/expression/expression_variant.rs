@@ -13,7 +13,6 @@ use ast_elements::type_parameter::GenericTypeParameter;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::VecDeque,
     fmt::{self, Write},
     hash::{Hash, Hasher},
 };
@@ -862,16 +861,17 @@ impl ReplaceDecls for TyExpressionVariant {
                     // including those from the impl trait.
                     if method.is_trait_method_dummy {
                         if let Some(implementing_for_typeid) = method.implementing_for_typeid {
+                            let arguments_types = arguments
+                                .iter()
+                                .map(|a| a.1.return_type)
+                                .collect::<Vec<_>>();
                             let implementing_type_method_ref = ctx.find_method_for_type(
                                 handler,
                                 implementing_for_typeid,
                                 &[ctx.namespace().current_package_name().clone()],
                                 &call_path.suffix,
                                 method.return_type.type_id(),
-                                &arguments
-                                    .iter()
-                                    .map(|a| a.1.return_type)
-                                    .collect::<VecDeque<_>>(),
+                                &arguments_types,
                                 None,
                             )?;
                             method = (*decl_engine.get(&implementing_type_method_ref)).clone();

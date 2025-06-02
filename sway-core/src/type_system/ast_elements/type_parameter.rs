@@ -741,7 +741,7 @@ impl GenericTypeParameter {
                                     concrete_trait_type_ids.first().unwrap().0,
                                     access_span,
                                     "Type parameter type does not match up with matched trait implementing type.",
-                                    None,
+                                    || None,
                                 );
                             }
                             Ordering::Greater => {
