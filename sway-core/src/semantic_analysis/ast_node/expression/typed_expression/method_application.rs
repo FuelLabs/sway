@@ -88,17 +88,18 @@ pub(crate) fn type_check_method_application(
     }
 
     // resolve the method name to a typed function declaration and type_check
+    let arguments_types = args_opt_buf
+        .iter()
+        .map(|(arg, _, _has_errors)| match arg {
+            Some(arg) => arg.return_type,
+            None => type_engine.new_unknown(),
+        })
+        .collect::<Vec<_>>();
     let method_result = resolve_method_name(
         handler,
         ctx.by_ref(),
         &method_name_binding,
-        args_opt_buf
-            .iter()
-            .map(|(arg, _, _has_errors)| match arg {
-                Some(arg) => arg.return_type,
-                None => type_engine.new_unknown(),
-            })
-            .collect(),
+        &arguments_types,
     );
 
     // In case resolve_method_name fails throw argument errors.
@@ -162,7 +163,7 @@ pub(crate) fn type_check_method_application(
         ctx.type_annotation(),
         &method_name_binding.span(),
         "Function return type does not match up with local type annotation.",
-        None,
+        || None,
     );
 
     // type check the function arguments (2nd pass)
@@ -484,7 +485,7 @@ pub(crate) fn type_check_method_application(
         .parameters
         .iter()
         .map(|m| m.name.clone())
-        .zip(args_buf.iter().cloned())
+        .zip(args_buf)
         .collect::<Vec<_>>();
 
     // unify the types of the arguments with the types of the parameters from the function declaration
@@ -630,7 +631,7 @@ pub(crate) fn type_check_method_application(
 
     // Unify method type parameters with implementing type type parameters.
     if let Some(implementing_for_typeid) = method.implementing_for_typeid {
-        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.clone().implementing_type {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 type_arguments: Some(type_arguments),
@@ -676,7 +677,7 @@ pub(crate) fn type_check_method_application(
                                         impl_type_param.type_id,
                                         &call_path.span(),
                                         "Function type parameter does not match up with implementing type type parameter.",
-                                        None,
+                                        || None,
                                     );
                                     Ok(())
                                 })?;
@@ -696,11 +697,11 @@ pub(crate) fn type_check_method_application(
     if let Some(cached_fn_ref) =
         ctx.engines()
             .qe()
-            .get_function(engines, method_ident.clone(), method_sig.clone())
+            .get_function(engines, &method_ident, method_sig.clone())
     {
         fn_ref = cached_fn_ref;
     } else {
-        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.clone().implementing_type {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 qualified_call_path,
@@ -727,7 +728,7 @@ pub(crate) fn type_check_method_application(
                 }
 
                 // This handles the case of substituting the generic blanket type by call_path_typeid.
-                for p in method.type_parameters.clone() {
+                for p in method.type_parameters.iter() {
                     if p.name().as_str() == qualified_call_path.call_path.suffix.as_str() {
                         subst_type_parameters.push(t.initial_type_id());
                         subst_type_arguments.push(call_path_typeid);
@@ -741,14 +742,13 @@ pub(crate) fn type_check_method_application(
                     .type_parameters
                     .iter()
                     .filter(|x| x.as_type_parameter().is_some())
-                    .cloned()
                 {
                     if names_type_ids.contains_key(p.name()) {
                         let type_id = p
                             .as_type_parameter()
                             .expect("only works with type parameters")
                             .type_id;
-                        subst_type_parameters.push(engines.te().new_placeholder(p));
+                        subst_type_parameters.push(engines.te().new_placeholder(p.clone()));
                         subst_type_arguments.push(type_id);
                     }
                 }
@@ -800,10 +800,10 @@ pub(crate) fn type_check_method_application(
         }
     }
 
-    let fn_app = ty::TyExpressionVariant::FunctionApplication {
-        call_path: call_path.clone(),
+    let expression = ty::TyExpressionVariant::FunctionApplication {
+        call_path,
         arguments,
-        fn_ref: fn_ref.clone(),
+        fn_ref,
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
         call_path_typeid: Some(call_path_typeid),
@@ -812,7 +812,7 @@ pub(crate) fn type_check_method_application(
     };
 
     let exp = ty::TyExpression {
-        expression: fn_app.clone(),
+        expression,
         return_type: method_return_type_id,
         span,
     };
@@ -843,11 +843,13 @@ fn unify_arguments_and_parameters(
                     param.type_argument.type_id(),
                     &arg.span,
                     "This argument's type is not castable to the declared parameter type.",
-                    Some(CompileError::ArgumentParameterTypeMismatch {
-                        span: arg.span.clone(),
-                        provided: engines.help_out(arg.return_type).to_string(),
-                        should_be: engines.help_out(param.type_argument.type_id()).to_string(),
-                    }),
+                    || {
+                        Some(CompileError::ArgumentParameterTypeMismatch {
+                            span: arg.span.clone(),
+                            provided: engines.help_out(arg.return_type).to_string(),
+                            should_be: engines.help_out(param.type_argument.type_id()).to_string(),
+                        })
+                    },
                 );
                 Ok(())
             });
@@ -865,7 +867,7 @@ pub(crate) fn resolve_method_name(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     method_name: &TypeBinding<MethodName>,
-    arguments_types: VecDeque<TypeId>,
+    arguments_types: &[TypeId],
 ) -> Result<(DeclRefFunction, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
@@ -882,22 +884,21 @@ pub(crate) fn resolve_method_name(
                 .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
             // find the module that the symbol is in
-            let type_info_prefix = call_path_binding
+            let type_info_prefix = &call_path_binding
                 .inner
                 .to_fullpath(engines, ctx.namespace())
-                .prefixes
-                .clone();
+                .prefixes;
             ctx.namespace()
-                .require_module_from_absolute_path(handler, &type_info_prefix)?;
+                .require_module_from_absolute_path(handler, type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
-                &type_info_prefix,
+                type_info_prefix,
                 method_name,
                 ctx.type_annotation(),
-                &arguments_types,
+                arguments_types,
                 None,
             )?;
 
@@ -930,7 +931,7 @@ pub(crate) fn resolve_method_name(
 
             // find the type of the first argument
             let type_id = arguments_types
-                .front()
+                .first()
                 .cloned()
                 .unwrap_or_else(|| type_engine.new_unknown());
 
@@ -941,7 +942,7 @@ pub(crate) fn resolve_method_name(
                 &module_path,
                 &call_path.suffix,
                 ctx.type_annotation(),
-                &arguments_types,
+                arguments_types,
                 None,
             )?;
 
@@ -949,11 +950,11 @@ pub(crate) fn resolve_method_name(
         }
         MethodName::FromModule { method_name } => {
             // find the module that the symbol is in
-            let module_path = ctx.namespace().current_mod_path().clone();
+            let module_path = ctx.namespace().current_mod_path();
 
             // find the type of the first argument
             let type_id = arguments_types
-                .front()
+                .first()
                 .cloned()
                 .unwrap_or_else(|| type_engine.new_unknown());
 
@@ -961,10 +962,10 @@ pub(crate) fn resolve_method_name(
             let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
-                &module_path,
+                module_path.as_slice(),
                 method_name,
                 ctx.type_annotation(),
-                &arguments_types,
+                arguments_types,
                 None,
             )?;
 
@@ -979,16 +980,16 @@ pub(crate) fn resolve_method_name(
             let type_id = ty.type_id();
 
             // find the module that the symbol is in
-            let module_path = ctx.namespace().current_mod_path().clone();
+            let module_path = ctx.namespace().current_mod_path();
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
-                &module_path,
+                module_path,
                 method_name,
                 ctx.type_annotation(),
-                &arguments_types,
+                arguments_types,
                 Some(*as_trait),
             )?;
 
