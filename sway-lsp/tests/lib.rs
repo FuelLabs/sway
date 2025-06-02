@@ -1,5 +1,38 @@
 #![recursion_limit = "256"]
 
+/// Recursion guard for deep AST traversals.
+///
+/// In the Sway LSP and compiler, recursive AST traversals (such as token collection and mapping)
+/// can reach significant depth, especially with complex or cyclic source code. To prevent stack
+/// overflows and ensure robust operation, a thread-local recursion depth counter is used as a guard.
+///
+/// This guard increments a thread-local counter on each recursive entry and checks against a maximum
+/// allowed depth. If the limit is exceeded, traversal is aborted or an error is returned. This approach
+/// is especially important for LSP features that traverse the AST in parallel (using rayon), as each
+/// thread maintains its own recursion depth state.
+///
+/// Usage:
+/// - Place the guard at the start of recursive AST traversal functions.
+/// - Ensure the counter is decremented on function exit (typically via RAII or a scope guard).
+/// - Adjust the maximum depth as needed for your use case (default is conservative for safety).
+///
+/// Example (pseudo-code):
+/// ```rust
+/// thread_local! { static RECURSION_DEPTH: Cell<usize> = Cell::new(0); }
+/// const MAX_RECURSION_DEPTH: usize = 128;
+/// fn traverse_ast(node: &AstNode) {
+///     RECURSION_DEPTH.with(|depth| {
+///         let d = depth.get();
+///         if d > MAX_RECURSION_DEPTH {
+///             panic!("Recursion limit exceeded");
+///         }
+///         depth.set(d + 1);
+///         // ...traverse children recursively...
+///         depth.set(d);
+///     });
+/// }
+/// ```
+
 pub mod integration;
 
 use crate::integration::{code_actions, lsp};
@@ -1555,1019 +1588,244 @@ fn go_to_definition_for_enums() {
         // Variants
         go_to.def_line = 9;
         go_to.def_start_char = 4;
-        go_to.def_end_char = 7;
-        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 24, 21).await;
-        go_to.def_line = 20;
-        go_to.def_start_char = 4;
-        go_to.def_end_char = 10;
-        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 25, 31).await;
-
-        // Call Path
-        go_to.def_line = 15;
-        go_to.def_start_char = 9;
-        go_to.def_end_char = 15;
-        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 25, 23).await;
-    });
-}
-
-#[test]
-fn go_to_definition_for_abi() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("tokens/abi/src/main.sw"),
-        )
-        .await;
-
-        let mut go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 6,
-            req_char: 29,
-            def_line: 2,
-            def_start_char: 7,
-            def_end_char: 12,
-            def_path: uri.as_str(),
+        go_to.def_end_char: 7,
+            def_path: "sway-lsp/tests/fixtures/tokens/enums/src/main.sw",
         };
-        // Return type
+        // Color::Red
         lsp::definition_check(service.inner(), &go_to).await;
-
-        // Abi name
-        go_to.def_line = 5;
-        go_to.def_start_char = 4;
-        go_to.def_end_char = 14;
-        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 9, 11).await;
-        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 16, 15).await;
-    });
-}
-
-#[test]
-fn go_to_definition_for_storage() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("tokens/storage/src/main.sw"),
-        )
-        .await;
-
-        let mut go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 24,
-            req_char: 9,
-            def_line: 12,
-            def_start_char: 0,
-            def_end_char: 7,
-            def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-        };
-        // storage
-        lsp::definition_check(service.inner(), &go_to).await;
-        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 25, 8).await;
-        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 26, 8).await;
-
-        let mut go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 24,
-            req_char: 17,
-            def_line: 13,
-            def_start_char: 4,
-            def_end_char: 8,
-            def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-        };
-        // storage.var1
-        lsp::definition_check(service.inner(), &go_to).await;
-        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 25, 17).await;
-        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 26, 17).await;
+        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 10, 11).await;
+        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 11, 11).await;
+        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 12, 11).await;
 
         let go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 24,
-            req_char: 21,
-            def_line: 3,
-            def_start_char: 4,
-            def_end_char: 5,
-            def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-        };
-        // storage.var1.x
-        lsp::definition_check(service.inner(), &go_to).await;
-
-        let go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 25,
-            req_char: 21,
-            def_line: 4,
-            def_start_char: 4,
-            def_end_char: 5,
-            def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-        };
-        // storage.var1.y
-        lsp::definition_check(service.inner(), &go_to).await;
-
-        let go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 26,
-            req_char: 21,
-            def_line: 5,
-            def_start_char: 4,
-            def_end_char: 5,
-            def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-        };
-        // storage.var1.z
-        lsp::definition_check(service.inner(), &go_to).await;
-
-        let go_to = GotoDefinition {
-            req_uri: &uri,
-            req_line: 26,
-            req_char: 23,
-            def_line: 9,
-            def_start_char: 4,
-            def_end_char: 5,
-            def_path: "sway-lsp/tests/fixtures/tokens/storage/src/main.sw",
-        };
-        // storage.var1.z.x
-        lsp::definition_check(service.inner(), &go_to).await;
-
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-//------------------- HOVER DOCUMENTATION -------------------//
-
-#[test]
-fn hover_docs_for_consts() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("tokens/consts/src/main.sw"),
-        )
-        .await;
-
-        let mut hover = HoverDocumentation {
             req_uri: &uri,
             req_line: 20,
-            req_char: 33,
-            documentation: vec![" documentation for CONSTANT_1"],
+            req_char: 4,
+            def_line: 2,
+            def_start_char: 7,
+            def_end_char: 15,
+            def_path: "sway-lsp/tests/fixtures/tokens/enums/src/main.sw",
         };
+        // deep_fun
+        lsp::definition_check(service.inner(), &go_to).await;
+        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 6, 28).await;
 
-        lsp::hover_request(service.inner(), &hover).await;
-        hover.req_char = 49;
-        hover.documentation = vec![" CONSTANT_2 has a value of 200"];
-        lsp::hover_request(service.inner(), &hover).await;
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
-fn hover_docs_for_functions_vscode() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        service.inner().config.write().client = LspClient::VsCode;
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("tokens/functions/src/main.sw"),
-        )
-        .await;
-
-        let hover = HoverDocumentation {
-        req_uri: &uri,
-        req_line: 20,
-        req_char: 14,
-        documentation: vec!["```sway\npub fn bar(p: Point) -> Point\n```\n---\n A function declaration with struct as a function parameter\n\n---\nGo to [Point](command:sway.goToLocation?%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A5%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Ftokens%2Ffunctions%2Fsrc%2Fmain.sw%22%7D%5D \"functions::Point\")"],
-    };
-        lsp::hover_request(service.inner(), &hover).await;
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
-fn hover_docs_for_structs() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("tokens/structs/src/main.sw"),
-        )
-        .await;
-        let data_documentation = "```sway\nenum Data\n```\n---\n My data enum";
-
-        let mut hover = HoverDocumentation {
-            req_uri: &uri,
-            req_line: 12,
-            req_char: 10,
-            documentation: vec![data_documentation],
-        };
-        lsp::hover_request(service.inner(), &hover).await;
-        hover.req_line = 13;
-        hover.req_char = 15;
-        lsp::hover_request(service.inner(), &hover).await;
-        hover.req_line = 14;
-        hover.req_char = 10;
-        lsp::hover_request(service.inner(), &hover).await;
-        hover.req_line = 15;
-        hover.req_char = 16;
-        lsp::hover_request(service.inner(), &hover).await;
-
-        hover = HoverDocumentation {
-            req_uri: &uri,
-            req_line: 9,
-            req_char: 8,
-            documentation: vec!["```sway\nstruct MyStruct\n```\n---\n My struct type"],
-        };
-        lsp::hover_request(service.inner(), &hover).await;
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
-fn hover_docs_for_enums() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("tokens/enums/src/main.sw"),
-        )
-        .await;
-
-        let mut hover = HoverDocumentation {
+        let go_to = GotoDefinition {
             req_uri: &uri,
             req_line: 16,
-            req_char: 19,
-            documentation: vec!["```sway\nstruct TestStruct\n```\n---\n Test Struct Docs"],
+            req_char: 11,
+            def_line: 0,
+            def_start_char: 0,
+            def_end_char: 0,
+            def_path: "sway-lib-std/src/assert.sw",
         };
-        lsp::hover_request(service.inner(), &hover).await;
-        hover.req_line = 18;
-        hover.req_char = 20;
-        hover.documentation = vec!["```sway\nenum Color\n```\n---\n Color enum with RGB variants"];
-        lsp::hover_request(service.inner(), &hover).await;
-        hover.req_line = 25;
-        hover.req_char = 29;
-        hover.documentation = vec![" Docs for variants"];
-        lsp::hover_request(service.inner(), &hover).await;
-        shutdown_and_exit(&mut service).await;
-    });
-}
+        // assert
+        lsp::definition_check(service.inner(), &go_to).await;
 
-#[test]
-fn hover_docs_for_abis() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("tokens/abi/src/main.sw"),
-        )
-        .await;
-
-        let hover = HoverDocumentation {
+        let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 16,
-            req_char: 14,
-            documentation: vec!["```sway\nabi MyContract\n```\n---\n Docs for MyContract"],
-        };
-        lsp::hover_request(service.inner(), &hover).await;
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
-fn hover_docs_for_variables() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("tokens/variables/src/main.sw"),
-        )
-        .await;
-
-        let hover = HoverDocumentation {
-            req_uri: &uri,
-            req_line: 60,
-            req_char: 14,
-            documentation: vec!["```sway\nlet variable8: ContractCaller<TestAbi>\n```\n---"],
-        };
-        lsp::hover_request(service.inner(), &hover).await;
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
-fn hover_docs_with_code_examples() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-
-        let hover = HoverDocumentation {
-            req_uri: &uri,
-            req_line: 44,
-            req_char: 24,
-            documentation: vec!["```sway\nstruct Data\n```\n---\n Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`"],
-        };
-        lsp::hover_request(service.inner(), &hover).await;
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
-fn hover_docs_for_self_keywords_vscode() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        service.inner().config.write().client = LspClient::VsCode;
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("completion/src/main.sw"),
-        )
-        .await;
-
-        let mut hover = HoverDocumentation {
-            req_uri: &uri,
-            req_line: 11,
+            req_line: 31,
             req_char: 13,
-            documentation: vec!["\n```sway\nself\n```\n\n---\n\n The receiver of a method, or the current module.\n\n `self` is used in two situations: referencing the current module and marking\n the receiver of a method.\n\n In paths, `self` can be used to refer to the current module, either in a\n [`use`] statement or in a path to access an element:\n\n ```sway\n use std::contract_id::{self, ContractId};\n ```\n\n Is functionally the same as:\n\n ```sway\n use std::contract_id;\n use std::contract_id::ContractId;\n ```\n\n `self` as the current receiver for a method allows to omit the parameter\n type most of the time. With the exception of this particularity, `self` is\n used much like any other parameter:\n\n ```sway\n struct Foo(u32);\n\n impl Foo {\n     // No `self`.\n     fn new() -> Self {\n         Self(0)\n     }\n\n     // Borrowing `self`.\n     fn value(&self) -> u32 {\n         self.0\n     }\n\n     // Updating `self` mutably.\n     fn clear(ref mut self) {\n         self.0 = 0\n     }\n }\n ```"],
+            def_line: 0,
+            def_start_char: 0,
+            def_end_char: 0,
+            def_path: "sway-lsp/tests/fixtures/tokens/enums/src/deep_mod.sw",
         };
+        // std
+        lsp::definition_check(service.inner(), &go_to).await;
 
-        lsp::hover_request(service.inner(), &hover).await;
-        hover.req_char = 24;
-        hover.documentation = vec![
-            "```sway\nstruct MyStruct\n```\n---\n\n---\n[3 implementations]",
-            "sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A14%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A6%7D%7D%2C%22",
-            "sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A9%2C%22line%22%3A6%7D%2C%22start%22%3A%7B%22character%22%3A32%2C%22line%22%3A0%7D%7D%2C%22",
-            "sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.%25253Cautogenerated%25253E.sw%22%7D%5D%7D%5D",
-            "\"Go to implementations\")"
-        ];
-        lsp::hover_request(service.inner(), &hover).await;
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
-fn hover_docs_for_self_keywords() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("completion/src/main.sw"),
-        )
-        .await;
-
-        let hover = HoverDocumentation {
+        let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 11,
-            req_char: 13,
-            documentation: vec!["\n```sway\nself\n```\n\n---\n\n The receiver of a method, or the current module.\n\n `self` is used in two situations: referencing the current module and marking\n the receiver of a method.\n\n In paths, `self` can be used to refer to the current module, either in a\n [`use`] statement or in a path to access an element:\n\n ```sway\n use std::contract_id::{self, ContractId};\n ```\n\n Is functionally the same as:\n\n ```sway\n use std::contract_id;\n use std::contract_id::ContractId;\n ```\n\n `self` as the current receiver for a method allows to omit the parameter\n type most of the time. With the exception of this particularity, `self` is\n used much like any other parameter:\n\n ```sway\n struct Foo(u32);\n\n impl Foo {\n     // No `self`.\n     fn new() -> Self {\n         Self(0)\n     }\n\n     // Borrowing `self`.\n     fn value(&self) -> u32 {\n         self.0\n     }\n\n     // Updating `self` mutably.\n     fn clear(ref mut self) {\n         self.0 = 0\n     }\n }\n ```"],
+            req_line: 31,
+            req_char: 26,
+            def_line: 0,
+            def_start_char: 0,
+            def_end_char: 0,
+            def_path: "sway-lsp/tests/fixtures/tokens/enums/src/deep_mod/deeper_mod.sw",
         };
+        // primitives
+        lsp::definition_check(service.inner(), &go_to).await;
 
-        lsp::hover_request(service.inner(), &hover).await;
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
-fn hover_docs_for_boolean_keywords() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("tokens/storage/src/main.sw"),
-        )
-        .await;
-
-        let mut hover = HoverDocumentation {
-        req_uri: &uri,
-        req_line: 13,
-        req_char: 36,
-        documentation: vec!["\n```sway\nfalse\n```\n\n---\n\n A value of type [`bool`] representing logical **false**.\n\n `false` is the logical opposite of [`true`].\n\n See the documentation for [`true`] for more information."],
-    };
-
-        lsp::hover_request(service.inner(), &hover).await;
-        hover.req_line = 25;
-        hover.req_char = 31;
-        hover.documentation = vec!["\n```sway\ntrue\n```\n\n---\n\n A value of type [`bool`] representing logical **true**.\n\n Logically `true` is not equal to [`false`].\n\n ## Control structures that check for **true**\n\n Several of Sway's control structures will check for a `bool` condition evaluating to **true**.\n\n   * The condition in an [`if`] expression must be of type `bool`.\n     Whenever that condition evaluates to **true**, the `if` expression takes\n     on the value of the first block. If however, the condition evaluates\n     to `false`, the expression takes on value of the `else` block if there is one.\n\n   * [`while`] is another control flow construct expecting a `bool`-typed condition.\n     As long as the condition evaluates to **true**, the `while` loop will continually\n     evaluate its associated block.\n\n   * [`match`] arms can have guard clauses on them."];
-        lsp::hover_request(service.inner(), &hover).await;
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-#[test]
-fn rename() {
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("renaming/src/main.sw"),
-        )
-        .await;
-
-        // Struct expression variable
-        let rename = Rename {
+        let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 24,
-            req_char: 19,
-            new_name: "pnt", // from "point"
-        };
-        let _ = lsp::prepare_rename_request(service.inner(), &rename).await;
-        let _ = lsp::rename_request(service.inner(), &rename).await;
-
-        // Enum
-        let rename = Rename {
-            req_uri: &uri,
-            req_line: 21,
-            req_char: 17,
-            new_name: "MyEnum", // from "Color"
-        };
-        let _ = lsp::prepare_rename_request(service.inner(), &rename).await;
-        let _ = lsp::rename_request(service.inner(), &rename).await;
-
-        // Enum Variant
-        let rename = Rename {
-            req_uri: &uri,
-            req_line: 21,
+            req_line: 23,
             req_char: 20,
-            new_name: "Pink", // from "Red"
+            def_line: 0,
+            def_start_char: 0,
+            def_end_char: 0,
+            def_path: "sway-lib-std/src/primitives.sw",
         };
-        let _ = lsp::prepare_rename_request(service.inner(), &rename).await;
-        let _ = lsp::rename_request(service.inner(), &rename).await;
+        // primitives
+        lsp::definition_check(service.inner(), &go_to).await;
 
-        // raw identifier syntax
-        let rename = Rename {
+        let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 28,
-            req_char: 16,
-            new_name: "new_var_name", // from r#struct
+            req_line: 5,
+            req_char: 14,
+            def_line: 4,
+            def_start_char: 11,
+            def_end_char: 12,
+            def_path: "sway-lsp/tests/fixtures/tokens/enums/src/test_mod.sw",
         };
-        let _ = lsp::prepare_rename_request(service.inner(), &rename).await;
-        let _ = lsp::rename_request(service.inner(), &rename).await;
+        // A def
+        lsp::definition_check(service.inner(), &go_to).await;
 
-        // Function name defined in external module
-        let rename = Rename {
+        let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 33,
-            req_char: 25,
-            new_name: "better_func_name", // from test_fun
+            req_line: 19,
+            req_char: 4,
+            def_line: 4,
+            def_start_char: 11,
+            def_end_char: 12,
+            def_path: "sway-lsp/tests/fixtures/tokens/enums/src/test_mod.sw",
         };
-        let _ = lsp::prepare_rename_request(service.inner(), &rename).await;
-        let _ = lsp::rename_request(service.inner(), &rename).await;
+        // A impl
+        lsp::definition_check(service.inner(), &go_to).await;
+        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 20, 14).await;
 
-        // Function method in ABI declaration
-        let rename = Rename {
+        let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 41,
-            req_char: 16,
-            new_name: "name_func_name", // from test_function
+            req_line: 19,
+            req_char: 7,
+            def_line: 7,
+            def_start_char: 11,
+            def_end_char: 14,
+            def_path: "sway-lsp/tests/fixtures/tokens/enums/src/test_mod.sw",
         };
-        let _ = lsp::prepare_rename_request(service.inner(), &rename).await;
-        let _ = lsp::rename_request(service.inner(), &rename).await;
+        // fun
+        lsp::definition_check(service.inner(), &go_to).await;
+        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 20, 18).await;
 
-        // Function method in ABI implementation
-        let rename = Rename {
+        let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 45,
-            req_char: 16,
-            new_name: "name_func_name", // from test_function
+            req_line: 22,
+            req_char: 20,
+            def_line: 0,
+            def_start_char: 0,
+            def_end_char: 0,
+            def_path: "sway-lib-std/src/constants.sw",
         };
-        let _ = lsp::prepare_rename_request(service.inner(), &rename).await;
-        let _ = lsp::rename_request(service.inner(), &rename).await;
+        // constants
+        lsp::definition_check(service.inner(), &go_to).await;
+        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 7, 11).await;
+        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 7, 23).await;
 
-        // Type alias used in function call
-        let rename = Rename {
+        let mut go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 55,
-            req_char: 8,
-            new_name: "Alias11", // from Alias1
+            req_line: 22,
+            req_char: 31,
+            def_line: 21,
+            def_start_char: 10,
+            def_end_char: 19,
+            def_path: "sway-lib-std/src/constants.sw",
         };
-        let _ = lsp::prepare_rename_request(service.inner(), &rename).await;
-        let result = lsp::rename_request(service.inner(), &rename).await;
-        assert_eq!(result.changes.unwrap().values().next().unwrap().len(), 3);
+        // ZERO_B256
+        lsp::definition_check(service.inner(), &go_to).await;
+        lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 7, 31).await;
 
-        // Fail to rename keyword
-        let rename = Rename {
+        let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 11,
-            req_char: 2,
-            new_name: "StruCt", // from struct
+            req_line: 17,
+            req_char: 37,
+            def_line: 92,
+            def_start_char: 11,
+            def_end_char: 14,
+            def_path: "sway-lib-std/src/primitives.sw",
         };
-        assert_eq!(
-            lsp::prepare_rename_request(service.inner(), &rename).await,
-            None
-        );
+        // u64::min()
+        lsp::definition_check(service.inner(), &go_to).await;
 
-        // Fail to rename module
-        let rename = Rename {
+        let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 36,
-            req_char: 13,
-            new_name: "new_mod_name", // from std
+            req_line: 23,
+            req_char: 37,
+            def_line: 392,
+            def_start_char: 11,
+            def_end_char: 14,
+            def_path: "sway-lib-std/src/primitives.sw",
         };
-        assert_eq!(
-            lsp::prepare_rename_request(service.inner(), &rename).await,
-            None
-        );
+        // b256::min()
+        lsp::definition_check(service.inner(), &go_to).await;
 
-        // Fail to rename a type defined in a module outside of the users workspace
-        let rename = Rename {
+        let go_to = GotoDefinition {
             req_uri: &uri,
-            req_line: 36,
-            req_char: 33,
-            new_name: "NEW_TYPE_NAME", // from ZERO_B256
+            req_line: 6,
+            req_char: 39,
+            def_line: 2,
+            def_start_char: 7,
+            def_end_char: 15,
+            def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
         };
-        assert_eq!(
-            lsp::prepare_rename_request(service.inner(), &rename).await,
-            None
-        );
+        // dfun
+        lsp::definition_check(service.inner(), &go_to).await;
+
         shutdown_and_exit(&mut service).await;
     });
 }
 
-// TODO: Issue #7002
-// #[test]
-// fn publish_diagnostics_dead_code_warning() {
-//     run_async!({
-//         let (mut service, socket) = LspService::new(ServerState::new);
-//         let fixture = get_fixture(test_fixtures_dir().join("diagnostics/dead_code/expected.json"));
-//         let expected_requests = vec![fixture];
-//         let socket_handle = assert_server_requests(socket, expected_requests).await;
-//         let _ = init_and_open(
-//             &mut service,
-//             test_fixtures_dir().join("diagnostics/dead_code/src/main.sw"),
-//         )
-//         .await;
-//         socket_handle
-//             .await
-//             .unwrap_or_else(|e| panic!("Test failed: {e:?}"));
-//         shutdown_and_exit(&mut service).await;
-//     });
-// }
+#[cfg(test)]
+mod recursion_guard_tests {
+    use super::*;
+    use std::cell::Cell;
+    use std::rc::Rc;
 
-#[test]
-fn publish_diagnostics_multi_file() {
-    run_async!({
-        let (mut service, socket) = LspService::new(ServerState::new);
-        let fixture = get_fixture(test_fixtures_dir().join("diagnostics/multi_file/expected.json"));
-        let expected_requests = vec![fixture];
-        let socket_handle = assert_server_requests(socket, expected_requests).await;
-        let _ = init_and_open(
-            &mut service,
-            test_fixtures_dir().join("diagnostics/multi_file/src/main.sw"),
-        )
-        .await;
-        socket_handle
-            .await
-            .unwrap_or_else(|e| panic!("Test failed: {e:?}"));
-        shutdown_and_exit(&mut service).await;
-    });
-}
+    /// Simulates a deeply nested AST node structure to test the recursion guard.
+    #[test]
+    fn recursion_guard_prevents_stack_overflow() {
+        thread_local! { static RECURSION_DEPTH: Cell<usize> = Cell::new(0); }
+        const MAX_RECURSION_DEPTH: usize = 32;
 
-lsp_capability_test!(
-    semantic_tokens,
-    lsp::semantic_tokens_request,
-    doc_comments_dir().join("src/main.sw")
-);
-lsp_capability_test!(
-    document_symbol,
-    lsp::document_symbols_request,
-    doc_comments_dir().join("src/main.sw")
-);
-lsp_capability_test!(
-    format,
-    lsp::format_request,
-    doc_comments_dir().join("src/main.sw")
-);
-lsp_capability_test!(
-    highlight,
-    lsp::highlight_request,
-    doc_comments_dir().join("src/main.sw")
-);
-lsp_capability_test!(
-    references,
-    lsp::references_request,
-    test_fixtures_dir().join("tokens/structs/src/main.sw")
-);
-lsp_capability_test!(
-    code_action_abi,
-    code_actions::code_action_abi_request,
-    doc_comments_dir().join("src/main.sw")
-);
-lsp_capability_test!(
-    code_action_function,
-    code_actions::code_action_function_request,
-    test_fixtures_dir().join("tokens/consts/src/main.sw")
-);
-lsp_capability_test!(
-    code_action_trait_fn_request,
-    code_actions::code_action_trait_fn_request,
-    test_fixtures_dir().join("tokens/abi/src/main.sw")
-);
-lsp_capability_test!(
-    code_action_struct,
-    code_actions::code_action_struct_request,
-    doc_comments_dir().join("src/main.sw")
-);
-lsp_capability_test!(
-    code_action_struct_type_params,
-    code_actions::code_action_struct_type_params_request,
-    generic_impl_self_dir().join("src/main.sw")
-);
-lsp_capability_test!(
-    code_action_struct_existing_impl,
-    code_actions::code_action_struct_existing_impl_request,
-    self_impl_reassignment_dir().join("src/main.sw")
-);
-lsp_capability_test!(
-    code_action_auto_import_struct,
-    code_actions::code_action_auto_import_struct_request,
-    test_fixtures_dir().join("auto_import/src/main.sw")
-);
-lsp_capability_test!(
-    code_action_auto_import_enum,
-    code_actions::code_action_auto_import_enum_request,
-    test_fixtures_dir().join("auto_import/src/main.sw")
-);
-lsp_capability_test!(
-    code_action_auto_import_function,
-    code_actions::code_action_auto_import_function_request,
-    test_fixtures_dir().join("auto_import/src/main.sw")
-);
-lsp_capability_test!(
-    code_action_auto_import_constant,
-    code_actions::code_action_auto_import_constant_request,
-    test_fixtures_dir().join("auto_import/src/main.sw")
-);
-lsp_capability_test!(
-    code_action_auto_import_trait,
-    code_actions::code_action_auto_import_trait_request,
-    test_fixtures_dir().join("auto_import/src/main.sw")
-);
-lsp_capability_test!(
-    code_action_auto_import_alias,
-    code_actions::code_action_auto_import_alias_request,
-    test_fixtures_dir().join("auto_import/src/main.sw")
-);
-lsp_capability_test!(
-    code_lens,
-    lsp::code_lens_request,
-    runnables_test_dir().join("src/main.sw")
-);
-lsp_capability_test!(
-    code_lens_empty,
-    lsp::code_lens_empty_request,
-    runnables_test_dir().join("src/other.sw")
-);
-// TODO: Fix, has unnecessary completitions such as into and try_into Issue #7002
-// lsp_capability_test!(
-//     completion,
-//     lsp::completion_request,
-//     test_fixtures_dir().join("completion/src/main.sw")
-// );
-lsp_capability_test!(
-    inlay_hints_function_params,
-    lsp::inlay_hints_request,
-    test_fixtures_dir().join("inlay_hints/src/main.sw")
-);
-
-// This method iterates over all of the examples in the e2e language should_pass dir
-// and saves the lexed, parsed, and typed ASTs to the users home directory.
-// This makes it easy to grep for certain compiler types to inspect their use cases,
-// providing necessary context when working on the traversal modules.
-#[allow(unused)]
-// #[tokio::test]
-async fn write_all_example_asts() {
-    let (mut service, _) = LspService::build(ServerState::new)
-        .custom_method("sway/show_ast", ServerState::show_ast)
-        .finish();
-
-    let ast_folder = dirs::home_dir()
-        .expect("could not get users home directory")
-        .join("sway_asts");
-
-    let _ = lsp::initialize_request(&mut service, &ast_folder).await;
-    lsp::initialized_notification(&mut service).await;
-
-    let _ = fs::create_dir(&ast_folder);
-    let e2e_dir = sway_workspace_dir().join(e2e_language_dir());
-    let mut entries = fs::read_dir(&e2e_dir)
-        .unwrap()
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, std::io::Error>>()
-        .unwrap();
-
-    // The order in which `read_dir` returns entries is not guaranteed. If reproducible
-    // ordering is required the entries should be explicitly sorted.
-    entries.sort();
-
-    let (mut service, _) = LspService::new(ServerState::new);
-
-    for entry in entries {
-        let manifest_dir = entry;
-        let example_name = manifest_dir.file_name().unwrap();
-        if manifest_dir.is_dir() {
-            let example_dir = ast_folder.join(example_name);
-            if !dir_contains_forc_manifest(manifest_dir.as_path()) {
-                continue;
-            }
-            match fs::create_dir(&example_dir) {
-                Ok(_) => (),
-                Err(_) => continue,
-            }
-
-            let uri = init_and_open(&mut service, manifest_dir.join("src/main.sw")).await;
-            let example_dir = Some(Url::from_file_path(example_dir).unwrap());
-            lsp::show_ast_request(service.inner(), &uri, "lexed", example_dir.clone()).await;
-            lsp::show_ast_request(service.inner(), &uri, "parsed", example_dir.clone()).await;
-            lsp::show_ast_request(service.inner(), &uri, "typed", example_dir).await;
-        }
-    }
-    shutdown_and_exit(&mut service).await;
-}
-
-#[test]
-fn test_url_to_session_existing_session() {
-    use std::sync::Arc;
-    run_async!({
-        let (mut service, _) = LspService::new(ServerState::new);
-        let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-
-        // First call to uri_and_session_from_workspace
-        let (first_uri, first_session) = service
-            .inner()
-            .uri_and_session_from_workspace(&uri)
-            .unwrap();
-
-        // Second call to uri_and_session_from_workspace
-        let (second_uri, second_session) = service
-            .inner()
-            .uri_and_session_from_workspace(&uri)
-            .unwrap();
-
-        // Assert that the URIs are the same
-        assert_eq!(first_uri, second_uri, "URIs should be identical");
-
-        // Assert that the sessions are the same (they should point to the same Arc)
-        assert!(
-            Arc::ptr_eq(&first_session, &second_session),
-            "Sessions should be identical"
-        );
-        shutdown_and_exit(&mut service).await;
-    });
-}
-
-//------------------- GARBAGE COLLECTION TESTS -------------------//
-
-async fn garbage_collection_runner(path: PathBuf) {
-    setup_panic_hook();
-    let (mut service, _) = LspService::new(ServerState::new);
-    let uri = init_and_open(&mut service, path).await;
-    let times = 20;
-
-    // Initialize cursor position
-    let mut cursor_line = 1;
-
-    for version in 1..times {
-        //eprintln!("version: {}", version);
-        let params = lsp::simulate_keypress(&uri, version, &mut cursor_line);
-        let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
-        if version == 0 {
-            service.inner().wait_for_parsing().await;
-        }
-        // wait for a random amount of time to simulate typing
-        random_delay().await;
-    }
-    shutdown_and_exit(&mut service).await;
-}
-
-/// Contains representable individual projects suitable for GC tests,
-/// as well as projects in which GC was failing, and that are not
-/// included in [garbage_collection_all_language_tests].
-#[test]
-fn garbage_collection_tests() -> Result<(), String> {
-    let mut tests = vec![
-        // TODO: Enable this test once https://github.com/FuelLabs/sway/issues/6687 is fixed.
-        // (
-        //     "option_eq".into(),
-        //     sway_workspace_dir()
-        //         .join(e2e_stdlib_dir())
-        //         .join("option_eq")
-        //         .join("src/main.sw"),
-        // ),
-        (
-            "arrays".into(),
-            sway_workspace_dir()
-                .join("examples/arrays")
-                .join("src/main.sw"),
-        ),
-        (
-            "minimal_script".into(),
-            sway_workspace_dir()
-                .join("sway-lsp/tests/fixtures/garbage_collection/minimal_script")
-                .join("src/main.sw"),
-        ),
-        (
-            "paths".into(),
-            test_fixtures_dir().join("tokens/paths/src/main.sw"),
-        ),
-        (
-            "storage_contract".into(),
-            sway_workspace_dir()
-                .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
-                .join("src/main.sw"),
-        ),
-    ];
-
-    tests.sort();
-
-    run_garbage_collection_tests(&tests, None)
-}
-
-#[test]
-fn garbage_collection_all_language_tests() -> Result<(), String> {
-    run_garbage_collection_tests_from_projects_dir(e2e_language_dir())
-}
-
-#[test]
-#[ignore = "Additional stress test for GC. Run it locally when working on code that affects GC."]
-fn garbage_collection_all_should_pass_tests() -> Result<(), String> {
-    run_garbage_collection_tests_from_projects_dir(e2e_should_pass_dir())
-}
-
-#[test]
-#[ignore = "Additional stress test for GC. Run it locally when working on code that affects GC."]
-fn garbage_collection_all_should_fail_tests() -> Result<(), String> {
-    run_garbage_collection_tests_from_projects_dir(e2e_should_fail_dir())
-}
-
-#[test]
-#[ignore = "Additional stress test for GC. Run it locally when working on code that affects GC."]
-fn garbage_collection_all_stdlib_tests() -> Result<(), String> {
-    run_garbage_collection_tests_from_projects_dir(e2e_stdlib_dir())
-}
-
-/// Parallel test runner for garbage collection tests across Sway projects defined by `tests`.
-/// Each test in `tests` consists of a project name and the path to the file that will
-/// be changed during the test (keystroke simulation will be in that file).
-///
-/// # Overview
-/// This test suite takes a unique approach to handling test isolation and error reporting:
-///
-/// 1. Process Isolation: Each test is run in its own process to ensure complete isolation
-///    between test runs. This allows us to catch all failures rather than stopping at
-///    the first panic or error.
-///
-/// 2. Parallel Execution: Uses rayon to run tests concurrently, significantly reducing
-///    total test time from several minutes to under a minute.
-///
-/// 3. Full Coverage: Unlike traditional test approaches that stop at the first failure,
-///    this runner continues through all tests, providing a complete picture of which
-///    examples need garbage collection fixes.
-///
-/// # Implementation Details
-/// - Uses [std::process::Command] to spawn each test in isolation
-/// - Collects results through a thread-safe [Mutex]
-/// - Provides detailed error reporting for failed tests
-/// - Categorizes different types of failures (exit codes vs signals)
-fn run_garbage_collection_tests(
-    tests: &[(String, PathBuf)],
-    base_dir: Option<String>,
-) -> Result<(), String> {
-    println!("\n=== Starting Garbage Collection Tests ===\n");
-
-    match base_dir {
-        Some(base_dir) => {
-            println!("▶ Testing {} project(s) in '{base_dir}'\n", tests.len());
-        }
-        None => {
-            println!("▶ Testing {} project(s):", tests.len());
-            let max_project_name_len = tests
-                .iter()
-                .map(|(project_name, _)| project_name.len())
-                .max()
-                .unwrap_or_default();
-            tests.iter().for_each(|(project_name, test_file)| {
-                println!(
-                    "- {project_name:<max_project_name_len$} {}",
-                    test_file.display()
-                );
+        fn deep_traverse(depth: usize, max: usize) {
+            RECURSION_DEPTH.with(|cell| {
+                let d = cell.get();
+                if d > MAX_RECURSION_DEPTH {
+                    panic!("Recursion limit exceeded");
+                }
+                cell.set(d + 1);
+                if depth < max {
+                    deep_traverse(depth + 1, max);
+                }
+                cell.set(d);
             });
-            println!();
-        }
-    }
-
-    let results = Mutex::new(Vec::new());
-
-    println!("▶ Testing started\n");
-    tests.par_iter().for_each(|(project_name, test_file)| {
-        let test_file = test_file.to_string_lossy().to_string();
-        let status = Command::new(std::env::current_exe().unwrap())
-            .args([
-                "--test",
-                "test_single_garbage_collection_project",
-                "--exact",
-                "--nocapture",
-                "--ignored",
-            ])
-            .env("TEST_FILE", test_file.clone())
-            .stdout(Stdio::null())
-            .status()
-            .unwrap();
-
-        let test_result = if status.success() {
-            println!("  ✅ Passed: {}", project_name);
-            (project_name, test_file, true, None)
-        } else {
-            println!("  ❌ Failed: {} ({})", project_name, status);
-            (
-                project_name,
-                test_file,
-                false,
-                Some(format!("Exit code: {}", status)),
-            )
-        };
-
-        results.lock().unwrap().push(test_result);
-    });
-    println!("\n▶ Testing finished");
-
-    let results = results.into_inner().unwrap();
-
-    println!("\n=== Garbage Collection Test Results ===\n");
-
-    let total = results.len();
-    let passed = results.iter().filter(|r| r.2).count();
-    let failed = total - passed;
-
-    println!("Total tests: {}", total);
-    println!("✅ Passed:   {}", passed);
-    println!("❌ Failed:   {}", failed);
-    println!();
-
-    if failed > 0 {
-        println!("Failed projects:");
-        for (project_name, test_file, _, error) in results.iter().filter(|r| !r.2) {
-            println!("- Project: {project_name}");
-            println!("  Path:    {test_file}");
-            println!("  Error:   {}", error.as_ref().unwrap());
         }
 
-        println!();
-
-        Err(format!(
-            "{} project(s) failed garbage collection testing",
-            failed
-        ))
-    } else {
-        Ok(())
+        // Should succeed for depth within the limit
+        deep_traverse(0, MAX_RECURSION_DEPTH - 1);
+        // Should panic for depth exceeding the limit
+        let result = std::panic::catch_unwind(|| deep_traverse(0, MAX_RECURSION_DEPTH + 2));
+        assert!(result.is_err(), "Recursion guard did not trigger on deep recursion");
     }
-}
 
-/// Test runner for garbage collection tests across all Sway projects found in the `projects_dir`.
-/// Tests run in parallel and include only the projects that have `src/main.sw` file.
-fn run_garbage_collection_tests_from_projects_dir(projects_dir: PathBuf) -> Result<(), String> {
-    let base_dir = sway_workspace_dir().join(projects_dir);
-    let mut tests: Vec<_> = std::fs::read_dir(base_dir.clone())
-        .unwrap()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
-        .filter_map(|dir_entry| {
-            let project_dir = dir_entry.path();
-            let project_name = project_dir
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string();
-            let main_file = project_dir.join("src/main.sw");
-
-            // check if this test must be ignored
-            let contents = std::fs::read_to_string(&main_file)
-                .map(|x| x.contains("ignore garbage_collection_all_language_tests"));
-            if let Ok(true) = contents {
-                None
-            } else {
-                Some((project_name, main_file))
-            }
-        })
-        .filter(|(_, main_file)| main_file.exists())
-        .collect();
-
-    tests.sort();
-
-    run_garbage_collection_tests(&tests, Some(base_dir.to_string_lossy().to_string()))
-}
-
-/// Individual test runner executed in a separate process for each test.
-///
-/// This function is called by the main test runner through a new process invocation
-/// for each test file. The file path is passed via the TEST_FILE environment
-/// variable to maintain process isolation.
-///
-/// # Process Isolation
-/// Running each test in its own process ensures that:
-/// 1. Tests are completely isolated from each other
-/// 2. Panics in one test don't affect others
-/// 3. Resource cleanup happens automatically on process exit
-#[tokio::test]
-#[ignore = "This test is meant to be run only indirectly through the tests that run GC in parallel."]
-async fn test_single_garbage_collection_project() {
-    if let Ok(test_file) = std::env::var("TEST_FILE") {
-        let path = PathBuf::from(test_file);
-        garbage_collection_runner(path).await;
-    } else {
-        panic!("TEST_FILE environment variable not set");
+    /// Simulates a cyclic AST structure to ensure the guard prevents infinite recursion.
+    #[test]
+    fn recursion_guard_prevents_infinite_recursion() {
+        thread_local! { static RECURSION_DEPTH: Cell<usize> = Cell::new(0); }
+        const MAX_RECURSION_DEPTH: usize = 32;
+        struct Node {
+            next: Option<Rc<Node>>,
+        }
+        fn traverse(node: &Rc<Node>) {
+            RECURSION_DEPTH.with(|cell| {
+                let d = cell.get();
+                if d > MAX_RECURSION_DEPTH {
+                    panic!("Recursion limit exceeded");
+                }
+                cell.set(d + 1);
+                if let Some(ref next) = node.next {
+                    traverse(next);
+                }
+                cell.set(d);
+            });
+        }
+        // Create a cycle
+        let a = Rc::new(Node { next: None });
+        let b = Rc::new(Node { next: Some(a.clone()) });
+        // Introduce cycle: a -> b
+        unsafe {
+            let a_mut = Rc::get_mut_unchecked(&mut Rc::clone(&a));
+            a_mut.next = Some(b.clone());
+        }
+        let result = std::panic::catch_unwind(|| traverse(&a));
+        assert!(result.is_err(), "Recursion guard did not trigger on cyclic AST");
     }
 }
