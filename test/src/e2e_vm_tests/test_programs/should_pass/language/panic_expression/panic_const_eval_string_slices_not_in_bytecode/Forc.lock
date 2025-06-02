@@ -1,0 +1,16 @@
+[[package]]
+name = "panic_const_eval_string_slices_not_in_bytecode"
+source = "member"
+dependencies = [
+    "panicking_lib",
+    "std",
+]
+
+[[package]]
+name = "panicking_lib"
+source = "path+from-root-A86F78717C9300FF"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-A86F78717C9300FF"

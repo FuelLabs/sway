@@ -6,6 +6,7 @@ use crate::{
         document::{Documents, PidLockedFiles},
         session::{self, Session},
         sync::SyncWorkspace,
+        token_map::TokenMap,
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::{debug, keyword_docs::KeywordDocs},
@@ -31,7 +32,7 @@ use std::{
         Arc, OnceLock,
     },
 };
-use sway_core::LspConfig;
+use sway_core::Engines;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -42,6 +43,8 @@ pub struct ServerState {
     pub(crate) client: Option<Client>,
     pub config: Arc<RwLock<Config>>,
     pub sync_workspace: OnceLock<Arc<SyncWorkspace>>,
+    pub token_map: Arc<TokenMap>,
+    pub engines: Arc<RwLock<Engines>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
     /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
@@ -64,6 +67,8 @@ impl Default for ServerState {
         let (cb_tx, cb_rx) = crossbeam_channel::bounded(1);
         let state = ServerState {
             client: None,
+            token_map: Arc::new(TokenMap::new()),
+            engines: Arc::new(RwLock::new(Engines::default())),
             config: Arc::new(RwLock::new(Config::default())),
             sync_workspace: OnceLock::new(),
             keyword_docs: Arc::new(KeywordDocs::new()),
@@ -107,6 +112,8 @@ pub enum TaskMessage {
 pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
     pub sync: Option<Arc<SyncWorkspace>>,
+    pub token_map: Arc<TokenMap>,
+    pub engines: Arc<RwLock<Engines>>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
     pub optimized_build: bool,
@@ -168,8 +175,7 @@ impl ServerState {
                     TaskMessage::CompilationContext(ctx) => {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
-                        let mut engines_clone = session.engines.read().clone();
-                        let sync = ctx.sync.as_ref().unwrap().clone();
+                        let mut engines_clone = ctx.engines.read().clone();
 
                         // Perform garbage collection if enabled to manage memory usage.
                         if ctx.gc_options.gc_enabled {
@@ -184,10 +190,6 @@ impl ServerState {
                                 );
                             }
                         }
-                        let lsp_mode = Some(LspConfig {
-                            optimized_build: ctx.optimized_build,
-                            file_versions: ctx.file_versions,
-                        });
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
@@ -195,9 +197,7 @@ impl ServerState {
                             &uri,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
-                            lsp_mode,
-                            session.clone(),
-                            &sync,
+                            &ctx,
                         ) {
                             Ok(()) => {
                                 let path = uri.to_file_path().unwrap();
@@ -217,7 +217,7 @@ impl ServerState {
                                                 // The compiler did not reuse the workspace AST.
                                                 // We need to overwrite the old engines with the engines clone.
                                                 mem::swap(
-                                                    &mut *session.engines.write(),
+                                                    &mut *ctx.engines.write(),
                                                     &mut engines_clone,
                                                 );
                                             }
@@ -344,7 +344,7 @@ impl ServerState {
     fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
         let mut diagnostics_to_publish = vec![];
         let config = &self.config.read();
-        let tokens = session.token_map().tokens_for_file(uri);
+        let tokens = self.token_map.tokens_for_file(uri);
         match config.debug.show_collected_tokens_as_warnings {
             // If collected_tokens_as_warnings is Parsed or Typed,
             // take over the normal error and warning display behavior
@@ -374,23 +374,29 @@ impl ServerState {
 
     /// Constructs and returns a tuple of `(Url, Arc<Session>)` from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
-    pub async fn uri_and_session_from_workspace(
+    pub fn uri_and_session_from_workspace(
         &self,
         workspace_uri: &Url,
     ) -> Result<(Url, Arc<Session>), LanguageServerError> {
+        let temp_uri = self.uri_from_workspace(workspace_uri)?;
+        let session = self.url_to_session(workspace_uri)?;
+        Ok((temp_uri, session))
+    }
+
+    /// Constructs and returns a [Url] from a given workspace URI.
+    /// The returned URL represents the temp directory workspace.
+    pub fn uri_from_workspace(&self, workspace_uri: &Url) -> Result<Url, LanguageServerError> {
         let sw = self
             .sync_workspace
             .get()
             .ok_or(LanguageServerError::GlobalWorkspaceNotInitialized)?; // Should be initialized by now.
 
-        let session = self.url_to_session(workspace_uri).await?;
         // Convert the workspace URI to its corresponding temporary URI.
         let temp_uri = sw.workspace_to_temp_url(workspace_uri)?;
-
-        Ok((temp_uri, session))
+        Ok(temp_uri)
     }
 
-    async fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
+    fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
         // Try to get the manifest directory from the cache
         let manifest_dir = if let Some(cached_dir) = self.manifest_cache.get(uri) {
             cached_dir.clone()
@@ -529,14 +535,13 @@ impl ServerState {
     ///
     /// Panics if `sync_workspace` has not been initialized by a prior call to
     /// `get_or_init_global_sync_workspace`. This scenario is not expected in normal operation.
-    pub fn sync_workspace(&self) -> Arc<SyncWorkspace> {
+    pub fn sync_workspace(&self) -> &SyncWorkspace {
         // `sync_workspace` is initialized once during the first call to `get_or_init_global_sync_workspace`.
         // After initialization, it's always expected to be `Some`.
         // Using `expect` here simplifies the code, as the `None` case should not occur in normal operation.
         self.sync_workspace
             .get()
             .expect("SyncWorkspace not initialized")
-            .clone()
     }
 }
 

@@ -12,6 +12,7 @@ use crate::{
     type_system::*,
     types::*,
 };
+use ast_elements::type_parameter::ConstGenericExpr;
 use monomorphization::MonomorphizeHelper;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -74,14 +75,18 @@ impl DebugWithEngines for TyFunctionDecl {
                     self.type_parameters
                         .iter()
                         .map(|p| {
-                            let p = p
-                                .as_type_parameter()
-                                .expect("only works for type parameters");
-                            format!(
-                                "{:?} -> {:?}",
-                                engines.help_out(p.initial_type_id),
-                                engines.help_out(p.type_id)
-                            )
+                            match p {
+                                TypeParameter::Type(p) => {
+                                    format!(
+                                        "{:?} -> {:?}",
+                                        engines.help_out(p.initial_type_id),
+                                        engines.help_out(p.type_id)
+                                    )
+                                }
+                                TypeParameter::Const(p) => {
+                                    format!("{} -> {:?}", p.name, p.expr)
+                                }
+                            }
                         })
                         .collect::<Vec<_>>()
                         .join(", ")
@@ -150,6 +155,19 @@ impl MaterializeConstGenerics for TyFunctionDecl {
         name: &str,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
+        for tp in self.type_parameters.iter_mut() {
+            match tp {
+                TypeParameter::Type(p) => p
+                    .type_id
+                    .materialize_const_generics(engines, handler, name, value)?,
+                TypeParameter::Const(p) if p.name.as_str() == name => {
+                    assert!(p.expr.is_none());
+                    p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                }
+                _ => {}
+            }
+        }
+
         for param in self.parameters.iter_mut() {
             param
                 .type_argument
@@ -667,10 +685,16 @@ impl TyFunctionParameter {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TyFunctionSigTypeParameter {
+    Type(TypeId),
+    Const(ConstGenericExpr),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TyFunctionSig {
     pub return_type: TypeId,
     pub parameters: Vec<TypeId>,
-    pub type_parameters: Vec<TypeId>,
+    pub type_parameters: Vec<TyFunctionSigTypeParameter>,
 }
 
 impl DisplayWithEngines for TyFunctionSig {
@@ -688,7 +712,11 @@ impl DebugWithEngines for TyFunctionSig {
                 "<{}>",
                 self.type_parameters
                     .iter()
-                    .map(|p| format!("{}", engines.help_out(p)))
+                    .map(|p| match p {
+                        TyFunctionSigTypeParameter::Type(t) => format!("{:?}", engines.help_out(t)),
+                        TyFunctionSigTypeParameter::Const(expr) =>
+                            format!("{:?}", engines.help_out(expr)),
+                    })
                     .collect::<Vec<_>>()
                     .join(", "),
             )
@@ -719,9 +747,16 @@ impl TyFunctionSig {
             type_parameters: fn_decl
                 .type_parameters
                 .iter()
-                .filter_map(|x| x.as_type_parameter())
-                .map(|p| p.type_id)
-                .collect::<Vec<_>>(),
+                .map(|x| match x {
+                    TypeParameter::Type(p) => TyFunctionSigTypeParameter::Type(p.type_id),
+                    TypeParameter::Const(p) => {
+                        let expr = ConstGenericExpr::AmbiguousVariableExpression {
+                            ident: p.name.clone(),
+                        };
+                        TyFunctionSigTypeParameter::Const(p.expr.clone().unwrap_or(expr))
+                    }
+                })
+                .collect(),
         }
     }
 
@@ -735,7 +770,11 @@ impl TyFunctionSig {
             && self
                 .type_parameters
                 .iter()
-                .all(|p| p.is_concrete(engines, TreatNumericAs::Concrete))
+                .filter_map(|x| match x {
+                    TyFunctionSigTypeParameter::Type(type_id) => Some(type_id),
+                    TyFunctionSigTypeParameter::Const(_) => None,
+                })
+                .all(|type_id| type_id.is_concrete(engines, TreatNumericAs::Concrete))
     }
 
     /// Returns a String representing the function.
@@ -749,7 +788,17 @@ impl TyFunctionSig {
                 "<{}>",
                 self.type_parameters
                     .iter()
-                    .map(|p| p.get_type_str(engines))
+                    .map(|x| match x {
+                        TyFunctionSigTypeParameter::Type(type_id) => type_id.get_type_str(engines),
+                        TyFunctionSigTypeParameter::Const(p) => {
+                            match p {
+                                ConstGenericExpr::Literal { val, .. } => val.to_string(),
+                                ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+                                    ident.as_str().to_string()
+                                }
+                            }
+                        }
+                    })
                     .collect::<Vec<_>>()
                     .join(", "),
             )

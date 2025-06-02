@@ -156,6 +156,30 @@ fn did_open() {
     });
 }
 
+#[test]
+fn did_open_all_std_lib_files() {
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let files = sway_utils::helpers::get_sway_files(std_lib_dir().join("src"));
+        for file in files {
+            eprintln!("opening file: {:?}", file.as_path());
+
+            // If the workspace is not initialized, we need to initialize it
+            // Otherwise, we can just open the file
+            let uri = if service.inner().sync_workspace.get().is_none() {
+                init_and_open(&mut service, file.to_path_buf()).await
+            } else {
+                open(service.inner(), file.to_path_buf()).await
+            };
+
+            // Make sure that semantic tokens are successfully returned for the file
+            let semantic_tokens = lsp::get_semantic_tokens_full(service.inner(), &uri).await;
+            assert!(!semantic_tokens.data.is_empty());
+        }
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
 // Opens all members in the examples workspace and assert that we are able to return semantic tokens for each workspace member.
 // This test is expected to run for a while although should be much faster once https://github.com/FuelLabs/sway/pull/7139 is merged.
 #[test]
@@ -196,12 +220,9 @@ fn did_open_all_members_in_examples() {
                 };
 
                 // Make sure that program was parsed and the token map is populated
-                let (tmp_uri, session) = service
-                    .inner()
-                    .uri_and_session_from_workspace(&uri)
-                    .await
-                    .unwrap();
-                let num_tokens_for_file = session.token_map().tokens_for_file(&tmp_uri).count();
+                let tmp_uri = service.inner().uri_from_workspace(&uri).unwrap();
+                let num_tokens_for_file =
+                    service.inner().token_map.tokens_for_file(&tmp_uri).count();
                 assert!(num_tokens_for_file > 0);
 
                 // Make sure that semantic tokens are successfully returned for the file
@@ -252,7 +273,6 @@ fn sync_with_updates_to_manifest_in_workspace() {
         let (_, session) = service
             .inner()
             .uri_and_session_from_workspace(&uri)
-            .await
             .unwrap();
         let build_plan = session
             .build_plan_cache
@@ -2269,14 +2289,12 @@ fn test_url_to_session_existing_session() {
         let (first_uri, first_session) = service
             .inner()
             .uri_and_session_from_workspace(&uri)
-            .await
             .unwrap();
 
         // Second call to uri_and_session_from_workspace
         let (second_uri, second_session) = service
             .inner()
             .uri_and_session_from_workspace(&uri)
-            .await
             .unwrap();
 
         // Assert that the URIs are the same
@@ -2506,7 +2524,7 @@ fn run_garbage_collection_tests_from_projects_dir(projects_dir: PathBuf) -> Resu
         .unwrap()
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
-        .map(|dir_entry| {
+        .filter_map(|dir_entry| {
             let project_dir = dir_entry.path();
             let project_name = project_dir
                 .file_name()
@@ -2514,7 +2532,15 @@ fn run_garbage_collection_tests_from_projects_dir(projects_dir: PathBuf) -> Resu
                 .to_string_lossy()
                 .to_string();
             let main_file = project_dir.join("src/main.sw");
-            (project_name, main_file)
+
+            // check if this test must be ignored
+            let contents = std::fs::read_to_string(&main_file)
+                .map(|x| x.contains("ignore garbage_collection_all_language_tests"));
+            if let Ok(true) = contents {
+                None
+            } else {
+                Some((project_name, main_file))
+            }
         })
         .filter(|(_, main_file)| main_file.exists())
         .collect();

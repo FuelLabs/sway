@@ -40,6 +40,7 @@ use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
 use semantic_analysis::program::TypeCheckFailed;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -56,10 +57,10 @@ use sway_ir::{
     RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use sway_types::span::Source;
-use sway_types::{SourceEngine, Span};
+use sway_types::{SourceEngine, SourceLocation, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
 use transform::{ArgsExpectValues, Attribute, AttributeKind, Attributes, ExpectedArgs};
-use types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata};
+use types::{CollectTypesMetadata, CollectTypesMetadataContext, LogId, TypeMetadata};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -739,7 +740,30 @@ pub fn build_module_dep_graph(
     Ok(())
 }
 
-pub struct CompiledAsm(pub FinalizedAsm);
+/// A possible occurrence of a `panic` expression that is located in code at [PanicOccurrence::loc].
+///
+/// Note that a single `panic` expression can have multiple [PanicOccurrence]s related to it.
+///
+/// For example:
+/// - `panic "Some message.";` will have just a single occurrence, with `msg` containing the message.
+/// - `panic some_value_of_a_concrete_type;` will have just a single occurrence, with `log_id` containing the [LogId] of the concrete type.
+/// - `panic some_value_of_a_generic_type;` will have multiple occurrences, one with `log_id` for every monomorphized type.
+///
+/// **Every [PanicOccurrence] has exactly one revert code assigned to it.**
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PanicOccurrence {
+    pub loc: SourceLocation,
+    pub log_id: Option<LogId>,
+    pub msg: Option<String>,
+}
+
+/// [PanicOccurrence]s mapped to their corresponding revert codes.
+pub type PanicOccurrences = HashMap<PanicOccurrence, u64>;
+
+pub struct CompiledAsm {
+    pub finalized_asm: FinalizedAsm,
+    pub panic_occurrences: PanicOccurrences,
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn parsed_to_ast(
@@ -1068,6 +1092,7 @@ pub fn compile_to_asm(
         None,
         experimental,
     )?;
+
     ast_to_asm(handler, engines, &ast_res, build_config, experimental)
 }
 
@@ -1085,22 +1110,34 @@ pub fn ast_to_asm(
         Err(err) => return Err(err.error),
     };
 
-    let asm =
-        match compile_ast_to_ir_to_asm(handler, engines, typed_program, build_config, experimental)
-        {
-            Ok(res) => res,
-            Err(err) => {
-                handler.dedup();
-                return Err(err);
-            }
-        };
-    Ok(CompiledAsm(asm))
+    let mut panic_occurrences = PanicOccurrences::default();
+
+    let asm = match compile_ast_to_ir_to_asm(
+        handler,
+        engines,
+        typed_program,
+        &mut panic_occurrences,
+        build_config,
+        experimental,
+    ) {
+        Ok(res) => res,
+        Err(err) => {
+            handler.dedup();
+            return Err(err);
+        }
+    };
+
+    Ok(CompiledAsm {
+        finalized_asm: asm,
+        panic_occurrences,
+    })
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
     handler: &Handler,
     engines: &Engines,
     program: &ty::TyProgram,
+    panic_occurrences: &mut PanicOccurrences,
     build_config: &BuildConfig,
     experimental: ExperimentalFeatures,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
@@ -1117,6 +1154,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     let mut ir = match ir_generation::compile_program(
         program,
+        panic_occurrences,
         build_config.include_tests,
         engines,
         experimental,
@@ -1275,7 +1313,7 @@ pub fn asm_to_bytecode(
     build_config: &BuildConfig,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
     let compiled_bytecode =
-        asm.0
+        asm.finalized_asm
             .to_bytecode_mut(handler, source_map, source_engine, build_config)?;
     Ok(compiled_bytecode)
 }

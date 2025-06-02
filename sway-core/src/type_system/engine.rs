@@ -978,7 +978,8 @@ impl TypeEngine {
             | TypeInfo::Placeholder(_)
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Array(.., Length(ConstGenericExpr::AmbiguousVariableExpression { .. }))
-            | TypeInfo::Struct(_) => true,
+            | TypeInfo::Struct(_)
+            | TypeInfo::Enum(_) => true,
             TypeInfo::ContractCaller { abi_name, address } => {
                 Self::is_replaceable_contract_caller(abi_name, address)
             }
@@ -2036,7 +2037,7 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
     ) {
         Self::unify_helper(
             handler,
@@ -2067,7 +2068,7 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
     ) {
         Self::unify_helper(
             handler,
@@ -2098,7 +2099,7 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
     ) {
         Self::unify_helper(
             handler,
@@ -2126,14 +2127,14 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
         unify_kind: UnifyKind,
         push_unification: bool,
     ) {
         if !UnifyCheck::coercion(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
-            match err_override {
+            match err_override() {
                 Some(err_override) => {
                     handler.emit_err(err_override);
                 }
@@ -2153,7 +2154,7 @@ impl TypeEngine {
         let unifier = Unifier::new(engines, help_text, unify_kind);
         unifier.unify(handler, received, expected, span, push_unification);
 
-        match err_override {
+        match err_override() {
             Some(err_override) if h.has_errors() => {
                 handler.emit_err(err_override);
             }
@@ -2171,7 +2172,11 @@ impl TypeEngine {
         self.unifications.clear();
     }
 
-    pub(crate) fn reapply_unifications(&self, engines: &Engines) {
+    pub(crate) fn reapply_unifications(&self, engines: &Engines, depth: usize) {
+        if depth > 2000 {
+            panic!("Possible infinite recursion");
+        }
+
         let current_last_replace = *self.last_replace.read();
         for unification in self.unifications.values() {
             Self::unify_helper(
@@ -2181,13 +2186,13 @@ impl TypeEngine {
                 unification.expected,
                 &unification.span,
                 &unification.help_text,
-                None,
+                || None,
                 unification.unify_kind.clone(),
                 false,
             )
         }
         if *self.last_replace.read() > current_last_replace {
-            self.reapply_unifications(engines);
+            self.reapply_unifications(engines, depth + 1);
         }
     }
 
@@ -2338,7 +2343,15 @@ impl TypeEngine {
             | TypeInfo::Alias { .. }
             | TypeInfo::TraitType { .. } => {}
             TypeInfo::Numeric => {
-                self.unify(handler, engines, type_id, self.id_of_u64(), span, "", None);
+                self.unify(
+                    handler,
+                    engines,
+                    type_id,
+                    self.id_of_u64(),
+                    span,
+                    "",
+                    || None,
+                );
             }
         }
         Ok(())

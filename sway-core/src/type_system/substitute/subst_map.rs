@@ -511,9 +511,9 @@ impl TypeSubstMap {
                 }
 
                 for type_param in &mut decl.generic_parameters {
-                    let type_param = type_param
-                        .as_type_parameter_mut()
-                        .expect("only works with type parameters");
+                    let Some(type_param) = type_param.as_type_parameter_mut() else {
+                        continue;
+                    };
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;

@@ -797,27 +797,38 @@ impl<'a> UnifyCheck<'a> {
             return false;
         }
 
-        let l_types = left
-            .generic_parameters
-            .iter()
-            .map(|x| {
-                let x = x
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                x.type_id
-            })
-            .collect::<Vec<_>>();
+        let mut l_types = vec![];
+        let mut r_types = vec![];
 
-        let r_types = right
+        for (l, r) in left
             .generic_parameters
             .iter()
-            .map(|x| {
-                let x = x
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                x.type_id
-            })
-            .collect::<Vec<_>>();
+            .zip(right.generic_parameters.iter())
+        {
+            match (l, r) {
+                (TypeParameter::Type(l), TypeParameter::Type(r)) => {
+                    l_types.push(l.type_id);
+                    r_types.push(r.type_id);
+                }
+                (TypeParameter::Const(l), TypeParameter::Const(r)) => {
+                    match (l.expr.as_ref(), r.expr.as_ref()) {
+                        (None, None) => {}
+                        (None, Some(_)) => {}
+                        (Some(_), None) => {}
+                        (
+                            Some(ConstGenericExpr::Literal { val: l_val, .. }),
+                            Some(ConstGenericExpr::Literal { val: r_val, .. }),
+                        ) => {
+                            assert!(l_val == r_val);
+                        }
+                        (Some(_), Some(_)) => todo!(
+                            "Will be implemented by https://github.com/FuelLabs/sway/issues/6860"
+                        ),
+                    }
+                }
+                _ => return false,
+            }
+        }
 
         self.check_multiple(&l_types, &r_types)
     }

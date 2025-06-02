@@ -3,11 +3,11 @@ use crate::{
     op::call::{
         missing_contracts::determine_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
-        CallResponse, Either,
+        Abi, CallData, CallResponse, Either,
     },
 };
 use anyhow::{anyhow, bail, Result};
-use fuel_abi_types::abi::{program::ProgramABI, unified_program::UnifiedProgramABI};
+use fuel_abi_types::abi::unified_program::UnifiedProgramABI;
 use fuels::{
     accounts::ViewOnlyAccount,
     programs::calls::{
@@ -15,11 +15,12 @@ use fuels::{
         traits::{ContractDependencyConfigurator, TransactionTuner},
         ContractCall,
     },
+    types::tx_status::TxStatus,
 };
 use fuels_core::{
     codec::{
         encode_fn_selector, log_formatters_lookup, ABIDecoder, ABIEncoder, DecoderConfig,
-        EncoderConfig, LogDecoder,
+        EncoderConfig, ErrorDetails, LogDecoder,
     },
     types::{
         bech32::Bech32ContractId,
@@ -29,7 +30,7 @@ use fuels_core::{
         ContractId,
     },
 };
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
 use url::Url;
 
 /// Calls a contract function with the given parameters
@@ -46,20 +47,19 @@ pub async fn call_function(
         caller,
         call_parameters,
         gas,
-        output,
+        mut output,
         external_contracts,
         ..
     } = cmd;
 
     // Load ABI (already provided in the operation)
     let abi_str = super::load_abi(&abi).await?;
-    let parsed_abi: ProgramABI = serde_json::from_str(&abi_str)?;
-    let unified_program_abi = UnifiedProgramABI::from_counterpart(&parsed_abi)?;
+    let abi = Abi::from_str(&abi_str).map_err(|e| anyhow!("Failed to parse ABI: {}", e))?;
 
     let cmd::call::FuncType::Selector(selector) = function;
 
     let (encoded_data, output_param) =
-        prepare_contract_call_data(&unified_program_abi, &selector, &function_args)?;
+        prepare_contract_call_data(&abi.unified, &selector, &function_args)?;
 
     // Setup connection to node
     let (wallet, tx_policies, base_asset_id) = super::setup_connection(&node, caller, &gas).await?;
@@ -84,7 +84,29 @@ pub async fn call_function(
 
     // Setup variable output policy and log decoder
     let variable_output_policy = VariableOutputPolicy::Exactly(call_parameters.amount as usize);
-    let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id));
+    let error_codes = abi
+        .unified
+        .error_codes
+        .as_ref()
+        .map_or(HashMap::new(), |error_codes| {
+            error_codes
+                .iter()
+                .map(|(revert_code, error_details)| {
+                    (
+                        *revert_code,
+                        ErrorDetails::new(
+                            error_details.pos.pkg.clone(),
+                            error_details.pos.file.clone(),
+                            error_details.pos.line,
+                            error_details.pos.column,
+                            error_details.log_id.clone(),
+                            error_details.msg.clone(),
+                        ),
+                    )
+                })
+                .collect()
+        });
+    let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id), error_codes);
 
     // Get external contracts (either provided or auto-detected)
     let external_contracts = match external_contracts {
@@ -173,7 +195,7 @@ pub async fn call_function(
     };
 
     // Display the script JSON when verbosity level is 2 or higher (vv)
-    let script = if cmd.verbosity >= 2 {
+    let script_json = if cmd.verbosity >= 2 {
         let script_json = serde_json::to_value(&script).unwrap();
         forc_tracing::println_label_green(
             "transaction script:\n",
@@ -184,10 +206,28 @@ pub async fn call_function(
         None
     };
 
+    let abi_map = HashMap::from([(contract_id, abi)]);
+
     // Process transaction results
-    let receipts = tx_status
-        .take_receipts_checked(Some(&log_decoder))
-        .map_err(|e| anyhow!("Failed to take receipts: {e}"))?;
+    let receipts = match tx_status.clone().take_receipts_checked(Some(&log_decoder)) {
+        Ok(receipts) => receipts,
+        Err(e) => {
+            // Print receipts when an error occurs and verbosity is high enough
+            super::print_receipts_and_trace(
+                tx_status.total_gas(),
+                &tx_status.clone().take_receipts(),
+                cmd.verbosity,
+                &abi_map,
+                &mut output,
+            )?;
+            match tx_status {
+                TxStatus::Failure(e) | TxStatus::PreconfirmationFailure(e) => {
+                    bail!("Failed to process transaction; reason: {:#?}", e.reason);
+                }
+                _ => bail!("Failed to process transaction: {:#?}", e),
+            }
+        }
+    };
 
     // Parse the result based on output format
     let mut receipt_parser = ReceiptParser::new(&receipts, DecoderConfig::default());
@@ -210,18 +250,21 @@ pub async fn call_function(
     };
 
     // Process and return the final output
-    let program_abi = sway_core::asm_generation::ProgramABI::Fuel(parsed_abi);
     let mut call_response = super::process_transaction_output(
-        &receipts,
+        tx_status,
         &tx_hash.to_string(),
-        &program_abi,
-        Some(result),
         &mode,
         &node,
         cmd.verbosity,
+        &mut output,
+        Some(CallData {
+            contract_id,
+            abis: abi_map,
+            result,
+        }),
     )?;
     if cmd.verbosity >= 2 {
-        call_response.script = script;
+        call_response.script_json = script_json;
     }
 
     Ok(call_response)
@@ -835,7 +878,7 @@ pub mod tests {
             .await
             .unwrap_err()
             .to_string()
-            .contains("PanicInstruction { reason: NotEnoughBalance"));
+            .contains("Failed to process transaction; reason: \"NotEnoughBalance\""));
         assert_eq!(get_contract_balance(id, provider.clone()).await, 1);
 
         // contract call transfer funds to another address

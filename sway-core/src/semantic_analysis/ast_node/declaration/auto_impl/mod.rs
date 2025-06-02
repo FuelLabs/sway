@@ -77,10 +77,13 @@ where
         r.unwrap()
     }
 
-    /// Generates code like: `<A, B, u64, N>`.
+    /// Generates code like:
+    /// if expanded_const_generics == false, `<A, B, u64, N>`.
+    /// if expanded_const_generics == true, `<A, B, u64, const N: u64>`.
     fn generate_type_parameters_declaration_code(
         &self,
         type_parameters: &[TypeParameter],
+        expanded_const_generics: bool,
     ) -> String {
         let mut code = String::new();
         code.push('<');
@@ -88,7 +91,13 @@ where
         for p in type_parameters {
             match p {
                 TypeParameter::Type(p) => code.push_str(p.name.as_str()),
-                TypeParameter::Const(p) => code.push_str(p.name.as_str()),
+                TypeParameter::Const(p) => {
+                    if expanded_const_generics {
+                        code.push_str(&format!("const {}: u64", p.name.as_str()));
+                    } else {
+                        code.push_str(p.name.as_str())
+                    }
+                }
             }
             code.push_str(", ");
         }
@@ -242,7 +251,9 @@ where
             _ => unreachable!("unexpected node; expected `Declaration::ImplSelfOrTrait`"),
         };
 
-        assert!(!handler.has_errors(), "{:?}", handler);
+        if handler.has_errors() {
+            return Err(handler);
+        }
 
         let mut ctx = self.ctx.by_ref();
         let _r = TyDecl::collect(

@@ -326,12 +326,13 @@ impl Module {
         }
     }
 
-    pub fn get_items_for_type(
+    pub fn append_items_for_type(
         &self,
         engines: &Engines,
         type_id: TypeId,
-    ) -> Vec<ResolvedTraitImplItem> {
-        TraitMap::get_items_for_type(self, engines, type_id)
+        items: &mut Vec<ResolvedTraitImplItem>,
+    ) {
+        TraitMap::append_items_for_type(self, engines, type_id, items)
     }
 
     pub fn resolve_symbol(
@@ -368,7 +369,10 @@ impl Module {
         engines: &Engines,
         type_id: TypeId,
     ) -> Vec<ResolvedFunctionDecl> {
-        self.get_items_for_type(engines, type_id)
+        let mut items = vec![];
+        self.append_items_for_type(engines, type_id, &mut items);
+
+        items
             .into_iter()
             .filter_map(|item| match item {
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),

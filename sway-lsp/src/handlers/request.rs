@@ -61,12 +61,9 @@ pub async fn handle_document_symbol(
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
     let _ = state.wait_for_parsing().await;
-    match state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
-    {
+    match state.uri_and_session_from_workspace(&params.text_document.uri) {
         Ok((uri, session)) => Ok(session
-            .document_symbols(&uri)
+            .document_symbols(&uri, &state.token_map, &state.engines.read())
             .map(DocumentSymbolResponse::Nested)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -75,68 +72,22 @@ pub async fn handle_document_symbol(
     }
 }
 
-pub async fn handle_goto_definition(
+pub fn handle_goto_definition(
     state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
     match state
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
-        .await
     {
         Ok((uri, session)) => {
             let sync = state.sync_workspace();
             let position = params.text_document_position_params.position;
-            Ok(session.token_definition_response(&uri, position, &sync))
-        }
-        Err(err) => {
-            tracing::error!("{}", err.to_string());
-            Ok(None)
-        }
-    }
-}
-
-pub async fn handle_completion(
-    state: &ServerState,
-    params: lsp_types::CompletionParams,
-) -> Result<Option<lsp_types::CompletionResponse>> {
-    let trigger_char = params
-        .context
-        .as_ref()
-        .and_then(|ctx| ctx.trigger_character.as_deref())
-        .unwrap_or("");
-    let position = params.text_document_position.position;
-    match state
-        .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
-        .await
-    {
-        Ok((uri, session)) => Ok(session
-            .completion_items(&uri, position, trigger_char)
-            .map(CompletionResponse::Array)),
-        Err(err) => {
-            tracing::error!("{}", err.to_string());
-            Ok(None)
-        }
-    }
-}
-
-pub async fn handle_hover(
-    state: &ServerState,
-    params: lsp_types::HoverParams,
-) -> Result<Option<lsp_types::Hover>> {
-    match state
-        .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
-        .await
-    {
-        Ok((uri, session)) => {
-            let position = params.text_document_position_params.position;
-            let sync = state.sync_workspace();
-            Ok(capabilities::hover::hover_data(
-                session,
-                &state.keyword_docs,
+            Ok(session.token_definition_response(
                 &uri,
                 position,
-                state.config.read().client.clone(),
-                &sync,
+                &state.engines.read(),
+                &state.token_map,
+                sync,
             ))
         }
         Err(err) => {
@@ -146,17 +97,71 @@ pub async fn handle_hover(
     }
 }
 
-pub async fn handle_prepare_rename(
+pub fn handle_completion(
+    state: &ServerState,
+    params: lsp_types::CompletionParams,
+) -> Result<Option<lsp_types::CompletionResponse>> {
+    let trigger_char = params
+        .context
+        .as_ref()
+        .and_then(|ctx| ctx.trigger_character.as_deref())
+        .unwrap_or("");
+    let position = params.text_document_position.position;
+    match state.uri_and_session_from_workspace(&params.text_document_position.text_document.uri) {
+        Ok((uri, session)) => Ok(session
+            .completion_items(
+                &uri,
+                position,
+                trigger_char,
+                &state.token_map,
+                &state.engines.read(),
+            )
+            .map(CompletionResponse::Array)),
+        Err(err) => {
+            tracing::error!("{}", err.to_string());
+            Ok(None)
+        }
+    }
+}
+
+pub fn handle_hover(
+    state: &ServerState,
+    params: lsp_types::HoverParams,
+) -> Result<Option<lsp_types::Hover>> {
+    match state
+        .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
+    {
+        Ok((uri, session)) => {
+            let position = params.text_document_position_params.position;
+            Ok(capabilities::hover::hover_data(
+                state,
+                &state.engines.read(),
+                session,
+                &uri,
+                position,
+            ))
+        }
+        Err(err) => {
+            tracing::error!("{}", err.to_string());
+            Ok(None)
+        }
+    }
+}
+
+pub fn handle_prepare_rename(
     state: &ServerState,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
-    match state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
-    {
-        Ok((uri, session)) => {
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(uri) => {
             let sync = state.sync_workspace();
-            match capabilities::rename::prepare_rename(session, &uri, params.position, &sync) {
+            match capabilities::rename::prepare_rename(
+                &state.engines.read(),
+                &state.token_map,
+                &uri,
+                params.position,
+                sync,
+            ) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -171,19 +176,20 @@ pub async fn handle_prepare_rename(
     }
 }
 
-pub async fn handle_rename(
-    state: &ServerState,
-    params: RenameParams,
-) -> Result<Option<WorkspaceEdit>> {
-    match state
-        .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
-        .await
-    {
-        Ok((uri, session)) => {
+pub fn handle_rename(state: &ServerState, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+    match state.uri_from_workspace(&params.text_document_position.text_document.uri) {
+        Ok(uri) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
             let sync = state.sync_workspace();
-            match capabilities::rename::rename(session, new_name, &uri, position, &sync) {
+            match capabilities::rename::rename(
+                &state.engines.read(),
+                &state.token_map,
+                new_name,
+                &uri,
+                position,
+                sync,
+            ) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -205,12 +211,15 @@ pub async fn handle_document_highlight(
     let _ = state.wait_for_parsing().await;
     match state
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
-        .await
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::highlight::get_highlights(
-                session, &uri, position,
+                session,
+                &state.engines.read(),
+                &state.token_map,
+                &uri,
+                position,
             ))
         }
         Err(err) => {
@@ -225,14 +234,17 @@ pub async fn handle_references(
     params: lsp_types::ReferenceParams,
 ) -> Result<Option<Vec<lsp_types::Location>>> {
     let _ = state.wait_for_parsing().await;
-    match state
-        .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
-        .await
-    {
+    match state.uri_and_session_from_workspace(&params.text_document_position.text_document.uri) {
         Ok((uri, session)) => {
             let position = params.text_document_position.position;
             let sync = state.sync_workspace();
-            Ok(session.token_references(&uri, position, &sync))
+            Ok(session.token_references(
+                &uri,
+                position,
+                &state.token_map,
+                &state.engines.read(),
+                sync,
+            ))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -248,7 +260,6 @@ pub async fn handle_formatting(
     let _ = state.wait_for_parsing().await;
     state
         .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
         .and_then(|(uri, _)| {
             capabilities::formatting::format_text(&state.documents, &uri).map(Some)
         })
@@ -263,12 +274,11 @@ pub async fn handle_code_action(
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<lsp_types::CodeActionResponse>> {
     let _ = state.wait_for_parsing().await;
-    match state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
-    {
+    match state.uri_and_session_from_workspace(&params.text_document.uri) {
         Ok((temp_uri, session)) => Ok(capabilities::code_actions(
             session,
+            &state.engines.read(),
+            &state.token_map,
             &params.range,
             &params.text_document.uri,
             &temp_uri,
@@ -286,10 +296,7 @@ pub async fn handle_code_lens(
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let _ = state.wait_for_parsing().await;
-    match state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
-    {
+    match state.uri_and_session_from_workspace(&params.text_document.uri) {
         Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -303,12 +310,9 @@ pub async fn handle_semantic_tokens_range(
     params: SemanticTokensRangeParams,
 ) -> Result<Option<SemanticTokensRangeResult>> {
     let _ = state.wait_for_parsing().await;
-    match state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
-    {
-        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
-            session,
+    match state.uri_and_session_from_workspace(&params.text_document.uri) {
+        Ok((uri, _session)) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
+            &state.token_map,
             &uri,
             &params.range,
         )),
@@ -324,12 +328,10 @@ pub async fn handle_semantic_tokens_full(
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
     let _ = state.wait_for_parsing().await;
-    match state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
-    {
-        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
-            session, &uri,
+    match state.uri_and_session_from_workspace(&params.text_document.uri) {
+        Ok((uri, _session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
+            &state.token_map,
+            &uri,
         )),
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -343,14 +345,12 @@ pub async fn handle_inlay_hints(
     params: InlayHintParams,
 ) -> Result<Option<Vec<InlayHint>>> {
     let _ = state.wait_for_parsing().await;
-    match state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
-    {
-        Ok((uri, session)) => {
+    match state.uri_and_session_from_workspace(&params.text_document.uri) {
+        Ok((uri, _)) => {
             let config = &state.config.read().inlay_hints;
             Ok(capabilities::inlay_hints::inlay_hints(
-                session,
+                &state.engines.read(),
+                &state.token_map,
                 &uri,
                 &params.range,
                 config,
@@ -375,16 +375,13 @@ pub async fn handle_inlay_hints(
 /// A formatted AST is written to a temporary file and the URI is
 /// returned to the client so it can be opened and displayed in a
 /// separate side panel.
-pub async fn handle_show_ast(
+pub fn handle_show_ast(
     state: &ServerState,
-    params: lsp_ext::ShowAstParams,
+    params: &lsp_ext::ShowAstParams,
 ) -> Result<Option<TextDocumentIdentifier>> {
-    match state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
-    {
+    match state.uri_and_session_from_workspace(&params.text_document.uri) {
         Ok((_, session)) => {
-            let current_open_file = params.text_document.uri;
+            let current_open_file = &params.text_document.uri;
             // Convert the Uri to a PathBuf
             let path = current_open_file.to_file_path().ok();
 
@@ -405,7 +402,7 @@ pub async fn handle_show_ast(
                 ident
                     .span()
                     .source_id()
-                    .map(|p| session.engines.read().se().get_path(p))
+                    .map(|p| state.engines.read().se().get_path(p))
                     == *path
             };
 
@@ -445,14 +442,14 @@ pub async fn handle_show_ast(
                             // Initialize the string with the AST from the root
                             let mut formatted_ast = debug::print_decl_engine_types(
                                 &typed_program.root_module.all_nodes,
-                                session.engines.read().de(),
+                                state.engines.read().de(),
                             );
                             for (ident, submodule) in &typed_program.root_module.submodules {
                                 if path_is_submodule(ident, &path) {
                                     // overwrite the root AST with the submodule AST
                                     formatted_ast = debug::print_decl_engine_types(
                                         &submodule.module.all_nodes,
-                                        session.engines.read().de(),
+                                        state.engines.read().de(),
                                     );
                                 }
                             }
@@ -471,21 +468,18 @@ pub async fn handle_show_ast(
 }
 
 /// This method is triggered when the use hits enter or pastes a newline in the editor.
-pub async fn handle_on_enter(
+pub fn handle_on_enter(
     state: &ServerState,
-    params: lsp_ext::OnEnterParams,
+    params: &lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
-    match state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
-    {
-        Ok((uri, _)) => {
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(uri) => {
             // handle on_enter capabilities if they are enabled
             Ok(capabilities::on_enter(
                 &state.config.read().on_enter,
                 &state.documents,
                 &uri,
-                &params,
+                params,
             ))
         }
         Err(err) => {
@@ -498,7 +492,7 @@ pub async fn handle_on_enter(
 /// Returns a [String] of the GraphViz DOT representation of a graph.
 pub fn handle_visualize(
     _state: &ServerState,
-    params: lsp_ext::VisualizeParams,
+    params: &lsp_ext::VisualizeParams,
 ) -> Result<Option<String>> {
     match params.graph_kind.as_str() {
         "build_plan" => match build_plan(&params.text_document.uri) {
@@ -515,18 +509,15 @@ pub fn handle_visualize(
 }
 
 /// This method is triggered by the test suite to request the latest compilation metrics.
-pub(crate) async fn metrics(
+pub(crate) fn metrics(
     state: &ServerState,
-    params: lsp_ext::MetricsParams,
+    params: &lsp_ext::MetricsParams,
 ) -> Result<Option<Vec<(String, PerformanceData)>>> {
-    match state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await
-    {
+    match state.uri_and_session_from_workspace(&params.text_document.uri) {
         Ok((_, session)) => {
             let mut metrics = vec![];
-            for kv in session.metrics.iter() {
-                let path = session
+            for kv in &session.metrics {
+                let path = state
                     .engines
                     .read()
                     .se()

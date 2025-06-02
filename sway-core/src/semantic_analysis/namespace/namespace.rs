@@ -89,8 +89,9 @@ impl Namespace {
 
     pub fn current_module_mut(&mut self) -> &mut Module {
         let package_relative_path = Package::package_relative_path(&self.current_mod_path);
-        self.current_package_root_module_mut()
-            .submodule_mut(&package_relative_path)
+        self.current_package
+            .root_module_mut()
+            .submodule_mut(package_relative_path)
             .unwrap_or_else(|| {
                 panic!(
                     "Could not retrieve submodule for mod_path: {:?}",
@@ -158,25 +159,21 @@ impl Namespace {
         self.current_package.root_module()
     }
 
-    fn current_package_root_module_mut(&mut self) -> &mut Module {
-        self.current_package.root_module_mut()
-    }
-
     pub fn external_packages(
         &self,
     ) -> &im::HashMap<ModuleName, Package, BuildHasherDefault<FxHasher>> {
         &self.current_package.external_packages
     }
 
-    pub(crate) fn get_external_package(&self, package_name: &String) -> Option<&Package> {
+    pub(crate) fn get_external_package(&self, package_name: &str) -> Option<&Package> {
         self.current_package.external_packages.get(package_name)
     }
 
-    pub(super) fn exists_as_external(&self, package_name: &String) -> bool {
+    pub(super) fn exists_as_external(&self, package_name: &str) -> bool {
         self.get_external_package(package_name).is_some()
     }
 
-    pub fn module_from_absolute_path(&self, path: &ModulePathBuf) -> Option<&Module> {
+    pub fn module_from_absolute_path(&self, path: &[Ident]) -> Option<&Module> {
         self.current_package.module_from_absolute_path(path)
     }
 
@@ -184,7 +181,7 @@ impl Namespace {
     pub fn require_module_from_absolute_path(
         &self,
         handler: &Handler,
-        path: &ModulePathBuf,
+        path: &[Ident],
     ) -> Result<&Module, ErrorEmitted> {
         if path.is_empty() {
             return Err(handler.emit_err(CompileError::Internal(
@@ -246,8 +243,7 @@ impl Namespace {
     }
 
     pub fn package_exists(&self, name: &Ident) -> bool {
-        self.module_from_absolute_path(&vec![name.clone()])
-            .is_some()
+        self.module_from_absolute_path(&[name.clone()]).is_some()
     }
 
     pub(crate) fn module_has_binding(
@@ -386,7 +382,7 @@ impl Namespace {
         engines: &Engines,
         src: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        let src_mod = self.require_module_from_absolute_path(handler, &src.to_vec())?;
+        let src_mod = self.require_module_from_absolute_path(handler, src)?;
 
         let mut imports = vec![];
 
@@ -460,7 +456,7 @@ impl Namespace {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_visibility(handler, src)?;
 
-        let src_mod = self.require_module_from_absolute_path(handler, &src.to_vec())?;
+        let src_mod = self.require_module_from_absolute_path(handler, src)?;
 
         let mut decls_and_item_imports = vec![];
 
@@ -656,7 +652,7 @@ impl Namespace {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_visibility(handler, src)?;
 
-        let src_mod = self.require_module_from_absolute_path(handler, &src.to_vec())?;
+        let src_mod = self.require_module_from_absolute_path(handler, src)?;
 
         let (decl, path) = self.item_lookup(handler, engines, item, src, false)?;
 
@@ -901,7 +897,7 @@ impl Namespace {
         src: &ModulePath,
         ignore_visibility: bool,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
-        let src_mod = self.require_module_from_absolute_path(handler, &src.to_vec())?;
+        let src_mod = self.require_module_from_absolute_path(handler, src)?;
         let src_items = src_mod.root_items();
 
         let (decl, path, src_visibility) = if let Some(decl) = src_items.symbols.get(item) {
@@ -999,7 +995,7 @@ impl Namespace {
 
         // Check visibility of remaining submodules in the source path
         for prefix in iter_prefixes(src).skip(ignored_prefixes) {
-            if let Some(module) = self.module_from_absolute_path(&prefix.to_vec()) {
+            if let Some(module) = self.module_from_absolute_path(prefix) {
                 if module.visibility().is_private() {
                     let prefix_last = prefix[prefix.len() - 1].clone();
                     handler.emit_err(CompileError::ImportPrivateModule {
