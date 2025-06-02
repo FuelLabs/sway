@@ -104,6 +104,7 @@ pub(crate) struct TraitKey {
     pub(crate) type_id: TypeId,
     pub(crate) impl_type_parameters: Vec<TypeId>,
     pub(crate) trait_decl_span: Option<Span>,
+    pub(crate) is_impl_interface_surface: IsImplInterfaceSurface,
 }
 
 impl OrdWithEngines for TraitKey {
@@ -240,6 +241,12 @@ pub(crate) enum IsExtendingExistingImpl {
     No,
 }
 
+#[derive(Clone, Debug)]
+pub(crate) enum IsImplInterfaceSurface {
+    Yes,
+    No,
+}
+
 impl TraitMap {
     /// Given a [TraitName] `trait_name`, [TypeId] `type_id`, and list of
     /// [TyImplItem](ty::TyImplItem) `items`, inserts
@@ -261,6 +268,7 @@ impl TraitMap {
         trait_decl_span: Option<Span>,
         is_impl_self: IsImplSelf,
         is_extending_existing_impl: IsExtendingExistingImpl,
+        is_impl_interface_surface: IsImplInterfaceSurface,
         engines: &Engines,
     ) -> Result<(), ErrorEmitted> {
         let unaliased_type_id = engines.te().get_unaliased_type_id(type_id);
@@ -304,6 +312,7 @@ impl TraitMap {
                             type_id: map_type_id,
                             trait_decl_span: _,
                             impl_type_parameters: _,
+                            is_impl_interface_surface: map_is_impl_interface_surface,
                         },
                     value:
                         TraitValue {
@@ -491,6 +500,7 @@ impl TraitMap {
                 unaliased_type_id,
                 impl_type_parameters,
                 trait_items,
+                is_impl_interface_surface,
                 engines,
             );
 
@@ -507,6 +517,7 @@ impl TraitMap {
         type_id: TypeId,
         impl_type_parameters: Vec<TypeId>,
         trait_methods: TraitItems,
+        is_impl_interface_surface: IsImplInterfaceSurface,
         engines: &Engines,
     ) {
         let key = TraitKey {
@@ -514,6 +525,7 @@ impl TraitMap {
             type_id,
             trait_decl_span,
             impl_type_parameters,
+            is_impl_interface_surface,
         };
         let value = TraitValue {
             trait_items: trait_methods,
@@ -714,6 +726,7 @@ impl TraitMap {
                             type_id: map_type_id,
                             trait_decl_span: map_trait_decl_span,
                             impl_type_parameters: map_impl_type_parameters,
+                            is_impl_interface_surface: _,
                         },
                     value:
                         TraitValue {
@@ -731,6 +744,7 @@ impl TraitMap {
                         *type_id,
                         map_impl_type_parameters.clone(),
                         map_trait_items.clone(),
+                        IsImplInterfaceSurface::No,
                         engines,
                     );
                 } else if decider(*type_id, *map_type_id) {
@@ -748,6 +762,7 @@ impl TraitMap {
                         )
                         .map(|(name, item)| (name.to_string(), item))
                         .collect(),
+                        IsImplInterfaceSurface::No,
                         engines,
                     );
                 }

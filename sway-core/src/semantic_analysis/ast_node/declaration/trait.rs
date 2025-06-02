@@ -19,7 +19,7 @@ use crate::{
         },
         CallPath,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf},
+    namespace::{IsExtendingExistingImpl, IsImplInterfaceSurface, IsImplSelf},
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
         symbol_collection_context::SymbolCollectionContext,
@@ -174,6 +174,7 @@ impl TyTraitDecl {
                     None,
                     IsImplSelf::No,
                     IsExtendingExistingImpl::No,
+                    IsImplInterfaceSurface::No,
                 )?;
                 let mut dummy_interface_surface = vec![];
 
@@ -243,6 +244,7 @@ impl TyTraitDecl {
                     None,
                     IsImplSelf::No,
                     IsExtendingExistingImpl::Yes,
+                    IsImplInterfaceSurface::No,
                 )?;
 
                 // Type check the items.
@@ -627,6 +629,7 @@ impl TyTraitDecl {
             Some(self.span()),
             IsImplSelf::No,
             IsExtendingExistingImpl::No,
+            IsImplInterfaceSurface::Yes,
         );
     }
 }

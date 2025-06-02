@@ -10,7 +10,7 @@ use crate::{
         DeclId,
     },
     language::ty::{TyAbiDecl, TyFunctionDecl},
-    namespace::{IsExtendingExistingImpl, IsImplSelf},
+    namespace::{IsExtendingExistingImpl, IsImplInterfaceSurface, IsImplSelf},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
         TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
@@ -434,6 +434,7 @@ impl ty::TyAbiDecl {
                 Some(self.span()),
                 IsImplSelf::No,
                 IsExtendingExistingImpl::No,
+                IsImplInterfaceSurface::No,
             );
             Ok(())
         })
