@@ -32,6 +32,7 @@ members = [
   "storage_vec",
   "struct_storage_variables",
   "structs",
+  "time",
   "tuples",
   "type_aliases",
   "upgradeable_proxy/proxy",

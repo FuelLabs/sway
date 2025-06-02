@@ -107,7 +107,7 @@ impl ty::TyVariableDecl {
                     variable_decl.body.return_type,
                     &variable_decl.span(),
                     "",
-                    None,
+                    || None,
                 );
             }
         }

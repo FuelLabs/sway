@@ -61,7 +61,11 @@ pub fn height() -> u32 {
 /// }
 /// ```
 pub fn timestamp() -> u64 {
-    timestamp_of_block(height())
+    asm(timestamp, height) {
+        bhei height;
+        time timestamp height;
+        timestamp: u64
+    }
 }
 
 /// Get the TAI64 timestamp of a block at a given `block_height`.

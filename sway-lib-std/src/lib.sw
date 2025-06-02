@@ -17,6 +17,7 @@ pub mod logging;
 pub mod revert;
 pub mod assert;
 pub mod convert;
+pub mod time;
 pub mod intrinsics;
 pub mod iterator;
 pub mod vec;

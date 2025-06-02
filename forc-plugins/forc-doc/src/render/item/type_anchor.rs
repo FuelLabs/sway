@@ -103,7 +103,7 @@ pub(crate) fn render_type_anchor(
             : name.as_str();
         }),
         TypeInfo::StringArray(len) => Ok(box_html! {
-            : len.span().as_str();
+            : len.expr().span().as_str();
         }),
         TypeInfo::UnsignedInteger(int_bits) => {
             use sway_types::integer_bits::IntegerBits;
