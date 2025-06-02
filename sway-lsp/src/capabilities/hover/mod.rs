@@ -52,7 +52,7 @@ pub fn hover_data(
     }
 
     let client_config = state.config.read().client.clone();
-    let sync = state.get_sync_workspace_for_uri(&url).unwrap();
+    let sync = state.get_sync_workspace_for_uri(url).unwrap();
     let contents = match &token.declared_token_ident(engines) {
         Some(decl_ident) => {
             let t = state.token_map.try_get(decl_ident).try_unwrap()?;
