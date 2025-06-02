@@ -163,7 +163,8 @@ fn did_open() {
 fn did_open_all_std_lib_files() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
-        let files = sway_utils::helpers::get_sway_files(std_lib_dir().join("src"));
+        //let files = sway_utils::helpers::get_sway_files(std_lib_dir().join("src"));
+        let files = sway_utils::helpers::get_sway_files(test_fixtures_dir().join("diagnostics/multi_file/src"));
         let now = std::time::Instant::now();
         for file in files {
             //eprintln!("opening file: {:?}", file.as_path());
@@ -178,8 +179,10 @@ fn did_open_all_std_lib_files() {
             };
             eprintln!("time taken to open file: {:?} | {:?}", now2.elapsed(), file.as_path());
 
+            let n2 = std::time::Instant::now();
             // Make sure that semantic tokens are successfully returned for the file
             let semantic_tokens = lsp::get_semantic_tokens_full(service.inner(), &uri).await;
+            eprintln!("time taken to get semantic tokens: {:?}", n2.elapsed());
             assert!(!semantic_tokens.data.is_empty());
         }
         eprintln!("total time taken: {:?}", now.elapsed());

@@ -300,28 +300,13 @@ pub fn traverse(
     session: Arc<Session>,
     token_map: &TokenMap,
     modified_file: Option<PathBuf>,
-    // lsp_mode: Option<&LspConfig>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     let _p = tracing::trace_span!("traverse").entered();
-    // let modified_file = lsp_mode.and_then(|mode| {
-    //     mode.file_versions
-    //         .iter()
-    //         .find_map(|(path, version)| version.map(|_| path.clone()))
-    // });
-
-    eprintln!("modified file: {:?}", modified_file);
-    eprintln!("member path: {:?}", member_path);
-    //let ps = token_map.iter().map(|item| item.key().path.clone()).collect::<Vec<_>>();
-    // eprintln!("tokens: {:#?}", ps);
-
+    
+    // Remove tokens for the modified file from the token map.
     if let Some(path) = &modified_file {
-        eprintln!("removing tokens for file: {:?}", path);
         token_map.remove_tokens_for_file(path);
     }
-    //  else {
-    //     eprintln!("clearing token map");
-    //     token_map.clear();
-    // }
 
     session.metrics.clear();
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
@@ -514,16 +499,8 @@ pub fn parse_project(
         return Err(LanguageServerError::MemberProgramNotFound);
     }
 
-    // Check if tokens exist for this path
-    // let has_tokens = token_map.iter().any(|item| item.key().path.as_ref() == Some(&path));
-    // let modified_file = lsp_mode.as_ref().and_then(|mode| {
-    //     mode.file_versions
-    //         .iter()
-    //         .find_map(|(path, version)| version.map(|_| path.clone()))
-    // });
-
-
     let now = std::time::Instant::now();
+    // Check if we need to reprocess the project.
     let (needs_reprocessing, modified_file) = server_state::needs_reprocessing(&ctx.token_map, &path, lsp_mode);
 
     // Only traverse and create runnables if we have no tokens yet, or if a file was modified
@@ -813,8 +790,14 @@ mod tests {
             version: None,
             gc_options: GarbageCollectionConfig::default(),
         };
+        let lsp_mode = Some(LspConfig {
+            optimized_build: ctx.optimized_build,
+            file_versions: ctx.file_versions.clone(),
+        });
+
         let result =
-            parse_project(&uri, &engines, None, &ctx, None).expect_err("expected ManifestFileNotFound");
+            parse_project(&uri, &engines, None, &ctx, lsp_mode.as_ref()).expect_err("expected ManifestFileNotFound");
+        eprintln!("result: {:#?}", result);
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(
