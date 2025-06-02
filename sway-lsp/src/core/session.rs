@@ -442,16 +442,15 @@ pub fn parse_project(
 ) -> Result<(), LanguageServerError> {
     let p_now = std::time::Instant::now();
     let _p = tracing::trace_span!("parse_project").entered();
-    let path = uri.to_file_path().unwrap();
-    let program_id = program_id_from_path(&path, engines_clone)?;
     let engines_original = ctx.engines.clone();
     let session = ctx.session.as_ref().unwrap().clone();
     let sync = ctx.sync.as_ref().unwrap().clone();
     let token_map = ctx.token_map.clone();
-
     let build_plan = session
         .build_plan_cache
         .get_or_update(&sync.workspace_manifest_path(), || build_plan(uri))?;
+    let path = uri.to_file_path().unwrap();
+    let program_id = program_id_from_path(&path, engines_clone)?;
 
     let now = std::time::Instant::now();
     let results = compile(
@@ -790,14 +789,8 @@ mod tests {
             version: None,
             gc_options: GarbageCollectionConfig::default(),
         };
-        let lsp_mode = Some(LspConfig {
-            optimized_build: ctx.optimized_build,
-            file_versions: ctx.file_versions.clone(),
-        });
-
         let result =
-            parse_project(&uri, &engines, None, &ctx, lsp_mode.as_ref()).expect_err("expected ManifestFileNotFound");
-        eprintln!("result: {:#?}", result);
+            parse_project(&uri, &engines, None, &ctx, None).expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(
