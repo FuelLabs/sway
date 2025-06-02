@@ -299,12 +299,12 @@ pub fn traverse(
     engines_clone: &Engines,
     session: Arc<Session>,
     token_map: &TokenMap,
-    modified_file: Option<PathBuf>,
+    modified_file: Option<&PathBuf>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     let _p = tracing::trace_span!("traverse").entered();
     
     // Remove tokens for the modified file from the token map.
-    if let Some(path) = &modified_file {
+    if let Some(path) = modified_file {
         token_map.remove_tokens_for_file(path);
     }
 
@@ -395,21 +395,21 @@ pub fn traverse(
             // First, populate our token_map with sway keywords.
             let lexed_tree = LexedTree::new(&ctx);
             lexed_tree.collect_module_kinds(lexed);
-            parse_lexed_program(lexed, &ctx, &modified_file, |an, _ctx| {
+            parse_lexed_program(lexed, &ctx, modified_file, |an, _ctx| {
                 lexed_tree.traverse_node(an)
             });
 
             // Next, populate our token_map with un-typed yet parsed ast nodes.
             let parsed_tree = ParsedTree::new(&ctx);
             parsed_tree.collect_module_spans(parsed);
-            parse_ast_to_tokens(parsed, &ctx, &modified_file, |an, _ctx| {
+            parse_ast_to_tokens(parsed, &ctx, modified_file, |an, _ctx| {
                 parsed_tree.traverse_node(an)
             });
 
             // Finally, populate our token_map with typed ast nodes.
             let typed_tree = TypedTree::new(&ctx);
             typed_tree.collect_module_spans(&root_module);
-            parse_ast_to_typed_tokens(&root_module, &ctx, &modified_file, |node, _ctx| {
+            parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, _ctx| {
                 typed_tree.traverse_node(node);
             });
 
@@ -419,11 +419,11 @@ pub fn traverse(
             compiled_program.typed = typed.as_ref().map(|x| x.clone()).ok();
         } else {
             // Collect tokens from dependencies and the standard library prelude.
-            parse_ast_to_tokens(parsed, &ctx, &modified_file, |an, ctx| {
+            parse_ast_to_tokens(parsed, &ctx, modified_file, |an, ctx| {
                 dependency::collect_parsed_declaration(an, ctx);
             });
 
-            parse_ast_to_typed_tokens(&root_module, &ctx, &modified_file, |node, ctx| {
+            parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, ctx| {
                 dependency::collect_typed_declaration(node, ctx);
             });
         }
@@ -449,8 +449,6 @@ pub fn parse_project(
     let build_plan = session
         .build_plan_cache
         .get_or_update(&sync.workspace_manifest_path(), || build_plan(uri))?;
-    let path = uri.to_file_path().unwrap();
-    let program_id = program_id_from_path(&path, engines_clone)?;
 
     let now = std::time::Instant::now();
     let results = compile(
@@ -471,6 +469,8 @@ pub fn parse_project(
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
+    let path = uri.to_file_path().unwrap();
+    let program_id = program_id_from_path(&path, engines_clone)?;
     let member_path = sync
         .member_path(uri)
         .ok_or(DirectoryError::TempMemberDirNotFound)?;
@@ -511,7 +511,7 @@ pub fn parse_project(
             engines_clone,
             session.clone(),
             &token_map,
-            modified_file,
+            modified_file.as_ref(),
         )?;
         
         // Write diagnostics if not optimized build
@@ -551,7 +551,7 @@ pub fn parse_project(
 pub fn parse_lexed_program(
     lexed_program: &LexedProgram,
     ctx: &ParseContext,
-    modified_file: &Option<PathBuf>,
+    modified_file: Option<&PathBuf>,
     f: impl Fn(&Annotated<ItemKind>, &ParseContext) + Sync,
 ) {
     let should_process = |item: &&Annotated<ItemKind>| {
@@ -560,7 +560,7 @@ pub fn parse_lexed_program(
             .map(|path| {
                 item.span()
                     .source_id()
-                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == **path)
             })
             .unwrap_or(true)
     };
@@ -587,7 +587,7 @@ pub fn parse_lexed_program(
 fn parse_ast_to_tokens(
     parse_program: &ParseProgram,
     ctx: &ParseContext,
-    modified_file: &Option<PathBuf>,
+    modified_file: Option<&PathBuf>,
     f: impl Fn(&AstNode, &ParseContext) + Sync,
 ) {
     let should_process = |node: &&AstNode| {
@@ -596,7 +596,7 @@ fn parse_ast_to_tokens(
             .map(|path| {
                 node.span
                     .source_id()
-                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == **path)
             })
             .unwrap_or(true)
     };
@@ -622,7 +622,7 @@ fn parse_ast_to_tokens(
 fn parse_ast_to_typed_tokens(
     root: &ty::TyModule,
     ctx: &ParseContext,
-    modified_file: &Option<PathBuf>,
+    modified_file: Option<&PathBuf>,
     f: impl Fn(&ty::TyAstNode, &ParseContext) + Sync,
 ) {
     let should_process = |node: &&ty::TyAstNode| {
@@ -631,7 +631,7 @@ fn parse_ast_to_typed_tokens(
             .map(|path| {
                 node.span
                     .source_id()
-                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == **path)
             })
             .unwrap_or(true)
     };
