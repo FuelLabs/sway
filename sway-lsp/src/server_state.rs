@@ -182,7 +182,8 @@ impl ServerState {
                             file_versions: ctx.file_versions.clone(),
                         });
 
-                        let (needs_reprocessing, _) = needs_reprocessing(&ctx.token_map, &path, lsp_mode.as_ref());
+                        let (needs_reprocessing, _) =
+                            needs_reprocessing(&ctx.token_map, &path, lsp_mode.as_ref());
 
                         // Perform garbage collection if enabled and if the file has been modified to manage memory usage.
                         if ctx.gc_options.gc_enabled && needs_reprocessing {
@@ -559,7 +560,9 @@ pub fn needs_reprocessing(
     path: &PathBuf,
     lsp_mode: Option<&LspConfig>,
 ) -> (bool, Option<PathBuf>) {
-    let has_tokens = token_map.iter().any(|item| item.key().path.as_ref() == Some(path));    
+    let has_tokens = token_map
+        .iter()
+        .any(|item| item.key().path.as_ref() == Some(path));
     let modified_file_path = modified_file(lsp_mode);
     let reprocess = !has_tokens || modified_file_path.is_some();
     (reprocess, modified_file_path)

@@ -302,7 +302,7 @@ pub fn traverse(
     modified_file: Option<&PathBuf>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     let _p = tracing::trace_span!("traverse").entered();
-    
+
     // Remove tokens for the modified file from the token map.
     if let Some(path) = modified_file {
         token_map.remove_tokens_for_file(path);
@@ -449,12 +449,7 @@ pub fn parse_project(
         .build_plan_cache
         .get_or_update(&sync.workspace_manifest_path(), || build_plan(uri))?;
 
-    let results = compile(
-        &build_plan,
-        engines_clone,
-        retrigger_compilation,
-        lsp_mode,
-    )?;
+    let results = compile(&build_plan, engines_clone, retrigger_compilation, lsp_mode)?;
 
     // First check if results is empty or if all program values are None,
     // indicating an error occurred in the compiler
@@ -496,7 +491,8 @@ pub fn parse_project(
     }
 
     // Check if we need to reprocess the project.
-    let (needs_reprocessing, modified_file) = server_state::needs_reprocessing(&ctx.token_map, &path, lsp_mode);
+    let (needs_reprocessing, modified_file) =
+        server_state::needs_reprocessing(&ctx.token_map, &path, lsp_mode);
 
     // Only traverse and create runnables if we have no tokens yet, or if a file was modified
     if needs_reprocessing {
@@ -509,11 +505,15 @@ pub fn parse_project(
             &token_map,
             modified_file.as_ref(),
         )?;
-        
+
         // Write diagnostics if not optimized build
-        if let Some(LspConfig { optimized_build: false, .. }) = &lsp_mode {
+        if let Some(LspConfig {
+            optimized_build: false,
+            ..
+        }) = &lsp_mode
+        {
             if let Some((errors, warnings)) = &diagnostics {
-                *session.diagnostics.write() = 
+                *session.diagnostics.write() =
                     capabilities::diagnostic::get_diagnostics(warnings, errors, engines_clone.se());
             }
         }
@@ -536,7 +536,7 @@ pub fn parse_project(
             );
         }
     }
-    
+
     Ok(())
 }
 
@@ -782,8 +782,8 @@ mod tests {
             version: None,
             gc_options: GarbageCollectionConfig::default(),
         };
-        let result =
-            parse_project(&uri, &engines, None, &ctx, None).expect_err("expected ManifestFileNotFound");
+        let result = parse_project(&uri, &engines, None, &ctx, None)
+            .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

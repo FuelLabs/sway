@@ -45,7 +45,7 @@ fn benchmarks(c: &mut Criterion) {
         let session = Arc::new(session::Session::new());
         let member_path = sync.member_path(&uri).unwrap();
         let modified_file = sway_lsp::server_state::modified_file(lsp_mode.as_ref());
-        
+
         b.iter(|| {
             let _ = black_box(
                 session::traverse(
