@@ -171,7 +171,6 @@ impl ServerState {
         let last_compilation_state = self.last_compilation_state.clone();
         std::thread::spawn(move || {
             while let Ok(msg) = rx.recv() {
-                let now = std::time::Instant::now();
                 match msg {
                     TaskMessage::CompilationContext(ctx) => {
                         let uri = ctx.uri.as_ref().unwrap().clone();
@@ -187,7 +186,6 @@ impl ServerState {
 
                         // Perform garbage collection if enabled and if the file has been modified to manage memory usage.
                         if ctx.gc_options.gc_enabled && needs_reprocessing {
-                            let now = std::time::Instant::now();
                             // Call this on the engines clone so we don't clear types that are still in use
                             // and might be needed in the case cancel compilation was triggered.
                             if let Err(err) =
@@ -198,7 +196,6 @@ impl ServerState {
                                     err.to_string()
                                 );
                             }
-                            eprintln!("time taken to garbage collect: {:?}", now.elapsed());
                         }
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
@@ -262,7 +259,6 @@ impl ServerState {
                         return;
                     }
                 }
-                eprintln!("time taken to process compilation task: {:?}", now.elapsed());
             }
         });
     }

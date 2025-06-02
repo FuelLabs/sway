@@ -440,7 +440,6 @@ pub fn parse_project(
     ctx: &CompilationContext,
     lsp_mode: Option<&LspConfig>,
 ) -> Result<(), LanguageServerError> {
-    let p_now = std::time::Instant::now();
     let _p = tracing::trace_span!("parse_project").entered();
     let engines_original = ctx.engines.clone();
     let session = ctx.session.as_ref().unwrap().clone();
@@ -450,14 +449,12 @@ pub fn parse_project(
         .build_plan_cache
         .get_or_update(&sync.workspace_manifest_path(), || build_plan(uri))?;
 
-    let now = std::time::Instant::now();
     let results = compile(
         &build_plan,
         engines_clone,
         retrigger_compilation,
         lsp_mode,
     )?;
-    eprintln!("time taken to compile: {:?}", now.elapsed());
 
     // First check if results is empty or if all program values are None,
     // indicating an error occurred in the compiler
@@ -498,7 +495,6 @@ pub fn parse_project(
         return Err(LanguageServerError::MemberProgramNotFound);
     }
 
-    let now = std::time::Instant::now();
     // Check if we need to reprocess the project.
     let (needs_reprocessing, modified_file) = server_state::needs_reprocessing(&ctx.token_map, &path, lsp_mode);
 
@@ -522,8 +518,6 @@ pub fn parse_project(
             }
         }
 
-        eprintln!("time taken to traverse: {:?}", now.elapsed());
-
         session.runnables.clear();
         if let Some(metrics) = session.metrics.get(&program_id) {
             // Check if the cached AST was returned by the compiler for the users workspace.
@@ -543,7 +537,6 @@ pub fn parse_project(
         }
     }
     
-    eprintln!("time taken to parse project: {:?}", p_now.elapsed());
     Ok(())
 }
 
