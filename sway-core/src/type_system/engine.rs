@@ -26,10 +26,7 @@ use sway_types::{
     integer_bits::IntegerBits, span::Span, Ident, Named, ProgramId, SourceId, Spanned,
 };
 
-use super::{
-    ast_elements::{length::NumericLength, type_parameter::ConstGenericExpr},
-    unify::unifier::UnifyKind,
-};
+use super::{ast_elements::type_parameter::ConstGenericExpr, unify::unifier::UnifyKind};
 
 /// To be able to garbage-collect [TypeInfo]s from the [TypeEngine]
 /// we need to track which types need to be GCed when a particular
@@ -590,7 +587,7 @@ impl TypeEngine {
     /// Inserts a new [TypeInfo::StringArray] into the [TypeEngine] and returns
     /// its [TypeId], or returns a [TypeId] of an existing shareable string array type
     /// that corresponds to the string array given by the `length`.
-    pub(crate) fn insert_string_array(&self, engines: &Engines, length: NumericLength) -> TypeId {
+    pub(crate) fn insert_string_array(&self, engines: &Engines, length: Length) -> TypeId {
         let source_id = Self::get_string_array_fallback_source_id(&length);
         let is_shareable_type = self.is_shareable_string_array(&length);
         let type_info = TypeInfo::StringArray(length);
@@ -611,13 +608,7 @@ impl TypeEngine {
         engines: &Engines,
         length: usize,
     ) -> TypeId {
-        self.insert_string_array(
-            engines,
-            NumericLength {
-                val: length,
-                span: Span::dummy(),
-            },
-        )
+        self.insert_string_array(engines, Length(ConstGenericExpr::literal(length, None)))
     }
 
     /// Inserts a new [TypeInfo::ContractCaller] into the [TypeEngine] and returns its [TypeId].
@@ -871,6 +862,14 @@ impl TypeEngine {
         self.insert_or_replace_type_source_info(engines, ty, source_id, is_shareable_type, None)
     }
 
+    // Get, clone, insert and return new TypeId.
+    // Keep the same source_id
+    pub fn duplicate(&self, engines: &Engines, id: TypeId) -> TypeId {
+        let type_source_info = self.slab.get(id.index());
+        let duplicate = TypeInfo::clone(&type_source_info.type_info);
+        self.insert(engines, duplicate, type_source_info.source_id.as_ref())
+    }
+
     /// This method performs two actions, depending on the `replace_at_type_id`.
     ///
     /// If the `replace_at_type_id` is `Some`, this indicates that we want to unconditionally replace the [TypeSourceInfo]
@@ -978,6 +977,9 @@ impl TypeEngine {
             | TypeInfo::Placeholder(_)
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Array(.., Length(ConstGenericExpr::AmbiguousVariableExpression { .. }))
+            | TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
+                ..
+            }))
             | TypeInfo::Struct(_)
             | TypeInfo::Enum(_) => true,
             TypeInfo::ContractCaller { abi_name, address } => {
@@ -1163,7 +1165,7 @@ impl TypeEngine {
             // | TypeInfo::TraitType { .. }
             | TypeInfo::Alias { .. } => true,
 
-            TypeInfo::StringArray(l) => l.is_annotated(),
+            TypeInfo::StringArray(l) => l.expr().is_annotated(),
 
             // If the contract caller has the `abi_name` defined (AbiName::Know) the span information
             // that comes with the `Ident`s of the `CallPath` is not relevant for the equality
@@ -1594,9 +1596,9 @@ impl TypeEngine {
             || length.expr().is_annotated())
     }
 
-    fn is_shareable_string_array(&self, length: &NumericLength) -> bool {
+    fn is_shareable_string_array(&self, length: &Length) -> bool {
         // !(false || length.is_annotated())
-        !length.is_annotated()
+        !length.expr().is_annotated()
     }
 
     fn is_shareable_slice(&self, engines: &Engines, elem_type: &GenericArgument) -> bool {
@@ -1641,7 +1643,7 @@ impl TypeEngine {
 
             TypeInfo::UnknownGeneric { .. } => Self::get_unknown_generic_fallback_source_id(ty),
             TypeInfo::Placeholder(_) => self.get_placeholder_fallback_source_id(ty),
-            TypeInfo::StringArray(length) => Self::get_source_id_from_spanned(length),
+            TypeInfo::StringArray(length) => Self::get_source_id_from_spanned(length.expr()),
             TypeInfo::Enum(decl_id) => {
                 let decl = decl_engine.get_enum(decl_id);
                 Self::get_enum_fallback_source_id(&decl)
@@ -1817,9 +1819,9 @@ impl TypeEngine {
         self.get_source_id_from_type_argument(elem_type)
     }
 
-    fn get_string_array_fallback_source_id(length: &NumericLength) -> Option<SourceId> {
+    fn get_string_array_fallback_source_id(length: &Length) -> Option<SourceId> {
         // For `TypeInfo::StringArray`, if it is annotated, we take the use site source file found in the `length`.
-        Self::get_source_id_from_spanned(length)
+        Self::get_source_id_from_spanned(length.expr())
     }
 
     fn get_contract_caller_fallback_source_id(

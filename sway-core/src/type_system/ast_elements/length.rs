@@ -1,5 +1,4 @@
 use super::type_parameter::ConstGenericExpr;
-use sway_types::{span::Span, Spanned};
 
 /// Describes a fixed length for types that need it, e.g., [crate::TypeInfo::Array].
 ///
@@ -19,27 +18,5 @@ pub struct Length(pub ConstGenericExpr);
 impl Length {
     pub fn expr(&self) -> &ConstGenericExpr {
         &self.0
-    }
-}
-
-#[derive(Debug, Clone, Hash)]
-pub struct NumericLength {
-    pub val: usize,
-    pub span: Span,
-}
-
-impl NumericLength {
-    pub fn val(&self) -> usize {
-        self.val
-    }
-
-    pub fn is_annotated(&self) -> bool {
-        !self.span().is_dummy()
-    }
-}
-
-impl Spanned for NumericLength {
-    fn span(&self) -> Span {
-        self.span.clone()
     }
 }

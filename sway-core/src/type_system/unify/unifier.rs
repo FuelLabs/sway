@@ -133,8 +133,17 @@ impl<'a> Unifier<'a> {
             (RawUntypedPtr, RawUntypedPtr) => (),
             (RawUntypedSlice, RawUntypedSlice) => (),
             (StringSlice, StringSlice) => (),
-            (StringArray(l), StringArray(r)) => {
-                self.unify_strs(handler, received, expected, span, l.val(), r.val());
+            (StringArray(r), StringArray(e)) => {
+                self.unify_strs(
+                    handler,
+                    received,
+                    &r_type_source_info,
+                    expected,
+                    &e_type_source_info,
+                    span,
+                    r,
+                    e,
+                );
             }
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
                 self.unify_tuples(handler, rfs, efs);
@@ -362,26 +371,49 @@ impl<'a> Unifier<'a> {
         OccursCheck::new(self.engines).check(generic, other)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn unify_strs(
         &self,
         handler: &Handler,
         received: TypeId,
+        received_type_info: &TypeInfo,
         expected: TypeId,
+        _expected_type_info: &TypeInfo,
         span: &Span,
-        r: usize,
-        e: usize,
+        r: &Length,
+        e: &Length,
     ) {
-        if r != e {
-            let (received, expected) = self.assign_args(received, expected);
-            handler.emit_err(
-                TypeError::MismatchedType {
-                    expected,
-                    received,
-                    help_text: self.help_text.clone(),
-                    span: span.clone(),
-                }
-                .into(),
-            );
+        match (r.expr(), e.expr()) {
+            (
+                ConstGenericExpr::Literal { val: r_val, .. },
+                ConstGenericExpr::Literal { val: e_val, .. },
+            ) if r_val == e_val => {}
+            (
+                ConstGenericExpr::Literal { .. },
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+            ) => {
+                self.replace_expected_with_received(expected, received_type_info, span);
+            }
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+                ConstGenericExpr::Literal { .. },
+            ) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
+                ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
+            ) if r_ident == e_ident => {}
+            _ => {
+                let (received, expected) = self.assign_args(received, expected);
+                handler.emit_err(
+                    TypeError::MismatchedType {
+                        expected,
+                        received,
+                        help_text: self.help_text.clone(),
+                        span: span.clone(),
+                    }
+                    .into(),
+                );
+            }
         }
     }
 

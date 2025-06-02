@@ -197,7 +197,7 @@ pub(crate) enum TypeRootFilter {
     Never,
     Placeholder,
     StringSlice,
-    StringArray(usize),
+    StringArray,
     U8,
     U16,
     U32,
@@ -1587,7 +1587,7 @@ impl TraitMap {
             UnknownGeneric { .. } | Placeholder(_) => TypeRootFilter::Placeholder,
             TypeParam(_param) => unreachable!(),
             StringSlice => TypeRootFilter::StringSlice,
-            StringArray(x) => TypeRootFilter::StringArray(x.val()),
+            StringArray(_) => TypeRootFilter::StringArray,
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => TypeRootFilter::U8,
                 IntegerBits::Sixteen => TypeRootFilter::U16,
