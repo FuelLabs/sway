@@ -438,10 +438,7 @@ impl ServerState {
     }
 
     /// Determines the workspace root for the given file URI.
-    fn find_workspace_root_for_uri(
-        &self,
-        file_uri: &Url,
-    ) -> Result<PathBuf, LanguageServerError> {
+    fn find_workspace_root_for_uri(&self, file_uri: &Url) -> Result<PathBuf, LanguageServerError> {
         let path = PathBuf::from(file_uri.path());
         let search_dir = path.parent().unwrap_or(&path);
 
@@ -513,7 +510,7 @@ impl ServerState {
     ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
         // First try to find the workspace root for this URI
         let workspace_root = self.find_workspace_root_for_uri(uri)?;
-        
+
         // Check if we already have a SyncWorkspace for this root
         if let Some(sw_arc) = self.sync_workspaces.get(&workspace_root) {
             Ok(sw_arc.value().clone())
@@ -521,13 +518,23 @@ impl ServerState {
             // Initialize a new workspace sync for this root
             match self.initialize_workspace_sync(uri).await {
                 Ok(initialized_sw) => {
-                    let canonical_root = workspace_root.canonicalize().unwrap_or(workspace_root.clone());
-                    self.sync_workspaces.insert(canonical_root.clone(), initialized_sw.clone());
-                    tracing::info!("SyncWorkspace successfully initialized for {:?}", canonical_root);
+                    let canonical_root = workspace_root
+                        .canonicalize()
+                        .unwrap_or(workspace_root.clone());
+                    self.sync_workspaces
+                        .insert(canonical_root.clone(), initialized_sw.clone());
+                    tracing::info!(
+                        "SyncWorkspace successfully initialized for {:?}",
+                        canonical_root
+                    );
                     Ok(initialized_sw)
                 }
                 Err(e) => {
-                    tracing::error!("Failed to initialize SyncWorkspace for {:?}: {:?}", workspace_root, e);
+                    tracing::error!(
+                        "Failed to initialize SyncWorkspace for {:?}: {:?}",
+                        workspace_root,
+                        e
+                    );
                     Err(e)
                 }
             }
@@ -569,14 +576,14 @@ impl ServerState {
 
     // /// Returns a reference to the `SyncWorkspace` for backward compatibility.
     // /// This will panic if called with a URI that doesn't have an initialized workspace.
-    // /// 
+    // ///
     // /// @deprecated Use `get_sync_workspace_for_uri` instead for proper error handling.
     // pub fn sync_workspace(&self) -> &SyncWorkspace {
     //     // This is a temporary compatibility method.
     //     // In the old implementation, this would panic if called before initialization.
     //     // We maintain that behavior here but log a warning.
     //     tracing::warn!("sync_workspace() called without URI context - this is deprecated");
-        
+
     //     // Return the first workspace if any exists, otherwise panic
     //     self.sync_workspaces
     //         .iter()
