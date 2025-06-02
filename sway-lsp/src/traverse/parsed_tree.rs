@@ -1151,7 +1151,7 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
     let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), type_info, type_span);
     match type_info {
         TypeInfo::StringArray(length) => {
-            let ident = Ident::new(length.span());
+            let ident = Ident::new(length.expr().span());
             ctx.tokens.insert(
                 ctx.ident(&ident),
                 Token::from_parsed(ParsedAstToken::Ident(ident.clone()), symbol_kind),

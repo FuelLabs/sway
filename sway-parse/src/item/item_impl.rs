@@ -34,7 +34,7 @@ impl Parse for ItemImpl {
     fn parse(parser: &mut Parser) -> ParseResult<ItemImpl> {
         let impl_token = parser.parse()?;
         let generic_params_opt = parser.guarded_parse::<OpenAngleBracketToken, GenericParams>()?;
-        let ty = parser.parse()?;
+        let ty = parser.parse::<Ty>()?;
         let (trait_opt, ty) = match parser.take() {
             Some(for_token) => match ty {
                 Ty::Path(path_type) => (Some((path_type, for_token)), parser.parse()?),
