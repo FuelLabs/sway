@@ -555,11 +555,11 @@ impl ServerState {
 
 /// Determines if expensive operations (traversal, GC, etc.) should be performed
 /// based on whether tokens exist and if files were modified.
-pub fn needs_reprocessing(
+pub fn needs_reprocessing<'a>(
     token_map: &TokenMap,
-    path: &PathBuf,
-    lsp_mode: Option<&LspConfig>,
-) -> (bool, Option<PathBuf>) {
+    path: &'a PathBuf,
+    lsp_mode: Option<&'a LspConfig>,
+) -> (bool, Option<&'a PathBuf>) {
     let has_tokens = token_map
         .iter()
         .any(|item| item.key().path.as_ref() == Some(path));
@@ -569,11 +569,11 @@ pub fn needs_reprocessing(
 }
 
 /// Returns the modified file from the LspConfig if it exists.
-pub fn modified_file(lsp_mode: Option<&LspConfig>) -> Option<PathBuf> {
+pub fn modified_file(lsp_mode: Option<&LspConfig>) -> Option<&PathBuf> {
     lsp_mode.and_then(|mode| {
         mode.file_versions
             .iter()
-            .find_map(|(path, version)| version.map(|_| path.clone()))
+            .find_map(|(path, version)| version.map(|_| path))
     })
 }
 

@@ -55,7 +55,7 @@ fn benchmarks(c: &mut Criterion) {
                     &engines_clone,
                     session.clone(),
                     &state.token_map,
-                    modified_file.as_ref(),
+                    modified_file,
                 )
                 .unwrap(),
             );

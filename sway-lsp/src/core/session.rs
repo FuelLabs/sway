@@ -503,7 +503,7 @@ pub fn parse_project(
             engines_clone,
             session.clone(),
             &token_map,
-            modified_file.as_ref(),
+            modified_file,
         )?;
 
         // Write diagnostics if not optimized build
@@ -549,11 +549,10 @@ pub fn parse_lexed_program(
 ) {
     let should_process = |item: &&Annotated<ItemKind>| {
         modified_file
-            .as_ref()
             .map(|path| {
                 item.span()
                     .source_id()
-                    .is_some_and(|id| ctx.engines.se().get_path(id) == **path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };
@@ -585,11 +584,10 @@ fn parse_ast_to_tokens(
 ) {
     let should_process = |node: &&AstNode| {
         modified_file
-            .as_ref()
             .map(|path| {
                 node.span
                     .source_id()
-                    .is_some_and(|id| ctx.engines.se().get_path(id) == **path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };
@@ -620,11 +618,10 @@ fn parse_ast_to_typed_tokens(
 ) {
     let should_process = |node: &&ty::TyAstNode| {
         modified_file
-            .as_ref()
             .map(|path| {
                 node.span
                     .source_id()
-                    .is_some_and(|id| ctx.engines.se().get_path(id) == **path)
+                    .is_some_and(|id| ctx.engines.se().get_path(id) == *path)
             })
             .unwrap_or(true)
     };
