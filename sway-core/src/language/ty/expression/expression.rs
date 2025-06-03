@@ -380,10 +380,11 @@ impl CollectTypesMetadata for TyExpression {
                     TypeMetadata::get_logged_type_id(exp, ctx.experimental.new_encoding)
                         .map_err(|err| handler.emit_err(err))?;
                 res.push(TypeMetadata::new_logged_type(
+                    handler,
                     ctx.engines,
                     logged_type_id,
                     ctx.program_name.clone(),
-                ));
+                )?);
 
                 // We still need to dive into the expression because it can have additional types to collect.
                 // E.g., `revert some_function_that_returns_error_enum_and_internally_logs_some_types()`;

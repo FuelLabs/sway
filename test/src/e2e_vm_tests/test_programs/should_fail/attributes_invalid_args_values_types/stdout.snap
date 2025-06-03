@@ -45,6 +45,16 @@ error: Attribute argument value has a wrong type
   |
 ____
 
+error: Attribute cannot annotate item
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types/src/abi_name_attr.sw:3:3
+  |
+...
+3 | #[abi_name(name = true)]
+  |   ^^^^^^^^ "abi_name" attribute cannot annotate a function declaration.
+  |
+  = help: "abi_name" attribute can only annotate structs and enums.
+____
+
 error: Attribute argument value has a wrong type
  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_values_types/src/error_attr.sw:6:17
   |
@@ -65,5 +75,5 @@ error: Attribute argument value has a wrong type
   |
 ____
 
-  Aborting due to 5 errors.
+  Aborting due to 6 errors.
 error: Failed to compile attributes_invalid_args_values_types
