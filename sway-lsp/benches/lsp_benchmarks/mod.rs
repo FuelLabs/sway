@@ -4,7 +4,7 @@ pub mod token_map;
 
 use lsp_types::Url;
 use std::{path::PathBuf, sync::Arc};
-use sway_core::Engines;
+use sway_core::{Engines, LspConfig};
 use sway_lsp::{
     config::GarbageCollectionConfig,
     core::session::{self, Session},
@@ -32,9 +32,13 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState, Engines)
         version: None,
         gc_options: GarbageCollectionConfig::default(),
     };
+    let lsp_mode = Some(LspConfig {
+        optimized_build: ctx.optimized_build,
+        file_versions: ctx.file_versions.clone(),
+    });
 
     // Compile the project
-    session::parse_project(&temp_uri, &engines_clone, None, &ctx).unwrap();
+    session::parse_project(&temp_uri, &engines_clone, None, &ctx, lsp_mode.as_ref()).unwrap();
     (temp_uri, session, state, engines_clone)
 }
 

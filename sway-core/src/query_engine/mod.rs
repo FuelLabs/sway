@@ -185,12 +185,12 @@ impl QueryEngine {
     pub fn get_function(
         &self,
         engines: &Engines,
-        ident: IdentUnique,
+        ident: &IdentUnique,
         sig: TyFunctionSig,
     ) -> Option<DeclRef<DeclId<TyFunctionDecl>>> {
         let cache = self.function_cache.read();
         cache
-            .get(&(ident, sig.get_type_str(engines)))
+            .get(&(ident.clone(), sig.get_type_str(engines)))
             .map(|s| s.fn_decl.clone())
     }
 

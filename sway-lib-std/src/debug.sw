@@ -1382,6 +1382,7 @@ where
 }
 // END ARRAY_DEBUG
 
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[0] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
@@ -1390,384 +1391,448 @@ impl Debug for str[0] {
 }
 
 // BEGIN STRARRAY_DEBUG
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[1] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[2] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[3] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[4] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[5] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[6] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[7] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[8] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[9] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[10] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[11] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[12] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[13] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[14] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[15] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[16] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[17] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[18] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[19] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[20] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[21] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[22] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[23] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[24] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[25] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[26] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[27] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[28] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[29] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[30] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[31] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[32] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[33] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[34] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[35] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[36] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[37] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[38] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[39] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[40] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[41] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[42] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[43] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[44] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[45] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[46] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[47] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[48] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[49] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[50] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[51] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[52] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[53] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[54] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[55] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[56] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[57] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[58] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[59] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[60] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[61] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[62] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[63] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
         from_str_array(self).fmt(f);
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Debug for str[64] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
@@ -2688,3 +2753,12 @@ where
     }
 }
 // END TUPLES_DEBUG
+
+
+#[cfg(experimental_const_generics = true)]
+impl<const N: u64> Debug for str[N] {
+    fn fmt(self, ref mut f: Formatter) {
+        use ::str::*;
+        from_str_array(self).fmt(f);
+    }
+}

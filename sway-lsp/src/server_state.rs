@@ -32,7 +32,7 @@ use std::{
         Arc, OnceLock,
     },
 };
-use sway_core::Engines;
+use sway_core::{Engines, LspConfig};
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -174,11 +174,19 @@ impl ServerState {
                 match msg {
                     TaskMessage::CompilationContext(ctx) => {
                         let uri = ctx.uri.as_ref().unwrap().clone();
+                        let path = uri.to_file_path().unwrap();
                         let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = ctx.engines.read().clone();
+                        let lsp_mode = Some(LspConfig {
+                            optimized_build: ctx.optimized_build,
+                            file_versions: ctx.file_versions.clone(),
+                        });
 
-                        // Perform garbage collection if enabled to manage memory usage.
-                        if ctx.gc_options.gc_enabled {
+                        let (needs_reprocessing, _) =
+                            needs_reprocessing(&ctx.token_map, &path, lsp_mode.as_ref());
+
+                        // Perform garbage collection if enabled and if the file has been modified to manage memory usage.
+                        if ctx.gc_options.gc_enabled && needs_reprocessing {
                             // Call this on the engines clone so we don't clear types that are still in use
                             // and might be needed in the case cancel compilation was triggered.
                             if let Err(err) =
@@ -198,9 +206,9 @@ impl ServerState {
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
                             &ctx,
+                            lsp_mode.as_ref(),
                         ) {
                             Ok(()) => {
-                                let path = uri.to_file_path().unwrap();
                                 // Find the program id from the path
                                 match session::program_id_from_path(&path, &engines_clone) {
                                     Ok(program_id) => {
@@ -543,6 +551,30 @@ impl ServerState {
             .get()
             .expect("SyncWorkspace not initialized")
     }
+}
+
+/// Determines if expensive operations (traversal, GC, etc.) should be performed
+/// based on whether tokens exist and if files were modified.
+pub fn needs_reprocessing<'a>(
+    token_map: &TokenMap,
+    path: &'a PathBuf,
+    lsp_mode: Option<&'a LspConfig>,
+) -> (bool, Option<&'a PathBuf>) {
+    let has_tokens = token_map
+        .iter()
+        .any(|item| item.key().path.as_ref() == Some(path));
+    let modified_file_path = modified_file(lsp_mode);
+    let reprocess = !has_tokens || modified_file_path.is_some();
+    (reprocess, modified_file_path)
+}
+
+/// Returns the modified file from the LspConfig if it exists.
+pub fn modified_file(lsp_mode: Option<&LspConfig>) -> Option<&PathBuf> {
+    lsp_mode.and_then(|mode| {
+        mode.file_versions
+            .iter()
+            .find_map(|(path, version)| version.map(|_| path))
+    })
 }
 
 /// A Least Recently Used (LRU) cache for storing and managing `Session` objects.

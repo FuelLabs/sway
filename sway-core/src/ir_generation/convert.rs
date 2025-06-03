@@ -103,7 +103,9 @@ fn convert_resolved_type_info(
         TypeInfo::Boolean => Type::get_bool(context),
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::StringSlice => Type::get_slice(context),
-        TypeInfo::StringArray(length) => Type::new_string_array(context, length.val() as u64),
+        TypeInfo::StringArray(length) if length.expr().as_literal_val().is_some() => {
+            Type::new_string_array(context, length.expr().as_literal_val().unwrap() as u64)
+        }
         TypeInfo::Struct(decl_ref) => super::types::get_struct_for_types(
             type_engine,
             decl_engine,
@@ -209,5 +211,6 @@ fn convert_resolved_type_info(
         TypeInfo::ErrorRecovery(_) => reject_type!("Error recovery"),
         TypeInfo::TraitType { .. } => reject_type!("TraitType"),
         TypeInfo::Array(..) => reject_type!("Array with non literal length"),
+        TypeInfo::StringArray(..) => reject_type!("String Array with non literal length"),
     })
 }

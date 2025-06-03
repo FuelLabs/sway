@@ -2,6 +2,7 @@ use crate::{
     abi_generation::abi_str::AbiStrContext,
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineInsert as _, DeclMapping, InterfaceItemMap, ItemMap,
+        ParsedDeclEngineGet as _,
     },
     engine_threading::*,
     has_changes,
@@ -740,7 +741,7 @@ impl GenericTypeParameter {
                                     concrete_trait_type_ids.first().unwrap().0,
                                     access_span,
                                     "Type parameter type does not match up with matched trait implementing type.",
-                                    None,
+                                    || None,
                                 );
                             }
                             Ordering::Greater => {
@@ -1050,8 +1051,19 @@ pub struct ConstGenericParameter {
 }
 
 impl HashWithEngines for ConstGenericParameter {
-    fn hash<H: Hasher>(&self, state: &mut H, _: &Engines) {
-        match &self.expr {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let ConstGenericParameter {
+            name, ty, id, expr, ..
+        } = self;
+        let type_engine = engines.te();
+        type_engine.get(*ty).hash(state, engines);
+        name.hash(state);
+        if let Some(id) = id.as_ref() {
+            let decl = engines.pe().get(id);
+            decl.name.hash(state);
+            decl.ty.hash(state);
+        }
+        match &expr {
             Some(expr) => {
                 expr.hash(state);
             }
