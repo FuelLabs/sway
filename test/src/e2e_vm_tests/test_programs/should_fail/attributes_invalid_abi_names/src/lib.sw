@@ -3,6 +3,9 @@ contract;
 #[abi_name(name = "SameName")]
 struct MyStruct {}
 
+#[abi_name(name = "MyStruct")]
+struct MyStruct0 {}
+
 #[abi_name(name = "SameName")]
 struct MyStruct1 {}
 
@@ -26,6 +29,7 @@ enum MyEnum {
 
 abi MyAbi {
     fn my_struct() -> MyStruct;
+    fn my_struct0() -> MyStruct0;
     fn my_struct1() -> MyStruct1;
     fn my_struct2() -> MyStruct2;
     fn my_struct3() -> MyStruct3;
@@ -36,6 +40,7 @@ abi MyAbi {
 
 impl MyAbi for Contract {
   fn my_struct() -> MyStruct { MyStruct{} }
+  fn my_struct0() -> MyStruct0 { MyStruct0{} }
   fn my_struct1() -> MyStruct1 { MyStruct1{} }
   fn my_struct2() -> MyStruct2 { MyStruct2{} }
   fn my_struct3() -> MyStruct3 { MyStruct3{} }

@@ -9,7 +9,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_parse::is_valid_identifier_or_path;
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use crate::{
     ast_elements::type_parameter::GenericTypeParameter,
@@ -25,7 +25,7 @@ pub struct AbiContext<'a> {
     pub panic_occurrences: &'a PanicOccurrences,
     pub abi_with_callpaths: bool,
     pub type_ids_to_full_type_str: HashMap<String, String>,
-    pub unique_names: HashSet<String>,
+    pub unique_names: HashMap<String, Span>,
 }
 
 impl AbiContext<'_> {
@@ -37,6 +37,40 @@ impl AbiContext<'_> {
             abi_root_type_without_generic_type_parameters: true,
         }
     }
+}
+
+pub fn extract_abi_name_inner(span: &Span) -> Option<Span> {
+    let text = &span.src().text;
+    let full_attr: &str = &text[span.start()..span.end()];
+
+    // Find the "name" key.
+    let name_key_pos = full_attr.find("name")?;
+    let after_name = &full_attr[name_key_pos..];
+
+    // Find the '=' after "name".
+    let eq_offset_rel = after_name.find('=')?;
+    let after_eq = &after_name[eq_offset_rel + 1..];
+
+    // Find the opening quote of the literal.
+    let first_quote_rel = after_eq.find('"')?;
+    let ident_abs_start = span.start()
+        + name_key_pos
+        + eq_offset_rel
+        + 1        // move past '='
+        + first_quote_rel
+        + 1; // move past the opening '"'
+
+    // Starting at ident_abs_start, locate the closing quote.
+    let rest_after_ident = &text[ident_abs_start..span.end()];
+    let second_quote_rel = rest_after_ident.find('"')?;
+    let ident_abs_end = ident_abs_start + second_quote_rel;
+
+    Span::new(
+        span.src().clone(),
+        ident_abs_start - 1,
+        ident_abs_end + 1,
+        span.source_id().cloned(),
+    )
 }
 
 impl TypeId {
@@ -116,15 +150,30 @@ impl TypeId {
                     None => (String::new(), Span::dummy()),
                 };
 
-            let inserted = ctx.unique_names.insert(type_str.clone());
+            let name_span = extract_abi_name_inner(&span).unwrap_or(span.clone());
+
+            let other_span = match *engines.te().get(resolved_type_id) {
+                TypeInfo::Enum(decl_id) => engines.de().get_enum(&decl_id).span(),
+                TypeInfo::Struct(decl_id) => engines.de().get_struct(&decl_id).span(),
+                _ => unreachable!(),
+            };
+
+            let inserted = ctx
+                .unique_names
+                .insert(type_str.clone(), other_span.clone());
             if has_abi_name_attribute {
                 if name.is_empty() || !is_valid_identifier_or_path(name.as_str()) {
-                    err =
-                        Some(handler.emit_err(CompileError::ABIInvalidName { span: span.clone() }));
+                    err = Some(handler.emit_err(CompileError::ABIInvalidName {
+                        span: name_span.clone(),
+                        name,
+                    }));
                 }
 
-                if !inserted {
-                    err = Some(handler.emit_err(CompileError::ABIDuplicateName { span }));
+                if let Some(other_span) = inserted {
+                    err = Some(handler.emit_err(CompileError::ABIDuplicateName {
+                        span: name_span.clone(),
+                        other_span,
+                    }));
                 }
             }
         }

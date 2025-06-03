@@ -7,56 +7,50 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names
    Compiling library std (sway-lib-std)
    Compiling contract attributes_invalid_abi_names (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names)
-error
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:6:1
+error: Duplicated name found for renamed ABI type.
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:9:19
   |
+...
 4 | struct MyStruct {}
-5 | 
-6 | #[abi_name(name = "SameName")]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Duplicated name found for renamed ABI type.
-
-7 | struct MyStruct1 {}
-8 | 
+  | ------------------ help: This is the existing attribute
+...
+9 | #[abi_name(name = "SameName")]
+  |                   ^^^^^^^^^^
   |
+  = help: The name must be a valid Sway identifier 
 ____
 
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:9:1
+error: Duplicated name found for renamed ABI type.
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:12:19
    |
- 7 | struct MyStruct1 {}
- 8 | 
- 9 | #[abi_name(name = "SameName")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Duplicated name found for renamed ABI type.
-
-10 | struct MyStruct2 {}
+...
+10 | struct MyStruct1 {}
+   | ------------------- help: This is the existing attribute
 11 | 
+12 | #[abi_name(name = "SameName")]
+   |                   ^^^^^^^^^^
    |
+   = help: The name must be a valid Sway identifier 
 ____
 
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:12:1
+error: Invalid name found for renamed ABI type.
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:15:19
    |
-10 | struct MyStruct2 {}
-11 | 
-12 | #[abi_name(name = "")]
-   | ^^^^^^^^^^^^^^^^^^^^^^ Invalid name found for renamed ABI type.
-
-13 | struct MyStruct3 {}
-14 | 
+...
+15 | #[abi_name(name = "")]
+   |                   ^^
    |
+   = help: The name must be a valid Sway identifier and cannot be empty
 ____
 
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:15:1
+error: Invalid name found for renamed ABI type.
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/lib.sw:18:19
    |
-13 | struct MyStruct3 {}
-14 | 
-15 | #[abi_name(name = "this !s n0t an identif1er")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Invalid name found for renamed ABI type.
-
-16 | struct MyStruct4 {}
-17 | 
+...
+18 | #[abi_name(name = "this !s n0t an identif1er")]
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: The name must be a valid Sway identifier
 ____
 
   Aborting due to 4 errors.
