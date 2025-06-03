@@ -618,8 +618,9 @@ impl TyTraitDecl {
         // Specifically do not check for conflicting definitions because
         // this is just a temporary namespace for type checking and
         // these are not actual impl blocks.
+        let interface_handler = Handler::default();
         let _ = ctx.insert_trait_implementation(
-            &Handler::default(),
+            &interface_handler,
             trait_name.clone(),
             type_arguments.to_vec(),
             type_id,
@@ -631,6 +632,7 @@ impl TyTraitDecl {
             IsExtendingExistingImpl::No,
             IsImplInterfaceSurface::Yes,
         );
+        debug_assert!(!interface_handler.has_errors());
     }
 }
 
