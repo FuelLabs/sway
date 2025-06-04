@@ -904,7 +904,7 @@ fn implicit_std_dep() -> Dependency {
     let branch = std::env::var("FORC_IMPLICIT_STD_GIT_BRANCH").ok();
     let git_target = std::env::var("FORC_IMPLICIT_STD_GIT").ok();
 
-    // If any onf the git based std variables is set, we select the git version
+    // If any of the git based std variables is set, we select the git version
     // for std.
     let det = if tag.is_some() || branch.is_some() || git_target.is_some() {
         const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
