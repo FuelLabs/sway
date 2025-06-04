@@ -46,6 +46,7 @@ fn get_validate_local_var(
 fn is_promotable_type(context: &Context, ty: Type) -> bool {
     ty.is_unit(context)
         || ty.is_bool(context)
+        || ty.is_ptr(context)
         || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64)
 }
 
