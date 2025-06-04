@@ -106,11 +106,12 @@ impl ty::TyExpression {
             span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
+        let arguments_types = arguments.iter().map(|a| a.return_type).collect::<Vec<_>>();
         let (mut decl_ref, _) = resolve_method_name(
             handler,
             ctx.by_ref(),
             &method_name_binding,
-            arguments.iter().map(|a| a.return_type).collect(),
+            &arguments_types,
         )?;
         decl_ref = monomorphize_method(
             handler,
@@ -3146,7 +3147,7 @@ fn type_check_panic(
         ctx.namespace().current_module(),
         engines,
         expr_type_id,
-        |trait_entry| trait_entry.is_std_marker_error_trait(),
+        |trait_entry| trait_entry.inner.is_std_marker_error_trait(),
     ) {
         return Err(
             handler.emit_err(CompileError::PanicExpressionArgumentIsNotError {

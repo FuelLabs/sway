@@ -5,6 +5,7 @@ use ::alloc::alloc_bytes;
 use ::bytes::*;
 use ::codec::*;
 use ::debug::*;
+use ::vec::Vec;
 
 pub struct Hasher {
     bytes: Bytes,
@@ -396,6 +397,28 @@ where
         let mut i = 0;
         while __lt(i, N) {
             let item: T = *__elem_at(&self, i);
+            item.hash(state);
+            i = __add(i, 1);
+        }
+    }
+}
+
+impl<T> Hash for Vec<T>
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        let len = self.len();
+        // `__elem_at` accepts only a reference to a slice or an array.
+        // To satisfy this requirement, we cast the pointer to the underlying
+        // vector data to an array reference.
+        let ptr = asm(ptr: self.ptr()) {
+            ptr: &[T; 0]
+        };
+
+        let mut i = 0;
+        while __lt(i, len) {
+            let item: T = *__elem_at(ptr, i);
             item.hash(state);
             i = __add(i, 1);
         }

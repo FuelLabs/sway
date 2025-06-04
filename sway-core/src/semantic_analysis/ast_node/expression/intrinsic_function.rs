@@ -206,7 +206,7 @@ fn type_check_transmute(
             .by_ref()
             .with_help_text("")
             .with_type_annotation(arg_type);
-        ty::TyExpression::type_check(handler, ctx, &arguments[0]).unwrap()
+        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
     };
 
     engines.te().unify(
@@ -216,7 +216,7 @@ fn type_check_transmute(
         src_type,
         &first_argument_typed_expr.span,
         "",
-        None,
+        || None,
     );
 
     let mut final_type_arguments = type_arguments.to_vec();

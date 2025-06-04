@@ -254,6 +254,24 @@ impl<'a> UnifyCheck<'a> {
         self.check_inner(left, right)
     }
 
+    fn check_length(&self, l1: &Length, r1: &Length) -> bool {
+        match (&l1.expr(), &r1.expr()) {
+            (
+                ConstGenericExpr::Literal { val: l, .. },
+                ConstGenericExpr::Literal { val: r, .. },
+            ) => l == r,
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { ident: l },
+                ConstGenericExpr::AmbiguousVariableExpression { ident: r },
+            ) => l == r,
+            (
+                ConstGenericExpr::Literal { .. },
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+            ) => true,
+            _ => false,
+        }
+    }
+
     fn check_inner(&self, left: TypeId, right: TypeId) -> bool {
         use TypeInfo::{
             Alias, Array, ContractCaller, Custom, Enum, ErrorRecovery, Never, Numeric, Placeholder,
@@ -287,21 +305,7 @@ impl<'a> UnifyCheck<'a> {
                 return if !elem_types_unify {
                     false
                 } else {
-                    match (&l1.expr(), &r1.expr()) {
-                        (
-                            ConstGenericExpr::Literal { val: l, .. },
-                            ConstGenericExpr::Literal { val: r, .. },
-                        ) => l == r,
-                        (
-                            ConstGenericExpr::AmbiguousVariableExpression { ident: l },
-                            ConstGenericExpr::AmbiguousVariableExpression { ident: r },
-                        ) => l == r,
-                        (
-                            ConstGenericExpr::Literal { .. },
-                            ConstGenericExpr::AmbiguousVariableExpression { .. },
-                        ) => true,
-                        _ => false,
-                    }
+                    self.check_length(l1, r1)
                 };
             }
 
@@ -483,7 +487,7 @@ impl<'a> UnifyCheck<'a> {
                     (UnsignedInteger(_), Numeric) => true,
 
                     (StringSlice, StringSlice) => true,
-                    (StringArray(l), StringArray(r)) => l.val() == r.val(),
+                    (StringArray(l), StringArray(r)) => self.check_length(l, r),
 
                     // For contract callers, they can be coerced if they have the same
                     // name and at least one has an address of `None`
@@ -512,6 +516,7 @@ impl<'a> UnifyCheck<'a> {
             }
             ConstraintSubset | NonGenericConstraintSubset => {
                 match (&*left_info, &*right_info) {
+                    (StringArray(l), StringArray(r)) => self.check_length(l, r),
                     (
                         UnknownGeneric {
                             name: _,
@@ -552,7 +557,7 @@ impl<'a> UnifyCheck<'a> {
                 (TypeInfo::B256, TypeInfo::B256) => true,
                 (TypeInfo::ErrorRecovery(_), TypeInfo::ErrorRecovery(_)) => true,
                 (TypeInfo::StringSlice, TypeInfo::StringSlice) => true,
-                (TypeInfo::StringArray(l), TypeInfo::StringArray(r)) => l.val() == r.val(),
+                (TypeInfo::StringArray(l), TypeInfo::StringArray(r)) => self.check_length(l, r),
                 (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
                 (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
                 (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
@@ -797,27 +802,38 @@ impl<'a> UnifyCheck<'a> {
             return false;
         }
 
-        let l_types = left
-            .generic_parameters
-            .iter()
-            .map(|x| {
-                let x = x
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                x.type_id
-            })
-            .collect::<Vec<_>>();
+        let mut l_types = vec![];
+        let mut r_types = vec![];
 
-        let r_types = right
+        for (l, r) in left
             .generic_parameters
             .iter()
-            .map(|x| {
-                let x = x
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                x.type_id
-            })
-            .collect::<Vec<_>>();
+            .zip(right.generic_parameters.iter())
+        {
+            match (l, r) {
+                (TypeParameter::Type(l), TypeParameter::Type(r)) => {
+                    l_types.push(l.type_id);
+                    r_types.push(r.type_id);
+                }
+                (TypeParameter::Const(l), TypeParameter::Const(r)) => {
+                    match (l.expr.as_ref(), r.expr.as_ref()) {
+                        (None, None) => {}
+                        (None, Some(_)) => {}
+                        (Some(_), None) => {}
+                        (
+                            Some(ConstGenericExpr::Literal { val: l_val, .. }),
+                            Some(ConstGenericExpr::Literal { val: r_val, .. }),
+                        ) => {
+                            assert!(l_val == r_val);
+                        }
+                        (Some(_), Some(_)) => todo!(
+                            "Will be implemented by https://github.com/FuelLabs/sway/issues/6860"
+                        ),
+                    }
+                }
+                _ => return false,
+            }
+        }
 
         self.check_multiple(&l_types, &r_types)
     }

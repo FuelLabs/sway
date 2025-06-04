@@ -34,6 +34,7 @@ members = [
 #       Compilation fails with error: No method "eq(Self, Self) -> ()" found for type "Self".
 #  "test_programs/storage_vec_iter_tests",
   "test_programs/string_inline_tests",
+  "test_programs/time_inline_tests",
   "test_programs/tx_inline_tests",
   "test_programs/u128_inline_tests",
   "test_programs/vec_inline_tests",

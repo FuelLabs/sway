@@ -1,6 +1,6 @@
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed};
 use sway_ast::brackets::{Parens, SquareBrackets};
-use sway_ast::keywords::{DoubleColonToken, OpenAngleBracketToken, PtrToken, SliceToken};
+use sway_ast::keywords::{DoubleColonToken, OpenAngleBracketToken, PtrToken, SliceToken, StrToken};
 use sway_ast::ty::{Ty, TyArrayDescriptor, TyTupleDescriptor};
 use sway_ast::{Expr, Literal};
 use sway_error::parser_error::ParseErrorKind;
@@ -49,7 +49,9 @@ impl Parse for Ty {
             }
         }
 
-        if let Some(str_token) = parser.take() {
+        // string array like str[1] or str[N]
+        // or string slice like str
+        if let Some(str_token) = parser.take::<StrToken>() {
             let length = SquareBrackets::try_parse_all_inner(parser, |mut parser| {
                 parser.emit_error(ParseErrorKind::UnexpectedTokenAfterStrLength)
             })?;

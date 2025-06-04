@@ -190,7 +190,8 @@ impl DeclRefFunction {
     pub fn get_method_safe_to_unify(&self, engines: &Engines, type_id: TypeId) -> Self {
         let decl_engine = engines.de();
 
-        let mut method = (*decl_engine.get_function(self)).clone();
+        let original = &*decl_engine.get_function(self);
+        let mut method = original.clone();
 
         if let Some(method_implementing_for_typeid) = method.implementing_for_typeid {
             let mut type_id_type_subst_map = TypeSubstMap::new();
@@ -241,6 +242,13 @@ impl DeclRefFunction {
                         type_id_type_subst_map.insert(p.type_id, type_id);
                     }
                 }
+            }
+
+            // Duplicate arguments to avoid changing TypeId inside TraitMap
+            for parameter in method.parameters.iter_mut() {
+                *parameter.type_argument.type_id_mut() = engines
+                    .te()
+                    .duplicate(engines, parameter.type_argument.type_id())
             }
 
             let mut method_type_subst_map = TypeSubstMap::new();
@@ -793,7 +801,9 @@ impl TyFunctionSig {
                         TyFunctionSigTypeParameter::Const(p) => {
                             match p {
                                 ConstGenericExpr::Literal { val, .. } => val.to_string(),
-                                ConstGenericExpr::AmbiguousVariableExpression { .. } => todo!(),
+                                ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+                                    ident.as_str().to_string()
+                                }
                             }
                         }
                     })

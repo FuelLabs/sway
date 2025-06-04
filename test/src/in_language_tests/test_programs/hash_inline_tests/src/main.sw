@@ -429,6 +429,47 @@ fn hash_hasher_sha256_10_array() {
     assert(sha256 == 0x5f80cf4c3ec64f652ea4ba4db7ea12896224546bd2ed4dd2032a8ce12fde16f9);
 }
 
+#[test]
+fn hash_hasher_sha256_vec() {
+    let mut vec = Vec::<u64>::new();
+    let mut i = 0;
+    while i < 10 {
+        vec.push(0_u64);
+        i += 1;
+    }
+
+    let mut hasher = Hasher::new();
+    vec.hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0x5b6fb58e61fa475939767d68a446f97f1bff02c0e5935a3ea8bb51e6515783d8);
+
+    let mut vec = Vec::<u64>::new();
+    let mut i = 0;
+    while i < 10 {
+        vec.push(1_u64);
+        i += 1;
+    }
+
+    let mut hasher = Hasher::new();
+    vec.hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0x5f80cf4c3ec64f652ea4ba4db7ea12896224546bd2ed4dd2032a8ce12fde16f9);
+
+    let mut vec = Vec::<(u64, Vec<u64>)>::new();
+    let mut inner_vec = Vec::<u64>::new();
+    let mut i = 0;
+    while i < 9 {
+        inner_vec.push(0_u64);
+        i += 1;
+    }
+    vec.push((0_u64, inner_vec));
+
+    let mut hasher = Hasher::new();
+    vec.hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0x5b6fb58e61fa475939767d68a446f97f1bff02c0e5935a3ea8bb51e6515783d8);
+}
+
 #[test()]
 fn hash_sha256() {
     let digest = sha256(0_u64);

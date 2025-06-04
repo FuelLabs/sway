@@ -5,19 +5,19 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("I/O error")]
+    #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
 
-    #[error("Json error")]
+    #[error("Json error: {0}")]
     JsonError(#[from] serde_json::Error),
 
-    #[error("HTTP error")]
+    #[error("HTTP error: {0}")]
     HttpError(#[from] reqwest::Error),
 
-    #[error("TOML error")]
+    #[error("TOML error: {0}")]
     TomlError(#[from] toml::ser::Error),
 
-    #[error("URL error")]
+    #[error("URL error: {0}")]
     UrlError(#[from] url::ParseError),
 
     #[error("Failed to get relative path")]

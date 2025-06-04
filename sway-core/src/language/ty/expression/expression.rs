@@ -313,10 +313,12 @@ impl CollectTypesMetadata for TyExpression {
             } => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
                 for p in enum_decl.generic_parameters.iter() {
-                    let p = p
-                        .as_type_parameter()
-                        .expect("only works for type parameters");
-                    ctx.call_site_insert(p.type_id, call_path_binding.inner.suffix.span())
+                    match p {
+                        TypeParameter::Type(p) => {
+                            ctx.call_site_insert(p.type_id, call_path_binding.inner.suffix.span())
+                        }
+                        TypeParameter::Const(_) => {}
+                    }
                 }
                 if let Some(contents) = contents {
                     res.append(&mut contents.collect_types_metadata(handler, ctx)?);
@@ -330,10 +332,12 @@ impl CollectTypesMetadata for TyExpression {
                     );
                 }
                 for p in enum_decl.generic_parameters.iter() {
-                    let p = p
-                        .as_type_parameter()
-                        .expect("only works for type parameters");
-                    res.append(&mut p.type_id.collect_types_metadata(handler, ctx)?);
+                    match p {
+                        TypeParameter::Type(p) => {
+                            res.append(&mut p.type_id.collect_types_metadata(handler, ctx)?);
+                        }
+                        TypeParameter::Const(_) => {}
+                    }
                 }
             }
             AbiCast { address, .. } => {
@@ -487,6 +491,65 @@ impl MaterializeConstGenerics for TyExpression {
             }
             TyExpressionVariant::Deref(r) => {
                 r.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::MatchExp { desugared, .. } => {
+                desugared.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::EnumInstantiation { contents, .. } => {
+                if let Some(contents) = contents.as_mut() {
+                    contents.materialize_const_generics(engines, handler, name, value)?;
+                }
+                Ok(())
+            }
+            TyExpressionVariant::EnumTag { exp } => {
+                exp.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::Tuple { fields } => {
+                for f in fields {
+                    f.materialize_const_generics(engines, handler, name, value)?;
+                }
+                Ok(())
+            }
+            TyExpressionVariant::TupleElemAccess {
+                prefix,
+                resolved_type_of_parent,
+                ..
+            } => {
+                prefix.materialize_const_generics(engines, handler, name, value)?;
+                resolved_type_of_parent
+                    .materialize_const_generics(engines, handler, name, value)?;
+                Ok(())
+            }
+            TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
+                lhs.materialize_const_generics(engines, handler, name, value)?;
+                rhs.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::AsmExpression { registers, .. } => {
+                for r in registers.iter_mut() {
+                    if let Some(init) = r.initializer.as_mut() {
+                        init.materialize_const_generics(engines, handler, name, value)?;
+                    }
+                }
+                Ok(())
+            }
+            TyExpressionVariant::ConstantExpression { .. } => Ok(()),
+            TyExpressionVariant::StructExpression { fields, .. } => {
+                for f in fields {
+                    f.value
+                        .materialize_const_generics(engines, handler, name, value)?;
+                }
+                Ok(())
+            }
+            TyExpressionVariant::StructFieldAccess {
+                prefix,
+                resolved_type_of_parent,
+                ..
+            } => {
+                prefix.materialize_const_generics(engines, handler, name, value)?;
+                resolved_type_of_parent.materialize_const_generics(engines, handler, name, value)
+            }
+            TyExpressionVariant::UnsafeDowncast { exp, .. } => {
+                exp.materialize_const_generics(engines, handler, name, value)
             }
             _ => Err(handler.emit_err(
                 sway_error::error::CompileError::ConstGenericNotSupportedHere {
