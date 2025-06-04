@@ -96,6 +96,7 @@ mod test {
     use tempfile::tempdir;
 
     #[test]
+    #[serial]
     fn test_get_auth_token_from_cli_arg() {
         let token = Some("cli_token".to_string());
         let result = get_auth_token(token, None).unwrap();
@@ -112,6 +113,7 @@ mod test {
     }
 
     #[test]
+    #[serial]
     fn test_get_auth_token_from_file() {
         let temp_dir = tempdir().unwrap();
         let cred_path = temp_dir.path().join("credentials.toml");
@@ -127,6 +129,7 @@ mod test {
     }
 
     #[test]
+    #[serial]
     fn test_get_auth_token_from_user_input() {
         let temp_dir = tempdir().unwrap();
         let cred_path = temp_dir.path().join("credentials.toml");
