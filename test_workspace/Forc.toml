@@ -1,0 +1,4 @@
+cat > Forc.toml << 'EOF'
+[workspace]
+members = ["contract1", "contract2", "library1"]
+EOF

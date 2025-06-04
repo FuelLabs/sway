@@ -31,3 +31,5 @@ swayfmt.workspace = true
 [dev-dependencies]
 dir_indexer.workspace = true
 expect-test.workspace = true
+forc-util = { version = "0.66", path = "../../forc-util" }
+forc-pkg = { version = "0.66", path = "../../forc-pkg" }
