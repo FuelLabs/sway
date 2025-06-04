@@ -119,9 +119,35 @@ impl Clone for DeclEngine {
     }
 }
 
-pub trait DeclEngineGet<I, U> {
+pub trait DeclEngineGet<I, U>
+{
     fn get(&self, index: &I) -> Arc<U>;
     fn map<R>(&self, index: &I, f: impl FnOnce(&U) -> R) -> R;
+
+    // Get, clone, insert and return new item.
+    // Keep the same source_id
+    fn duplicate(&self, index: &I) -> DeclRef<DeclId<U>>
+    where
+        Self: DeclEngineInsert<U>,
+        U: Named + Spanned + TyDeclParsedType + Clone
+    {
+        let old_item = self.get(index);
+        let new_item = U::clone(&old_item);
+        self.insert(new_item, None)
+    }
+
+    // Get, clone, insert and return new item.
+    // Keep the same source_id
+    fn map_duplicate(&self, index: &I, map: impl FnOnce(&mut U)) -> DeclRef<DeclId<U>>
+    where
+        Self: DeclEngineInsert<U>,
+        U: Named + Spanned + TyDeclParsedType + Clone
+    {
+        let old_item = self.get(index);
+        let mut new_item = U::clone(&old_item);
+        map(&mut new_item);
+        self.insert(new_item, None)
+    }
 }
 
 pub trait DeclEngineGetParsedDeclId<T>
@@ -415,6 +441,7 @@ decl_engine_replace!(constant_slab, ty::TyConstantDecl);
 decl_engine_replace!(configurable_slab, ty::TyConfigurableDecl);
 decl_engine_replace!(enum_slab, ty::TyEnumDecl);
 decl_engine_replace!(type_alias_slab, ty::TyTypeAliasDecl);
+decl_engine_replace!(const_generics_slab, ty::TyConstGenericDecl);
 
 macro_rules! decl_engine_index {
     ($slab:ident, $decl:ty) => {

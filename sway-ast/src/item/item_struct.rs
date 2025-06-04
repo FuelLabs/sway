@@ -5,7 +5,7 @@ pub struct ItemStruct {
     pub visibility: Option<PubToken>,
     pub struct_token: StructToken,
     pub name: Ident,
-    pub generics: Option<GenericParams>,
+    pub generic_params_opt: Option<GenericParams>,
     pub where_clause_opt: Option<WhereClause>,
     pub fields: Braces<Punctuated<Annotated<TypeField>, CommaToken>>,
 }

@@ -599,7 +599,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 Ok(leaves.to_vec())
             }
         }
-        ty::TyDecl::ConstGenericDecl(_) => {
+        ty::TyDecl::ConstGenericDecl { .. } => {
             todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860");
         }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
@@ -1518,8 +1518,9 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             Ok(vec![node])
         }
-        ConstGenericExpression { decl, .. } => {
-            let Some(node) = graph.namespace.get_const_generic(decl).cloned() else {
+        ConstGenericExpression { id, .. } => {
+            let decl = engines.de().get(id);
+            let Some(node) = graph.namespace.get_const_generic(&decl).cloned() else {
                 return Ok(leaves.to_vec());
             };
 
@@ -2588,7 +2589,7 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_configurable(decl_id).attributes.clone())
             }
-            ty::TyDecl::ConstGenericDecl(_) => {
+            ty::TyDecl::ConstGenericDecl { .. } => {
                 todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {

@@ -7,13 +7,16 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, MaterializeConstGenerics},
+    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineGet, DeclEngineInsert, MaterializeConstGenerics},
     language::{
-        ty::{self, TyExpression},
+        ty::{self, TyConstGenericDecl, TyExpression},
         CallPath,
     },
     namespace::{ModulePath, ResolvedDeclaration},
-    semantic_analysis::type_resolve::{resolve_type, VisibilityCheck},
+    semantic_analysis::{
+        type_resolve::{resolve_type, VisibilityCheck},
+        TypeCheckContext,
+    },
     type_system::ast_elements::create_type_id::CreateTypeId,
     EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes, SubstTypesContext,
     TypeId, TypeParameter, TypeSubstMap,
@@ -40,6 +43,7 @@ pub(crate) fn prepare_type_subst_map_for_monomorphize<T>(
     mod_path: &ModulePath,
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
+    ctx: &TypeCheckContext<'_>,
 ) -> Result<TypeSubstMap, ErrorEmitted>
 where
     T: MonomorphizeHelper + SubstTypes,
@@ -135,6 +139,7 @@ where
                     self_type,
                     subst_ctx,
                     VisibilityCheck::Yes,
+                    ctx,
                 )
                 .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }
@@ -150,7 +155,7 @@ where
                     }
                     (TypeParameter::Const(p), GenericArgument::Const(a)) => {
                         consts.insert(
-                            p.name.as_str().to_string(),
+                            p.tid.name().as_str().to_string(),
                             a.expr.to_ty_expression(engines),
                         );
                     }
@@ -206,17 +211,19 @@ pub(crate) fn monomorphize_with_modpath<T>(
     namespace: &Namespace,
     value: &mut T,
     type_arguments: &mut [GenericArgument],
-    const_generics: BTreeMap<String, TyExpression>,
+    const_generics: BTreeMap<crate::decl_engine::DeclId<TyConstGenericDecl>, TyExpression>,
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
+    ctx: &TypeCheckContext<'_>,
 ) -> Result<(), ErrorEmitted>
 where
     T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
 {
-    let type_mapping = prepare_type_subst_map_for_monomorphize(
+    dbg!("{}", const_generics.len());
+    let mut type_mapping = prepare_type_subst_map_for_monomorphize(
         handler,
         engines,
         namespace,
@@ -227,16 +234,20 @@ where
         mod_path,
         self_type,
         subst_ctx,
+        ctx,
     )?;
+    dbg!("{}", const_generics.len());
+
+    for (key, value) in const_generics {
+        let new_ref = engines.de().map_duplicate(&key, |decl| {
+            decl.value = Some(value);
+        });
+        type_mapping.const_generics_mapping.insert(key, new_ref.id().clone());
+    }
+
+    eprintln!("type_mapping: {:?}", engines.help_out(&type_mapping));
+
     value.subst(&SubstTypesContext::new(engines, &type_mapping, true));
-
-    for (name, expr) in const_generics.iter() {
-        let _ = value.materialize_const_generics(engines, handler, name, expr);
-    }
-
-    for (name, expr) in type_mapping.const_generics_materialization.iter() {
-        let _ = value.materialize_const_generics(engines, handler, name, expr);
-    }
 
     Ok(())
 }
@@ -254,6 +265,7 @@ pub(crate) fn type_decl_opt_to_type_id(
     type_arguments: Option<Vec<GenericArgument>>,
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
+    ctx: &TypeCheckContext<'_>,
 ) -> Result<TypeId, ErrorEmitted> {
     let decl_engine = engines.de();
     let type_engine = engines.te();
@@ -278,6 +290,7 @@ pub(crate) fn type_decl_opt_to_type_id(
                 mod_path,
                 self_type,
                 subst_ctx,
+                ctx,
             )?;
 
             // insert the new copy in the decl engine
@@ -309,6 +322,7 @@ pub(crate) fn type_decl_opt_to_type_id(
                 mod_path,
                 self_type,
                 subst_ctx,
+                ctx,
             )?;
 
             // insert the new copy in the decl engine
@@ -350,7 +364,7 @@ pub(crate) fn type_decl_opt_to_type_id(
                 )));
             }
         }
-        Some(ResolvedDeclaration::Typed(ty::TyDecl::ConstGenericDecl(_))) => {
+        Some(ResolvedDeclaration::Typed(ty::TyDecl::ConstGenericDecl { .. })) => {
             return Ok(engines.te().id_of_u64())
         }
         _ => {

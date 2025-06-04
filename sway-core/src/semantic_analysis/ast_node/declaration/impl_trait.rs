@@ -156,33 +156,15 @@ impl TyImplSelfOrTrait {
             .with_self_type(Some(self_type_id))
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |ctx| {
+                // Put cosnt generics into scope
                 let const_generic_parameters = impl_type_parameters
                     .iter()
-                    .filter_map(|x| x.as_const_parameter())
-                    .filter_map(|x| x.id.as_ref());
-                for const_generic_decl_id in const_generic_parameters {
-                    let const_generic_decl = engines.pe().get(const_generic_decl_id);
-
-                    let decl_ref = engines.de().insert(
-                        TyConstGenericDecl {
-                            call_path: CallPath {
-                                prefixes: vec![],
-                                suffix: const_generic_decl.name.clone(),
-                                callpath_type: CallPathType::Ambiguous,
-                            },
-                            span: const_generic_decl.span.clone(),
-                            return_type: const_generic_decl.ty,
-                            value: None,
-                        },
-                        Some(const_generic_decl_id),
-                    );
-
+                    .filter_map(|x| x.as_const_parameter());
+                for p in const_generic_parameters {
                     ctx.insert_symbol(
                         handler,
-                        const_generic_decl.name.clone(),
-                        TyDecl::ConstGenericDecl(ConstGenericDecl {
-                            decl_id: *decl_ref.id(),
-                        }),
+                        p.tid.name().clone(),
+                        TyDecl::ConstGenericDecl { id: *p.tid.id() },
                     )?;
                 }
 
@@ -445,33 +427,15 @@ impl TyImplSelfOrTrait {
         ctx.with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |ctx| {
+                // Put const generics symbols into scope
                 let const_generic_parameters = impl_type_parameters
                     .iter()
-                    .filter_map(|x| x.as_const_parameter())
-                    .filter_map(|x| x.id.as_ref());
-                for const_generic_decl_id in const_generic_parameters {
-                    let const_generic_decl = engines.pe().get(const_generic_decl_id);
-
-                    let decl_ref = engines.de().insert(
-                        TyConstGenericDecl {
-                            call_path: CallPath {
-                                prefixes: vec![],
-                                suffix: const_generic_decl.name.clone(),
-                                callpath_type: CallPathType::Ambiguous,
-                            },
-                            span: const_generic_decl.span.clone(),
-                            return_type: const_generic_decl.ty,
-                            value: None,
-                        },
-                        Some(const_generic_decl_id),
-                    );
-
+                    .filter_map(|x| x.as_const_parameter());
+                for p in const_generic_parameters {
                     ctx.insert_symbol(
                         handler,
-                        const_generic_decl.name.clone(),
-                        TyDecl::ConstGenericDecl(ConstGenericDecl {
-                            decl_id: *decl_ref.id(),
-                        }),
+                        p.tid.name().clone(),
+                        TyDecl::ConstGenericDecl { id: *p.tid.id() },
                     )?;
                 }
 

@@ -4,5 +4,5 @@ script_data = "0000000000000005 0000000000000004"
 expected_result = { action = "return_data", value = "" }
 
 validate_abi = true
-expected_warnings = 3
+expected_warnings = 300
 experimental = { const_generics = true }

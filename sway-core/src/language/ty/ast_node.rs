@@ -262,7 +262,7 @@ impl TyAstNode {
                         value.check_deprecated(engines, handler, allow_deprecated);
                     }
                 }
-                TyDecl::ConstGenericDecl(_) => {
+                TyDecl::ConstGenericDecl { .. } => {
                     todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                 }
                 TyDecl::TraitTypeDecl(_) => {}
@@ -324,7 +324,7 @@ impl TyAstNode {
                     TyDecl::VariableDecl(_decl) => {}
                     TyDecl::ConstantDecl(_decl) => {}
                     TyDecl::ConfigurableDecl(_decl) => {}
-                    TyDecl::ConstGenericDecl(_decl) => {
+                    TyDecl::ConstGenericDecl { .. } => {
                         todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                     }
                     TyDecl::TraitTypeDecl(_) => {}

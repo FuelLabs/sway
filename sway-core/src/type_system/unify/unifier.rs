@@ -8,9 +8,11 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     ast_elements::type_parameter::ConstGenericExpr,
-    decl_engine::{DeclEngineGet, DeclId},
+    decl_engine::{DeclEngineGet, DeclEngineReplace, DeclId},
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext, WithEngines},
-    language::ty::{TyEnumDecl, TyStructDecl},
+    language::ty::{
+        TyConstGenericDecl, TyEnumDecl, TyExpression, TyExpressionVariant, TyStructDecl,
+    },
     type_system::{engine::Unification, priv_prelude::*},
 };
 
@@ -167,7 +169,8 @@ impl<'a> Unifier<'a> {
                         ConstGenericExpr::Literal { .. },
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
                     ) => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                        todo!();
+                        self.replace_expected_with_received(expected, &r_type_source_info, span);
                     }
                     (
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
@@ -180,6 +183,39 @@ impl<'a> Unifier<'a> {
                         ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
                     ) => {
                         assert!(r_ident.as_str() == e_ident.as_str());
+                    }
+                    (ConstGenericExpr::Literal { val, span }, ConstGenericExpr::Decl { id }) => {
+                        let mut decl = TyConstGenericDecl::clone(&self.engines.de().get(id));
+                        assert!(decl.value.is_none());
+
+                        decl.value = Some(TyExpression {
+                            expression: TyExpressionVariant::Literal(
+                                crate::language::Literal::U64(*val as u64),
+                            ),
+                            return_type: decl.return_type.clone(),
+                            span: span.clone(),
+                        });
+
+                        self.engines.de().replace(*id, decl);
+                    }
+                    (
+                        ConstGenericExpr::AmbiguousVariableExpression { ident },
+                        ConstGenericExpr::Decl { id },
+                    ) => {
+                        self.replace_received_with_expected(received, &e_type_source_info, span);
+                    }
+                    (ConstGenericExpr::Decl { id }, ConstGenericExpr::Literal { val, span }) => {
+                        todo!()
+                    }
+                    (
+                        ConstGenericExpr::Decl { id },
+                        ConstGenericExpr::AmbiguousVariableExpression { ident },
+                    ) => todo!(),
+                    (ConstGenericExpr::Decl { id: l }, ConstGenericExpr::Decl { id: r }) => {
+                        if l == r {
+                        } else {
+                            todo!();
+                        }
                     }
                 }
             }
@@ -485,7 +521,10 @@ impl<'a> Unifier<'a> {
                                     span,
                                 );
                             }
-                            (None, None) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                            (None, None) => {
+                                // eprintln!("{}", std::backtrace::Backtrace::force_capture());
+                                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860");
+                            },
                         }
                     }
                     _ => {
@@ -570,7 +609,7 @@ impl<'a> Unifier<'a> {
                                 );
                             }
                             (None, None) => {
-                                if received_parameter.name == expected_parameter.name {
+                                if received_parameter.tid.name() == expected_parameter.tid.name() {
                                 } else {
                                     todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                                 }

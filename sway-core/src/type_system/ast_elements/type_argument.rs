@@ -1,4 +1,9 @@
-use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
+use crate::{
+    decl_engine::{DeclId, DeclRef},
+    engine_threading::*,
+    language::{ty::TyConstGenericDecl, CallPathTree},
+    type_system::priv_prelude::*,
+};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
@@ -251,6 +256,7 @@ impl DebugWithEngines for GenericArgument {
     }
 }
 
+// TODO why we need this?
 impl From<&TypeParameter> for GenericArgument {
     fn from(p: &TypeParameter) -> Self {
         match p {
@@ -264,7 +270,7 @@ impl From<&TypeParameter> for GenericArgument {
                 expr: match p.expr.as_ref() {
                     Some(expr) => expr.clone(),
                     None => ConstGenericExpr::AmbiguousVariableExpression {
-                        ident: p.name.clone(),
+                        ident: p.tid.name().clone(),
                     },
                 },
             }),
@@ -276,7 +282,12 @@ impl SubstTypes for GenericArgument {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         match self {
             GenericArgument::Type(a) => a.type_id.subst(ctx),
-            GenericArgument::Const(_) => HasChanges::No,
+            GenericArgument::Const(p) => {
+                match &mut p.expr {
+                    ConstGenericExpr::Decl { id } => id.subst_inner(ctx),
+                    _ => HasChanges::No,
+                }
+            },
         }
     }
 }

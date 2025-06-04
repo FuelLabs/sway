@@ -6,7 +6,7 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::TreeType,
-        ty::{self, TyDecl, TyExpression},
+        ty::{self, TyConstGenericDecl, TyDecl, TyExpression},
         CallPath, QualifiedCallPath, Visibility,
     },
     monomorphization::{monomorphize_with_modpath, MonomorphizeHelper},
@@ -533,7 +533,7 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         value: &mut T,
         type_arguments: &mut [GenericArgument],
-        const_generics: BTreeMap<String, TyExpression>,
+        const_generics: BTreeMap<crate::decl_engine::DeclId<TyConstGenericDecl>, TyExpression>,
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
     ) -> Result<(), ErrorEmitted>
@@ -553,6 +553,7 @@ impl<'a> TypeCheckContext<'a> {
             &mod_path,
             self.self_type(),
             &self.subst_ctx(),
+            self,
         )
     }
 
@@ -629,6 +630,7 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
             &self.subst_ctx(),
             VisibilityCheck::Yes,
+            self,
         )
     }
 
@@ -646,6 +648,7 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
             &self.subst_ctx(),
             VisibilityCheck::Yes,
+            self,
         )
         .map(|d| d.expect_typed())
     }
@@ -735,6 +738,7 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
             &self.subst_ctx(),
             VisibilityCheck::Yes,
+            self,
         )
         .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
@@ -880,20 +884,29 @@ impl<'a> TypeCheckContext<'a> {
                 } else {
                     0
                 };
-                if method.parameters.len() == arguments_types.len() - args_len_diff
-                    && method
-                        .parameters
-                        .iter()
-                        .zip(arguments_types.iter().skip(args_len_diff))
-                        .all(|(p, a)| coercion_check.check(*a, p.type_argument.type_id()))
-                    && (matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
-                        || matches!(
-                            &*type_engine.get(method.return_type.type_id()),
-                            TypeInfo::Never
-                        )
-                        || coercion_check.check(annotation_type, method.return_type.type_id()))
-                {
+
+                let a = method.parameters.len() == arguments_types.len() - args_len_diff;
+                let b = method
+                    .parameters
+                    .iter()
+                    .zip(arguments_types.iter().skip(args_len_diff))
+                    .all(|(p, a)| coercion_check.check(*a, p.type_argument.type_id()));
+                let c = (matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
+                    || matches!(
+                        &*type_engine.get(method.return_type.type_id()),
+                        TypeInfo::Never
+                    )
+                    || coercion_check.check(annotation_type, method.return_type.type_id()));
+                if a && b && c {
                     maybe_method_decl_refs.push(decl_ref);
+                } else {
+                    eprintln!(
+                        "        Failed: {} {} {} {:?}",
+                        a,
+                        b,
+                        c,
+                        self.engines.help_out(method)
+                    );
                 }
             }
 

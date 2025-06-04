@@ -7,6 +7,7 @@ use std::ops::Deref;
 
 use crate::{
     build_config::DbgGeneration,
+    decl_engine::DeclEngineGet as _,
     engine_threading::SpannedWithEngines,
     language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
@@ -17,7 +18,7 @@ use crate::{
 };
 use sway_error::handler::Handler;
 use sway_parse::Parse;
-use sway_types::{SourceId, Spanned};
+use sway_types::{Named as _, SourceId, Spanned};
 
 /// Contains all information needed to auto-implement code for a certain feature.
 pub struct AutoImplContext<'a, 'b, I>
@@ -92,10 +93,11 @@ where
             match p {
                 TypeParameter::Type(p) => code.push_str(p.name.as_str()),
                 TypeParameter::Const(p) => {
+                    let decl = self.engines.de().get(p.tid.id());
                     if expanded_const_generics {
-                        code.push_str(&format!("const {}: u64", p.name.as_str()));
+                        code.push_str(&format!("const {}: u64", decl.name().as_str()));
                     } else {
-                        code.push_str(p.name.as_str())
+                        code.push_str(decl.name().as_str())
                     }
                 }
             }

@@ -51,8 +51,7 @@ pub enum TyExpressionVariant {
     },
     ConstGenericExpression {
         span: Span,
-        decl: Box<TyConstGenericDecl>,
-        call_path: CallPath,
+        id: DeclId<TyConstGenericDecl>,
     },
     VariableExpression {
         name: Ident,
@@ -491,12 +490,9 @@ impl HashWithEngines for TyExpressionVariant {
             } => {
                 const_decl.hash(state, engines);
             }
-            Self::ConstGenericExpression {
-                decl: const_generic_decl,
-                span: _,
-                call_path: _,
-            } => {
-                const_generic_decl.name().hash(state);
+            Self::ConstGenericExpression { id, .. } => {
+                let decl = engines.de().get(id);
+                decl.name().hash(state);
             }
             Self::VariableExpression {
                 name,
@@ -704,7 +700,17 @@ impl SubstTypes for TyExpressionVariant {
             },
             ConstantExpression { decl, .. } => decl.subst(ctx),
             ConfigurableExpression { decl, .. } => decl.subst(ctx),
-            ConstGenericExpression { decl, .. } => decl.subst(ctx),
+            ConstGenericExpression { id, .. } => {
+                let mut decl = TyConstGenericDecl::clone(&ctx.engines.de().get(id));
+
+                match decl.subst(ctx) {
+                    HasChanges::Yes => {
+                        *id = ctx.engines.de().insert(decl, None).id().clone(); // TODO remove this None
+                        HasChanges::Yes
+                    }
+                    HasChanges::No => HasChanges::No,
+                }
+            }
             VariableExpression { .. } => HasChanges::No,
             Tuple { fields } => fields.subst(ctx),
             ArrayExplicit {
@@ -1100,7 +1106,8 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::ConfigurableExpression { decl, .. } => {
                 decl.type_check_analyze(handler, ctx)?
             }
-            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+            TyExpressionVariant::ConstGenericExpression { id, .. } => {
+                let decl = ctx.engines.de().get(id);
                 decl.type_check_analyze(handler, ctx)?
             }
             TyExpressionVariant::VariableExpression { .. } => {}

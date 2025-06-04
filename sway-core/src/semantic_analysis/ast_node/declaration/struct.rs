@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::parsed_id::ParsedDeclId,
+    decl_engine::{engine, parsed_id::ParsedDeclId},
     language::{parsed::*, ty, CallPath},
     semantic_analysis::*,
     type_system::*,
@@ -48,7 +48,7 @@ impl ty::TyStructDecl {
 
         // create a namespace for the decl, used to create a scope for generics
         ctx.scoped(handler, Some(span.clone()), |ctx| {
-            // Type check the type parameters.
+            // Type check and insert generic parameters into the lexical scope
             let new_type_parameters = GenericTypeParameter::type_check_type_params(
                 handler,
                 ctx.by_ref(),
@@ -56,9 +56,14 @@ impl ty::TyStructDecl {
                 None,
             )?;
 
-            // type check the fields
+            // type check fields
             let mut new_fields = vec![];
             for field in fields.into_iter() {
+                eprintln!(
+                    "Type checking field: {} {:?}",
+                    field.name.as_str(),
+                    ctx.engines.te().get(field.type_argument.type_id()),
+                );
                 new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
             }
 

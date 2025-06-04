@@ -2,17 +2,20 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_ir::Type;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
+    ast_elements::type_parameter::ConstGenericExpr,
     language::{
-        ty::{self, TyTraitItem},
+        ty::{self, TyDecl, TyTraitItem},
         CallPath, QualifiedCallPath,
     },
     monomorphization::type_decl_opt_to_type_id,
     namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
+    semantic_analysis::TypeCheckContext,
     type_system::SubstTypes,
-    EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
+    EnforceTypeArguments, Engines, Length, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
 
 use super::namespace::TraitMap;
@@ -40,6 +43,7 @@ pub fn resolve_type(
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
     check_visibility: VisibilityCheck,
+    ctx: &TypeCheckContext<'_>,
 ) -> Result<TypeId, ErrorEmitted> {
     let type_engine = engines.te();
     let module_path = type_info_prefix.unwrap_or(mod_path);
@@ -57,6 +61,7 @@ pub fn resolve_type(
                 self_type,
                 subst_ctx,
                 check_visibility,
+                ctx,
             )
             .ok();
 
@@ -72,6 +77,7 @@ pub fn resolve_type(
                 type_arguments.clone(),
                 self_type,
                 subst_ctx,
+                ctx,
             )?
         }
         TypeInfo::Array(elem_ty, length) => {
@@ -88,10 +94,13 @@ pub fn resolve_type(
                 self_type,
                 subst_ctx,
                 check_visibility,
+                ctx,
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
-            engines.te().insert_array(engines, elem_ty, length.clone())
+            let expr = resolve_const_generic_expr(handler, ctx, length.expr());
+
+            engines.te().insert_array(engines, elem_ty, Length(expr))
         }
         TypeInfo::Slice(elem_ty) => {
             let mut elem_ty = elem_ty.clone();
@@ -107,6 +116,7 @@ pub fn resolve_type(
                 self_type,
                 subst_ctx,
                 check_visibility,
+                ctx,
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
@@ -127,6 +137,7 @@ pub fn resolve_type(
                     self_type,
                     subst_ctx,
                     check_visibility,
+                    ctx,
                 )
                 .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
             }
@@ -177,6 +188,7 @@ pub fn resolve_type(
                 self_type,
                 subst_ctx,
                 check_visibility,
+                ctx,
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
@@ -191,6 +203,26 @@ pub fn resolve_type(
     Ok(type_id)
 }
 
+fn resolve_const_generic_expr(
+    handler: &Handler,
+    ctx: &TypeCheckContext<'_>,
+    expr: &ConstGenericExpr,
+) -> ConstGenericExpr {
+    match expr {
+        ConstGenericExpr::Literal { val, span } => ConstGenericExpr::Literal {
+            val: val.clone(),
+            span: span.clone(),
+        },
+        ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+            match ctx.resolve_symbol(handler, ident) {
+                Ok(TyDecl::ConstGenericDecl { id }) => ConstGenericExpr::Decl { id },
+                _ => todo!(),
+            }
+        }
+        ConstGenericExpr::Decl { id } => ConstGenericExpr::Decl { id: id.clone() },
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn resolve_qualified_call_path(
     handler: &Handler,
@@ -201,6 +233,7 @@ pub fn resolve_qualified_call_path(
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
     check_visibility: VisibilityCheck,
+    ctx: &TypeCheckContext<'_>,
 ) -> Result<ResolvedDeclaration, ErrorEmitted> {
     let type_engine = engines.te();
     if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
@@ -231,6 +264,7 @@ pub fn resolve_qualified_call_path(
                     type_arguments.clone(),
                     self_type,
                     subst_ctx,
+                    ctx,
                 )?
             }
             _ => qualified_path_root.ty.type_id(),

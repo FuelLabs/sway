@@ -1,8 +1,11 @@
+use sway_types::Named;
+
 use crate::{
     ast_elements::type_parameter::ConstGenericExpr,
+    decl_engine::DeclEngineGet as _,
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
-        ty::{TyEnumDecl, TyStructDecl},
+        ty::{TyEnumDecl, TyExpression, TyStructDecl},
         CallPathType,
     },
     type_system::priv_prelude::*,
@@ -268,7 +271,29 @@ impl<'a> UnifyCheck<'a> {
                 ConstGenericExpr::Literal { .. },
                 ConstGenericExpr::AmbiguousVariableExpression { .. },
             ) => true,
-            _ => false,
+            (ConstGenericExpr::Literal { .. }, ConstGenericExpr::Decl { id }) => {
+                let decl = self.engines.de().get(id);
+                decl.value.is_none()
+            }
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+                ConstGenericExpr::Literal { .. },
+            ) => true,
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { ident },
+                ConstGenericExpr::Decl { id },
+            ) => {
+                let decl: std::sync::Arc<crate::language::ty::TyConstGenericDecl> =
+                    self.engines.de().get(id);
+                eprintln!("{:?}; {:?}", ident.as_str(), decl);
+                todo!();
+            }
+            (ConstGenericExpr::Decl { .. }, ConstGenericExpr::Literal { .. }) => todo!(),
+            (
+                ConstGenericExpr::Decl { .. },
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+            ) => todo!(),
+            (ConstGenericExpr::Decl { id: l }, ConstGenericExpr::Decl { id: r }) => l == r,
         }
     }
 

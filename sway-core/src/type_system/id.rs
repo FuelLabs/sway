@@ -379,7 +379,7 @@ impl TypeId {
                         ) => match (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
                             (None, Some(expr)) => {
                                 const_generic_parameters.insert(
-                                    orig_type_param.name.as_str().to_string(),
+                                    orig_type_param.tid.name().as_str().to_string(),
                                     expr.to_ty_expression(engines),
                                 );
                             }
@@ -418,11 +418,11 @@ impl TypeId {
                         ) => match (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
                             (None, Some(expr)) => {
                                 const_generic_parameters.insert(
-                                    orig_type_param.name.as_str().to_string(),
+                                    orig_type_param.tid.name().as_str().to_string(),
                                     expr.to_ty_expression(engines),
                                 );
                             }
-                            _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                            x => todo!("{x:?} Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                         },
                         _ => {}
                     }
@@ -610,14 +610,17 @@ impl TypeId {
                                 walk_tc,
                             )
                         }
-                        TypeParameter::Const(type_param) => type_param.ty.walk_any_including_self(
-                            engines,
-                            filter_fn,
-                            vec![],
-                            depth + 1,
-                            walk_type,
-                            walk_tc,
-                        ),
+                        TypeParameter::Const(type_param) => {
+                            let decl = engines.de().get(type_param.tid.id());
+                            decl.return_type.walk_any_including_self(
+                                engines,
+                                filter_fn,
+                                vec![],
+                                depth + 1,
+                                walk_type,
+                                walk_tc,
+                            )
+                        }
                     }
                 }
                 for variant in &enum_decl.variants {
@@ -645,14 +648,17 @@ impl TypeId {
                                 walk_tc,
                             )
                         }
-                        TypeParameter::Const(type_param) => type_param.ty.walk_any_including_self(
-                            engines,
-                            filter_fn,
-                            vec![],
-                            depth + 1,
-                            walk_type,
-                            walk_tc,
-                        ),
+                        TypeParameter::Const(type_param) => {
+                            let decl = engines.de().get(type_param.tid.id());
+                            decl.return_type.walk_any_including_self(
+                                engines,
+                                filter_fn,
+                                vec![],
+                                depth + 1,
+                                walk_type,
+                                walk_tc,
+                            )
+                        }
                     }
                 }
                 for field in &struct_decl.fields {
@@ -680,14 +686,17 @@ impl TypeId {
                                 walk_tc,
                             )
                         }
-                        TypeParameter::Const(type_param) => type_param.ty.walk_any_including_self(
-                            engines,
-                            filter_fn,
-                            vec![],
-                            depth + 1,
-                            walk_type,
-                            walk_tc,
-                        ),
+                        TypeParameter::Const(type_param) => {
+                            let decl = engines.de().get(type_param.tid.id());
+                            decl.return_type.walk_any_including_self(
+                                engines,
+                                filter_fn,
+                                vec![],
+                                depth + 1,
+                                walk_type,
+                                walk_tc,
+                            )
+                        }
                     }
                 }
                 for variant in &enum_decl.variants {
@@ -715,14 +724,17 @@ impl TypeId {
                                 walk_tc,
                             )
                         }
-                        TypeParameter::Const(type_param) => type_param.ty.walk_any_including_self(
-                            engines,
-                            filter_fn,
-                            vec![],
-                            depth + 1,
-                            walk_type,
-                            walk_tc,
-                        ),
+                        TypeParameter::Const(type_param) => {
+                            let decl = engines.de().get(type_param.tid.id());
+                            decl.return_type.walk_any_including_self(
+                                engines,
+                                filter_fn,
+                                vec![],
+                                depth + 1,
+                                walk_type,
+                                walk_tc,
+                            )
+                        }
                     }
                 }
                 for field in &struct_decl.fields {

@@ -20,7 +20,7 @@ impl Parse for ItemStruct {
             visibility,
             struct_token,
             name: parser.parse()?,
-            generics: parser.guarded_parse::<OpenAngleBracketToken, _>()?,
+            generic_params_opt: parser.guarded_parse::<OpenAngleBracketToken, _>()?,
             where_clause_opt: parser.guarded_parse::<WhereToken, _>()?,
             fields: parser.parse()?,
         })

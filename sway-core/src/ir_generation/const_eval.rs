@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::{
+    decl_engine::DeclEngineGet as _,
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
@@ -308,7 +309,8 @@ fn const_eval_typed_expr(
     }
 
     Ok(match &expr.expression {
-        ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+        ty::TyExpressionVariant::ConstGenericExpression { id, .. } => {
+            let decl = lookup.engines.de().get(id);
             assert!(decl.value.is_some());
             const_eval_typed_expr(lookup, known_consts, decl.value.as_ref().unwrap())?
         }

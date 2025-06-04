@@ -2133,6 +2133,14 @@ impl TypeEngine {
         unify_kind: UnifyKind,
         push_unification: bool,
     ) {
+        eprintln!(
+            "{}; received: {}; expected: {}; err: {}",
+            span.as_str(),
+            engines.help_out(received),
+            engines.help_out(expected),
+            help_text
+        );
+
         if !UnifyCheck::coercion(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
@@ -2179,8 +2187,15 @@ impl TypeEngine {
             panic!("Possible infinite recursion");
         }
 
+        eprintln!("reapply_unifications {depth}:");
+
         let current_last_replace = *self.last_replace.read();
         for unification in self.unifications.values() {
+            eprintln!(
+                "    {:?} vs {:?}",
+                engines.help_out(unification.received),
+                engines.help_out(unification.expected),
+            );
             Self::unify_helper(
                 &Handler::default(),
                 engines,

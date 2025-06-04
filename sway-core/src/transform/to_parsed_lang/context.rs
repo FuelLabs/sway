@@ -1,10 +1,21 @@
+use std::collections::HashMap;
+
 use sway_features::ExperimentalFeatures;
 
 use crate::{
     build_config::DbgGeneration,
-    language::parsed::{Declaration, TreeType},
+    decl_engine::{DeclId, DeclRef},
+    language::{
+        parsed::{Declaration, TreeType},
+        ty::TyConstGenericDecl,
+    },
     BuildTarget,
 };
+
+#[derive(Default)]
+struct ConstGenericScope {
+    map: HashMap<String, DeclRef<DeclId<TyConstGenericDecl>>>,
+}
 
 pub struct Context {
     pub experimental: ExperimentalFeatures,
@@ -36,6 +47,9 @@ pub struct Context {
 
     /// Keeps track of the implementing type as we convert the tree.
     pub(crate) implementing_type: Option<Declaration>,
+
+    // Stack of const generics scopes. Current = last.
+    const_generic_scopes: Vec<ConstGenericScope>,
 }
 
 impl Context {
@@ -56,7 +70,32 @@ impl Context {
             for_unique_suffix: std::default::Default::default(),
             program_type: std::default::Default::default(),
             implementing_type: None,
+            const_generic_scopes: vec![],
         }
+    }
+
+    pub fn const_generic_scope<R>(&mut self, callback: impl FnOnce(&mut Self) -> R) -> R {
+        self.const_generic_scopes.push(ConstGenericScope::default());
+        let r = callback(self);
+        let _ = self.const_generic_scopes.pop();
+        r
+    }
+
+    // Will search on all scopes , starting at the current one.
+    pub fn get_const_generic(&self, name: &str) -> Option<&DeclRef<DeclId<TyConstGenericDecl>>> {
+        for scope in self.const_generic_scopes.iter().rev() {
+            eprintln!("Searching {name} at {:?}", scope.map);
+            if let Some(v) = scope.map.get(name) {
+                return Some(v);
+            }
+        }
+        None
+    }
+
+    pub fn push_const_generic(&mut self, r: DeclRef<DeclId<TyConstGenericDecl>>) {
+        let l = self.const_generic_scopes.last_mut().unwrap();
+        let old = l.map.insert(r.name().as_str().to_string(), r);
+        assert!(old.is_none());
     }
 
     /// Updates the value of `module_has_configurable_block`.

@@ -704,18 +704,13 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDecl::ConstGenericDecl(ty::ConstGenericDecl { decl_id })) => {
-                let decl = (*decl_engine.get(&decl_id)).clone();
+            Some(ty::TyDecl::ConstGenericDecl { id }) => {
+                let decl = (*decl_engine.get(&id)).clone();
                 ty::TyExpression {
                     return_type: decl.return_type,
                     expression: ty::TyExpressionVariant::ConstGenericExpression {
-                        decl: Box::new(decl),
-                        span: name.span(),
-                        call_path: CallPath {
-                            prefixes: vec![],
-                            suffix: name.clone(),
-                            callpath_type: CallPathType::Ambiguous,
-                        },
+                        id: id.clone(),
+                        span: span.clone(),
                     },
                     span,
                 }
@@ -2074,6 +2069,7 @@ impl ty::TyExpression {
             .with_type_annotation(type_engine.id_of_u64());
         let length_expr = Self::type_check(handler, length_ctx, length)
             .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines));
+        dbg!(&length_expr);
         let length = Length(ConstGenericExpr::from_ty_expression(handler, &length_expr)?);
 
         let return_type = type_engine.insert_array(engines, elem_type_arg, length);

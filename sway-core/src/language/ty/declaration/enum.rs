@@ -115,7 +115,7 @@ impl MaterializeConstGenerics for TyEnumDecl {
     ) -> Result<(), ErrorEmitted> {
         for p in self.generic_parameters.iter_mut() {
             match p {
-                TypeParameter::Const(p) if p.name.as_str() == name => {
+                TypeParameter::Const(p) if p.tid.name().as_str() == name => {
                     p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
                 }
                 TypeParameter::Type(p) => {

@@ -428,8 +428,10 @@ impl MaterializeConstGenerics for TyExpression {
                 }
                 Ok(())
             }
-            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
-                decl.materialize_const_generics(engines, handler, name, value)
+            TyExpressionVariant::ConstGenericExpression { id, .. } => {
+                // let decl = engines.de().get(id);
+                // decl.materialize_const_generics(engines, handler, name, value)
+                Ok(())
             }
             TyExpressionVariant::ImplicitReturn(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
@@ -492,7 +494,8 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::Deref(r) => {
                 r.materialize_const_generics(engines, handler, name, value)
             }
-            TyExpressionVariant::MatchExp { desugared, .. } => {
+            TyExpressionVariant::ForLoop { desugared }
+            | TyExpressionVariant::MatchExp { desugared, .. } => {
                 desugared.materialize_const_generics(engines, handler, name, value)
             }
             TyExpressionVariant::EnumInstantiation { contents, .. } => {
@@ -543,14 +546,20 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::StructFieldAccess {
                 prefix,
                 resolved_type_of_parent,
+                field_to_access,
                 ..
             } => {
                 prefix.materialize_const_generics(engines, handler, name, value)?;
+                field_to_access
+                    .type_argument
+                    .type_id_mut()
+                    .materialize_const_generics(engines, handler, name, value)?;
                 resolved_type_of_parent.materialize_const_generics(engines, handler, name, value)
             }
             TyExpressionVariant::UnsafeDowncast { exp, .. } => {
                 exp.materialize_const_generics(engines, handler, name, value)
             }
+            TyExpressionVariant::Break => Ok(()),
             _ => Err(handler.emit_err(
                 sway_error::error::CompileError::ConstGenericNotSupportedHere {
                     span: self.span.clone(),

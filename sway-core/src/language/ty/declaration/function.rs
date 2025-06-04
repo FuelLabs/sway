@@ -54,6 +54,28 @@ pub struct TyFunctionDecl {
     pub kind: TyFunctionDeclKind,
 }
 
+enum TyAll<'a> {
+    TyConstGenericDeclRef(&'a mut DeclRef<DeclId<TyConstGenericDecl>>),
+    TyConstGenericDeclId(&'a mut DeclId<TyConstGenericDecl>),
+}
+
+trait TyIter {
+    fn ty_iter<F: for<'a> FnMut(TyAll<'a>)>(&mut self, cb: &mut F);
+}
+
+impl TyIter for TyFunctionDecl {
+    fn ty_iter<F: for<'a> FnMut(TyAll<'a>)>(&mut self, cb: &mut F) {
+        for p in self.type_parameters.iter_mut() {
+            match p {
+                TypeParameter::Type(_) => {},
+                TypeParameter::Const(p) => {
+                    cb(TyAll::TyConstGenericDeclRef(&mut p.tid));
+                },
+            }
+        }
+    }
+}
+
 impl TyDeclParsedType for TyFunctionDecl {
     type ParsedType = FunctionDeclaration;
 }
@@ -84,7 +106,8 @@ impl DebugWithEngines for TyFunctionDecl {
                                     )
                                 }
                                 TypeParameter::Const(p) => {
-                                    format!("{} -> {:?}", p.name, p.expr)
+                                    let decl = engines.de().get(p.tid.id());
+                                    format!("{} -> {:?}", decl.name(), p.expr)
                                 }
                             }
                         })
@@ -160,9 +183,13 @@ impl MaterializeConstGenerics for TyFunctionDecl {
                 TypeParameter::Type(p) => p
                     .type_id
                     .materialize_const_generics(engines, handler, name, value)?,
-                TypeParameter::Const(p) if p.name.as_str() == name => {
+                TypeParameter::Const(p) => {
                     assert!(p.expr.is_none());
-                    p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+
+                    let decl = engines.de().get(p.tid.id());
+                    if decl.name().as_str() == name {
+                        p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                    }
                 }
                 _ => {}
             }
@@ -244,14 +271,28 @@ impl DeclRefFunction {
                 }
             }
 
+            let mut method_type_subst_map = TypeSubstMap::new();
+
             // Duplicate arguments to avoid changing TypeId inside TraitMap
             for parameter in method.parameters.iter_mut() {
-                *parameter.type_argument.type_id_mut() = engines
+                let old_id = parameter.type_argument.type_id();
+                let new_id = engines
                     .te()
-                    .duplicate(engines, parameter.type_argument.type_id())
+                    .duplicate(engines, old_id);
+                method_type_subst_map.insert(old_id, new_id);
             }
 
-            let mut method_type_subst_map = TypeSubstMap::new();
+            for p in method.type_parameters.iter() {
+                match p {
+                    TypeParameter::Type(_) => {},
+                    TypeParameter::Const(p) => {
+                        let old_id = p.tid.id();
+                        let new_id = engines.de().duplicate(old_id);
+                        method_type_subst_map.insert_const_generics(*old_id, *new_id.id());
+                    },
+                }
+            }
+
             method_type_subst_map.extend(&type_id_type_subst_map);
             method_type_subst_map.insert(method_implementing_for_typeid, type_id);
 
@@ -759,7 +800,7 @@ impl TyFunctionSig {
                     TypeParameter::Type(p) => TyFunctionSigTypeParameter::Type(p.type_id),
                     TypeParameter::Const(p) => {
                         let expr = ConstGenericExpr::AmbiguousVariableExpression {
-                            ident: p.name.clone(),
+                            ident: p.tid.name().clone(),
                         };
                         TyFunctionSigTypeParameter::Const(p.expr.clone().unwrap_or(expr))
                     }
@@ -804,6 +845,7 @@ impl TyFunctionSig {
                                 ConstGenericExpr::AmbiguousVariableExpression { ident } => {
                                     ident.as_str().to_string()
                                 }
+                                _ => todo!(),
                             }
                         }
                     })

@@ -41,7 +41,7 @@ impl Format for ItemStruct {
                 write!(formatted_code, "{} ", StructToken::AS_STR)?;
                 self.name.format(formatted_code, formatter)?;
                 // Format `GenericParams`, if any
-                if let Some(generics) = &self.generics {
+                if let Some(generics) = &self.generic_params_opt {
                     generics.format(formatted_code, formatter)?;
                 }
                 if let Some(where_clause) = &self.where_clause_opt {
@@ -193,7 +193,7 @@ impl LeafSpans for ItemStruct {
         }
         collected_spans.push(ByteSpan::from(self.struct_token.span()));
         collected_spans.push(ByteSpan::from(self.name.span()));
-        if let Some(generics) = &self.generics {
+        if let Some(generics) = &self.generic_params_opt {
             collected_spans.push(ByteSpan::from(generics.parameters.span()))
         }
         collected_spans.append(&mut self.fields.leaf_spans());

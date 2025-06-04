@@ -6,6 +6,7 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
+    decl_engine::DeclEngineGet as _,
     engine_threading::*,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -264,7 +265,7 @@ impl<'a> FnCompiler<'a> {
                 ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { .. }) => {
                     unreachable!()
                 }
-                ty::TyDecl::ConstGenericDecl(_) => {
+                ty::TyDecl::ConstGenericDecl { .. } => {
                     todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
@@ -554,7 +555,8 @@ impl<'a> FnCompiler<'a> {
             ty::TyExpressionVariant::ConfigurableExpression {
                 decl: const_decl, ..
             } => self.compile_config_expr(context, const_decl, span_md_idx),
-            ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+            ty::TyExpressionVariant::ConstGenericExpression { id, .. } => {
+                let decl = self.engines.de().get(id);
                 let value = decl.value.as_ref().unwrap();
                 self.compile_expression(context, md_mgr, value)
             }

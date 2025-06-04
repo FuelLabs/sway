@@ -575,6 +575,7 @@ impl DisplayWithEngines for TypeInfo {
                     ConstGenericExpr::AmbiguousVariableExpression { ident } => {
                         ident.as_str().to_string()
                     }
+                    _ => todo!(),
                 };
                 format!("str[{}]", length)
             }
@@ -609,7 +610,7 @@ impl DisplayWithEngines for TypeInfo {
                     decl.name.as_str(),
                     decl.type_parameters.iter().map(|arg| match arg {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.tid.name().as_str().to_string(),
                     }),
                 )
             }
@@ -620,7 +621,7 @@ impl DisplayWithEngines for TypeInfo {
                     decl.name.as_str(),
                     decl.type_parameters.iter().map(|arg| match arg {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.tid.name().as_str().to_string(),
                     }),
                 )
             }
@@ -631,7 +632,7 @@ impl DisplayWithEngines for TypeInfo {
                     decl.call_path.suffix.as_str(),
                     decl.generic_parameters.iter().map(|arg| match arg {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.tid.name().as_str().to_string(),
                     }),
                 )
             }
@@ -642,7 +643,7 @@ impl DisplayWithEngines for TypeInfo {
                     decl.call_path.suffix.as_str(),
                     decl.generic_parameters.iter().map(|arg| match arg {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.tid.name().as_str().to_string(),
                     }),
                 )
             }
@@ -652,6 +653,10 @@ impl DisplayWithEngines for TypeInfo {
                     ConstGenericExpr::Literal { val, .. } => format!("{val}"),
                     ConstGenericExpr::AmbiguousVariableExpression { ident } => {
                         ident.as_str().to_string()
+                    }
+                    ConstGenericExpr::Decl { id } => {
+                        let decl = engines.de().get(id);
+                        decl.name.as_str().to_string()
                     }
                 };
                 format!("[{}; {l}]", engines.help_out(elem_ty))
@@ -759,7 +764,7 @@ impl DebugWithEngines for TypeInfo {
                     decl.name.as_str(),
                     decl.type_parameters.iter().map(|x| match x {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.tid.name().as_str().to_string(),
                     }),
                 )
             }
@@ -770,7 +775,7 @@ impl DebugWithEngines for TypeInfo {
                     decl.name.as_str(),
                     decl.type_parameters.iter().map(|x| match x {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.tid.name().as_str().to_string(),
                     }),
                 )
             }
@@ -788,9 +793,10 @@ impl DebugWithEngines for TypeInfo {
                                     ConstGenericExpr::AmbiguousVariableExpression { ident } => {
                                         ident.as_str().to_string()
                                     }
+                                    _ => todo!(),
                                 }
                             } else {
-                                p.name.as_str().to_string()
+                                p.tid.name().as_str().to_string()
                             }
                         }
                     }),
@@ -810,9 +816,10 @@ impl DebugWithEngines for TypeInfo {
                                     ConstGenericExpr::AmbiguousVariableExpression { ident } => {
                                         ident.as_str().to_string()
                                     }
+                                    _ => todo!(),
                                 }
                             } else {
-                                p.name.as_str().to_string()
+                                p.tid.name().as_str().to_string()
                             }
                         }
                     }),
@@ -1680,6 +1687,7 @@ impl TypeInfo {
                     ConstGenericExpr::AmbiguousVariableExpression { .. } => {
                         AbiEncodeSizeHint::PotentiallyInfinite
                     }
+                    _ => todo!(),
                 }
             }
 
@@ -1688,6 +1696,7 @@ impl TypeInfo {
                 ConstGenericExpr::AmbiguousVariableExpression { .. } => {
                     AbiEncodeSizeHint::PotentiallyInfinite
                 }
+                _ => todo!(),
             },
 
             TypeInfo::Tuple(items) => {
@@ -1835,7 +1844,7 @@ impl TypeInfo {
                             .map(|p| {
                                 match p {
                                     TypeParameter::Type(p) => p.type_id.get_type_str(engines),
-                                    TypeParameter::Const(p) => p.name.as_str().to_string(),
+                                    TypeParameter::Const(p) => p.tid.name().as_str().to_string(),
                                 }
                             })
                             .collect::<Vec<_>>()
@@ -1856,7 +1865,7 @@ impl TypeInfo {
                             .map(|p| {
                                 match p {
                                     TypeParameter::Type(p) => p.type_id.get_type_str(engines),
-                                    TypeParameter::Const(p) => p.name.as_str().to_string(),
+                                    TypeParameter::Const(p) => p.tid.name().as_str().to_string(),
                                 }
                             })
                             .collect::<Vec<_>>()

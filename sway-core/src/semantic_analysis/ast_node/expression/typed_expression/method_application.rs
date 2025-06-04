@@ -18,7 +18,7 @@ use ast_elements::{
 use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
 use itertools::izip;
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::{collections::{BTreeMap, HashMap, VecDeque}, sync::Arc};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -36,6 +36,8 @@ pub(crate) fn type_check_method_application(
     arguments: &[Expression],
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
+    eprintln!("{}", span.as_str());
+
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
@@ -112,6 +114,7 @@ pub(crate) fn type_check_method_application(
         method_result.unwrap()
     };
 
+    
     // Prepare const generics materialization
     let mut const_generics = BTreeMap::new();
 
@@ -131,17 +134,20 @@ pub(crate) fn type_check_method_application(
             .get(args_opt_buf[0].0.as_ref().unwrap().return_type);
         match (&*a, &*b) {
             (
-                TypeInfo::Array(_, Length(ConstGenericExpr::AmbiguousVariableExpression { ident })),
-                TypeInfo::Array(_, Length(ConstGenericExpr::Literal { val, .. })),
+                TypeInfo::Array(_, Length(ConstGenericExpr::Decl { id, .. })),
+                TypeInfo::Array(_, Length(ConstGenericExpr::Literal { val, span })),
             ) => {
-                const_generics.insert(
-                    ident.as_str().to_string(),
-                    TyExpression {
-                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
-                        return_type: engines.te().id_of_u64(),
-                        span: Span::dummy(),
-                    },
-                );
+                const_generics.insert(id.clone(), TyExpression { 
+                    expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                    return_type: engines.te().id_of_u64(),
+                    span: span.clone()
+                });
+            }
+            (
+                a @ TypeInfo::Array(_, Length(_)),
+                b @ TypeInfo::Array(_, Length(_)),
+            ) => {
+                todo!("{a:?} {b:?}");
             }
             (
                 TypeInfo::StringArray(Length(ConstGenericExpr::Literal { .. })),
@@ -155,17 +161,23 @@ pub(crate) fn type_check_method_application(
                 })),
                 TypeInfo::StringArray(Length(ConstGenericExpr::Literal { val, .. })),
             ) => {
-                const_generics.insert(
-                    ident.as_str().to_string(),
-                    TyExpression {
-                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
-                        return_type: engines.te().id_of_u64(),
-                        span: Span::dummy(),
-                    },
-                );
+                todo!();
+                // const_generics.insert(
+                //     ident.as_str().to_string(),
+                //     TyExpression {
+                //         expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                //         return_type: engines.te().id_of_u64(),
+                //         span: Span::dummy(),
+                //     },
+                // );
             }
             _ => {}
         }
+    }
+
+    if span.as_str() == "a.eq(a)" {
+        let decl = engines.de().get(original_decl_ref.id());
+        eprintln!("type check method app: {} {:?} {:?}", span.as_str(), const_generics, decl);
     }
 
     let mut fn_ref = monomorphize_method(
@@ -175,6 +187,7 @@ pub(crate) fn type_check_method_application(
         method_name_binding.type_arguments.to_vec_mut(),
         const_generics,
     )?;
+    dbg!();
 
     let mut method = (*decl_engine.get_function(&fn_ref)).clone();
 
@@ -1028,13 +1041,14 @@ pub(crate) fn monomorphize_method(
     mut ctx: TypeCheckContext,
     decl_ref: DeclRefFunction,
     type_arguments: &mut [GenericArgument],
-    const_generics: BTreeMap<String, TyExpression>,
+    const_generics: BTreeMap<crate::decl_engine::DeclId<ty::TyConstGenericDecl>, TyExpression>,
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();
     let mut func_decl = (*decl_engine.get_function(&decl_ref)).clone();
 
     // monomorphize the function declaration
+    dbg!();
     ctx.monomorphize(
         handler,
         &mut func_decl,
@@ -1043,6 +1057,7 @@ pub(crate) fn monomorphize_method(
         EnforceTypeArguments::No,
         &decl_ref.span(),
     )?;
+    dbg!();
 
     if let Some(implementing_type) = &func_decl.implementing_type {
         func_decl

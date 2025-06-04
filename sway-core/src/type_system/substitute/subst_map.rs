@@ -1,10 +1,7 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr,
-    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert},
-    engine_threading::{
+    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{DeclEngineGet as _, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, ParsedDeclEngineInsert}, engine_threading::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
-    },
-    type_system::priv_prelude::*,
+    }, language::ty::TyConstGenericDecl, type_system::priv_prelude::*
 };
 use std::{collections::BTreeMap, fmt};
 
@@ -16,6 +13,7 @@ type DestinationType = TypeId;
 #[derive(Clone, Default)]
 pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
+    pub const_generics_mapping: BTreeMap<DeclId<TyConstGenericDecl>, DeclId<TyConstGenericDecl>>,
     pub const_generics_materialization: BTreeMap<String, crate::language::ty::TyExpression>,
 }
 
@@ -23,7 +21,7 @@ impl DebugWithEngines for TypeSubstMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(
             f,
-            "TypeSubstMap {{ {} }}",
+            "TypeSubstMap {{ {}; {} }}",
             self.mapping
                 .iter()
                 .map(|(source_type, dest_type)| {
@@ -32,6 +30,15 @@ impl DebugWithEngines for TypeSubstMap {
                         engines.help_out(source_type),
                         engines.help_out(dest_type)
                     )
+                })
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.const_generics_mapping
+                .iter()
+                .map(|(old, new)| {
+                    let old = engines.de().get(old);
+                    let new = engines.de().get(new);
+                    format!("{:?} -> {:?}", old.value, new.value)
                 })
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -63,7 +70,8 @@ impl TypeSubstMap {
     pub(crate) fn new() -> TypeSubstMap {
         TypeSubstMap {
             mapping: BTreeMap::<SourceType, DestinationType>::new(),
-            const_generics_materialization: BTreeMap::new(),
+            const_generics_mapping: BTreeMap::default(),
+            const_generics_materialization: BTreeMap::default(),
         }
     }
 
@@ -101,7 +109,8 @@ impl TypeSubstMap {
             .collect();
         TypeSubstMap {
             mapping,
-            const_generics_materialization: BTreeMap::new(),
+            const_generics_mapping: BTreeMap::default(),
+            const_generics_materialization: BTreeMap::default(),
         }
     }
 
@@ -163,7 +172,8 @@ impl TypeSubstMap {
         match (&*type_engine.get(superset), &*type_engine.get(subset)) {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
                 mapping: BTreeMap::from([(superset, subset)]),
-                const_generics_materialization: BTreeMap::new(),
+                const_generics_mapping: BTreeMap::default(),
+                const_generics_materialization: BTreeMap::default(),
             },
             (
                 TypeInfo::Custom {
@@ -305,12 +315,14 @@ impl TypeSubstMap {
             | (TypeInfo::StringArray(_), TypeInfo::StringArray(_))
             | (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_))
             | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
-                mapping: BTreeMap::new(),
-                const_generics_materialization: BTreeMap::new(),
+                mapping: BTreeMap::default(),
+                const_generics_mapping: BTreeMap::default(),
+                const_generics_materialization: BTreeMap::default(),
             },
             _ => TypeSubstMap {
-                mapping: BTreeMap::new(),
-                const_generics_materialization: BTreeMap::new(),
+                mapping: BTreeMap::default(),
+                const_generics_mapping: BTreeMap::default(),
+                const_generics_materialization: BTreeMap::default(),
             },
         }
     }
@@ -348,7 +360,8 @@ impl TypeSubstMap {
         let mapping = type_parameters.into_iter().zip(type_arguments).collect();
         TypeSubstMap {
             mapping,
-            const_generics_materialization: BTreeMap::new(),
+            const_generics_mapping: BTreeMap::default(),
+            const_generics_materialization: BTreeMap::default(),
         }
     }
 
@@ -360,6 +373,7 @@ impl TypeSubstMap {
         let mapping = type_parameters.into_iter().zip(type_arguments).collect();
         TypeSubstMap {
             mapping,
+            const_generics_mapping: BTreeMap::default(),
             const_generics_materialization,
         }
     }
@@ -376,6 +390,10 @@ impl TypeSubstMap {
 
     pub(crate) fn insert(&mut self, source: SourceType, destination: DestinationType) {
         self.mapping.insert(source, destination);
+    }
+
+    pub(crate) fn insert_const_generics(&mut self, old: DeclId<TyConstGenericDecl>, new: DeclId<TyConstGenericDecl>) {
+        self.const_generics_mapping.insert(old, new);
     }
 
     /// Given a [TypeId] `type_id`, find (or create) a match for `type_id` in
@@ -527,12 +545,26 @@ impl TypeSubstMap {
                     None
                 }
             }
-            TypeInfo::Array(mut elem_type, length) => self
-                .find_match(elem_type.type_id(), engines)
-                .map(|type_id| {
-                    *elem_type.type_id_mut() = type_id;
-                    type_engine.insert_array(engines, elem_type, length)
-                }),
+            TypeInfo::Array(elem_type, length) => {
+                let new_elem_type_id = self
+                    .find_match(elem_type.type_id(), engines);
+
+                let new_length = match length.expr() {
+                    ConstGenericExpr::Decl { id } => {
+                        self.const_generics_mapping.get(id).map(|id| Length(ConstGenericExpr::Decl { id: id.clone() }))
+                    },
+                    _ => None
+                };
+
+                let needs_new_type = new_elem_type_id.is_some() || new_length.is_some();
+                needs_new_type.then(|| {
+                    let mut new_elem_type = elem_type.clone();
+                    *new_elem_type.type_id_mut() = new_elem_type_id.unwrap_or(elem_type.type_id());
+
+                    let new_length = new_length.unwrap_or(length);
+                    type_engine.insert_array(engines, new_elem_type, new_length)
+                })
+            },
             TypeInfo::Slice(mut elem_type) => {
                 self.find_match(elem_type.type_id(), engines)
                     .map(|type_id| {

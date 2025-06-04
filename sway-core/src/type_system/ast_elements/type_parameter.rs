@@ -1,8 +1,8 @@
 use crate::{
     abi_generation::abi_str::AbiStrContext,
     decl_engine::{
-        parsed_id::ParsedDeclId, DeclEngineInsert as _, DeclMapping, InterfaceItemMap, ItemMap,
-        ParsedDeclEngineGet as _,
+        parsed_id::ParsedDeclId, DeclEngineGet as _, DeclEngineInsert as _, DeclId, DeclMapping,
+        DeclRef, InterfaceItemMap, ItemMap, ParsedDeclEngineGet as _,
     },
     engine_threading::*,
     has_changes,
@@ -80,34 +80,14 @@ impl TypeParameter {
             ),
             TypeParameter::Const(ConstGenericParameter {
                 is_from_parent,
-                name,
-                id,
-                span,
-                ty,
+                tid,
                 ..
-            }) => {
-                let decl_ref = ctx.engines.de().insert(
-                    TyConstGenericDecl {
-                        call_path: CallPath {
-                            prefixes: vec![],
-                            suffix: name.clone(),
-                            callpath_type: CallPathType::Ambiguous,
-                        },
-                        span: span.clone(),
-                        return_type: *ty,
-                        value: None,
-                    },
-                    id.as_ref(),
-                );
-                (
-                    is_from_parent,
-                    name,
-                    ctx.engines.te().id_of_u64(),
-                    ty::TyDecl::ConstGenericDecl(ConstGenericDecl {
-                        decl_id: *decl_ref.id(),
-                    }),
-                )
-            }
+            }) => (
+                is_from_parent,
+                tid.name(),
+                ctx.engines.te().id_of_u64(),
+                ty::TyDecl::ConstGenericDecl { id: *tid.id() },
+            ),
         };
 
         if *is_from_parent {
@@ -146,7 +126,7 @@ impl TypeParameter {
                         );
                     }
                 }
-                ty::TyDecl::ConstGenericDecl(_) => {}
+                ty::TyDecl::ConstGenericDecl { .. } => {}
                 _ => {
                     handler.emit_err(CompileError::Internal(
                         "Unexpected TyDeclaration for TypeParameter.",
@@ -168,7 +148,7 @@ impl Named for TypeParameter {
     fn name(&self) -> &BaseIdent {
         match self {
             TypeParameter::Type(p) => &p.name,
-            TypeParameter::Const(p) => &p.name,
+            TypeParameter::Const(p) => &p.tid.name(),
         }
     }
 }
@@ -913,6 +893,18 @@ fn handle_trait(
 pub enum ConstGenericExpr {
     Literal { val: usize, span: Span },
     AmbiguousVariableExpression { ident: Ident },
+    Decl { id: DeclId<TyConstGenericDecl> },
+}
+
+impl SubstTypes for ConstGenericExpr {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        match self {
+            ConstGenericExpr::Decl { id } => {
+                id.subst_inner(ctx)
+            },
+            _ => HasChanges::No,
+        }
+    }
 }
 
 impl ConstGenericExpr {
@@ -927,10 +919,8 @@ impl ConstGenericExpr {
                     span: expr.span.clone(),
                 })
             }
-            ty::TyExpressionVariant::ConstGenericExpression { call_path, .. } => {
-                Ok(ConstGenericExpr::AmbiguousVariableExpression {
-                    ident: call_path.suffix.clone(),
-                })
+            ty::TyExpressionVariant::ConstGenericExpression { id, .. } => {
+                Ok(ConstGenericExpr::Decl { id: id.clone() })
             }
             _ => Err(
                 handler.emit_err(CompileError::ConstGenericNotSupportedHere {
@@ -952,6 +942,7 @@ impl ConstGenericExpr {
             ConstGenericExpr::AmbiguousVariableExpression { .. } => {
                 todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
+            _ => todo!(),
         }
     }
 
@@ -959,6 +950,7 @@ impl ConstGenericExpr {
         match &self {
             Self::Literal { .. } => 0,
             Self::AmbiguousVariableExpression { .. } => 1,
+            _ => todo!(),
         }
     }
 
@@ -1016,6 +1008,7 @@ impl std::hash::Hash for ConstGenericExpr {
         match self {
             Self::Literal { val, .. } => val.hash(state),
             Self::AmbiguousVariableExpression { ident } => ident.hash(state),
+            _ => todo!(),
         }
     }
 }
@@ -1025,16 +1018,21 @@ impl Spanned for ConstGenericExpr {
         match self {
             Self::Literal { span, .. } => span.clone(),
             Self::AmbiguousVariableExpression { ident, .. } => ident.span(),
+            _ => todo!(),
         }
     }
 }
 
 impl DebugWithEngines for ConstGenericExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &crate::Engines) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &crate::Engines) -> std::fmt::Result {
         match self {
             Self::Literal { val, .. } => write!(f, "{val}"),
             Self::AmbiguousVariableExpression { ident } => {
                 write!(f, "{}", ident.as_str())
+            }
+            Self::Decl { id } => {
+                let decl = engines.de().get(id);
+                write!(f, "{} = {:?}", decl.name, decl.value)
             }
         }
     }
@@ -1042,48 +1040,29 @@ impl DebugWithEngines for ConstGenericExpr {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstGenericParameter {
-    pub name: Ident,
-    pub ty: TypeId,
     pub is_from_parent: bool,
     pub span: Span,
     pub id: Option<ParsedDeclId<ConstGenericDeclaration>>,
     pub expr: Option<ConstGenericExpr>,
+    pub tid: DeclRef<DeclId<TyConstGenericDecl>>,
 }
 
 impl HashWithEngines for ConstGenericParameter {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let ConstGenericParameter {
-            name, ty, id, expr, ..
-        } = self;
-        let type_engine = engines.te();
-        type_engine.get(*ty).hash(state, engines);
-        name.hash(state);
-        if let Some(id) = id.as_ref() {
-            let decl = engines.pe().get(id);
-            decl.name.hash(state);
-            decl.ty.hash(state);
-        }
-        match &expr {
-            Some(expr) => {
-                expr.hash(state);
-            }
-            None => {
-                self.name.hash(state);
-            }
-        }
+        self.tid.id().hash(state);
     }
 }
 
 impl EqWithEngines for ConstGenericParameter {}
 impl PartialEqWithEngines for ConstGenericParameter {
     fn eq(&self, other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
-        self.name.as_str() == other.name.as_str()
+        self.tid.id() == other.tid.id()
     }
 }
 
 impl SubstTypes for ConstGenericParameter {
-    fn subst_inner(&mut self, _ctx: &SubstTypesContext) -> HasChanges {
-        HasChanges::No
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.tid.subst_inner(ctx)
     }
 }
 
