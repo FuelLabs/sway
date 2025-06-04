@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 162
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_deprecated --release
 exit status: 0
@@ -182,4 +183,4 @@ warning: Function is deprecated
 ____
 
   Compiled contract "attributes_deprecated" with 19 warnings.
-    Finished release [optimized + fuel] target(s) [1.096 KB] in ???
+    Finished release [optimized + fuel] target(s) [1.032 KB] in ???

@@ -9,42 +9,42 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling contract panicking_contract (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_contract)
-    Finished release [optimized + fuel] target(s) [8.592 KB] in ???
+    Finished release [optimized + fuel] target(s) [8.496 KB] in ???
      Running 11 tests, filtered 0 tests
 
 tested -- panicking_contract
 
-      test test_directly_panicking_method ... ok (???, 1813 gas)
+      test test_directly_panicking_method ... ok (???, 1786 gas)
 Decoded log value: C(true), log rb: 5503570629422409978
 Revert code: ffffffff00000000
-      test test_nested_panic_inlined ... ok (???, 3172 gas)
+      test test_nested_panic_inlined ... ok (???, 3145 gas)
 Decoded log value: E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 5503570629422409978
 Revert code: ffffffff00000005
-      test test_nested_panic_inlined_same_revert_code ... ok (???, 3172 gas)
+      test test_nested_panic_inlined_same_revert_code ... ok (???, 3145 gas)
 Decoded log value: E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 5503570629422409978
 Revert code: ffffffff00000005
-      test test_nested_panic_not_inlined ... ok (???, 3377 gas)
+      test test_nested_panic_not_inlined ... ok (???, 3350 gas)
 Decoded log value: E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 5503570629422409978
 Revert code: ffffffff00000006
-      test test_nested_panic_not_inlined_same_revert_code ... ok (???, 3377 gas)
+      test test_nested_panic_not_inlined_same_revert_code ... ok (???, 3350 gas)
 Decoded log value: E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 5503570629422409978
 Revert code: ffffffff00000006
-      test test_generic_panic_with_unit ... ok (???, 2287 gas)
+      test test_generic_panic_with_unit ... ok (???, 2260 gas)
 Decoded log value: (), log rb: 3330666440490685604
 Revert code: ffffffff00000004
-      test test_generic_panic_with_unit_same_revert_code ... ok (???, 2287 gas)
+      test test_generic_panic_with_unit_same_revert_code ... ok (???, 2260 gas)
 Decoded log value: (), log rb: 3330666440490685604
 Revert code: ffffffff00000004
-      test test_generic_panic_with_str ... ok (???, 2293 gas)
+      test test_generic_panic_with_str ... ok (???, 2266 gas)
 Decoded log value: AsciiString { data: "generic panic with string" }, log rb: 10098701174489624218
 Revert code: ffffffff00000002
-      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 1951 gas)
+      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 1924 gas)
 Decoded log value: AsciiString { data: "generic panic with different string" }, log rb: 10098701174489624218
 Revert code: ffffffff00000002
-      test test_generic_panic_with_error_type_enum ... ok (???, 2102 gas)
+      test test_generic_panic_with_error_type_enum ... ok (???, 2075 gas)
 Decoded log value: A, log rb: 5503570629422409978
 Revert code: ffffffff00000003
-      test test_generic_panic_with_error_type_enum_different_variant_same_revert_code ... ok (???, 2274 gas)
+      test test_generic_panic_with_error_type_enum_different_variant_same_revert_code ... ok (???, 2247 gas)
 Decoded log value: B(42), log rb: 5503570629422409978
 Revert code: ffffffff00000003
 
