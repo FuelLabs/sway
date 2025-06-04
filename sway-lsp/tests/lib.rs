@@ -210,7 +210,7 @@ fn did_open_all_members_in_examples() {
                 // If the workspace is not initialized, we need to initialize it
                 // Otherwise, we can just open the file
                 let path = dir.join("src/main.sw");
-                let uri = if service.inner().sync_workspaces.len() == 0 {
+                let uri = if service.inner().sync_workspaces.is_empty() {
                     init_and_open(&mut service, path).await
                 } else {
                     open(service.inner(), path).await
