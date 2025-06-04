@@ -2564,6 +2564,21 @@ fn run_garbage_collection_tests_from_projects_dir(projects_dir: PathBuf) -> Resu
 #[tokio::test]
 #[ignore = "This test is meant to be run only indirectly through the tests that run GC in parallel."]
 async fn test_single_garbage_collection_project() {
+    // Force git-based std dependency to avoid registry HTTP requests that cause runtime conflicts.
+    //
+    // Background: The implicit std dependency now defaults to registry-based resolution when no
+    // git environment variables are set. Registry resolution makes HTTP requests using reqwest,
+    // but the registry source code uses futures::executor::block_on() which conflicts with
+    // reqwest when already running inside a Tokio runtime (which this #[tokio::test] provides).
+    //
+    // This results in the panic: "there is no reactor running, must be called from the context
+    // of a Tokio 1.x runtime" because reqwest expects to be called from within an async context,
+    // but futures::executor::block_on() creates its own executor that doesn't integrate with
+    // the existing Tokio runtime.
+    //
+    // By setting FORC_IMPLICIT_STD_GIT, we force git-based std dependencies, avoiding the
+    // registry HTTP requests entirely and maintaining the test's previous behavior.
+    std::env::set_var("FORC_IMPLICIT_STD_GIT", "https://github.com/fuellabs/sway");
     if let Ok(test_file) = std::env::var("TEST_FILE") {
         let path = PathBuf::from(test_file);
         garbage_collection_runner(path).await;
