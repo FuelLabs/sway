@@ -13,11 +13,11 @@ fn main() {
 // check: script {
 
 // check: fn main() -> ()
-// nextln: entry():
-// nextln: $(value=$VAL) = const u64 42
-// nextln: call revert_0($value)
+// check: entry():
+// check: $(value=$VAL) = const u64 42
+// check: call revert_0($value)
 
 // check: fn revert_0($(foo=$ID)
-// nextln: entry($foo: u64):
-// nextln: revert $foo
-// nextln: } 
+// check: entry($foo: u64):
+// checj: revert $foo
+// check: } 
