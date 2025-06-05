@@ -3,8 +3,10 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
 name = "dependency_patching"
+implicit-std = false
 
 [dependencies]
+std = { git = "https://github.com/fuellabs/sway", tag = "v0.68.6" }
 
 [patch.'https://github.com/fuellabs/sway']
 std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }

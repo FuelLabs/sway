@@ -1825,7 +1825,89 @@ mod recursion_guard_tests {
             let a_mut = Rc::get_mut_unchecked(&mut Rc::clone(&a));
             a_mut.next = Some(b.clone());
         }
+
         let result = std::panic::catch_unwind(|| traverse(&a));
         assert!(result.is_err(), "Recursion guard did not trigger on cyclic AST");
+
+
+        println!();
+
+        Err(format!(
+            "{} project(s) failed garbage collection testing",
+            failed
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+/// Test runner for garbage collection tests across all Sway projects found in the `projects_dir`.
+/// Tests run in parallel and include only the projects that have `src/main.sw` file.
+fn run_garbage_collection_tests_from_projects_dir(projects_dir: PathBuf) -> Result<(), String> {
+    let base_dir = sway_workspace_dir().join(projects_dir);
+    let mut tests: Vec<_> = std::fs::read_dir(base_dir.clone())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+        .filter_map(|dir_entry| {
+            let project_dir = dir_entry.path();
+            let project_name = project_dir
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
+            let main_file = project_dir.join("src/main.sw");
+
+            // check if this test must be ignored
+            let contents = std::fs::read_to_string(&main_file)
+                .map(|x| x.contains("ignore garbage_collection_all_language_tests"));
+            if let Ok(true) = contents {
+                None
+            } else {
+                Some((project_name, main_file))
+            }
+        })
+        .filter(|(_, main_file)| main_file.exists())
+        .collect();
+
+    tests.sort();
+
+    run_garbage_collection_tests(&tests, Some(base_dir.to_string_lossy().to_string()))
+}
+
+/// Individual test runner executed in a separate process for each test.
+///
+/// This function is called by the main test runner through a new process invocation
+/// for each test file. The file path is passed via the TEST_FILE environment
+/// variable to maintain process isolation.
+///
+/// # Process Isolation
+/// Running each test in its own process ensures that:
+/// 1. Tests are completely isolated from each other
+/// 2. Panics in one test don't affect others
+/// 3. Resource cleanup happens automatically on process exit
+#[tokio::test]
+#[ignore = "This test is meant to be run only indirectly through the tests that run GC in parallel."]
+async fn test_single_garbage_collection_project() {
+    // Force git-based std dependency to avoid registry HTTP requests that cause runtime conflicts.
+    //
+    // Background: The implicit std dependency now defaults to registry-based resolution when no
+    // git environment variables are set. Registry resolution makes HTTP requests using reqwest,
+    // but the registry source code uses futures::executor::block_on() which conflicts with
+    // reqwest when already running inside a Tokio runtime (which this #[tokio::test] provides).
+    //
+    // This results in the panic: "there is no reactor running, must be called from the context
+    // of a Tokio 1.x runtime" because reqwest expects to be called from within an async context,
+    // but futures::executor::block_on() creates its own executor that doesn't integrate with
+    // the existing Tokio runtime.
+    //
+    // By setting FORC_IMPLICIT_STD_GIT, we force git-based std dependencies, avoiding the
+    // registry HTTP requests entirely and maintaining the test's previous behavior.
+    std::env::set_var("FORC_IMPLICIT_STD_GIT", "https://github.com/fuellabs/sway");
+    if let Ok(test_file) = std::env::var("TEST_FILE") {
+        let path = PathBuf::from(test_file);
+        garbage_collection_runner(path).await;
+    } else {
+        panic!("TEST_FILE environment variable not set");
     }
 }

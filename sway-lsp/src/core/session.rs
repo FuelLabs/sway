@@ -10,7 +10,7 @@ use crate::{
         token_map::{TokenMap, TokenMapExt},
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
-    server_state::CompilationContext,
+    server_state::{self, CompilationContext},
     traverse::{
         dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree, typed_tree::TypedTree,
         ParseContext,
@@ -368,18 +368,13 @@ pub fn traverse(
     engines_clone: &Engines,
     session: Arc<Session>,
     token_map: &TokenMap,
-    lsp_mode: Option<&LspConfig>,
+    modified_file: Option<&PathBuf>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     let _p = tracing::trace_span!("traverse").entered();
-    let modified_file = lsp_mode.and_then(|mode| {
-        mode.file_versions
-            .iter()
-            .find_map(|(path, version)| version.map(|_| path.clone()))
-    });
-    if let Some(path) = &modified_file {
+
+    // Remove tokens for the modified file from the token map.
+    if let Some(path) = modified_file {
         token_map.remove_tokens_for_file(path);
-    } else {
-        token_map.clear();
     }
 
     session.metrics.clear();
@@ -469,21 +464,21 @@ pub fn traverse(
             // First, populate our token_map with sway keywords.
             let lexed_tree = LexedTree::new(&ctx);
             lexed_tree.collect_module_kinds(lexed);
-            parse_lexed_program(lexed, &ctx, &modified_file, |an, _ctx| {
+            parse_lexed_program(lexed, &ctx, modified_file, |an, _ctx| {
                 lexed_tree.traverse_node(an)
             });
 
             // Next, populate our token_map with un-typed yet parsed ast nodes.
             let parsed_tree = ParsedTree::new(&ctx);
             parsed_tree.collect_module_spans(parsed);
-            parse_ast_to_tokens(parsed, &ctx, &modified_file, |an, _ctx| {
+            parse_ast_to_tokens(parsed, &ctx, modified_file, |an, _ctx| {
                 parsed_tree.traverse_node(an)
             });
 
             // Finally, populate our token_map with typed ast nodes.
             let typed_tree = TypedTree::new(&ctx);
             typed_tree.collect_module_spans(&root_module);
-            parse_ast_to_typed_tokens(&root_module, &ctx, &modified_file, |node, _ctx| {
+            parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, _ctx| {
                 typed_tree.traverse_node(node);
             });
 
@@ -493,11 +488,11 @@ pub fn traverse(
             compiled_program.typed = typed.as_ref().map(|x| x.clone()).ok();
         } else {
             // Collect tokens from dependencies and the standard library prelude.
-            parse_ast_to_tokens(parsed, &ctx, &modified_file, |an, ctx| {
+            parse_ast_to_tokens(parsed, &ctx, modified_file, |an, ctx| {
                 dependency::collect_parsed_declaration(an, ctx);
             });
 
-            parse_ast_to_typed_tokens(&root_module, &ctx, &modified_file, |node, ctx| {
+            parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, ctx| {
                 dependency::collect_typed_declaration(node, ctx);
             });
         }
@@ -512,27 +507,18 @@ pub fn parse_project(
     engines_clone: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     ctx: &CompilationContext,
+    lsp_mode: Option<&LspConfig>,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
     let engines_original = ctx.engines.clone();
     let session = ctx.session.as_ref().unwrap().clone();
     let sync = ctx.sync.as_ref().unwrap().clone();
     let token_map = ctx.token_map.clone();
-    let lsp_mode = Some(LspConfig {
-        optimized_build: ctx.optimized_build,
-        file_versions: ctx.file_versions.clone(),
-    });
-
     let build_plan = session
         .build_plan_cache
         .get_or_update(&sync.workspace_manifest_path(), || build_plan(uri))?;
 
-    let results = compile(
-        &build_plan,
-        engines_clone,
-        retrigger_compilation,
-        lsp_mode.as_ref(),
-    )?;
+    let results = compile(&build_plan, engines_clone, retrigger_compilation, lsp_mode)?;
 
     // First check if results is empty or if all program values are None,
     // indicating an error occurred in the compiler
@@ -544,6 +530,8 @@ pub fn parse_project(
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
+    let path = uri.to_file_path().unwrap();
+    let program_id = program_id_from_path(&path, engines_clone)?;
     let member_path = sync
         .member_path(uri)
         .ok_or(DirectoryError::TempMemberDirNotFound)?;
@@ -571,44 +559,53 @@ pub fn parse_project(
         return Err(LanguageServerError::MemberProgramNotFound);
     }
 
-    let diagnostics = traverse(
-        member_path,
-        results,
-        engines_original.clone(),
-        engines_clone,
-        session.clone(),
-        &token_map,
-        lsp_mode.as_ref(),
-    )?;
-    if let Some(config) = &lsp_mode {
-        // Only write the diagnostics results on didSave or didOpen.
-        if !config.optimized_build {
+    // Check if we need to reprocess the project.
+    let (needs_reprocessing, modified_file) =
+        server_state::needs_reprocessing(&ctx.token_map, &path, lsp_mode);
+
+    // Only traverse and create runnables if we have no tokens yet, or if a file was modified
+    if needs_reprocessing {
+        let diagnostics = traverse(
+            member_path,
+            results,
+            engines_original.clone(),
+            engines_clone,
+            session.clone(),
+            &token_map,
+            modified_file,
+        )?;
+
+        // Write diagnostics if not optimized build
+        if let Some(LspConfig {
+            optimized_build: false,
+            ..
+        }) = &lsp_mode
+        {
             if let Some((errors, warnings)) = &diagnostics {
                 *session.diagnostics.write() =
                     capabilities::diagnostic::get_diagnostics(warnings, errors, engines_clone.se());
             }
         }
+
+        session.runnables.clear();
+        if let Some(metrics) = session.metrics.get(&program_id) {
+            // Check if the cached AST was returned by the compiler for the users workspace.
+            // If it was, then we need to use the original engines.
+            let engines = if metrics.reused_programs > 0 {
+                &*engines_original.read()
+            } else {
+                engines_clone
+            };
+            let compiled_program = session.compiled_program.read();
+            create_runnables(
+                &session.runnables,
+                compiled_program.typed.as_deref(),
+                engines.de(),
+                engines.se(),
+            );
+        }
     }
 
-    session.runnables.clear();
-    let path = uri.to_file_path().unwrap();
-    let program_id = program_id_from_path(&path, engines_clone)?;
-    if let Some(metrics) = session.metrics.get(&program_id) {
-        // Check if the cached AST was returned by the compiler for the users workspace.
-        // If it was, then we need to use the original engines.
-        let engines = if metrics.reused_programs > 0 {
-            &*engines_original.read()
-        } else {
-            engines_clone
-        };
-        let compiled_program = session.compiled_program.read();
-        create_runnables(
-            &session.runnables,
-            compiled_program.typed.as_deref(),
-            engines.de(),
-            engines.se(),
-        );
-    }
     Ok(())
 }
 
@@ -616,7 +613,7 @@ pub fn parse_project(
 pub fn parse_lexed_program(
     lexed_program: &LexedProgram,
     ctx: &ParseContext,
-    modified_file: &Option<PathBuf>,
+    modified_file: Option<&PathBuf>,
     f: impl Fn(&Annotated<ItemKind>, &ParseContext) + Sync,
 ) {
     thread_local! {
@@ -637,7 +634,6 @@ pub fn parse_lexed_program(
     }
     let should_process = |item: &&Annotated<ItemKind>| {
         modified_file
-            .as_ref()
             .map(|path| {
                 item.span()
                     .source_id()
@@ -672,7 +668,7 @@ pub fn parse_lexed_program(
 fn parse_ast_to_tokens(
     parse_program: &ParseProgram,
     ctx: &ParseContext,
-    modified_file: &Option<PathBuf>,
+    modified_file: Option<&PathBuf>,
     f: impl Fn(&AstNode, &ParseContext) + Sync,
 ) {
     thread_local! {
@@ -693,7 +689,6 @@ fn parse_ast_to_tokens(
     }
     let should_process = |node: &&AstNode| {
         modified_file
-            .as_ref()
             .map(|path| {
                 node.span
                     .source_id()
@@ -727,7 +722,7 @@ fn parse_ast_to_tokens(
 fn parse_ast_to_typed_tokens(
     root: &ty::TyModule,
     ctx: &ParseContext,
-    modified_file: &Option<PathBuf>,
+    modified_file: Option<&PathBuf>,
     f: impl Fn(&ty::TyAstNode, &ParseContext) + Sync,
 ) {
     thread_local! {
@@ -748,7 +743,6 @@ fn parse_ast_to_typed_tokens(
     }
     let should_process = |node: &&ty::TyAstNode| {
         modified_file
-            .as_ref()
             .map(|path| {
                 node.span
                     .source_id()
@@ -914,8 +908,8 @@ mod tests {
             version: None,
             gc_options: GarbageCollectionConfig::default(),
         };
-        let result =
-            parse_project(&uri, &engines, None, &ctx).expect_err("expected ManifestFileNotFound");
+        let result = parse_project(&uri, &engines, None, &ctx, None)
+            .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(
