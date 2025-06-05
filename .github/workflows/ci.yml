@@ -888,8 +888,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=registry,ref=ghcr.io/fuellabs/forc:buildcache
+          cache-to: type=registry,ref=ghcr.io/fuellabs/forc:buildcache,mode=max
 
       - name: Notify if Job Fails
         uses: ravsamhq/notify-slack-action@v2
@@ -976,8 +976,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=registry,ref=ghcr.io/fuellabs/sway:buildcache
+          cache-to: type=registry,ref=ghcr.io/fuellabs/sway:buildcache,mode=max
 
       - name: Notify if Job Fails
         uses: ravsamhq/notify-slack-action@v2
