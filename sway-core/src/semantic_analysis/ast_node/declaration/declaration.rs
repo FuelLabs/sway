@@ -13,7 +13,7 @@ use crate::{
         },
         CallPath,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf, Items},
+    namespace::{IsExtendingExistingImpl, IsImplInterfaceSurface, IsImplSelf, Items},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, ConstShadowingMode,
         GenericShadowingMode, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
@@ -256,6 +256,7 @@ impl TyDecl {
                             .map(|decl_ref| decl_ref.decl_span().clone()),
                         IsImplSelf::Yes,
                         IsExtendingExistingImpl::No,
+                        IsImplInterfaceSurface::No,
                     )?;
 
                     return Ok(impl_trait_decl);
@@ -324,6 +325,7 @@ impl TyDecl {
                         .map(|decl_ref| decl_ref.decl_span().clone()),
                     IsImplSelf::No,
                     IsExtendingExistingImpl::No,
+                    IsImplInterfaceSurface::No,
                 )?;
                 let impl_trait_decl: ty::TyDecl = decl_engine
                     .insert(impl_trait.clone(), Some(&decl_id))

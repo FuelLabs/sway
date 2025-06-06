@@ -30,7 +30,7 @@ use sway_features::ExperimentalFeatures;
 use sway_types::{span::Span, Ident, Spanned};
 
 use super::{
-    namespace::{Items, LexicalScopeId},
+    namespace::{IsImplInterfaceSurface, Items, LexicalScopeId},
     symbol_collection_context::SymbolCollectionContext,
     type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type, VisibilityCheck},
     GenericShadowingMode,
@@ -1317,6 +1317,7 @@ impl<'a> TypeCheckContext<'a> {
         trait_decl_span: Option<Span>,
         is_impl_self: IsImplSelf,
         is_extending_existing_impl: IsExtendingExistingImpl,
+        is_impl_interface_surface: IsImplInterfaceSurface,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
 
@@ -1359,6 +1360,7 @@ impl<'a> TypeCheckContext<'a> {
                 trait_decl_span,
                 is_impl_self,
                 is_extending_existing_impl,
+                is_impl_interface_surface,
                 engines,
             )
     }
