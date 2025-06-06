@@ -80,14 +80,14 @@ pub fn handle_goto_definition(
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
     {
         Ok((uri, session)) => {
-            let sync = state.sync_workspace();
+            let sync = state.get_sync_workspace_for_uri(&uri).unwrap();
             let position = params.text_document_position_params.position;
             Ok(session.token_definition_response(
                 &uri,
                 position,
                 &state.engines.read(),
                 &state.token_map,
-                sync,
+                &sync,
             ))
         }
         Err(err) => {
@@ -154,13 +154,13 @@ pub fn handle_prepare_rename(
 ) -> Result<Option<PrepareRenameResponse>> {
     match state.uri_from_workspace(&params.text_document.uri) {
         Ok(uri) => {
-            let sync = state.sync_workspace();
+            let sync = state.get_sync_workspace_for_uri(&uri).unwrap();
             match capabilities::rename::prepare_rename(
                 &state.engines.read(),
                 &state.token_map,
                 &uri,
                 params.position,
-                sync,
+                &sync,
             ) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
@@ -181,14 +181,14 @@ pub fn handle_rename(state: &ServerState, params: RenameParams) -> Result<Option
         Ok(uri) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
-            let sync = state.sync_workspace();
+            let sync = state.get_sync_workspace_for_uri(&uri).unwrap();
             match capabilities::rename::rename(
                 &state.engines.read(),
                 &state.token_map,
                 new_name,
                 &uri,
                 position,
-                sync,
+                &sync,
             ) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
@@ -237,13 +237,13 @@ pub async fn handle_references(
     match state.uri_and_session_from_workspace(&params.text_document_position.text_document.uri) {
         Ok((uri, session)) => {
             let position = params.text_document_position.position;
-            let sync = state.sync_workspace();
+            let sync = state.get_sync_workspace_for_uri(&uri).unwrap();
             Ok(session.token_references(
                 &uri,
                 position,
                 &state.token_map,
                 &state.engines.read(),
-                sync,
+                &sync,
             ))
         }
         Err(err) => {

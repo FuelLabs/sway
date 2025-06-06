@@ -31,14 +31,14 @@ impl LanguageServer for ServerState {
         if let Err(err) = self.register_forc_toml_watcher().await {
             tracing::error!("Failed to register Forc.toml file watcher: {}", err);
         }
-        // Populate documents from temp dir
-        if let Some(sw) = self.sync_workspace.get() {
-            if let Ok(temp_dir) = sw.temp_dir() {
-                if let Err(err) = self.documents.store_sway_files_from_temp(temp_dir).await {
-                    tracing::warn!("Failed to populate documents from temp dir: {}", err);
-                }
-            }
-        }
+        // // Populate documents from temp dir
+        // if let Some(sw) = self.sync_workspace.get() {
+        //     if let Ok(temp_dir) = sw.temp_dir() {
+        //         if let Err(err) = self.documents.store_sway_files_from_temp(temp_dir).await {
+        //             tracing::warn!("Failed to populate documents from temp dir: {}", err);
+        //         }
+        //     }
+        // }
         tracing::info!("Sway Language Server Initialized");
     }
 
