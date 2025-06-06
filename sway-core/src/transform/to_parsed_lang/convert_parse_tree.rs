@@ -385,7 +385,6 @@ fn item_struct_to_struct_declaration(
             item_struct.generic_params_opt,
             item_struct.where_clause_opt,
         )?;
-        insert_generic_parameters_into_context(context, engines, &generic_parameters, &span);
 
         let fields = item_struct
             .fields
@@ -561,7 +560,6 @@ pub fn item_fn_to_function_declaration(
             item_fn.fn_signature.where_clause_opt.clone(),
             parent_where_clause_opt,
         )?;
-        insert_generic_parameters_into_context(context, engines, &generic_parameters, &span);
 
         let return_type = match item_fn.fn_signature.return_type_opt {
             Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
@@ -790,12 +788,6 @@ pub fn item_impl_to_declaration(
             item_impl.generic_params_opt.clone(),
             item_impl.where_clause_opt.clone(),
         )?;
-        insert_generic_parameters_into_context(
-            context,
-            engines,
-            &impl_type_parameters,
-            &block_span,
-        );
 
         let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
         let impl_item_parent = (&*engines.te().get(implementing_for.type_id())).into();
@@ -1376,29 +1368,6 @@ fn generic_params_opt_to_type_parameters(
         where_clause_opt,
         None,
     )
-}
-
-/// Include const generics into the current scope.
-fn insert_generic_parameters_into_context(
-    context: &mut Context,
-    engines: &Engines,
-    generic_parameters: &[TypeParameter],
-    span: &Span,
-) {
-    // for p in generic_parameters.iter() {
-    //     match p {
-    //         TypeParameter::Type(_) => {},
-    //         TypeParameter::Const(p) => {
-    //             let tid = engines.de().insert(TyConstGenericDecl {
-    //                 return_type: engines.te().id_of_u64(),
-    //                 value: None,
-    //                 expr: p.expr.as_ref().unwrap().clone(),
-    //                 span: span.clone(),
-    //             }, None); // TODO remove None
-    //             context.push_const_generic(tid);
-    //         },
-    //     }
-    // }
 }
 
 /// Convert and aggregate generic parameters,
@@ -3268,7 +3237,8 @@ fn expr_to_const_generic_expr(
             let expr = expr_to_expression(context, handler, engines, expr.clone())?;
             match expr.kind {
                 ExpressionKind::AmbiguousVariableExpression(ident) => {
-                    Ok(ConstGenericExpr::AmbiguousVariableExpression { ident })
+                    let r = context.get_const_generic(ident.as_str()).unwrap();
+                    Ok(ConstGenericExpr::Decl { id: r.id().clone() })
                 }
                 _ => Err(handler.emit_err(CompileError::LengthExpressionNotSupported { span })),
             }

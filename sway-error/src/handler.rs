@@ -28,6 +28,8 @@ impl Handler {
 
     /// Emit the error `err`.
     pub fn emit_err(&self, err: CompileError) -> ErrorEmitted {
+        eprintln!("{err:?} {}", std::backtrace::Backtrace::force_capture());
+
         self.inner.borrow_mut().errors.push(err);
         ErrorEmitted { _priv: () }
     }

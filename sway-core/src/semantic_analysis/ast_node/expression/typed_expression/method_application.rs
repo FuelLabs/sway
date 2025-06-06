@@ -97,12 +97,14 @@ pub(crate) fn type_check_method_application(
             None => type_engine.new_unknown(),
         })
         .collect::<Vec<_>>();
+    eprintln!("resolve_method_name: {:?} {:?}", method_name_binding, engines.help_out(&arguments_types));
     let method_result = resolve_method_name(
         handler,
         ctx.by_ref(),
         &method_name_binding,
         &arguments_types,
     );
+    eprintln!("    {}", method_result.is_ok());
 
     // In case resolve_method_name fails throw argument errors.
     let (original_decl_ref, call_path_typeid) = if let Err(e) = method_result {

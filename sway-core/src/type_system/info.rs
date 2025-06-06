@@ -575,7 +575,16 @@ impl DisplayWithEngines for TypeInfo {
                     ConstGenericExpr::AmbiguousVariableExpression { ident } => {
                         ident.as_str().to_string()
                     }
-                    _ => todo!(),
+                    ConstGenericExpr::Decl { id } => {
+                        let decl = engines.de().get(id);
+                        match decl.value.as_ref() {
+                            None => decl.name.as_str().to_string(),
+                            Some(expr) => match &expr.expression {
+                                ty::TyExpressionVariant::Literal(literal) => format!("{}", literal.cast_value_to_u64().unwrap()),
+                                _ => todo!(),
+                            }
+                        }
+                    },
                 };
                 format!("str[{}]", length)
             }

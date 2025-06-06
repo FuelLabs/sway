@@ -263,37 +263,25 @@ impl<'a> UnifyCheck<'a> {
                 ConstGenericExpr::Literal { val: l, .. },
                 ConstGenericExpr::Literal { val: r, .. },
             ) => l == r,
+            (ConstGenericExpr::Decl { .. }, ConstGenericExpr::Decl { .. }) => true,
             (
-                ConstGenericExpr::AmbiguousVariableExpression { ident: l },
-                ConstGenericExpr::AmbiguousVariableExpression { ident: r },
-            ) => l == r,
-            (
-                ConstGenericExpr::Literal { .. },
-                ConstGenericExpr::AmbiguousVariableExpression { .. },
-            ) => true,
-            (ConstGenericExpr::Literal { .. }, ConstGenericExpr::Decl { id }) => {
-                let decl = self.engines.de().get(id);
-                decl.value.is_none()
-            }
-            (
-                ConstGenericExpr::AmbiguousVariableExpression { .. },
-                ConstGenericExpr::Literal { .. },
-            ) => true,
-            (
-                ConstGenericExpr::AmbiguousVariableExpression { ident },
+                ConstGenericExpr::Decl { id },
+                ConstGenericExpr::Literal { val, .. },
+            )
+            | (
+                ConstGenericExpr::Literal { val, .. },
                 ConstGenericExpr::Decl { id },
             ) => {
-                let decl: std::sync::Arc<crate::language::ty::TyConstGenericDecl> =
-                    self.engines.de().get(id);
-                eprintln!("{:?}; {:?}", ident.as_str(), decl);
-                todo!();
-            }
-            (ConstGenericExpr::Decl { .. }, ConstGenericExpr::Literal { .. }) => todo!(),
-            (
-                ConstGenericExpr::Decl { .. },
-                ConstGenericExpr::AmbiguousVariableExpression { .. },
-            ) => todo!(),
-            (ConstGenericExpr::Decl { id: l }, ConstGenericExpr::Decl { id: r }) => l == r,
+                let decl = self.engines.de().get(id);
+                match decl.value.as_ref() {
+                    Some(value) => {
+                        let value = value.expression.as_literal().unwrap();
+                        value.cast_value_to_u64().unwrap() == *val as u64
+                    },
+                    None => true,
+                }
+            },
+            x @ _ => todo!("{x:?}"),
         }
     }
 

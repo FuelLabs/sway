@@ -159,64 +159,49 @@ impl<'a> Unifier<'a> {
                 }
 
                 match (rc.expr(), ec.expr()) {
-                    (
-                        ConstGenericExpr::Literal { val: r_eval, .. },
-                        ConstGenericExpr::Literal { val: e_eval, .. },
-                    ) => {
-                        assert!(r_eval == e_eval);
+                    (ConstGenericExpr::Literal { val: l, .. }, ConstGenericExpr::Literal { val: r, .. }) if *l == *r => {
                     }
-                    (
-                        ConstGenericExpr::Literal { .. },
-                        ConstGenericExpr::AmbiguousVariableExpression { .. },
-                    ) => {
-                        todo!();
-                        self.replace_expected_with_received(expected, &r_type_source_info, span);
+                    (ConstGenericExpr::Literal { val, .. }, ConstGenericExpr::Decl { id }) => {
+                        let decl = self.engines.de().get(id);
+                        match decl.value.as_ref() {
+                            Some(value) => {
+                                let value = value.expression.as_literal().unwrap();
+                                assert!(value.cast_value_to_u64().unwrap() == *val as u64);
+                            },
+                            None => {
+                                todo!();
+                                // self.engines.de().map_duplicate(id, |decl| {
+                                //     decl.value = Some(TyExpression {
+                                //         expression: TyExpressionVariant::Literal(
+                                //             crate::language::Literal::U64(*val as u64),
+                                //         ),
+                                //         return_type: decl.return_type.clone(),
+                                //         span: span.clone(),
+                                //     });
+                                // });
+                            },
+                        }
                     }
-                    (
-                        ConstGenericExpr::AmbiguousVariableExpression { .. },
-                        ConstGenericExpr::Literal { .. },
-                    ) => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-                    }
-                    (
-                        ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
-                        ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
-                    ) => {
-                        assert!(r_ident.as_str() == e_ident.as_str());
-                    }
-                    (ConstGenericExpr::Literal { val, span }, ConstGenericExpr::Decl { id }) => {
-                        let mut decl = TyConstGenericDecl::clone(&self.engines.de().get(id));
-                        assert!(decl.value.is_none());
-
-                        decl.value = Some(TyExpression {
-                            expression: TyExpressionVariant::Literal(
-                                crate::language::Literal::U64(*val as u64),
-                            ),
-                            return_type: decl.return_type.clone(),
-                            span: span.clone(),
-                        });
-
-                        self.engines.de().replace(*id, decl);
-                    }
-                    (
-                        ConstGenericExpr::AmbiguousVariableExpression { ident },
-                        ConstGenericExpr::Decl { id },
-                    ) => {
-                        self.replace_received_with_expected(received, &e_type_source_info, span);
-                    }
-                    (ConstGenericExpr::Decl { id }, ConstGenericExpr::Literal { val, span }) => {
-                        todo!()
-                    }
-                    (
-                        ConstGenericExpr::Decl { id },
-                        ConstGenericExpr::AmbiguousVariableExpression { ident },
-                    ) => todo!(),
                     (ConstGenericExpr::Decl { id: l }, ConstGenericExpr::Decl { id: r }) => {
                         if l == r {
                         } else {
-                            todo!();
+                            let l = self.engines.de().get(l);
+                            let r = self.engines.de().get(r);
+                            match (l.value.as_ref(), r.value.as_ref()) {
+                                (Some(l), Some(r)) => {
+                                    match (&l.expression, &r.expression) {
+                                        (TyExpressionVariant::Literal(l), TyExpressionVariant::Literal(r)) 
+                                            if l.cast_value_to_u64().unwrap() == r.cast_value_to_u64().unwrap() => {
+                                                // Nothing to unify
+                                        }
+                                        x => todo!("{x:?}"),
+                                    }
+                                }
+                                x => todo!("{x:?}")
+                            }
                         }
                     }
+                    x => todo!("{x:?}"),
                 }
             }
             (Slice(re), Slice(ee)) => {

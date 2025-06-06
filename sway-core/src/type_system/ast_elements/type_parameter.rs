@@ -1008,7 +1008,7 @@ impl std::hash::Hash for ConstGenericExpr {
         match self {
             Self::Literal { val, .. } => val.hash(state),
             Self::AmbiguousVariableExpression { ident } => ident.hash(state),
-            _ => todo!(),
+            Self::Decl { id } => id.hash(state),
         }
     }
 }
@@ -1018,7 +1018,7 @@ impl Spanned for ConstGenericExpr {
         match self {
             Self::Literal { span, .. } => span.clone(),
             Self::AmbiguousVariableExpression { ident, .. } => ident.span(),
-            _ => todo!(),
+            Self::Decl { id } => Span::dummy(), // TODO should id be a DeclRef instead?
         }
     }
 }
