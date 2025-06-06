@@ -88,9 +88,25 @@ impl<'a> TokenMap {
     pub fn tokens_for_file<'s>(
         &'s self,
         uri: &'s Url,
-    ) -> impl Iterator<Item = RefMulti<'s, TokenIdent, Token>> + 's {
-        self.iter().filter_map(move |entry| {
-            let ident_path = entry.key().path.clone();
+    ) -> Box<dyn Iterator<Item = RefMulti<'s, TokenIdent, Token>> + 's> {
+        thread_local! {
+            static TOKENS_FOR_FILE_DEPTH: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
+        }
+        let exceeded = TOKENS_FOR_FILE_DEPTH.with(|depth| {
+            let mut d = depth.borrow_mut();
+            *d += 1;
+            if *d > 64 {
+                true
+            } else {
+                false
+            }
+        });
+        if exceeded {
+            eprintln!("tokens_for_file recursion limit exceeded");
+            return Box::new(std::iter::empty());
+        }
+        let result = Box::new(self.iter().filter_map(move |entry| {
+            let ident_path: Option<PathBuf> = entry.key().path.clone();
             ident_path.as_ref().and_then(|path| {
                 if path.to_str() == Some(uri.path()) {
                     Some(entry)
@@ -98,7 +114,12 @@ impl<'a> TokenMap {
                     None
                 }
             })
-        })
+        }));
+        TOKENS_FOR_FILE_DEPTH.with(|depth| {
+            let mut d = depth.borrow_mut();
+            *d -= 1;
+        });
+        result
     }
 
     /// Return an Iterator of tokens matching the given name.
