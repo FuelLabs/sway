@@ -32,6 +32,31 @@ pub struct Expression {
     pub span: Span,
 }
 
+impl DebugWithEngines for Expression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
+        match &self.kind {
+            ExpressionKind::ImplicitReturn(expr) => {
+                f.write_fmt(format_args!("{:?}", engines.help_out(&expr)))
+            }
+            ExpressionKind::Array(expr) => {
+                match expr {
+                    ArrayExpression::Explicit { contents, length_span } => todo!(),
+                    ArrayExpression::Repeat { value, length } => {
+                        f.write_fmt(format_args!("[{:?}; {:?}]", engines.help_out(&value), engines.help_out(&length)))
+                    },
+                }
+            }
+            ExpressionKind::Literal(v) => {
+                f.write_fmt(format_args!("{:?}", v.to_string()))
+            }
+            ExpressionKind::AmbiguousVariableExpression(a) => {
+                f.write_fmt(format_args!("{:?}", a.as_str()))
+            }
+            x => todo!("{x:?}"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FunctionApplicationExpression {
     pub call_path_binding: TypeBinding<CallPath>,

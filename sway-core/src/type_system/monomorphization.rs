@@ -222,7 +222,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
 where
     T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
 {
-    dbg!("{}", const_generics.len());
+    // dbg!("{}", const_generics.len());
     let mut type_mapping = prepare_type_subst_map_for_monomorphize(
         handler,
         engines,
@@ -236,7 +236,7 @@ where
         subst_ctx,
         ctx,
     )?;
-    dbg!("{}", const_generics.len());
+    // dbg!("{}", const_generics.len());
 
     for (key, value) in const_generics {
         let new_ref = engines.de().map_duplicate(&key, |decl| {
@@ -245,7 +245,7 @@ where
         type_mapping.const_generics_mapping.insert(key, new_ref.id().clone());
     }
 
-    eprintln!("type_mapping: {:?}", engines.help_out(&type_mapping));
+    // eprintln!("type_mapping: {:?}", engines.help_out(&type_mapping));
 
     value.subst(&SubstTypesContext::new(engines, &type_mapping, true));
 

@@ -54,28 +54,6 @@ pub struct TyFunctionDecl {
     pub kind: TyFunctionDeclKind,
 }
 
-enum TyAll<'a> {
-    TyConstGenericDeclRef(&'a mut DeclRef<DeclId<TyConstGenericDecl>>),
-    TyConstGenericDeclId(&'a mut DeclId<TyConstGenericDecl>),
-}
-
-trait TyIter {
-    fn ty_iter<F: for<'a> FnMut(TyAll<'a>)>(&mut self, cb: &mut F);
-}
-
-impl TyIter for TyFunctionDecl {
-    fn ty_iter<F: for<'a> FnMut(TyAll<'a>)>(&mut self, cb: &mut F) {
-        for p in self.type_parameters.iter_mut() {
-            match p {
-                TypeParameter::Type(_) => {},
-                TypeParameter::Const(p) => {
-                    cb(TyAll::TyConstGenericDeclRef(&mut p.tid));
-                },
-            }
-        }
-    }
-}
-
 impl TyDeclParsedType for TyFunctionDecl {
     type ParsedType = FunctionDeclaration;
 }
@@ -236,6 +214,14 @@ impl DeclRefFunction {
                     impl_self_or_trait.implementing_for.type_id(),
                 );
 
+                eprintln!("get_method_safe_to_unify: {:?} -> {:?}",
+                    engines.help_out(type_id),
+                    engines.help_out(impl_self_or_trait.implementing_for.type_id())
+                );
+                for (k, v) in type_id_type_parameters.iter() {
+                    eprintln!("    {:?} -> {:?};", engines.help_out(k), engines.help_out(v));
+                }
+
                 type_id_type_subst_map
                     .const_generics_materialization
                     .append(&mut const_generic_parameters);
@@ -281,6 +267,11 @@ impl DeclRefFunction {
                     .duplicate(engines, old_id);
                 method_type_subst_map.insert(old_id, new_id);
             }
+
+            method_type_subst_map.insert(method.return_type.type_id(), engines
+                .te()
+                .duplicate(engines, method.return_type.type_id())
+            );
 
             for p in method.type_parameters.iter() {
                 match p {
@@ -397,6 +388,10 @@ impl HashWithEngines for TyFunctionDecl {
 
 impl SubstTypes for TyFunctionDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        if self.name.as_str().contains("abi_decode") {
+            eprintln!("subst_inner: {:?}", ctx.engines.help_out(ctx.type_subst_map));
+        }
+
         let changes = if ctx.subst_function_body {
             has_changes! {
                 self.type_parameters.subst(ctx);

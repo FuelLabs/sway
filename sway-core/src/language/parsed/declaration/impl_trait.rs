@@ -1,6 +1,6 @@
 use super::{ConstantDeclaration, FunctionDeclaration, TraitTypeDeclaration};
 use crate::{
-    decl_engine::{parsed_id::ParsedDeclId, ParsedInterfaceDeclId},
+    decl_engine::{parsed_id::ParsedDeclId, DeclEngineGet as _, ParsedDeclEngineGet as _, ParsedInterfaceDeclId},
     engine_threading::{
         DebugWithEngines, EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
@@ -112,10 +112,26 @@ impl DebugWithEngines for ImplSelfOrTrait {
             ))
         } else {
             f.write_fmt(format_args!(
-                "impl {} for {:?}",
+                "impl {} for {:?}\n",
                 self.trait_name,
                 engines.help_out(self.implementing_for.clone())
-            ))
+            ))?;
+
+            for item in self.items.iter() {
+                match item {
+                    ImplItem::Fn(id) => {
+                        let fn_decl = engines.pe().get(id);
+                        f.write_fmt(format_args!(
+                            "    fn: {:?}",
+                            engines.help_out(fn_decl),
+                        ))?;
+                    },
+                    ImplItem::Constant(id) => todo!(),
+                    ImplItem::Type(id) => todo!(),
+                }
+            }
+
+            Ok(())
         }
     }
 }

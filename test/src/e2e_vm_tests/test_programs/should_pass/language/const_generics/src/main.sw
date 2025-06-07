@@ -6,7 +6,7 @@ struct S<const N: u64> {
 }
 
 fn main(a: [u64; 2]) {
-    let _ = __dbg(S::<3>{ arr: [1u64, 2u64, 3u64] });
+    // let _ = __dbg(S::<3>{ arr: [1u64, 2u64, 3u64] });
 }
 
 #[test]

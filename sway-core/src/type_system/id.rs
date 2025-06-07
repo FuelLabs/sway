@@ -422,6 +422,7 @@ impl TypeId {
                                     expr.to_ty_expression(engines),
                                 );
                             }
+                            (None, None) => {}
                             x => todo!("{x:?} Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                         },
                         _ => {}

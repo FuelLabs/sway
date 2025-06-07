@@ -84,7 +84,7 @@ impl Context {
     // Will search on all scopes , starting at the current one.
     pub fn get_const_generic(&self, name: &str) -> Option<&DeclRef<DeclId<TyConstGenericDecl>>> {
         for scope in self.const_generic_scopes.iter().rev() {
-            eprintln!("Searching {name} at {:?}", scope.map);
+            // eprintln!("Searching {name} at {:?}", scope.map);
             if let Some(v) = scope.map.get(name) {
                 return Some(v);
             }

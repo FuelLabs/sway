@@ -977,6 +977,7 @@ impl TypeEngine {
             | TypeInfo::Placeholder(_)
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Array(.., Length(ConstGenericExpr::AmbiguousVariableExpression { .. }))
+             | TypeInfo::Array(.., Length(ConstGenericExpr::Decl { .. }))
             | TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
                 ..
             }))
@@ -2133,13 +2134,13 @@ impl TypeEngine {
         unify_kind: UnifyKind,
         push_unification: bool,
     ) {
-        eprintln!(
-            "{}; received: {}; expected: {}; err: {}",
-            span.as_str(),
-            engines.help_out(received),
-            engines.help_out(expected),
-            help_text
-        );
+        // eprintln!(
+        //     "{}; received: {}; expected: {}; err: {}",
+        //     span.as_str(),
+        //     engines.help_out(received),
+        //     engines.help_out(expected),
+        //     help_text
+        // );
 
         if !UnifyCheck::coercion(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
@@ -2187,15 +2188,15 @@ impl TypeEngine {
             panic!("Possible infinite recursion");
         }
 
-        eprintln!("reapply_unifications {depth}:");
+        // eprintln!("reapply_unifications {depth}:");
 
         let current_last_replace = *self.last_replace.read();
         for unification in self.unifications.values() {
-            eprintln!(
-                "    {:?} vs {:?}",
-                engines.help_out(unification.received),
-                engines.help_out(unification.expected),
-            );
+            // eprintln!(
+            //     "    {:?} vs {:?}",
+            //     engines.help_out(unification.received),
+            //     engines.help_out(unification.expected),
+            // );
             Self::unify_helper(
                 &Handler::default(),
                 engines,

@@ -1,5 +1,5 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{DeclEngineGet as _, DeclId, DeclRef, MaterializeConstGenerics}, has_changes, language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath}, semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext}, HasChanges, SubstTypes, TypeId
+    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{DeclEngineGet as _, DeclId, DeclRef, MaterializeConstGenerics}, has_changes, language::{parsed::{ConstGenericDeclaration, Declaration}, ty::TyExpression, CallPath}, semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext}, HasChanges, SubstTypes, TypeId
 };
 use serde::{Deserialize, Serialize};
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -87,4 +87,32 @@ impl Spanned for TyConstGenericDecl {
 
 impl TyDeclParsedType for TyConstGenericDecl {
     type ParsedType = ConstGenericDeclaration;
+}
+
+#[test]
+fn ok_const_generics_decl() {
+    let handler = Handler::default();
+    let engines = crate::Engines::default();
+    let prog = crate::parse(
+        r#"library;
+trait A { fn f(self) -> Self; }
+struct B {}
+impl<const N: u64> A for [u64; N] { fn f(self) -> [u64; N] { [0; N] } }"#
+        .into(),
+        &handler,
+        &engines,
+        None,
+        sway_features::ExperimentalFeatures::default().with_const_generics(true),
+    );
+
+    dbg!(handler.consume());
+    let (a, b) = prog.unwrap();
+
+    let c = &b.root.tree.root_nodes[2];
+    let decl_id = match c.content {
+        crate::language::parsed::AstNodeContent::Declaration(Declaration::ImplSelfOrTrait(decl)) => decl,
+        _ => todo!(),
+    };
+    let decl = crate::decl_engine::ParsedDeclEngineGet::get(engines.pe(), &decl_id);
+    println!("{:?}", engines.help_out(decl));
 }

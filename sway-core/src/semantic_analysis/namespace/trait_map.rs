@@ -325,11 +325,11 @@ impl TraitMap {
                 // Types are subset if the `unaliased_type_id` that we want to insert can unify with the
                 // existing `map_type_id`. In addition we need to additionally check for the case of
                 // `&mut <type>` and `&<type>`.
-                eprintln!(
-                    "insert: {} {}",
-                    engines.help_out(unaliased_type_id),
-                    engines.help_out(map_type_id)
-                );
+                // eprintln!(
+                //     "insert: {} {}",
+                //     engines.help_out(unaliased_type_id),
+                //     engines.help_out(map_type_id)
+                // );
                 let types_are_subset = unify_checker.check(unaliased_type_id, *map_type_id)
                     && is_unified_type_subset(engines.te(), unaliased_type_id, *map_type_id);
 

@@ -36,7 +36,7 @@ pub(crate) fn type_check_method_application(
     arguments: &[Expression],
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
-    eprintln!("{}", span.as_str());
+    // eprintln!("{}", span.as_str());
 
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
@@ -97,14 +97,15 @@ pub(crate) fn type_check_method_application(
             None => type_engine.new_unknown(),
         })
         .collect::<Vec<_>>();
-    eprintln!("resolve_method_name: {:?} {:?}", method_name_binding, engines.help_out(&arguments_types));
     let method_result = resolve_method_name(
         handler,
         ctx.by_ref(),
         &method_name_binding,
         &arguments_types,
     );
-    eprintln!("    {}", method_result.is_ok());
+    // if method_result.is_err() {
+    //     eprintln!("    resolve_method_name failed: {:?} {:?}", &method_name_binding, engines.help_out(&arguments_types));
+    // }
 
     // In case resolve_method_name fails throw argument errors.
     let (original_decl_ref, call_path_typeid) = if let Err(e) = method_result {
@@ -116,7 +117,6 @@ pub(crate) fn type_check_method_application(
         method_result.unwrap()
     };
 
-    
     // Prepare const generics materialization
     let mut const_generics = BTreeMap::new();
 
@@ -144,6 +144,17 @@ pub(crate) fn type_check_method_application(
                     return_type: engines.te().id_of_u64(),
                     span: span.clone()
                 });
+            }
+            (
+                TypeInfo::Array(_, Length(ConstGenericExpr::Decl { id: l, .. })),
+                TypeInfo::Array(_, Length(ConstGenericExpr::Decl { id: r, .. })),
+            ) => {
+                let l = engines.de().get(l);
+                let r = engines.de().get(r);
+                match (l.value.as_ref(), r.value.as_ref()) {
+                    (None, None) => {},
+                    _ => todo!("{l:?} {r:?}")
+                }
             }
             (
                 a @ TypeInfo::Array(_, Length(_)),
@@ -175,11 +186,17 @@ pub(crate) fn type_check_method_application(
             }
             _ => {}
         }
+    
     }
-
-    if span.as_str() == "a.eq(a)" {
+    
+    if !const_generics.is_empty() {
         let decl = engines.de().get(original_decl_ref.id());
-        eprintln!("type check method app: {} {:?} {:?}", span.as_str(), const_generics, decl);
+        eprintln!("type check method app: {:?}\n    {:?}\n    {:?}\n    {:?}", 
+            engines.help_out(decl),
+            method_name_binding.type_arguments.to_vec(),
+            engines.help_out(arguments_types.to_vec()),
+            const_generics
+        );
     }
 
     let mut fn_ref = monomorphize_method(
@@ -189,7 +206,6 @@ pub(crate) fn type_check_method_application(
         method_name_binding.type_arguments.to_vec_mut(),
         const_generics,
     )?;
-    dbg!();
 
     let mut method = (*decl_engine.get_function(&fn_ref)).clone();
 
@@ -1050,7 +1066,7 @@ pub(crate) fn monomorphize_method(
     let mut func_decl = (*decl_engine.get_function(&decl_ref)).clone();
 
     // monomorphize the function declaration
-    dbg!();
+    eprintln!("before monomorphize_method: {:?} {:?} {:?}", decl_ref.name(), ctx.engines.help_out(type_arguments.to_vec()), const_generics);
     ctx.monomorphize(
         handler,
         &mut func_decl,
@@ -1059,7 +1075,7 @@ pub(crate) fn monomorphize_method(
         EnforceTypeArguments::No,
         &decl_ref.span(),
     )?;
-    dbg!();
+    eprintln!("after monomorphize_method: {:?} {:?}", decl_ref.name(), ctx.engines.help_out(type_arguments.to_vec()));
 
     if let Some(implementing_type) = &func_decl.implementing_type {
         func_decl

@@ -170,15 +170,7 @@ impl<'a> Unifier<'a> {
                             },
                             None => {
                                 todo!();
-                                // self.engines.de().map_duplicate(id, |decl| {
-                                //     decl.value = Some(TyExpression {
-                                //         expression: TyExpressionVariant::Literal(
-                                //             crate::language::Literal::U64(*val as u64),
-                                //         ),
-                                //         return_type: decl.return_type.clone(),
-                                //         span: span.clone(),
-                                //     });
-                                // });
+                                self.replace_expected_with_received(expected, &r_type_source_info, span);
                             },
                         }
                     }
@@ -197,6 +189,7 @@ impl<'a> Unifier<'a> {
                                         x => todo!("{x:?}"),
                                     }
                                 }
+                                (None, None) => {}
                                 x => todo!("{x:?}")
                             }
                         }
@@ -508,7 +501,7 @@ impl<'a> Unifier<'a> {
                             }
                             (None, None) => {
                                 // eprintln!("{}", std::backtrace::Backtrace::force_capture());
-                                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860");
+                                // todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860");
                             },
                         }
                     }

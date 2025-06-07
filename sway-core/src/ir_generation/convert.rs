@@ -1,8 +1,5 @@
 use crate::{
-    decl_engine::DeclEngine,
-    language::Literal,
-    type_system::{TypeId, TypeInfo},
-    TypeEngine,
+    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{engine, DeclEngine, DeclEngineGet as _}, language::Literal, type_system::{TypeId, TypeInfo}, TypeEngine
 };
 
 use super::types::{create_tagged_union_type, create_tuple_aggregate};
@@ -124,12 +121,27 @@ fn convert_resolved_type_info(
             context,
             &decl_engine.get_enum(decl_ref).variants,
         )?,
-        TypeInfo::Array(elem_type, length) if length.expr().as_literal_val().is_some() => {
-            // SAFETY: Safe by the guard above
-            let len = length
-                .expr()
-                .as_literal_val()
-                .expect("unexpected non literal array length");
+        TypeInfo::Array(elem_type, length) => {
+            let len = match length.expr() {
+                ConstGenericExpr::Literal { val, .. } => {
+                    *val as u64
+                },
+                ConstGenericExpr::Decl { id } => {
+                    let decl = decl_engine.get(id);
+                    match decl.value.as_ref() {
+                        Some(expr) => {
+                            if let Some(v) = expr.extract_literal_value() {
+                                v.cast_value_to_u64().unwrap()
+                            } else {
+                                dbg!();
+                                reject_type!("Array with non literal length") 
+                            }
+                        },
+                        None => {dbg!(); reject_type!("Array with non literal length")},
+                    }
+                },
+                _ => reject_type!("Array with non literal length") 
+            };
 
             let elem_type = convert_resolved_type_id(
                 type_engine,
@@ -194,7 +206,7 @@ fn convert_resolved_type_info(
         TypeInfo::TypeParam(_) => reject_type!("TypeParam"),
         TypeInfo::ErrorRecovery(_) => reject_type!("Error recovery"),
         TypeInfo::TraitType { .. } => reject_type!("TraitType"),
-        TypeInfo::Array(..) => reject_type!("Array with non literal length"),
+        TypeInfo::Array(_, l) => {dbg!(l); reject_type!("Array with non literal length") },
         TypeInfo::StringArray(..) => reject_type!("String Array with non literal length"),
     })
 }

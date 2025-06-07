@@ -323,6 +323,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         match self.type_arguments {
             // Monomorphize the copy, in place.
             TypeArgs::Regular(_) => {
+                // eprintln!("TypeBinding<CallPath>::type_check: {:?} {:?}", self.inner, ctx.engines.help_out(self.type_arguments.to_vec_mut().to_vec()));
                 ctx.monomorphize(
                     handler,
                     &mut new_copy,
@@ -331,6 +332,9 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                     EnforceTypeArguments::No,
                     &self.span,
                 )?;
+                if self.inner.suffix.as_str().contains("from_str_array") {
+                    dbg!(ctx.engines.help_out(&new_copy));
+                }
             }
             TypeArgs::Prefix(_) => {
                 // Resolve the type arguments without monomorphizing.

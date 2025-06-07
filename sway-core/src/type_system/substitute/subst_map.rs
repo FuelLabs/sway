@@ -1,7 +1,7 @@
 use crate::{
     ast_elements::type_parameter::ConstGenericExpr, decl_engine::{DeclEngineGet as _, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, ParsedDeclEngineInsert}, engine_threading::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
-    }, language::ty::TyConstGenericDecl, type_system::priv_prelude::*
+    }, language::ty::{TyConstGenericDecl, TyExpression, TyExpressionVariant}, type_system::priv_prelude::*
 };
 use std::{collections::BTreeMap, fmt};
 
@@ -107,6 +107,9 @@ impl TypeSubstMap {
                 )
             })
             .collect();
+        
+        eprintln!("from_type_parameters: {:?}", engines.help_out(type_parameters.to_vec()));
+
         TypeSubstMap {
             mapping,
             const_generics_mapping: BTreeMap::default(),
@@ -278,25 +281,33 @@ impl TypeSubstMap {
                     vec![type_parameter.type_id()],
                     vec![type_argument.type_id()],
                 );
+
                 match (&l.expr(), &r.expr()) {
-                    (
-                        ConstGenericExpr::AmbiguousVariableExpression { ident },
-                        ConstGenericExpr::Literal { val, .. },
-                    ) => {
-                        map.const_generics_materialization.insert(
-                            ident.as_str().into(),
-                            crate::language::ty::TyExpression {
-                                expression: crate::language::ty::TyExpressionVariant::Literal(
-                                    crate::language::Literal::U64(*val as u64),
-                                ),
-                                return_type: type_engine.id_of_u64(),
-                                span: sway_types::Span::dummy(),
+                    (ConstGenericExpr::Decl { id: l }, ConstGenericExpr::Decl { id: r }) => {
+                        let l = engines.de().get(l);
+                        let r = engines.de().get(r);
+                        match (l.value.as_ref(), r.value.as_ref()) {
+                            (None, None) => {
+                                eprintln!("from_superset_and_subset: {:?}", engines.help_out(&map));
+                                eprintln!("superset: {:?}; subset: {:?}", engines.help_out(superset), engines.help_out(subset));
                             },
-                        );
-                        map
+                            (l, r) => todo!("{:?} {:?}", l, r)
+                        }
                     }
-                    _ => map,
+                    (ConstGenericExpr::Decl { id }, ConstGenericExpr::Literal { val, span }) => {
+                        let new_id = engines.de().map_duplicate(id, |decl| {
+                            decl.value = Some(TyExpression {
+                                expression: TyExpressionVariant::Literal(crate::language::Literal::U64(*val as u64)),
+                                return_type: engines.te().id_of_u64(),
+                                span: span.clone(),
+                            });
+                        });
+                        map.const_generics_mapping.insert(id.clone(), new_id.id().clone());
+                    }
+                    x => todo!("{x:?}"),
                 }
+
+                map
             }
             (TypeInfo::Slice(type_parameter), TypeInfo::Slice(type_argument)) => {
                 TypeSubstMap::from_superset_and_subset_helper(

@@ -208,8 +208,9 @@ impl DebugWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         match self {
             TypeParameter::Type(p) => p.fmt(f, engines),
-            TypeParameter::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            TypeParameter::Const(p) => {
+                let decl = engines.de().get(p.tid.id());
+                f.write_fmt(format_args!("{:?} {} = {:?}", p.tid.id(), decl.name, decl.value))
             }
         }
     }
@@ -1032,7 +1033,7 @@ impl DebugWithEngines for ConstGenericExpr {
             }
             Self::Decl { id } => {
                 let decl = engines.de().get(id);
-                write!(f, "{} = {:?}", decl.name, decl.value)
+                write!(f, "({}) {} = {:?}", id.inner(), decl.name, decl.value)
             }
         }
     }

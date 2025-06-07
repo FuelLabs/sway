@@ -59,11 +59,11 @@ impl ty::TyStructDecl {
             // type check fields
             let mut new_fields = vec![];
             for field in fields.into_iter() {
-                eprintln!(
-                    "Type checking field: {} {:?}",
-                    field.name.as_str(),
-                    ctx.engines.te().get(field.type_argument.type_id()),
-                );
+                // eprintln!(
+                //     "Type checking field: {} {:?}",
+                //     field.name.as_str(),
+                //     ctx.engines.te().get(field.type_argument.type_id()),
+                // );
                 new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
             }
 

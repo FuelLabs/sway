@@ -45,8 +45,30 @@ impl PartialEqWithEngines for FunctionDeclaration {
 }
 
 impl DebugWithEngines for FunctionDeclaration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", self.name))
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
+        f.write_fmt(format_args!("{} (", self.name))?;
+        for p in self.parameters.iter() {
+            f.write_fmt(format_args!("{}: ", p.name))?;
+            f.write_fmt(format_args!("{}, ", engines.help_out(&p.type_argument)))?;
+        }
+        f.write_fmt(format_args!(") ->"))?;
+        f.write_fmt(format_args!(" {:?}\n", engines.help_out(&self.return_type)))?;
+
+        for node in self.body.contents.iter() {
+            f.write_fmt(format_args!("        "))?;
+            match &node.content {
+                AstNodeContent::UseStatement(use_statement) => todo!(),
+                AstNodeContent::Declaration(declaration) => todo!(),
+                AstNodeContent::Expression(expression) => {
+                    f.write_fmt(format_args!("{:?}", engines.help_out(&expression)))?;
+                },
+                AstNodeContent::IncludeStatement(include_statement) => todo!(),
+                AstNodeContent::Error(spans, error_emitted) => todo!(),
+            }
+            f.write_fmt(format_args!("\n"))?;
+        }
+
+        Ok(())
     }
 }
 
