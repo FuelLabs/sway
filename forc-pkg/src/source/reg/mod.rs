@@ -510,7 +510,9 @@ where
             anyhow!(
                 "Failed to send request to github to obtain package index file from registry {e}"
             )
-        })?;
+        })?
+        .error_for_status()
+        .map_err(|_| anyhow!("Failed to fetch {pkg_name}"))?;
 
     let contents = index_response.text().await?;
     let index_file: IndexFile = serde_json::from_str(&contents).with_context(|| {

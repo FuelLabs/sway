@@ -59,7 +59,7 @@ pub(crate) trait GenerateImplCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
         let attr_string = attributes
             .all()
             .filter_map(|attr| match attr.kind {
-                AttributeKind::DocComment { .. } => {
+                AttributeKind::DocComment => {
                     if include_comments {
                         return Some(format!("{}{}", TAB, attr.span.as_str()));
                     }

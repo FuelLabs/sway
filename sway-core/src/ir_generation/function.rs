@@ -20,6 +20,7 @@ use crate::{
     metadata::MetadataManager,
     type_system::*,
     types::*,
+    PanicOccurrence, PanicOccurrences,
 };
 
 use indexmap::IndexMap;
@@ -88,8 +89,8 @@ macro_rules! return_on_termination_or_extract {
     }};
 }
 
-pub(crate) struct FnCompiler<'eng> {
-    engines: &'eng Engines,
+pub(crate) struct FnCompiler<'a> {
+    engines: &'a Engines,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
@@ -97,11 +98,12 @@ pub(crate) struct FnCompiler<'eng> {
     block_to_continue_to: Option<Block>,
     current_fn_param: Option<ty::TyFunctionParameter>,
     lexical_map: LexicalMap,
-    cache: &'eng mut CompiledFunctionCache,
-    // This is a map from the type IDs of a logged type and the ID of the corresponding log
-    logged_types_map: HashMap<TypeId, LogId>,
-    // This is a map from the type IDs of a message data type and the ID of the corresponding smo
-    messages_types_map: HashMap<TypeId, MessageId>,
+    cache: &'a mut CompiledFunctionCache,
+    /// Maps a [TypeId] of a logged type to the [LogId] of its corresponding log.
+    logged_types_map: &'a HashMap<TypeId, LogId>,
+    /// Maps a [TypeId] of a message data type to the [MessageId] of its corresponding SMO.
+    messages_types_map: &'a HashMap<TypeId, MessageId>,
+    panic_occurrences: &'a mut PanicOccurrences,
 }
 
 fn to_constant(_s: &mut FnCompiler<'_>, context: &mut Context, value: u64) -> Value {
@@ -148,16 +150,17 @@ fn calc_addr_as_ptr(
     current_block.append(context).int_to_ptr(addr, ptr_to)
 }
 
-impl<'eng> FnCompiler<'eng> {
+impl<'a> FnCompiler<'a> {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
-        engines: &'eng Engines,
+        engines: &'a Engines,
         context: &mut Context,
         module: Module,
         function: Function,
-        logged_types_map: &HashMap<TypeId, LogId>,
-        messages_types_map: &HashMap<TypeId, MessageId>,
-        cache: &'eng mut CompiledFunctionCache,
+        logged_types_map: &'a HashMap<TypeId, LogId>,
+        messages_types_map: &'a HashMap<TypeId, MessageId>,
+        panic_occurrences: &'a mut PanicOccurrences,
+        cache: &'a mut CompiledFunctionCache,
     ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
@@ -174,8 +177,9 @@ impl<'eng> FnCompiler<'eng> {
             lexical_map,
             cache,
             current_fn_param: None,
-            logged_types_map: logged_types_map.clone(),
-            messages_types_map: messages_types_map.clone(),
+            logged_types_map,
+            messages_types_map,
+            panic_occurrences,
         }
     }
 
@@ -530,6 +534,7 @@ impl<'eng> FnCompiler<'eng> {
                     )
                 } else {
                     let function_decl = self.engines.de().get_function(fn_ref);
+
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -729,7 +734,7 @@ impl<'eng> FnCompiler<'eng> {
                     }),
                 }
             }
-            ty::TyExpressionVariant::Continue { .. } => match self.block_to_continue_to {
+            ty::TyExpressionVariant::Continue => match self.block_to_continue_to {
                 // If `self.block_to_continue_to` is not None, then it has been set inside
                 // a loop and the use of `continue` here is legal, so create a branch
                 // instruction. Error out otherwise.
@@ -753,6 +758,9 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::Return(exp) => {
                 self.compile_return(context, md_mgr, exp, span_md_idx)
+            }
+            ty::TyExpressionVariant::Panic(exp) => {
+                self.compile_panic(context, md_mgr, exp, span_md_idx)
             }
             ty::TyExpressionVariant::Ref(exp) => {
                 self.compile_ref(context, md_mgr, exp, span_md_idx)
@@ -893,7 +901,7 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        i @ ty::TyIntrinsicFunctionKind {
+        ty::TyIntrinsicFunctionKind {
             kind,
             arguments,
             type_arguments,
@@ -1254,19 +1262,19 @@ impl<'eng> FnCompiler<'eng> {
                     });
                 }
 
-                // The log value and the log ID are just Value.
                 let log_val = return_on_termination_or_extract!(self.compile_expression_to_value(
                     context,
                     md_mgr,
                     &arguments[0]
                 )?);
-                let logged_type = i
-                    .get_logged_type(context.experimental.new_encoding)
-                    .expect("Could not return logged type.");
-                let log_id = match self.logged_types_map.get(&logged_type) {
+                let logged_type_id = TypeMetadata::get_logged_type_id(
+                    &arguments[0],
+                    context.experimental.new_encoding,
+                )?;
+                let log_id = match self.logged_types_map.get(&logged_type_id) {
                     None => {
                         return Err(CompileError::Internal(
-                            "Unable to determine ID for log instance.",
+                            "Unable to determine log instance ID for `__log` intrinsic.",
                             span,
                         ));
                     }
@@ -1277,7 +1285,7 @@ impl<'eng> FnCompiler<'eng> {
 
                 match log_val.get_type(context) {
                     None => Err(CompileError::Internal(
-                        "Unable to determine type for logged value.",
+                        "Unable to determine logged value type in the `__log` intrinsic.",
                         span,
                     )),
                     Some(log_ty) => {
@@ -1919,8 +1927,9 @@ impl<'eng> FnCompiler<'eng> {
                         let needed_size = to_constant(self, context, 32);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
-                    TypeInfo::StringArray(string_len) => {
-                        let needed_size = to_constant(self, context, string_len.val() as u64);
+                    TypeInfo::StringArray(length) => {
+                        let value = length.expr().as_literal_val().unwrap() as u64;
+                        let needed_size = to_constant(self, context, value);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
                     TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
@@ -2029,7 +2038,8 @@ impl<'eng> FnCompiler<'eng> {
                             .mem_copy_bytes(addr, item_ptr, 32);
                         increase_len(&mut self.current_block, context, len, 32)
                     }
-                    TypeInfo::StringArray(string_len) => {
+                    TypeInfo::StringArray(length) => {
+                        let string_len = length.expr().as_literal_val().unwrap() as u64;
                         // Save to local and return ptr to local
                         let item_ptr = save_to_local_return_ptr(self, context, item)?;
                         let addr = calc_addr_as_ptr(
@@ -2039,17 +2049,10 @@ impl<'eng> FnCompiler<'eng> {
                             len,
                             Type::get_uint8(context),
                         );
-                        self.current_block.append(context).mem_copy_bytes(
-                            addr,
-                            item_ptr,
-                            string_len.val() as u64,
-                        );
-                        increase_len(
-                            &mut self.current_block,
-                            context,
-                            len,
-                            string_len.val() as u64,
-                        )
+                        self.current_block
+                            .append(context)
+                            .mem_copy_bytes(addr, item_ptr, string_len);
+                        increase_len(&mut self.current_block, context, len, string_len)
                     }
                     TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
                         let uint64 = Type::get_uint64(context);
@@ -2209,6 +2212,9 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::ElemAt => self.compile_intrinsic_elem_at(arguments, context, md_mgr),
             Intrinsic::Transmute => {
                 self.compile_intrinsic_transmute(arguments, return_type, context, md_mgr, &span)
+            }
+            Intrinsic::Dbg => {
+                unreachable!("__dbg should not exist in the typed tree")
             }
         }
     }
@@ -2491,6 +2497,127 @@ impl<'eng> FnCompiler<'eng> {
             })
     }
 
+    fn compile_panic(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        ast_expr: &ty::TyExpression,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<TerminatorValue, CompileError> {
+        // 1. Build the `PanicOccurrence` that corresponds to this `panic` call.
+        let mut panic_occurrence = PanicOccurrence::default();
+
+        // 1.a Define either the `msg` or `log_id` entry.
+
+        // If the `panic` argument can be const-evaluated to a string slice,
+        // we will not log it, but just create an `msg` entry in the ABI.
+        let logged_expression =
+            TypeMetadata::get_logged_expression(ast_expr, context.experimental.new_encoding)?;
+
+        let const_eval_string =
+            if logged_expression.return_type == self.engines.te().id_of_string_slice() {
+                let const_expr_val = compile_constant_expression_to_constant(
+                    self.engines,
+                    context,
+                    md_mgr,
+                    self.module,
+                    None,
+                    Some(self),
+                    logged_expression,
+                );
+
+                match const_expr_val {
+                    Ok(constant) => constant.get_content(context).as_string(),
+                    Err(_) => None,
+                }
+            } else {
+                None
+            };
+
+        if let Some(const_eval_string) = const_eval_string {
+            panic_occurrence.msg = Some(const_eval_string);
+        } else {
+            // If the `panic` argument is not a constant string slice, we will log it.
+            // Note that the argument can still be a string slice, but we cannot
+            // const-evaluate it at compile time.
+
+            // In predicates, we only revert and do not log.
+            if context.program_kind != Kind::Predicate {
+                let panic_val = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, ast_expr)?
+                );
+                let logged_type_id = logged_expression.return_type;
+                let log_id = match self.logged_types_map.get(&logged_type_id) {
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Unable to determine log instance ID for `panic` expression.",
+                            ast_expr.span.clone(),
+                        ));
+                    }
+                    Some(log_id) => {
+                        panic_occurrence.log_id = Some(*log_id);
+                        convert_literal_to_value(context, &Literal::U64(log_id.hash_id))
+                    }
+                };
+
+                match panic_val.get_type(context) {
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Unable to determine logged value type in the `panic` expression.",
+                            ast_expr.span.clone(),
+                        ))
+                    }
+                    Some(log_ty) => {
+                        let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
+
+                        // Emit the `log` instruction.
+                        self.current_block
+                            .append(context)
+                            .log(panic_val, log_ty, log_id)
+                            .add_metadatum(context, span_md_idx);
+                    }
+                };
+            } else {
+                // TODO: Consider using `__dbg` intrinsic in predicates.
+            }
+        }
+
+        // 1.b Define the `loc` entry.
+        // Set the location to the `panic` keyword.
+        panic_occurrence.loc = self.engines.se().get_source_location(
+            md_mgr
+                .md_to_span(context, span_md_idx)
+                .as_ref()
+                .unwrap_or(&ast_expr.span),
+        );
+
+        // 2. Define the revert code for this particular panic occurrence.
+        // If we have encountered this `panic` before, we will reuse the revert code.
+        // This happen, e.g., when compiling a generic function that panics on a non-generic argument.
+        let revert_code = match self.panic_occurrences.get(&panic_occurrence) {
+            Some(revert_code) => *revert_code,
+            None => {
+                // If we have not encountered this `panic` before, we will assign a new revert code.
+                let revert_code = context.get_next_panic_revert_code();
+                self.panic_occurrences.insert(panic_occurrence, revert_code);
+                revert_code
+            }
+        };
+
+        let revert_code_const = ConstantContent::new_uint(context, 64, revert_code);
+        let revert_code_const = Constant::unique(context, revert_code_const);
+        let revert_code_val = Value::new_constant(context, revert_code_const);
+
+        // 3. Emit the `revert` instruction.
+        let val = self
+            .current_block
+            .append(context)
+            .revert(revert_code_val)
+            .add_metadatum(context, span_md_idx);
+
+        Ok(TerminatorValue::new(val, context))
+    }
+
     fn compile_ref(
         &mut self,
         context: &mut Context,
@@ -2502,7 +2629,7 @@ impl<'eng> FnCompiler<'eng> {
             self.compile_expression_to_ptr(context, md_mgr, ast_expr)?
         );
 
-        // TODO-IG: Do we need to convert to `u64` here? Can we use `Ptr` directly? Investigate.
+        // TODO: (REFERENCES) Do we need to convert to `u64` here? Can we use `Ptr` directly? Investigate.
         let int_ty = Type::get_uint64(context);
         let val = self
             .current_block
@@ -2972,8 +3099,9 @@ impl<'eng> FnCompiler<'eng> {
             self.module,
             md_mgr,
             callee,
-            &self.logged_types_map,
-            &self.messages_types_map,
+            self.logged_types_map,
+            self.messages_types_map,
+            self.panic_occurrences,
         )?;
 
         // Now actually call the new function.

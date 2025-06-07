@@ -10,6 +10,7 @@ use crate::{
     type_system::*,
     Namespace,
 };
+use ast_elements::type_parameter::ConstGenericExpr;
 use monomorphization::MonomorphizeHelper;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -23,7 +24,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 pub struct TyStructDecl {
     pub call_path: CallPath,
     pub fields: Vec<TyStructField>,
-    pub type_parameters: Vec<TypeParameter>,
+    pub generic_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub span: Span,
     pub attributes: transform::Attributes,
@@ -44,7 +45,7 @@ impl PartialEqWithEngines for TyStructDecl {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.call_path == other.call_path
             && self.fields.eq(&other.fields, ctx)
-            && self.type_parameters.eq(&other.type_parameters, ctx)
+            && self.generic_parameters.eq(&other.generic_parameters, ctx)
             && self.visibility == other.visibility
     }
 }
@@ -54,7 +55,7 @@ impl HashWithEngines for TyStructDecl {
         let TyStructDecl {
             call_path,
             fields,
-            type_parameters,
+            generic_parameters: type_parameters,
             visibility,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
@@ -72,7 +73,7 @@ impl SubstTypes for TyStructDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
             self.fields.subst(ctx);
-            self.type_parameters.subst(ctx);
+            self.generic_parameters.subst(ctx);
         }
     }
 }
@@ -85,7 +86,7 @@ impl Spanned for TyStructDecl {
 
 impl MonomorphizeHelper for TyStructDecl {
     fn type_parameters(&self) -> &[TypeParameter] {
-        &self.type_parameters
+        &self.generic_parameters
     }
 
     fn name(&self) -> &Ident {
@@ -100,11 +101,27 @@ impl MonomorphizeHelper for TyStructDecl {
 impl MaterializeConstGenerics for TyStructDecl {
     fn materialize_const_generics(
         &mut self,
-        _engines: &Engines,
-        _handler: &Handler,
-        _name: &str,
-        _value: &crate::language::ty::TyExpression,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &crate::language::ty::TyExpression,
     ) -> Result<(), ErrorEmitted> {
+        for p in self.generic_parameters.iter_mut() {
+            match p {
+                TypeParameter::Const(p) if p.name.as_str() == name => {
+                    p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                }
+                _ => {}
+            }
+        }
+
+        for field in self.fields.iter_mut() {
+            field
+                .type_argument
+                .type_id_mut()
+                .materialize_const_generics(engines, handler, name, value)?;
+        }
+
         Ok(())
     }
 }

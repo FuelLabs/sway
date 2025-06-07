@@ -1,1 +1,4 @@
-cmds = ["forc build --path {root} --release --ir final"]
+cmds = [
+    "forc build --path {root} --release",
+    "forc test --path {root} --experimental const_generics --test-threads 1 --logs --revert-codes",
+]

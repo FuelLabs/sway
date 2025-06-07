@@ -77,40 +77,77 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                     let _ = writeln!(&mut snapshot, "> {}", cmd);
 
-                    // known commands
-                    let cmd = if let Some(cmd) = cmd.strip_prefix("forc doc ") {
-                        FORC_DOC_COMPILATION.call_once(|| {
-                            compile_forc_doc();
-                        });
-                        format!("target/release/forc-doc {cmd} 1>&2")
-                    } else if let Some(cmd) = cmd.strip_prefix("forc ") {
-                        FORC_COMPILATION.call_once(|| {
-                            compile_forc();
-                        });
-                        format!("target/release/forc {cmd} 1>&2")
-                    } else {
-                        panic!("Not supported. Possible commands: forc")
-                    };
+                    let mut last_output: Option<String> = None;
 
-                    let o = duct::cmd!("bash", "-c", cmd.clone())
-                        .dir(repo_root.clone())
-                        .stderr_to_stdout()
-                        .stdout_capture()
-                        .env("COLUMNS", "10")
-                        .unchecked()
-                        .start()
-                        .unwrap();
-                    let o = o.wait().unwrap();
+                    // We intentionally split the command by " | " to allow for
+                    // `regex` command to support `|` operator, although without
+                    // surrounding spaces.
+                    for cmd in cmd.split(" | ") {
+                        let cmd = cmd.trim();
 
-                    let _ = writeln!(
-                        &mut snapshot,
-                        "{}",
-                        clean_output(&format!(
+                        let cmd = if let Some(cmd) = cmd.strip_prefix("forc doc ") {
+                            FORC_DOC_COMPILATION.call_once(|| {
+                                compile_forc_doc();
+                            });
+                            format!("target/release/forc-doc {cmd} 1>&2")
+                        } else if let Some(cmd) = cmd.strip_prefix("forc ") {
+                            FORC_COMPILATION.call_once(|| {
+                                compile_forc();
+                            });
+                            format!("target/release/forc {cmd} 1>&2")
+                        } else if let Some(cmd) = cmd.strip_prefix("sub ") {
+                            let arg = cmd.trim();
+                            if let Some(l) = last_output.take() {
+                                let mut new_output = String::new();
+                                for line in l.lines() {
+                                    if line.contains(arg) {
+                                        new_output.push_str(line);
+                                        new_output.push('\n');
+                                    }
+                                }
+                                last_output = Some(new_output);
+                            }
+                            continue;
+                        } else if let Some(cmd) = cmd.strip_prefix("regex ") {
+                            let arg = cmd.trim();
+                            let arg = arg.trim_matches('\'');
+                            let regex = Regex::new(arg).expect("regex provided to the snapshot `regex` filter is not a valid Rust regex");
+                            if let Some(l) = last_output.take() {
+                                let mut new_output = String::new();
+                                for line in l.lines() {
+                                    if regex.is_match(line) {
+                                        new_output.push_str(line);
+                                        new_output.push('\n');
+                                    }
+                                }
+                                last_output = Some(new_output);
+                            }
+                            continue;
+                        } else {
+                            panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex");
+                        };
+
+                        let o = duct::cmd!("bash", "-c", cmd.clone())
+                            .dir(repo_root.clone())
+                            .stderr_to_stdout()
+                            .stdout_capture();
+
+                        let o = if let Some(last_output) = last_output.as_ref() {
+                            o.stdin_bytes(last_output.as_bytes())
+                        } else {
+                            o
+                        };
+
+                        let o = o.env("COLUMNS", "10").unchecked().start().unwrap();
+                        let o = o.wait().unwrap();
+                        last_output = Some(clean_output(&format!(
                             "exit status: {}\noutput:\n{}",
                             o.status.code().unwrap(),
                             std::str::from_utf8(&o.stdout).unwrap(),
-                        ))
-                    );
+                        )));
+                    }
+
+                    let _ = writeln!(&mut snapshot, "{}", last_output.unwrap_or_default());
                 }
 
                 fn stdout(root: &str, snapshot: &str) {
@@ -197,6 +234,22 @@ fn clean_output(output: &str) -> String {
     // Remove compilation time
     let r = Regex::new("(Finished (debug|release) \\[.*?\\] target\\(s\\) \\[.*?\\] in )(.*?s)")
         .unwrap();
+    let result = r.replace_all(&result, "$1???");
+
+    // Remove forc test time
+    let r = Regex::new("((F|f)inished in )(.*?s)").unwrap();
+    let result = r.replace_all(&result, "$1???");
+
+    // Remove individual test duration time
+    let r = Regex::new("(test .+ \\()(.*?s)(, .+ gas\\))").unwrap();
+    let result = r.replace_all(&result, "$1???$3");
+
+    // Remove test result "finished in" time
+    let r = Regex::new("(test result: .+ finished in )(.*?s)").unwrap();
+    let result = r.replace(&result, "$1???");
+
+    // Remove test duration time
+    let r = Regex::new("(Finished in )(.*?s)").unwrap();
     let result = r.replace(&result, "$1???");
 
     result.to_string()

@@ -13,6 +13,7 @@ use ::option::Option::{self, *};
 use ::result::Result::{self, *};
 use ::vm::evm::evm_address::EvmAddress;
 use ::codec::*;
+use ::debug::*;
 use ::ops::*;
 
 /// An ECDSA signature.

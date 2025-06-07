@@ -1,7 +1,8 @@
 use self::commands::{
-    addr2line, build, check, clean, completions, contract_id, init, new, parse_bytecode, plugins,
-    predicate_root, template, test, update,
+    add, addr2line, build, check, clean, completions, contract_id, init, new, parse_bytecode,
+    plugins, predicate_root, remove, template, test, update,
 };
+pub use add::Command as AddCommand;
 use addr2line::Command as Addr2LineCommand;
 use anyhow::anyhow;
 pub use build::Command as BuildCommand;
@@ -17,6 +18,7 @@ pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub(crate) use predicate_root::Command as PredicateRootCommand;
+pub use remove::Command as RemoveCommand;
 use std::str::FromStr;
 pub use template::Command as TemplateCommand;
 pub use test::Command as TestCommand;
@@ -64,6 +66,7 @@ struct Opt {
 
 #[derive(Subcommand, Debug)]
 enum Forc {
+    Add(AddCommand),
     #[clap(name = "addr2line")]
     Addr2Line(Addr2LineCommand),
     #[clap(visible_alias = "b")]
@@ -76,6 +79,7 @@ enum Forc {
     ParseBytecode(ParseBytecodeCommand),
     #[clap(visible_alias = "t")]
     Test(TestCommand),
+    Remove(RemoveCommand),
     Update(UpdateCommand),
     Plugins(PluginsCommand),
     Template(TemplateCommand),
@@ -97,6 +101,7 @@ impl Forc {
     #[allow(dead_code)]
     pub fn possible_values() -> Vec<&'static str> {
         vec![
+            "add",
             "addr2line",
             "build",
             "check",
@@ -109,6 +114,7 @@ impl Forc {
             "test",
             "update",
             "template",
+            "remove",
             "contract-id",
             "predicate-root",
         ]
@@ -127,6 +133,7 @@ pub async fn run_cli() -> ForcResult<()> {
     init_tracing_subscriber(tracing_options);
 
     match opt.command {
+        Forc::Add(command) => add::exec(command),
         Forc::Addr2Line(command) => addr2line::exec(command),
         Forc::Build(command) => build::exec(command),
         Forc::Check(command) => check::exec(command),
@@ -138,6 +145,7 @@ pub async fn run_cli() -> ForcResult<()> {
         Forc::Plugins(command) => plugins::exec(command),
         Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command),
+        Forc::Remove(command) => remove::exec(command),
         Forc::Template(command) => template::exec(command),
         Forc::ContractId(command) => contract_id::exec(command),
         Forc::PredicateRoot(command) => predicate_root::exec(command),

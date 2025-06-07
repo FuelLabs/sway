@@ -1,24 +1,26 @@
 use crate::{
     core::{
-        session::Session,
+        sync::SyncWorkspace,
         token::{SymbolKind, Token, TokenIdent, TypedAstToken},
-        token_map::TokenMapExt,
+        token_map::{TokenMap, TokenMapExt},
     },
     error::{LanguageServerError, RenameError},
     utils::document::get_url_from_path,
 };
 use lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use sway_core::{language::ty, Engines};
 use sway_types::SourceEngine;
 
 const RAW_IDENTIFIER: &str = "r#";
 
 pub fn rename(
-    session: Arc<Session>,
+    engines: &Engines,
+    token_map: &TokenMap,
     new_name: String,
     url: &Url,
     position: Position,
+    sync: &SyncWorkspace,
 ) -> Result<WorkspaceEdit, LanguageServerError> {
     let _p = tracing::trace_span!("rename").entered();
     // Make sure the new name is not a keyword or a literal int type
@@ -37,8 +39,7 @@ pub fn rename(
     }
 
     // Get the token at the current cursor position
-    let t = session
-        .token_map()
+    let t = token_map
         .token_at_position(url, position)
         .ok_or(RenameError::TokenNotFound)?;
     let token = t.value();
@@ -53,13 +54,12 @@ pub fn rename(
     // If the token is a function, find the parent declaration
     // and collect idents for all methods of ABI Decl, Trait Decl, and Impl Trait
     let map_of_changes: HashMap<Url, Vec<TextEdit>> = (if token.kind == SymbolKind::Function {
-        find_all_methods_for_decl(&session, &session.engines.read(), url, position)?
+        find_all_methods_for_decl(token_map, engines, url, position)?
     } else {
         // otherwise, just find all references of the token in the token map
-        session
-            .token_map()
+        token_map
             .iter()
-            .all_references_of_token(token, &session.engines.read())
+            .all_references_of_token(token, engines)
             .map(|item| item.key().clone())
             .collect::<Vec<TokenIdent>>()
     })
@@ -76,7 +76,7 @@ pub fn rename(
         }
         if let Some(path) = &ident.path {
             let url = get_url_from_path(path).ok()?;
-            if let Some(url) = session.sync.to_workspace_url(url) {
+            if let Some(url) = sync.to_workspace_url(url) {
                 let edit = TextEdit::new(range, new_name.clone());
                 return Some((url, vec![edit]));
             };
@@ -99,19 +99,20 @@ pub fn rename(
 }
 
 pub fn prepare_rename(
-    session: Arc<Session>,
+    engines: &Engines,
+    token_map: &TokenMap,
     url: &Url,
     position: Position,
+    sync: &SyncWorkspace,
 ) -> Result<PrepareRenameResponse, LanguageServerError> {
-    let t = session
-        .token_map()
+    let t = token_map
         .token_at_position(url, position)
         .ok_or(RenameError::TokenNotFound)?;
     let (ident, token) = t.pair();
 
     // Only let through tokens that are in the users workspace.
     // tokens that are external to the users workspace cannot be renamed.
-    let _ = is_token_in_workspace(&session, &session.engines.read(), token)?;
+    let _ = is_token_in_workspace(engines, token, sync)?;
 
     // Make sure we don't allow renaming of tokens that
     // are keywords or intrinsics.
@@ -147,16 +148,16 @@ fn formatted_name(ident: &TokenIdent) -> String {
 
 /// Checks if the token is in the users workspace.
 fn is_token_in_workspace(
-    session: &Arc<Session>,
     engines: &Engines,
     token: &Token,
+    sync: &SyncWorkspace,
 ) -> Result<bool, LanguageServerError> {
     let decl_ident = token
         .declared_token_ident(engines)
         .ok_or(RenameError::TokenNotFound)?;
 
     // Check the span of the tokens definitions to determine if it's in the users workspace.
-    let temp_path = &session.sync.temp_dir()?;
+    let temp_path = &sync.temp_dir()?;
     if let Some(path) = &decl_ident.path {
         if !path.starts_with(temp_path) {
             return Err(LanguageServerError::RenameError(
@@ -184,20 +185,18 @@ fn trait_interface_idents<'a>(
 
 /// Returns the `Ident`s of all methods found for an `AbiDecl`, `TraitDecl`, or `ImplTrait`.
 fn find_all_methods_for_decl<'a>(
-    session: &'a Session,
+    token_map: &'a TokenMap,
     engines: &'a Engines,
     url: &'a Url,
     position: Position,
 ) -> Result<Vec<TokenIdent>, LanguageServerError> {
     // Find the parent declaration
-    let t = session
-        .token_map()
+    let t = token_map
         .parent_decl_at_position(engines, url, position)
         .ok_or(RenameError::TokenNotFound)?;
     let decl_token = t.value();
 
-    let idents = session
-        .token_map()
+    let idents = token_map
         .iter()
         .all_references_of_token(decl_token, engines)
         .filter_map(|item| {

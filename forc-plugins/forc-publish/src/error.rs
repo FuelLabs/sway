@@ -5,19 +5,19 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("I/O error")]
+    #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
 
-    #[error("Json error")]
+    #[error("Json error: {0}")]
     JsonError(#[from] serde_json::Error),
 
-    #[error("HTTP error")]
+    #[error("HTTP error: {0}")]
     HttpError(#[from] reqwest::Error),
 
-    #[error("TOML error")]
+    #[error("TOML error: {0}")]
     TomlError(#[from] toml::ser::Error),
 
-    #[error("URL error")]
+    #[error("URL error: {0}")]
     UrlError(#[from] url::ParseError),
 
     #[error("Failed to get relative path")]
@@ -28,6 +28,9 @@ pub enum Error {
 
     #[error("Forc.toml not found in the current directory")]
     ForcTomlNotFound,
+
+    #[error("Server error")]
+    ServerError,
 }
 
 #[derive(Deserialize)]
@@ -44,9 +47,9 @@ impl Error {
                 status,
                 error: parsed_error.error,
             },
-            Err(_) => Error::ApiResponseError {
+            Err(err) => Error::ApiResponseError {
                 status,
-                error: "Unknown API error".to_string(),
+                error: format!("Unexpected API error: {}", err),
             },
         }
     }
@@ -118,7 +121,7 @@ mod test {
         match error {
             Error::ApiResponseError { status, error } => {
                 assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-                assert_eq!(error, "Unknown API error");
+                assert_eq!(error, "Unexpected API error: error decoding response body");
             }
             _ => panic!("Expected ApiResponseError"),
         }

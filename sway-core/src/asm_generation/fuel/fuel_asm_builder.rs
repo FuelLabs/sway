@@ -16,8 +16,8 @@ use crate::{
         FinalizedAsm, ProgramKind,
     },
     asm_lang::{
-        virtual_register::*, Label, Op, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18,
-        VirtualOp, WideCmp, WideOperations,
+        virtual_register::*, JumpType, Label, Op, VirtualImmediate06, VirtualImmediate12,
+        VirtualImmediate18, VirtualOp, WideCmp, WideOperations,
     },
     decl_engine::DeclRefFunction,
     metadata::MetadataManager,
@@ -174,7 +174,10 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
 
                 // call decode
                 self.before_entries.push(Op {
-                    opcode: Either::Right(crate::asm_lang::ControlFlowOp::Call(*decode_fn_label)),
+                    opcode: Either::Right(crate::asm_lang::ControlFlowOp::Jump {
+                        to: *decode_fn_label,
+                        type_: JumpType::Call,
+                    }),
                     comment: format!("decode configurable {}", name),
                     owning_span: None,
                 });
@@ -209,6 +212,10 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
             before_entries: before_entry,
             ..
         } = self;
+
+        let opt_level = build_config
+            .map(|cfg| cfg.optimization_level)
+            .unwrap_or_default();
 
         let entries = entries
             .clone()
@@ -265,7 +272,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
         }
 
         let allocated_program = virtual_abstract_program
-            .into_allocated_program(fallback_fn)
+            .into_allocated_program(fallback_fn, opt_level)
             .map_err(|e| handler.emit_err(e))?;
 
         if build_config
@@ -2094,7 +2101,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     // ---------------------------------------------------------------------------------------------
 
-    // TODO-IG: Reassess all the places we use `is_copy_type`.
+    // TODO: (REFERENCES) Reassess all the places where we use `is_copy_type`.
     pub(crate) fn is_copy_type(&self, ty: &Type) -> bool {
         ty.is_unit(self.context)
             || ty.is_never(self.context)

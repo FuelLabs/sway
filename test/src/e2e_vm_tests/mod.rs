@@ -11,6 +11,7 @@ use colored::*;
 use core::fmt;
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::BuildProfile;
+use forc_test::ecal::Syscall;
 use forc_util::tx_utils::decode_log_data;
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_types::canonical::Input;
@@ -404,8 +405,28 @@ impl TestContext {
 
                 let result = harness::runs_in_vm(compiled.clone(), script_data, witness_data)?;
                 let actual_result = match result {
-                    harness::VMExecutionResult::Fuel(state, receipts) => {
+                    harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
                         print_receipts(output, &receipts);
+
+                        use std::fmt::Write;
+                        let _ = writeln!(output, "  {}", "Captured Output".green().bold());
+                        for captured in ecal.captured.iter() {
+                            match captured {
+                                Syscall::Write { bytes, .. } => {
+                                    let s = std::str::from_utf8(bytes.as_slice()).unwrap();
+                                    output.push_str(s);
+                                }
+                                Syscall::Fflush { .. } => {}
+                                Syscall::Unknown { ra, rb, rc, rd } => {
+                                    let _ = writeln!(
+                                        output,
+                                        "Unknown ecal: {} {} {} {}",
+                                        ra, rb, rc, rd
+                                    );
+                                }
+                            }
+                        }
+
                         match state {
                             ProgramState::Return(v) => TestResult::Return(v),
                             ProgramState::ReturnData(digest) => {

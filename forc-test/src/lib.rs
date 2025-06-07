@@ -1,3 +1,4 @@
+pub mod ecal;
 pub mod execute;
 pub mod setup;
 
@@ -5,6 +6,7 @@ use crate::execute::TestExecutor;
 use crate::setup::{
     ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
 };
+use ecal::EcalSyscallHandler;
 use forc_pkg::{self as pkg, BuildOpts};
 use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
@@ -74,6 +76,8 @@ pub struct TestResult {
     pub logs: Vec<fuel_tx::Receipt>,
     /// Gas used while executing this test.
     pub gas_used: u64,
+    /// EcalState of the execution
+    pub ecal: Box<EcalSyscallHandler>,
 }
 
 const TEST_METADATA_SEED: u64 = 0x7E57u64;

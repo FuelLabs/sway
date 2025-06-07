@@ -24,6 +24,7 @@ use ::ops::*;
 use ::revert::revert;
 use ::primitive_conversions::u16::*;
 use ::codec::*;
+use ::debug::*;
 use ::raw_slice::*;
 
 // GTF Opcode const selectors

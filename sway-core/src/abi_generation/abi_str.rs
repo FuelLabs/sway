@@ -50,8 +50,8 @@ impl TypeId {
                 }
                 (TypeInfo::Array(_, length), TypeInfo::Array(type_arg, resolved_length)) => {
                     assert_eq!(
-                        length.as_literal_val().unwrap(),
-                        resolved_length.as_literal_val().unwrap()
+                        length.expr().as_literal_val().unwrap(),
+                        resolved_length.expr().as_literal_val().unwrap()
                     );
                     let inner_type = if ctx.abi_with_fully_specified_types {
                         type_engine
@@ -60,7 +60,7 @@ impl TypeId {
                     } else {
                         "_".to_string()
                     };
-                    format!("[{}; {:?}]", inner_type, engines.help_out(length))
+                    format!("[{}; {:?}]", inner_type, engines.help_out(length.expr()))
                 }
                 (TypeInfo::Slice(type_arg), TypeInfo::Slice(_)) => {
                     let inner_type = if ctx.abi_with_fully_specified_types {
@@ -94,7 +94,7 @@ impl TypeInfo {
             Placeholder(_) => "_".to_string(),
             TypeParam(param) => format!("typeparam({})", param.name()),
             StringSlice => "str".into(),
-            StringArray(length) => format!("str[{}]", length.val()),
+            StringArray(length) => format!("str[{:?}]", engines.help_out(length.expr())),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
@@ -130,13 +130,13 @@ impl TypeInfo {
             Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 let type_params = if (ctx.abi_root_type_without_generic_type_parameters && is_root)
-                    || decl.type_parameters.is_empty()
+                    || decl.generic_parameters.is_empty()
                 {
                     "".into()
                 } else {
                     format!(
                         "<{}>",
-                        decl.type_parameters
+                        decl.generic_parameters
                             .iter()
                             .map(|p| p.abi_str(engines, ctx, false))
                             .collect::<Vec<_>>()
@@ -152,13 +152,13 @@ impl TypeInfo {
             Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
                 let type_params = if (ctx.abi_root_type_without_generic_type_parameters && is_root)
-                    || decl.type_parameters.is_empty()
+                    || decl.generic_parameters.is_empty()
                 {
                     "".into()
                 } else {
                     format!(
                         "<{}>",
-                        decl.type_parameters
+                        decl.generic_parameters
                             .iter()
                             .map(|p| p.abi_str(engines, ctx, false))
                             .collect::<Vec<_>>()
@@ -178,7 +178,7 @@ impl TypeInfo {
                 format!(
                     "[{}; {:?}]",
                     elem_ty.abi_str(ctx, engines, false),
-                    engines.help_out(length)
+                    engines.help_out(length.expr())
                 )
             }
             RawUntypedPtr => "raw untyped ptr".into(),
@@ -199,7 +199,7 @@ impl TypeInfo {
                 referenced_type,
             } => {
                 format!(
-                    "__ref {}{}", // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
+                    "__ref {}{}", // TODO: (REFERENCES) No references in ABIs according to the RFC. Or we want to have them?
                     if *to_mutable_value { "mut " } else { "" },
                     referenced_type.abi_str(ctx, engines, false)
                 )

@@ -150,6 +150,15 @@ impl Parse for Expr {
                     expr.parse(ctx);
                 }
             }
+            Expr::Panic {
+                panic_token,
+                expr_opt,
+            } => {
+                insert_keyword(ctx, panic_token.span());
+                if let Some(expr) = expr_opt {
+                    expr.parse(ctx);
+                }
+            }
             Expr::If(if_expr) => {
                 if_expr.parse(ctx);
             }
@@ -383,7 +392,7 @@ impl Parse for ItemAbi {
 
 impl Parse for ItemConst {
     fn parse(&self, ctx: &ParseContext) {
-        if let Some(visibility) = &self.visibility {
+        if let Some(visibility) = &self.pub_token {
             insert_keyword(ctx, visibility.span());
         }
         insert_keyword(ctx, self.const_token.span());
@@ -763,7 +772,7 @@ impl Parse for ElementAccess {
         match self {
             ElementAccess::Index { target, arg } => {
                 target.parse(ctx);
-                arg.get().parse(ctx)
+                arg.get().parse(ctx);
             }
             ElementAccess::FieldProjection { target, .. }
             | ElementAccess::TupleFieldProjection { target, .. } => {

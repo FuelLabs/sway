@@ -9,10 +9,14 @@ use sway_error::parser_error::ParseErrorKind;
 
 impl Parse for ItemImplItem {
     fn parse(parser: &mut Parser) -> ParseResult<ItemImplItem> {
-        if parser.peek::<PubToken>().is_some() || parser.peek::<FnToken>().is_some() {
+        if parser.peek::<FnToken>().is_some()
+            || (parser.peek::<PubToken>().is_some() && parser.peek_next::<FnToken>().is_some())
+        {
             let fn_decl = parser.parse()?;
             Ok(ItemImplItem::Fn(fn_decl))
-        } else if let Some(_const_keyword) = parser.peek::<ConstToken>() {
+        } else if parser.peek::<ConstToken>().is_some()
+            || (parser.peek::<PubToken>().is_some() && parser.peek_next::<ConstToken>().is_some())
+        {
             let const_decl = parser.parse()?;
             parser.parse::<SemicolonToken>()?;
             Ok(ItemImplItem::Const(const_decl))
@@ -30,7 +34,7 @@ impl Parse for ItemImpl {
     fn parse(parser: &mut Parser) -> ParseResult<ItemImpl> {
         let impl_token = parser.parse()?;
         let generic_params_opt = parser.guarded_parse::<OpenAngleBracketToken, GenericParams>()?;
-        let ty = parser.parse()?;
+        let ty = parser.parse::<Ty>()?;
         let (trait_opt, ty) = match parser.take() {
             Some(for_token) => match ty {
                 Ty::Path(path_type) => (Some((path_type, for_token)), parser.parse()?),

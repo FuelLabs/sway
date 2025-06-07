@@ -8,9 +8,18 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{type_system::TypeId, Engines};
+use crate::{
+    abi_generation::abi_str::AbiStrContext,
+    language::ty::{TyExpression, TyExpressionVariant},
+    type_system::TypeId,
+    Engines,
+};
 use sha2::{Digest, Sha256};
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::{
+    error::CompileError,
+    formatting,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_features::ExperimentalFeatures;
 use sway_types::{Ident, Span};
 
@@ -57,6 +66,82 @@ pub enum TypeMetadata {
     LoggedType(LogId, TypeId),
     // An smo with a unique message ID and the type ID of the type of the message data being sent
     MessageType(MessageId, TypeId),
+}
+
+impl TypeMetadata {
+    /// Returns the [TypeId] of the actual type being logged.
+    /// When the "new_encoding" is off, this is the actual type of
+    /// the `logged_expr`.  E.g., when calling `__log(<logged_expr>)`,
+    /// or `panic <logged_expr>;` it will be the type of the `__log`
+    /// or `panic` argument, respectively. When "new_encoding" is on,
+    /// it is actually the type of the argument passed to the `encode`
+    /// function. In this case, when `is_new_encoding` is true, `logged_expr`
+    /// must represent a [TyExpressionVariant::FunctionApplication] call to `encode`.
+    pub(crate) fn get_logged_type_id(
+        logged_expr: &TyExpression,
+        is_new_encoding: bool,
+    ) -> Result<TypeId, CompileError> {
+        Self::get_logged_expression(logged_expr, is_new_encoding)
+            .map(|logged_expr| logged_expr.return_type)
+    }
+
+    /// Returns the [TyExpression] that is actually being logged.
+    /// When the "new_encoding" is off, this is the `logged_expr` itself.
+    /// E.g., when calling `__log(<logged_expr>)`, or `panic <logged_expr>;`
+    /// it will be the expression of the `__log` or `panic` argument,
+    /// respectively. When "new_encoding" is on, it is the expression
+    /// of the argument passed to the `encode` function.
+    /// In this case, when `is_new_encoding` is true, `logged_expr`
+    /// must represent a [TyExpressionVariant::FunctionApplication] call to `encode`.
+    pub(crate) fn get_logged_expression(
+        logged_expr: &TyExpression,
+        is_new_encoding: bool,
+    ) -> Result<&TyExpression, CompileError> {
+        if is_new_encoding {
+            match &logged_expr.expression {
+                TyExpressionVariant::FunctionApplication {
+                    call_path,
+                    arguments,
+                    ..
+                } if call_path.suffix.as_str() == "encode" => {
+                    if arguments.len() != 1 {
+                        Err(CompileError::InternalOwned(
+                            format!("The \"encode\" function must have exactly one argument but it had {}.", formatting::num_to_str(arguments.len())), 
+                            logged_expr.span.clone(),
+                        ))
+                    } else {
+                        Ok(&arguments[0].1)
+                    }
+                }
+                _ => Err(CompileError::Internal(
+                        "In case of the new encoding, the \"logged_expr\" must be a call to an \"encode\" function.",
+                        logged_expr.span.clone()
+                    ))
+            }
+        } else {
+            Ok(logged_expr)
+        }
+    }
+
+    pub(crate) fn new_logged_type(
+        engines: &Engines,
+        type_id: TypeId,
+        program_name: String,
+    ) -> Self {
+        TypeMetadata::LoggedType(
+            LogId::new(type_id.get_abi_type_str(
+                &AbiStrContext {
+                    program_name,
+                    abi_with_callpaths: true,
+                    abi_with_fully_specified_types: true,
+                    abi_root_type_without_generic_type_parameters: false,
+                },
+                engines,
+                type_id,
+            )),
+            type_id,
+        )
+    }
 }
 
 // A simple context that only contains a single counter for now but may expand in the future.

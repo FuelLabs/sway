@@ -13,7 +13,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{BaseIdent, Named, ProgramId, Span, Spanned};
+use sway_types::{BaseIdent, Named, SourceId, Span, Spanned};
 
 #[derive(Default)]
 pub struct AbiEncodingAutoImplInfo {}
@@ -31,22 +31,24 @@ where
         type_parameters: &[TypeParameter],
         body: String,
     ) -> String {
+        let type_parameters_declaration_expanded =
+            self.generate_type_parameters_declaration_code(type_parameters, true);
         let type_parameters_declaration =
-            self.generate_type_parameters_declaration_code(type_parameters);
+            self.generate_type_parameters_declaration_code(type_parameters, false);
         let type_parameters_constraints =
-            self.generate_type_parameters_constraints_code(type_parameters, "AbiEncode");
+            self.generate_type_parameters_constraints_code(type_parameters, Some("AbiEncode"));
 
-        let name = name.as_str();
+        let name = name.as_raw_ident_str();
 
         if body.is_empty() {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     buffer
                 }}
             }}")
         } else {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     {body}
@@ -62,22 +64,24 @@ where
         type_parameters: &[TypeParameter],
         body: String,
     ) -> String {
+        let type_parameters_declaration_expanded =
+            self.generate_type_parameters_declaration_code(type_parameters, true);
         let type_parameters_declaration =
-            self.generate_type_parameters_declaration_code(type_parameters);
+            self.generate_type_parameters_declaration_code(type_parameters, false);
         let type_parameters_constraints =
-            self.generate_type_parameters_constraints_code(type_parameters, "AbiDecode");
+            self.generate_type_parameters_constraints_code(type_parameters, Some("AbiDecode"));
 
-        let name = name.as_str();
+        let name = name.as_raw_ident_str();
 
         if body == "Self {  }" {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut _buffer: BufferReader) -> Self {{
                     {body}
                 }}
             }}")
         } else {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut buffer: BufferReader) -> Self {{
                     {body}
@@ -92,7 +96,7 @@ where
         for f in decl.fields.iter() {
             code.push_str(&format!(
                 "let buffer = self.{field_name}.abi_encode(buffer);\n",
-                field_name = f.name.as_str(),
+                field_name = f.name.as_raw_ident_str(),
             ));
         }
 
@@ -108,7 +112,7 @@ where
         for f in decl.fields.iter() {
             code.push_str(&format!(
                 "{field_name}: buffer.decode::<{field_type_name}>(),",
-                field_name = f.name.as_str(),
+                field_name = f.name.as_raw_ident_str(),
                 field_type_name = Self::generate_type(engines, &f.type_argument)?,
             ));
         }
@@ -121,10 +125,10 @@ where
         engines: &Engines,
         decl: &TyEnumDecl,
     ) -> Option<String> {
-        let enum_name = decl.call_path.suffix.as_str();
+        let enum_name = decl.call_path.suffix.as_raw_ident_str();
         let arms = decl.variants.iter()
             .map(|x| {
-                let name = x.name.as_str();
+                let name = x.name.as_raw_ident_str();
                 Some(match &*engines.te().get(x.type_argument.type_id()) {
                     // unit
                     TypeInfo::Tuple(fields) if fields.is_empty() => {
@@ -156,12 +160,12 @@ where
             return "".into();
         }
 
-        let enum_name = decl.call_path.suffix.as_str();
+        let enum_name = decl.call_path.suffix.as_raw_ident_str();
         let arms = decl
             .variants
             .iter()
             .map(|x| {
-                let name = x.name.as_str();
+                let name = x.name.as_raw_ident_str();
                 if engines.te().get(x.type_argument.type_id()).is_unit() {
                     format!(
                         "{enum_name}::{variant_name} => {{
@@ -190,7 +194,7 @@ where
     }
 
     // Auto implements AbiEncode and AbiDecode for structs and returns their `AstNode`s.
-    fn auto_impl_struct(
+    fn auto_impl_abi_encode_and_decode_for_struct(
         &mut self,
         engines: &Engines,
         decl: &TyDecl,
@@ -208,30 +212,36 @@ where
         let implementing_for_decl_id = decl.to_struct_decl(&Handler::default(), engines).unwrap();
         let struct_decl = self.ctx.engines().de().get(&implementing_for_decl_id);
 
-        let program_id = struct_decl.span().source_id().map(|sid| sid.program_id());
-
         let abi_encode_body = self.generate_abi_encode_struct_body(engines, &struct_decl);
         let abi_encode_code = self.generate_abi_encode_code(
             struct_decl.name(),
-            &struct_decl.type_parameters,
+            &struct_decl.generic_parameters,
             abi_encode_body,
         );
-        let abi_encode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code);
+        let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            struct_decl.span().source_id(),
+            &abi_encode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         let abi_decode_body = self.generate_abi_decode_struct_body(engines, &struct_decl);
         let abi_decode_code = self.generate_abi_decode_code(
             struct_decl.name(),
-            &struct_decl.type_parameters,
+            &struct_decl.generic_parameters,
             abi_decode_body?,
         );
-        let abi_decode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_decode_code);
+        let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            struct_decl.span().source_id(),
+            &abi_decode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         Some((abi_encode_node.ok(), abi_decode_node.ok()))
     }
 
-    fn auto_impl_enum(
+    fn auto_impl_abi_encode_and_decode_for_enum(
         &mut self,
         engines: &Engines,
         decl: &TyDecl,
@@ -249,25 +259,31 @@ where
         let enum_decl_id = decl.to_enum_id(&Handler::default(), engines).unwrap();
         let enum_decl = self.ctx.engines().de().get(&enum_decl_id);
 
-        let program_id = enum_decl.span().source_id().map(|sid| sid.program_id());
-
         let abi_encode_body = self.generate_abi_encode_enum_body(engines, &enum_decl);
         let abi_encode_code = self.generate_abi_encode_code(
             enum_decl.name(),
-            &enum_decl.type_parameters,
+            &enum_decl.generic_parameters,
             abi_encode_body,
         );
-        let abi_encode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_encode_code);
+        let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            enum_decl.span().source_id(),
+            &abi_encode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         let abi_decode_body = self.generate_abi_decode_enum_body(engines, &enum_decl);
         let abi_decode_code = self.generate_abi_decode_code(
             enum_decl.name(),
-            &enum_decl.type_parameters,
+            &enum_decl.generic_parameters,
             abi_decode_body?,
         );
-        let abi_decode_node =
-            self.parse_impl_trait_to_ty_ast_node(engines, program_id, &abi_decode_code);
+        let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            enum_decl.span().source_id(),
+            &abi_decode_code,
+            crate::build_config::DbgGeneration::None,
+        );
 
         Some((abi_encode_node.ok(), abi_decode_node.ok()))
     }
@@ -278,8 +294,12 @@ where
         decl: &ty::TyDecl,
     ) -> (Option<TyAstNode>, Option<TyAstNode>) {
         match decl {
-            TyDecl::StructDecl(_) => self.auto_impl_struct(engines, decl).unwrap_or((None, None)),
-            TyDecl::EnumDecl(_) => self.auto_impl_enum(engines, decl).unwrap_or((None, None)),
+            TyDecl::StructDecl(_) => self
+                .auto_impl_abi_encode_and_decode_for_struct(engines, decl)
+                .unwrap_or((None, None)),
+            TyDecl::EnumDecl(_) => self
+                .auto_impl_abi_encode_and_decode_for_enum(engines, decl)
+                .unwrap_or((None, None)),
             _ => (None, None),
         }
     }
@@ -287,7 +307,7 @@ where
     pub(crate) fn generate_contract_entry(
         &mut self,
         engines: &Engines,
-        program_id: Option<ProgramId>,
+        original_source_id: Option<&SourceId>,
         contract_fns: &[DeclId<TyFunctionDecl>],
         fallback_fn: Option<DeclId<TyFunctionDecl>>,
         handler: &Handler,
@@ -304,6 +324,9 @@ where
         for r in contract_fns {
             let decl = engines.de().get(r);
 
+            // For contract methods, even if their names are raw identifiers,
+            // we use just the name, because the generated methods will be prefixed
+            // with `__contract_entry_`.
             let name = decl.name.as_str();
             if !contract_methods.contains_key(name) {
                 contract_methods.insert(name.to_string(), vec![]);
@@ -408,7 +431,7 @@ where
                 });
                 return Err(err);
             };
-            let method_name = fallback_fn.name.as_str();
+            let method_name = fallback_fn.name.as_raw_ident_str();
             match fallback_fn.purity {
                 Purity::Pure => {}
                 Purity::Reads => reads = true,
@@ -442,9 +465,10 @@ where
 
         let entry_fn = self.parse_fn_to_ty_ast_node(
             engines,
-            program_id,
+            original_source_id,
             FunctionDeclarationKind::Entry,
             &code,
+            crate::build_config::DbgGeneration::None,
         );
 
         match entry_fn {
@@ -465,8 +489,6 @@ where
         decl: &TyFunctionDecl,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
-        let program_id = decl.span.source_id().map(|sid| sid.program_id());
-
         let Some(args_types) = decl
             .parameters
             .iter()
@@ -503,9 +525,10 @@ where
 
         let entry_fn = self.parse_fn_to_ty_ast_node(
             engines,
-            program_id,
+            decl.span.source_id(),
             FunctionDeclarationKind::Entry,
             &code,
+            crate::build_config::DbgGeneration::None,
         );
 
         match entry_fn {
@@ -558,8 +581,6 @@ where
         decl: &TyFunctionDecl,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
-        let program_id = decl.span.source_id().map(|sid| sid.program_id());
-
         let Some(args_types) = decl
             .parameters
             .iter()
@@ -613,9 +634,10 @@ where
 
         let entry_fn = self.parse_fn_to_ty_ast_node(
             engines,
-            program_id,
+            decl.span.source_id(),
             FunctionDeclarationKind::Entry,
             &code,
+            crate::build_config::DbgGeneration::None,
         );
 
         match entry_fn {

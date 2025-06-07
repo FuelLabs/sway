@@ -33,7 +33,6 @@ pub mod cli;
 pub use ansiterm;
 pub use paste;
 pub use regex::Regex;
-pub use serial_test;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 pub const DEFAULT_ERROR_EXIT_CODE: u8 = 1;
@@ -379,10 +378,10 @@ pub fn path_lock<X: AsRef<Path>>(path: X) -> Result<fd_lock::RwLock<File>> {
 
 pub fn program_type_str(ty: &TreeType) -> &'static str {
     match ty {
-        TreeType::Script {} => "script",
-        TreeType::Contract {} => "contract",
-        TreeType::Predicate {} => "predicate",
-        TreeType::Library { .. } => "library",
+        TreeType::Script => "script",
+        TreeType::Contract => "contract",
+        TreeType::Predicate => "predicate",
+        TreeType::Library => "library",
     }
 }
 
@@ -571,7 +570,7 @@ pub fn format_diagnostic(diagnostic: &Diagnostic) {
             let input = span.input();
             let mut start_pos = span.start();
             let mut end_pos = span.end();
-            let LineColRange { mut start, end } = span.line_col();
+            let LineColRange { mut start, end } = span.line_col_one_index();
             let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
 
             let slice = Slice {
@@ -702,7 +701,7 @@ fn construct_code_snippet<'a>(span: &Span, input: &'a str) -> (&'a str, usize, u
     // how many lines to prepend or append to the highlighted region in the window
     const NUM_LINES_BUFFER: usize = 2;
 
-    let LineColRange { start, end } = span.line_col();
+    let LineColRange { start, end } = span.line_col_one_index();
 
     let total_lines_in_input = input.chars().filter(|x| *x == '\n').count();
     debug_assert!(end.line >= start.line);

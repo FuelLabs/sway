@@ -110,6 +110,9 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Transmute => {
                 type_check_transmute(arguments, handler, kind, type_arguments, span, ctx)
             }
+            Intrinsic::Dbg => {
+                unreachable!("__dbg should not exist in the typed tree")
+            }
         }
     }
 }
@@ -203,7 +206,7 @@ fn type_check_transmute(
             .by_ref()
             .with_help_text("")
             .with_type_annotation(arg_type);
-        ty::TyExpression::type_check(handler, ctx, &arguments[0]).unwrap()
+        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
     };
 
     engines.te().unify(
@@ -213,7 +216,7 @@ fn type_check_transmute(
         src_type,
         &first_argument_typed_expr.span,
         "",
-        None,
+        || None,
     );
 
     let mut final_type_arguments = type_arguments.to_vec();
@@ -397,9 +400,12 @@ fn type_check_slice(
             referenced_type,
             to_mutable_value,
         } => match &*type_engine.get(referenced_type.type_id()) {
-            TypeInfo::Array(elem_type_arg, array_len) if array_len.as_literal_val().is_some() => {
+            TypeInfo::Array(elem_type_arg, array_len)
+                if array_len.expr().as_literal_val().is_some() =>
+            {
                 // SAFETY: safe by the guard above
                 let array_len = array_len
+                    .expr()
                     .as_literal_val()
                     .expect("unexpected non literal array length")
                     as u64;

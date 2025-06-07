@@ -1,4 +1,5 @@
 pub mod build_profile;
+pub mod dep_modifier;
 
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
@@ -12,10 +13,10 @@ use std::{
     fmt::Display,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
 };
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
 use sway_error::handler::Handler;
+use sway_types::span::Source;
 use sway_utils::{
     constants, find_nested_manifest_dir, find_parent_manifest_dir,
     find_parent_manifest_dir_with_check,
@@ -62,6 +63,26 @@ pub trait GenericManifestFile {
 pub enum ManifestFile {
     Package(Box<PackageManifestFile>),
     Workspace(WorkspaceManifestFile),
+}
+
+impl ManifestFile {
+    pub fn is_workspace(&self) -> bool {
+        matches!(self, ManifestFile::Workspace(_))
+    }
+
+    pub fn root_dir(&self) -> PathBuf {
+        match self {
+            ManifestFile::Package(pkg_manifest_file) => pkg_manifest_file
+                .workspace()
+                .ok()
+                .flatten()
+                .map(|ws| ws.dir().to_path_buf())
+                .unwrap_or_else(|| pkg_manifest_file.dir().to_path_buf()),
+            ManifestFile::Workspace(workspace_manifest_file) => {
+                workspace_manifest_file.dir().to_path_buf()
+            }
+        }
+    }
 }
 
 impl GenericManifestFile for ManifestFile {
@@ -213,6 +234,7 @@ pub struct Project {
     #[serde(default)]
     pub experimental: HashMap<String, bool>,
     pub metadata: Option<toml::Value>,
+    pub force_dbg_in_release: Option<bool>,
 }
 
 // Validation function for the `name` field
@@ -326,11 +348,28 @@ impl DependencyDetails {
             version,
             ipfs,
             namespace,
+            path,
             ..
         } = self;
 
         if git.is_none() && (branch.is_some() || tag.is_some() || rev.is_some()) {
             bail!("Details reserved for git sources used without a git field");
+        }
+
+        if git.is_some() && branch.is_some() && tag.is_some() && rev.is_some() {
+            bail!("Cannot specify `branch`, `tag`, and `rev` together for dependency with a Git source");
+        }
+
+        if git.is_some() && branch.is_some() && tag.is_some() {
+            bail!("Cannot specify both `branch` and `tag` for dependency with a Git source");
+        }
+
+        if git.is_some() && rev.is_some() && tag.is_some() {
+            bail!("Cannot specify both `rev` and `tag` for dependency with a Git source");
+        }
+
+        if git.is_some() && branch.is_some() && rev.is_some() {
+            bail!("Cannot specify both `branch` and `rev` for dependency with a Git source");
         }
 
         if version.is_some() && git.is_some() {
@@ -344,7 +383,16 @@ impl DependencyDetails {
         if version.is_none() && namespace.is_some() {
             bail!("Namespace can only be specified for sources with version");
         }
+
+        if version.is_some() && path.is_some() {
+            bail!("Both version and path details provided for same dependency");
+        }
+
         Ok(())
+    }
+
+    pub fn is_source_empty(&self) -> bool {
+        self.git.is_none() && self.path.is_none() && self.ipfs.is_none()
     }
 }
 
@@ -417,10 +465,10 @@ impl PackageManifestFile {
     }
 
     /// Produces the string of the entry point file.
-    pub fn entry_string(&self) -> Result<Arc<str>> {
+    pub fn entry_string(&self) -> Result<Source> {
         let entry_path = self.entry_path();
         let entry_string = std::fs::read_to_string(entry_path)?;
-        Ok(Arc::from(entry_string))
+        Ok(entry_string.as_str().into())
     }
 
     /// Parse and return the associated project's program type.
@@ -852,40 +900,49 @@ fn implicit_std_dep() -> Dependency {
         });
     }
 
-    // Here, we use the `forc-pkg` crate version formatted with the `v` prefix (e.g. "v1.2.3"),
-    // or the revision commit hash (e.g. "abcdefg").
-    //
-    // This git tag or revision is used during `PackageManifest` construction to pin the version of the
-    // implicit `std` dependency to the `forc-pkg` version.
-    //
-    // This is important to ensure that the version of `sway-core` that is baked into `forc-pkg` is
-    // compatible with the version of the `std` lib.
-    let tag = std::env::var("FORC_IMPLICIT_STD_GIT_TAG")
-        .ok()
-        .unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")));
-    const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
-
-    // only use tag/rev if the branch is None
+    let tag = std::env::var("FORC_IMPLICIT_STD_GIT_TAG").ok();
     let branch = std::env::var("FORC_IMPLICIT_STD_GIT_BRANCH").ok();
-    let tag = branch.as_ref().map_or_else(|| Some(tag), |_| None);
+    let git_target = std::env::var("FORC_IMPLICIT_STD_GIT").ok();
 
-    let mut det = DependencyDetails {
-        git: std::env::var("FORC_IMPLICIT_STD_GIT")
-            .ok()
-            .or_else(|| Some(SWAY_GIT_REPO_URL.to_string())),
-        tag,
-        branch,
-        ..Default::default()
-    };
+    // If any of the git based std variables is set, we select the git version
+    // for std.
+    let det = if tag.is_some() || branch.is_some() || git_target.is_some() {
+        const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
+        // Here, we use the `forc-pkg` crate version formatted with the `v` prefix (e.g. "v1.2.3"),
+        // or the revision commit hash (e.g. "abcdefg").
+        //
+        // This git tag or revision is used during `PackageManifest` construction to pin the version of the
+        // implicit `std` dependency to the `forc-pkg` version.
+        //
+        // This is important to ensure that the version of `sway-core` that is baked into `forc-pkg` is
+        // compatible with the version of the `std` lib.
+        let tag = tag.unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")));
 
-    if let Some((_, build_metadata)) = det.tag.as_ref().and_then(|tag| tag.split_once('+')) {
-        // Nightlies are in the format v<version>+nightly.<date>.<hash>
-        let rev = build_metadata.split('.').last().map(|r| r.to_string());
+        // only use tag/rev if the branch is None
+        let tag = branch.as_ref().map_or_else(|| Some(tag), |_| None);
+        let mut det = DependencyDetails {
+            git: git_target.or_else(|| Some(SWAY_GIT_REPO_URL.to_string())),
+            tag,
+            branch,
+            ..Default::default()
+        };
 
-        // If some revision is available and parsed from the 'nightly' build metadata,
-        // we always prefer the revision over the tag.
-        det.tag = None;
-        det.rev = rev;
+        if let Some((_, build_metadata)) = det.tag.as_ref().and_then(|tag| tag.split_once('+')) {
+            // Nightlies are in the format v<version>+nightly.<date>.<hash>
+            let rev = build_metadata.split('.').next_back().map(|r| r.to_string());
+
+            // If some revision is available and parsed from the 'nightly' build metadata,
+            // we always prefer the revision over the tag.
+            det.tag = None;
+            det.rev = rev;
+        };
+        det
+    } else {
+        let current_version = env!("CARGO_PKG_VERSION").to_string();
+        DependencyDetails {
+            version: Some(current_version),
+            ..Default::default()
+        }
     };
 
     Dependency::Detailed(det)
@@ -1403,7 +1460,7 @@ mod tests {
             version: None,
             path: None,
             git: Some(git_source_string),
-            branch: Some("test_branch".to_string()),
+            branch: None,
             tag: None,
             package: None,
             rev: Some("9f35b8e".to_string()),
@@ -1449,6 +1506,7 @@ mod tests {
             forc_version: None,
             experimental: HashMap::new(),
             metadata: Some(toml::Value::from(toml::value::Table::new())),
+            force_dbg_in_release: None,
         };
 
         let serialized = toml::to_string(&project).unwrap();
@@ -1477,6 +1535,7 @@ mod tests {
             forc_version: None,
             experimental: HashMap::new(),
             metadata: None,
+            force_dbg_in_release: None,
         };
 
         let serialized = toml::to_string(&project).unwrap();
@@ -1529,7 +1588,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata
             description = "Invalid TOML"
         "#;
@@ -1542,7 +1601,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             ] = "Invalid key"
         "#;
@@ -1555,7 +1614,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             nested = { key = "value1" }
 
@@ -1578,7 +1637,7 @@ mod tests {
             name = "test-project"
             license = "Apache-2.0"
             entry = "main.sw"
-            
+
             [metadata]
             boolean = true
             integer = 42
@@ -1614,13 +1673,13 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
             description = "A test workspace"
             version = "1.0.0"
             authors = ["Test Author"]
             homepage = "https://example.com"
-            
+
             [workspace.metadata.ci]
             workflow = "main"
             timeout = 3600
@@ -1659,7 +1718,7 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
         "#;
 
@@ -1674,15 +1733,15 @@ mod tests {
         let toml_str = r#"
             [workspace]
             members = ["package1", "package2"]
-            
+
             [workspace.metadata]
             numbers = [1, 2, 3]
             strings = ["a", "b", "c"]
             mixed = [1, "two", true]
-            
+
             [workspace.metadata.nested]
             key = "value"
-            
+
             [workspace.metadata.nested.deep]
             another = "value"
         "#;

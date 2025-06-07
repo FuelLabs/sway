@@ -377,7 +377,7 @@ async fn test_simple_deploy() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "57a5ac7d952df0dd7e72812509fd373260bee5dac54cca48c4d0b2841e9bcee3",
+            "edd41822e8df9b4db6f8ff5ec094926c1ca46f5aa8bc499155085b5b85e84726",
         )
         .unwrap(),
         proxy: None,
@@ -421,7 +421,7 @@ async fn test_deploy_submit_only() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "57a5ac7d952df0dd7e72812509fd373260bee5dac54cca48c4d0b2841e9bcee3",
+            "edd41822e8df9b4db6f8ff5ec094926c1ca46f5aa8bc499155085b5b85e84726",
         )
         .unwrap(),
         proxy: None,
@@ -468,12 +468,12 @@ async fn test_deploy_fresh_proxy() {
     node.kill().unwrap();
     let impl_contract = DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "57a5ac7d952df0dd7e72812509fd373260bee5dac54cca48c4d0b2841e9bcee3",
+            "edd41822e8df9b4db6f8ff5ec094926c1ca46f5aa8bc499155085b5b85e84726",
         )
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "b8588024c0581f715d79c4f5ebd0b9e07f4ed0028f4da4fcf245ec09e1400982",
+                "f1c07ddc6181e46e9ba1a7ade21946cf9f0730aaf9a04c9ecdf91e528ba77f86",
             )
             .unwrap(),
         ),

@@ -16,6 +16,7 @@ forc-tracing.workspace = true
 forc-util.workspace = true
 prettydiff.workspace = true
 sway-core.workspace = true
+sway-features.workspace = true
 sway-utils.workspace = true
 swayfmt.workspace = true
 taplo.workspace = true

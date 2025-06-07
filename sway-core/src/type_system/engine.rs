@@ -26,7 +26,7 @@ use sway_types::{
     integer_bits::IntegerBits, span::Span, Ident, Named, ProgramId, SourceId, Spanned,
 };
 
-use super::{ast_elements::length::NumericLength, unify::unifier::UnifyKind};
+use super::{ast_elements::type_parameter::ConstGenericExpr, unify::unifier::UnifyKind};
 
 /// To be able to garbage-collect [TypeInfo]s from the [TypeEngine]
 /// we need to track which types need to be GCed when a particular
@@ -577,13 +577,17 @@ impl TypeEngine {
         elem_type: TypeId,
         length: usize,
     ) -> TypeId {
-        self.insert_array(engines, elem_type.into(), Length::literal(length, None))
+        self.insert_array(
+            engines,
+            elem_type.into(),
+            Length(ConstGenericExpr::literal(length, None)),
+        )
     }
 
     /// Inserts a new [TypeInfo::StringArray] into the [TypeEngine] and returns
     /// its [TypeId], or returns a [TypeId] of an existing shareable string array type
     /// that corresponds to the string array given by the `length`.
-    pub(crate) fn insert_string_array(&self, engines: &Engines, length: NumericLength) -> TypeId {
+    pub(crate) fn insert_string_array(&self, engines: &Engines, length: Length) -> TypeId {
         let source_id = Self::get_string_array_fallback_source_id(&length);
         let is_shareable_type = self.is_shareable_string_array(&length);
         let type_info = TypeInfo::StringArray(length);
@@ -604,13 +608,7 @@ impl TypeEngine {
         engines: &Engines,
         length: usize,
     ) -> TypeId {
-        self.insert_string_array(
-            engines,
-            NumericLength {
-                val: length,
-                span: Span::dummy(),
-            },
-        )
+        self.insert_string_array(engines, Length(ConstGenericExpr::literal(length, None)))
     }
 
     /// Inserts a new [TypeInfo::ContractCaller] into the [TypeEngine] and returns its [TypeId].
@@ -864,6 +862,14 @@ impl TypeEngine {
         self.insert_or_replace_type_source_info(engines, ty, source_id, is_shareable_type, None)
     }
 
+    // Get, clone, insert and return new TypeId.
+    // Keep the same source_id
+    pub fn duplicate(&self, engines: &Engines, id: TypeId) -> TypeId {
+        let type_source_info = self.slab.get(id.index());
+        let duplicate = TypeInfo::clone(&type_source_info.type_info);
+        self.insert(engines, duplicate, type_source_info.source_id.as_ref())
+    }
+
     /// This method performs two actions, depending on the `replace_at_type_id`.
     ///
     /// If the `replace_at_type_id` is `Some`, this indicates that we want to unconditionally replace the [TypeSourceInfo]
@@ -970,7 +976,12 @@ impl TypeEngine {
             | TypeInfo::Numeric
             | TypeInfo::Placeholder(_)
             | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::Array(.., Length::AmbiguousVariableExpression { .. }) => true,
+            | TypeInfo::Array(.., Length(ConstGenericExpr::AmbiguousVariableExpression { .. }))
+            | TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
+                ..
+            }))
+            | TypeInfo::Struct(_)
+            | TypeInfo::Enum(_) => true,
             TypeInfo::ContractCaller { abi_name, address } => {
                 Self::is_replaceable_contract_caller(abi_name, address)
             }
@@ -1154,7 +1165,7 @@ impl TypeEngine {
             // | TypeInfo::TraitType { .. }
             | TypeInfo::Alias { .. } => true,
 
-            TypeInfo::StringArray(l) => l.is_annotated(),
+            TypeInfo::StringArray(l) => l.expr().is_annotated(),
 
             // If the contract caller has the `abi_name` defined (AbiName::Know) the span information
             // that comes with the `Ident`s of the `CallPath` is not relevant for the equality
@@ -1245,7 +1256,7 @@ impl TypeEngine {
             | TypeInfo::Ref { referenced_type: ta, .. } => ta.is_annotated(),
 
             TypeInfo::Array(ta, l) => {
-                ta.is_annotated() || l.is_annotated()
+                ta.is_annotated() || l.expr().is_annotated()
             }
 
             // The above reasoning for `TypeArgument`s applies also for the `TypeParameter`s.
@@ -1288,10 +1299,10 @@ impl TypeEngine {
     }
 
     fn is_changeable_enum(&self, engines: &Engines, decl: &TyEnumDecl) -> bool {
-        self.are_changeable_type_parameters(engines, &decl.type_parameters)
+        self.are_changeable_type_parameters(engines, &decl.generic_parameters)
         // TODO: Remove once https://github.com/FuelLabs/sway/issues/6687 is fixed.
         ||
-        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.type_parameters)
+        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.generic_parameters)
     }
 
     fn is_changeable_untyped_enum(&self, engines: &Engines, decl: &EnumDeclaration) -> bool {
@@ -1302,10 +1313,10 @@ impl TypeEngine {
     }
 
     fn is_changeable_struct(&self, engines: &Engines, decl: &TyStructDecl) -> bool {
-        self.are_changeable_type_parameters(engines, &decl.type_parameters)
+        self.are_changeable_type_parameters(engines, &decl.generic_parameters)
         // TODO: Remove once https://github.com/FuelLabs/sway/issues/6687 is fixed.
         ||
-        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.type_parameters)
+        self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.generic_parameters)
     }
 
     fn is_changeable_untyped_struct(&self, engines: &Engines, decl: &StructDeclaration) -> bool {
@@ -1333,11 +1344,9 @@ impl TypeEngine {
         if type_parameters.is_empty() {
             false
         } else {
-            type_parameters.iter().any(|tp| {
-                let tp = tp
-                    .as_type_parameter()
-                    .expect("only works with type parameters");
-                self.is_type_id_of_changeable_type(engines, tp.type_id)
+            type_parameters.iter().any(|tp| match tp {
+                TypeParameter::Type(p) => self.is_type_id_of_changeable_type(engines, p.type_id),
+                TypeParameter::Const(_) => true,
             })
         }
     }
@@ -1423,7 +1432,7 @@ impl TypeEngine {
 
             TypeInfo::Enum(decl_id) => {
                 let decl = decl_engine.get_enum(decl_id);
-                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.type_parameters)
+                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.generic_parameters)
             }
             TypeInfo::UntypedEnum(decl_id) => {
                 let decl = parsed_decl_engine.get_enum(decl_id);
@@ -1431,7 +1440,7 @@ impl TypeEngine {
             }
             TypeInfo::Struct(decl_id) => {
                 let decl = decl_engine.get_struct(decl_id);
-                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.type_parameters)
+                self.module_might_outlive_type_parameters(engines, module_source_id, &decl.generic_parameters)
             }
             TypeInfo::UntypedStruct(decl_id) => {
                 let decl = parsed_decl_engine.get_struct(decl_id);
@@ -1489,6 +1498,7 @@ impl TypeEngine {
         } else {
             type_parameters
                 .iter()
+                .filter(|x| x.as_type_parameter().is_some())
                 .any(|tp| self.module_might_outlive_type_parameter(engines, module_source_id, tp))
         }
     }
@@ -1583,12 +1593,12 @@ impl TypeEngine {
     ) -> bool {
         !(self.is_changeable_type_argument(engines, elem_type)
             || elem_type.is_annotated()
-            || length.is_annotated())
+            || length.expr().is_annotated())
     }
 
-    fn is_shareable_string_array(&self, length: &NumericLength) -> bool {
+    fn is_shareable_string_array(&self, length: &Length) -> bool {
         // !(false || length.is_annotated())
-        !length.is_annotated()
+        !length.expr().is_annotated()
     }
 
     fn is_shareable_slice(&self, engines: &Engines, elem_type: &GenericArgument) -> bool {
@@ -1633,7 +1643,7 @@ impl TypeEngine {
 
             TypeInfo::UnknownGeneric { .. } => Self::get_unknown_generic_fallback_source_id(ty),
             TypeInfo::Placeholder(_) => self.get_placeholder_fallback_source_id(ty),
-            TypeInfo::StringArray(length) => Self::get_source_id_from_spanned(length),
+            TypeInfo::StringArray(length) => Self::get_source_id_from_spanned(length.expr()),
             TypeInfo::Enum(decl_id) => {
                 let decl = decl_engine.get_enum(decl_id);
                 Self::get_enum_fallback_source_id(&decl)
@@ -1809,9 +1819,9 @@ impl TypeEngine {
         self.get_source_id_from_type_argument(elem_type)
     }
 
-    fn get_string_array_fallback_source_id(length: &NumericLength) -> Option<SourceId> {
+    fn get_string_array_fallback_source_id(length: &Length) -> Option<SourceId> {
         // For `TypeInfo::StringArray`, if it is annotated, we take the use site source file found in the `length`.
-        Self::get_source_id_from_spanned(length)
+        Self::get_source_id_from_spanned(length.expr())
     }
 
     fn get_contract_caller_fallback_source_id(
@@ -2029,7 +2039,7 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
     ) {
         Self::unify_helper(
             handler,
@@ -2060,7 +2070,7 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
     ) {
         Self::unify_helper(
             handler,
@@ -2091,7 +2101,7 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
     ) {
         Self::unify_helper(
             handler,
@@ -2119,14 +2129,14 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
-        err_override: Option<CompileError>,
+        err_override: impl FnOnce() -> Option<CompileError>,
         unify_kind: UnifyKind,
         push_unification: bool,
     ) {
         if !UnifyCheck::coercion(engines).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
-            match err_override {
+            match err_override() {
                 Some(err_override) => {
                     handler.emit_err(err_override);
                 }
@@ -2146,7 +2156,7 @@ impl TypeEngine {
         let unifier = Unifier::new(engines, help_text, unify_kind);
         unifier.unify(handler, received, expected, span, push_unification);
 
-        match err_override {
+        match err_override() {
             Some(err_override) if h.has_errors() => {
                 handler.emit_err(err_override);
             }
@@ -2164,7 +2174,11 @@ impl TypeEngine {
         self.unifications.clear();
     }
 
-    pub(crate) fn reapply_unifications(&self, engines: &Engines) {
+    pub(crate) fn reapply_unifications(&self, engines: &Engines, depth: usize) {
+        if depth > 2000 {
+            panic!("Possible infinite recursion");
+        }
+
         let current_last_replace = *self.last_replace.read();
         for unification in self.unifications.values() {
             Self::unify_helper(
@@ -2174,13 +2188,13 @@ impl TypeEngine {
                 unification.expected,
                 &unification.span,
                 &unification.help_text,
-                None,
+                || None,
                 unification.unify_kind.clone(),
                 false,
             )
         }
         if *self.last_replace.read() > current_last_replace {
-            self.reapply_unifications(engines);
+            self.reapply_unifications(engines, depth + 1);
         }
     }
 
@@ -2331,7 +2345,15 @@ impl TypeEngine {
             | TypeInfo::Alias { .. }
             | TypeInfo::TraitType { .. } => {}
             TypeInfo::Numeric => {
-                self.unify(handler, engines, type_id, self.id_of_u64(), span, "", None);
+                self.unify(
+                    handler,
+                    engines,
+                    type_id,
+                    self.id_of_u64(),
+                    span,
+                    "",
+                    || None,
+                );
             }
         }
         Ok(())

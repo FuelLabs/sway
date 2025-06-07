@@ -16,10 +16,7 @@ fd-lock.workspace = true
 forc-pkg.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
-indexmap = { workspace = true, features = ["rayon"] }
 lsp-types = { workspace = true, features = ["proposed"] }
-notify.workspace = true
-notify-debouncer-mini.workspace = true
 parking_lot.workspace = true
 proc-macro2.workspace = true
 quote.workspace = true
@@ -56,7 +53,6 @@ urlencoding.workspace = true
 [dev-dependencies]
 assert-json-diff.workspace = true
 codspeed-criterion-compat.workspace = true
-criterion.workspace = true
 dirs.workspace = true
 futures = { workspace = true, default-features = false, features = [
     "std",

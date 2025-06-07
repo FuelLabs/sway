@@ -242,7 +242,7 @@ impl TyImplSelfOrTrait {
                         self_type_id,
                         &implementing_for.span(),
                         "",
-                        None,
+                        || None,
                     );
                     Ok(())
                 })?;
@@ -350,7 +350,7 @@ impl TyImplSelfOrTrait {
                                 self_type_param.type_id,
                                 &implementing_for.span(),
                                 "",
-                                None,
+                                || None,
                             );
                             Ok(())
                         })?;
@@ -445,6 +445,36 @@ impl TyImplSelfOrTrait {
         ctx.with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .allow_functions()
             .scoped(handler, Some(block_span.clone()), |ctx| {
+                let const_generic_parameters = impl_type_parameters
+                    .iter()
+                    .filter_map(|x| x.as_const_parameter())
+                    .filter_map(|x| x.id.as_ref());
+                for const_generic_decl_id in const_generic_parameters {
+                    let const_generic_decl = engines.pe().get(const_generic_decl_id);
+
+                    let decl_ref = engines.de().insert(
+                        TyConstGenericDecl {
+                            call_path: CallPath {
+                                prefixes: vec![],
+                                suffix: const_generic_decl.name.clone(),
+                                callpath_type: CallPathType::Ambiguous,
+                            },
+                            span: const_generic_decl.span.clone(),
+                            return_type: const_generic_decl.ty,
+                            value: None,
+                        },
+                        Some(const_generic_decl_id),
+                    );
+
+                    ctx.insert_symbol(
+                        handler,
+                        const_generic_decl.name.clone(),
+                        TyDecl::ConstGenericDecl(ConstGenericDecl {
+                            decl_id: *decl_ref.id(),
+                        }),
+                    )?;
+                }
+
                 // Create a new type parameter for the self type.
                 let self_type_param =
                     // Same as with impl trait or ABI, we take the `block_span` as the `use_site_span`
@@ -512,7 +542,7 @@ impl TyImplSelfOrTrait {
                         self_type_id,
                         &implementing_for.span(),
                         "",
-                        None,
+                        || None,
                     );
                     Ok(())
                 })?;
@@ -757,12 +787,9 @@ impl TyImplSelfOrTrait {
             );
 
             // Do a topological sort to compute an ordered list of nodes (by function calls).
-            let sorted = match petgraph::algo::toposort(&sub_graph, None) {
-                Ok(value) => Some(value),
-                // If the dependency graph contains cycles, then this means there are recursive
-                // function calls, which we will report later.
-                Err(_) => None,
-            };
+            // If the dependency graph contains cycles, then this means there are recursive
+            // function calls, which we will report later.
+            let sorted = petgraph::algo::toposort(&sub_graph, None).ok();
 
             Ok(sorted)
         })
