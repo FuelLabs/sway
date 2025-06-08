@@ -389,7 +389,7 @@ impl TyTraitDecl {
         }
 
         // Retrieve the implemented items for this type.
-        let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+        let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(engines,
             type_parameters
                 .iter()
                 .map(|t| {
@@ -502,6 +502,7 @@ impl TyTraitDecl {
         // correct typing for this impl block by using the type parameters from
         // the original trait declaration and the given type arguments.
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+            engines,
             type_parameters
                 .iter()
                 .map(|t| {

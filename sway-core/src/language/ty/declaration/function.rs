@@ -223,7 +223,7 @@ impl DeclRefFunction {
                 }
 
                 type_id_type_subst_map
-                    .const_generics_materialization
+                    .const_generics_mapping
                     .append(&mut const_generic_parameters);
 
                 for p in impl_self_or_trait
@@ -273,16 +273,16 @@ impl DeclRefFunction {
                 .duplicate(engines, method.return_type.type_id())
             );
 
-            for p in method.type_parameters.iter() {
-                match p {
-                    TypeParameter::Type(_) => {},
-                    TypeParameter::Const(p) => {
-                        let old_id = p.tid.id();
-                        let new_id = engines.de().duplicate(old_id);
-                        method_type_subst_map.insert_const_generics(*old_id, *new_id.id());
-                    },
-                }
-            }
+            // for p in method.type_parameters.iter() {
+            //     match p {
+            //         TypeParameter::Type(_) => {},
+            //         TypeParameter::Const(p) => {
+            //             let old_id = p.tid.id();
+            //             let new_id = engines.de().duplicate(old_id);
+            //             method_type_subst_map.insert_const_generics(*old_id, *new_id.id());
+            //         },
+            //     }
+            // }
 
             method_type_subst_map.extend(&type_id_type_subst_map);
             method_type_subst_map.insert(method_implementing_for_typeid, type_id);
@@ -409,15 +409,16 @@ impl SubstTypes for TyFunctionDecl {
             }
         };
 
-        if let Some(map) = ctx.type_subst_map.as_ref() {
-            let handler = Handler::default();
-            for (name, value) in &map.const_generics_materialization {
-                let _ = self.materialize_const_generics(ctx.engines, &handler, name, value);
-            }
-            HasChanges::Yes
-        } else {
-            changes
-        }
+        changes
+        // if let Some(map) = ctx.type_subst_map.as_ref() {
+        //     let handler = Handler::default();
+        //     for (name, value) in &map.const_generics_materialization {
+        //         let _ = self.materialize_const_generics(ctx.engines, &handler, name, value);
+        //     }
+        //     HasChanges::Yes
+        // } else {
+        //     changes
+        // }
     }
 }
 

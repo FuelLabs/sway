@@ -8,9 +8,9 @@ use sway_error::{
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineInsert, MaterializeConstGenerics},
+    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclId, MaterializeConstGenerics},
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
-    language::CallPath,
+    language::{ty::{TyConstGenericDecl, TyExpression, TyExpressionVariant}, CallPath},
     namespace::TraitMap,
     semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
@@ -270,7 +270,7 @@ impl TypeId {
         engines: &Engines,
         depth: usize,
         type_parameters: &mut Vec<(TypeId, TypeId)>,
-        const_generic_parameters: &mut BTreeMap<String, crate::language::ty::TyExpression>,
+        const_generic_parameters: &mut BTreeMap<DeclId<TyConstGenericDecl>, DeclId<TyConstGenericDecl>>,
         orig_type_id: TypeId,
     ) {
         if depth >= EXTRACT_ANY_MAX_DEPTH {
@@ -377,12 +377,6 @@ impl TypeId {
                             TypeParameter::Const(orig_type_param),
                             TypeParameter::Const(type_param),
                         ) => match (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
-                            (None, Some(expr)) => {
-                                const_generic_parameters.insert(
-                                    orig_type_param.tid.name().as_str().to_string(),
-                                    expr.to_ty_expression(engines),
-                                );
-                            }
                             _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                         },
                         _ => {}
@@ -415,15 +409,12 @@ impl TypeId {
                         (
                             TypeParameter::Const(orig_type_param),
                             TypeParameter::Const(type_param),
-                        ) => match (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
-                            (None, Some(expr)) => {
-                                const_generic_parameters.insert(
-                                    orig_type_param.tid.name().as_str().to_string(),
-                                    expr.to_ty_expression(engines),
-                                );
-                            }
-                            (None, None) => {}
-                            x => todo!("{x:?} Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                        ) => {
+                            extract_const_generics(engines,
+                                &ConstGenericExpr::Decl { id: orig_type_param.tid.id().clone() },
+                                &ConstGenericExpr::Decl { id: type_param.tid.id().clone() },
+                                const_generic_parameters,
+                            );
                         },
                         _ => {}
                     }
@@ -489,7 +480,7 @@ impl TypeId {
                 }
             }
             // Primitive types have "implicit" type parameters
-            (TypeInfo::Array(ty, _), TypeInfo::Array(orig_ty, _)) => {
+            (TypeInfo::Array(ty, len_l), TypeInfo::Array(orig_ty, len_r)) => {
                 type_parameters.push((ty.type_id(), orig_ty.type_id()));
                 ty.type_id().extract_type_parameters(
                     engines,
@@ -498,6 +489,7 @@ impl TypeId {
                     const_generic_parameters,
                     orig_ty.type_id(),
                 );
+                extract_const_generics(engines, len_l.expr(), len_r.expr(), const_generic_parameters);
             }
             (TypeInfo::Alias { name: _, ty }, _) => {
                 ty.type_id().extract_type_parameters(
@@ -1420,5 +1412,45 @@ impl TypeId {
 
     pub fn get_type_str(&self, engines: &Engines) -> String {
         engines.te().get(*self).get_type_str(engines)
+    }
+}
+
+fn extract_const_generics(engines: &Engines, len_l: &ConstGenericExpr, len_r: &ConstGenericExpr, const_generic_parameters: &mut BTreeMap<DeclId<TyConstGenericDecl>, DeclId<TyConstGenericDecl>>) {
+    match (len_l, len_r) {
+        (ConstGenericExpr::Decl { id: l }, ConstGenericExpr::Decl { id: r })  => {
+            let l = engines.de().get(l);
+            let r = engines.de().get(r);
+
+            match (l.value.as_ref(), r.value.as_ref()) {
+                (None, None) => {}
+                x => todo!("{x:?}"),
+            }
+        }
+        (ConstGenericExpr::Literal { val, span }, ConstGenericExpr::Decl { id }) => {
+            let decl = engines.de().get(id);
+            match decl.value.as_ref() {
+                Some(v) => {
+                    match &v.expression {
+                        crate::language::ty::TyExpressionVariant::Literal(literal) => {
+                            assert!(*val as u64 == literal.cast_value_to_u64().unwrap());
+                        },
+                        _ => todo!()
+                    }
+                }
+                None => {
+                    let new_id = engines.de().map_duplicate(id, |decl| {
+                        decl.value = Some(TyExpression {
+                            expression: TyExpressionVariant::Literal(
+                                crate::language::Literal::U64(*val as u64)
+                            ),
+                            return_type: engines.te().id_of_u64(),
+                            span: span.clone(),
+                        })
+                    });
+                    const_generic_parameters.insert(id.clone(), new_id.id().clone());
+                }
+            }
+        }
+        x => todo!("{x:?}"),
     }
 }

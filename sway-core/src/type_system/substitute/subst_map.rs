@@ -14,7 +14,7 @@ type DestinationType = TypeId;
 pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
     pub const_generics_mapping: BTreeMap<DeclId<TyConstGenericDecl>, DeclId<TyConstGenericDecl>>,
-    pub const_generics_materialization: BTreeMap<String, crate::language::ty::TyExpression>,
+    pub const_generics_materialization: BTreeMap<DeclId<TyConstGenericDecl>, crate::language::ty::TyExpression>,
 }
 
 impl DebugWithEngines for TypeSubstMap {
@@ -35,10 +35,10 @@ impl DebugWithEngines for TypeSubstMap {
                 .join(", "),
             self.const_generics_mapping
                 .iter()
-                .map(|(old, new)| {
-                    let old = engines.de().get(old);
-                    let new = engines.de().get(new);
-                    format!("{:?} -> {:?}", old.value, new.value)
+                .map(|(old_id, new_id)| {
+                    let old = engines.de().get(old_id);
+                    let new = engines.de().get(new_id);
+                    format!("({:?}) {:?} -> {:?}", old_id, old.value, new.value.as_ref().map(|x| &x.expression))
                 })
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -276,38 +276,11 @@ impl TypeSubstMap {
                 )
             }
             (TypeInfo::Array(type_parameter, l), TypeInfo::Array(type_argument, r)) => {
-                let mut map = TypeSubstMap::from_superset_and_subset_helper(
+                TypeSubstMap::from_superset_and_subset_helper(
                     engines,
                     vec![type_parameter.type_id()],
                     vec![type_argument.type_id()],
-                );
-
-                match (&l.expr(), &r.expr()) {
-                    (ConstGenericExpr::Decl { id: l }, ConstGenericExpr::Decl { id: r }) => {
-                        let l = engines.de().get(l);
-                        let r = engines.de().get(r);
-                        match (l.value.as_ref(), r.value.as_ref()) {
-                            (None, None) => {
-                                eprintln!("from_superset_and_subset: {:?}", engines.help_out(&map));
-                                eprintln!("superset: {:?}; subset: {:?}", engines.help_out(superset), engines.help_out(subset));
-                            },
-                            (l, r) => todo!("{:?} {:?}", l, r)
-                        }
-                    }
-                    (ConstGenericExpr::Decl { id }, ConstGenericExpr::Literal { val, span }) => {
-                        let new_id = engines.de().map_duplicate(id, |decl| {
-                            decl.value = Some(TyExpression {
-                                expression: TyExpressionVariant::Literal(crate::language::Literal::U64(*val as u64)),
-                                return_type: engines.te().id_of_u64(),
-                                span: span.clone(),
-                            });
-                        });
-                        map.const_generics_mapping.insert(id.clone(), new_id.id().clone());
-                    }
-                    x => todo!("{x:?}"),
-                }
-
-                map
+                )
             }
             (TypeInfo::Slice(type_parameter), TypeInfo::Slice(type_argument)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
@@ -348,7 +321,7 @@ impl TypeSubstMap {
         type_arguments: Vec<DestinationType>,
     ) -> TypeSubstMap {
         let mut type_mapping =
-            TypeSubstMap::from_type_parameters_and_type_arguments(type_parameters, type_arguments);
+            TypeSubstMap::from_type_parameters_and_type_arguments(engines, type_parameters, type_arguments);
 
         for (s, d) in type_mapping.mapping.clone().iter() {
             type_mapping.mapping.extend(
@@ -365,32 +338,64 @@ impl TypeSubstMap {
     /// resulting [TypeSubstMap] are the [TypeId]s from `type_parameters` and the
     /// [DestinationType]s are the [TypeId]s from `type_arguments`.
     pub(crate) fn from_type_parameters_and_type_arguments(
+        engines: &Engines,
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
     ) -> TypeSubstMap {
-        let mapping = type_parameters.into_iter().zip(type_arguments).collect();
-        TypeSubstMap {
-            mapping,
-            const_generics_mapping: BTreeMap::default(),
-            const_generics_materialization: BTreeMap::default(),
-        }
-    }
+        let mapping: BTreeMap<TypeId, TypeId> = type_parameters.into_iter().zip(type_arguments).collect();
+        let mut const_generics_mapping = BTreeMap::default();
+        let mut const_generics_materialization = BTreeMap::default();
 
-    pub(crate) fn from_type_parameters_and_type_arguments_and_const_generics(
-        type_parameters: Vec<SourceType>,
-        type_arguments: Vec<DestinationType>,
-        const_generics_materialization: BTreeMap<String, crate::language::ty::TyExpression>,
-    ) -> TypeSubstMap {
-        let mapping = type_parameters.into_iter().zip(type_arguments).collect();
+        eprintln!("from_type_parameters_and_type_arguments:");
+        for (a, b) in mapping.iter() {
+            eprintln!("    {:?} -> {:?}", engines.help_out(a), engines.help_out(b));
+
+            let a = engines.te().get(*a);
+            let b = engines.te().get(*b);
+
+            match (&*a, &*b) {
+                (TypeInfo::Array(_, l), TypeInfo::Array(_, r)) => {
+                    match (&l.expr(), &r.expr()) {
+                        (ConstGenericExpr::Decl { id: l }, ConstGenericExpr::Decl { id: r }) => {
+                            let l = engines.de().get(l);
+                            let r = engines.de().get(r);
+                            match (l.value.as_ref(), r.value.as_ref()) {
+                                (None, None) => {
+                                    // eprintln!("from_superset_and_subset: {:?}", engines.help_out(&map));
+                                    // eprintln!("superset: {:?}; subset: {:?}", engines.help_out(superset), engines.help_out(subset));
+                                },
+                                (l, r) => todo!("{:?} {:?}", l, r)
+                            }
+                        }
+                        (ConstGenericExpr::Decl { id }, ConstGenericExpr::Literal { val, span }) => {
+                            const_generics_materialization.insert(id.clone(), TyExpression {
+                                expression: TyExpressionVariant::Literal(crate::language::Literal::U64(*val as u64)),
+                                return_type: engines.te().id_of_u64(),
+                                span: span.clone(),
+                            });
+                        }
+                        (ConstGenericExpr::Literal { val: l_val, .. }, ConstGenericExpr::Literal { val: r_val, .. }) => {
+                            assert!(*l_val == *r_val);
+                        }
+                        x => todo!("{x:?}"),
+                    }
+                }
+                _ => {}
+            }
+        }
+
         TypeSubstMap {
             mapping,
-            const_generics_mapping: BTreeMap::default(),
+            const_generics_mapping,
             const_generics_materialization,
         }
     }
 
     pub(crate) fn extend(&mut self, other: &TypeSubstMap) {
         self.mapping.extend(other.mapping.iter());
+        self.const_generics_mapping.extend(
+            other.const_generics_mapping.iter()
+        );
         self.const_generics_materialization.extend(
             other
                 .const_generics_materialization

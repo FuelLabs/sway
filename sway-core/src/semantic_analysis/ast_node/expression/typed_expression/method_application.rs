@@ -36,7 +36,7 @@ pub(crate) fn type_check_method_application(
     arguments: &[Expression],
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
-    // eprintln!("{}", span.as_str());
+    eprintln!("type_check_method_application span {}: {}", method_name_binding.inner.easy_name().as_str(), span.as_str());
 
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
@@ -97,6 +97,12 @@ pub(crate) fn type_check_method_application(
             None => type_engine.new_unknown(),
         })
         .collect::<Vec<_>>();
+
+     eprintln!("before resolve_method_name: {:?}\n    {:?}", 
+        method_name_binding,
+        engines.help_out(arguments_types.to_vec()),
+    );
+
     let method_result = resolve_method_name(
         handler,
         ctx.by_ref(),
@@ -189,7 +195,7 @@ pub(crate) fn type_check_method_application(
     
     }
     
-    if !const_generics.is_empty() {
+    if method_name_binding.span.as_str().contains("field") {
         let decl = engines.de().get(original_decl_ref.id());
         eprintln!("type check method app: {:?}\n    {:?}\n    {:?}\n    {:?}", 
             engines.help_out(decl),
@@ -808,6 +814,7 @@ pub(crate) fn type_check_method_application(
                 }
 
                 let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
+                    engines,
                     subst_type_parameters,
                     subst_type_arguments,
                 );
@@ -887,9 +894,14 @@ fn unify_arguments_and_parameters(
     let mut typed_arguments_and_names = vec![];
 
     handler.scope(|handler| {
-        for ((_, arg), param) in arguments.iter().zip(parameters.iter()) {
+        for ((name, arg), param) in arguments.iter().zip(parameters.iter()) {
             // unify the type of the argument with the type of the param
             let unify_res = handler.scope(|handler| {
+                eprintln!("unifying {}: {:?} -> {:?}",
+                    name.as_str(),
+                    engines.help_out(arg.return_type),
+                    engines.help_out(param.type_argument.type_id())
+                );
                 type_engine.unify_with_generic(
                     handler,
                     engines,

@@ -146,7 +146,6 @@ where
 
             let mut params = vec![];
             let mut args = vec![];
-            let mut consts = BTreeMap::new();
             for (p, a) in value.type_parameters().iter().zip(type_arguments.iter()) {
                 match (p, a) {
                     (TypeParameter::Type(p), GenericArgument::Type(a)) => {
@@ -154,10 +153,6 @@ where
                         args.push(a.type_id);
                     }
                     (TypeParameter::Const(p), GenericArgument::Const(a)) => {
-                        consts.insert(
-                            p.tid.name().as_str().to_string(),
-                            a.expr.to_ty_expression(engines),
-                        );
                     }
                     // TODO const generic was not materialized yet
                     (TypeParameter::Const(_), GenericArgument::Type(_)) => {}
@@ -166,9 +161,7 @@ where
             }
 
             Ok(
-                TypeSubstMap::from_type_parameters_and_type_arguments_and_const_generics(
-                    params, args, consts,
-                ),
+                TypeSubstMap::from_type_parameters_and_type_arguments(engines, params, args)
             )
         }
     }

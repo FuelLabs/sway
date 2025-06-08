@@ -914,7 +914,7 @@ fn type_check_trait_implementation(
     }
 
     let mut trait_type_mapping =
-        TypeSubstMap::from_type_parameters_and_type_arguments(vec![], vec![]);
+        TypeSubstMap::from_type_parameters_and_type_arguments(engines, vec![], vec![]);
 
     for item in impl_items {
         match item {
@@ -959,6 +959,7 @@ fn type_check_trait_implementation(
                 if let Some(type_arg) = type_decl.ty.clone() {
                     trait_type_mapping.extend(
                         &TypeSubstMap::from_type_parameters_and_type_arguments(
+                            engines,
                             vec![type_engine.insert_trait_type(
                                 engines,
                                 type_decl.name.clone(),
@@ -969,6 +970,7 @@ fn type_check_trait_implementation(
                     );
                     trait_type_mapping.extend(
                         &TypeSubstMap::from_type_parameters_and_type_arguments(
+                            engines,
                             vec![type_engine.insert_trait_type(
                                 engines,
                                 type_decl.name.clone(),
@@ -1075,6 +1077,7 @@ fn type_check_trait_implementation(
     // using the stub decl ids from the interface surface and the new
     // decl ids from the newly implemented methods.
     let mut type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+        engines,
         trait_type_parameters
             .iter()
             .map(|p| {

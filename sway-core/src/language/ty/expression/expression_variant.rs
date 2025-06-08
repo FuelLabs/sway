@@ -701,14 +701,11 @@ impl SubstTypes for TyExpressionVariant {
             ConstantExpression { decl, .. } => decl.subst(ctx),
             ConfigurableExpression { decl, .. } => decl.subst(ctx),
             ConstGenericExpression { id, .. } => {
-                let mut decl = TyConstGenericDecl::clone(&ctx.engines.de().get(id));
-
-                match decl.subst(ctx) {
-                    HasChanges::Yes => {
-                        *id = ctx.engines.de().insert(decl, None).id().clone(); // TODO remove this None
-                        HasChanges::Yes
-                    }
-                    HasChanges::No => HasChanges::No,
+                if let Some(new_id) = ctx.type_subst_map.as_ref().and_then(|map| map.const_generics_mapping.get(id)) {
+                    *id = new_id.clone();
+                    HasChanges::Yes
+                } else {
+                    HasChanges::No
                 }
             }
             VariableExpression { .. } => HasChanges::No,

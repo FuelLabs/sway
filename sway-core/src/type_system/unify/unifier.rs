@@ -169,7 +169,6 @@ impl<'a> Unifier<'a> {
                                 assert!(value.cast_value_to_u64().unwrap() == *val as u64);
                             },
                             None => {
-                                todo!();
                                 self.replace_expected_with_received(expected, &r_type_source_info, span);
                             },
                         }

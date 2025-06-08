@@ -1,5 +1,5 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{DeclEngineGet as _, DeclId, DeclRef, MaterializeConstGenerics}, has_changes, language::{parsed::{ConstGenericDeclaration, Declaration}, ty::TyExpression, CallPath}, semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext}, HasChanges, SubstTypes, TypeId
+    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{DeclEngineGet as _, DeclEngineReplace, DeclId, DeclRef, MaterializeConstGenerics}, has_changes, language::{parsed::{ConstGenericDeclaration, Declaration}, ty::TyExpression, CallPath}, semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext}, HasChanges, SubstTypes, TypeId
 };
 use serde::{Deserialize, Serialize};
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -15,35 +15,63 @@ pub struct TyConstGenericDecl {
     pub value: Option<TyExpression>,
 }
 
-impl SubstTypes for TyConstGenericDecl {
-    fn subst_inner(&mut self, ctx: &crate::SubstTypesContext) -> crate::HasChanges {
-        has_changes!{
-            self.return_type.subst_inner(ctx);
-            self.value.subst_inner(ctx);
-        }
-    }
-}
+// impl SubstTypes for TyConstGenericDecl {
+//     fn subst_inner(&mut self, ctx: &crate::SubstTypesContext) -> crate::HasChanges {
+//         has_changes!{
+//             self.return_type.subst_inner(ctx);
+//             self.value.subst_inner(ctx);
+//         }
+//     }
+// }
 
 impl SubstTypes for DeclRef<DeclId<TyConstGenericDecl>> {
     fn subst_inner(&mut self, ctx: &crate::SubstTypesContext) -> crate::HasChanges {
+        // replace
         if let Some(new_id) = ctx.type_subst_map.as_ref().and_then(|map| map.const_generics_mapping.get(self.id())) {
             let decl = ctx.engines.de().get(new_id);
             *self = DeclRef::new(decl.name().clone(), new_id.clone(), decl.span.clone());
-            HasChanges::Yes
-        } else {
-            HasChanges::No
+            return HasChanges::Yes
         }
+
+        //materialize
+        if let Some(expr) = ctx.type_subst_map.as_ref().and_then(|map| map.const_generics_materialization.get(self.id())) {
+            let old_decl = ctx.engines.de().get(self);
+            let decl = TyConstGenericDecl {
+                name: old_decl.name.clone(),
+                return_type: old_decl.return_type.clone(),
+                span: old_decl.span.clone(),
+                value: Some(expr.clone()),
+            };
+            ctx.engines.de().replace(self.id().clone(), decl);
+            return HasChanges::Yes
+        }
+
+        HasChanges::No
     }
 }
 
 impl SubstTypes for DeclId<TyConstGenericDecl> {
     fn subst_inner(&mut self, ctx: &crate::SubstTypesContext) -> crate::HasChanges {
+        // replace
         if let Some(new_id) = ctx.type_subst_map.as_ref().and_then(|map| map.const_generics_mapping.get(self)) {
             *self = new_id.clone();
-            HasChanges::Yes
-        } else {
-            HasChanges::No
+            return HasChanges::Yes
         }
+
+        //materialize
+        if let Some(expr) = ctx.type_subst_map.as_ref().and_then(|map| map.const_generics_materialization.get(self)) {
+            let old_decl = ctx.engines.de().get(self);
+            let decl = TyConstGenericDecl {
+                name: old_decl.name.clone(),
+                return_type: old_decl.return_type.clone(),
+                span: old_decl.span.clone(),
+                value: Some(expr.clone()),
+            };
+            ctx.engines.de().replace(self.clone(), decl);
+            return HasChanges::Yes
+        }
+
+        HasChanges::No
     }
 }
 
