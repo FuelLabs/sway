@@ -7,9 +7,10 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_types::Spanned;
 
 use crate::{
-    engine_threading::{PartialEqWithEngines, PartialEqWithEnginesContext},
+    engine_threading::{GetCallPathWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::CallPath,
     Engines, IncludeSelf, SubstTypes, SubstTypesContext, TypeId, TypeInfo, TypeParameter,
     TypeSubstMap, UnifyCheck,
@@ -237,11 +238,30 @@ pub(crate) fn check_impls_for_overlap(
                 })
                 .collect::<Vec<_>>();
 
+            let self_call_path = engines
+                .te()
+                .get(self_entry.inner.key.type_id)
+                .call_path(engines);
             other.for_each_impls(engines, self_entry.inner.key.type_id, true, |other_entry| {
+                let other_call_path = engines
+                    .te()
+                    .get(other_entry.inner.key.type_id)
+                    .call_path(engines);
+
+                // This prevents us from checking duplicated types as might happen when
+                // compiling different versions of the same library.
+                let is_duplicated_type = matches!(
+                    (&self_call_path, &other_call_path),
+                    (Some(v1), Some(v2))
+                        if v1.prefixes == v2.prefixes
+                            && v1.span().source_id() != v2.span().source_id()
+                );
+
                 if self_entry.inner.key.name.eq(
                     &*other_entry.inner.key.name,
                     &PartialEqWithEnginesContext::new(engines),
                 ) && self_entry.inner.value.impl_span != other_entry.inner.value.impl_span
+                    && !is_duplicated_type
                     && (unify_check
                         .check(self_entry.inner.key.type_id, other_entry.inner.key.type_id)
                         || unify_check
@@ -311,6 +331,7 @@ pub(crate) fn check_impls_for_overlap(
                                         handler.emit_err(
                                             CompileError::ConflictingImplsForTraitAndType {
                                                 trait_name: self_entry
+                                                    .inner
                                                     .key
                                                     .name
                                                     .suffix

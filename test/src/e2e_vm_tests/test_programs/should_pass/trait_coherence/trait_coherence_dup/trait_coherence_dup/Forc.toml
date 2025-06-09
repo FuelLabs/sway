@@ -1,0 +1,13 @@
+[project]
+name = "trait_coherence_dup"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "lib.sw"
+license = "Apache-2.0"
+implicit-std = false
+
+[dependencies]
+standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.7.1" }
+# Uncomment this to replace with local version of standards, which uncovers
+# a trait coherence checking bug related to conflict between local and remote std.
+#standards = { path = "../standards" }
+sway_libs = { path = "../sway_libs" }
