@@ -2529,7 +2529,7 @@ impl<'a> FnCompiler<'a> {
 
         let ptr_out_arg = AsmArg {
             name: Ident::new_no_span("ptr_out".into()),
-            initializer: Some(ptr),
+            initializer: None,
         };
 
         let return_type = Type::new_ptr(context, elem_ir_type);
