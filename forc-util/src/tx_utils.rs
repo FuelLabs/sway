@@ -212,9 +212,8 @@ impl RevertInfo {
 
                     match program_abi
                         .logged_types
-                        .as_ref()
-                        .unwrap_or(&vec![])
                         .iter()
+                        .flatten()
                         .find(|logged_type| logged_type.log_id == *log_id)
                         .and_then(|logged_type| {
                             program_abi.concrete_types.iter().find(|concrete_type| {
