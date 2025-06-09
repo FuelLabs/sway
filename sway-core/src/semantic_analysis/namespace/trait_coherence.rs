@@ -176,7 +176,14 @@ fn check_orphan_rules_for_impls_in_scope(
                 references_local_type(engines, current_package, trait_entry.inner.key.type_id);
 
             if !has_local_type {
+                let trait_name = trait_entry.inner.key.name.suffix.name.to_string();
+                let type_name = {
+                    let ty = engines.te().get(trait_entry.inner.key.type_id);
+                    ty.get_type_str(engines)
+                };
                 handler.emit_err(CompileError::IncoherentImplDueToOrphanRule {
+                    trait_name,
+                    type_name,
                     span: trait_entry.inner.value.impl_span.clone(),
                 });
             }

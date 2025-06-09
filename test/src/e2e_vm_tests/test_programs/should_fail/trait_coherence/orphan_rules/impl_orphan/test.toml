@@ -1,3 +1,0 @@
-category = "fail"
-
-#check: $()Incoherent impl was found due to breaking orphan rule check.
