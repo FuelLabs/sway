@@ -1,4 +1,7 @@
-use std::{cell::Cell, collections::HashMap};
+use std::{
+    cell::Cell,
+    collections::{HashMap, HashSet},
+};
 
 use sway_error::{
     error::CompileError,
@@ -207,7 +210,7 @@ pub(crate) fn check_impls_for_overlap(
 ) -> Result<(), ErrorEmitted> {
     let mut overlap_err = None;
     let unify_check = UnifyCheck::constraint_subset(engines);
-    let mut traits_types = HashMap::<CallPath, Vec<TypeId>>::new();
+    let mut traits_types = HashMap::<CallPath, HashSet<TypeId>>::new();
     trait_map.get_traits_types(&mut traits_types)?;
     other.get_traits_types(&mut traits_types)?;
 
