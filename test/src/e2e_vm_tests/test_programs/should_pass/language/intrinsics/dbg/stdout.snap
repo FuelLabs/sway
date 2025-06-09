@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 162
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --asm final | sub ecal
 ecal $r4 $r0 $r1 $r3          ; ecal id fd buf count
@@ -13,12 +14,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg
    Compiling library std (sway-lib-std)
    Compiling script dbg (test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg)
-    Finished debug [unoptimized + fuel] target(s) [43.656 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [43.632 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- dbg
 
-      test call_main ... ok (???, 176794 gas)
+      test call_main ... ok (???, 176786 gas)
 [src/main.sw:13:13] () = ()
 [src/main.sw:15:13] true = true
 [src/main.sw:16:13] false = false
@@ -53,7 +54,7 @@ tested -- dbg
 [src/main.sw:53:13] __to_str_array("A") = "A"
 [src/main.sw:56:13] ("A", 0u8) = ("A", 0)
 [src/main.sw:57:13] [0u8, 1u8] = [0, 1]
-[src/main.sw:58:13] __slice(&[0u8, 1u8], 0, 2) = [0, 1]
+[src/main.sw:58:13] __slice(&[0u8, 1u8], 0, 2) = [0, 0]
 [src/main.sw:61:13] S {} = S { }
 [src/main.sw:62:13] E::None = None
 [src/main.sw:63:13] E::Some(S {}) = E(S { })
