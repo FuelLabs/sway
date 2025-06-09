@@ -2533,7 +2533,7 @@ impl<'a> FnCompiler<'a> {
         };
 
         let return_type = Type::new_ptr(context, elem_ir_type);
-        let ptr = self.current_block.append(context).asm_block(
+        let ptr_out = self.current_block.append(context).asm_block(
             vec![
                 idx_arg,
                 elem_ir_type_size_arg,
@@ -2546,10 +2546,10 @@ impl<'a> FnCompiler<'a> {
                 AsmInstruction::add_no_span("ptr_out", "ptr", "offset_temp"),
             ],
             return_type,
-            Some(Ident::new_no_span("ptr".into())),
+            Some(Ident::new_no_span("ptr_out".into())),
         );
 
-        Ok((ptr, elem_ir_type))
+        Ok((ptr_out, elem_ir_type))
     }
 
     fn compile_intrinsic_elem_at(
