@@ -287,7 +287,7 @@ ____
   Aborting due to 20 errors.
 error: Failed to compile const_generics
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --experimental const_generics --test-threads 1 --logs --revert-codes
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --experimental const_generics --test-threads 1 --dbgs --reverts
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
@@ -299,6 +299,7 @@ output:
 tested -- const_generics
 
       test run_main ... ok (???, 16122 gas)
+           debug output:
 [src/main.sw:65:13] a = [1, 2]
 [src/main.sw:69:13] [C {}].len() = 1
 [src/main.sw:74:13] [C {}, C {}].len() = 2

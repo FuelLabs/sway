@@ -8,7 +8,7 @@ ecal $r2 $r1 $zero $zero      ; ecal id fd zero zero
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --release --asm final | sub ecal
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --logs
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --dbgs
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg
@@ -20,6 +20,7 @@ output:
 tested -- dbg
 
       test call_main ... ok (???, 176794 gas)
+           debug output:
 [src/main.sw:13:13] () = ()
 [src/main.sw:15:13] true = true
 [src/main.sw:16:13] false = false
