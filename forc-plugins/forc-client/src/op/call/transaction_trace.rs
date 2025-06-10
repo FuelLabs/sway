@@ -263,19 +263,14 @@ impl Node<'_> {
                     Some(data) => {
                         let hex_str = format!("0x{}", hex::encode(data));
                         match self.abis.get(id) {
-                            Some(abi) => {
-                                let program_abi = sway_core::asm_generation::ProgramABI::Fuel(
-                                    abi.program.clone(),
-                                );
-                                forc_util::tx_utils::decode_log_data(
-                                    &rb.to_string(),
-                                    data,
-                                    &program_abi,
-                                )
-                                .ok()
-                                .map(|decoded| decoded.value)
-                                .unwrap_or(hex_str)
-                            }
+                            Some(abi) => forc_util::tx_utils::decode_fuel_vm_log_data(
+                                &rb.to_string(),
+                                data,
+                                &abi.program,
+                            )
+                            .ok()
+                            .map(|decoded| decoded.value)
+                            .unwrap_or(hex_str),
                             None => hex_str,
                         }
                     }

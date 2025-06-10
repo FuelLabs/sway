@@ -1,0 +1,4 @@
+cmds = [
+    "forc test --path {root} --experimental error_type --logs --raw-logs --dbgs --reverts passing_",
+    "forc test --path {root} --experimental error_type",
+]

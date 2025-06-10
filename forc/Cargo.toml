@@ -28,6 +28,7 @@ forc-test.workspace = true
 forc-tracing.workspace = true
 forc-util = { workspace = true, features = ["tx"] }
 fs_extra.workspace = true
+fuel-abi-types.workspace = true
 fuel-asm.workspace = true
 hex.workspace = true
 serde = { workspace = true, features = ["derive"] }

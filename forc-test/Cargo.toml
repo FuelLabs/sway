@@ -11,6 +11,7 @@ repository.workspace = true
 [dependencies]
 anyhow.workspace = true
 forc-pkg.workspace = true
+forc-util.workspace = true
 fuel-abi-types.workspace = true
 fuel-tx = { workspace = true, features = ["test-helpers"] }
 fuel-vm = { workspace = true, features = ["random", "test-helpers"] }

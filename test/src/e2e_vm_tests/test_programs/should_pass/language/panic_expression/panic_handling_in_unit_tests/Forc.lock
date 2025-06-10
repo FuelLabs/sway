@@ -1,0 +1,8 @@
+[[package]]
+name = "panic_handling_in_unit_tests"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-9DDCBE9065EA0BF9"

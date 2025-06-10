@@ -25,14 +25,14 @@ impl Syscall {
                 let mut f = unsafe { std::fs::File::from_raw_fd(*fd as i32) };
                 write!(&mut f, "{}", s).unwrap();
 
-                // Dont close the fd
+                // Don't close the fd
                 std::mem::forget(f);
             }
             Syscall::Fflush { fd } => {
                 let mut f = unsafe { std::fs::File::from_raw_fd(*fd as i32) };
                 let _ = f.flush();
 
-                // Dont close the fd
+                // Don't close the fd
                 std::mem::forget(f);
             }
             Syscall::Unknown { ra, rb, rc, rd } => {
