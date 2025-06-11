@@ -1044,6 +1044,10 @@ pub enum CompileError {
     EncodingUnsupportedType { span: Span },
     #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
     ConfigurableMissingAbiDecodeInPlace { span: Span },
+    #[error("Invalid name found for renamed ABI type.\n")]
+    ABIInvalidName { span: Span },
+    #[error("Duplicated name found for renamed ABI type.\n")]
+    ABIDuplicateName { span: Span },
     #[error("Collision detected between two different types.\n  Shared hash:{hash}\n  First type:{first_type}\n  Second type:{second_type}")]
     ABIHashCollision {
         span: Span,
@@ -1304,6 +1308,8 @@ impl Spanned for CompileError {
             CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
             EncodingUnsupportedType { span } => span.clone(),
             ConfigurableMissingAbiDecodeInPlace { span } => span.clone(),
+            ABIInvalidName { span, .. } => span.clone(),
+            ABIDuplicateName { span, .. } => span.clone(),
             ABIHashCollision { span, .. } => span.clone(),
             InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
