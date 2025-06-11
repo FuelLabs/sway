@@ -273,10 +273,12 @@ fn sync_with_updates_to_manifest_in_workspace() {
             .sync_uri_and_session_from_workspace(&workspace_uri)
             .unwrap();
 
-        let build_plan = session.build_plan_cache.get_or_update(
-            &sync.workspace_manifest_path(),
-            || sway_lsp::core::session::build_plan(&uri),
-        ).unwrap();
+        let build_plan = session
+            .build_plan_cache
+            .get_or_update(&sync.workspace_manifest_path(), || {
+                sway_lsp::core::session::build_plan(&uri)
+            })
+            .unwrap();
         assert_eq!(build_plan.compilation_order().len(), 3);
 
         // cleanup: remove the test-library from the test-contract manifest file

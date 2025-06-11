@@ -379,7 +379,7 @@ impl ServerState {
         }
         diagnostics_to_publish
     }
-    
+
     /// Constructs and returns a tuple of `(Arc<SyncWorkspace>, Url)` from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
     pub fn sync_and_uri_from_workspace(

@@ -76,7 +76,9 @@ pub fn handle_goto_definition(
     state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
-    match state.sync_uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri) {
+    match state.sync_uri_and_session_from_workspace(
+        &params.text_document_position_params.text_document.uri,
+    ) {
         Ok((sync, uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(session.token_definition_response(
@@ -125,9 +127,9 @@ pub fn handle_hover(
     state: &ServerState,
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_types::Hover>> {
-    match state
-        .sync_uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
-    {
+    match state.sync_uri_and_session_from_workspace(
+        &params.text_document_position_params.text_document.uri,
+    ) {
         Ok((sync, uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::hover::hover_data(
@@ -151,20 +153,18 @@ pub fn handle_prepare_rename(
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
     match state.sync_and_uri_from_workspace(&params.text_document.uri) {
-        Ok((sync, uri)) => {
-            capabilities::rename::prepare_rename(
-                &state.engines.read(),
-                &state.token_map,
-                &uri,
-                params.position,
-                &sync,
-            )
-            .map(Some)
-            .or_else(|e| {
-                tracing::error!("{}", e);
-                Ok(None)
-            })
-        }
+        Ok((sync, uri)) => capabilities::rename::prepare_rename(
+            &state.engines.read(),
+            &state.token_map,
+            &uri,
+            params.position,
+            &sync,
+        )
+        .map(Some)
+        .or_else(|e| {
+            tracing::error!("{}", e);
+            Ok(None)
+        }),
         Err(e) => {
             tracing::error!("{}", e);
             Ok(None)
@@ -228,7 +228,9 @@ pub async fn handle_references(
     params: lsp_types::ReferenceParams,
 ) -> Result<Option<Vec<lsp_types::Location>>> {
     let _ = state.wait_for_parsing().await;
-    match state.sync_uri_and_session_from_workspace(&params.text_document_position.text_document.uri) {
+    match state
+        .sync_uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
+    {
         Ok((sync, uri, session)) => {
             let position = params.text_document_position.position;
             Ok(session.token_references(

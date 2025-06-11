@@ -38,7 +38,14 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("hover", |b| {
         b.iter(|| {
-            capabilities::hover::hover_data(&state, sync.clone(), &engines, session.clone(), &uri, position)
+            capabilities::hover::hover_data(
+                &state,
+                sync.clone(),
+                &engines,
+                session.clone(),
+                &uri,
+                position,
+            )
         })
     });
 
