@@ -182,14 +182,14 @@ fn convert_resolved_type_info(
                 )?;
                 Type::get_typed_slice(context, elem_ir_type)
             } else {
-                let elem_ir_type = convert_resolved_type_id(
+                let referenced_ir_type = convert_resolved_type_id(
                     type_engine,
                     decl_engine,
                     context,
                     referenced_type.type_id(),
                     span,
                 )?;
-                Type::new_ptr(context, elem_ir_type)
+                Type::new_ptr(context, referenced_ir_type)
             }
         }
         TypeInfo::Never => Type::get_never(context),

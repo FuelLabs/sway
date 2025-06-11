@@ -70,14 +70,14 @@ impl CompiledValue {
         self.value().get_constant(context).cloned()
     }
 
-    fn unwrap_memory(self) -> Value {
+    fn expect_memory(self) -> Value {
         match self {
             CompiledValue::InMemory(value) => value,
             CompiledValue::InRegister(_) => panic!("Expected InMemory, got InRegister"),
         }
     }
 
-    fn unwrap_register(self) -> Value {
+    fn expect_register(self) -> Value {
         match self {
             CompiledValue::InMemory(_) => panic!("Expected InRegister, got InMemory"),
             CompiledValue::InRegister(value) => value,
@@ -1125,11 +1125,11 @@ impl<'a> FnCompiler<'a> {
                 let lhs_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, lhs)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let rhs_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, rhs)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let pred = match kind {
                     Intrinsic::Eq => Predicate::Equal,
                     Intrinsic::Gt => Predicate::GreaterThan,
@@ -1150,7 +1150,7 @@ impl<'a> FnCompiler<'a> {
                 let index = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[0])?
                 )
-                .unwrap_register();
+                .expect_register();
 
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
@@ -1225,7 +1225,7 @@ impl<'a> FnCompiler<'a> {
                 let value = return_on_termination_or_extract!(
                     self.compile_expression_to_memory(context, md_mgr, exp)?
                 )
-                .unwrap_memory();
+                .expect_memory();
                 let int_ty = Type::new_uint(context, 64);
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let val = self
@@ -1244,11 +1244,11 @@ impl<'a> FnCompiler<'a> {
                 let key_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &key_exp)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let number_of_slots_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &number_of_slots_exp)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let val = self
@@ -1266,7 +1266,7 @@ impl<'a> FnCompiler<'a> {
                 let value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, exp)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, value, span_md_idx)?;
                 let val = self
@@ -1295,11 +1295,11 @@ impl<'a> FnCompiler<'a> {
                 let key_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, key_exp)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let val_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, val_exp)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let val = self
@@ -1332,15 +1332,15 @@ impl<'a> FnCompiler<'a> {
                 let key_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &key_exp)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let val_ptr = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &val_exp)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let number_of_slots_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &number_of_slots_exp)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let b256_ty = Type::get_b256(context);
@@ -1387,7 +1387,7 @@ impl<'a> FnCompiler<'a> {
                 let log_val = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[0])?
                 )
-                .unwrap_register();
+                .expect_register();
                 let logged_type_id = TypeMetadata::get_logged_type_id(
                     &arguments[0],
                     context.experimental.new_encoding,
@@ -1453,11 +1453,11 @@ impl<'a> FnCompiler<'a> {
                 let lhs_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, lhs)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let rhs_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, rhs)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let val = self
                     .current_block
                     .append(context)
@@ -1471,7 +1471,7 @@ impl<'a> FnCompiler<'a> {
                 let revert_code_val = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[0])?
                 )
-                .unwrap_register();
+                .expect_register();
 
                 // The `revert` instruction
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -1520,11 +1520,11 @@ impl<'a> FnCompiler<'a> {
                 let lhs_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, lhs)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let count_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, count)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let rhs_value = self.current_block.append(context).binary_op(
                     BinaryOpKind::Mul,
                     len_value,
@@ -1546,7 +1546,7 @@ impl<'a> FnCompiler<'a> {
                 let recipient_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[0])?
                 )
-                .unwrap_register();
+                .expect_register();
                 let recipient_md_idx = md_mgr.span_to_md(context, &span);
                 let recipient_var =
                     store_key_in_local_mem(self, context, recipient_value, recipient_md_idx)?;
@@ -1556,7 +1556,7 @@ impl<'a> FnCompiler<'a> {
                 let user_message = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[1])?
                 )
-                .unwrap_register();
+                .expect_register();
 
                 let user_message_type = user_message.get_type(context).ok_or_else(|| {
                     CompileError::Internal(
@@ -1635,7 +1635,7 @@ impl<'a> FnCompiler<'a> {
                 let coins = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[2])?
                 )
-                .unwrap_register();
+                .expect_register();
 
                 let val = self
                     .current_block
@@ -1654,7 +1654,7 @@ impl<'a> FnCompiler<'a> {
                 let value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, op)?
                 )
-                .unwrap_register();
+                .expect_register();
 
                 let val = self
                     .current_block
@@ -1672,20 +1672,20 @@ impl<'a> FnCompiler<'a> {
                 let params = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[0])?
                 )
-                .unwrap_register();
+                .expect_register();
 
                 // Coins
                 let coins = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[1])?
                 )
-                .unwrap_register();
+                .expect_register();
 
                 // AssetId
                 let b256_ty = Type::get_b256(context);
                 let asset_id = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[2])?
                 )
-                .unwrap_register();
+                .expect_register();
                 let tmp_asset_id_name = self.lexical_map.insert_anon();
                 let tmp_var = self
                     .function
@@ -1703,7 +1703,7 @@ impl<'a> FnCompiler<'a> {
                     md_mgr,
                     &arguments[3]
                 )?)
-                .unwrap_register();
+                .expect_register();
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
@@ -1729,13 +1729,13 @@ impl<'a> FnCompiler<'a> {
                     md_mgr,
                     &arguments[0]
                 )?)
-                .unwrap_register();
+                .expect_register();
                 let len = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
                     &arguments[1]
                 )?)
-                .unwrap_register();
+                .expect_register();
                 let r = self
                     .current_block
                     .append(context)
@@ -1793,7 +1793,7 @@ impl<'a> FnCompiler<'a> {
                 let buffer = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, buffer)?
                 )
-                .unwrap_register();
+                .expect_register();
 
                 let (ptr, cap, len) = self.compile_buffer_into_parts(context, buffer)?;
 
@@ -1804,7 +1804,7 @@ impl<'a> FnCompiler<'a> {
                 let item = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, item)?
                 )
-                .unwrap_register();
+                .expect_register();
 
                 fn increase_len(
                     current_block: &mut Block,
@@ -1896,7 +1896,7 @@ impl<'a> FnCompiler<'a> {
                 ) -> Result<Value, CompileError> {
                     // save to local and offset
                     let item_ptr = store_to_memory(s, context, CompiledValue::InRegister(item))?
-                        .unwrap_memory();
+                        .expect_memory();
 
                     let offset_value = ConstantContent::new_uint(context, 64, offset);
                     let offset_value = Constant::unique(context, offset_value);
@@ -2184,7 +2184,7 @@ impl<'a> FnCompiler<'a> {
                         // Save to local and return ptr to local
                         let item_ptr =
                             store_to_memory(self, context, CompiledValue::InRegister(item))?
-                                .unwrap_memory();
+                                .expect_memory();
                         let addr = calc_addr_as_ptr(
                             &mut self.current_block,
                             context,
@@ -2202,7 +2202,7 @@ impl<'a> FnCompiler<'a> {
                         // Save to local and return ptr to local
                         let item_ptr =
                             store_to_memory(self, context, CompiledValue::InRegister(item))?
-                                .unwrap_memory();
+                                .expect_memory();
                         let addr = calc_addr_as_ptr(
                             &mut self.current_block,
                             context,
@@ -2220,7 +2220,7 @@ impl<'a> FnCompiler<'a> {
 
                         let item_ptr =
                             store_to_memory(self, context, CompiledValue::InRegister(item))?
-                                .unwrap_memory();
+                                .expect_memory();
                         let addr = calc_addr_as_ptr(
                             &mut self.current_block,
                             context,
@@ -2344,7 +2344,7 @@ impl<'a> FnCompiler<'a> {
                 let buffer = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, buffer)?
                 )
-                .unwrap_register();
+                .expect_register();
 
                 let uint64 = Type::get_uint64(context);
                 let (ptr, _, len) = self.compile_buffer_into_parts(context, buffer)?;
@@ -2410,7 +2410,7 @@ impl<'a> FnCompiler<'a> {
             .get_type(context)
             .expect("transmute first argument type not found");
         let first_argument_ptr =
-            store_to_memory(self, context, first_argument_value)?.unwrap_memory();
+            store_to_memory(self, context, first_argument_value)?.expect_memory();
 
         // check IR sizes match
         let first_arg_size = first_argument_type.size(context).in_bytes();
@@ -2565,7 +2565,7 @@ impl<'a> FnCompiler<'a> {
         let first_argument_value = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, first_argument_expr)?
         )
-        .unwrap_register();
+        .expect_register();
         let (ptr_to_first_elem, elem_type_id) =
             self.ptr_to_first_element(context, first_argument_expr, first_argument_value, md_mgr)?;
 
@@ -2573,7 +2573,7 @@ impl<'a> FnCompiler<'a> {
         let idx = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, idx)?
         )
-        .unwrap_register();
+        .expect_register();
         let (ptr_to_elem, _) = self.advance_ptr_n_elements(
             context,
             first_argument_expr,
@@ -2600,7 +2600,7 @@ impl<'a> FnCompiler<'a> {
         let first_argument_value = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, first_argument_expr)?
         )
-        .unwrap_register();
+        .expect_register();
         let (ptr_to_first_elem, elem_type_id) =
             self.ptr_to_first_element(context, first_argument_expr, first_argument_value, md_mgr)?;
 
@@ -2608,7 +2608,7 @@ impl<'a> FnCompiler<'a> {
         let start = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, start)?
         )
-        .unwrap_register();
+        .expect_register();
         let (ptr_to_elem, elem_ir_type) = self.advance_ptr_n_elements(
             context,
             first_argument_expr,
@@ -2621,7 +2621,7 @@ impl<'a> FnCompiler<'a> {
         let end = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, end)?
         )
-        .unwrap_register();
+        .expect_register();
 
         let slice_len = self
             .current_block
@@ -2663,7 +2663,7 @@ impl<'a> FnCompiler<'a> {
         let ret_value = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, ast_expr)?
         )
-        .unwrap_register();
+        .expect_register();
 
         ret_value
             .get_type(context)
@@ -2732,7 +2732,7 @@ impl<'a> FnCompiler<'a> {
                 let panic_val = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, ast_expr)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let logged_type_id = logged_expression.return_type;
                 let log_id = match self.logged_types_map.get(&logged_type_id) {
                     None => {
@@ -2818,7 +2818,7 @@ impl<'a> FnCompiler<'a> {
         let value = return_on_termination_or_extract!(
             self.compile_expression_to_memory(context, md_mgr, ast_expr)?
         )
-        .unwrap_memory();
+        .expect_memory();
 
         // Taking a reference is just converting the pointer into a "register" value.
         Ok(TerminatorValue::new(
@@ -2836,7 +2836,7 @@ impl<'a> FnCompiler<'a> {
     ) -> Result<TerminatorValue, CompileError> {
         let (ptr, referenced_ast_type) = self.compile_deref_up_to_ptr(context, md_mgr, ast_expr)?;
 
-        let ptr = return_on_termination_or_extract!(ptr).unwrap_memory();
+        let ptr = return_on_termination_or_extract!(ptr).expect_memory();
 
         let referenced_type = self.engines.te().get_unaliased(referenced_ast_type);
 
@@ -2877,7 +2877,7 @@ impl<'a> FnCompiler<'a> {
         let ref_value = if ref_value.is_terminator {
             return Ok((ref_value, 0usize.into()));
         } else {
-            ref_value.value.unwrap_memory()
+            ref_value.value.expect_memory()
         };
 
         let ptr = if ref_value
@@ -2923,7 +2923,7 @@ impl<'a> FnCompiler<'a> {
         let lhs_val = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, ast_lhs)?
         )
-        .unwrap_register();
+        .expect_register();
         // Short-circuit: if LHS is true for AND we still must eval the RHS block; for OR we can
         // skip the RHS block, and vice-versa.
         let cond_block_end = self.current_block;
@@ -2957,7 +2957,7 @@ impl<'a> FnCompiler<'a> {
         if !rhs_val.is_terminator {
             self.current_block
                 .append(context)
-                .branch(final_block, vec![rhs_val.value.unwrap_register()])
+                .branch(final_block, vec![rhs_val.value.expect_register()])
                 .add_metadatum(context, span_md_idx);
         }
 
@@ -2990,7 +2990,7 @@ impl<'a> FnCompiler<'a> {
             let val = return_on_termination_or_extract!(
                 self.compile_expression_to_register(context, md_mgr, arg)?
             )
-            .unwrap_register();
+            .expect_register();
             compiled_args.push(val)
         }
 
@@ -3120,7 +3120,7 @@ impl<'a> FnCompiler<'a> {
             md_mgr,
             &call_params.contract_address
         )?)
-        .unwrap_register();
+        .expect_register();
         let gep_val =
             self.current_block
                 .append(context)
@@ -3176,7 +3176,7 @@ impl<'a> FnCompiler<'a> {
                 .add_metadatum(context, span_md_idx),
             ),
         }
-        .unwrap_register();
+        .expect_register();
 
         // As this is Fuel VM specific we can compile the asset ID directly to a `ptr b256`
         // pointer.
@@ -3211,7 +3211,7 @@ impl<'a> FnCompiler<'a> {
                 CompiledValue::InMemory(tmp_val)
             }
         }
-        .unwrap_memory();
+        .expect_memory();
 
         let gas = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
@@ -3219,7 +3219,7 @@ impl<'a> FnCompiler<'a> {
             Some(gas_expr) => return_on_termination_or_extract!(
                 self.compile_expression_to_register(context, md_mgr, gas_expr)?
             )
-            .unwrap_register(),
+            .expect_register(),
             None => self
                 .current_block
                 .append(context)
@@ -3300,7 +3300,7 @@ impl<'a> FnCompiler<'a> {
             let arg = return_on_termination_or_extract!(
                 self.compile_expression_to_register(context, md_mgr, expr)?
             )
-            .unwrap_register();
+            .expect_register();
 
             self.current_fn_param = None;
             args.push(arg);
@@ -3338,7 +3338,7 @@ impl<'a> FnCompiler<'a> {
             md_mgr,
             ast_condition
         )?)
-        .unwrap_register();
+        .expect_register();
         let cond_block = self.current_block;
 
         // To keep the blocks in a nice order we create them only as we populate them.  It's
@@ -3403,12 +3403,12 @@ impl<'a> FnCompiler<'a> {
             if !true_value.is_terminator {
                 true_block_end
                     .append(context)
-                    .branch(merge_block, vec![true_value.value.unwrap_register()]);
+                    .branch(merge_block, vec![true_value.value.expect_register()]);
             }
             if !false_value.is_terminator {
                 false_block_end
                     .append(context)
-                    .branch(merge_block, vec![false_value.value.unwrap_register()]);
+                    .branch(merge_block, vec![false_value.value.expect_register()]);
             }
             self.current_block = merge_block;
             merge_block.get_arg(context, merge_val_arg_idx).unwrap()
@@ -3447,7 +3447,7 @@ impl<'a> FnCompiler<'a> {
         let compiled_value = return_on_termination_or_extract!(
             self.compile_expression_to_memory(context, md_mgr, exp)?
         )
-        .unwrap_memory();
+        .expect_memory();
 
         // Get the variant type.
         let variant_type = enum_type
@@ -3478,7 +3478,7 @@ impl<'a> FnCompiler<'a> {
         let struct_val = return_on_termination_or_extract!(
             self.compile_expression_to_memory(context, md_mgr, &exp)?
         )
-        .unwrap_memory();
+        .expect_memory();
 
         let u64_ty = Type::get_uint64(context);
         let val = self
@@ -3520,7 +3520,7 @@ impl<'a> FnCompiler<'a> {
         let cond_value = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, condition)?
         )
-        .unwrap_register();
+        .expect_register();
         let cond_end_block = self.current_block;
 
         // Create the break block.
@@ -3758,7 +3758,7 @@ impl<'a> FnCompiler<'a> {
                 .add_metadatum(context, span_md_idx);
             self.current_block
                 .append(context)
-                .store(local_ptr, val.value.unwrap_register())
+                .store(local_ptr, val.value.expect_register())
                 .add_metadatum(context, span_md_idx);
         }
         Ok(None)
@@ -3873,7 +3873,7 @@ impl<'a> FnCompiler<'a> {
             md_mgr,
             &ast_reassignment.rhs
         )?)
-        .unwrap_register();
+        .expect_register();
 
         let lhs_ptr = match &ast_reassignment.lhs {
             ty::TyReassignmentTarget::ElementAccess {
@@ -3959,7 +3959,7 @@ impl<'a> FnCompiler<'a> {
 
                 if indices.is_empty() {
                     // A non-aggregate;
-                    return_on_termination_or_extract!(ptr).unwrap_memory()
+                    return_on_termination_or_extract!(ptr).expect_memory()
                 } else {
                     let (terminator, gep_indices) = self.compile_indices(
                         context,
@@ -3984,7 +3984,7 @@ impl<'a> FnCompiler<'a> {
                     // Create the GEP.
                     self.current_block
                         .append(context)
-                        .get_elem_ptr(ptr.value.unwrap_memory(), field_type, gep_indices)
+                        .get_elem_ptr(ptr.value.expect_memory(), field_type, gep_indices)
                         .add_metadatum(context, span_md_idx)
                 }
             }
@@ -4059,7 +4059,7 @@ impl<'a> FnCompiler<'a> {
                     if val.is_terminator {
                         return Ok((Some(val), vec![]));
                     }
-                    gep_indices.push(val.value.unwrap_register());
+                    gep_indices.push(val.value.expect_register());
                 }
                 _ => {
                     return Err(CompileError::Internal(
@@ -4116,7 +4116,7 @@ impl<'a> FnCompiler<'a> {
         let value_value = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, value_expr)?
         )
-        .unwrap_register();
+        .expect_register();
 
         if length_as_u64 > 5 {
             self.compile_array_init_loop(
@@ -4214,7 +4214,7 @@ impl<'a> FnCompiler<'a> {
                     context,
                     array_value,
                     elem_type,
-                    const_initializer.unwrap_register(),
+                    const_initializer.expect_register(),
                     contents.len() as u64,
                     span_md_idx,
                 );
@@ -4228,7 +4228,7 @@ impl<'a> FnCompiler<'a> {
                     );
                     self.current_block
                         .append(context)
-                        .store(gep_val, elem_value.unwrap_register())
+                        .store(gep_val, elem_value.expect_register())
                         .add_metadatum(context, span_md_idx);
                 }
             }
@@ -4243,7 +4243,7 @@ impl<'a> FnCompiler<'a> {
             let elem_value = return_on_termination_or_extract!(
                 self.compile_expression_to_register(context, md_mgr, elem_expr)?
             )
-            .unwrap_register();
+            .expect_register();
             let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                 array_value,
                 elem_type,
@@ -4339,7 +4339,7 @@ impl<'a> FnCompiler<'a> {
         let array_val = return_on_termination_or_extract!(
             self.compile_expression_to_memory(context, md_mgr, array_expr)?
         )
-        .unwrap_memory();
+        .expect_memory();
 
         // Get the array type and confirm it's an array.
         let array_type = array_val
@@ -4383,7 +4383,7 @@ impl<'a> FnCompiler<'a> {
         let index_val = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, index_expr)?
         )
-        .unwrap_register();
+        .expect_register();
 
         let elem_type = array_type.get_array_elem_type(context).ok_or_else(|| {
             CompileError::Internal(
@@ -4459,7 +4459,7 @@ impl<'a> FnCompiler<'a> {
 
                 self.current_block
                     .append(context)
-                    .store(gep_val, insert_val.unwrap_register())
+                    .store(gep_val, insert_val.expect_register())
                     .add_metadatum(context, span_md_idx);
             });
 
@@ -4484,7 +4484,7 @@ impl<'a> FnCompiler<'a> {
             md_mgr,
             ast_struct_expr
         )?)
-        .unwrap_memory();
+        .expect_memory();
 
         // Get the struct type info, with field names.
         let decl = self.engines.te().get_unaliased(struct_type_id);
@@ -4583,7 +4583,7 @@ impl<'a> FnCompiler<'a> {
             let contents_value = return_on_termination_or_extract!(
                 self.compile_expression_to_register(context, md_mgr, contents_expr)?
             )
-            .unwrap_register();
+            .expect_register();
             let contents_type = contents_value.get_type(context).ok_or_else(|| {
                 CompileError::Internal(
                     "Unable to get type for enum contents.",
@@ -4687,7 +4687,7 @@ impl<'a> FnCompiler<'a> {
                 let init_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, field_expr)?
                 )
-                .unwrap_register();
+                .expect_register();
                 let init_type = convert_resolved_typeid_no_span(
                     self.engines.te(),
                     self.engines.de(),
@@ -4719,7 +4719,7 @@ impl<'a> FnCompiler<'a> {
         let tuple_value = return_on_termination_or_extract!(
             self.compile_expression_to_memory(context, md_mgr, tuple)?
         )
-        .unwrap_memory();
+        .expect_memory();
         let tuple_type = convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
@@ -4811,7 +4811,7 @@ impl<'a> FnCompiler<'a> {
                     let initializer_val = return_on_termination_or_extract!(
                         self.compile_expression_to_register(context, md_mgr, init_expr)?
                     )
-                    .unwrap_register();
+                    .expect_register();
                     (Some(initializer_val), name)
                 }
             };

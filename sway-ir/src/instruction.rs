@@ -501,6 +501,7 @@ impl InstOp {
                         cur_idx += 1;
                     }
                 }
+                panic!("Invalid index for AsmBlock");
             }
             InstOp::BitCast(v, _) | InstOp::UnaryOp { arg: v, .. } => {
                 if idx == 0 {
