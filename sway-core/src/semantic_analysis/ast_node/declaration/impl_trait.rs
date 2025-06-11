@@ -24,7 +24,7 @@ use crate::{
         },
         *,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf, TraitMap},
+    namespace::{IsExtendingExistingImpl, IsImplInterfaceSurface, IsImplSelf, TraitMap},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, AbiMode, ConstShadowingMode,
         TyNodeDepGraphNodeId, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
@@ -639,6 +639,7 @@ impl TyImplSelfOrTrait {
                             .map(|decl_ref| decl_ref.decl_span().clone()),
                         IsImplSelf::Yes,
                         IsExtendingExistingImpl::No,
+                        IsImplInterfaceSurface::No,
                     )?;
 
                     let new_items = &impl_trait.items;
@@ -894,6 +895,7 @@ fn type_check_trait_implementation(
             Some(trait_decl_span.clone()),
             IsImplSelf::No,
             IsExtendingExistingImpl::No,
+            IsImplInterfaceSurface::No,
         );
 
         supertrait_interface_item_refs = this_supertrait_stub_method_refs;
