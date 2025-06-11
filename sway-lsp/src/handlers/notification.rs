@@ -146,24 +146,30 @@ pub(crate) fn handle_did_change_watched_files(
     params: DidChangeWatchedFilesParams,
 ) -> Result<(), LanguageServerError> {
     for event in params.changes {
-        let uri = state.uri_from_workspace(&event.uri)?;
+        match state.get_sync_workspace_for_uri(&event.uri) {
+            Ok(sync_workspace) => {
+                let uri = sync_workspace.workspace_to_temp_url(&event.uri)?;
 
-        match event.typ {
-            FileChangeType::CHANGED => {
-                if event.uri.to_string().contains("Forc.toml") {
-                    let sync_workspace = state.get_sync_workspace_for_uri(&event.uri)?;
-                    sync_workspace.sync_manifest()?;
-                    // TODO: Recompile the project | see https://github.com/FuelLabs/sway/issues/7103
+                match event.typ {
+                    FileChangeType::CHANGED => {
+                        if event.uri.to_string().contains("Forc.toml") {
+                            sync_workspace.sync_manifest()?;
+                            // TODO: Recompile the project | see https://github.com/FuelLabs/sway/issues/7103
+                        }
+                    }
+                    FileChangeType::DELETED => {
+                        state.pid_locked_files.remove_dirty_flag(&event.uri)?;
+                        let _ = state.documents.remove_document(&uri);
+                    }
+                    FileChangeType::CREATED => {
+                        // TODO: handle this case
+                    }
+                    _ => {}
                 }
             }
-            FileChangeType::DELETED => {
-                state.pid_locked_files.remove_dirty_flag(&event.uri)?;
-                let _ = state.documents.remove_document(&uri);
+            Err(err) => {
+                tracing::error!("Failed to get sync workspace for {}: {}", event.uri, err);
             }
-            FileChangeType::CREATED => {
-                // TODO: handle this case
-            }
-            _ => {}
         }
     }
     Ok(())
