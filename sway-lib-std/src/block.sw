@@ -131,3 +131,27 @@ pub fn block_header_hash(block_height: u32) -> Result<b256, BlockHashError> {
         Ok(header_hash)
     }
 }
+
+/// Returns the chain ID.
+///
+/// # Returns
+///
+/// * [u64] - The ID of the chain.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::block::chain_id;
+///
+/// fn foo() {
+///     let id = chain_id();
+///     // The chain ID for mainnet. See https://docs.fuel.network/docs/verified-addresses/#verified-addresses for more info.
+///     assert(id == 9889);
+/// }
+/// ```
+pub fn chain_id() -> u64 {
+    asm(r1) {
+        gm r1 i4;
+        r1: u64
+    }
+}

@@ -26,6 +26,8 @@ use sway_utils::constants;
 pub mod bytecode;
 pub mod fs_locking;
 pub mod restricted;
+#[cfg(feature = "tx")]
+pub mod tx_utils;
 
 #[macro_use]
 pub mod cli;
@@ -139,111 +141,6 @@ macro_rules! forc_result_bail {
     ($fmt:expr, $($arg:tt)*) => {
         return $crate::ForcResult::Err(anyhow::anyhow!($fmt, $($arg)*).into())
     };
-}
-
-#[cfg(feature = "tx")]
-pub mod tx_utils {
-
-    use anyhow::Result;
-    use clap::Args;
-    use fuels_core::{codec::ABIDecoder, types::param_types::ParamType};
-    use serde::{Deserialize, Serialize};
-    use std::collections::HashMap;
-    use sway_core::{asm_generation::ProgramABI, fuel_prelude::fuel_tx};
-
-    /// Added salt used to derive the contract ID.
-    #[derive(Debug, Args, Default, Deserialize, Serialize)]
-    pub struct Salt {
-        /// Added salt used to derive the contract ID.
-        ///
-        /// By default, this is
-        /// `0x0000000000000000000000000000000000000000000000000000000000000000`.
-        #[clap(long = "salt")]
-        pub salt: Option<fuel_tx::Salt>,
-    }
-
-    /// Format `Log` and `LogData` receipts.
-    pub fn format_log_receipts(
-        receipts: &[fuel_tx::Receipt],
-        pretty_print: bool,
-    ) -> Result<String> {
-        let mut receipt_to_json_array = serde_json::to_value(receipts)?;
-        for (rec_index, receipt) in receipts.iter().enumerate() {
-            let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Serialized receipts does not contain {} th index",
-                    rec_index
-                )
-            })?;
-            match receipt {
-                fuel_tx::Receipt::LogData {
-                    data: Some(data), ..
-                } => {
-                    if let Some(v) = rec_value.pointer_mut("/LogData/data") {
-                        *v = hex::encode(data).into();
-                    }
-                }
-                fuel_tx::Receipt::ReturnData {
-                    data: Some(data), ..
-                } => {
-                    if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
-                        *v = hex::encode(data).into();
-                    }
-                }
-                _ => {}
-            }
-        }
-        if pretty_print {
-            Ok(serde_json::to_string_pretty(&receipt_to_json_array)?)
-        } else {
-            Ok(serde_json::to_string(&receipt_to_json_array)?)
-        }
-    }
-
-    /// A `LogData` decoded into a human readable format with its type information.
-    pub struct DecodedLog {
-        pub value: String,
-    }
-
-    pub fn decode_log_data(
-        log_id: &str,
-        log_data: &[u8],
-        program_abi: &ProgramABI,
-    ) -> anyhow::Result<DecodedLog> {
-        let program_abi = match program_abi {
-            ProgramABI::Fuel(fuel_abi) => Some(
-                fuel_abi_types::abi::unified_program::UnifiedProgramABI::from_counterpart(
-                    fuel_abi,
-                )?,
-            ),
-            _ => None,
-        }
-        .ok_or_else(|| anyhow::anyhow!("only fuelvm is supported for log decoding"))?;
-        // Create type lookup (id, TypeDeclaration)
-        let type_lookup = program_abi
-            .types
-            .iter()
-            .map(|decl| (decl.type_id, decl.clone()))
-            .collect::<HashMap<_, _>>();
-
-        let logged_type_lookup: HashMap<_, _> = program_abi
-            .logged_types
-            .iter()
-            .flatten()
-            .map(|logged_type| (logged_type.log_id.as_str(), logged_type.application.clone()))
-            .collect();
-
-        let type_application = logged_type_lookup
-            .get(&log_id)
-            .ok_or_else(|| anyhow::anyhow!("log id is missing"))?;
-
-        let abi_decoder = ABIDecoder::default();
-        let param_type = ParamType::try_from_type_application(type_application, &type_lookup)?;
-        let decoded_str = abi_decoder.decode_as_debug_str(&param_type, log_data)?;
-        let decoded_log = DecodedLog { value: decoded_str };
-
-        Ok(decoded_log)
-    }
 }
 
 pub fn find_file_name<'sc>(manifest_dir: &Path, entry_path: &'sc Path) -> Result<&'sc Path> {
