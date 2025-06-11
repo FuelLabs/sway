@@ -124,12 +124,14 @@ impl TypeMetadata {
     }
 
     pub(crate) fn new_logged_type(
+        handler: &Handler,
         engines: &Engines,
         type_id: TypeId,
         program_name: String,
-    ) -> Self {
-        TypeMetadata::LoggedType(
+    ) -> Result<Self, ErrorEmitted> {
+        Ok(TypeMetadata::LoggedType(
             LogId::new(type_id.get_abi_type_str(
+                handler,
                 &AbiStrContext {
                     program_name,
                     abi_with_callpaths: true,
@@ -138,9 +140,9 @@ impl TypeMetadata {
                 },
                 engines,
                 type_id,
-            )),
+            )?),
             type_id,
-        )
+        ))
     }
 }
 

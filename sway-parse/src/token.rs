@@ -105,6 +105,29 @@ pub fn lex(
     lex_commented(handler, src, start, end, &source_id).map(|stream| stream.strip_comments())
 }
 
+pub fn is_valid_identifier_or_path(s: &str) -> bool {
+    // Return false if the string is empty.
+    if s.is_empty() {
+        return false;
+    }
+
+    let mut chars = s.chars();
+
+    // The first character must be a valid starting character.
+    let _first = match chars.next() {
+        Some(c) if c.is_xid_start() || c == '_' => c,
+        _ => return false,
+    };
+
+    // Do not accept a lone underscore as a valid identifier.
+    if s == "_" {
+        return false;
+    }
+
+    // All remaining characters must be valid identifier or path characters.
+    chars.all(|c| c.is_xid_continue() || c == ':')
+}
+
 pub fn lex_commented(
     handler: &Handler,
     src: Source,
