@@ -7,10 +7,9 @@ use sway_lsp::{capabilities, lsp_ext::OnEnterParams};
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, state, engines) = Runtime::new()
+    let (uri, session, state, engines, sync) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
-    let sync = state.get_sync_workspace_for_uri(&uri).unwrap();
     let config = sway_lsp::config::Config::default();
     let position = Position::new(1717, 24);
     let range = Range::new(Position::new(1628, 0), Position::new(1728, 0));

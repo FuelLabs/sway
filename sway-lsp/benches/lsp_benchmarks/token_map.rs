@@ -3,10 +3,9 @@ use lsp_types::Position;
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, _, state, engines) = Runtime::new()
+    let (uri, _, state, engines, sync) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
-    let sync = state.get_sync_workspace_for_uri(&uri).unwrap();
     let position = Position::new(1716, 24);
     let path = uri.to_file_path().unwrap();
     let program_id = sway_lsp::core::session::program_id_from_path(&path, &engines).unwrap();

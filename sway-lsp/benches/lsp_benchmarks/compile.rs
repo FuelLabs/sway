@@ -10,11 +10,10 @@ use tokio::runtime::Runtime;
 const NUM_DID_CHANGE_ITERATIONS: usize = 10;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, state, _) = Runtime::new()
+    let (uri, session, state, _, sync) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
 
-    let sync = state.get_sync_workspace_for_uri(&uri).unwrap();
     let build_plan = session
         .build_plan_cache
         .get_or_update(&sync.workspace_manifest_path(), || {

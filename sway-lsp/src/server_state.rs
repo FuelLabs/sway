@@ -587,24 +587,6 @@ impl ServerState {
             false
         }
     }
-
-    // /// Returns a reference to the `SyncWorkspace` for backward compatibility.
-    // /// This will panic if called with a URI that doesn't have an initialized workspace.
-    // ///
-    // /// @deprecated Use `get_sync_workspace_for_uri` instead for proper error handling.
-    // pub fn sync_workspace(&self) -> &SyncWorkspace {
-    //     // This is a temporary compatibility method.
-    //     // In the old implementation, this would panic if called before initialization.
-    //     // We maintain that behavior here but log a warning.
-    //     tracing::warn!("sync_workspace() called without URI context - this is deprecated");
-
-    //     // Return the first workspace if any exists, otherwise panic
-    //     self.sync_workspaces
-    //         .iter()
-    //         .next()
-    //         .map(|entry| entry.value().as_ref())
-    //         .expect("SyncWorkspace not initialized")
-    // }
 }
 
 /// Determines if expensive operations (traversal, GC, etc.) should be performed
