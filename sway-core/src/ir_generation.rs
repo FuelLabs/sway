@@ -318,7 +318,7 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                         } else {
                             // The base is not a pointer type. If a pointer to base_ty works for us, do that.
                             let elem_ptr_ty = *elem_ptr_ty;
-                            let indices = indices.clone();
+                            let indices = indices.clone(); // Cloning needed because of mutable and immutable borrow of `ctx`.
                             let pointer_to_base = Type::new_ptr(ctx, base_ty);
                             if pointer_to_base.get_value_indexed_type(ctx, &indices)
                                 == Some(elem_ptr_ty)

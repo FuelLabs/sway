@@ -76,7 +76,8 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
                     },
                 ..
             }) => {
-                // Make sure that a local ('s address) isn't stored.
+                // Make sure that a local's address isn't stored.
+                // E.g., in cases like `let r = &some_local;`.
                 if let Some((local, _)) = get_validate_local_var(context, function, &stored_val) {
                     locals.remove(&local);
                 }

@@ -137,7 +137,7 @@ fn to_constant(_s: &mut FnCompiler<'_>, context: &mut Context, value: u64) -> Va
     Value::new_constant(context, c)
 }
 
-/// Store a register value to a new local variable and return CompiledValue::InMemory(_).
+/// Store the in-register `value` to a new local variable and return [CompiledValue::InMemory], or return the same `value` if it is already in memory.
 fn store_to_memory(
     s: &mut FnCompiler<'_>,
     context: &mut Context,
@@ -161,7 +161,8 @@ fn store_to_memory(
     }
 }
 
-/// If a value is in memory, load it into a register and return the register value.
+/// If a `value` is in memory, load it into a register and return the register value.
+/// If it is already in a register, return the same `value`.
 fn load_to_register(
     s: &mut FnCompiler<'_>,
     context: &mut Context,
@@ -264,13 +265,13 @@ impl<'a> FnCompiler<'a> {
                 false,
             );
             if self.ref_mut_args.contains(&arg_name) {
-                self.ref_mut_args.insert(local_name.clone());
+                self.ref_mut_args.insert(local_name);
             }
             let local_val = entry.append(context).get_local(local_var);
             entry.append(context).store(local_val, arg_value);
         }
         match self.compile_code_block(context, md_mgr, ast_block)?.value {
-            // Final value must always be a value, not a pointer.
+            // Final value must always be in a register, not in memory.
             CompiledValue::InRegister(val) => Ok(val),
             CompiledValue::InMemory(_val) => {
                 // Return an error indicating that the final value is in memory.
@@ -409,7 +410,7 @@ impl<'a> FnCompiler<'a> {
         }
     }
 
-    // Compiled expression, and if the compiled result is in memory, load it to a register.
+    // Compile expression, and if the compiled result is in memory, load it to a register.
     fn compile_expression_to_register(
         &mut self,
         context: &mut Context,
@@ -4807,7 +4808,6 @@ impl<'a> FnCompiler<'a> {
                     // Take the optional initialiser, map it to an Option<Result<TerminatorValue>>,
                     // transpose that to Result<Option<TerminatorValue>> and map that to an AsmArg.
                     let init_expr = initializer.as_ref().unwrap();
-                    // I'm not sure if a register declaration can diverge, but check just to be safe
                     let initializer_val = return_on_termination_or_extract!(
                         self.compile_expression_to_register(context, md_mgr, init_expr)?
                     )
