@@ -22,6 +22,7 @@ use sway_types::{Span, Spanned};
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(
     state: &ServerState,
+    sync: Arc<SyncWorkspace>,
     engines: &Engines,
     session: Arc<Session>,
     url: &Url,
@@ -52,7 +53,6 @@ pub fn hover_data(
     }
 
     let client_config = state.config.read().client.clone();
-    let sync = state.get_sync_workspace_for_uri(url).unwrap();
     let contents = match &token.declared_token_ident(engines) {
         Some(decl_ident) => {
             let t = state.token_map.try_get(decl_ident).try_unwrap()?;

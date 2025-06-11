@@ -379,6 +379,29 @@ impl ServerState {
         }
         diagnostics_to_publish
     }
+    
+    /// Constructs and returns a tuple of `(Arc<SyncWorkspace>, Url)` from a given workspace URI.
+    /// The returned URL represents the temp directory workspace.
+    pub fn sync_and_uri_from_workspace(
+        &self,
+        workspace_uri: &Url,
+    ) -> Result<(Arc<SyncWorkspace>, Url), LanguageServerError> {
+        let sync = self.get_sync_workspace_for_uri(workspace_uri)?;
+        let uri = sync.workspace_to_temp_url(workspace_uri)?;
+        Ok((sync, uri))
+    }
+
+    /// Constructs and returns a tuple of `(Arc<SyncWorkspace>, Url, Arc<Session>)` from a given workspace URI.
+    /// The returned URL represents the temp directory workspace.
+    pub fn sync_uri_and_session_from_workspace(
+        &self,
+        workspace_uri: &Url,
+    ) -> Result<(Arc<SyncWorkspace>, Url, Arc<Session>), LanguageServerError> {
+        let sync = self.get_sync_workspace_for_uri(workspace_uri)?;
+        let uri = sync.workspace_to_temp_url(workspace_uri)?;
+        let session = self.url_to_session(workspace_uri)?;
+        Ok((sync, uri, session))
+    }
 
     /// Constructs and returns a tuple of `(Url, Arc<Session>)` from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
@@ -386,19 +409,10 @@ impl ServerState {
         &self,
         workspace_uri: &Url,
     ) -> Result<(Url, Arc<Session>), LanguageServerError> {
-        let temp_uri = self.uri_from_workspace(workspace_uri)?;
+        let sync = self.get_sync_workspace_for_uri(workspace_uri)?;
+        let temp_uri = sync.workspace_to_temp_url(workspace_uri)?;
         let session = self.url_to_session(workspace_uri)?;
         Ok((temp_uri, session))
-    }
-
-    /// Constructs and returns a [Url] from a given workspace URI.
-    /// The returned URL represents the temp directory workspace.
-    pub fn uri_from_workspace(&self, workspace_uri: &Url) -> Result<Url, LanguageServerError> {
-        let sw = self.get_sync_workspace_for_uri(workspace_uri)?;
-
-        // Convert the workspace URI to its corresponding temporary URI.
-        let temp_uri = sw.workspace_to_temp_url(workspace_uri)?;
-        Ok(temp_uri)
     }
 
     fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {

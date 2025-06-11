@@ -217,7 +217,8 @@ fn did_open_all_members_in_examples() {
                 };
 
                 // Make sure that program was parsed and the token map is populated
-                let tmp_uri = service.inner().uri_from_workspace(&uri).unwrap();
+                let sync = service.inner().get_sync_workspace_for_uri(&uri).unwrap();
+                let tmp_uri = sync.workspace_to_temp_url(&uri).unwrap();
                 let num_tokens_for_file =
                     service.inner().token_map.tokens_for_file(&tmp_uri).count();
                 assert!(num_tokens_for_file > 0);
@@ -248,7 +249,7 @@ fn sync_with_updates_to_manifest_in_workspace() {
         let (mut service, _) = LspService::new(ServerState::new);
         let workspace_dir = test_fixtures_dir().join("workspace");
         let path = workspace_dir.join("test-contract/src/main.sw");
-        let uri = init_and_open(&mut service, path.clone()).await;
+        let workspace_uri = init_and_open(&mut service, path.clone()).await;
 
         // add test-library as a dependency to the test-contract manifest file
         let test_lib_string = "test-library = { path = \"../test-library\" }";
@@ -260,29 +261,22 @@ fn sync_with_updates_to_manifest_in_workspace() {
         // notify the server that the manifest file has changed
         let params = DidChangeWatchedFilesParams {
             changes: vec![FileEvent {
-                uri: uri.clone(),
+                uri: workspace_uri.clone(),
                 typ: FileChangeType::CHANGED,
             }],
         };
         lsp::did_change_watched_files_notification(&mut service, params).await;
 
         // Check that the build plan now has 3 items
-        let (uri, session) = service
+        let (sync, uri, session) = service
             .inner()
-            .uri_and_session_from_workspace(&uri)
+            .sync_uri_and_session_from_workspace(&workspace_uri)
             .unwrap();
-        let build_plan = session
-            .build_plan_cache
-            .get_or_update(
-                &service
-                    .inner()
-                    .sync_workspaces
-                    .get(&path)
-                    .unwrap()
-                    .workspace_manifest_path(),
-                || sway_lsp::core::session::build_plan(&uri),
-            )
-            .unwrap();
+
+        let build_plan = session.build_plan_cache.get_or_update(
+            &sync.workspace_manifest_path(),
+            || sway_lsp::core::session::build_plan(&uri),
+        ).unwrap();
         assert_eq!(build_plan.compilation_order().len(), 3);
 
         // cleanup: remove the test-library from the test-contract manifest file
