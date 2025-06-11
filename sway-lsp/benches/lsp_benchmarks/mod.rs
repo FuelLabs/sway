@@ -7,11 +7,15 @@ use std::{path::PathBuf, sync::Arc};
 use sway_core::{Engines, LspConfig};
 use sway_lsp::{
     config::GarbageCollectionConfig,
-    core::session::{self, Session},
+    core::{
+        session::{self, Session},
+        sync::SyncWorkspace,
+    },
     server_state::{CompilationContext, ServerState},
 };
 
-pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState, Engines) {
+pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState, Engines, Arc<SyncWorkspace>)
+{
     // Load the test project
     let uri = Url::from_file_path(benchmark_dir().join("src/main.sw")).unwrap();
     let state = ServerState::default();
@@ -39,7 +43,7 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState, Engines)
 
     // Compile the project
     session::parse_project(&temp_uri, &engines_clone, None, &ctx, lsp_mode.as_ref()).unwrap();
-    (temp_uri, session, state, engines_clone)
+    (temp_uri, session, state, engines_clone, sync)
 }
 
 pub fn sway_workspace_dir() -> PathBuf {
