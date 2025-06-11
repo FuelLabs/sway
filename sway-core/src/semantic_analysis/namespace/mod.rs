@@ -18,6 +18,7 @@ pub use resolved_declaration::ResolvedDeclaration;
 pub(crate) use trait_coherence::check_impls_for_overlap;
 pub(crate) use trait_coherence::check_orphan_rules_for_impls;
 pub(crate) use trait_map::IsExtendingExistingImpl;
+pub(crate) use trait_map::IsImplInterfaceSurface;
 pub(crate) use trait_map::IsImplSelf;
 pub(super) use trait_map::ResolvedTraitImplItem;
 pub(crate) use trait_map::TraitEntry;
