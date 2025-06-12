@@ -299,6 +299,7 @@ where
                     .map(|decl_ref| decl_ref.decl_span().clone()),
                 crate::namespace::IsImplSelf::No,
                 crate::namespace::IsExtendingExistingImpl::No,
+                crate::namespace::IsImplInterfaceSurface::No,
             )
             .ok();
 
