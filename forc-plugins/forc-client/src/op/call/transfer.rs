@@ -35,7 +35,7 @@ pub async fn transfer(
             "\nTransferring {} 0x{} to contract address 0x{}...\n",
             amount, asset_id, recipient
         )?;
-        let contract_id = (*recipient).into(); // TODO: is this correct?
+        let contract_id = (*recipient).into();
         wallet
             .force_transfer_to_contract(contract_id, amount, asset_id, tx_policies)
             .await
