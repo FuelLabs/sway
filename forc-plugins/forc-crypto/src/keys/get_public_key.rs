@@ -54,10 +54,10 @@ mod test {
         };
         let json = handler(arg).unwrap();
         assert_eq!(
-            "fuel1fmmfhjapeak3knq96arrvttwrtmzghe0w9gx79gkcl2jhaweakdqfqhzdr",
+            "4ef69bcba1cf6d1b4c05d746362d6e1af6245f2f71506f1516c7d52bf5d9ed9a",
             json.as_object()
                 .unwrap()
-                .get("Bech32")
+                .get("Address")
                 .unwrap()
                 .as_str()
                 .unwrap(),
