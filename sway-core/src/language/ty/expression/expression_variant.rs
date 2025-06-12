@@ -685,18 +685,23 @@ impl SubstTypes for TyExpressionVariant {
                 ref mut fn_ref,
                 ref mut call_path_typeid,
                 ..
-            } => has_changes! {
-                arguments.subst(ctx);
-                if let Some(new_decl_ref) = fn_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(ctx)
-                {
-                    fn_ref.replace_id(*new_decl_ref.id());
-                    HasChanges::Yes
-                } else {
-                    HasChanges::No
-                };
-                call_path_typeid.subst(ctx);
+            } => {
+                // TODO const generics name can change here.
+                eprintln!("TyExpressionVariant subst_inner 1: {:?}", ctx.engines.help_out(ctx.type_subst_map));
+                eprintln!("TyExpressionVariant subst_inner 2: {:?}", ctx.engines.help_out(fn_ref.id()));
+                has_changes! {
+                    arguments.subst(ctx);
+                    if let Some(new_decl_ref) = fn_ref
+                        .clone()
+                        .subst_types_and_insert_new_with_parent(ctx)
+                    {
+                        fn_ref.replace_id(*new_decl_ref.id());
+                        HasChanges::Yes
+                    } else {
+                        HasChanges::No
+                    };
+                    call_path_typeid.subst(ctx);
+                }
             },
             LazyOperator { lhs, rhs, .. } => has_changes! {
                 lhs.subst(ctx);
@@ -1488,8 +1493,8 @@ impl DisplayWithEngines for TyExpressionVariant {
 impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         let s = match self {
-            TyExpressionVariant::ConstGenericExpression { .. } => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                format!("const generic {:?} = {:?}", decl.name(), decl.value)
             }
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {

@@ -97,7 +97,7 @@ impl DebugWithEngines for TyFunctionDecl {
             self.parameters
                 .iter()
                 .map(|p| format!(
-                    "{}:{} -> {}",
+                    "{}: {} -> {}",
                     p.name.as_str(),
                     engines.help_out(p.type_argument.initial_type_id()),
                     engines.help_out(p.type_argument.type_id())
@@ -155,30 +155,48 @@ impl MaterializeConstGenerics for TyFunctionDecl {
         name: &str,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
+        eprintln!("Before TyFunctionDecl for {name}: {:?}", engines.help_out(&*self));
+        eprintln!("{}", std::backtrace::Backtrace::force_capture());
+
         for tp in self.type_parameters.iter_mut() {
             match tp {
                 TypeParameter::Type(p) => p
                     .type_id
                     .materialize_const_generics(engines, handler, name, value)?,
                 TypeParameter::Const(p) if p.name.as_str() == name => {
-                    assert!(p.expr.is_none());
-                    p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                    match p.expr.as_ref() {
+                        Some(expr) => {
+                            // TODO horrible assert
+                            assert!(expr.as_literal_val().unwrap() as u64 == value.extract_literal_value().unwrap().cast_value_to_u64().unwrap());
+                        },
+                        None => {
+                            p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                        },
+                    }
                 }
                 _ => {}
             }
         }
 
         for param in self.parameters.iter_mut() {
+            eprintln!("Before TyFunctionDecl Param: {:?}", engines.help_out(param.type_argument.type_id()));
             param
                 .type_argument
                 .type_id_mut()
                 .materialize_const_generics(engines, handler, name, value)?;
+            eprintln!("After TyFunctionDecl Param: {:?}", engines.help_out(param.type_argument.type_id()));
         }
+
         self.return_type
             .type_id_mut()
             .materialize_const_generics(engines, handler, name, value)?;
+
         self.body
-            .materialize_const_generics(engines, handler, name, value)
+            .materialize_const_generics(engines, handler, name, value);
+
+        eprintln!("After TyFunctionDecl: {:?}", engines.help_out(&*self));
+
+        Ok(())
     }
 }
 

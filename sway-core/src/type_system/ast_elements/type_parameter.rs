@@ -955,6 +955,22 @@ impl ConstGenericExpr {
         }
     }
 
+    // TODO
+    pub fn to_ty_expression2(&self, engines: &Engines) -> Option<TyExpression> {
+        match self {
+            ConstGenericExpr::Literal { val, span } => Some(TyExpression {
+                expression: ty::TyExpressionVariant::Literal(crate::language::Literal::U64(
+                    *val as u64,
+                )),
+                return_type: engines.te().id_of_u64(),
+                span: span.clone(),
+            }),
+            ConstGenericExpr::AmbiguousVariableExpression { .. } => {
+                None
+            }
+        }
+    }
+
     pub fn discriminant_value(&self) -> usize {
         match &self {
             Self::Literal { .. } => 0,

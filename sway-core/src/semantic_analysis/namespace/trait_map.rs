@@ -1432,6 +1432,11 @@ impl TraitMap {
         engines: &Engines,
         all_impld_traits: BTreeSet<(Ident, TypeId)>,
     ) -> Result<(), ErrorEmitted> {
+        eprintln!("check_if_trait_constraints_are_satisfied_for_type_inner {:?} {:?}",
+            engines.help_out(type_id),
+            engines.help_out(constraints.to_vec()),
+        );
+
         let type_engine = engines.te();
         let unify_check = UnifyCheck::constraint_subset(engines);
 
@@ -1461,6 +1466,13 @@ impl TraitMap {
                 !all_impld_traits
                     .iter()
                     .any(|(trait_name, constraint_type_id)| {
+                        if trait_name == required_trait_name {
+                            let r = unify_check.check(*constraint_type_id, *required_trait_type_id);
+                            eprintln!("traits_not_found {r}: {:?} {:?}",
+                                engines.help_out(constraint_type_id),
+                                engines.help_out(required_trait_type_id),
+                            );
+                        }
                         trait_name == required_trait_name
                             && unify_check.check(*constraint_type_id, *required_trait_type_id)
                     })
@@ -1565,6 +1577,7 @@ impl TraitMap {
         F: FnMut(&SharedTraitEntry),
     {
         let type_root_filter = Self::get_type_root_filter(engines, type_id);
+
         self.trait_impls
             .get(&type_root_filter)
             .iter()

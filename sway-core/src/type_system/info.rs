@@ -783,12 +783,12 @@ impl DebugWithEngines for TypeInfo {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
                         TypeParameter::Const(p) => {
                             if let Some(expr) = p.expr.as_ref() {
-                                match expr {
+                                format!("{} = {}", p.name, match expr {
                                     ConstGenericExpr::Literal { val, .. } => val.to_string(),
                                     ConstGenericExpr::AmbiguousVariableExpression { ident } => {
                                         ident.as_str().to_string()
                                     }
-                                }
+                                })
                             } else {
                                 p.name.as_str().to_string()
                             }

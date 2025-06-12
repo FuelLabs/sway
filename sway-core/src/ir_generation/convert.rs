@@ -85,6 +85,7 @@ fn convert_resolved_type_info(
     // A handy macro for rejecting unsupported types.
     macro_rules! reject_type {
         ($name_str:literal) => {{
+            dbg!($name_str);
             return Err(CompileError::TypeMustBeKnownAtThisPoint {
                 span: span.clone(),
                 internal: $name_str.into(),
@@ -194,7 +195,7 @@ fn convert_resolved_type_info(
         TypeInfo::TypeParam(_) => reject_type!("TypeParam"),
         TypeInfo::ErrorRecovery(_) => reject_type!("Error recovery"),
         TypeInfo::TraitType { .. } => reject_type!("TraitType"),
-        TypeInfo::Array(..) => reject_type!("Array with non literal length"),
+        TypeInfo::Array(a, b) => { dbg!(a, b); reject_type!("Array with non literal length") },
         TypeInfo::StringArray(..) => reject_type!("String Array with non literal length"),
     })
 }

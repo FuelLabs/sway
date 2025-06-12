@@ -555,6 +555,8 @@ impl<'a> FnCompiler<'a> {
                 decl: const_decl, ..
             } => self.compile_config_expr(context, const_decl, span_md_idx),
             ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                assert!(decl.value.is_some(), "{:?}", ast_expr.span.as_str());
+
                 let value = decl.value.as_ref().unwrap();
                 self.compile_expression(context, md_mgr, value)
             }

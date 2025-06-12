@@ -577,6 +577,8 @@ fn compile_fn(
     test_decl_ref: Option<DeclRefFunction>,
     cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
+    eprintln!("compile_fn: {}", original_name);
+
     let type_engine = engines.te();
     let decl_engine = engines.de();
 

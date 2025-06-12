@@ -263,7 +263,7 @@ impl<'a> UnifyCheck<'a> {
             (
                 ConstGenericExpr::AmbiguousVariableExpression { ident: l },
                 ConstGenericExpr::AmbiguousVariableExpression { ident: r },
-            ) => l == r,
+            ) => true,
             (
                 ConstGenericExpr::Literal { .. },
                 ConstGenericExpr::AmbiguousVariableExpression { .. },

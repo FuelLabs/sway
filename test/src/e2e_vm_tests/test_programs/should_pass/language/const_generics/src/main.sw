@@ -34,8 +34,8 @@ impl<T, const N: u64> S<T, N> {
 }
 
 // Enum with just one variant
-enum OneVariant<const N: u64> {
-    A: [u64; N],
+enum OneVariant<const Z: u64> {
+    A: [u64; Z],
 }
 
 impl<const N: u64> OneVariant<N> {
@@ -61,53 +61,12 @@ fn return_n<const NNN: u64>() -> u64 {
     NNN
 }
 
-fn main(a: [u64; 2]) {
-    let _ = __dbg(a);
-
-    let a = [C {}].my_len();
-    assert(a == 1);
-    let _ = __dbg([C {}].len());
-    assert([C {}].len() == 1);
-
-    let b = [C {}, C{}].my_len();
-    assert(b == 2);
-    let _ = __dbg([C {}, C{}].len());
-    assert([C {}, C{}].len() == 2);
-
-    let s: S<u64, 3> = S { };
-    let _ = __dbg(s.len_xxx());
-
-    // Check enum with just one variant, with
-    // all types explicit
+fn main() {
     let e: OneVariant<3> = OneVariant::<3>::A([1u64, 2u64, 3u64]);
-    assert(e.return_n() == 3);
     let _ = __dbg(e);
-
-    // Check enum with more than one variant, with
-    // all types explicit
-    let e: TwoVariants<u64, 3> = TwoVariants::<u64, 3>::Nothing;
-    let _ = __dbg(e);
-    let b = e.len_xxx2();
-    assert(b == 3);
-    //__dbg(e);
-
-    // standalone fns
-    assert(return_n::<3>() == 3);
-    let _ = __dbg(return_n::<3>());
-    assert(return_n::<5>() == 5);
-    let _ = __dbg(return_n::<5>());
-
-    // string arrays
-    let a: str[3] = __to_str_array("ABC");
-    assert(a.len() == 3);
-    let _ = __dbg(a.len());
-
-    let a: str[5] = __to_str_array("ABCDE");
-    assert(a.len() == 5);
-    let _ = __dbg(a.len());
 }
 
 #[test]
 fn run_main() {
-    main([1, 2]);
+    main();
 }

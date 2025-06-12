@@ -23,7 +23,7 @@ impl DebugWithEngines for TypeSubstMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(
             f,
-            "TypeSubstMap {{ {} }}",
+            "TypeSubstMap {{ {}; {} }}",
             self.mapping
                 .iter()
                 .map(|(source_type, dest_type)| {
@@ -32,6 +32,13 @@ impl DebugWithEngines for TypeSubstMap {
                         engines.help_out(source_type),
                         engines.help_out(dest_type)
                     )
+                })
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.const_generics_materialization
+                .iter()
+                .map(|(k, v)| {
+                    format!("{:?} -> {:?}", k, engines.help_out(v))
                 })
                 .collect::<Vec<_>>()
                 .join(", ")

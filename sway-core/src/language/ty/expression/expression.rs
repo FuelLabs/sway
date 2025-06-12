@@ -434,9 +434,14 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::ImplicitReturn(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
             }
-            TyExpressionVariant::FunctionApplication { arguments, .. } => {
+            TyExpressionVariant::FunctionApplication { fn_ref, arguments, .. } => {
+                let decl = engines.de().get(fn_ref.id());
+                let t = format!("{:?}", engines.help_out(decl));
+                eprintln!("FunctionApplication: {:?}", t);
                 for (_, expr) in arguments {
+                    eprintln!("    MaterializeConstGenerics Before {name}: {} @ {t}", engines.help_out(expr.return_type));
                     expr.materialize_const_generics(engines, handler, name, value)?;
+                    eprintln!("    MaterializeConstGenerics After {name}: {} @ {t}", engines.help_out(expr.return_type));
                 }
                 Ok(())
             }

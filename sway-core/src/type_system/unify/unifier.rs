@@ -164,10 +164,10 @@ impl<'a> Unifier<'a> {
                         assert!(r_eval == e_eval);
                     }
                     (
-                        ConstGenericExpr::Literal { .. },
-                        ConstGenericExpr::AmbiguousVariableExpression { .. },
+                        ConstGenericExpr::Literal { val, .. },
+                        ConstGenericExpr::AmbiguousVariableExpression { ident },
                     ) => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                        self.replace_expected_with_received(expected, &r_type_source_info, span);
                     }
                     (
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
@@ -179,7 +179,16 @@ impl<'a> Unifier<'a> {
                         ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
                         ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
                     ) => {
-                        assert!(r_ident.as_str() == e_ident.as_str());
+                        if r_ident.as_str() != e_ident.as_str() {
+                            // TODO should we replace here?
+                            //self.replace_received_with_expected(received, &e_type_source_info, span);
+                            //self.replace_expected_with_received(expected, &r_type_source_info, span);
+                            // todo!(
+                            //     "received: {:?} expected: {:?}",
+                            //     self.engines.help_out(received),
+                            //     self.engines.help_out(expected),
+                            // );
+                        }
                     }
                 }
             }
