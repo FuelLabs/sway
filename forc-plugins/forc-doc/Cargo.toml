@@ -27,6 +27,7 @@ sway-features.workspace = true
 sway-lsp.workspace = true
 sway-types.workspace = true
 swayfmt.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
 dir_indexer.workspace = true

@@ -490,7 +490,7 @@ a#all-types:active {
 h2.location a {
   display: block;
   padding: 0.5rem;
-  margin-left: .25rem;
+  margin-left: 0.25rem;
   text-overflow: ellipsis;
   overflow: hidden;
 }
@@ -508,12 +508,13 @@ h2.location a {
   padding: 1rem 1rem 0 0;
   margin: 0;
 }
-.sidebar-elems, 
-.sidebar > .version, 
+
+.sidebar > .version,
 .sidebar > h2 {
   padding-left: 24px;
 }
-ul.block, .block li {
+ul.block,
+.block li {
   padding: 0;
   margin: 0;
   list-style: none;
@@ -917,17 +918,17 @@ table,
   display: block;
 }
 .search-results table {
-  width: 100%; 
+  width: 100%;
   white-space: nowrap;
   table-layout: fixed;
 }
 .search-results tr {
-  cursor: pointer; 
-  height:28px; 
-  border-bottom:1px solid #28323E;
+  cursor: pointer;
+  height: 28px;
+  border-bottom: 1px solid #28323e;
 }
 .search-results tr:hover {
-  background-color: #28323E;
+  background-color: #28323e;
 }
 .search-results p {
   overflow: hidden;
@@ -935,26 +936,26 @@ table,
   margin: 0;
 }
 .search-results td:first-child {
-  padding-right: 15px; 
+  padding-right: 15px;
   white-space: initial;
 }
 .search-results td:first-child span {
-  font-family: monospace; 
+  font-family: monospace;
   font-size: 14px;
 }
 .search-results .type.struct,
 .search-results .type.enum {
-  color: #2DBFB8;
+  color: #2dbfb8;
 }
 .search-results .type.function {
-  color: #2BAB63;
+  color: #2bab63;
 }
 .search-results .type.trait {
-  color: #B78CF2;
+  color: #b78cf2;
 }
 .search-results .type.module,
 .search-results .type.constant {
-  color: #D2991D;
+  color: #d2991d;
 }
 .popover {
   font-size: 1rem;
@@ -2012,4 +2013,8 @@ details.swaydoc-toggle[open] > summary.hideme::after {
 }
 #all-types > p {
   margin: 5px 0;
+}
+
+.sidebar-header {
+  margin-left: 10px;
 }

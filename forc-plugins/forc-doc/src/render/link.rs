@@ -81,7 +81,7 @@ impl Renderable for DocLinks {
             }
             .into_string()
             .unwrap(),
-            DocStyle::ProjectIndex(_) => box_html! {
+            DocStyle::ProjectIndex{..} => box_html! {
                 @ for (title, list_items) in links_vec {
                     @ if !list_items.is_empty() {
                         h2(id=format!("{}", title.html_title_string())) { : title.as_str(); }

@@ -1,4 +1,4 @@
 library;
 
-mod foo;
-mod bar;
+pub mod foo;
+pub mod bar;

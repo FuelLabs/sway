@@ -74,6 +74,7 @@ impl RenderedDocumentation {
         root_attributes: Option<Attributes>,
         program_kind: &TyProgramKind,
         forc_version: Option<String>,
+        members: Vec<String>,
     ) -> Result<RenderedDocumentation> {
         let mut rendered_docs: RenderedDocumentation = RenderedDocumentation::default();
         let root_module = match raw_docs.0.first() {
@@ -113,7 +114,10 @@ impl RenderedDocumentation {
                         forc_version,
                         root_module.clone(),
                         DocLinks {
-                            style: DocStyle::ProjectIndex(program_kind.as_title_str().to_string()),
+                            style: DocStyle::ProjectIndex {
+                                kind: program_kind.as_title_str().to_string(),
+                                members: members,
+                            },
                             links: doc_links.to_owned(),
                         },
                     )
@@ -289,7 +293,10 @@ impl HTMLString {
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum DocStyle {
     AllDoc(String),
-    ProjectIndex(String),
+    ProjectIndex {
+        kind: String,
+        members: Vec<String>,
+    },
     ModuleIndex,
     Item {
         title: Option<BlockTitle>,

@@ -48,7 +48,10 @@ impl Renderable for Sidebar {
         let style = self.style.clone();
         let version_opt = self.version_opt.clone();
         let location_with_prefix = match &style {
-            DocStyle::AllDoc(project_kind) | DocStyle::ProjectIndex(project_kind) => {
+            DocStyle::AllDoc(project_kind)
+            | DocStyle::ProjectIndex {
+                kind: project_kind, ..
+            } => {
                 format!("{project_kind} {}", self.module_info.location())
             }
             DocStyle::ModuleIndex => format!(
@@ -71,21 +74,28 @@ impl Renderable for Sidebar {
                     self.module_info.project_name(),
                 ))?,
         );
+
         let logo_path_to_root = match style {
             DocStyle::AllDoc(_) | DocStyle::Item { .. } | DocStyle::ModuleIndex => root_path,
-            DocStyle::ProjectIndex(_) => IDENTITY.to_owned(),
+            DocStyle::ProjectIndex { .. } => IDENTITY.to_owned(),
         };
+
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
         // and render it from Raw in the final output.
         let styled_content = match &self.style {
-            DocStyle::ProjectIndex(_) => {
+            DocStyle::ProjectIndex { members, .. } => {
                 let nav_links = &self.nav.links;
-                let all_items = format!("See all {}'s items", self.module_info.project_name());
-                box_html! {
+
+                for member in members {
+                    let stes = format!("{}{}", member, IDENTITY);
+                    println!("{}", stes);
+                }
+
+                let data = box_html! {
                     div(class="sidebar-elems") {
                         a(id="all-types", href=ALL_DOC_FILENAME) {
-                            p: all_items;
+                            p: "All Items";
                         }
                         section {
                             div(class="block") {
@@ -100,10 +110,27 @@ impl Renderable for Sidebar {
                                 }
                             }
                         }
+                       section(class = "sidebar-header") {
+                            div(class="block method") {
+                                h3 : "Crates";
+                                ul {
+                                    @ for member in members {
+                                        li {
+                                            a(href=format!("{}{}", member,IDENTITY)) {
+                                                : member;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 .into_string()
-                .unwrap()
+                .unwrap();
+
+                // println!("{}", data);
+                data
             }
             DocStyle::AllDoc(_) => {
                 let nav_links = &self.nav.links;
@@ -112,8 +139,8 @@ impl Renderable for Sidebar {
                         a(id="all-types", href=INDEX_FILENAME) {
                             p: "Back to index";
                         }
-                        section {
-                            div(class="block") {
+                         section(class = "sidebar-header") {
+                            div(class="block method") {
                                 ul {
                                     @ for (title, _) in nav_links {
                                         li {
@@ -133,7 +160,7 @@ impl Renderable for Sidebar {
             _ => box_html! {
                 div(class="sidebar-elems") {
                     @ for (title, doc_links) in &self.nav.links {
-                        section {
+                        section(class = "sidebar-header") {
                             h3 {
                                 a(href=format!("{}{}", IDENTITY, title.html_title_string())) {
                                     : title.as_str();
@@ -165,7 +192,7 @@ impl Renderable for Sidebar {
                 h2(class="location") {
                     : location_with_prefix;
                 }
-                @ if let DocStyle::ProjectIndex(_) = style.clone() {
+                @ if let DocStyle::ProjectIndex{..} = style.clone() {
                     @ if version_opt.is_some() {
                         div(class="version") {
                             p: version_opt.unwrap();

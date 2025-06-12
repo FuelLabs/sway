@@ -20,7 +20,10 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-use sway_core::{language::ty::TyProgram, BuildTarget, Engines};
+use sway_core::{
+    language::ty::{TyProgram, TyProgramKind},
+    BuildTarget, Engines,
+};
 use sway_features::ExperimentalFeatures;
 
 pub const ASSETS_DIR_NAME: &str = "static.files";
@@ -52,6 +55,7 @@ pub struct ProgramInfo<'a> {
     pub engines: &'a Engines,
     pub manifest: &'a ManifestFile,
     pub pkg_manifest: &'a PackageManifestFile,
+    pub members: &'a Vec<String>,
 }
 
 pub fn compile_html(
@@ -64,9 +68,23 @@ pub fn compile_html(
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(dir)?;
-    let ManifestFile::Package(pkg_manifest) = &manifest else {
-        bail!("forc-doc does not support workspaces.")
+    let manifest = ManifestFile::from_dir(dir.clone())?;
+
+    let (members, pkg_manifest) = match manifest.clone() {
+        ManifestFile::Package(f) => (Vec::<String>::new(), f),
+        ManifestFile::Workspace(f) => {
+            // Get members
+            let members = f
+                .members()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect::<Vec<_>>();
+
+            // Extract the first package manifest from the workspace
+            let member_pkgs = f.member_pkg_manifests()?;
+            let collected_pkgs: Result<Vec<_>, _> = member_pkgs.collect();
+
+            (members, Box::new(collected_pkgs?[0].clone()))
+        }
     };
 
     // create doc path
@@ -129,7 +147,8 @@ pub fn compile_html(
             ty_program,
             engines: &engines,
             manifest: &manifest,
-            pkg_manifest,
+            pkg_manifest: &pkg_manifest,
+            members: &members,
         };
         build_docs(program_info, &doc_path, build_instructions)?
     } else {
@@ -154,6 +173,7 @@ pub fn compile_html(
                     engines: &engines,
                     manifest: &manifest_file,
                     pkg_manifest: pkg_manifest_file,
+                    members: &members,
                 };
                 raw_docs
                     .0
@@ -178,57 +198,68 @@ fn build_docs(
         experimental,
         ..
     } = build_instructions;
+
     let ProgramInfo {
         ty_program,
         engines,
         manifest,
         pkg_manifest,
+        members,
     } = program_info;
 
-    let experimental = ExperimentalFeatures::new(
-        &pkg_manifest.project.experimental,
-        &experimental.experimental,
-        &experimental.no_experimental,
-    )
-    .map_err(|err| anyhow::anyhow!("{err}"))?;
+    match ty_program.kind.clone() {
+        TyProgramKind::Library { .. } => {
+            let experimental = ExperimentalFeatures::new(
+                &pkg_manifest.project.experimental,
+                &experimental.experimental,
+                &experimental.no_experimental,
+            )
+            .map_err(|err| anyhow::anyhow!("{err}"))?;
 
-    println_action_green(
-        "Building",
-        &format!(
-            "documentation for {} ({})",
-            pkg_manifest.project_name(),
-            manifest.dir().to_string_lossy()
+            println_action_green(
+                "Building",
+                &format!(
+                    "documentation for {} ({})",
+                    pkg_manifest.project_name(),
+                    manifest.dir().to_string_lossy()
+                ),
+            );
+
+            let raw_docs = Documentation::from_ty_program(
+                engines,
+                pkg_manifest.project_name(),
+                &ty_program,
+                *document_private_items,
+                experimental,
+            )?;
+            let root_attributes = (!ty_program.root_module.attributes.is_empty())
+                .then_some(ty_program.root_module.attributes.clone());
+            let forc_version = pkg_manifest
+                .project
+                .forc_version
+                .as_ref()
+                .map(|ver| format!("Forc v{}.{}.{}", ver.major, ver.minor, ver.patch));
+            // render docs to HTML
+            let rendered_docs = RenderedDocumentation::from_raw_docs(
+                raw_docs.clone(),
+                RenderPlan::new(*no_deps, *document_private_items, engines),
+                root_attributes,
+                &ty_program.kind,
+                forc_version,
+                members.clone(),
+            )?;
+
+            // write file contents to doc folder
+            write_content(rendered_docs, doc_path)?;
+            println_action_green("Finished", pkg_manifest.project_name());
+
+            Ok(raw_docs)
+        }
+        _ => bail!(
+            "forc-doc only supports libraries. '{}' is not a library.",
+            pkg_manifest.project_name()
         ),
-    );
-
-    let raw_docs = Documentation::from_ty_program(
-        engines,
-        pkg_manifest.project_name(),
-        &ty_program,
-        *document_private_items,
-        experimental,
-    )?;
-    let root_attributes = (!ty_program.root_module.attributes.is_empty())
-        .then_some(ty_program.root_module.attributes.clone());
-    let forc_version = pkg_manifest
-        .project
-        .forc_version
-        .as_ref()
-        .map(|ver| format!("Forc v{}.{}.{}", ver.major, ver.minor, ver.patch));
-    // render docs to HTML
-    let rendered_docs = RenderedDocumentation::from_raw_docs(
-        raw_docs.clone(),
-        RenderPlan::new(*no_deps, *document_private_items, engines),
-        root_attributes,
-        &ty_program.kind,
-        forc_version,
-    )?;
-
-    // write file contents to doc folder
-    write_content(rendered_docs, doc_path)?;
-    println_action_green("Finished", pkg_manifest.project_name());
-
-    Ok(raw_docs)
+    }
 }
 
 fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Result<()> {
