@@ -8,6 +8,9 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[lib]
+bench = false
+
 [dependencies]
 anyhow.workspace = true
 crossbeam-channel.workspace = true
@@ -68,9 +71,6 @@ tower = { workspace = true, default-features = false, features = ["util"] }
 [[bench]]
 name = "bench_main"
 harness = false
-
-[lib]
-bench = false
 
 [lints.clippy]
 iter_over_hash_type = "deny"

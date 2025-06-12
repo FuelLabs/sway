@@ -165,7 +165,7 @@ async fn get_wallet(
             let wallet = Wallet::new(signer, provider);
             forc_tracing::println_warning(&format!(
                 "No signing key or wallet flag provided. Using default signer: 0x{}",
-                wallet.address().hash()
+                wallet.address()
             ));
             Ok(wallet)
         }
@@ -174,7 +174,7 @@ async fn get_wallet(
             let wallet = Wallet::new(signer, provider);
             forc_tracing::println_warning(&format!(
                 "Using account {} derived from signing key...",
-                wallet.address().hash()
+                wallet.address()
             ));
             Ok(wallet)
         }
@@ -369,8 +369,8 @@ pub(crate) mod tests {
         .unwrap()
         .contract_id;
 
-        let instance = TestContract::new(id.clone(), wallet.clone());
+        let instance = TestContract::new(id, wallet.clone());
 
-        (instance, id.into(), provider, secret_key)
+        (instance, id, provider, secret_key)
     }
 }

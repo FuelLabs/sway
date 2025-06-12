@@ -8,6 +8,9 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+no-span-debug = []
+
 [dependencies]
 fuel-asm.workspace = true
 fuel-crypto.workspace = true
@@ -22,9 +25,6 @@ serde = { workspace = true, features = ["derive", "std", "rc"] }
 sway-utils.workspace = true
 thiserror.workspace = true
 toml.workspace = true
-
-[features]
-no-span-debug = []
 
 [lints.clippy]
 iter_over_hash_type = "deny"

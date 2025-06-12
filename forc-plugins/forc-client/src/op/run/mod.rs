@@ -16,7 +16,6 @@ use fuel_tx::{ContractId, Transaction};
 use fuels::{
     programs::calls::{traits::TransactionTuner, ScriptCall},
     types::{
-        bech32::Bech32ContractId,
         transaction::TxPolicies,
         transaction_builders::{BuildableTransaction, VariableOutputPolicy},
     },
@@ -132,7 +131,7 @@ pub async fn run_pkg(
         }
     };
 
-    let contract_ids = command
+    let external_contracts = command
         .contract
         .as_ref()
         .into_iter()
@@ -144,10 +143,6 @@ pub async fn run_pkg(
         .collect::<Result<Vec<ContractId>>>()?;
 
     let script_binary = compiled.bytecode.bytes.clone();
-    let external_contracts = contract_ids
-        .into_iter()
-        .map(Bech32ContractId::from)
-        .collect::<Vec<_>>();
     let call = ScriptCall {
         script_binary,
         encoded_args: Ok(script_data),

@@ -36,7 +36,7 @@ impl Account for ForcClientAccount {
 
 #[async_trait]
 impl ViewOnlyAccount for ForcClientAccount {
-    fn address(&self) -> &Bech32Address {
+    fn address(&self) -> Address {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.address(),
             ForcClientAccount::KmsSigner(account) => {
@@ -82,7 +82,7 @@ impl Signer for ForcClientAccount {
         }
     }
 
-    fn address(&self) -> &Bech32Address {
+    fn address(&self) -> Address {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.address(),
             ForcClientAccount::KmsSigner(account) => fuels_core::traits::Signer::address(account),

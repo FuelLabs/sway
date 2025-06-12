@@ -539,7 +539,7 @@ async fn test_proxy_contract_re_routes_call() {
     let res = impl_contract_a
         .methods()
         .test_function_read()
-        .with_contract_ids(&[impl_contract_id.into()])
+        .with_contract_ids(&[impl_contract_id])
         .call()
         .await
         .unwrap();
@@ -547,7 +547,7 @@ async fn test_proxy_contract_re_routes_call() {
     let res = impl_contract_a
         .methods()
         .test_function_write(8)
-        .with_contract_ids(&[impl_contract_id.into()])
+        .with_contract_ids(&[impl_contract_id])
         .call()
         .await
         .unwrap();
@@ -556,7 +556,7 @@ async fn test_proxy_contract_re_routes_call() {
     let res = impl_contract_a
         .methods()
         .test_function()
-        .with_contract_ids(&[impl_contract_id.into()])
+        .with_contract_ids(&[impl_contract_id])
         .call()
         .await
         .unwrap();
@@ -594,7 +594,7 @@ async fn test_proxy_contract_re_routes_call() {
     let res = impl_contract_a
         .methods()
         .test_function_read()
-        .with_contract_ids(&[impl_contract_id_after_update.into()])
+        .with_contract_ids(&[impl_contract_id_after_update])
         .call()
         .await
         .unwrap();
@@ -603,7 +603,7 @@ async fn test_proxy_contract_re_routes_call() {
     let res = impl_contract_a
         .methods()
         .test_function_write(9)
-        .with_contract_ids(&[impl_contract_id_after_update.into()])
+        .with_contract_ids(&[impl_contract_id_after_update])
         .call()
         .await
         .unwrap();
@@ -612,7 +612,7 @@ async fn test_proxy_contract_re_routes_call() {
     let res = impl_contract_a
         .methods()
         .test_function()
-        .with_contract_ids(&[impl_contract_id_after_update.into()])
+        .with_contract_ids(&[impl_contract_id_after_update])
         .call()
         .await
         .unwrap();
@@ -957,7 +957,7 @@ async fn deploy_script_calls() {
     let contract_id_bits256 = Bits256(contract.id.into());
     let call_handler = instance
         .main(10, contract_id_bits256)
-        .with_contract_ids(&[contract_id.into()])
+        .with_contract_ids(&[contract_id])
         .call()
         .await
         .unwrap();
@@ -1180,7 +1180,7 @@ async fn call_with_sdk_generated_overrides(node_url: &str, contract_id: Contract
         "{:?}",
         loader_from_sdk
             .main(10, contract_ids_bits256)
-            .with_contract_ids(&[contract_id.into()])
+            .with_contract_ids(&[contract_id])
             .call()
             .await
             .unwrap()
@@ -1275,7 +1275,7 @@ async fn call_with_forc_generated_overrides(node_url: &str, contract_id: Contrac
         "{:?}",
         forc_generated_script_with_configs
             .main(10, contract_ids_bits256)
-            .with_contract_ids(&[contract_id.into()])
+            .with_contract_ids(&[contract_id])
             .call()
             .await
             .unwrap()

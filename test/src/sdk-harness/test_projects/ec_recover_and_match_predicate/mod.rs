@@ -37,7 +37,7 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
 
     let all_coins = [signer_1.address(), signer_2.address(), signer_3.address()]
         .iter()
-        .flat_map(|wallet| setup_single_asset_coins(wallet, AssetId::default(), 10, 1_000_000))
+        .flat_map(|wallet| setup_single_asset_coins(*wallet, AssetId::default(), 10, 1_000_000))
         .collect::<Vec<_>>();
 
     let mut node_config = NodeConfig::default();
@@ -95,9 +95,9 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
         .await?;
 
     let predicate_balance = provider
-        .get_asset_balance(predicate.address(), asset_id)
+        .get_asset_balance(&predicate.address(), &asset_id)
         .await?;
-    assert_eq!(predicate_balance, amount_to_predicate);
+    assert_eq!(predicate_balance, amount_to_predicate as u128);
 
     predicate
         .transfer(
@@ -109,10 +109,10 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
         .await?;
 
     let receiver_balance_after = receiver.get_asset_balance(&asset_id).await?;
-    assert_eq!(amount_to_predicate, receiver_balance_after);
+    assert_eq!(amount_to_predicate as u128, receiver_balance_after);
 
     let predicate_balance = provider
-        .get_asset_balance(predicate.address(), asset_id)
+        .get_asset_balance(&predicate.address(), &asset_id)
         .await?;
     assert_eq!(predicate_balance, 0);
 

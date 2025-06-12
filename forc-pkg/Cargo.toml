@@ -8,6 +8,9 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+sysinfo.workspace = true
+
 [dependencies]
 ansiterm.workspace = true
 anyhow.workspace = true
@@ -46,6 +49,3 @@ walkdir.workspace = true
 [dev-dependencies]
 regex.workspace = true
 tempfile.workspace = true
-
-[target.'cfg(not(target_os = "macos"))'.dependencies]
-sysinfo.workspace = true

@@ -30,7 +30,7 @@ async fn can_get_bytecode_root() {
 
 async fn get_test_contract_instance(
     wallet: Wallet,
-) -> (ContractBytecodeTest<Wallet>, Bech32ContractId) {
+) -> (ContractBytecodeTest<Wallet>, ContractId) {
     let id = Contract::load_from(
         "test_projects/contract_bytecode/out/release/contract_bytecode.bin",
         LoadConfiguration::default(),

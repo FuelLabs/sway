@@ -39,7 +39,7 @@ async fn setup_env() -> Result<(
     [u8; 32],
 )> {
     let mut rng = StdRng::seed_from_u64(1000);
-    let msg_bytes: Bytes32 = rng.gen();
+    let msg_bytes: Bytes32 = rng.r#gen();
     let private_key = SecretKey::random(&mut rng);
     let public_key = PublicKey::from(&private_key);
     let signer = PrivateKeySigner::new(private_key);
