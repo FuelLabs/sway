@@ -2894,6 +2894,7 @@ dependencies = [
  "forc-tracing 0.68.7",
  "forc-util",
  "fs_extra",
+ "fuel-abi-types 0.12.0",
  "fuel-asm",
  "hex",
  "rexpect",
@@ -3206,6 +3207,7 @@ version = "0.68.7"
 dependencies = [
  "anyhow",
  "forc-pkg",
+ "forc-util",
  "fuel-abi-types 0.12.0",
  "fuel-tx",
  "fuel-vm",

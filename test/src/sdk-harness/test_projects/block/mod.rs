@@ -149,3 +149,18 @@ async fn can_get_timestamp_of_block() {
         block_2.value.1
     );
 }
+
+
+#[tokio::test]
+async fn can_get_chain_id() {
+    let (instance, _id, provider) = get_block_instance().await;
+
+    let id = instance
+        .methods()
+        .get_chain_id()
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(id.value, *provider.consensus_parameters().await.unwrap().chain_id());
+}
