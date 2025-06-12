@@ -3289,7 +3289,8 @@ dependencies = [
 [[package]]
 name = "forc-wallet"
 version = "0.15.0"
-source = "git+https://github.com/FuelLabs/forc-wallet?branch=bump%2Ffuels-rs#34115dae1460bf5ce193ce3cd91e39d10c68eb8b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d07eb3638e038c272c6d3054406150360918817b1be3e42fe1a428a78841bdc9"
 dependencies = [
  "anyhow",
  "clap",

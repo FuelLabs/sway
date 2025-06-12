@@ -255,6 +255,3 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
-
-[patch.crates-io]
-forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "bump/fuels-rs" }
