@@ -16,8 +16,7 @@ forc_util::cli_examples! {
     after_help = help(),
 )]
 pub struct Args {
-    /// The address to convert. It can be either a valid address in any format
-    /// (Bech32 or hex)
+    /// The address to convert. It can be either a valid address in hex format
     pub address: String,
 }
 

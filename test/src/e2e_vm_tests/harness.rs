@@ -178,10 +178,10 @@ pub(crate) fn runs_in_vm(
             tb.with_params(params)
                 .add_unsigned_coin_input(
                     SecretKey::random(rng),
-                    rng.gen(),
+                    rng.r#gen(),
                     1,
                     Default::default(),
-                    rng.gen(),
+                    rng.r#gen(),
                 )
                 .maturity(maturity);
 

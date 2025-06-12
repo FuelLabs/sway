@@ -1,5 +1,4 @@
 [workspace]
-resolver = "2"
 members = [
     "forc",
     "forc-pkg",
@@ -9,8 +8,8 @@ members = [
     "forc-plugins/forc-doc",
     "forc-plugins/forc-fmt",
     "forc-plugins/forc-lsp",
-    "forc-plugins/forc-node",
     "forc-plugins/forc-migrate",
+    "forc-plugins/forc-node",
     "forc-plugins/forc-publish",
     "forc-plugins/forc-tx",
     "forc-test",
@@ -30,88 +29,22 @@ members = [
     "swayfmt",
     "test",
 ]
-exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
+exclude = [
+    "examples/*",
+    "forc-test/test_data",
+    "swayfmt/test_macros",
+]
+resolver = "2"
 
 [workspace.package]
-edition = "2021"
 version = "0.68.7"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
+edition = "2021"
 
 [workspace.dependencies]
-#
-# Internal dependencies in order to propagate `workspace.version`
-#
-
-forc = { path = "forc/", version = "0.68.7" }
-forc-pkg = { path = "forc-pkg/", version = "0.68.7" }
-forc-test = { path = "forc-test/", version = "0.68.7" }
-forc-tracing = { path = "forc-tracing/", version = "0.68.7" }
-forc-util = { path = "forc-util/", version = "0.68.7" }
-
-# Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.68.7" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.68.7" }
-forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.68.7" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.68.7" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.68.7" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.68.7" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.68.7" }
-forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.68.7" }
-forc-publish = { path = "forc-plugins/forc-publish/", version = "0.68.7" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.68.7" }
-
-sway-ast = { path = "sway-ast/", version = "0.68.7" }
-sway-core = { path = "sway-core/", version = "0.68.7" }
-sway-error = { path = "sway-error/", version = "0.68.7" }
-sway-features = { path = "sway-features/", version = "0.68.7" }
-sway-lsp = { path = "sway-lsp/", version = "0.68.7" }
-sway-parse = { path = "sway-parse/", version = "0.68.7" }
-sway-types = { path = "sway-types/", version = "0.68.7" }
-sway-utils = { path = "sway-utils/", version = "0.68.7" }
-swayfmt = { path = "swayfmt/", version = "0.68.7" }
-
-# Sway IR
-sway-ir = { path = "sway-ir/", version = "0.68.7" }
-sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.68.7" }
-
-#
-# External Fuel dependencies
-#
-
-# Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.12"
-
-# Dependencies from the `fuel-core` repository:
-#
-# Although ALL versions are "X.Y", we need the complete semver for
-# fuel-core-client as the GitHub Actions workflow parses this value to pull down
-# the correct tarball.
-fuel-core-client = { version = "0.44.0", default-features = false }
-fuel-core-types = { version = "0.44", default-features = false }
-
-# Dependencies from the `fuels-rs` repository:
-
-fuels = "0.74"
-fuels-core = "0.74"
-fuels-accounts = "0.74"
-
-# Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.62"
-fuel-crypto = "0.62"
-fuel-types = "0.62"
-fuel-tx = "0.62"
-fuel-vm = "0.62"
-
-# Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.15"
-
-#
-# External dependencies
-#
-
 annotate-snippets = "0.10"
 ansiterm = "0.12"
 anyhow = "1.0"
@@ -122,7 +55,6 @@ aws-config = "1.5"
 aws-sdk-kms = "1.44"
 byte-unit = "5.1"
 bytes = "1.7"
-chrono = { version = "0.4", default-features = false }
 cid = "0.11"
 clap = "4.5"
 clap_complete = "4.5"
@@ -144,16 +76,22 @@ duct = "0.13"
 duplicate = "2.0"
 either = "1.9"
 escargot = "0.5"
-ethabi = { package = "fuel-ethabi", version = "18.0" }
-etk-asm = { package = "fuel-etk-asm", version = "0.3.1-dev" }
-etk-ops = { package = "fuel-etk-ops", version = "0.3.1-dev" }
 expect-test = "1.4"
 extension-trait = "1.0"
 fd-lock = "4.0"
 filecheck = "0.5"
 flate2 = "1.0"
+forc-wallet = "0.15"
 fs_extra = "1.2"
-futures = { version = "0.3", default-features = false }
+fuel-abi-types = "0.12"
+fuel-asm = "0.62"
+fuel-crypto = "0.62"
+fuel-tx = "0.62"
+fuel-types = "0.62"
+fuel-vm = "0.62"
+fuels = "0.74"
+fuels-accounts = "0.74"
+fuels-core = "0.74"
 futures-util = "0.3"
 gag = "1.0"
 gimli = "0.31"
@@ -178,10 +116,8 @@ libp2p-identity = "0.2"
 libtest-mimic = "0.7"
 lsp-types = "0.94"
 mark-flaky-tests = "1.0"
-mdbook = { version = "0.4", default-features = false }
 minifier = "0.3"
 normalize-path = "0.2"
-num-bigint = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 object = "0.36"
 once_cell = "1.18"
@@ -203,8 +139,8 @@ rayon = "1.7"
 rayon-cond = "0.3"
 regex = "1.10"
 reqwest = "0.12"
-rexpect = "0.6"
 revm = "14.0"
+rexpect = "0.6"
 ropey = "1.5"
 rpassword = "7.2"
 rustc-hash = "1.1"
@@ -238,8 +174,6 @@ thiserror = "1.0"
 tikv-jemallocator = "0.6"
 tokio = "1.12"
 toml = "0.8"
-toml_edit = { version = "0.22", features = ["serde"] }
-tower = { version = "0.5", default-features = false }
 tower-lsp = "0.20"
 tracing = "0.1"
 tracing-subscriber = "0.3"
@@ -255,3 +189,151 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+[workspace.dependencies.chrono]
+version = "0.4"
+default-features = false
+
+[workspace.dependencies.ethabi]
+version = "18.0"
+package = "fuel-ethabi"
+
+[workspace.dependencies.etk-asm]
+version = "0.3.1-dev"
+package = "fuel-etk-asm"
+
+[workspace.dependencies.etk-ops]
+version = "0.3.1-dev"
+package = "fuel-etk-ops"
+
+[workspace.dependencies.forc]
+version = "0.68.7"
+path = "forc/"
+
+[workspace.dependencies.forc-client]
+version = "0.68.7"
+path = "forc-plugins/forc-client/"
+
+[workspace.dependencies.forc-crypto]
+version = "0.68.7"
+path = "forc-plugins/forc-crypto/"
+
+[workspace.dependencies.forc-debug]
+version = "0.68.7"
+path = "forc-plugins/forc-debug/"
+
+[workspace.dependencies.forc-doc]
+version = "0.68.7"
+path = "forc-plugins/forc-doc/"
+
+[workspace.dependencies.forc-fmt]
+version = "0.68.7"
+path = "forc-plugins/forc-fmt/"
+
+[workspace.dependencies.forc-lsp]
+version = "0.68.7"
+path = "forc-plugins/forc-lsp/"
+
+[workspace.dependencies.forc-migrate]
+version = "0.68.7"
+path = "forc-plugins/forc-migrate/"
+
+[workspace.dependencies.forc-pkg]
+version = "0.68.7"
+path = "forc-pkg/"
+
+[workspace.dependencies.forc-plugins]
+version = "0.68.7"
+path = "forc-plugins/"
+
+[workspace.dependencies.forc-publish]
+version = "0.68.7"
+path = "forc-plugins/forc-publish/"
+
+[workspace.dependencies.forc-test]
+version = "0.68.7"
+path = "forc-test/"
+
+[workspace.dependencies.forc-tracing]
+version = "0.68.7"
+path = "forc-tracing/"
+
+[workspace.dependencies.forc-tx]
+version = "0.68.7"
+path = "forc-plugins/forc-tx/"
+
+[workspace.dependencies.forc-util]
+version = "0.68.7"
+path = "forc-util/"
+
+[workspace.dependencies.fuel-core-client]
+version = "0.44.0"
+default-features = false
+
+[workspace.dependencies.fuel-core-types]
+version = "0.44"
+default-features = false
+
+[workspace.dependencies.futures]
+version = "0.3"
+default-features = false
+
+[workspace.dependencies.mdbook]
+version = "0.4"
+default-features = false
+
+[workspace.dependencies.num-bigint]
+version = "0.4"
+features = ["serde"]
+
+[workspace.dependencies.sway-ast]
+version = "0.68.7"
+path = "sway-ast/"
+
+[workspace.dependencies.sway-core]
+version = "0.68.7"
+path = "sway-core/"
+
+[workspace.dependencies.sway-error]
+version = "0.68.7"
+path = "sway-error/"
+
+[workspace.dependencies.sway-features]
+version = "0.68.7"
+path = "sway-features/"
+
+[workspace.dependencies.sway-ir]
+version = "0.68.7"
+path = "sway-ir/"
+
+[workspace.dependencies.sway-ir-macros]
+version = "0.68.7"
+path = "sway-ir/sway-ir-macros"
+
+[workspace.dependencies.sway-lsp]
+version = "0.68.7"
+path = "sway-lsp/"
+
+[workspace.dependencies.sway-parse]
+version = "0.68.7"
+path = "sway-parse/"
+
+[workspace.dependencies.sway-types]
+version = "0.68.7"
+path = "sway-types/"
+
+[workspace.dependencies.sway-utils]
+version = "0.68.7"
+path = "sway-utils/"
+
+[workspace.dependencies.swayfmt]
+version = "0.68.7"
+path = "swayfmt/"
+
+[workspace.dependencies.toml_edit]
+version = "0.22"
+features = ["serde"]
+
+[workspace.dependencies.tower]
+version = "0.5"
+default-features = false
