@@ -316,7 +316,7 @@ impl source::Pin for Source {
     type Pinned = Pinned;
     fn pin(&self, ctx: source::PinCtx) -> anyhow::Result<(Self::Pinned, PathBuf)> {
         let pkg_name = ctx.name;
-        let cid = futures::executor::block_on(async {
+        let cid = block_on_any_runtime(async {
             with_tmp_fetch_index(ctx.fetch_id(), pkg_name, self, |index_file| async move {
                 let version = &self.version;
                 let pkg_entry = index_file
@@ -357,7 +357,7 @@ impl source::Fetch for Pinned {
                         self.source.version
                     ),
                 );
-                futures::executor::block_on(async {
+                block_on_any_runtime(async {
                     // If the user is trying to use public IPFS node with
                     // registry sources. Use fuel operated ipfs node
                     // instead.
@@ -524,6 +524,24 @@ where
 
     let res = f(index_file).await?;
     Ok(res)
+}
+
+/// Execute an async block on the current Tokio runtime if available, 
+/// otherwise use futures executor
+pub(crate) fn block_on_any_runtime<F>(future: F) -> F::Output
+where
+    F: std::future::Future,
+{
+    eprintln!(
+        "block_on_any_runtime!!"
+    );
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        eprintln!("Using Tokio runtime");
+        handle.block_on(future)
+    } else {
+        eprintln!("Using futures executor");
+        futures::executor::block_on(future)
+    }
 }
 
 #[cfg(test)]
