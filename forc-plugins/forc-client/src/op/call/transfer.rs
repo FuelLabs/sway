@@ -56,12 +56,7 @@ pub async fn transfer(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        op::call::{
-            call_function::tests::abigen_bindings::test_contract_mod::std::u128, PrivateKeySigner,
-        },
-        NodeTarget,
-    };
+    use crate::{op::call::PrivateKeySigner, NodeTarget};
     use fuels::prelude::*;
 
     #[tokio::test]
