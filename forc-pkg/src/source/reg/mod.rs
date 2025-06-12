@@ -526,21 +526,20 @@ where
     Ok(res)
 }
 
-/// Execute an async block on the current Tokio runtime if available, 
-/// otherwise use futures executor
+/// Execute an async block on the current Tokio runtime if available.
+/// If not in a runtime context, a new one is created to run the future.
 pub(crate) fn block_on_any_runtime<F>(future: F) -> F::Output
 where
     F: std::future::Future,
 {
-    eprintln!(
-        "block_on_any_runtime!!"
-    );
     if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        eprintln!("Using Tokio runtime");
         handle.block_on(future)
     } else {
-        eprintln!("Using futures executor");
-        futures::executor::block_on(future)
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(future)
     }
 }
 
