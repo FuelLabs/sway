@@ -10,4 +10,6 @@ abi BlockTest {
     fn get_block_and_timestamp() -> (u32, u64);
 
     fn get_block_header_hash(h: u32) -> b256;
+
+    fn get_chain_id() -> u64;
 }

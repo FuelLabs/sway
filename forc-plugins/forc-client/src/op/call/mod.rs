@@ -31,7 +31,6 @@ use fuels::{
 use fuels_core::types::{transaction::TxPolicies, AssetId, ContractId};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
-use sway_core;
 
 /// Response returned from a contract call operation
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -264,17 +263,18 @@ pub(crate) fn process_transaction_output(
                         data: Some(data),
                         ..
                     } => {
+                        let default_program_abi = ProgramABI::default();
                         let program_abi = abis
                             .get(contract_id)
-                            .map(|abi| {
-                                sway_core::asm_generation::ProgramABI::Fuel(abi.program.clone())
-                            })
-                            .unwrap_or(sway_core::asm_generation::ProgramABI::Fuel(
-                                ProgramABI::default(),
-                            ));
-                        forc_util::tx_utils::decode_log_data(&rb.to_string(), data, &program_abi)
-                            .ok()
-                            .map(|decoded| decoded.value)
+                            .map(|abi| &abi.program)
+                            .unwrap_or(&default_program_abi);
+                        forc_util::tx_utils::decode_fuel_vm_log_data(
+                            &rb.to_string(),
+                            data,
+                            program_abi,
+                        )
+                        .ok()
+                        .map(|decoded| decoded.value)
                     }
                     _ => None,
                 })

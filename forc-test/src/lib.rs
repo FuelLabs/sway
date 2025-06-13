@@ -8,7 +8,8 @@ use crate::setup::{
 };
 use ecal::EcalSyscallHandler;
 use forc_pkg::{self as pkg, BuildOpts};
-use fuel_abi_types::error_codes::ErrorSignal;
+use forc_util::tx_utils::RevertInfo;
+use fuel_abi_types::abi::program::ProgramABI;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
@@ -516,12 +517,13 @@ impl TestResult {
         }
     }
 
-    /// Return an [ErrorSignal] for this [TestResult] if the test is failed to pass.
-    pub fn error_signal(&self) -> anyhow::Result<ErrorSignal> {
-        let revert_code = self.revert_code().ok_or_else(|| {
-            anyhow::anyhow!("there is no revert code to convert to `ErrorSignal`")
-        })?;
-        ErrorSignal::try_from_revert_code(revert_code).map_err(|e| anyhow::anyhow!(e))
+    pub fn revert_info(
+        &self,
+        program_abi: Option<&ProgramABI>,
+        logs: &[fuel_tx::Receipt],
+    ) -> Option<RevertInfo> {
+        self.revert_code()
+            .map(|revert_code| RevertInfo::new(revert_code, program_abi, logs))
     }
 
     /// Return [TestDetails] from the span of the function declaring this test.

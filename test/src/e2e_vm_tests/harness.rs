@@ -330,6 +330,14 @@ pub(crate) async fn compile_and_run_unit_tests(
                 },
                 experimental: run_config.experimental.experimental.clone(),
                 no_experimental: run_config.experimental.no_experimental.clone(),
+                release: run_config.release,
+                print: PrintOpts {
+                    asm: run_config.print_asm,
+                    bytecode: run_config.print_bytecode,
+                    ir: run_config.print_ir.clone(),
+                    ..Default::default()
+                },
+                build_target: run_config.build_target,
                 ..Default::default()
             })
         }) {

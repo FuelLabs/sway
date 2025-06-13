@@ -28,7 +28,7 @@ use crate::{
         },
         *,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf, TraitMap},
+    namespace::{IsExtendingExistingImpl, IsImplInterfaceSurface, IsImplSelf, TraitMap},
     semantic_analysis::{expression::ReachableReport, *},
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
@@ -2016,6 +2016,7 @@ impl ty::TyExpression {
             Some(span.clone()),
             IsImplSelf::No,
             IsExtendingExistingImpl::No,
+            IsImplInterfaceSurface::No,
         )?;
 
         let exp = ty::TyExpression {

@@ -2,13 +2,13 @@ use crate::cli;
 use ansiterm::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
-use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
+use forc_test::{TestFilter, TestResult, TestRunnerCount, TestedPackage};
 use forc_tracing::println_action_green;
 use forc_util::{
-    tx_utils::{decode_log_data, format_log_receipts},
+    tx_utils::{decode_fuel_vm_log_data, format_log_receipts, RevertKind},
     ForcError, ForcResult,
 };
-use sway_core::fuel_prelude::fuel_tx::Receipt;
+use sway_core::{asm_generation::ProgramABI, fuel_prelude::fuel_tx::Receipt};
 use tracing::info;
 
 forc_util::cli_examples! {
@@ -65,15 +65,18 @@ pub struct TestPrintOpts {
     #[clap(long = "pretty")]
     /// Pretty-print the logs emitted from tests.
     pub pretty_print: bool,
-    /// Print `Log` and `LogData` receipts for tests.
-    #[clap(long = "logs", short = 'l')]
-    pub print_logs: bool,
+    /// Print decoded `Log` and `LogData` receipts for tests.
+    #[clap(long, short = 'l')]
+    pub logs: bool,
     /// Print the raw logs for tests.
     #[clap(long)]
     pub raw_logs: bool,
-    /// Print the revert codes for tests.
+    /// Print the revert information for tests.
     #[clap(long)]
-    pub revert_codes: bool,
+    pub reverts: bool,
+    /// Print the output of debug ecals for tests.
+    #[clap(long)]
+    pub dbgs: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
@@ -99,9 +102,9 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
         &format!(
             "{} {}, filtered {} {}",
             num_tests_running,
-            formatted_test_count_string(&num_tests_running),
+            formatted_test_count_string(num_tests_running),
             num_tests_ignored,
-            formatted_test_count_string(&num_tests_ignored)
+            formatted_test_count_string(num_tests_ignored)
         ),
     );
     let tested = built_tests.run(test_runner_count, test_filter)?;
@@ -138,6 +141,12 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
     let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
     let failed = pkg.tests.len() - succeeded;
     let mut failed_tests = Vec::new();
+
+    let program_abi = match &pkg.built.program_abi {
+        ProgramABI::Fuel(fuel_abi) => Some(fuel_abi),
+        _ => None,
+    };
+
     for test in &pkg.tests {
         let test_passed = test.passed();
         let (state, color) = match test_passed {
@@ -152,76 +161,32 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
             test.gas_used
         );
 
-        // If logs are enabled, print them.
-        let logs = &test.logs;
-        if test_print_opts.print_logs {
-            for log in logs {
-                if let Receipt::LogData {
-                    rb,
-                    data: Some(data),
-                    ..
-                } = log
-                {
-                    let decoded_log_data =
-                        decode_log_data(&rb.to_string(), data, &pkg.built.program_abi)?;
-                    let var_value = decoded_log_data.value;
-                    info!("Decoded log value: {}, log rb: {}", var_value, rb);
-                }
-            }
-
-            for captured in test.ecal.captured.iter() {
-                captured.apply();
-            }
-        }
-
-        // If raw logs are enabled, print them.
-        if test_print_opts.raw_logs {
-            let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
-            info!("Raw logs:\n{}", formatted_logs);
-        }
-
-        // If revert codes are enabled, print them.
-        if test_print_opts.revert_codes {
-            if let Some(revert_code) = test.revert_code() {
-                info!("Revert code: {revert_code:x}");
-            }
-        }
+        print_test_output(test, program_abi, Some(test_print_opts))?;
 
         // If the test is failing, save the test result for printing the details later on.
         if !test_passed {
             failed_tests.push(test);
         }
     }
+
     let (state, color) = match succeeded == pkg.tests.len() {
         true => ("OK", Colour::Green),
         false => ("FAILED", Colour::Red),
     };
+
     if failed != 0 {
-        info!("\n   failures:");
+        info!("\n   {}", Colour::Red.paint("failures:"));
         for failed_test in failed_tests {
             let failed_test_name = &failed_test.name;
             let failed_test_details = failed_test.details()?;
             let path = &*failed_test_details.file_path;
             let line_number = failed_test_details.line_number;
-            let logs = &failed_test.logs;
-            let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
-            info!(
-                "      - test {}, {:?}:{} ",
-                failed_test_name, path, line_number
-            );
-            if let Some(revert_code) = failed_test.revert_code() {
-                // If we have a revert_code, try to get a known error signal
-                let mut failed_info_str = format!("        revert code: {revert_code:x}");
-                let error_signal = failed_test.error_signal().ok();
-                if let Some(error_signal) = error_signal {
-                    let error_signal_str = error_signal.to_string();
-                    failed_info_str.push_str(&format!(" -- {error_signal_str}"));
-                }
-                info!("{failed_info_str}");
-            }
-            info!("        Logs: {}", formatted_logs);
+
+            info!("      test {failed_test_name}, {path:?}:{line_number}");
+
+            print_test_output(failed_test, program_abi, None)?;
+            info!("\n");
         }
-        info!("\n");
     }
 
     let pkg_test_durations: std::time::Duration = pkg
@@ -236,6 +201,88 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
         failed,
         pkg_test_durations
     );
+
+    Ok(())
+}
+
+/// Prints the output of a test result, including debug output, logs, and revert information.
+/// If the `test_print_opts` is `None`, it defaults to printing all the output.
+fn print_test_output(
+    test: &TestResult,
+    program_abi: Option<&fuel_abi_types::abi::program::ProgramABI>,
+    test_print_opts: Option<&TestPrintOpts>,
+) -> Result<(), ForcError> {
+    const TEST_NAME_INDENT: &str = "           ";
+
+    let print_reverts = test_print_opts.map(|opts| opts.reverts).unwrap_or(true);
+    let print_dbgs = test_print_opts.map(|opts| opts.dbgs).unwrap_or(true);
+    let print_logs = test_print_opts.map(|opts| opts.logs).unwrap_or(true);
+    let print_raw_logs = test_print_opts.map(|opts| opts.raw_logs).unwrap_or(true);
+    let pretty_print = test_print_opts
+        .map(|opts| opts.pretty_print)
+        .unwrap_or(true);
+
+    if print_reverts {
+        if let Some(revert_info) = test.revert_info(program_abi, &test.logs) {
+            info!(
+                "{TEST_NAME_INDENT}revert code: {:x}",
+                revert_info.revert_code
+            );
+            match revert_info.kind {
+                RevertKind::RawRevert => {}
+                RevertKind::KnownErrorSignal { err_msg } => {
+                    info!("{TEST_NAME_INDENT} └─ error message: {err_msg}");
+                }
+                RevertKind::Panic {
+                    err_msg,
+                    err_val,
+                    pos,
+                } => {
+                    if let Some(err_msg) = err_msg {
+                        info!("{TEST_NAME_INDENT} ├─ panic message: {err_msg}");
+                    }
+                    if let Some(err_val) = err_val {
+                        info!("{TEST_NAME_INDENT} ├─ panic value:   {err_val}");
+                    }
+                    info!(
+                        "{TEST_NAME_INDENT} └─ panicked in:   {}, {}:{}:{}",
+                        pos.pkg, pos.file, pos.line, pos.column
+                    );
+                }
+            }
+        }
+    }
+
+    if print_dbgs && !test.ecal.captured.is_empty() {
+        info!("{TEST_NAME_INDENT}debug output:");
+        for captured in test.ecal.captured.iter() {
+            captured.apply();
+        }
+    }
+
+    if print_logs && !test.logs.is_empty() {
+        if let Some(program_abi) = program_abi {
+            info!("{TEST_NAME_INDENT}decoded log values:");
+            for log in &test.logs {
+                if let Receipt::LogData {
+                    rb,
+                    data: Some(data),
+                    ..
+                } = log
+                {
+                    let decoded_log_data =
+                        decode_fuel_vm_log_data(&rb.to_string(), data, program_abi)?;
+                    let var_value = decoded_log_data.value;
+                    info!("{var_value}, log rb: {rb}");
+                }
+            }
+        }
+    }
+
+    if print_raw_logs && !test.logs.is_empty() {
+        let formatted_logs = format_log_receipts(&test.logs, pretty_print)?;
+        info!("{TEST_NAME_INDENT}raw logs:\n{}", formatted_logs);
+    }
 
     Ok(())
 }
@@ -279,8 +326,8 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
     }
 }
 
-fn formatted_test_count_string(count: &usize) -> &str {
-    if *count == 1 {
+fn formatted_test_count_string(count: usize) -> &'static str {
+    if count == 1 {
         "test"
     } else {
         "tests"
