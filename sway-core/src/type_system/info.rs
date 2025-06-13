@@ -1,8 +1,9 @@
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, DeclEngine, DeclEngineGet, DeclId},
     engine_threading::{
-        DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
-        OrdWithEngines, OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
+        DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, GetCallPathWithEngines,
+        HashWithEngines, OrdWithEngines, OrdWithEnginesContext, PartialEqWithEngines,
+        PartialEqWithEnginesContext,
     },
     language::{
         parsed::{EnumDeclaration, StructDeclaration},
@@ -862,6 +863,58 @@ impl DebugWithEngines for TypeInfo {
             }
         };
         write!(f, "{s}")
+    }
+}
+
+impl GetCallPathWithEngines for TypeInfo {
+    fn call_path(&self, engines: &Engines) -> Option<CallPath> {
+        match self {
+            TypeInfo::Unknown => None,
+            TypeInfo::Never => None,
+            TypeInfo::UnknownGeneric { .. } => None,
+            TypeInfo::Placeholder(_type_parameter) => None,
+            TypeInfo::TypeParam(_type_parameter) => None,
+            TypeInfo::StringSlice => None,
+            TypeInfo::StringArray(_numeric_length) => None,
+            TypeInfo::UnsignedInteger(_integer_bits) => None,
+            TypeInfo::UntypedEnum(_parsed_decl_id) => todo!(),
+            TypeInfo::UntypedStruct(_parsed_decl_id) => todo!(),
+            TypeInfo::Enum(decl_id) => Some(engines.de().get_enum(decl_id).call_path.clone()),
+            TypeInfo::Struct(decl_id) => Some(engines.de().get_struct(decl_id).call_path.clone()),
+            TypeInfo::Boolean => None,
+            TypeInfo::Tuple(_generic_arguments) => None,
+            TypeInfo::ContractCaller { .. } => None,
+            TypeInfo::Custom {
+                qualified_call_path,
+                ..
+            } => Some(qualified_call_path.call_path.clone()),
+            TypeInfo::B256 => None,
+            TypeInfo::Numeric => None,
+            TypeInfo::Contract => None,
+            TypeInfo::ErrorRecovery(_error_emitted) => None,
+            TypeInfo::Array(_generic_argument, _length) => None,
+            TypeInfo::RawUntypedPtr => None,
+            TypeInfo::RawUntypedSlice => None,
+            TypeInfo::Ptr(generic_argument) => generic_argument
+                .call_path_tree()
+                .map(|v| v.qualified_call_path.call_path.clone()),
+            TypeInfo::Slice(generic_argument) => generic_argument
+                .call_path_tree()
+                .map(|v| v.qualified_call_path.call_path.clone()),
+            TypeInfo::Alias { name: _, ty } => ty
+                .call_path_tree()
+                .map(|v| v.qualified_call_path.call_path.clone()),
+            TypeInfo::TraitType {
+                name: _,
+                trait_type_id,
+            } => engines.te().get(*trait_type_id).call_path(engines),
+            TypeInfo::Ref {
+                to_mutable_value: _,
+                referenced_type,
+            } => referenced_type
+                .call_path_tree()
+                .map(|v| v.qualified_call_path.call_path.clone()),
+        }
     }
 }
 
