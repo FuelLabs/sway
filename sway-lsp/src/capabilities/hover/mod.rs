@@ -51,10 +51,8 @@ pub fn hover_data(
         });
     }
 
-    // TODO: handle unwraps
-    let program = state.compiled_programs.program_from_uri(url, engines).unwrap();
+    let program = state.compiled_programs.program_from_uri(url, engines)?;
     let namespace = &program.value().typed.namespace;
-
     let client_config = state.config.read().client.clone();
     let contents = match &token.declared_token_ident(engines) {
         Some(decl_ident) => {

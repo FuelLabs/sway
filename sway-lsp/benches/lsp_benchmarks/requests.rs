@@ -41,7 +41,6 @@ fn benchmarks(c: &mut Criterion) {
                 &state,
                 sync.clone(),
                 &engines,
-                session.clone(),
                 &uri,
                 position,
             )

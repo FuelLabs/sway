@@ -4,7 +4,7 @@ use crate::{
     config::{Config, GarbageCollectionConfig, Warnings},
     core::{
         document::{Documents, PidLockedFiles},
-        session::{self, Session},
+        session::{self, program_id_from_path, Session},
         sync::SyncWorkspace,
         token_map::TokenMap,
     },
@@ -12,7 +12,7 @@ use crate::{
     utils::{debug, keyword_docs::KeywordDocs},
 };
 use crossbeam_channel::{Receiver, Sender};
-use dashmap::{mapref::multiple::RefMulti, DashMap};
+use dashmap::{mapref::{multiple::RefMulti, one::Ref}, DashMap};
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::PackageManifestFile;
 use lsp_types::{
@@ -20,9 +20,9 @@ use lsp_types::{
     Registration, Url, WatchKind,
 };
 use parking_lot::{Mutex, RwLock};
+use sway_types::ProgramId;
 use std::{
-    collections::{BTreeMap, VecDeque},
-    process::Command,
+    collections::{BTreeMap, VecDeque}, ops::Deref, process::Command
 };
 use std::{
     mem,
@@ -32,11 +32,52 @@ use std::{
         Arc,
     },
 };
-use sway_core::{Engines, LspConfig};
+use sway_core::{language::{
+    lexed::LexedProgram,
+    parsed::ParseProgram,
+    ty,
+}, Engines, LspConfig,
+};
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
 const DEFAULT_SESSION_CACHE_CAPACITY: usize = 4;
+
+
+#[derive(Debug)]
+pub struct CompiledPrograms (DashMap<ProgramId, CompiledProgram>); 
+
+impl CompiledPrograms {
+    pub fn program_from_uri(&self, uri: &Url, engines: &Engines) -> Option<Ref<'_, ProgramId, CompiledProgram>> {
+        let path = uri.to_file_path().ok()?;
+        let program_id = program_id_from_path(&path, engines).ok()?;
+        self.get(&program_id)
+    }
+}
+
+impl Deref for CompiledPrograms {
+    type Target = DashMap<ProgramId, CompiledProgram>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Debug)]
+pub struct CompiledProgram {
+    pub lexed: Arc<LexedProgram>,
+    pub parsed: Arc<ParseProgram>,
+    pub typed: Arc<ty::TyProgram>,
+}
+
+impl CompiledProgram {
+    pub fn new(lexed: Arc<LexedProgram>, parsed: Arc<ParseProgram>, typed: Arc<ty::TyProgram>) -> Self {
+        Self {
+            lexed,
+            parsed,
+            typed,
+        }
+    }
+}
 
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
@@ -45,6 +86,7 @@ pub struct ServerState {
     pub sync_workspaces: DashMap<PathBuf, Arc<SyncWorkspace>>,
     pub token_map: Arc<TokenMap>,
     pub engines: Arc<RwLock<Engines>>,
+    pub compiled_programs: Arc<CompiledPrograms>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
     /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
@@ -69,6 +111,7 @@ impl Default for ServerState {
             client: None,
             token_map: Arc::new(TokenMap::new()),
             engines: Arc::new(RwLock::new(Engines::default())),
+            compiled_programs: Arc::new(CompiledPrograms(DashMap::new())),
             config: Arc::new(RwLock::new(Config::default())),
             sync_workspaces: DashMap::new(),
             keyword_docs: Arc::new(KeywordDocs::new()),
@@ -114,6 +157,7 @@ pub struct CompilationContext {
     pub sync: Option<Arc<SyncWorkspace>>,
     pub token_map: Arc<TokenMap>,
     pub engines: Arc<RwLock<Engines>>,
+    pub compiled_programs: Option<Arc<CompiledPrograms>>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
     pub optimized_build: bool,
