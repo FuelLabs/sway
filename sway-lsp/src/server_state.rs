@@ -475,7 +475,7 @@ impl ServerState {
                 {
                     Some(ws_mf) => {
                         // It's part of a workspace, use the workspace's directory
-                        tracing::debug!(
+                        tracing::trace!(
                             "Package {:?} is part of workspace {:?}. Using workspace root.",
                             pkg_mf.path(),
                             ws_mf.path()
@@ -484,7 +484,7 @@ impl ServerState {
                     }
                     None => {
                         // It's a standalone package, use its directory
-                        tracing::debug!(
+                        tracing::trace!(
                             "Package {:?} is standalone. Using package root.",
                             pkg_mf.path()
                         );
@@ -494,7 +494,7 @@ impl ServerState {
             }
             ManifestFile::Workspace(ws_mf) => {
                 // It's already a workspace manifest, use its directory
-                tracing::debug!(
+                tracing::trace!(
                     "Initial manifest is a workspace: {:?}. Using its root.",
                     ws_mf.path()
                 );
