@@ -76,18 +76,17 @@ pub fn handle_goto_definition(
     state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
-    match state
-        .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
-    {
-        Ok((uri, session)) => {
-            let sync = state.sync_workspace();
+    match state.sync_uri_and_session_from_workspace(
+        &params.text_document_position_params.text_document.uri,
+    ) {
+        Ok((sync, uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(session.token_definition_response(
                 &uri,
                 position,
                 &state.engines.read(),
                 &state.token_map,
-                sync,
+                &sync,
             ))
         }
         Err(err) => {
@@ -128,13 +127,14 @@ pub fn handle_hover(
     state: &ServerState,
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_types::Hover>> {
-    match state
-        .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
-    {
-        Ok((uri, session)) => {
+    match state.sync_uri_and_session_from_workspace(
+        &params.text_document_position_params.text_document.uri,
+    ) {
+        Ok((sync, uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::hover::hover_data(
                 state,
+                sync,
                 &state.engines.read(),
                 session,
                 &uri,
@@ -152,53 +152,47 @@ pub fn handle_prepare_rename(
     state: &ServerState,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
-    match state.uri_from_workspace(&params.text_document.uri) {
-        Ok(uri) => {
-            let sync = state.sync_workspace();
-            match capabilities::rename::prepare_rename(
-                &state.engines.read(),
-                &state.token_map,
-                &uri,
-                params.position,
-                sync,
-            ) {
-                Ok(res) => Ok(Some(res)),
-                Err(err) => {
-                    tracing::error!("{}", err.to_string());
-                    Ok(None)
-                }
-            }
-        }
-        Err(err) => {
-            tracing::error!("{}", err.to_string());
+    match state.sync_and_uri_from_workspace(&params.text_document.uri) {
+        Ok((sync, uri)) => capabilities::rename::prepare_rename(
+            &state.engines.read(),
+            &state.token_map,
+            &uri,
+            params.position,
+            &sync,
+        )
+        .map(Some)
+        .or_else(|e| {
+            tracing::error!("{}", e);
+            Ok(None)
+        }),
+        Err(e) => {
+            tracing::error!("{}", e);
             Ok(None)
         }
     }
 }
 
 pub fn handle_rename(state: &ServerState, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
-    match state.uri_from_workspace(&params.text_document_position.text_document.uri) {
-        Ok(uri) => {
+    match state.sync_and_uri_from_workspace(&params.text_document_position.text_document.uri) {
+        Ok((sync, uri)) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
-            let sync = state.sync_workspace();
-            match capabilities::rename::rename(
+            capabilities::rename::rename(
                 &state.engines.read(),
                 &state.token_map,
                 new_name,
                 &uri,
                 position,
-                sync,
-            ) {
-                Ok(res) => Ok(Some(res)),
-                Err(err) => {
-                    tracing::error!("{}", err.to_string());
-                    Ok(None)
-                }
-            }
+                &sync,
+            )
+            .map(Some)
+            .or_else(|e| {
+                tracing::error!("{}", e);
+                Ok(None)
+            })
         }
-        Err(err) => {
-            tracing::error!("{}", err.to_string());
+        Err(e) => {
+            tracing::error!("{}", e);
             Ok(None)
         }
     }
@@ -234,16 +228,17 @@ pub async fn handle_references(
     params: lsp_types::ReferenceParams,
 ) -> Result<Option<Vec<lsp_types::Location>>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document_position.text_document.uri) {
-        Ok((uri, session)) => {
+    match state
+        .sync_uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
+    {
+        Ok((sync, uri, session)) => {
             let position = params.text_document_position.position;
-            let sync = state.sync_workspace();
             Ok(session.token_references(
                 &uri,
                 position,
                 &state.token_map,
                 &state.engines.read(),
-                sync,
+                &sync,
             ))
         }
         Err(err) => {
@@ -472,8 +467,8 @@ pub fn handle_on_enter(
     state: &ServerState,
     params: &lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
-    match state.uri_from_workspace(&params.text_document.uri) {
-        Ok(uri) => {
+    match state.sync_and_uri_from_workspace(&params.text_document.uri) {
+        Ok((_, uri)) => {
             // handle on_enter capabilities if they are enabled
             Ok(capabilities::on_enter(
                 &state.config.read().on_enter,

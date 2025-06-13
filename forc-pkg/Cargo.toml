@@ -36,6 +36,7 @@ sway-features.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true
 tar.workspace = true
+tokio.workspace = true
 toml = { workspace = true, features = ["parse"] }
 toml_edit.workspace = true
 tracing.workspace = true
