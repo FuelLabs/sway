@@ -327,3 +327,224 @@ fn asset_id_try_into_bytes() {
         iter_3 += 1;
     }
 }
+
+#[test]
+fn asset_id_fuel() {
+    let fuel_asset = AssetId::fuel();
+    // Testnet asset id
+    assert(fuel_asset.is_ok());
+    assert(
+        fuel_asset
+            .unwrap()
+            .bits() == 0x324d0c35a4299ef88138a656d5272c5a3a9ccde2630ae055dacaf9d13443d53b,
+    );
+}
+
+#[test]
+fn asset_id_usdc() {
+    let usdc_asset = AssetId::usdc();
+    // Testnet asset id 
+    assert(usdc_asset.is_ok());
+    assert(
+        usdc_asset
+            .unwrap()
+            .bits() == 0xc26c91055de37528492e7e97d91c6f4abe34aae26f2c4d25cff6bfe45b5dc9a9,
+    );
+}
+
+#[test]
+fn asset_id_usde() {
+    let usde_asset = AssetId::usde();
+    // Testnet asset id 
+    assert(usde_asset.is_ok());
+    assert(
+        usde_asset
+            .unwrap()
+            .bits() == 0x86a1beb50c844f5eff9afd21af514a13327c93f76edb89333af862f70040b107,
+    );
+}
+
+#[test]
+fn asset_id_susde() {
+    let susde_asset = AssetId::susde();
+    // Testnet asset id 
+    assert(susde_asset.is_ok());
+    assert(
+        susde_asset
+            .unwrap()
+            .bits() == 0xd2886b34454e2e0de47a82d8e6314b26e1e1312519247e8e2ef137672a909aeb,
+    );
+}
+
+#[test]
+fn asset_id_wsteth() {
+    let wsteth_asset = AssetId::wsteth();
+    // Testnet asset id 
+    assert(wsteth_asset.is_ok());
+    assert(
+        wsteth_asset
+            .unwrap()
+            .bits() == 0xb42cd9ddf61898da1701adb3a003b0cf4ca6df7b5fe490ec2c295b1ca43b33c8,
+    );
+}
+
+#[test]
+fn asset_id_weth() {
+    let weth_asset = AssetId::weth();
+    // No verified testnet asset id
+    assert(weth_asset.is_err());
+}
+
+#[test]
+fn asset_id_usdt() {
+    let usdt_asset = AssetId::usdt();
+    // No verified testnet asset id
+    assert(usdt_asset.is_err());
+}
+
+#[test]
+fn asset_id_weeth() {
+    let weeth_asset = AssetId::weeth();
+    // No verified testnet asset id
+    assert(weeth_asset.is_err());
+}
+
+#[test]
+fn asset_id_rseth() {
+    let rseth_asset = AssetId::rseth();
+    // No verified testnet asset id
+    assert(rseth_asset.is_err());
+}
+
+#[test]
+fn asset_id_reth() {
+    let reth_asset = AssetId::reth();
+    // No verified testnet asset id
+    assert(reth_asset.is_err());
+}
+
+#[test]
+fn asset_id_wbeth() {
+    let wbeth_asset = AssetId::wbeth();
+    // No verified testnet asset id
+    assert(wbeth_asset.is_err());
+}
+
+#[test]
+fn asset_id_rsteth() {
+    let rsteth_asset = AssetId::rsteth();
+    // No verified testnet asset id
+    assert(rsteth_asset.is_err());
+}
+
+#[test]
+fn asset_id_amphreth() {
+    let amphreth_asset = AssetId::amphreth();
+    // No verified testnet asset id
+    assert(amphreth_asset.is_err());
+}
+
+#[test]
+fn asset_id_manta_mbtc() {
+    let manta_mbtc_asset = AssetId::manta_mbtc();
+    // No verified testnet asset id
+    assert(manta_mbtc_asset.is_err());
+}
+
+#[test]
+fn asset_id_manta_meth() {
+    let manta_meth_asset = AssetId::manta_meth();
+    // No verified testnet asset id
+    assert(manta_meth_asset.is_err());
+}
+
+#[test]
+fn asset_id_manta_musd() {
+    let manta_musd_asset = AssetId::manta_musd();
+    // No verified testnet asset id
+    assert(manta_musd_asset.is_err());
+}
+
+#[test]
+fn asset_id_pumpbtc() {
+    let pumpbtc_asset = AssetId::pumpbtc();
+    // No verified testnet asset id
+    assert(pumpbtc_asset.is_err());
+}
+
+#[test]
+fn asset_id_fbtc() {
+    let fbtc_asset = AssetId::fbtc();
+    // No verified testnet asset id
+    assert(fbtc_asset.is_err());
+}
+
+#[test]
+fn asset_id_solvbtc() {
+    let solvbtc_asset = AssetId::solvbtc();
+    // No verified testnet asset id
+    assert(solvbtc_asset.is_err());
+}
+
+#[test]
+fn asset_id_solvbtc_bnn() {
+    let solvbtc_bnn_asset = AssetId::solvbtc_bnn();
+    // No verified testnet asset id
+    assert(solvbtc_bnn_asset.is_err());
+}
+
+#[test]
+fn asset_id_mantle_meth() {
+    let mantle_meth_asset = AssetId::mantle_meth();
+    // No verified testnet asset id
+    assert(mantle_meth_asset.is_err());
+}
+
+#[test]
+fn asset_id_sdai() {
+    let sdai_asset = AssetId::sdai();
+    // No verified testnet asset id
+    assert(sdai_asset.is_err());
+}
+
+#[test]
+fn asset_id_rsusde() {
+    let rsusde_asset = AssetId::rsusde();
+    // No verified testnet asset id
+    assert(rsusde_asset.is_err());
+}
+
+#[test]
+fn asset_id_ezeth() {
+    let ezeth_asset = AssetId::ezeth();
+    // No verified testnet asset id
+    assert(ezeth_asset.is_err());
+}
+
+#[test]
+fn asset_id_pzeth() {
+    let pzeth_asset = AssetId::pzeth();
+    // No verified testnet asset id
+    assert(pzeth_asset.is_err());
+}
+
+#[test]
+fn asset_id_re7lrt() {
+    let re7lrt_asset = AssetId::re7lrt();
+    // No verified testnet asset id
+    assert(re7lrt_asset.is_err());
+}
+
+#[test]
+fn asset_id_steaklrt() {
+    let steaklrt_asset = AssetId::steaklrt();
+    // No verified testnet asset id
+    assert(steaklrt_asset.is_err());
+}
+
+#[test]
+fn asset_id_usdf() {
+    let usdf_asset = AssetId::usdf();
+    // No verified testnet asset id
+    assert(usdf_asset.is_err());
+}
