@@ -9,7 +9,8 @@ use std::{
     {fs, path::PathBuf},
 };
 
-pub fn main() -> Result<()> {
+#[tokio::main]
+pub async fn main() -> Result<()> {
     let build_instructions = Command::parse();
 
     let (doc_path, pkg_manifest) = compile_html(&build_instructions, &get_doc_dir)?;
