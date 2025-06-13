@@ -8268,6 +8268,7 @@ dependencies = [
  "swayfmt",
  "sysinfo",
  "thiserror 1.0.69",
+ "toml 0.8.20",
  "tracing",
  "uint",
  "vec1",
