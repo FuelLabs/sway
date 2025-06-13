@@ -52,9 +52,7 @@ pub fn code_actions(
 ) -> Option<CodeActionResponse> {
     let t = token_map.token_at_position(temp_uri, range.start)?;
     let token = t.value();
-
-    // TODO: handle unwraps
-    let program = compiled_programs.program_from_uri(uri, engines).unwrap();
+    let program = compiled_programs.program_from_uri(uri, engines)?;
     let namespace = &program.value().typed.namespace;
 
     let ctx = CodeActionContext {
