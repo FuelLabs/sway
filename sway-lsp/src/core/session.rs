@@ -164,20 +164,89 @@ impl Session {
         token_map: &TokenMap,
         sync: &SyncWorkspace,
     ) -> Option<GotoDefinitionResponse> {
-        let _p = tracing::trace_span!("token_definition_response").entered();
-        token_map
-            .token_at_position(uri, position)
-            .and_then(|item| item.value().declared_token_ident(engines))
-            .and_then(|decl_ident| {
-                decl_ident.path.and_then(|path| {
-                    // We use ok() here because we don't care about propagating the error from from_file_path
-                    Url::from_file_path(path).ok().and_then(|url| {
-                        sync.to_workspace_url(url).map(|url| {
-                            GotoDefinitionResponse::Scalar(Location::new(url, decl_ident.range))
+        thread_local! {
+            static RECURSION_DEPTH: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
+        }
+        let exceeded = RECURSION_DEPTH.with(|depth| {
+            let mut d = depth.borrow_mut();
+            *d += 1;
+            if *d > 64 {
+                true
+            } else {
+                false
+            }
+        });
+        if exceeded {
+            eprintln!("token_definition_response recursion limit exceeded");
+            return None;
+        }
+        let result = (|| {
+            let token_at_pos = token_map.token_at_position(uri, position)?;
+            let token = token_at_pos.value();
+            // If this is a type parameter, check if we're inside a struct declaration and restrict lookup
+            if let Some(crate::core::token::TypedAstToken::TypedParameter(_)) = token.as_typed() {
+                let param_range = &token_at_pos.key().range;
+                // Pass 1: Collect all struct declarations and their ranges
+                let mut struct_ranges = Vec::new();
+                for entry in token_map.tokens_for_file(uri) {
+                    if let Some(crate::core::token::TypedAstToken::TypedDeclaration(
+                        sway_core::language::ty::TyDecl::StructDecl(_),
+                    )) = entry.value().as_typed() {
+                        struct_ranges.push(entry.key().range);
+                    }
+                }
+                // Pass 2: For each struct, collect its type parameters
+                let mut struct_type_params: Vec<(lsp_types::Range, Vec<_>)> = Vec::new();
+                for struct_range in &struct_ranges {
+                    let mut params = Vec::new();
+                    for entry in token_map.tokens_for_file(uri) {
+                        if let Some(crate::core::token::TypedAstToken::TypedParameter(_)) = entry.value().as_typed() {
+                            let param_range = &entry.key().range;
+                            if param_range.start >= struct_range.start && param_range.end <= struct_range.end {
+                                params.push(entry);
+                            }
+                        }
+                    }
+                    struct_type_params.push((struct_range.clone(), params));
+                }
+                // Find the struct whose range contains the usage
+                for (struct_range, params) in &struct_type_params {
+                    if struct_range.start <= param_range.start && struct_range.end >= param_range.end {
+                        // Find the matching type parameter by name
+                        let name = &token_at_pos.key().name;
+                        for entry in params {
+                            if &entry.key().name == name {
+                                if let Some(decl_ident) = entry.value().declared_token_ident(engines) {
+                                    if let Some(path) = decl_ident.path {
+                                        if let Ok(url) = Url::from_file_path(path) {
+                                            if let Some(url) = sync.to_workspace_url(url) {
+                                                return Some(GotoDefinitionResponse::Scalar(Location::new(url, decl_ident.range)));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Fallback to original logic
+            token.declared_token_ident(engines)
+                .and_then(|decl_ident| {
+                    decl_ident.path.and_then(|path| {
+                        Url::from_file_path(path).ok().and_then(|url| {
+                            sync.to_workspace_url(url).map(|url| {
+                                GotoDefinitionResponse::Scalar(Location::new(url, decl_ident.range))
+                            })
                         })
                     })
                 })
-            })
+        })();
+        RECURSION_DEPTH.with(|depth| {
+            let mut d = depth.borrow_mut();
+            *d -= 1;
+        });
+        result
     }
 
     pub fn completion_items(
@@ -547,6 +616,22 @@ pub fn parse_lexed_program(
     modified_file: Option<&PathBuf>,
     f: impl Fn(&Annotated<ItemKind>, &ParseContext) + Sync,
 ) {
+    thread_local! {
+        static PARSE_LEXED_DEPTH: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
+    }
+    let exceeded = PARSE_LEXED_DEPTH.with(|depth| {
+        let mut d = depth.borrow_mut();
+        *d += 1;
+        if *d > 64 {
+            true
+        } else {
+            false
+        }
+    });
+    if exceeded {
+        eprintln!("parse_lexed_program recursion limit exceeded");
+        return;
+    }
     let should_process = |item: &&Annotated<ItemKind>| {
         modified_file
             .map(|path| {
@@ -573,6 +658,10 @@ pub fn parse_lexed_program(
         .collect::<Vec<_>>()
         .par_iter()
         .for_each(|item| f(item, ctx));
+    PARSE_LEXED_DEPTH.with(|depth| {
+        let mut d = depth.borrow_mut();
+        *d -= 1;
+    });
 }
 
 /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
@@ -582,6 +671,22 @@ fn parse_ast_to_tokens(
     modified_file: Option<&PathBuf>,
     f: impl Fn(&AstNode, &ParseContext) + Sync,
 ) {
+    thread_local! {
+        static PARSE_AST_DEPTH: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
+    }
+    let exceeded = PARSE_AST_DEPTH.with(|depth| {
+        let mut d = depth.borrow_mut();
+        *d += 1;
+        if *d > 64 {
+            true
+        } else {
+            false
+        }
+    });
+    if exceeded {
+        eprintln!("parse_ast_to_tokens recursion limit exceeded");
+        return;
+    }
     let should_process = |node: &&AstNode| {
         modified_file
             .map(|path| {
@@ -607,6 +712,10 @@ fn parse_ast_to_tokens(
         .collect::<Vec<_>>()
         .par_iter()
         .for_each(|n| f(n, ctx));
+    PARSE_AST_DEPTH.with(|depth| {
+        let mut d = depth.borrow_mut();
+        *d -= 1;
+    });
 }
 
 /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
@@ -616,6 +725,22 @@ fn parse_ast_to_typed_tokens(
     modified_file: Option<&PathBuf>,
     f: impl Fn(&ty::TyAstNode, &ParseContext) + Sync,
 ) {
+    thread_local! {
+        static PARSE_TYPED_DEPTH: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
+    }
+    let exceeded = PARSE_TYPED_DEPTH.with(|depth| {
+        let mut d = depth.borrow_mut();
+        *d += 1;
+        if *d > 64 {
+            true
+        } else {
+            false
+        }
+    });
+    if exceeded {
+        eprintln!("parse_ast_to_typed_tokens recursion limit exceeded");
+        return;
+    }
     let should_process = |node: &&ty::TyAstNode| {
         modified_file
             .map(|path| {
@@ -636,6 +761,10 @@ fn parse_ast_to_typed_tokens(
         .collect::<Vec<_>>()
         .par_iter()
         .for_each(|n| f(n, ctx));
+    PARSE_TYPED_DEPTH.with(|depth| {
+        let mut d = depth.borrow_mut();
+        *d -= 1;
+    });
 }
 
 /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
