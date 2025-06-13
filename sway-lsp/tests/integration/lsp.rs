@@ -312,6 +312,22 @@ pub(crate) async fn get_semantic_tokens_full(server: &ServerState, uri: &Url) ->
     }
 }
 
+pub(crate) async fn get_document_symbols(server: &ServerState, uri: &Url) -> Vec<DocumentSymbol> {
+    let params = DocumentSymbolParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+    };
+    let response = request::handle_document_symbol(server, params)
+        .await
+        .unwrap();
+    if let Some(DocumentSymbolResponse::Nested(symbols)) = response {
+        symbols
+    } else {
+        panic!("Expected nested document symbols response: {:#?}", response);
+    }
+}
+
 pub(crate) async fn semantic_tokens_request(server: &ServerState, uri: &Url) {
     let tokens = get_semantic_tokens_full(server, uri).await;
     assert!(!tokens.data.is_empty());

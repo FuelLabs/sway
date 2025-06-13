@@ -10,18 +10,17 @@ pub mod struct_decl;
 pub mod struct_field;
 pub mod trait_fn;
 
-use crate::core::{
-    session::Session,
+use crate::{core::{
     token::{Token, TypedAstToken},
     token_map::TokenMap,
-};
+}, server_state::CompiledPrograms};
 pub use crate::error::DocumentError;
 use lsp_types::{
     CodeAction as LspCodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand,
     CodeActionResponse, Diagnostic, Position, Range, TextEdit, Url, WorkspaceEdit,
 };
 use serde_json::Value;
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use sway_core::{language::ty, Engines, Namespace};
 use sway_types::{LineCol, Spanned};
 
@@ -39,20 +38,24 @@ pub(crate) struct CodeActionContext<'a> {
     uri: &'a Url,
     temp_uri: &'a Url,
     diagnostics: &'a Vec<Diagnostic>,
-    namespace: &'a Option<Namespace>,
+    namespace: &'a Namespace,
 }
 
 pub fn code_actions(
-    session: Arc<Session>,
     engines: &Engines,
     token_map: &TokenMap,
     range: &Range,
     uri: &Url,
     temp_uri: &Url,
     diagnostics: &Vec<Diagnostic>,
+    compiled_programs: &CompiledPrograms,
 ) -> Option<CodeActionResponse> {
     let t = token_map.token_at_position(temp_uri, range.start)?;
     let token = t.value();
+
+    // TODO: handle unwraps
+    let program = compiled_programs.program_from_uri(uri, engines).unwrap();
+    let namespace = &program.value().typed.namespace;
 
     let ctx = CodeActionContext {
         engines,
@@ -61,7 +64,7 @@ pub fn code_actions(
         uri,
         temp_uri,
         diagnostics,
-        namespace: &session.namespace(),
+        namespace,
     };
 
     let actions_by_type = token
