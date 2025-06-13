@@ -1,5 +1,5 @@
 use crate::ASSETS_DIR_NAME;
-use std::path::PathBuf;
+use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::{
     doc::module::ModuleInfo,
@@ -87,12 +87,21 @@ impl Renderable for Sidebar {
             DocStyle::ProjectIndex { members, .. } => {
                 let nav_links = &self.nav.links;
 
+                let mut members_map = BTreeMap::new();
+
                 for member in members {
-                    let stes = format!("{}{}", member, IDENTITY);
-                    println!("{}", stes);
+                    let root = self.module_info.to_html_shorthand_path_string(
+                        PathBuf::from(member)
+                            .join(INDEX_FILENAME)
+                            .to_str()
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("found invalid root file path for {}\n", member,)
+                            })?,
+                    );
+                    members_map.insert(member, root);
                 }
 
-                let data = box_html! {
+                box_html! {
                     div(class="sidebar-elems") {
                         a(id="all-types", href=ALL_DOC_FILENAME) {
                             p: "All Items";
@@ -114,10 +123,10 @@ impl Renderable for Sidebar {
                             div(class="block method") {
                                 h3 : "Crates";
                                 ul {
-                                    @ for member in members {
+                                    @ for (member, link) in members_map {
                                         li {
-                                            a(href=format!("{}{}", member,IDENTITY)) {
-                                                : member;
+                                            a(href=link) {
+                                                : member
                                             }
                                         }
                                     }
@@ -127,10 +136,7 @@ impl Renderable for Sidebar {
                     }
                 }
                 .into_string()
-                .unwrap();
-
-                // println!("{}", data);
-                data
+                .unwrap()
             }
             DocStyle::AllDoc(_) => {
                 let nav_links = &self.nav.links;

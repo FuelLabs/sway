@@ -49,6 +49,7 @@ impl Renderable for DocLinks {
                 }
             }
         }
+
         let doc_links = match self.style {
             DocStyle::AllDoc(_) => box_html! {
                 @ for (title, list_items) in links_vec {

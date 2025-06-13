@@ -71,19 +71,19 @@ pub fn compile_html(
     let manifest = ManifestFile::from_dir(dir.clone())?;
 
     let (members, pkg_manifest) = match manifest.clone() {
-        ManifestFile::Package(f) => (Vec::<String>::new(), f),
-        ManifestFile::Workspace(f) => {
-            // Get members
-            let members = f
-                .members()
-                .map(|p| p.to_string_lossy().to_string())
+        ManifestFile::Package(pkg) => (vec![pkg.project_name().to_string()], pkg),
+        ManifestFile::Workspace(workspace) => {
+            // Extract the first package manifest from the workspace
+            let pkg_manifests = workspace
+                .member_pkg_manifests()?
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let members = pkg_manifests
+                .iter()
+                .map(|m| m.project_name().to_string())
                 .collect::<Vec<_>>();
 
-            // Extract the first package manifest from the workspace
-            let member_pkgs = f.member_pkg_manifests()?;
-            let collected_pkgs: Result<Vec<_>, _> = member_pkgs.collect();
-
-            (members, Box::new(collected_pkgs?[0].clone()))
+            (members, Box::new(pkg_manifests[0].clone()))
         }
     };
 

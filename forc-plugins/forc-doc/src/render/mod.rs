@@ -116,7 +116,7 @@ impl RenderedDocumentation {
                         DocLinks {
                             style: DocStyle::ProjectIndex {
                                 kind: program_kind.as_title_str().to_string(),
-                                members: members,
+                                members,
                             },
                             links: doc_links.to_owned(),
                         },
