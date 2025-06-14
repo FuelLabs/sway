@@ -1,8 +1,5 @@
 use crate::{
-    decl_engine::MaterializeConstGenerics,
-    language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath},
-    semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext},
-    SubstTypes, TypeId,
+    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{parsed_id::ParsedDeclId, DeclEngineGet as _, DeclEngineReplace as _, DeclId, MaterializeConstGenerics}, language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath}, semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext}, SubstTypes, TypeId
 };
 use serde::{Deserialize, Serialize};
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -15,7 +12,7 @@ pub struct TyConstGenericDecl {
     pub call_path: CallPath,
     pub return_type: TypeId,
     pub span: Span,
-    pub value: Option<TyExpression>,
+    pub value: Option<ConstGenericExpr>,
 }
 
 impl SubstTypes for TyConstGenericDecl {
@@ -24,22 +21,26 @@ impl SubstTypes for TyConstGenericDecl {
     }
 }
 
-impl MaterializeConstGenerics for TyConstGenericDecl {
+impl MaterializeConstGenerics for DeclId<TyConstGenericDecl> {
     fn materialize_const_generics(
         &mut self,
-        _engines: &crate::Engines,
-        _handler: &Handler,
+        engines: &crate::Engines,
+        handler: &Handler,
         name: &str,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
-        if self.call_path.suffix.as_str() == name {
-            match self.value.as_ref() {
+        let decl = engines.de().get(self);
+        if decl.name().as_str() == name {
+            match decl.value.as_ref() {
                 Some(expr) => {
-                    assert!(expr.extract_literal_value().unwrap().cast_value_to_u64().unwrap() == value.extract_literal_value().unwrap().cast_value_to_u64().unwrap());
+                    eprintln!("{:?} {:?} {:?}", self, expr, value);
+                    assert!(expr.as_literal_val().unwrap() as u64 == value.extract_literal_value().unwrap().cast_value_to_u64().unwrap());
                 }
                 None => {
-                    eprintln!("Materializing {} -> {:?}", name, value.expression);
-                    self.value = Some(value.clone());
+                    let mut new_decl = (&*decl).clone();
+                    new_decl.value = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+
+                    engines.de().replace(*self, new_decl);
                 }
             }
         }

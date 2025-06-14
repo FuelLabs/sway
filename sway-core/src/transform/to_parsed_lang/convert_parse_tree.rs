@@ -5,8 +5,8 @@ use crate::{
         generate_destructured_struct_var_name, generate_matched_value_var_name,
         generate_tuple_var_name,
     },
-    decl_engine::{parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId},
-    language::{parsed::*, *},
+    decl_engine::{parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId, DeclEngineGet as _, DeclEngineInsert, DeclRef},
+    language::{parsed::*, ty::TyConstGenericDecl, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
     BuildTarget, Engines,
@@ -575,11 +575,11 @@ pub fn item_fn_to_function_declaration(
         match p {
             TypeParameter::Type(_) => {}
             TypeParameter::Const(p) => {
-                p.id = Some(engines.pe().insert(ConstGenericDeclaration {
-                    name: p.name.clone(),
-                    ty: p.ty,
-                    span: p.span.clone(),
-                }));
+                // p.id = Some(engines.pe().insert(ConstGenericDeclaration {
+                //     name: p.name.clone(),
+                //     ty: p.ty,
+                //     span: p.span.clone(),
+                // })); // TODO uncomment this
             }
         }
     }
@@ -826,11 +826,14 @@ pub fn item_impl_to_declaration(
         match p {
             TypeParameter::Type(_) => {}
             TypeParameter::Const(p) => {
-                p.id = Some(engines.pe().insert(ConstGenericDeclaration {
-                    name: p.name.clone(),
-                    ty: p.ty,
-                    span: p.span.clone(),
-                }));
+                // let decl = engines.de().map_duplicate(p.decl_ref.id(), |x| {
+                //     x.id = Some(engines.pe().insert(ConstGenericDeclaration {
+                //         name: x.name().clone(),
+                //         ty: x.return_type,
+                //         span: x.span.clone(),
+                //     })); // TODO uncomment
+                // });
+                // p.decl_ref = DeclRef::new();
             }
         }
     }
@@ -1396,13 +1399,22 @@ fn generic_params_opt_to_type_parameters_with_parent(
                                     .error_because_is_disabled(&ident.span()),
                             );
                         }
-                        TypeParameter::Const(ConstGenericParameter {
+
+                        let decl_ref = engines.de().insert(TyConstGenericDecl {
+                            call_path: CallPath { 
+                                prefixes: vec![],
+                                suffix: ident.clone(),
+                                callpath_type: CallPathType::Ambiguous,
+                            },
+                            return_type: type_engine.id_of_u64(),
                             span: ident.span().clone(),
-                            name: ident,
-                            ty: type_engine.id_of_u64(),
+                            value: None,
+                        }, None); // TODO put id here
+                        eprintln!("{:?}", decl_ref.id());
+
+                        TypeParameter::Const(ConstGenericParameter {
+                            decl_ref,
                             is_from_parent,
-                            id: None,
-                            expr: None,
                         })
                     }
                 }

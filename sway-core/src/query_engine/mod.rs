@@ -188,10 +188,11 @@ impl QueryEngine {
         ident: &IdentUnique,
         sig: TyFunctionSig,
     ) -> Option<DeclRef<DeclId<TyFunctionDecl>>> {
-        let cache = self.function_cache.read();
-        cache
-            .get(&(ident.clone(), sig.get_type_str(engines)))
-            .map(|s| s.fn_decl.clone())
+        // let cache = self.function_cache.read();
+        // cache
+        //     .get(&(ident.clone(), sig.get_type_str(engines)))
+        //     .map(|s| s.fn_decl.clone())
+        None
     }
 
     pub fn insert_function(

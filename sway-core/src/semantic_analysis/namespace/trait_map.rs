@@ -15,16 +15,11 @@ use sway_types::{integer_bits::IntegerBits, BaseIdent, Ident, Span, Spanned};
 use crate::{
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert,
-    },
-    engine_threading::*,
-    language::{
+    }, engine_threading::*, language::{
         parsed::{EnumDeclaration, ImplItem, StructDeclaration},
         ty::{self, TyDecl, TyImplItem, TyTraitItem},
         CallPath,
-    },
-    type_system::{SubstTypes, TypeId},
-    GenericArgument, IncludeSelf, SubstTypesContext, TraitConstraint, TypeEngine, TypeInfo,
-    TypeSubstMap, UnifyCheck,
+    }, type_system::{SubstTypes, TypeId}, GenericArgument, IncludeSelf, SubstTypesContext, TraitConstraint, TypeEngine, TypeInfo, TypeParameter, TypeSubstMap, UnifyCheck
 };
 
 use super::Module;
@@ -819,6 +814,17 @@ impl TraitMap {
                     if let Some(decl_implementing_for_typeid) = decl.implementing_for_typeid {
                         type_mapping.insert(decl_implementing_for_typeid, type_id);
                     }
+                    for p in decl.type_parameters.iter() {
+                        match p {
+                            crate::TypeParameter::Type(_) => {},
+                            crate::TypeParameter::Const(p) => {
+                                let new_id = engines.de().map_duplicate(p.decl_ref.id(), |x| {
+                                    x.value = None; // TODO should not need this
+                                });
+                                type_mapping.insert_const_decl_id(*p.decl_ref.id(), new_id);
+                            },
+                        }
+                    }
                     decl.subst(&SubstTypesContext::new(
                         engines,
                         &type_mapping,
@@ -1255,6 +1261,25 @@ impl TraitMap {
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
                         {
+                            let mut decl = (&*decl).clone();
+                            let mut type_subst_map = TypeSubstMap::default();
+                            for p in decl.type_parameters.iter() {
+                                match p {
+                                    TypeParameter::Type(_) => {},
+                                    TypeParameter::Const(p) => {
+                                        let new_id = engines.de().map_duplicate(p.decl_ref.id(), |x| {
+                                            x.value = None;
+                                        });
+                                        type_subst_map.insert_const_decl_id(*p.decl_ref.id(), new_id);
+                                    },
+                                }
+                            }
+
+                            decl.subst(&SubstTypesContext { 
+                                engines: engines,
+                                type_subst_map: Some(&type_subst_map),
+                                subst_function_body: true,
+                            });
                             candidates.insert(
                                 trait_call_path_string,
                                 ResolvedTraitImplItem::Typed(TyTraitItem::Fn(fn_ref)),
@@ -1432,11 +1457,6 @@ impl TraitMap {
         engines: &Engines,
         all_impld_traits: BTreeSet<(Ident, TypeId)>,
     ) -> Result<(), ErrorEmitted> {
-        eprintln!("check_if_trait_constraints_are_satisfied_for_type_inner {:?} {:?}",
-            engines.help_out(type_id),
-            engines.help_out(constraints.to_vec()),
-        );
-
         let type_engine = engines.te();
         let unify_check = UnifyCheck::constraint_subset(engines);
 
@@ -1466,13 +1486,6 @@ impl TraitMap {
                 !all_impld_traits
                     .iter()
                     .any(|(trait_name, constraint_type_id)| {
-                        if trait_name == required_trait_name {
-                            let r = unify_check.check(*constraint_type_id, *required_trait_type_id);
-                            eprintln!("traits_not_found {r}: {:?} {:?}",
-                                engines.help_out(constraint_type_id),
-                                engines.help_out(required_trait_type_id),
-                            );
-                        }
                         trait_name == required_trait_name
                             && unify_check.check(*constraint_type_id, *required_trait_type_id)
                     })

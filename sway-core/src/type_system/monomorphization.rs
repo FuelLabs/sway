@@ -150,7 +150,7 @@ where
                     }
                     (TypeParameter::Const(p), GenericArgument::Const(a)) => {
                         consts.insert(
-                            p.name.as_str().to_string(),
+                            p.decl_ref.name().as_str().to_string(),
                             a.expr.to_ty_expression(engines),
                         );
                     }

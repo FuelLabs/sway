@@ -1,11 +1,8 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr,
-    engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
-    language::{
+    ast_elements::type_parameter::ConstGenericExpr, decl_engine::DeclEngineGet as _, engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext}, language::{
         ty::{TyEnumDecl, TyStructDecl},
         CallPathType,
-    },
-    type_system::priv_prelude::*,
+    }, type_system::priv_prelude::*
 };
 
 #[derive(Debug, Clone)]
@@ -816,7 +813,9 @@ impl<'a> UnifyCheck<'a> {
                     r_types.push(r.type_id);
                 }
                 (TypeParameter::Const(l), TypeParameter::Const(r)) => {
-                    match (l.expr.as_ref(), r.expr.as_ref()) {
+                    let ldecl = self.engines.de().get(l.decl_ref.id());
+                    let rdecl = self.engines.de().get(r.decl_ref.id());
+                    match (ldecl.value.as_ref(), rdecl.value.as_ref()) {
                         (None, None) => {}
                         (None, Some(_)) => {}
                         (Some(_), None) => {}

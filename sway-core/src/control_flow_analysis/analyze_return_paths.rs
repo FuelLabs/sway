@@ -323,7 +323,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
             .to_typeinfo(fn_decl.return_type.type_id(), &fn_decl.return_type.span())
             .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new())),
     };
-    graph.namespace.insert_function(fn_decl, namespace_entry);
+    graph.namespace.insert_function(engines, fn_decl, namespace_entry);
     Ok(())
 }
 

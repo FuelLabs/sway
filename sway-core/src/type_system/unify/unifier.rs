@@ -473,7 +473,9 @@ impl<'a> Unifier<'a> {
                         TypeParameter::Const(received_parameter),
                         TypeParameter::Const(expected_parameter),
                     ) => {
-                        match (received_parameter.expr.as_ref(), expected_parameter.expr.as_ref()) {
+                        let rdecl = self.engines.de().get(received_parameter.decl_ref.id());
+                        let edecl = self.engines.de().get(expected_parameter.decl_ref.id());
+                        match (rdecl.value.as_ref(), edecl.value.as_ref()) {
                             (Some(r), Some(e)) => {
                                 match (r.as_literal_val(), e.as_literal_val()) {
                                     (Some(r), Some(e)) if r == e => {},
@@ -557,7 +559,9 @@ impl<'a> Unifier<'a> {
                         TypeParameter::Const(received_parameter),
                         TypeParameter::Const(expected_parameter),
                     ) => {
-                        match (received_parameter.expr.as_ref(), expected_parameter.expr.as_ref()) {
+                        let rdecl = self.engines.de().get(received_parameter.decl_ref.id());
+                        let edecl = self.engines.de().get(expected_parameter.decl_ref.id());
+                        match (rdecl.value.as_ref(), edecl.value.as_ref()) {
                             (Some(r), Some(e)) => {
                                 match (r.as_literal_val(), e.as_literal_val()) {
                                     (Some(r), Some(e)) if r == e => {},
@@ -579,7 +583,7 @@ impl<'a> Unifier<'a> {
                                 );
                             }
                             (None, None) => {
-                                if received_parameter.name == expected_parameter.name {
+                                if received_parameter.decl_ref.name() == expected_parameter.decl_ref.name() {
                                 } else {
                                     todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                                 }

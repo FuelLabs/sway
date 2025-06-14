@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{
-        engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
+        engine::DeclEngineGetParsedDeclId, DeclEngineGet as _, DeclEngineInsert, DeclRefFunction, ReplaceDecls
     },
     language::{
         ty::{self, TyFunctionSig},
@@ -31,6 +31,23 @@ pub(crate) fn instantiate_function_application(
     let decl_engine = engines.de();
 
     let mut function_decl = (*decl_engine.get_function(&function_decl_ref)).clone();
+    
+    let mut type_subst_map = TypeSubstMap::default();
+    for p in function_decl.type_parameters.iter() {
+        match p {
+            TypeParameter::Type(_) => {},
+            TypeParameter::Const(p) => {
+                let new_id = engines.de().duplicate(p.decl_ref.id());
+                type_subst_map.insert_const_decl_id(*p.decl_ref.id(), new_id);
+            },
+        }
+    }
+
+    function_decl.subst(&SubstTypesContext { 
+        engines,
+        type_subst_map: Some(&type_subst_map),
+        subst_function_body: true
+    });
 
     if arguments.is_none() {
         return Err(
@@ -76,7 +93,7 @@ pub(crate) fn instantiate_function_application(
     let mut function_return_type_id = function_decl.return_type.type_id();
 
     let function_ident: IdentUnique = function_decl.name.clone().into();
-    let function_sig = TyFunctionSig::from_fn_decl(&function_decl);
+    let function_sig = TyFunctionSig::from_fn_decl(engines, &function_decl);
 
     let new_decl_ref = if let Some(cached_fn_ref) =
         ctx.engines()
@@ -99,7 +116,7 @@ pub(crate) fn instantiate_function_application(
             function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
         }
 
-        let method_sig = TyFunctionSig::from_fn_decl(&function_decl);
+        let method_sig = TyFunctionSig::from_fn_decl(engines, &function_decl);
 
         function_return_type_id = function_decl.return_type.type_id();
         let function_is_type_check_finalized = function_decl.is_type_check_finalized;

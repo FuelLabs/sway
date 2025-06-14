@@ -1,10 +1,7 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr,
-    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert},
-    engine_threading::{
+    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, ParsedDeclEngineInsert}, engine_threading::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
-    },
-    type_system::priv_prelude::*,
+    }, language::ty::TyConstGenericDecl, type_system::priv_prelude::*
 };
 use std::{collections::BTreeMap, fmt};
 
@@ -17,13 +14,14 @@ type DestinationType = TypeId;
 pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
     pub const_generics_materialization: BTreeMap<String, crate::language::ty::TyExpression>,
+    pub const_mapping: BTreeMap<DeclId<TyConstGenericDecl>, DeclId<TyConstGenericDecl>>,
 }
 
 impl DebugWithEngines for TypeSubstMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(
             f,
-            "TypeSubstMap {{ {}; {} }}",
+            "TypeSubstMap {{ {}; {}; {} }}",
             self.mapping
                 .iter()
                 .map(|(source_type, dest_type)| {
@@ -39,6 +37,13 @@ impl DebugWithEngines for TypeSubstMap {
                 .iter()
                 .map(|(k, v)| {
                     format!("{:?} -> {:?}", k, engines.help_out(v))
+                })
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.const_mapping
+                .iter()
+                .map(|(k, v)| {
+                    format!("{:?} -> {:?}", k, v)
                 })
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -71,6 +76,7 @@ impl TypeSubstMap {
         TypeSubstMap {
             mapping: BTreeMap::<SourceType, DestinationType>::new(),
             const_generics_materialization: BTreeMap::new(),
+            const_mapping: BTreeMap::new(),
         }
     }
 
@@ -109,6 +115,7 @@ impl TypeSubstMap {
         TypeSubstMap {
             mapping,
             const_generics_materialization: BTreeMap::new(),
+            const_mapping: BTreeMap::new(),
         }
     }
 
@@ -171,6 +178,7 @@ impl TypeSubstMap {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
                 mapping: BTreeMap::from([(superset, subset)]),
                 const_generics_materialization: BTreeMap::new(),
+                const_mapping: BTreeMap::new(),
             },
             (
                 TypeInfo::Custom {
@@ -314,10 +322,12 @@ impl TypeSubstMap {
             | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
                 mapping: BTreeMap::new(),
                 const_generics_materialization: BTreeMap::new(),
+                const_mapping: BTreeMap::new(),
             },
             _ => TypeSubstMap {
                 mapping: BTreeMap::new(),
                 const_generics_materialization: BTreeMap::new(),
+                const_mapping: BTreeMap::new(),
             },
         }
     }
@@ -356,6 +366,7 @@ impl TypeSubstMap {
         TypeSubstMap {
             mapping,
             const_generics_materialization: BTreeMap::new(),
+            const_mapping: BTreeMap::new(),
         }
     }
 
@@ -368,6 +379,7 @@ impl TypeSubstMap {
         TypeSubstMap {
             mapping,
             const_generics_materialization,
+            const_mapping: BTreeMap::new(),
         }
     }
 
@@ -379,10 +391,17 @@ impl TypeSubstMap {
                 .iter()
                 .map(|x| (x.0.clone(), x.1.clone())),
         );
+        self.const_mapping.extend(other.const_mapping.iter()
+            .map(|x| (x.0.clone(), x.1.clone()))
+        );
     }
 
     pub(crate) fn insert(&mut self, source: SourceType, destination: DestinationType) {
         self.mapping.insert(source, destination);
+    }
+
+    pub(crate) fn insert_const_decl_id(&mut self, old: DeclId<TyConstGenericDecl>, new: DeclId<TyConstGenericDecl>) {
+        self.const_mapping.insert(old, new);
     }
 
     /// Given a [TypeId] `type_id`, find (or create) a match for `type_id` in

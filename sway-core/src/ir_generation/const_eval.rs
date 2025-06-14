@@ -4,14 +4,10 @@ use std::{
 };
 
 use crate::{
-    engine_threading::*,
-    language::{
+    decl_engine::DeclEngineGet as _, engine_threading::*, language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
         CallPath, Literal,
-    },
-    metadata::MetadataManager,
-    semantic_analysis::*,
-    TypeInfo, UnifyCheck,
+    }, metadata::MetadataManager, semantic_analysis::*, TypeInfo, UnifyCheck
 };
 
 use super::{
@@ -309,8 +305,9 @@ fn const_eval_typed_expr(
 
     Ok(match &expr.expression {
         ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+            let decl = lookup.engines.de().get(decl);
             assert!(decl.value.is_some());
-            const_eval_typed_expr(lookup, known_consts, decl.value.as_ref().unwrap())?
+            const_eval_typed_expr(lookup, known_consts, &decl.value.as_ref().unwrap().to_ty_expression(lookup.engines))?
         }
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
             let implied_lit = match &*lookup.engines.te().get(expr.return_type) {

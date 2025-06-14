@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{parsed_id::ParsedDeclId, DeclEngine, DeclEngineGet, DeclId},
+    decl_engine::{engine, parsed_id::ParsedDeclId, DeclEngine, DeclEngineGet, DeclId},
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
         OrdWithEngines, OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
@@ -609,7 +609,7 @@ impl DisplayWithEngines for TypeInfo {
                     decl.name.as_str(),
                     decl.type_parameters.iter().map(|arg| match arg {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.decl_ref.name().as_str().to_string(),
                     }),
                 )
             }
@@ -620,7 +620,7 @@ impl DisplayWithEngines for TypeInfo {
                     decl.name.as_str(),
                     decl.type_parameters.iter().map(|arg| match arg {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.decl_ref.name().as_str().to_string(),
                     }),
                 )
             }
@@ -631,7 +631,7 @@ impl DisplayWithEngines for TypeInfo {
                     decl.call_path.suffix.as_str(),
                     decl.generic_parameters.iter().map(|arg| match arg {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.decl_ref.name().as_str().to_string(),
                     }),
                 )
             }
@@ -642,7 +642,7 @@ impl DisplayWithEngines for TypeInfo {
                     decl.call_path.suffix.as_str(),
                     decl.generic_parameters.iter().map(|arg| match arg {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.decl_ref.name().as_str().to_string(),
                     }),
                 )
             }
@@ -759,7 +759,7 @@ impl DebugWithEngines for TypeInfo {
                     decl.name.as_str(),
                     decl.type_parameters.iter().map(|x| match x {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.decl_ref.name().as_str().to_string(),
                     }),
                 )
             }
@@ -770,7 +770,7 @@ impl DebugWithEngines for TypeInfo {
                     decl.name.as_str(),
                     decl.type_parameters.iter().map(|x| match x {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
+                        TypeParameter::Const(p) => p.decl_ref.name().as_str().to_string(),
                     }),
                 )
             }
@@ -782,15 +782,16 @@ impl DebugWithEngines for TypeInfo {
                     decl.generic_parameters.iter().map(|x| match x {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
                         TypeParameter::Const(p) => {
-                            if let Some(expr) = p.expr.as_ref() {
-                                format!("{} = {}", p.name, match expr {
+                            let decl = engines.de().get(p.decl_ref.id());
+                            if let Some(expr) = decl.value.as_ref() {
+                                format!("{} = {}", decl.name(), match expr {
                                     ConstGenericExpr::Literal { val, .. } => val.to_string(),
                                     ConstGenericExpr::AmbiguousVariableExpression { ident } => {
                                         ident.as_str().to_string()
                                     }
                                 })
                             } else {
-                                p.name.as_str().to_string()
+                                decl.name().as_str().to_string()
                             }
                         }
                     }),
@@ -804,7 +805,8 @@ impl DebugWithEngines for TypeInfo {
                     decl.generic_parameters.iter().map(|arg| match arg {
                         TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
                         TypeParameter::Const(p) => {
-                            if let Some(expr) = p.expr.as_ref() {
+                            let decl = engines.de().get(p.decl_ref.id());
+                            if let Some(expr) = decl.value.as_ref() {
                                 match expr {
                                     ConstGenericExpr::Literal { val, .. } => val.to_string(),
                                     ConstGenericExpr::AmbiguousVariableExpression { ident } => {
@@ -812,7 +814,7 @@ impl DebugWithEngines for TypeInfo {
                                     }
                                 }
                             } else {
-                                p.name.as_str().to_string()
+                                p.decl_ref.name().as_str().to_string()
                             }
                         }
                     }),
@@ -1835,7 +1837,7 @@ impl TypeInfo {
                             .map(|p| {
                                 match p {
                                     TypeParameter::Type(p) => p.type_id.get_type_str(engines),
-                                    TypeParameter::Const(p) => p.name.as_str().to_string(),
+                                    TypeParameter::Const(p) => p.decl_ref.name().as_str().to_string(),
                                 }
                             })
                             .collect::<Vec<_>>()
@@ -1856,7 +1858,7 @@ impl TypeInfo {
                             .map(|p| {
                                 match p {
                                     TypeParameter::Type(p) => p.type_id.get_type_str(engines),
-                                    TypeParameter::Const(p) => p.name.as_str().to_string(),
+                                    TypeParameter::Const(p) => p.decl_ref.name().as_str().to_string(),
                                 }
                             })
                             .collect::<Vec<_>>()

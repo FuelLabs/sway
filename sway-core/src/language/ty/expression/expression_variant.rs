@@ -50,9 +50,9 @@ pub enum TyExpressionVariant {
         call_path: Option<CallPath>,
     },
     ConstGenericExpression {
-        span: Span,
-        decl: Box<TyConstGenericDecl>,
         call_path: CallPath,
+        decl: DeclId<TyConstGenericDecl>,
+        span: Span,
     },
     VariableExpression {
         name: Ident,
@@ -496,7 +496,8 @@ impl HashWithEngines for TyExpressionVariant {
                 span: _,
                 call_path: _,
             } => {
-                const_generic_decl.name().hash(state);
+                let decl = engines.de().get(const_generic_decl);
+                decl.name().hash(state);
             }
             Self::VariableExpression {
                 name,
@@ -687,8 +688,6 @@ impl SubstTypes for TyExpressionVariant {
                 ..
             } => {
                 // TODO const generics name can change here.
-                eprintln!("TyExpressionVariant subst_inner 1: {:?}", ctx.engines.help_out(ctx.type_subst_map));
-                eprintln!("TyExpressionVariant subst_inner 2: {:?}", ctx.engines.help_out(fn_ref.id()));
                 has_changes! {
                     arguments.subst(ctx);
                     if let Some(new_decl_ref) = fn_ref
@@ -709,7 +708,16 @@ impl SubstTypes for TyExpressionVariant {
             },
             ConstantExpression { decl, .. } => decl.subst(ctx),
             ConfigurableExpression { decl, .. } => decl.subst(ctx),
-            ConstGenericExpression { decl, .. } => decl.subst(ctx),
+            ConstGenericExpression { decl, .. } => {
+                if let Some(new_id) = ctx.type_subst_map
+                    .and_then(|map| map.const_mapping.get(decl))
+                {
+                    *decl = *new_id;
+                    HasChanges::Yes
+                } else {
+                    HasChanges::No
+                }
+            },
             VariableExpression { .. } => HasChanges::No,
             Tuple { fields } => fields.subst(ctx),
             ArrayExplicit {
@@ -1106,7 +1114,7 @@ impl TypeCheckAnalysis for TyExpressionVariant {
                 decl.type_check_analyze(handler, ctx)?
             }
             TyExpressionVariant::ConstGenericExpression { decl, .. } => {
-                decl.type_check_analyze(handler, ctx)?
+                //decl.type_check_analyze(handler, ctx)?
             }
             TyExpressionVariant::VariableExpression { .. } => {}
             TyExpressionVariant::Tuple { fields } => {
@@ -1494,6 +1502,7 @@ impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         let s = match self {
             TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                let decl = engines.de().get(decl);
                 format!("const generic {:?} = {:?}", decl.name(), decl.value)
             }
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),

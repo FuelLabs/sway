@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::MaterializeConstGenerics,
+    decl_engine::{DeclEngineGet as _, DeclEngineInsert, DeclRef, MaterializeConstGenerics},
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
@@ -108,8 +108,8 @@ impl MaterializeConstGenerics for TyStructDecl {
     ) -> Result<(), ErrorEmitted> {
         for p in self.generic_parameters.iter_mut() {
             match p {
-                TypeParameter::Const(p) if p.name.as_str() == name => {
-                    p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                TypeParameter::Const(p) if p.decl_ref.name().as_str() == name => {
+                    p.decl_ref.id().clone().materialize_const_generics(engines, handler, name, value);
                 }
                 _ => {}
             }

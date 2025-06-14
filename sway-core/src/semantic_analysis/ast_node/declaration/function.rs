@@ -37,21 +37,21 @@ impl ty::TyFunctionDecl {
 
         // create a namespace for the function
         let _ = ctx.scoped(engines, fn_decl.span.clone(), Some(decl), |scoped_ctx| {
-            let const_generic_parameters = fn_decl
-                .type_parameters
-                .iter()
-                .filter_map(|x| x.as_const_parameter())
-                .filter_map(|x| x.id.as_ref());
+            // let const_generic_parameters = fn_decl
+            //     .type_parameters
+            //     .iter()
+            //     .filter_map(|x| x.as_const_parameter())
+            //     .filter_map(|x| x.id.as_ref());
 
-            for const_generic_parameter in const_generic_parameters {
-                let const_generic_decl = engines.pe().get(const_generic_parameter);
-                scoped_ctx.insert_parsed_symbol(
-                    handler,
-                    engines,
-                    const_generic_decl.name.clone(),
-                    Declaration::ConstGenericDeclaration(*const_generic_parameter),
-                )?;
-            }
+            // for const_generic_parameter in const_generic_parameters {
+            //     let const_generic_decl = engines.pe().get(const_generic_parameter);
+            //     scoped_ctx.insert_parsed_symbol(
+            //         handler,
+            //         engines,
+            //         const_generic_decl.name.clone(),
+            //         Declaration::ConstGenericDeclaration(*const_generic_parameter),
+            //     )?;
+            // }
 
             TyCodeBlock::collect(handler, engines, scoped_ctx, &fn_decl.body)
         });
@@ -137,28 +137,13 @@ impl ty::TyFunctionDecl {
                 let const_generic_parameters = type_parameters
                     .iter()
                     .filter_map(|x| x.as_const_parameter())
-                    .filter_map(|x| x.id.as_ref());
-                for const_generic_decl_id in const_generic_parameters {
-                    let const_generic_decl = ctx.engines.pe().get(const_generic_decl_id);
-                    let decl_ref = ctx.engines.de().insert(
-                        TyConstGenericDecl {
-                            call_path: CallPath {
-                                prefixes: vec![],
-                                suffix: const_generic_decl.name.clone(),
-                                callpath_type: CallPathType::Ambiguous,
-                            },
-                            span: const_generic_decl.span.clone(),
-                            return_type: const_generic_decl.ty,
-                            value: None,
-                        },
-                        Some(const_generic_decl_id),
-                    );
-
+                    .map(|x| &x.decl_ref);
+                for p in const_generic_parameters {
                     ctx.insert_symbol(
                         handler,
-                        const_generic_decl.name.clone(),
+                        p.name().clone(),
                         TyDecl::ConstGenericDecl(ConstGenericDecl {
-                            decl_id: *decl_ref.id(),
+                            decl_id: *p.id(),
                         }),
                     )?;
                 }

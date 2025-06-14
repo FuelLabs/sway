@@ -166,7 +166,9 @@ impl TyTraitDecl {
                 ctx.insert_trait_implementation(
                     handler,
                     CallPath::ident_to_fullpath(name.clone(), ctx.namespace),
-                    new_type_parameters.iter().map(|x| x.into()).collect(),
+                    new_type_parameters.iter()
+                        .map(|x| GenericArgument::from(engines, x))
+                        .collect(),
                     self_type,
                     vec![],
                     &dummy_interface_surface,
@@ -235,7 +237,9 @@ impl TyTraitDecl {
                 ctx.insert_trait_implementation(
                     handler,
                     CallPath::ident_to_fullpath(name.clone(), ctx.namespace()),
-                    new_type_parameters.iter().map(|x| x.into()).collect(),
+                    new_type_parameters.iter()
+                        .map(|x| GenericArgument::from(engines, x))
+                        .collect(),
                     self_type,
                     vec![],
                     &dummy_interface_surface,
@@ -413,6 +417,18 @@ impl TyTraitDecl {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut method = (*decl_engine.get_function(&decl_ref)).clone();
+
+                    let mut type_mapping = type_mapping.clone();
+                    for p in method.type_parameters.iter() {
+                        match p {
+                            TypeParameter::Type(_) => {},
+                            TypeParameter::Const(p) => {
+                                let new_id = engines.de().duplicate(p.decl_ref.id());
+                                type_mapping.insert_const_decl_id(*p.decl_ref.id(), new_id);
+                            },
+                        }
+                    }
+
                     let name = method.name.clone();
                     let r = if method
                         .subst(&SubstTypesContext::new(

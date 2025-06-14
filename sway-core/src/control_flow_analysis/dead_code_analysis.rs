@@ -1082,7 +1082,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
         return_type: ty,
     };
 
-    graph.namespace.insert_function(fn_decl, namespace_entry);
+    graph.namespace.insert_function(engines, fn_decl, namespace_entry);
 
     connect_fn_params_struct_enums(engines, fn_decl, graph, entry_node)?;
     Ok(())
@@ -1239,12 +1239,12 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             for parent in parents.iter() {
                 if let Ok(parent_decl_id) = DeclId::try_from(parent) {
                     let parent = decl_engine.get_function(&parent_decl_id);
-                    exists |= graph.namespace.get_function(&parent).is_some();
+                    exists |= graph.namespace.get_function(engines, &parent).is_some();
                 }
             }
 
             // find the function in the namespace
-            let fn_namespace_entry = graph.namespace.get_function(&fn_decl).cloned();
+            let fn_namespace_entry = graph.namespace.get_function(engines, &fn_decl).cloned();
 
             // connect function entry point to type in function application call path.
             if let (Some(call_path_typeid), Some(fn_namespace_entry)) =

@@ -3,9 +3,7 @@ use crate::{
     engine_threading::*,
     has_changes,
     language::{
-        parsed::{self, FunctionDeclaration, FunctionDeclarationKind},
-        ty::*,
-        CallPath, Inline, Purity, Visibility,
+        parsed::{self, FunctionDeclaration, FunctionDeclarationKind}, ty::*, CallPath, CallPathType, Inline, Purity, Visibility
     },
     semantic_analysis::TypeCheckContext,
     transform::{self, AttributeKind},
@@ -84,7 +82,8 @@ impl DebugWithEngines for TyFunctionDecl {
                                     )
                                 }
                                 TypeParameter::Const(p) => {
-                                    format!("{} -> {:?}", p.name, p.expr)
+                                    let decl = engines.de().get(p.decl_ref.id());
+                                    format!("{} -> {:?}", decl.name(), decl.value)
                                 }
                             }
                         })
@@ -155,22 +154,34 @@ impl MaterializeConstGenerics for TyFunctionDecl {
         name: &str,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
-        eprintln!("Before TyFunctionDecl for {name}: {:?}", engines.help_out(&*self));
-        eprintln!("{}", std::backtrace::Backtrace::force_capture());
-
         for tp in self.type_parameters.iter_mut() {
             match tp {
                 TypeParameter::Type(p) => p
                     .type_id
                     .materialize_const_generics(engines, handler, name, value)?,
-                TypeParameter::Const(p) if p.name.as_str() == name => {
-                    match p.expr.as_ref() {
+                TypeParameter::Const(p) if p.decl_ref.name().as_str() == name => {
+                    eprintln!("{:?}", p.decl_ref.id());
+                    let decl = engines.de().get(p.decl_ref.id());
+                    match decl.value.as_ref() {
                         Some(expr) => {
                             // TODO horrible assert
-                            assert!(expr.as_literal_val().unwrap() as u64 == value.extract_literal_value().unwrap().cast_value_to_u64().unwrap());
+                            assert!(
+                                expr.as_literal_val().unwrap() as u64 == value.extract_literal_value().unwrap().cast_value_to_u64().unwrap(),
+                                "{:?} {expr:?} vs {value:?}", p.decl_ref.id()
+                            );
                         },
                         None => {
-                            p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                            let decl = TyConstGenericDecl {
+                                call_path: CallPath { 
+                                    prefixes: vec![], 
+                                    suffix: p.decl_ref.name().clone(), 
+                                    callpath_type: CallPathType::Ambiguous,
+                                },
+                                return_type: decl.return_type.clone(),
+                                span: decl.span.clone(),
+                                value: Some(ConstGenericExpr::from_ty_expression(handler, value)?),
+                            };
+                            engines.de().replace(*p.decl_ref.id(), decl);
                         },
                     }
                 }
@@ -179,12 +190,10 @@ impl MaterializeConstGenerics for TyFunctionDecl {
         }
 
         for param in self.parameters.iter_mut() {
-            eprintln!("Before TyFunctionDecl Param: {:?}", engines.help_out(param.type_argument.type_id()));
             param
                 .type_argument
                 .type_id_mut()
                 .materialize_const_generics(engines, handler, name, value)?;
-            eprintln!("After TyFunctionDecl Param: {:?}", engines.help_out(param.type_argument.type_id()));
         }
 
         self.return_type
@@ -192,9 +201,7 @@ impl MaterializeConstGenerics for TyFunctionDecl {
             .materialize_const_generics(engines, handler, name, value)?;
 
         self.body
-            .materialize_const_generics(engines, handler, name, value);
-
-        eprintln!("After TyFunctionDecl: {:?}", engines.help_out(&*self));
+            .materialize_const_generics(engines, handler, name, value)?;
 
         Ok(())
     }
@@ -234,31 +241,49 @@ impl DeclRefFunction {
                 for p in impl_self_or_trait
                     .impl_type_parameters
                     .iter()
-                    .filter_map(|x| x.as_type_parameter())
                 {
-                    let matches = type_id_type_parameters
-                        .iter()
-                        .filter(|(_, orig_tp)| {
-                            engines.te().get(*orig_tp).eq(
-                                &*engines.te().get(p.type_id),
-                                &PartialEqWithEnginesContext::new(engines),
-                            )
-                        })
-                        .collect::<Vec<_>>();
+                    match p {
+                        TypeParameter::Type(p) => {
+                            let matches = type_id_type_parameters
+                                .iter()
+                                .filter(|(_, orig_tp)| {
+                                    engines.te().get(*orig_tp).eq(
+                                        &*engines.te().get(p.type_id),
+                                        &PartialEqWithEnginesContext::new(engines),
+                                    )
+                                })
+                                .collect::<Vec<_>>();
 
-                    if !matches.is_empty() {
-                        // Adds type substitution for first match only as we can apply only one.
-                        type_id_type_subst_map.insert(p.type_id, matches[0].0);
-                    } else if engines
-                        .te()
-                        .get(impl_self_or_trait.implementing_for.initial_type_id())
-                        .eq(
-                            &*engines.te().get(p.initial_type_id),
-                            &PartialEqWithEnginesContext::new(engines),
-                        )
-                    {
-                        type_id_type_subst_map.insert(p.type_id, type_id);
+                            if !matches.is_empty() {
+                                // Adds type substitution for first match only as we can apply only one.
+                                type_id_type_subst_map.insert(p.type_id, matches[0].0);
+                            } else if engines
+                                .te()
+                                .get(impl_self_or_trait.implementing_for.initial_type_id())
+                                .eq(
+                                    &*engines.te().get(p.initial_type_id),
+                                    &PartialEqWithEnginesContext::new(engines),
+                                )
+                            {
+                                type_id_type_subst_map.insert(p.type_id, type_id);
+                            }
+                        },
+                        TypeParameter::Const(p) => {
+                            let new_id = engines.de().duplicate(p.decl_ref.id());
+                            type_id_type_subst_map.insert_const_decl_id(*p.decl_ref.id(), new_id);
+                        },
                     }
+                    
+                }
+            }
+
+            for p in method.type_parameters.iter() {
+                match p {
+                    TypeParameter::Type(_) => {},
+                    TypeParameter::Const(p) => {
+                        let new_id = engines.de().duplicate(p.decl_ref.id());
+                        type_id_type_subst_map.insert_const_decl_id(*p.decl_ref.id(), new_id);
+                    },
                 }
             }
 
@@ -713,7 +738,7 @@ impl TyFunctionParameter {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TyFunctionSigTypeParameter {
     Type(TypeId),
-    Const(ConstGenericExpr),
+    Const(DeclId<TyConstGenericDecl>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -740,8 +765,10 @@ impl DebugWithEngines for TyFunctionSig {
                     .iter()
                     .map(|p| match p {
                         TyFunctionSigTypeParameter::Type(t) => format!("{:?}", engines.help_out(t)),
-                        TyFunctionSigTypeParameter::Const(expr) =>
-                            format!("{:?}", engines.help_out(expr)),
+                        TyFunctionSigTypeParameter::Const(id) => {
+                            let decl = engines.de().get(id);
+                            format!("{:?} {:?}", id, decl)
+                        }
                     })
                     .collect::<Vec<_>>()
                     .join(", "),
@@ -762,7 +789,7 @@ impl DebugWithEngines for TyFunctionSig {
 }
 
 impl TyFunctionSig {
-    pub fn from_fn_decl(fn_decl: &TyFunctionDecl) -> Self {
+    pub fn from_fn_decl(engines: &Engines, fn_decl: &TyFunctionDecl) -> Self {
         Self {
             return_type: fn_decl.return_type.type_id(),
             parameters: fn_decl
@@ -776,10 +803,7 @@ impl TyFunctionSig {
                 .map(|x| match x {
                     TypeParameter::Type(p) => TyFunctionSigTypeParameter::Type(p.type_id),
                     TypeParameter::Const(p) => {
-                        let expr = ConstGenericExpr::AmbiguousVariableExpression {
-                            ident: p.name.clone(),
-                        };
-                        TyFunctionSigTypeParameter::Const(p.expr.clone().unwrap_or(expr))
+                        TyFunctionSigTypeParameter::Const(p.decl_ref.id().clone())
                     }
                 })
                 .collect(),
@@ -816,20 +840,13 @@ impl TyFunctionSig {
                     .iter()
                     .map(|x| match x {
                         TyFunctionSigTypeParameter::Type(type_id) => type_id.get_type_str(engines),
-                        TyFunctionSigTypeParameter::Const(p) => {
-                            match p {
-                                ConstGenericExpr::Literal { val, .. } => val.to_string(),
-                                ConstGenericExpr::AmbiguousVariableExpression { ident } => {
-                                    ident.as_str().to_string()
-                                }
-                            }
-                        }
+                        TyFunctionSigTypeParameter::Const(p) => format!("{:?}", p),
                     })
                     .collect::<Vec<_>>()
                     .join(", "),
             )
         };
-        format!(
+        let r = format!(
             "fn{}({}) -> {}",
             tp_str,
             self.parameters
@@ -838,6 +855,7 @@ impl TyFunctionSig {
                 .collect::<Vec<_>>()
                 .join(", "),
             self.return_type.get_type_str(engines),
-        )
+        );
+        r
     }
 }

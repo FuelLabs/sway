@@ -1,8 +1,7 @@
 use crate::{
     abi_generation::abi_str::AbiStrContext,
     decl_engine::{
-        parsed_id::ParsedDeclId, DeclEngineInsert as _, DeclMapping, InterfaceItemMap, ItemMap,
-        ParsedDeclEngineGet as _,
+        parsed_id::ParsedDeclId, DeclEngineGet as _, DeclEngineInsert as _, DeclId, DeclMapping, DeclRef, InterfaceItemMap, ItemMap, ParsedDeclEngineGet as _
     },
     engine_threading::*,
     has_changes,
@@ -70,53 +69,34 @@ impl TypeParameter {
                 type_id,
                 ..
             }) => (
-                is_from_parent,
-                name,
+                *is_from_parent,
+                name.clone(),
                 *type_id,
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                     name: name.clone(),
                     type_id: *type_id,
                 }),
             ),
-            TypeParameter::Const(ConstGenericParameter {
-                is_from_parent,
-                name,
-                id,
-                span,
-                ty,
-                ..
-            }) => {
-                let decl_ref = ctx.engines.de().insert(
-                    TyConstGenericDecl {
-                        call_path: CallPath {
-                            prefixes: vec![],
-                            suffix: name.clone(),
-                            callpath_type: CallPathType::Ambiguous,
-                        },
-                        span: span.clone(),
-                        return_type: *ty,
-                        value: None,
-                    },
-                    id.as_ref(),
-                );
+            TypeParameter::Const(p) => {
+                let decl = ctx.engines.de().get(p.decl_ref.id());
                 (
-                    is_from_parent,
-                    name,
+                    p.is_from_parent,
+                    decl.name().clone(),
                     ctx.engines.te().id_of_u64(),
                     ty::TyDecl::ConstGenericDecl(ConstGenericDecl {
-                        decl_id: *decl_ref.id(),
+                        decl_id: *p.decl_ref.id(),
                     }),
                 )
             }
         };
 
-        if *is_from_parent {
+        if is_from_parent {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
             let (resolve_declaration, _) =
                 ctx.namespace()
                     .current_module()
-                    .resolve_symbol(handler, ctx.engines(), name)?;
+                    .resolve_symbol(handler, ctx.engines(), &name)?;
 
             match resolve_declaration.expect_typed_ref() {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
@@ -168,7 +148,7 @@ impl Named for TypeParameter {
     fn name(&self) -> &BaseIdent {
         match self {
             TypeParameter::Type(p) => &p.name,
-            TypeParameter::Const(p) => &p.name,
+            TypeParameter::Const(p) => &p.decl_ref.name(),
         }
     }
 }
@@ -1058,33 +1038,31 @@ impl DebugWithEngines for ConstGenericExpr {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstGenericParameter {
-    pub name: Ident,
-    pub ty: TypeId,
+    pub decl_ref: DeclRef<DeclId<TyConstGenericDecl>>,
     pub is_from_parent: bool,
-    pub span: Span,
-    pub id: Option<ParsedDeclId<ConstGenericDeclaration>>,
-    pub expr: Option<ConstGenericExpr>,
 }
 
 impl HashWithEngines for ConstGenericParameter {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let ConstGenericParameter {
-            name, ty, id, expr, ..
-        } = self;
         let type_engine = engines.te();
-        type_engine.get(*ty).hash(state, engines);
-        name.hash(state);
-        if let Some(id) = id.as_ref() {
-            let decl = engines.pe().get(id);
-            decl.name.hash(state);
-            decl.ty.hash(state);
-        }
-        match &expr {
+
+        let decl = engines.de().get(self.decl_ref.id());
+
+        type_engine.get(decl.return_type).hash(state, engines);
+        decl.name().hash(state);
+
+        // if let Some(id) = decl.id.as_ref() {
+        //     let decl = engines.pe().get(id);
+        //     decl.name.hash(state);
+        //     decl.ty.hash(state);
+        // }
+
+        match &decl.value {
             Some(expr) => {
                 expr.hash(state);
             }
             None => {
-                self.name.hash(state);
+                self.decl_ref.name().hash(state);
             }
         }
     }
@@ -1093,13 +1071,25 @@ impl HashWithEngines for ConstGenericParameter {
 impl EqWithEngines for ConstGenericParameter {}
 impl PartialEqWithEngines for ConstGenericParameter {
     fn eq(&self, other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
-        self.name.as_str() == other.name.as_str()
+        self.decl_ref.name().as_str() == other.decl_ref.name().as_str()
     }
 }
 
 impl SubstTypes for ConstGenericParameter {
-    fn subst_inner(&mut self, _ctx: &SubstTypesContext) -> HasChanges {
-        HasChanges::No
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        if let Some(new_id) = ctx.type_subst_map
+            .and_then(|map| map.const_mapping.get(self.decl_ref.id()))
+        {
+            let decl = ctx.engines.de().get(new_id);
+            self.decl_ref = DeclRef::new(
+                decl.name().clone(),
+                *new_id,
+                decl.span(),
+            );
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }
 

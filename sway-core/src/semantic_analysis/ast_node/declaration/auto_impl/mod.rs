@@ -93,9 +93,9 @@ where
                 TypeParameter::Type(p) => code.push_str(p.name.as_str()),
                 TypeParameter::Const(p) => {
                     if expanded_const_generics {
-                        code.push_str(&format!("const {}: u64", p.name.as_str()));
+                        code.push_str(&format!("const {}: u64", p.decl_ref.name().as_str()));
                     } else {
-                        code.push_str(p.name.as_str())
+                        code.push_str(p.decl_ref.name().as_str())
                     }
                 }
             }

@@ -138,7 +138,7 @@ where
     fn get_parsed_decl(&self, decl_id: &DeclId<T>) -> Option<Declaration>;
 }
 
-pub trait DeclEngineInsert<T>
+pub trait DeclEngineInsert<T>: DeclEngineGet<DeclId<T>, T>
 where
     T: Named + Spanned + TyDeclParsedType,
 {
@@ -147,6 +147,23 @@ where
         decl: T,
         parsed_decl_id: Option<&ParsedDeclId<T::ParsedType>>,
     ) -> DeclRef<DeclId<T>>;
+
+    fn map_duplicate(
+        &self,
+        index: &DeclId<T>,
+        map: impl FnOnce(&mut T),
+    ) -> DeclId<T>
+    where
+        T: Clone;
+
+    fn duplicate(
+        &self,
+        index: &DeclId<T>,
+    ) -> DeclId<T>
+    where
+        T: Clone {
+        self.map_duplicate(index, |_| {})
+    }
 }
 
 pub trait DeclEngineInsertArc<T>
@@ -217,13 +234,36 @@ macro_rules! decl_engine_insert {
             ) -> DeclRef<DeclId<$decl>> {
                 let span = decl.span();
                 let decl_name = decl.name().clone();
-                let decl_id = DeclId::new(self.$slab.insert(decl));
+                let id = self.$slab.insert(decl);
+                let decl_id = DeclId::new(id);
                 if let Some(parsed_decl_id) = parsed_decl_id {
                     self.$parsed_slab
                         .write()
                         .insert(decl_id, parsed_decl_id.clone());
                 }
+
                 DeclRef::new(decl_name, decl_id, span)
+            }
+
+            fn map_duplicate(
+                &self,
+                index: &DeclId<$decl>,
+                map: impl FnOnce(&mut $decl),
+            ) -> DeclId<$decl>
+            where
+                $decl: Clone
+            {
+                let item = self.get(index);
+
+                let new_item: $decl = (&*item).clone();
+                let new_id = DeclId::new(self.$slab.insert(new_item));
+
+                let mut slab = self.$parsed_slab.write();
+                if let Some(parsed_decl_id) = slab.get(index).cloned() {
+                    slab.insert(new_id.clone(), parsed_decl_id.clone());
+                }
+
+                new_id
             }
         }
         impl DeclEngineInsertArc<$decl> for DeclEngine {
@@ -415,6 +455,7 @@ decl_engine_replace!(constant_slab, ty::TyConstantDecl);
 decl_engine_replace!(configurable_slab, ty::TyConfigurableDecl);
 decl_engine_replace!(enum_slab, ty::TyEnumDecl);
 decl_engine_replace!(type_alias_slab, ty::TyTypeAliasDecl);
+decl_engine_replace!(const_generics_slab, ty::TyConstGenericDecl);
 
 macro_rules! decl_engine_index {
     ($slab:ident, $decl:ty) => {

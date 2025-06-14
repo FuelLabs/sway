@@ -1,15 +1,13 @@
 use super::{EntryPoint, ExitPoint};
 use crate::{
-    language::{
+    decl_engine::DeclId, language::{
         parsed::TreeType,
         ty::{
             self, TyConfigurableDecl, TyConstGenericDecl, TyConstantDecl, TyFunctionDecl,
             TyFunctionSig,
         },
         CallPath,
-    },
-    type_system::TypeInfo,
-    Ident,
+    }, type_system::TypeInfo, Engines, Ident
 };
 use indexmap::IndexMap;
 use petgraph::prelude::NodeIndex;
@@ -61,7 +59,7 @@ pub struct ControlFlowNamespace {
     pub(crate) struct_namespace: HashMap<String, StructNamespaceEntry>,
     pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
     pub(crate) configurable_namespace: HashMap<Ident, NodeIndex>,
-    pub(crate) const_generic_namespace: HashMap<Ident, NodeIndex>,
+    pub(crate) const_generic_namespace: HashMap<DeclId<TyConstGenericDecl>, NodeIndex>,
     pub(crate) storage: HashMap<Ident, NodeIndex>,
     pub(crate) code_blocks: Vec<ControlFlowCodeBlock>,
     pub(crate) alias: HashMap<IdentUnique, NodeIndex>,
@@ -73,20 +71,21 @@ pub struct ControlFlowCodeBlock {
 }
 
 impl ControlFlowNamespace {
-    pub(crate) fn get_function(&self, fn_decl: &TyFunctionDecl) -> Option<&FunctionNamespaceEntry> {
+    pub(crate) fn get_function(&self, engines: &Engines, fn_decl: &TyFunctionDecl) -> Option<&FunctionNamespaceEntry> {
         let ident: IdentUnique = fn_decl.name.clone().into();
         self.function_namespace
-            .get(&(ident, TyFunctionSig::from_fn_decl(fn_decl)))
+            .get(&(ident, TyFunctionSig::from_fn_decl(engines, fn_decl)))
     }
     pub(crate) fn insert_function(
         &mut self,
+        engines: &Engines,
         fn_decl: &ty::TyFunctionDecl,
         entry: FunctionNamespaceEntry,
     ) {
         let ident = &fn_decl.name;
         let ident: IdentUnique = ident.into();
         self.function_namespace
-            .insert((ident, TyFunctionSig::from_fn_decl(fn_decl)), entry);
+            .insert((ident, TyFunctionSig::from_fn_decl(engines, fn_decl)), entry);
     }
 
     pub(crate) fn get_constant(&self, const_decl: &TyConstantDecl) -> Option<&NodeIndex> {
@@ -97,8 +96,8 @@ impl ControlFlowNamespace {
         self.configurable_namespace.get(&decl.name().clone())
     }
 
-    pub(crate) fn get_const_generic(&self, decl: &TyConstGenericDecl) -> Option<&NodeIndex> {
-        self.const_generic_namespace.get(&decl.name().clone())
+    pub(crate) fn get_const_generic(&self, decl: &DeclId<TyConstGenericDecl>) -> Option<&NodeIndex> {
+        self.const_generic_namespace.get(&decl)
     }
 
     #[allow(dead_code)]

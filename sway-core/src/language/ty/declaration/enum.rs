@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::MaterializeConstGenerics,
+    decl_engine::{DeclEngineGet as _, DeclEngineReplace as _, MaterializeConstGenerics},
     engine_threading::*,
     has_changes,
     language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
@@ -115,17 +115,8 @@ impl MaterializeConstGenerics for TyEnumDecl {
     ) -> Result<(), ErrorEmitted> {
         for p in self.generic_parameters.iter_mut() {
             match p {
-                TypeParameter::Const(p) if p.name.as_str() == name => {
-                    match p.expr.as_ref() {
-                        Some(expr) => {
-                            assert!(
-                                expr.as_literal_val().unwrap() as u64 == value.extract_literal_value().unwrap().cast_value_to_u64().unwrap()
-                            );
-                        }
-                        None => {
-                            p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
-                        }
-                    }
+                TypeParameter::Const(p) if p.decl_ref.name().as_str() == name => {
+                    p.decl_ref.id().clone().materialize_const_generics(engines, handler, name, value)?;
                 }
                 TypeParameter::Type(p) => {
                     p.type_id

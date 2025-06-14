@@ -6,21 +6,15 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
-    engine_threading::*,
-    ir_generation::const_eval::{
+    decl_engine::DeclEngineGet as _, engine_threading::*, ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
-    },
-    language::{
+    }, language::{
         ty::{
             self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpression,
             TyExpressionVariant, TyStorageField,
         },
         *,
-    },
-    metadata::MetadataManager,
-    type_system::*,
-    types::*,
-    PanicOccurrence, PanicOccurrences,
+    }, metadata::MetadataManager, type_system::*, types::*, PanicOccurrence, PanicOccurrences
 };
 
 use indexmap::IndexMap;
@@ -555,10 +549,11 @@ impl<'a> FnCompiler<'a> {
                 decl: const_decl, ..
             } => self.compile_config_expr(context, const_decl, span_md_idx),
             ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+                let decl = self.engines.de().get(decl);
                 assert!(decl.value.is_some(), "{:?}", ast_expr.span.as_str());
 
-                let value = decl.value.as_ref().unwrap();
-                self.compile_expression(context, md_mgr, value)
+                let value = decl.value.as_ref().unwrap().to_ty_expression(self.engines);
+                self.compile_expression(context, md_mgr, &value)
             }
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..

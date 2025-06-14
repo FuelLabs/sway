@@ -709,7 +709,7 @@ impl ty::TyExpression {
                 ty::TyExpression {
                     return_type: decl.return_type,
                     expression: ty::TyExpressionVariant::ConstGenericExpression {
-                        decl: Box::new(decl),
+                        decl: decl_id,
                         span: name.span(),
                         call_path: CallPath {
                             prefixes: vec![],

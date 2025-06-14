@@ -1,4 +1,4 @@
-use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
+use crate::{decl_engine::DeclEngineGet as _, engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
@@ -251,8 +251,9 @@ impl DebugWithEngines for GenericArgument {
     }
 }
 
-impl From<&TypeParameter> for GenericArgument {
-    fn from(p: &TypeParameter) -> Self {
+
+impl GenericArgument {
+    pub fn from(engines: &Engines, p: &TypeParameter) -> Self {
         match p {
             TypeParameter::Type(p) => GenericArgument::Type(GenericTypeArgument {
                 type_id: p.type_id,
@@ -260,14 +261,17 @@ impl From<&TypeParameter> for GenericArgument {
                 span: p.name.span(),
                 call_path_tree: None,
             }),
-            TypeParameter::Const(p) => GenericArgument::Const(GenericConstArgument {
-                expr: match p.expr.as_ref() {
-                    Some(expr) => expr.clone(),
-                    None => ConstGenericExpr::AmbiguousVariableExpression {
-                        ident: p.name.clone(),
+            TypeParameter::Const(p) => {
+                let decl = engines.de().get(p.decl_ref.id());
+                GenericArgument::Const(GenericConstArgument {
+                    expr: match decl.value.as_ref() {
+                        Some(expr) => expr.clone(),
+                        None => ConstGenericExpr::AmbiguousVariableExpression {
+                            ident: decl.name().clone(),
+                        },
                     },
-                },
-            }),
+                })
+            },
         }
     }
 }
