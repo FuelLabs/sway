@@ -213,7 +213,7 @@ impl Format for TypeField {
         write!(
             formatted_code,
             "{}{} ",
-            self.name.as_str(),
+            self.name.as_raw_ident_str(),
             ColonToken::AS_STR,
         )?;
         self.ty.format(formatted_code, formatter)?;

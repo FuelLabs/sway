@@ -96,14 +96,11 @@ pub(crate) fn compile_package<'a>(
     let manifest_dir = build_instructions.manifest_dir()?;
     let manifest = ManifestFile::from_dir(manifest_dir.clone())?;
     let pkg_manifest = get_pkg_manifest_file(&manifest)?;
+    let pkg_name = pkg_manifest.project_name();
 
     println_action_green(
         "Compiling",
-        &format!(
-            "{} ({})",
-            pkg_manifest.project_name(),
-            manifest.dir().to_string_lossy()
-        ),
+        &format!("{} ({})", pkg_name, manifest.dir().to_string_lossy()),
     );
 
     let member_manifests = manifest.member_manifests()?;
@@ -149,6 +146,7 @@ pub(crate) fn compile_package<'a>(
     };
 
     return Ok(ProgramInfo {
+        pkg_name: pkg_name.to_string(),
         lexed_program: programs.lexed,
         ty_program,
         engines,

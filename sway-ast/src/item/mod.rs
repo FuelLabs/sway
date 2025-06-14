@@ -131,6 +131,38 @@ pub enum FnArgs {
     },
 }
 
+impl FnArgs {
+    /// Returns all the [FnArg]s, from the function signature defined by `self`.
+    ///
+    /// If the `self` is [FnArgs::NonStatic], the first `self` argument is not
+    /// returned, because it is not an [FnArg].
+    pub fn args(&self) -> Vec<&FnArg> {
+        match self {
+            Self::Static(punctuated) => punctuated.iter().collect(),
+            Self::NonStatic { args_opt, .. } => args_opt
+                .as_ref()
+                .map_or(vec![], |(_comma_token, punctuated)| {
+                    punctuated.iter().collect()
+                }),
+        }
+    }
+
+    /// Returns all the [FnArg]s, from the function signature defined by `self`.
+    ///
+    /// If the `self` is [FnArgs::NonStatic], the first `self` argument is not
+    /// returned, because it is not an [FnArg].
+    pub fn args_mut(&mut self) -> Vec<&mut FnArg> {
+        match self {
+            Self::Static(punctuated) => punctuated.iter_mut().collect(),
+            Self::NonStatic { args_opt, .. } => args_opt
+                .as_mut()
+                .map_or(vec![], |(_comma_token, punctuated)| {
+                    punctuated.iter_mut().collect()
+                }),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct FnArg {
     pub pattern: Pattern,
