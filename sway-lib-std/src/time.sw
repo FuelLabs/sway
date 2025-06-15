@@ -4,6 +4,7 @@ use ::convert::{From, Into};
 use ::ops::*;
 use ::result::Result::{self, *};
 use ::codec::*;
+use ::hash::{Hash, Hasher};
 
 const TAI_64_CONVERTER: u64 = 10 + (1 << 62);
 
@@ -457,6 +458,12 @@ impl Ord for Duration {
 
 impl OrdEq for Duration {}
 
+impl Hash for Duration {
+    fn hash(self, ref mut state: Hasher) {
+        self.seconds.hash(state);
+    }
+}
+
 impl From<u64> for Duration {
     fn from(seconds: u64) -> Self {
         Self { seconds }
@@ -830,3 +837,9 @@ impl Ord for Time {
 }
 
 impl OrdEq for Time {}
+
+impl Hash for Time {
+    fn hash(self, ref mut state: Hasher) {
+        self.unix.hash(state);
+    }
+}

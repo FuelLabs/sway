@@ -11,6 +11,7 @@ use ::crypto::{
 };
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
+use ::hash::{Hash, Hasher};
 use ::vm::evm::evm_address::EvmAddress;
 use ::codec::*;
 use ::debug::*;
@@ -505,3 +506,22 @@ impl PartialEq for Signature {
     }
 }
 impl Eq for Signature {}
+
+impl Hash for Signature {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::Secp256k1(sig) => {
+                0_u8.hash(state);
+                sig.hash(state);
+            },
+            Self::Secp256r1(sig) => {
+                1_u8.hash(state);
+                sig.hash(state);
+            },
+            Self::Ed25519(sig) => {
+                2_u8.hash(state);
+                sig.hash(state);
+            },
+        }
+    }
+}
