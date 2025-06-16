@@ -1,12 +1,16 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericParameter, decl_engine::{
-        engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineReplace},
-        DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression,
-    }, language::{
+    ast_elements::type_parameter::ConstGenericParameter,
+    decl_engine::{
+        engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineReplace}, DeclEngineInsert, DeclId, DeclRefFunction, ReplaceDecls, UpdateConstantExpression
+    },
+    language::{
         parsed::*,
-        ty::{self, TyDecl, TyExpression, TyFunctionSig},
+        ty::{self, TyConstGenericDecl, TyDecl, TyExpression, TyFunctionSig},
         *,
-    }, semantic_analysis::{type_resolve::resolve_call_path, *}, type_system::*, Engines
+    },
+    semantic_analysis::{type_resolve::resolve_call_path, *},
+    type_system::*,
+    Engines,
 };
 use ast_elements::{
     type_argument::GenericTypeArgument,
@@ -113,15 +117,29 @@ pub(crate) fn type_check_method_application(
     let original_decl = engines.de().get(original_decl_ref.id());
     let has_const_generic_parameters = true;
     let const_generics = if has_const_generic_parameters {
-        fn extract_const_generics_from_type_parameters<'a>(engines: &Engines, l: impl Iterator<Item = &'a str>, r: &[TypeParameter], v: &mut BTreeMap<String, TyExpression>) {
+        fn extract_const_generics_from_type_parameters<'a>(
+            engines: &Engines,
+            l: impl Iterator<Item = &'a str>,
+            r: &[TypeParameter],
+            v: &mut BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
+        ) {
             for (l, r) in l.zip(r.iter()) {
                 match r {
                     TypeParameter::Const(r) => {
                         let decl = engines.de().get(r.decl_ref.id());
-                        extract_const_generics_from_exprs(engines, 
-                            Some(&ConstGenericExpr::AmbiguousVariableExpression { ident: BaseIdent::new_no_span(l.to_string()) }), 
-                            decl.value.as_ref(), 
-                            v
+                        extract_const_generics_from_exprs(
+                            engines,
+                            Some(&ConstGenericExpr::AmbiguousVariableExpression {
+                                ident: BaseIdent::new_no_span(l.to_string()),
+                            }),
+                            decl.value
+                                .as_ref()
+                                .map(|val| ConstGenericExpr::Literal {
+                                    val: *val as usize,
+                                    span: decl.span(),
+                                })
+                                .as_ref(),
+                            v,
                         )
                     }
                     _ => {}
@@ -129,78 +147,150 @@ pub(crate) fn type_check_method_application(
             }
         }
 
-        fn extract_const_generics_from_exprs(engines: &Engines, l: Option<&ConstGenericExpr>, r: Option<&ConstGenericExpr>, v: &mut BTreeMap<String, TyExpression>) {
+        fn extract_const_generics_from_exprs(
+            engines: &Engines,
+            l: Option<&ConstGenericExpr>,
+            r: Option<&ConstGenericExpr>,
+            v: &mut BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
+        ) {
             match (l, r) {
-                (Some(ConstGenericExpr::AmbiguousVariableExpression { ident }), Some(ConstGenericExpr::Literal { val, span })) => {
-                    v.insert(ident.as_str().to_string(), TyExpression { 
-                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
-                        return_type: engines.te().id_of_u64(),
-                        span: span.clone()
-                    });
-                },
+                (
+                    Some(ConstGenericExpr::AmbiguousVariableExpression { ident }),
+                    Some(ConstGenericExpr::Literal { val, span }),
+                ) => {
+                    // v.insert(
+                    //     ident.as_str().to_string(),
+                    //     TyExpression {
+                    //         expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                    //         return_type: engines.te().id_of_u64(),
+                    //         span: span.clone(),
+                    //     },
+                    // );
+                }
+                (
+                    Some(ConstGenericExpr::DeclId { id, .. }),
+                    Some(ConstGenericExpr::Literal { val, span }),
+                ) => {
+                    v.insert(
+                        *id,
+                        TyExpression {
+                            expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                            return_type: engines.te().id_of_u64(),
+                            span: span.clone(),
+                        },
+                    );
+                }
                 _ => {}
             }
         }
 
-        fn extract_const_generics_materialization_inner(engines: &Engines, decl_type_id: TypeId, arg_type_id: TypeId, v: &mut BTreeMap<String, TyExpression>) {
+        fn extract_const_generics_materialization_inner(
+            engines: &Engines,
+            decl_type_id: TypeId,
+            arg_type_id: TypeId,
+            v: &mut BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
+        ) {
             let decl_type = engines.te().get(decl_type_id);
             let arg_type = engines.te().get(arg_type_id);
             match (&*decl_type, &*arg_type) {
                 (TypeInfo::Array(larg, llen), TypeInfo::Array(rarg, rlen)) => {
-                    extract_const_generics_materialization_inner(engines, larg.type_id(), rarg.type_id(), v);
-                    extract_const_generics_from_exprs(engines, Some(llen.expr()), Some(rlen.expr()), v);
+                    extract_const_generics_materialization_inner(
+                        engines,
+                        larg.type_id(),
+                        rarg.type_id(),
+                        v,
+                    );
+                    extract_const_generics_from_exprs(
+                        engines,
+                        Some(llen.expr()),
+                        Some(rlen.expr()),
+                        v,
+                    );
                 }
                 (TypeInfo::StringArray(llen), TypeInfo::StringArray(rlen)) => {
-                    extract_const_generics_from_exprs(engines, Some(llen.expr()), Some(rlen.expr()), v);
+                    extract_const_generics_from_exprs(
+                        engines,
+                        Some(llen.expr()),
+                        Some(rlen.expr()),
+                        v,
+                    );
                 }
                 (TypeInfo::Struct(lid), TypeInfo::Struct(rid)) => {
                     let ldecl = engines.de().get(lid);
                     let rdecl = engines.de().get(rid);
-                    extract_const_generics_from_type_parameters(engines, 
+                    extract_const_generics_from_type_parameters(
+                        engines,
                         ldecl.generic_parameters.iter().map(|x| x.name().as_str()),
-                        &rdecl.generic_parameters, v);
-                },
+                        &rdecl.generic_parameters,
+                        v,
+                    );
+                }
                 (TypeInfo::Enum(lid), TypeInfo::Enum(rid)) => {
                     let ldecl = engines.de().get(lid);
                     let rdecl = engines.de().get(rid);
-                    extract_const_generics_from_type_parameters(engines, 
+                    extract_const_generics_from_type_parameters(
+                        engines,
                         ldecl.generic_parameters.iter().map(|x| x.name().as_str()),
-                        &rdecl.generic_parameters, v);
-                },
-                (
-                    TypeInfo::Custom { type_arguments, .. },
-                    TypeInfo::Enum(rid)
-                ) => {
-                    let parameters = type_arguments.as_ref().unwrap()
-                        .iter()
-                        .map(|x| match x {
-                            GenericArgument::Type(x) => 
-                                x.call_path_tree.as_ref().unwrap().qualified_call_path.call_path.suffix.as_str(),
-                            GenericArgument::Const(x) => match &x.expr {
-                                ConstGenericExpr::Literal { val, span } => todo!(),
-                                ConstGenericExpr::AmbiguousVariableExpression { ident } => 
-                                    ident.as_str(),
-                            }
-                        });
-                    let rdecl = engines.de().get(rid);
-                    extract_const_generics_from_type_parameters(engines, parameters, &rdecl.generic_parameters, v);
+                        &rdecl.generic_parameters,
+                        v,
+                    );
                 }
-                _ => {},
+                (TypeInfo::Custom { type_arguments, .. }, TypeInfo::Enum(rid)) => {
+                    let parameters = type_arguments.as_ref().unwrap().iter().map(|x| match x {
+                        GenericArgument::Type(x) => x
+                            .call_path_tree
+                            .as_ref()
+                            .unwrap()
+                            .qualified_call_path
+                            .call_path
+                            .suffix
+                            .as_str(),
+                        GenericArgument::Const(x) => match &x.expr {
+                            ConstGenericExpr::Literal { val, span } => todo!(),
+                            ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+                                ident.as_str()
+                            }
+                            ConstGenericExpr::DeclId { id, span } => todo!(),
+                        },
+                    });
+                    let rdecl = engines.de().get(rid);
+                    extract_const_generics_from_type_parameters(
+                        engines,
+                        parameters,
+                        &rdecl.generic_parameters,
+                        v,
+                    );
+                }
+                _ => {}
             }
         }
 
         let mut v = BTreeMap::default();
-        for (idx, (param, arg)) in original_decl.parameters.iter().zip(args_opt_buf.iter()).enumerate() {
+        for (idx, (param, arg)) in original_decl
+            .parameters
+            .iter()
+            .zip(args_opt_buf.iter())
+            .enumerate()
+        {
+            eprintln!("    param {idx} of {}: {:?}", method_name_binding.inner.easy_name(), engines.help_out(param.type_argument.type_id()));
+            if let Some(expr) = arg.0.as_ref() {
+                eprintln!("    arg {idx} of {}: {:?}", method_name_binding.inner.easy_name(), engines.help_out(expr.return_type));
+            }
+
             if let Some(arg) = arg.0.as_ref() {
-                let param_type = if engines.te().get(param.type_argument.initial_type_id()).is_self_type() {
+                let param_type = if engines
+                    .te()
+                    .get(param.type_argument.initial_type_id())
+                    .is_self_type()
+                {
                     if let Some(x) = original_decl.implementing_type.as_ref() {
                         match x {
-                            TyDecl::ImplSelfOrTrait(x) => {
-                                engines.de().get(&x.decl_id).implementing_for.initial_type_id()
-                            },
-                            _ => {
-                                continue
-                            }
+                            TyDecl::ImplSelfOrTrait(x) => engines
+                                .de()
+                                .get(&x.decl_id)
+                                .implementing_for
+                                .initial_type_id(),
+                            _ => continue,
                         }
                     } else {
                         continue;
@@ -209,13 +299,14 @@ pub(crate) fn type_check_method_application(
                     param.type_argument.initial_type_id()
                 };
 
-                extract_const_generics_materialization_inner(engines, 
+                extract_const_generics_materialization_inner(
+                    engines,
                     param_type,
-                arg.return_type,
-                    &mut v
+                    arg.return_type,
+                    &mut v,
                 );
             }
-        } 
+        }
 
         v
     } else {
@@ -569,6 +660,11 @@ pub(crate) fn type_check_method_application(
     let arguments =
         unify_arguments_and_parameters(handler, ctx.by_ref(), &arguments, &method.parameters)?;
 
+    eprintln!(":663 {} {:?} {:?}", method.name.as_str(), 
+        engines.help_out(method.parameters.iter().map(|x| x.type_argument.type_id()).collect::<Vec<_>>()),
+        engines.help_out(arguments.iter().map(|x| x.1.clone()).collect::<Vec<_>>())
+    );
+
     if ctx.experimental.new_encoding && method.is_contract_call {
         fn call_contract_call(
             ctx: &mut TypeCheckContext,
@@ -835,15 +931,15 @@ pub(crate) fn type_check_method_application(
                     subst_type_arguments,
                 );
 
-                for p in method.type_parameters.iter() {
-                    match p {
-                        TypeParameter::Type(_) => {},
-                        TypeParameter::Const(p) => {
-                            let new_id = engines.de().duplicate(p.decl_ref.id());
-                            type_subst.insert_const_decl_id(*p.decl_ref.id(), new_id);
-                        },
-                    }
-                }
+                // for p in method.type_parameters.iter() {
+                //     match p {
+                //         TypeParameter::Type(_) => {}
+                //         TypeParameter::Const(p) => {
+                //             let new_id = engines.de().duplicate(p.decl_ref.id());
+                //             type_subst.insert_const_decl_id(*p.decl_ref.id(), new_id);
+                //         }
+                //     }
+                // }
 
                 method.subst(&SubstTypesContext::new(
                     engines,
@@ -886,6 +982,11 @@ pub(crate) fn type_check_method_application(
                 .insert_function(engines, method_ident, method_sig, fn_ref.clone());
         }
     }
+
+    eprintln!("FunctionApplication: {:?} {:?}",
+        fn_ref.name(), 
+        engines.help_out(arguments.iter().map(|x| x.1.return_type).collect::<Vec<_>>())
+    );
 
     let expression = ty::TyExpressionVariant::FunctionApplication {
         call_path,
@@ -1092,7 +1193,7 @@ pub(crate) fn monomorphize_method(
     mut ctx: TypeCheckContext,
     decl_ref: DeclRefFunction,
     type_arguments: &mut [GenericArgument],
-    const_generics: BTreeMap<String, TyExpression>,
+    const_generics: BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();

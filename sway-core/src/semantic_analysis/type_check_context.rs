@@ -2,11 +2,11 @@
 use std::collections::{BTreeMap, HashSet};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclRefFunction, MaterializeConstGenerics},
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction, MaterializeConstGenerics},
     engine_threading::*,
     language::{
         parsed::TreeType,
-        ty::{self, TyDecl, TyExpression},
+        ty::{self, TyConstGenericDecl, TyDecl, TyExpression},
         CallPath, QualifiedCallPath, Visibility,
     },
     monomorphization::{monomorphize_with_modpath, MonomorphizeHelper},
@@ -533,7 +533,7 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         value: &mut T,
         type_arguments: &mut [GenericArgument],
-        const_generics: BTreeMap<String, TyExpression>,
+        const_generics: BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
     ) -> Result<(), ErrorEmitted>
@@ -810,6 +810,7 @@ impl<'a> TypeCheckContext<'a> {
         arguments_types: &[TypeId],
         as_trait: Option<TypeId>,
     ) -> Result<DeclRefFunction, ErrorEmitted> {
+        eprintln!("find_method_for_type: {}", method_name.as_str());
         let decl_engine = self.engines.de();
         let type_engine = self.engines.te();
 
@@ -1139,7 +1140,9 @@ impl<'a> TypeCheckContext<'a> {
         };
 
         if let Some(method_decl_ref) = matching_method_decl_ref {
+            eprintln!("    before get_method_safe_to_unify: {:?}", self.engines.help_out(method_decl_ref.id()));
             let r = method_decl_ref.get_method_safe_to_unify(self.engines, type_id);
+            eprintln!("    after get_method_safe_to_unify: {:?}", self.engines.help_out(method_decl_ref.id()));
             return Ok(r);
         }
 

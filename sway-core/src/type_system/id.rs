@@ -8,9 +8,12 @@ use sway_error::{
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineInsert, MaterializeConstGenerics},
+    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclId, MaterializeConstGenerics},
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
-    language::CallPath,
+    language::{
+        ty::{TyConstGenericDecl, TyExpression, TyExpressionVariant},
+        CallPath,
+    },
     namespace::TraitMap,
     semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
@@ -119,40 +122,49 @@ impl MaterializeConstGenerics for TypeId {
         &mut self,
         engines: &Engines,
         handler: &Handler,
-        name: &str,
+        decl_id: DeclId<TyConstGenericDecl>,
         value: &crate::language::ty::TyExpression,
     ) -> Result<(), ErrorEmitted> {
         match &*engines.te().get(*self) {
             TypeInfo::Array(
                 type_argument,
                 Length(ConstGenericExpr::AmbiguousVariableExpression { ident }),
-            ) if ident.as_str() == name => {
-                let val = match &value.expression {
-                    crate::language::ty::TyExpressionVariant::Literal(literal) => {
-                        literal.cast_value_to_u64().unwrap()
-                    }
-                    _ => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-                    }
-                };
-
-                *self = engines.te().insert_array(
-                    engines,
-                    type_argument.clone(),
-                    Length(ConstGenericExpr::Literal {
-                        val: val as usize,
-                        span: value.span.clone(),
-                    }),
-                );
+            ) => {
+                todo!()
+            }
+            TypeInfo::Array(type_argument, Length(ConstGenericExpr::DeclId { id, .. }),
+            ) => {
+                // if decl_id ==  id {
+                //     let val = match &value.expression {
+                //         crate::language::ty::TyExpressionVariant::Literal(literal) => {
+                //             literal.cast_value_to_u64().unwrap()
+                //         }
+                //         _ => {
+                //             todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                //         }
+                //     };
+                    
+                //     *self = engines.te().insert_array(
+                //         engines,
+                //         type_argument.clone(),
+                //         Length(ConstGenericExpr::Literal {
+                //             val: val as usize,
+                //             span: value.span.clone(),
+                //         }),
+                //     );
+                // } 
             }
             TypeInfo::Enum(id) => {
-                let decl = engines.de().get(id);
-                let mut decl = (*decl).clone();
-                decl.materialize_const_generics(engines, handler, name, value)?;
+                // let decl = engines.de().get(id);
+                // let mut decl = (*decl).clone();
+                // decl.materialize_const_generics(engines, handler, name, value)?;
 
-                let decl_ref = engines.de().insert(decl, None);
+                // let decl_ref = engines.de().insert(decl, None);
 
-                *self = engines.te().insert_enum(engines, *decl_ref.id());
+                // *self = engines.te().insert_enum(engines, *decl_ref.id());
+            }
+            TypeInfo::Struct(id) => {
+                // todo!()
             }
             _ => {}
         }
@@ -270,7 +282,7 @@ impl TypeId {
         engines: &Engines,
         depth: usize,
         type_parameters: &mut Vec<(TypeId, TypeId)>,
-        const_generic_parameters: &mut BTreeMap<String, crate::language::ty::TyExpression>,
+        const_generic_parameters: &mut BTreeMap<String, Option<crate::language::ty::TyExpression>>,
         orig_type_id: TypeId,
     ) {
         if depth >= EXTRACT_ANY_MAX_DEPTH {
@@ -380,18 +392,22 @@ impl TypeId {
                             let orig_type_param = engines.de().get(orig_type_param.decl_ref.id());
                             let type_param = engines.de().get(type_param.decl_ref.id());
                             match (orig_type_param.value.as_ref(), type_param.value.as_ref()) {
-                                (None, Some(expr)) => {
+                                (None, Some(value)) => {
                                     const_generic_parameters.insert(
                                         orig_type_param.name().as_str().to_string(),
-                                        expr.to_ty_expression(engines),
+                                        Some(TyExpression {
+                                            expression: TyExpressionVariant::Literal(crate::language::Literal::U64(*value)),
+                                            return_type: engines.te().id_of_u64(),
+                                            span: type_param.span.clone(),
+                                        })
                                     );
                                 }
                                 (Some(l), Some(r)) => {
-                                    assert!(l.as_literal_val().unwrap() == r.as_literal_val().unwrap());
+                                    assert!(*l == *r);
                                 }
                                 x => todo!("{x:?} Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                             }
-                        },
+                        }
                         _ => {}
                     }
                 }
@@ -426,15 +442,19 @@ impl TypeId {
                             let orig_type_param = engines.de().get(orig_type_param.decl_ref.id());
                             let type_param = engines.de().get(type_param.decl_ref.id());
                             match (orig_type_param.value.as_ref(), type_param.value.as_ref()) {
-                                (None, Some(expr)) => {
+                                (None, Some(value)) => {
                                     const_generic_parameters.insert(
                                         orig_type_param.name().as_str().to_string(),
-                                        expr.to_ty_expression(engines),
+                                        Some(TyExpression {
+                                            expression: TyExpressionVariant::Literal(crate::language::Literal::U64(*value)),
+                                            return_type: engines.te().id_of_u64(),
+                                            span: type_param.span.clone(),
+                                        }),
                                     );
                                 }
                                 _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
                             }
-                        },
+                        }
                         _ => {}
                     }
                 }

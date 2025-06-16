@@ -5,7 +5,10 @@ use crate::{
         generate_destructured_struct_var_name, generate_matched_value_var_name,
         generate_tuple_var_name,
     },
-    decl_engine::{parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId, DeclEngineGet as _, DeclEngineInsert, DeclRef},
+    decl_engine::{
+        parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId, DeclEngineGet as _,
+        DeclEngineInsert, DeclRef,
+    },
     language::{parsed::*, ty::TyConstGenericDecl, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
@@ -371,78 +374,80 @@ fn item_struct_to_struct_declaration(
     item_struct: ItemStruct,
     attributes: Attributes,
 ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
-    let span = item_struct.span();
-    let fields = item_struct
-        .fields
-        .into_inner()
-        .into_iter()
-        .map(|type_field| {
-            let (attributes_handler, attributes) = attr_decls_to_attributes(
-                &type_field.attributes,
-                |attr| attr.can_annotate_struct_or_enum_field(StructOrEnumField::StructField),
-                "struct field",
-            );
+    context.const_generic_scope(|context| {
+        let span = item_struct.span();
+        let fields = item_struct
+            .fields
+            .into_inner()
+            .into_iter()
+            .map(|type_field| {
+                let (attributes_handler, attributes) = attr_decls_to_attributes(
+                    &type_field.attributes,
+                    |attr| attr.can_annotate_struct_or_enum_field(StructOrEnumField::StructField),
+                    "struct field",
+                );
 
-            if !cfg_eval(context, handler, &attributes, context.experimental)? {
-                return Ok(None);
+                if !cfg_eval(context, handler, &attributes, context.experimental)? {
+                    return Ok(None);
+                }
+
+                let attributes_error_emitted = handler.append(attributes_handler);
+
+                let struct_field = type_field_to_struct_field(
+                    context,
+                    handler,
+                    engines,
+                    type_field.value,
+                    attributes,
+                )?;
+
+                match attributes_error_emitted {
+                    Some(err) => Err(err),
+                    None => Ok(Some(struct_field)),
+                }
+            })
+            .filter_map_ok(|field| field)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        handler.scope(|handler| {
+            if fields.iter().any(
+                |field| matches!(&&*engines.te().get(field.type_argument.type_id()), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
+            ) {
+                handler.emit_err(ConvertParseTreeError::RecursiveType { span: span.clone() }.into());
             }
 
-            let attributes_error_emitted = handler.append(attributes_handler);
-
-            let struct_field = type_field_to_struct_field(
-                context,
-                handler,
-                engines,
-                type_field.value,
-                attributes,
-            )?;
-
-            match attributes_error_emitted {
-                Some(err) => Err(err),
-                None => Ok(Some(struct_field)),
+            // Make sure each struct field is declared once
+            let mut names_of_fields = std::collections::HashSet::new();
+            for field in &fields {
+                if !names_of_fields.insert(field.name.clone()) {
+                    handler.emit_err(ConvertParseTreeError::DuplicateStructField {
+                        name: field.name.clone(),
+                        span: field.name.span(),
+                    }.into());
+                }
             }
-        })
-        .filter_map_ok(|field| field)
-        .collect::<Result<Vec<_>, _>>()?;
 
-    handler.scope(|handler| {
-        if fields.iter().any(
-            |field| matches!(&&*engines.te().get(field.type_argument.type_id()), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
-        ) {
-            handler.emit_err(ConvertParseTreeError::RecursiveType { span: span.clone() }.into());
-        }
+            Ok(())
+        })?;
 
-        // Make sure each struct field is declared once
-        let mut names_of_fields = std::collections::HashSet::new();
-        for field in &fields {
-            if !names_of_fields.insert(field.name.clone()) {
-                handler.emit_err(ConvertParseTreeError::DuplicateStructField {
-                    name: field.name.clone(),
-                    span: field.name.span(),
-                }.into());
-            }
-        }
+        let generic_parameters = generic_params_opt_to_type_parameters(
+            context,
+            handler,
+            engines,
+            item_struct.generics,
+            item_struct.where_clause_opt,
+        )?;
+        let struct_declaration_id = engines.pe().insert(StructDeclaration {
+            name: item_struct.name,
+            attributes,
+            fields,
+            type_parameters: generic_parameters,
+            visibility: pub_token_opt_to_visibility(item_struct.visibility),
+            span,
+        });
 
-        Ok(())
-    })?;
-
-    let generic_parameters = generic_params_opt_to_type_parameters(
-        context,
-        handler,
-        engines,
-        item_struct.generics,
-        item_struct.where_clause_opt,
-    )?;
-    let struct_declaration_id = engines.pe().insert(StructDeclaration {
-        name: item_struct.name,
-        attributes,
-        fields,
-        type_parameters: generic_parameters,
-        visibility: pub_token_opt_to_visibility(item_struct.visibility),
-        span,
-    });
-
-    Ok(struct_declaration_id)
+        Ok(struct_declaration_id)
+    })
 }
 
 fn item_enum_to_enum_declaration(
@@ -452,79 +457,82 @@ fn item_enum_to_enum_declaration(
     item_enum: ItemEnum,
     attributes: Attributes,
 ) -> Result<ParsedDeclId<EnumDeclaration>, ErrorEmitted> {
-    let span = item_enum.span();
-    let variants = item_enum
-        .fields
-        .into_inner()
-        .into_iter()
-        .enumerate()
-        .map(|(tag, type_field)| {
-            let (attributes_handler, attributes) = attr_decls_to_attributes(
-                &type_field.attributes,
-                |attr| attr.can_annotate_struct_or_enum_field(StructOrEnumField::EnumField),
-                "enum variant",
-            );
+    context.const_generic_scope(|context| {
+        let type_parameters = generic_params_opt_to_type_parameters(
+            context,
+            handler,
+            engines,
+            item_enum.generics.clone(),
+            item_enum.where_clause_opt.clone(),
+        )?;
 
-            if !cfg_eval(context, handler, &attributes, context.experimental)? {
-                return Ok(None);
+        let span = item_enum.span();
+        let variants = item_enum
+            .fields
+            .into_inner()
+            .into_iter()
+            .enumerate()
+            .map(|(tag, type_field)| {
+                let (attributes_handler, attributes) = attr_decls_to_attributes(
+                    &type_field.attributes,
+                    |attr| attr.can_annotate_struct_or_enum_field(StructOrEnumField::EnumField),
+                    "enum variant",
+                );
+
+                if !cfg_eval(context, handler, &attributes, context.experimental)? {
+                    return Ok(None);
+                }
+
+                let attributes_error_emitted = handler.append(attributes_handler);
+
+                let enum_variant = type_field_to_enum_variant(
+                    context,
+                    handler,
+                    engines,
+                    type_field.value,
+                    attributes,
+                    tag,
+                )?;
+
+                match attributes_error_emitted {
+                    Some(err) => Err(err),
+                    None => Ok(Some(enum_variant)),
+                }
+            })
+            .filter_map_ok(|field| field)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        handler.scope(|handler| {
+            if variants.iter().any(|variant| {
+            matches!(&&*engines.te().get(variant.type_argument.type_id()), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
+            }) {
+                handler.emit_err(ConvertParseTreeError::RecursiveType { span: span.clone() }.into());
             }
 
-            let attributes_error_emitted = handler.append(attributes_handler);
-
-            let enum_variant = type_field_to_enum_variant(
-                context,
-                handler,
-                engines,
-                type_field.value,
-                attributes,
-                tag,
-            )?;
-
-            match attributes_error_emitted {
-                Some(err) => Err(err),
-                None => Ok(Some(enum_variant)),
+            // Make sure each enum variant is declared once
+            let mut names_of_variants = std::collections::HashSet::new();
+            for v in variants.iter() {
+                if !names_of_variants.insert(v.name.clone()) {
+                    handler.emit_err(ConvertParseTreeError::DuplicateEnumVariant {
+                        name: v.name.clone(),
+                        span: v.name.span(),
+                    }.into());
+                }
             }
-        })
-        .filter_map_ok(|field| field)
-        .collect::<Result<Vec<_>, _>>()?;
 
-    handler.scope(|handler| {
-        if variants.iter().any(|variant| {
-        matches!(&&*engines.te().get(variant.type_argument.type_id()), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
-        }) {
-            handler.emit_err(ConvertParseTreeError::RecursiveType { span: span.clone() }.into());
-        }
+            Ok(())
+        })?;
 
-        // Make sure each enum variant is declared once
-        let mut names_of_variants = std::collections::HashSet::new();
-        for v in variants.iter() {
-            if !names_of_variants.insert(v.name.clone()) {
-                handler.emit_err(ConvertParseTreeError::DuplicateEnumVariant {
-                    name: v.name.clone(),
-                    span: v.name.span(),
-                }.into());
-            }
-        }
-
-        Ok(())
-    })?;
-
-    let type_parameters = generic_params_opt_to_type_parameters(
-        context,
-        handler,
-        engines,
-        item_enum.generics,
-        item_enum.where_clause_opt,
-    )?;
-    let enum_declaration_id = engines.pe().insert(EnumDeclaration {
-        name: item_enum.name,
-        type_parameters,
-        variants,
-        span,
-        visibility: pub_token_opt_to_visibility(item_enum.visibility),
-        attributes,
-    });
-    Ok(enum_declaration_id)
+        let enum_declaration_id = engines.pe().insert(EnumDeclaration {
+            name: item_enum.name,
+            type_parameters,
+            variants,
+            span,
+            visibility: pub_token_opt_to_visibility(item_enum.visibility),
+            attributes,
+        });
+        Ok(enum_declaration_id)
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -538,80 +546,82 @@ pub fn item_fn_to_function_declaration(
     parent_where_clause_opt: Option<WhereClause>,
     override_kind: Option<FunctionDeclarationKind>,
 ) -> Result<ParsedDeclId<FunctionDeclaration>, ErrorEmitted> {
-    let span = item_fn.span();
-    let return_type = match item_fn.fn_signature.return_type_opt {
-        Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
-        None => {
-            let type_id = engines.te().id_of_unit();
-            GenericArgument::Type(GenericTypeArgument {
-                type_id,
-                initial_type_id: type_id,
-                span: item_fn.fn_signature.span(),
-                call_path_tree: None,
-            })
-        }
-    };
-
-    let kind = if item_fn.fn_signature.name.as_str() == "main" {
-        FunctionDeclarationKind::Main
-    } else {
-        FunctionDeclarationKind::Default
-    };
-
-    let kind = override_kind.unwrap_or(kind);
-    let implementing_type = context.implementing_type.clone();
-
-    let mut generic_parameters = generic_params_opt_to_type_parameters_with_parent(
-        context,
-        handler,
-        engines,
-        item_fn.fn_signature.generics,
-        parent_generic_params_opt,
-        item_fn.fn_signature.where_clause_opt.clone(),
-        parent_where_clause_opt,
-    )?;
-
-    for p in generic_parameters.iter_mut() {
-        match p {
-            TypeParameter::Type(_) => {}
-            TypeParameter::Const(p) => {
-                // p.id = Some(engines.pe().insert(ConstGenericDeclaration {
-                //     name: p.name.clone(),
-                //     ty: p.ty,
-                //     span: p.span.clone(),
-                // })); // TODO uncomment this
-            }
-        }
-    }
-
-    let fn_decl = FunctionDeclaration {
-        purity: attributes.purity(),
-        attributes,
-        name: item_fn.fn_signature.name,
-        visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
-        body: braced_code_block_contents_to_code_block(context, handler, engines, item_fn.body)?,
-        parameters: fn_args_to_function_parameters(
+    context.const_generic_scope(|context| {
+        let mut generic_parameters = generic_params_opt_to_type_parameters_with_parent(
             context,
             handler,
             engines,
-            item_fn.fn_signature.arguments.into_inner(),
-        )?,
-        span,
-        return_type,
-        type_parameters: generic_parameters,
-        where_clause: item_fn
-            .fn_signature
-            .where_clause_opt
-            .map(|where_clause| {
-                where_clause_to_trait_constraints(context, handler, engines, where_clause)
-            })
-            .transpose()?
-            .unwrap_or(vec![]),
-        kind,
-        implementing_type,
-    };
-    let decl_id = engines.pe().insert(fn_decl);
-    Ok(decl_id)
+            item_fn.fn_signature.generics.clone(),
+            parent_generic_params_opt,
+            item_fn.fn_signature.where_clause_opt.clone(),
+            parent_where_clause_opt,
+        )?;
+
+        let span = item_fn.span();
+        let return_type = match item_fn.fn_signature.return_type_opt {
+            Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
+            None => {
+                let type_id = engines.te().id_of_unit();
+                GenericArgument::Type(GenericTypeArgument {
+                    type_id,
+                    initial_type_id: type_id,
+                    span: item_fn.fn_signature.span(),
+                    call_path_tree: None,
+                })
+            }
+        };
+
+        let kind = if item_fn.fn_signature.name.as_str() == "main" {
+            FunctionDeclarationKind::Main
+        } else {
+            FunctionDeclarationKind::Default
+        };
+
+        let kind = override_kind.unwrap_or(kind);
+        let implementing_type = context.implementing_type.clone();
+
+        for p in generic_parameters.iter_mut() {
+            match p {
+                TypeParameter::Type(_) => {}
+                TypeParameter::Const(p) => {
+                    // p.id = Some(engines.pe().insert(ConstGenericDeclaration {
+                    //     name: p.name.clone(),
+                    //     ty: p.ty,
+                    //     span: p.span.clone(),
+                    // })); // TODO uncomment this
+                }
+            }
+        }
+
+        let fn_decl = FunctionDeclaration {
+            purity: attributes.purity(),
+            attributes,
+            name: item_fn.fn_signature.name,
+            visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
+            body: braced_code_block_contents_to_code_block(context, handler, engines, item_fn.body)?,
+            parameters: fn_args_to_function_parameters(
+                context,
+                handler,
+                engines,
+                item_fn.fn_signature.arguments.into_inner(),
+            )?,
+            span,
+            return_type,
+            type_parameters: generic_parameters,
+            where_clause: item_fn
+                .fn_signature
+                .where_clause_opt
+                .map(|where_clause| {
+                    where_clause_to_trait_constraints(context, handler, engines, where_clause)
+                })
+                .transpose()?
+                .unwrap_or(vec![]),
+            kind,
+            implementing_type,
+        };
+        let decl_id = engines.pe().insert(fn_decl);
+        Ok(decl_id)
+    })
 }
 
 fn where_clause_to_trait_constraints(
@@ -757,127 +767,135 @@ pub fn item_impl_to_declaration(
     engines: &Engines,
     item_impl: ItemImpl,
 ) -> Result<Declaration, ErrorEmitted> {
-    let block_span = item_impl.span();
-    let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
-    let impl_item_parent = (&*engines.te().get(implementing_for.type_id())).into();
+    context.const_generic_scope(|context| {
+        let mut impl_type_parameters = generic_params_opt_to_type_parameters(
+            context,
+            handler,
+            engines,
+            item_impl.generic_params_opt.clone(),
+            item_impl.where_clause_opt.clone(),
+        )?;
 
-    let items = item_impl
-        .contents
-        .into_inner()
-        .into_iter()
-        .map(|item| {
-            let (attributes_handler, attributes) = attr_decls_to_attributes(
-                &item.attributes,
-                |attr| attr.can_annotate_impl_item(&item.value, impl_item_parent),
-                item.value.friendly_name(impl_item_parent),
-            );
+        let block_span = item_impl.span();
+        let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
+        let impl_item_parent = (&*engines.te().get(implementing_for.type_id())).into();
 
-            if !cfg_eval(context, handler, &attributes, context.experimental)? {
-                return Ok(None);
-            }
+        let items = item_impl
+            .contents
+            .into_inner()
+            .into_iter()
+            .map(|item| {
+                let (attributes_handler, attributes) = attr_decls_to_attributes(
+                    &item.attributes,
+                    |attr| attr.can_annotate_impl_item(&item.value, impl_item_parent),
+                    item.value.friendly_name(impl_item_parent),
+                );
 
-            let attributes_error_emitted = handler.append(attributes_handler);
+                if !cfg_eval(context, handler, &attributes, context.experimental)? {
+                    return Ok(None);
+                }
 
-            let impl_item = match item.value {
-                sway_ast::ItemImplItem::Fn(fn_item) => item_fn_to_function_declaration(
-                    context,
-                    handler,
-                    engines,
-                    fn_item,
-                    attributes,
-                    item_impl.generic_params_opt.clone(),
-                    item_impl.where_clause_opt.clone(),
-                    None,
-                )
-                .map(ImplItem::Fn),
-                sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
-                    context,
-                    handler,
-                    engines,
-                    const_item,
-                    Visibility::Private,
-                    attributes,
-                    false,
-                )
-                .map(ImplItem::Constant),
-                sway_ast::ItemImplItem::Type(type_item) => trait_type_to_trait_type_declaration(
-                    context, handler, engines, type_item, attributes,
-                )
-                .map(ImplItem::Type),
-            }?;
+                let attributes_error_emitted = handler.append(attributes_handler);
 
-            match attributes_error_emitted {
-                Some(err) => Err(err),
-                None => Ok(Some(impl_item)),
-            }
-        })
-        .filter_map_ok(|item| item)
-        .collect::<Result<_, _>>()?;
+                let impl_item = match item.value {
+                    sway_ast::ItemImplItem::Fn(fn_item) => item_fn_to_function_declaration(
+                        context,
+                        handler,
+                        engines,
+                        fn_item,
+                        attributes,
+                        item_impl.generic_params_opt.clone(),
+                        item_impl.where_clause_opt.clone(),
+                        None,
+                    )
+                    .map(ImplItem::Fn),
+                    sway_ast::ItemImplItem::Const(const_item) => {
+                        item_const_to_constant_declaration(
+                            context,
+                            handler,
+                            engines,
+                            const_item,
+                            Visibility::Private,
+                            attributes,
+                            false,
+                        )
+                        .map(ImplItem::Constant)
+                    }
+                    sway_ast::ItemImplItem::Type(type_item) => {
+                        trait_type_to_trait_type_declaration(
+                            context, handler, engines, type_item, attributes,
+                        )
+                        .map(ImplItem::Type)
+                    }
+                }?;
 
-    let mut impl_type_parameters = generic_params_opt_to_type_parameters(
-        context,
-        handler,
-        engines,
-        item_impl.generic_params_opt,
-        item_impl.where_clause_opt,
-    )?;
+                match attributes_error_emitted {
+                    Some(err) => Err(err),
+                    None => Ok(Some(impl_item)),
+                }
+            })
+            .filter_map_ok(|item| item)
+            .collect::<Result<_, _>>()?;
 
-    for p in impl_type_parameters.iter_mut() {
-        match p {
-            TypeParameter::Type(_) => {}
-            TypeParameter::Const(p) => {
-                // let decl = engines.de().map_duplicate(p.decl_ref.id(), |x| {
-                //     x.id = Some(engines.pe().insert(ConstGenericDeclaration {
-                //         name: x.name().clone(),
-                //         ty: x.return_type,
-                //         span: x.span.clone(),
-                //     })); // TODO uncomment
-                // });
-                // p.decl_ref = DeclRef::new();
+        for p in impl_type_parameters.iter_mut() {
+            match p {
+                TypeParameter::Type(_) => {}
+                TypeParameter::Const(p) => {
+                    // let decl = engines.de().map_duplicate(p.decl_ref.id(), |x| {
+                    //     x.id = Some(engines.pe().insert(ConstGenericDeclaration {
+                    //         name: x.name().clone(),
+                    //         ty: x.return_type,
+                    //         span: x.span.clone(),
+                    //     })); // TODO uncomment
+                    // });
+                    // p.decl_ref = DeclRef::new();
+                }
             }
         }
-    }
 
-    match item_impl.trait_opt {
-        Some((path_type, _)) => {
-            let (trait_name, trait_type_arguments) =
-                path_type_to_call_path_and_type_arguments(context, handler, engines, path_type)?;
-            let impl_trait = ImplSelfOrTrait {
-                is_self: false,
-                impl_type_parameters,
-                trait_name: trait_name.to_call_path(handler)?,
-                trait_type_arguments,
-                trait_decl_ref: None,
-                implementing_for,
-                items,
-                block_span,
-            };
-            let impl_trait = engines.pe().insert(impl_trait);
-            Ok(Declaration::ImplSelfOrTrait(impl_trait))
-        }
-        None => match &*engines.te().get(implementing_for.type_id()) {
-            TypeInfo::Contract => Err(handler
-                .emit_err(ConvertParseTreeError::SelfImplForContract { span: block_span }.into())),
-            _ => {
-                let impl_self = ImplSelfOrTrait {
-                    is_self: true,
-                    trait_name: CallPath {
-                        callpath_type: CallPathType::Ambiguous,
-                        prefixes: vec![],
-                        suffix: BaseIdent::dummy(),
-                    },
-                    trait_decl_ref: None,
-                    trait_type_arguments: vec![],
-                    implementing_for,
+        match item_impl.trait_opt {
+            Some((path_type, _)) => {
+                let (trait_name, trait_type_arguments) = path_type_to_call_path_and_type_arguments(
+                    context, handler, engines, path_type,
+                )?;
+                let impl_trait = ImplSelfOrTrait {
+                    is_self: false,
                     impl_type_parameters,
+                    trait_name: trait_name.to_call_path(handler)?,
+                    trait_type_arguments,
+                    trait_decl_ref: None,
+                    implementing_for,
                     items,
                     block_span,
                 };
-                let impl_self = engines.pe().insert(impl_self);
-                Ok(Declaration::ImplSelfOrTrait(impl_self))
+                let impl_trait = engines.pe().insert(impl_trait);
+                Ok(Declaration::ImplSelfOrTrait(impl_trait))
             }
-        },
-    }
+            None => match &*engines.te().get(implementing_for.type_id()) {
+                TypeInfo::Contract => Err(handler.emit_err(
+                    ConvertParseTreeError::SelfImplForContract { span: block_span }.into(),
+                )),
+                _ => {
+                    let impl_self = ImplSelfOrTrait {
+                        is_self: true,
+                        trait_name: CallPath {
+                            callpath_type: CallPathType::Ambiguous,
+                            prefixes: vec![],
+                            suffix: BaseIdent::dummy(),
+                        },
+                        trait_decl_ref: None,
+                        trait_type_arguments: vec![],
+                        implementing_for,
+                        impl_type_parameters,
+                        items,
+                        block_span,
+                    };
+                    let impl_self = engines.pe().insert(impl_self);
+                    Ok(Declaration::ImplSelfOrTrait(impl_self))
+                }
+            },
+        }
+    })
 }
 
 fn path_type_to_call_path_and_type_arguments(
@@ -1370,8 +1388,9 @@ fn generic_params_opt_to_type_parameters_with_parent(
         None => Vec::new(),
     };
 
-    let generics_to_params = |generics: Option<GenericParams>, is_from_parent: bool| match generics
-    {
+    let generics_to_params = |context: &mut Context,
+                              generics: Option<GenericParams>,
+                              is_from_parent: bool| match generics {
         Some(generic_params) => generic_params
             .parameters
             .into_inner()
@@ -1400,17 +1419,20 @@ fn generic_params_opt_to_type_parameters_with_parent(
                             );
                         }
 
-                        let decl_ref = engines.de().insert(TyConstGenericDecl {
-                            call_path: CallPath { 
-                                prefixes: vec![],
-                                suffix: ident.clone(),
-                                callpath_type: CallPathType::Ambiguous,
+                        let decl_ref = engines.de().insert(
+                            TyConstGenericDecl {
+                                call_path: CallPath {
+                                    prefixes: vec![],
+                                    suffix: ident.clone(),
+                                    callpath_type: CallPathType::Ambiguous,
+                                },
+                                return_type: type_engine.id_of_u64(),
+                                span: ident.span().clone(),
+                                value: None,
                             },
-                            return_type: type_engine.id_of_u64(),
-                            span: ident.span().clone(),
-                            value: None,
-                        }, None); // TODO put id here
-                        eprintln!("{:?}", decl_ref.id());
+                            None,
+                        ); // TODO put id here
+                        context.insert_const_generic(ident.as_str(), *decl_ref.id());
 
                         TypeParameter::Const(ConstGenericParameter {
                             decl_ref,
@@ -1423,8 +1445,8 @@ fn generic_params_opt_to_type_parameters_with_parent(
         None => vec![],
     };
 
-    let mut params = generics_to_params(generic_params_opt, false);
-    let parent_params = generics_to_params(parent_generic_params_opt, true);
+    let mut params = generics_to_params(context, generic_params_opt, false);
+    let parent_params = generics_to_params(context, parent_generic_params_opt, true);
     params.extend(
         parent_params
             .iter()
@@ -3191,7 +3213,11 @@ fn expr_to_const_generic_expr(
             let expr = expr_to_expression(context, handler, engines, expr.clone())?;
             match expr.kind {
                 ExpressionKind::AmbiguousVariableExpression(ident) => {
-                    Ok(ConstGenericExpr::AmbiguousVariableExpression { ident })
+                    let id = context.get_const_generic(ident.as_str()).unwrap();
+                    Ok(ConstGenericExpr::DeclId {
+                        id: *id,
+                        span: ident.span(),
+                    })
                 }
                 _ => Err(handler.emit_err(CompileError::LengthExpressionNotSupported { span })),
             }

@@ -1,9 +1,7 @@
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
-    engine_threading::Engines,
-    language::ty::{self, TyDecl, TyExpression},
-    semantic_analysis::TypeCheckContext,
+    decl_engine::DeclId, engine_threading::Engines, language::ty::{self, TyConstGenericDecl, TyDecl, TyExpression}, semantic_analysis::TypeCheckContext
 };
 
 use super::DeclMapping;
@@ -75,7 +73,7 @@ pub(crate) trait MaterializeConstGenerics {
         &mut self,
         engines: &Engines,
         handler: &Handler,
-        name: &str,
+        decl_id: DeclId<TyConstGenericDecl>,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted>;
 }
@@ -85,14 +83,14 @@ impl<T: MaterializeConstGenerics + Clone> MaterializeConstGenerics for std::sync
         &mut self,
         engines: &Engines,
         handler: &Handler,
-        name: &str,
+        decl_id: DeclId<TyConstGenericDecl>,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
         if let Some(item) = std::sync::Arc::get_mut(self) {
-            item.materialize_const_generics(engines, handler, name, value)
+            item.materialize_const_generics(engines, handler, decl_id, value)
         } else {
             let mut item = self.as_ref().clone();
-            let r = item.materialize_const_generics(engines, handler, name, value);
+            let r = item.materialize_const_generics(engines, handler, decl_id, value);
             *self = std::sync::Arc::new(item);
             r
         }

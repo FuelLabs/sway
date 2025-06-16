@@ -1,4 +1,7 @@
-use crate::{decl_engine::DeclEngineGet as _, engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
+use crate::{
+    decl_engine::DeclEngineGet as _, engine_threading::*, language::CallPathTree,
+    type_system::priv_prelude::*,
+};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
@@ -251,7 +254,6 @@ impl DebugWithEngines for GenericArgument {
     }
 }
 
-
 impl GenericArgument {
     pub fn from(engines: &Engines, p: &TypeParameter) -> Self {
         match p {
@@ -264,14 +266,9 @@ impl GenericArgument {
             TypeParameter::Const(p) => {
                 let decl = engines.de().get(p.decl_ref.id());
                 GenericArgument::Const(GenericConstArgument {
-                    expr: match decl.value.as_ref() {
-                        Some(expr) => expr.clone(),
-                        None => ConstGenericExpr::AmbiguousVariableExpression {
-                            ident: decl.name().clone(),
-                        },
-                    },
+                    expr: ConstGenericExpr::DeclId { id: *p.decl_ref.id(), span: decl.span() }
                 })
-            },
+            }
         }
     }
 }

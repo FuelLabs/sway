@@ -3,7 +3,9 @@ use crate::{
     engine_threading::*,
     has_changes,
     language::{
-        parsed::{self, FunctionDeclaration, FunctionDeclarationKind}, ty::*, CallPath, CallPathType, Inline, Purity, Visibility
+        parsed::{self, FunctionDeclaration, FunctionDeclarationKind},
+        ty::*,
+        CallPath, CallPathType, Inline, Purity, Visibility,
     },
     semantic_analysis::TypeCheckContext,
     transform::{self, AttributeKind},
@@ -83,7 +85,7 @@ impl DebugWithEngines for TyFunctionDecl {
                                 }
                                 TypeParameter::Const(p) => {
                                     let decl = engines.de().get(p.decl_ref.id());
-                                    format!("{} -> {:?}", decl.name(), decl.value)
+                                    format!("({:?}) {} -> {:?}", p.decl_ref.id(), decl.name(), decl.value)
                                 }
                             }
                         })
@@ -151,57 +153,62 @@ impl MaterializeConstGenerics for TyFunctionDecl {
         &mut self,
         engines: &Engines,
         handler: &Handler,
-        name: &str,
+        name: DeclId<TyConstGenericDecl>,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
-        for tp in self.type_parameters.iter_mut() {
-            match tp {
-                TypeParameter::Type(p) => p
-                    .type_id
-                    .materialize_const_generics(engines, handler, name, value)?,
-                TypeParameter::Const(p) if p.decl_ref.name().as_str() == name => {
-                    eprintln!("{:?}", p.decl_ref.id());
-                    let decl = engines.de().get(p.decl_ref.id());
-                    match decl.value.as_ref() {
-                        Some(expr) => {
-                            // TODO horrible assert
-                            assert!(
-                                expr.as_literal_val().unwrap() as u64 == value.extract_literal_value().unwrap().cast_value_to_u64().unwrap(),
-                                "{:?} {expr:?} vs {value:?}", p.decl_ref.id()
-                            );
-                        },
-                        None => {
-                            let decl = TyConstGenericDecl {
-                                call_path: CallPath { 
-                                    prefixes: vec![], 
-                                    suffix: p.decl_ref.name().clone(), 
-                                    callpath_type: CallPathType::Ambiguous,
-                                },
-                                return_type: decl.return_type.clone(),
-                                span: decl.span.clone(),
-                                value: Some(ConstGenericExpr::from_ty_expression(handler, value)?),
-                            };
-                            engines.de().replace(*p.decl_ref.id(), decl);
-                        },
-                    }
-                }
-                _ => {}
-            }
-        }
+        // for tp in self.type_parameters.iter_mut() {
+        //     match tp {
+        //         TypeParameter::Type(p) => p
+        //             .type_id
+        //             .materialize_const_generics(engines, handler, name, value)?,
+        //         TypeParameter::Const(p) if p.decl_ref.name().as_str() == name => {
+        //             eprintln!("{:?}", p.decl_ref.id());
+        //             let decl = engines.de().get(p.decl_ref.id());
+        //             match decl.value.as_ref() {
+        //                 Some(expr) => {
+        //                     // TODO horrible assert
+        //                     assert!(
+        //                         *expr == value
+        //                                 .extract_literal_value()
+        //                                 .unwrap()
+        //                                 .cast_value_to_u64()
+        //                                 .unwrap(),
+        //                         "{:?} {expr:?} vs {value:?}",
+        //                         p.decl_ref.id()
+        //                     );
+        //                 }
+        //                 None => {
+        //                     let decl = TyConstGenericDecl {
+        //                         call_path: CallPath {
+        //                             prefixes: vec![],
+        //                             suffix: p.decl_ref.name().clone(),
+        //                             callpath_type: CallPathType::Ambiguous,
+        //                         },
+        //                         return_type: decl.return_type.clone(),
+        //                         span: decl.span.clone(),
+        //                         value: Some(value.expression.extract_literal_value().unwrap().cast_value_to_u64().unwrap()),
+        //                     };
+        //                     engines.de().replace(*p.decl_ref.id(), decl);
+        //                 }
+        //             }
+        //         }
+        //         _ => {}
+        //     }
+        // }
 
-        for param in self.parameters.iter_mut() {
-            param
-                .type_argument
-                .type_id_mut()
-                .materialize_const_generics(engines, handler, name, value)?;
-        }
+        // for param in self.parameters.iter_mut() {
+        //     param
+        //         .type_argument
+        //         .type_id_mut()
+        //         .materialize_const_generics(engines, handler, name, value)?;
+        // }
 
-        self.return_type
-            .type_id_mut()
-            .materialize_const_generics(engines, handler, name, value)?;
+        // self.return_type
+        //     .type_id_mut()
+        //     .materialize_const_generics(engines, handler, name, value)?;
 
-        self.body
-            .materialize_const_generics(engines, handler, name, value)?;
+        // self.body
+        //     .materialize_const_generics(engines, handler, name, value)?;
 
         Ok(())
     }
@@ -234,14 +241,11 @@ impl DeclRefFunction {
                     impl_self_or_trait.implementing_for.type_id(),
                 );
 
-                type_id_type_subst_map
-                    .const_generics_materialization
-                    .append(&mut const_generic_parameters);
+                // type_id_type_subst_map
+                //     .const_mapping
+                //     .append(&mut const_generic_parameters);
 
-                for p in impl_self_or_trait
-                    .impl_type_parameters
-                    .iter()
-                {
+                for p in impl_self_or_trait.impl_type_parameters.iter() {
                     match p {
                         TypeParameter::Type(p) => {
                             let matches = type_id_type_parameters
@@ -267,36 +271,87 @@ impl DeclRefFunction {
                             {
                                 type_id_type_subst_map.insert(p.type_id, type_id);
                             }
-                        },
+                        }
                         TypeParameter::Const(p) => {
                             let new_id = engines.de().duplicate(p.decl_ref.id());
                             type_id_type_subst_map.insert_const_decl_id(*p.decl_ref.id(), new_id);
-                        },
+                        }
                     }
-                    
                 }
             }
 
             for p in method.type_parameters.iter() {
                 match p {
-                    TypeParameter::Type(_) => {},
+                    TypeParameter::Type(_) => {}
                     TypeParameter::Const(p) => {
                         let new_id = engines.de().duplicate(p.decl_ref.id());
                         type_id_type_subst_map.insert_const_decl_id(*p.decl_ref.id(), new_id);
-                    },
+                    }
                 }
             }
 
-            // Duplicate arguments to avoid changing TypeId inside TraitMap
-            for parameter in method.parameters.iter_mut() {
-                *parameter.type_argument.type_id_mut() = engines
-                    .te()
-                    .duplicate(engines, parameter.type_argument.type_id())
+            fn make_type_safe_to_unify(engines: &Engines, id: TypeId, map:&mut TypeSubstMap) {
+                let t = engines.te().get(id);
+                match &*t {
+                    TypeInfo::Enum(decl_id) => {
+                        let decl = engines.de().get(decl_id);
+                        for p in decl.generic_parameters.iter() {
+                            match p {
+                                TypeParameter::Type(_) => {},
+                                TypeParameter::Const(p) => {
+                                    let old_id = p.decl_ref.id().clone();
+                                    let new_id = engines.de().map_duplicate(
+                                        p.decl_ref.id(), |x| {
+                                            //assert!(x.value.is_none());
+                                        }
+                                    );
+                                    map.const_mapping.insert(old_id, new_id);
+                                },
+                            }
+                        }
+                    },
+                    TypeInfo::Struct(decl_id) => {
+                        let decl = engines.de().get(decl_id);
+                        for p in decl.generic_parameters.iter() {
+                            match p {
+                                TypeParameter::Type(_) => {},
+                                TypeParameter::Const(p) => {
+                                    let old_id = p.decl_ref.id().clone();
+                                    let new_id = engines.de().map_duplicate(
+                                        p.decl_ref.id(), |x| {
+                                            assert!(x.value.is_none());
+                                        }
+                                    );
+                                    map.const_mapping.insert(old_id, new_id);
+                                },
+                            }
+                        }
+                    },
+                    TypeInfo::StringArray(length) | TypeInfo::Array(_, length) => {
+                        match length.expr() {
+                            ConstGenericExpr::DeclId { id, .. } => {
+                                let new_id = engines.de().map_duplicate(id, |x| {
+                                    //assert!(x.value.is_none());
+                                });
+                                map.const_mapping.insert(*id, new_id);
+                            },
+                            _ => {}
+                        }
+                    },
+                    _ => {}
+                }
             }
 
-            let mut method_type_subst_map = TypeSubstMap::new();
+            let mut method_type_subst_map = TypeSubstMap::default();
             method_type_subst_map.extend(&type_id_type_subst_map);
             method_type_subst_map.insert(method_implementing_for_typeid, type_id);
+
+            for parameter in method.parameters.iter_mut() {
+                make_type_safe_to_unify(engines, 
+                    parameter.type_argument.type_id(), 
+                    &mut method_type_subst_map
+                );
+            }
 
             method.subst(&SubstTypesContext::new(
                 engines,
@@ -418,8 +473,12 @@ impl SubstTypes for TyFunctionDecl {
 
         if let Some(map) = ctx.type_subst_map.as_ref() {
             let handler = Handler::default();
-            for (name, value) in &map.const_generics_materialization {
-                let _ = self.materialize_const_generics(ctx.engines, &handler, name, value);
+            for (id, value) in &map.const_generics_materialization {
+                //let _ = self.materialize_const_generics(ctx.engines, &handler, name, value);
+                let decl = ctx.engines.de().get(id);
+                let mut new_decl = (&*decl).clone();
+                new_decl.value = Some(value.extract_literal_value().unwrap().cast_value_to_u64().unwrap());
+                ctx.engines.de().replace(*id, new_decl);
             }
             HasChanges::Yes
         } else {

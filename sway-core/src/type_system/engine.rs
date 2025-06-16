@@ -976,10 +976,14 @@ impl TypeEngine {
             | TypeInfo::Numeric
             | TypeInfo::Placeholder(_)
             | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::Array(.., Length(ConstGenericExpr::AmbiguousVariableExpression { .. }))
-            | TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
-                ..
-            }))
+            | TypeInfo::Array(.., Length(
+                ConstGenericExpr::AmbiguousVariableExpression { .. }
+                | ConstGenericExpr::DeclId { .. }
+            ))
+            | TypeInfo::StringArray(Length(
+                ConstGenericExpr::AmbiguousVariableExpression { ..}
+                | ConstGenericExpr::DeclId { .. }
+            ))
             | TypeInfo::Struct(_)
             | TypeInfo::Enum(_) => true,
             TypeInfo::ContractCaller { abi_name, address } => {
@@ -1076,6 +1080,14 @@ impl TypeEngine {
             // will never be changeable.
             // TODO: (GENERIC-TYPE-ALIASES) If we ever introduce generic type aliases, update this accordingly.
             TypeInfo::Alias { name: _, ty: _ } => false,
+
+            TypeInfo::Array(
+                _,
+                Length(
+                    ConstGenericExpr::DeclId { .. }
+                    | ConstGenericExpr::AmbiguousVariableExpression { .. },
+                ),
+            ) => true,
 
             // The following types are changeable if their type argument is changeable.
             TypeInfo::Array(ta, _)

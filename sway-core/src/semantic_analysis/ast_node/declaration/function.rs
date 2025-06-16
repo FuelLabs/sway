@@ -142,9 +142,7 @@ impl ty::TyFunctionDecl {
                     ctx.insert_symbol(
                         handler,
                         p.name().clone(),
-                        TyDecl::ConstGenericDecl(ConstGenericDecl {
-                            decl_id: *p.id(),
-                        }),
+                        TyDecl::ConstGenericDecl(ConstGenericDecl { decl_id: *p.id() }),
                     )?;
                 }
 

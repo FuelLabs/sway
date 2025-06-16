@@ -6,15 +6,22 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
-    decl_engine::DeclEngineGet as _, engine_threading::*, ir_generation::const_eval::{
+    decl_engine::DeclEngineGet as _,
+    engine_threading::*,
+    ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
-    }, language::{
+    },
+    language::{
         ty::{
             self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpression,
             TyExpressionVariant, TyStorageField,
         },
         *,
-    }, metadata::MetadataManager, type_system::*, types::*, PanicOccurrence, PanicOccurrences
+    },
+    metadata::MetadataManager,
+    type_system::*,
+    types::*,
+    PanicOccurrence, PanicOccurrences,
 };
 
 use indexmap::IndexMap;
@@ -237,6 +244,7 @@ impl<'a> FnCompiler<'a> {
         md_mgr: &mut MetadataManager,
         ast_node: &ty::TyAstNode,
     ) -> Result<Option<TerminatorValue>, CompileError> {
+        eprintln!("    compile_ast_node: {}", ast_node.span.as_str());
         let unexpected_decl = |decl_type: &'static str| {
             Err(CompileError::UnexpectedDeclaration {
                 decl_type,
@@ -552,7 +560,12 @@ impl<'a> FnCompiler<'a> {
                 let decl = self.engines.de().get(decl);
                 assert!(decl.value.is_some(), "{:?}", ast_expr.span.as_str());
 
-                let value = decl.value.as_ref().unwrap().to_ty_expression(self.engines);
+                let value = decl.value.as_ref().unwrap();
+                let value = TyExpression {
+                    expression: TyExpressionVariant::Literal(Literal::U64(*value)),
+                    return_type: self.engines.te().id_of_u64(),
+                    span: decl.span(),
+                };
                 self.compile_expression(context, md_mgr, &value)
             }
             ty::TyExpressionVariant::VariableExpression {

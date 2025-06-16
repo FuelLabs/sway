@@ -1,8 +1,8 @@
 use crate::{
-    decl_engine::{DeclEngineGet as _, DeclEngineReplace as _, MaterializeConstGenerics},
+    decl_engine::{DeclEngineGet as _, DeclEngineReplace as _, DeclId, MaterializeConstGenerics},
     engine_threading::*,
     has_changes,
-    language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
+    language::{parsed::EnumDeclaration, ty::{TyConstGenericDecl, TyDeclParsedType}, CallPath, Visibility},
     transform,
     type_system::*,
 };
@@ -110,28 +110,31 @@ impl MaterializeConstGenerics for TyEnumDecl {
         &mut self,
         engines: &Engines,
         handler: &Handler,
-        name: &str,
+        name: DeclId<TyConstGenericDecl>,
         value: &crate::language::ty::TyExpression,
     ) -> Result<(), ErrorEmitted> {
-        for p in self.generic_parameters.iter_mut() {
-            match p {
-                TypeParameter::Const(p) if p.decl_ref.name().as_str() == name => {
-                    p.decl_ref.id().clone().materialize_const_generics(engines, handler, name, value)?;
-                }
-                TypeParameter::Type(p) => {
-                    p.type_id
-                        .materialize_const_generics(engines, handler, name, value)?;
-                }
-                _ => {}
-            }
-        }
+        // for p in self.generic_parameters.iter_mut() {
+        //     match p {
+        //         TypeParameter::Const(p) if p.decl_ref.name().as_str() == name => {
+        //             p.decl_ref
+        //                 .id()
+        //                 .clone()
+        //                 .materialize_const_generics(engines, handler, name, value)?;
+        //         }
+        //         TypeParameter::Type(p) => {
+        //             p.type_id
+        //                 .materialize_const_generics(engines, handler, name, value)?;
+        //         }
+        //         _ => {}
+        //     }
+        // }
 
-        for variant in self.variants.iter_mut() {
-            variant
-                .type_argument
-                .type_id_mut()
-                .materialize_const_generics(engines, handler, name, value)?;
-        }
+        // for variant in self.variants.iter_mut() {
+        //     variant
+        //         .type_argument
+        //         .type_id_mut()
+        //         .materialize_const_generics(engines, handler, name, value)?;
+        // }
 
         Ok(())
     }

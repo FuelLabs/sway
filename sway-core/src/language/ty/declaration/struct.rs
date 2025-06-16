@@ -1,10 +1,10 @@
 use crate::{
-    decl_engine::{DeclEngineGet as _, DeclEngineInsert, DeclRef, MaterializeConstGenerics},
+    decl_engine::{DeclEngineGet as _, DeclEngineInsert, DeclId, DeclRef, MaterializeConstGenerics},
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
     language::{
-        parsed::StructDeclaration, ty::TyDeclParsedType, CallPath, CallPathType, Visibility,
+        parsed::StructDeclaration, ty::{TyConstGenericDecl, TyDeclParsedType}, CallPath, CallPathType, Visibility,
     },
     transform,
     type_system::*,
@@ -103,26 +103,30 @@ impl MaterializeConstGenerics for TyStructDecl {
         &mut self,
         engines: &Engines,
         handler: &Handler,
-        name: &str,
+        name: DeclId<TyConstGenericDecl>,
         value: &crate::language::ty::TyExpression,
     ) -> Result<(), ErrorEmitted> {
-        for p in self.generic_parameters.iter_mut() {
-            match p {
-                TypeParameter::Const(p) if p.decl_ref.name().as_str() == name => {
-                    p.decl_ref.id().clone().materialize_const_generics(engines, handler, name, value);
-                }
-                _ => {}
-            }
-        }
+        todo!()
+        // for p in self.generic_parameters.iter_mut() {
+        //     match p {
+        //         TypeParameter::Const(p) if p.decl_ref.name().as_str() == name => {
+        //             p.decl_ref
+        //                 .id()
+        //                 .clone()
+        //                 .materialize_const_generics(engines, handler, name, value);
+        //         }
+        //         _ => {}
+        //     }
+        // }
 
-        for field in self.fields.iter_mut() {
-            field
-                .type_argument
-                .type_id_mut()
-                .materialize_const_generics(engines, handler, name, value)?;
-        }
+        // for field in self.fields.iter_mut() {
+        //     field
+        //         .type_argument
+        //         .type_id_mut()
+        //         .materialize_const_generics(engines, handler, name, value)?;
+        // }
 
-        Ok(())
+        // Ok(())
     }
 }
 

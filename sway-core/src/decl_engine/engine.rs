@@ -148,20 +148,14 @@ where
         parsed_decl_id: Option<&ParsedDeclId<T::ParsedType>>,
     ) -> DeclRef<DeclId<T>>;
 
-    fn map_duplicate(
-        &self,
-        index: &DeclId<T>,
-        map: impl FnOnce(&mut T),
-    ) -> DeclId<T>
+    fn map_duplicate(&self, index: &DeclId<T>, map: impl FnOnce(&mut T)) -> DeclId<T>
     where
         T: Clone;
 
-    fn duplicate(
-        &self,
-        index: &DeclId<T>,
-    ) -> DeclId<T>
+    fn duplicate(&self, index: &DeclId<T>) -> DeclId<T>
     where
-        T: Clone {
+        T: Clone,
+    {
         self.map_duplicate(index, |_| {})
     }
 }
@@ -235,6 +229,11 @@ macro_rules! decl_engine_insert {
                 let span = decl.span();
                 let decl_name = decl.name().clone();
                 let id = self.$slab.insert(decl);
+
+                if id == 221 {
+                    eprintln!("ID221: {}", std::backtrace::Backtrace::force_capture());
+                }
+
                 let decl_id = DeclId::new(id);
                 if let Some(parsed_decl_id) = parsed_decl_id {
                     self.$parsed_slab
@@ -251,12 +250,20 @@ macro_rules! decl_engine_insert {
                 map: impl FnOnce(&mut $decl),
             ) -> DeclId<$decl>
             where
-                $decl: Clone
+                $decl: Clone,
             {
                 let item = self.get(index);
 
-                let new_item: $decl = (&*item).clone();
-                let new_id = DeclId::new(self.$slab.insert(new_item));
+                let mut new_item: $decl = (&*item).clone();
+                map(&mut new_item);
+
+                let new_id = self.$slab.insert(new_item);
+
+                if new_id == 221 {
+                    eprintln!("ID221: {}", std::backtrace::Backtrace::force_capture());
+                }
+
+                let new_id = DeclId::new(new_id);
 
                 let mut slab = self.$parsed_slab.write();
                 if let Some(parsed_decl_id) = slab.get(index).cloned() {

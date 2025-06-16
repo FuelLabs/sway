@@ -1,8 +1,5 @@
 use crate::{
-    decl_engine::DeclEngine,
-    language::Literal,
-    type_system::{TypeId, TypeInfo},
-    TypeEngine,
+    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{DeclEngine, DeclEngineGet}, language::Literal, type_system::{TypeId, TypeInfo}, TypeEngine
 };
 
 use super::types::{create_tagged_union_type, create_tuple_aggregate};
@@ -125,21 +122,23 @@ fn convert_resolved_type_info(
             context,
             &decl_engine.get_enum(decl_ref).variants,
         )?,
-        TypeInfo::Array(elem_type, length) if length.expr().as_literal_val().is_some() => {
-            // SAFETY: Safe by the guard above
-            let len = length
-                .expr()
-                .as_literal_val()
-                .expect("unexpected non literal array length");
-
-            let elem_type = convert_resolved_type_id(
-                type_engine,
-                decl_engine,
-                context,
-                elem_type.type_id(),
-                span,
-            )?;
-            Type::new_array(context, elem_type, len as u64)
+        TypeInfo::Array(elem_type, l) => {
+            if let ConstGenericExpr::DeclId { id, .. } = l.expr() {
+                let decl = decl_engine.get(id);
+                let elem_type = convert_resolved_type_id(
+                    type_engine,
+                    decl_engine,
+                    context,
+                    elem_type.type_id(),
+                    span,
+                )?;
+                if decl.value.is_none() {
+                    todo!("{id:?}");
+                }
+                Type::new_array(context, elem_type, *decl.value.as_ref().unwrap() as u64)
+            } else {
+                reject_type!("{l:?} Array with non literal length")
+            }
         }
 
         TypeInfo::Tuple(fields) => {
@@ -195,7 +194,10 @@ fn convert_resolved_type_info(
         TypeInfo::TypeParam(_) => reject_type!("TypeParam"),
         TypeInfo::ErrorRecovery(_) => reject_type!("Error recovery"),
         TypeInfo::TraitType { .. } => reject_type!("TraitType"),
-        TypeInfo::Array(a, b) => { dbg!(a, b); reject_type!("Array with non literal length") },
+        TypeInfo::Array(a, b) => {
+            dbg!(a, b);
+            reject_type!("Array with non literal length")
+        }
         TypeInfo::StringArray(..) => reject_type!("String Array with non literal length"),
     })
 }

@@ -613,6 +613,7 @@ fn compile_fn(
         .parameters
         .iter()
         .map(|param| {
+            eprintln!(" arg {}: {:?}", param.name, engines.help_out(param.type_argument.type_id()));
             // Convert to an IR type.
             convert_resolved_type_id(
                 type_engine,

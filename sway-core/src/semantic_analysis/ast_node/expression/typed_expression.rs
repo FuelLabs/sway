@@ -296,6 +296,8 @@ impl ty::TyExpression {
         mut ctx: TypeCheckContext,
         expr: &Expression,
     ) -> Result<Self, ErrorEmitted> {
+        eprintln!("    type_check expr: {}", expr.span.as_str());
+
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
         let expr_span = expr.span();

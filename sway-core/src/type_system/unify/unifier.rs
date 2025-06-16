@@ -1,5 +1,6 @@
 use std::fmt;
 
+use fuel_vm::fuel_crypto::coins_bip32::prelude::k256::elliptic_curve::bigint::U6144;
 use sway_error::{
     handler::{ErrorEmitted, Handler},
     type_error::TypeError,
@@ -8,9 +9,9 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     ast_elements::type_parameter::ConstGenericExpr,
-    decl_engine::{DeclEngineGet, DeclId},
+    decl_engine::{DeclEngineGet, DeclEngineReplace, DeclId},
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext, WithEngines},
-    language::ty::{TyEnumDecl, TyStructDecl},
+    language::ty::{TyConstGenericDecl, TyEnumDecl, TyStructDecl},
     type_system::{engine::Unification, priv_prelude::*},
 };
 
@@ -123,6 +124,11 @@ impl<'a> Unifier<'a> {
         let r_type_source_info = self.engines.te().get(received);
         let e_type_source_info = self.engines.te().get(expected);
 
+        eprintln!("Unify: received: {:?} expected: {:?}", 
+            r_type_source_info,
+            e_type_source_info,
+        );
+
         match (&*r_type_source_info, &*e_type_source_info) {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
@@ -148,7 +154,7 @@ impl<'a> Unifier<'a> {
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
                 self.unify_tuples(handler, rfs, efs);
             }
-            (Array(re, rc), Array(ee, ec)) => {
+            (l @ Array(re, rc), r @ Array(ee, ec)) => {
                 if self
                     .unify_type_arguments_in_parents(handler, received, expected, span, re, ee)
                     .is_err()
@@ -190,6 +196,47 @@ impl<'a> Unifier<'a> {
                             // );
                         }
                     }
+                    (
+                        ConstGenericExpr::DeclId { id: l, .. },
+                        ConstGenericExpr::DeclId { id: r, .. },
+                    ) => {
+                        if l == r {
+
+                        } else {
+                            let ldecl = self.engines.de().get(l);
+                            let rdecl = self.engines.de().get(r);
+                            eprintln!("{:?} {:?}", ldecl.value, rdecl.value);
+
+                            match (ldecl.value.as_ref(), rdecl.value.as_ref()) {
+                                (Some(l), Some(r)) if l != r => todo!(),
+                                (Some(_), Some(_)) => {
+                                    // self.replace_expected_with_received(expected, &r_type_source_info, span);
+                                },
+                                (None, Some(v)) => {
+                                    TyConstGenericDecl::materialize(self.engines, l, *v);
+                                },
+                                (Some(v), None) => {
+                                    TyConstGenericDecl::materialize(self.engines, r, *v);
+                                },
+                                (None, None) => {
+                                    // TODO we need replace here to link them
+                                }
+                            }
+                        }
+                    }
+                    (
+                        ConstGenericExpr::Literal { val, .. },
+                        ConstGenericExpr::DeclId { id, .. },
+                    ) => {
+                        TyConstGenericDecl::materialize(self.engines, id, *val as u64);
+                    }
+                    (
+                        ConstGenericExpr::AmbiguousVariableExpression { .. },
+                        ConstGenericExpr::DeclId { .. },
+                    ) => {
+                        //self.replace_received_with_expected(expected, &e_type_source_info, span);
+                    }
+                    x => todo!("{x:?}"),
                 }
             }
             (Slice(re), Slice(ee)) => {
@@ -411,17 +458,42 @@ impl<'a> Unifier<'a> {
                 ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
                 ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
             ) if r_ident == e_ident => {}
-            _ => {
-                let (received, expected) = self.assign_args(received, expected);
-                handler.emit_err(
-                    TypeError::MismatchedType {
-                        expected,
-                        received,
-                        help_text: self.help_text.clone(),
-                        span: span.clone(),
+            (
+                ConstGenericExpr::DeclId { id: l, .. },
+                ConstGenericExpr::DeclId { id: r, .. },
+            ) => {
+                if l == r {
+                } else {
+                    let ldecl = self.engines.de().get(l);
+                    let rdecl = self.engines.de().get(r);
+
+                    eprintln!("Unify StrArrays: received: ({:?}) {:?} expected: ({:?}) {:?}",
+                        l,
+                        ldecl.value,
+                        r,
+                        rdecl.value,
+                    );
+                    
+                    match (ldecl.value.as_ref(), rdecl.value.as_ref()) {
+                        (Some(l), Some(r)) if l != r => todo!(),
+                        (None, None) | (Some(_), Some(_))=> {
+                            self.replace_expected_with_received(expected, &received_type_info, span);
+                        },
+                        (None, Some(v)) => {
+                            let mut new_l = (&*ldecl).clone();
+                            new_l.value = Some(*v);
+                            self.engines.de().replace(*l, new_l);
+                        },
+                        (Some(v), None) => {
+                            let mut new_r = (&*rdecl).clone();
+                            new_r.value = Some(*v);
+                            self.engines.de().replace(*r, new_r);
+                        },
                     }
-                    .into(),
-                );
+                }
+            }
+            x => {
+                todo!("{x:?}")
             }
         }
     }
@@ -475,11 +547,19 @@ impl<'a> Unifier<'a> {
                     ) => {
                         let rdecl = self.engines.de().get(received_parameter.decl_ref.id());
                         let edecl = self.engines.de().get(expected_parameter.decl_ref.id());
+
+                        eprintln!("Unify Structs: received: ({:?}) {:?} expected: ({:?}) {:?}",
+                            received_parameter.decl_ref.id(),
+                            rdecl.value,
+                            expected_parameter.decl_ref.id(),
+                            edecl.value,
+                        );
+
                         match (rdecl.value.as_ref(), edecl.value.as_ref()) {
                             (Some(r), Some(e)) => {
-                                match (r.as_literal_val(), e.as_literal_val()) {
-                                    (Some(r), Some(e)) if r == e => {},
-                                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                                if r == e {
+                                } else {
+                                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                                 }
                             }
                             (Some(_), None) => {
@@ -561,11 +641,19 @@ impl<'a> Unifier<'a> {
                     ) => {
                         let rdecl = self.engines.de().get(received_parameter.decl_ref.id());
                         let edecl = self.engines.de().get(expected_parameter.decl_ref.id());
+
+                        eprintln!("Unify Enums: received: ({:?}) {:?} expected: ({:?}) {:?}",
+                            received_parameter.decl_ref.id(),
+                            rdecl.value,
+                            expected_parameter.decl_ref.id(),
+                            edecl.value,
+                        );
+
                         match (rdecl.value.as_ref(), edecl.value.as_ref()) {
                             (Some(r), Some(e)) => {
-                                match (r.as_literal_val(), e.as_literal_val()) {
-                                    (Some(r), Some(e)) if r == e => {},
-                                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                                if r == e {
+                                } else {
+                                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                                 }
                             }
                             (Some(_), None) => {
@@ -583,11 +671,13 @@ impl<'a> Unifier<'a> {
                                 );
                             }
                             (None, None) => {
-                                if received_parameter.decl_ref.name() == expected_parameter.decl_ref.name() {
+                                if received_parameter.decl_ref.name()
+                                    == expected_parameter.decl_ref.name()
+                                {
                                 } else {
                                     todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                                 }
-                            },
+                            }
                         }
                     }
                     _ => {

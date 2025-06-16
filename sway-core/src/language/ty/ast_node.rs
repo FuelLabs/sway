@@ -145,33 +145,34 @@ impl MaterializeConstGenerics for TyAstNode {
         &mut self,
         engines: &Engines,
         handler: &Handler,
-        name: &str,
+        name: DeclId<TyConstGenericDecl>,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
-        match &mut self.content {
-            TyAstNodeContent::Declaration(TyDecl::VariableDecl(decl)) => {
-                decl.body
-                    .materialize_const_generics(engines, handler, name, value)?;
-                decl.return_type
-                    .materialize_const_generics(engines, handler, name, value)?;
-                match &mut decl.type_ascription {
-                    GenericArgument::Type(arg) => arg
-                        .type_id
-                        .materialize_const_generics(engines, handler, name, value)?,
-                    GenericArgument::Const(arg) => {
-                        if matches!(&arg.expr, ConstGenericExpr::AmbiguousVariableExpression { ident } if ident.as_str() == name)
-                        {
-                            arg.expr = ConstGenericExpr::from_ty_expression(handler, value)?;
-                        }
-                    }
-                }
-                Ok(())
-            }
-            TyAstNodeContent::Expression(expr) => {
-                expr.materialize_const_generics(engines, handler, name, value)
-            }
-            _ => Ok(()),
-        }
+        // match &mut self.content {
+        //     TyAstNodeContent::Declaration(TyDecl::VariableDecl(decl)) => {
+        //         decl.body
+        //             .materialize_const_generics(engines, handler, name, value)?;
+        //         decl.return_type
+        //             .materialize_const_generics(engines, handler, name, value)?;
+        //         match &mut decl.type_ascription {
+        //             GenericArgument::Type(arg) => arg
+        //                 .type_id
+        //                 .materialize_const_generics(engines, handler, name, value)?,
+        //             GenericArgument::Const(arg) => {
+        //                 if matches!(&arg.expr, ConstGenericExpr::AmbiguousVariableExpression { ident } if ident.as_str() == name)
+        //                 {
+        //                     arg.expr = ConstGenericExpr::from_ty_expression(handler, value)?;
+        //                 }
+        //             }
+        //         }
+        //         Ok(())
+        //     }
+        //     TyAstNodeContent::Expression(expr) => {
+        //         expr.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     _ => Ok(()),
+        // }
+        Ok(())
     }
 }
 

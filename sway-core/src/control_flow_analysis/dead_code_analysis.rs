@@ -1082,7 +1082,9 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
         return_type: ty,
     };
 
-    graph.namespace.insert_function(engines, fn_decl, namespace_entry);
+    graph
+        .namespace
+        .insert_function(engines, fn_decl, namespace_entry);
 
     connect_fn_params_struct_enums(engines, fn_decl, graph, entry_node)?;
     Ok(())

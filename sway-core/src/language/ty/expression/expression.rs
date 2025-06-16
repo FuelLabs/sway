@@ -416,149 +416,152 @@ impl MaterializeConstGenerics for TyExpression {
         &mut self,
         engines: &Engines,
         handler: &Handler,
-        name: &str,
+        decl_id: DeclId<TyConstGenericDecl>,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
-        self.return_type
-            .materialize_const_generics(engines, handler, name, value)?;
-        match &mut self.expression {
-            TyExpressionVariant::CodeBlock(block) => {
-                for node in block.contents.iter_mut() {
-                    node.materialize_const_generics(engines, handler, name, value)?;
-                }
-                Ok(())
-            }
-            TyExpressionVariant::ConstGenericExpression { decl, .. } => {
-                decl.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::ImplicitReturn(expr) => {
-                expr.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::FunctionApplication { fn_ref, arguments, .. } => {
-                let decl = engines.de().get(fn_ref.id());
-                let t = format!("{:?}", engines.help_out(decl));
-                for (_, expr) in arguments {
-                    expr.materialize_const_generics(engines, handler, name, value)?;
-                }
-                Ok(())
-            }
-            TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
-                arguments, ..
-            }) => {
-                for expr in arguments {
-                    expr.materialize_const_generics(engines, handler, name, value)?;
-                }
-                Ok(())
-            }
-            TyExpressionVariant::Return(expr) => {
-                expr.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::IfExp {
-                condition,
-                then,
-                r#else,
-            } => {
-                condition.materialize_const_generics(engines, handler, name, value)?;
-                then.materialize_const_generics(engines, handler, name, value)?;
-                if let Some(e) = r#else.as_mut() {
-                    e.materialize_const_generics(engines, handler, name, value)?;
-                }
-                Ok(())
-            }
-            TyExpressionVariant::WhileLoop { condition, body } => {
-                condition.materialize_const_generics(engines, handler, name, value)?;
-                body.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::Reassignment(expr) => expr
-                .rhs
-                .materialize_const_generics(engines, handler, name, value),
-            TyExpressionVariant::ArrayIndex { prefix, index } => {
-                prefix.materialize_const_generics(engines, handler, name, value)?;
-                index.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::Literal(_) | TyExpressionVariant::VariableExpression { .. } => {
-                Ok(())
-            }
-            TyExpressionVariant::ArrayRepeat {
-                elem_type,
-                value: elem_value,
-                length,
-            } => {
-                elem_type.materialize_const_generics(engines, handler, name, value)?;
-                elem_value.materialize_const_generics(engines, handler, name, value)?;
-                length.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::Ref(r) => {
-                r.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::Deref(r) => {
-                r.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::MatchExp { desugared, .. } => {
-                desugared.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::EnumInstantiation { contents, .. } => {
-                if let Some(contents) = contents.as_mut() {
-                    contents.materialize_const_generics(engines, handler, name, value)?;
-                }
-                Ok(())
-            }
-            TyExpressionVariant::EnumTag { exp } => {
-                exp.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::Tuple { fields } => {
-                for f in fields {
-                    f.materialize_const_generics(engines, handler, name, value)?;
-                }
-                Ok(())
-            }
-            TyExpressionVariant::TupleElemAccess {
-                prefix,
-                resolved_type_of_parent,
-                ..
-            } => {
-                prefix.materialize_const_generics(engines, handler, name, value)?;
-                resolved_type_of_parent
-                    .materialize_const_generics(engines, handler, name, value)?;
-                Ok(())
-            }
-            TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
-                lhs.materialize_const_generics(engines, handler, name, value)?;
-                rhs.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::AsmExpression { registers, .. } => {
-                for r in registers.iter_mut() {
-                    if let Some(init) = r.initializer.as_mut() {
-                        init.materialize_const_generics(engines, handler, name, value)?;
-                    }
-                }
-                Ok(())
-            }
-            TyExpressionVariant::ConstantExpression { .. } => Ok(()),
-            TyExpressionVariant::StructExpression { fields, .. } => {
-                for f in fields {
-                    f.value
-                        .materialize_const_generics(engines, handler, name, value)?;
-                }
-                Ok(())
-            }
-            TyExpressionVariant::StructFieldAccess {
-                prefix,
-                resolved_type_of_parent,
-                ..
-            } => {
-                prefix.materialize_const_generics(engines, handler, name, value)?;
-                resolved_type_of_parent.materialize_const_generics(engines, handler, name, value)
-            }
-            TyExpressionVariant::UnsafeDowncast { exp, .. } => {
-                exp.materialize_const_generics(engines, handler, name, value)
-            }
-            _ => Err(handler.emit_err(
-                sway_error::error::CompileError::ConstGenericNotSupportedHere {
-                    span: self.span.clone(),
-                },
-            )),
-        }
+        todo!();
+        // self.return_type
+        //     .materialize_const_generics(engines, handler, name, value)?;
+        // match &mut self.expression {
+        //     TyExpressionVariant::CodeBlock(block) => {
+        //         for node in block.contents.iter_mut() {
+        //             node.materialize_const_generics(engines, handler, name, value)?;
+        //         }
+        //         Ok(())
+        //     }
+        //     TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+        //         decl.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::ImplicitReturn(expr) => {
+        //         expr.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::FunctionApplication {
+        //         fn_ref, arguments, ..
+        //     } => {
+        //         let decl = engines.de().get(fn_ref.id());
+        //         let t = format!("{:?}", engines.help_out(decl));
+        //         for (_, expr) in arguments {
+        //             expr.materialize_const_generics(engines, handler, name, value)?;
+        //         }
+        //         Ok(())
+        //     }
+        //     TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+        //         arguments, ..
+        //     }) => {
+        //         for expr in arguments {
+        //             expr.materialize_const_generics(engines, handler, name, value)?;
+        //         }
+        //         Ok(())
+        //     }
+        //     TyExpressionVariant::Return(expr) => {
+        //         expr.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::IfExp {
+        //         condition,
+        //         then,
+        //         r#else,
+        //     } => {
+        //         condition.materialize_const_generics(engines, handler, name, value)?;
+        //         then.materialize_const_generics(engines, handler, name, value)?;
+        //         if let Some(e) = r#else.as_mut() {
+        //             e.materialize_const_generics(engines, handler, name, value)?;
+        //         }
+        //         Ok(())
+        //     }
+        //     TyExpressionVariant::WhileLoop { condition, body } => {
+        //         condition.materialize_const_generics(engines, handler, name, value)?;
+        //         body.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::Reassignment(expr) => expr
+        //         .rhs
+        //         .materialize_const_generics(engines, handler, name, value),
+        //     TyExpressionVariant::ArrayIndex { prefix, index } => {
+        //         prefix.materialize_const_generics(engines, handler, name, value)?;
+        //         index.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::Literal(_) | TyExpressionVariant::VariableExpression { .. } => {
+        //         Ok(())
+        //     }
+        //     TyExpressionVariant::ArrayRepeat {
+        //         elem_type,
+        //         value: elem_value,
+        //         length,
+        //     } => {
+        //         elem_type.materialize_const_generics(engines, handler, name, value)?;
+        //         elem_value.materialize_const_generics(engines, handler, name, value)?;
+        //         length.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::Ref(r) => {
+        //         r.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::Deref(r) => {
+        //         r.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::MatchExp { desugared, .. } => {
+        //         desugared.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::EnumInstantiation { contents, .. } => {
+        //         if let Some(contents) = contents.as_mut() {
+        //             contents.materialize_const_generics(engines, handler, name, value)?;
+        //         }
+        //         Ok(())
+        //     }
+        //     TyExpressionVariant::EnumTag { exp } => {
+        //         exp.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::Tuple { fields } => {
+        //         for f in fields {
+        //             f.materialize_const_generics(engines, handler, name, value)?;
+        //         }
+        //         Ok(())
+        //     }
+        //     TyExpressionVariant::TupleElemAccess {
+        //         prefix,
+        //         resolved_type_of_parent,
+        //         ..
+        //     } => {
+        //         prefix.materialize_const_generics(engines, handler, name, value)?;
+        //         resolved_type_of_parent
+        //             .materialize_const_generics(engines, handler, name, value)?;
+        //         Ok(())
+        //     }
+        //     TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
+        //         lhs.materialize_const_generics(engines, handler, name, value)?;
+        //         rhs.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::AsmExpression { registers, .. } => {
+        //         for r in registers.iter_mut() {
+        //             if let Some(init) = r.initializer.as_mut() {
+        //                 init.materialize_const_generics(engines, handler, name, value)?;
+        //             }
+        //         }
+        //         Ok(())
+        //     }
+        //     TyExpressionVariant::ConstantExpression { .. } => Ok(()),
+        //     TyExpressionVariant::StructExpression { fields, .. } => {
+        //         for f in fields {
+        //             f.value
+        //                 .materialize_const_generics(engines, handler, name, value)?;
+        //         }
+        //         Ok(())
+        //     }
+        //     TyExpressionVariant::StructFieldAccess {
+        //         prefix,
+        //         resolved_type_of_parent,
+        //         ..
+        //     } => {
+        //         prefix.materialize_const_generics(engines, handler, name, value)?;
+        //         resolved_type_of_parent.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     TyExpressionVariant::UnsafeDowncast { exp, .. } => {
+        //         exp.materialize_const_generics(engines, handler, name, value)
+        //     }
+        //     _ => Err(handler.emit_err(
+        //         sway_error::error::CompileError::ConstGenericNotSupportedHere {
+        //             span: self.span.clone(),
+        //         },
+        //     )),
+        // }
     }
 }
 

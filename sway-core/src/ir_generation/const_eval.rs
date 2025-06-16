@@ -4,10 +4,15 @@ use std::{
 };
 
 use crate::{
-    decl_engine::DeclEngineGet as _, engine_threading::*, language::{
-        ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
+    decl_engine::DeclEngineGet as _,
+    engine_threading::*,
+    language::{
+        ty::{self, TyConstantDecl, TyExpression, TyIntrinsicFunctionKind},
         CallPath, Literal,
-    }, metadata::MetadataManager, semantic_analysis::*, TypeInfo, UnifyCheck
+    },
+    metadata::MetadataManager,
+    semantic_analysis::*,
+    TypeInfo, UnifyCheck,
 };
 
 use super::{
@@ -307,7 +312,17 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
             let decl = lookup.engines.de().get(decl);
             assert!(decl.value.is_some());
-            const_eval_typed_expr(lookup, known_consts, &decl.value.as_ref().unwrap().to_ty_expression(lookup.engines))?
+            const_eval_typed_expr(
+                lookup,
+                known_consts,
+                &TyExpression {
+                    expression: ty::TyExpressionVariant::Literal(
+                        Literal::U64(*decl.value.as_ref().unwrap())
+                    ),
+                    return_type: lookup.engines.te().id_of_u64(),
+                    span: decl.span(),
+                }
+            )?
         }
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
             let implied_lit = match &*lookup.engines.te().get(expr.return_type) {

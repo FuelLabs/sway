@@ -1,5 +1,8 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{parsed_id::ParsedDeclId, DeclEngineGet as _, DeclEngineReplace as _, DeclId, MaterializeConstGenerics}, language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath}, semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext}, SubstTypes, TypeId
+    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{
+        parsed_id::ParsedDeclId, DeclEngineGet as _, DeclEngineReplace as _, DeclId,
+        MaterializeConstGenerics,
+    }, language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath}, semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext}, Engines, SubstTypes, TypeId
 };
 use serde::{Deserialize, Serialize};
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -12,7 +15,7 @@ pub struct TyConstGenericDecl {
     pub call_path: CallPath,
     pub return_type: TypeId,
     pub span: Span,
-    pub value: Option<ConstGenericExpr>,
+    pub value: Option<u64>,
 }
 
 impl SubstTypes for TyConstGenericDecl {
@@ -26,24 +29,30 @@ impl MaterializeConstGenerics for DeclId<TyConstGenericDecl> {
         &mut self,
         engines: &crate::Engines,
         handler: &Handler,
-        name: &str,
+        name: DeclId<TyConstGenericDecl>,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
-        let decl = engines.de().get(self);
-        if decl.name().as_str() == name {
-            match decl.value.as_ref() {
-                Some(expr) => {
-                    eprintln!("{:?} {:?} {:?}", self, expr, value);
-                    assert!(expr.as_literal_val().unwrap() as u64 == value.extract_literal_value().unwrap().cast_value_to_u64().unwrap());
-                }
-                None => {
-                    let mut new_decl = (&*decl).clone();
-                    new_decl.value = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+        // let decl = engines.de().get(self);
+        // if decl.name().as_str() == name {
+        //     match decl.value.as_ref() {
+        //         Some(expr) => {
+        //             eprintln!("{:?} {:?} {:?}", self, expr, value);
+        //             assert!(
+        //                 *expr == value
+        //                         .extract_literal_value()
+        //                         .unwrap()
+        //                         .cast_value_to_u64()
+        //                         .unwrap()
+        //             );
+        //         }
+        //         None => {
+        //             let mut new_decl = (&*decl).clone();
+        //             new_decl.value = Some(value.extract_literal_value().unwrap().cast_value_to_u64().unwrap());
 
-                    engines.de().replace(*self, new_decl);
-                }
-            }
-        }
+        //             engines.de().replace(*self, new_decl);
+        //         }
+        //     }
+        // }
         Ok(())
     }
 }
@@ -61,6 +70,23 @@ impl TypeCheckAnalysis for TyConstGenericDecl {
 impl TyConstGenericDecl {
     pub fn name(&self) -> &BaseIdent {
         &self.call_path.suffix
+    }
+
+    pub fn materialize(engines: &Engines, id: &DeclId<TyConstGenericDecl>, value: u64) {
+        let decl = engines.de().get(id);
+        match decl.value.as_ref() {
+            Some(v) => {
+                if *v != value {
+                    todo!()
+                }
+            }
+            None => {
+                eprintln!("Materializing {id:?} with {value}");
+                let mut new_decl = (&*decl).clone();
+                new_decl.value = Some(value);
+                engines.de().replace(*id, new_decl);
+            }
+        }
     }
 }
 

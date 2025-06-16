@@ -701,7 +701,7 @@ impl SubstTypes for TyExpressionVariant {
                     };
                     call_path_typeid.subst(ctx);
                 }
-            },
+            }
             LazyOperator { lhs, rhs, .. } => has_changes! {
                 lhs.subst(ctx);
                 rhs.subst(ctx);
@@ -709,7 +709,8 @@ impl SubstTypes for TyExpressionVariant {
             ConstantExpression { decl, .. } => decl.subst(ctx),
             ConfigurableExpression { decl, .. } => decl.subst(ctx),
             ConstGenericExpression { decl, .. } => {
-                if let Some(new_id) = ctx.type_subst_map
+                if let Some(new_id) = ctx
+                    .type_subst_map
                     .and_then(|map| map.const_mapping.get(decl))
                 {
                     *decl = *new_id;
@@ -717,7 +718,7 @@ impl SubstTypes for TyExpressionVariant {
                 } else {
                     HasChanges::No
                 }
-            },
+            }
             VariableExpression { .. } => HasChanges::No,
             Tuple { fields } => fields.subst(ctx),
             ArrayExplicit {

@@ -323,14 +323,14 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         let mut type_subst_map = TypeSubstMap::default();
         for p in new_copy.type_parameters.iter() {
             match p {
-                TypeParameter::Type(_) => {},
+                TypeParameter::Type(_) => {}
                 TypeParameter::Const(p) => {
                     let new_id = ctx.engines.de().duplicate(p.decl_ref.id());
                     type_subst_map.insert_const_decl_id(*p.decl_ref.id(), new_id);
-                },
+                }
             }
         }
-        new_copy.subst(&SubstTypesContext { 
+        new_copy.subst(&SubstTypesContext {
             engines: ctx.engines,
             type_subst_map: Some(&type_subst_map),
             subst_function_body: true,

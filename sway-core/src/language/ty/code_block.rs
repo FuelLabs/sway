@@ -87,11 +87,12 @@ impl MaterializeConstGenerics for TyCodeBlock {
         &mut self,
         engines: &Engines,
         handler: &Handler,
-        name: &str,
+        name: DeclId<TyConstGenericDecl>,
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
-        self.contents
-            .iter_mut()
-            .try_for_each(|x| x.materialize_const_generics(engines, handler, name, value))
+        // self.contents
+        //     .iter_mut()
+        //     .try_for_each(|x| x.materialize_const_generics(engines, handler, name, value))
+        Ok(())
     }
 }

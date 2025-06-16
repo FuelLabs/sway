@@ -15,11 +15,16 @@ use sway_types::{integer_bits::IntegerBits, BaseIdent, Ident, Span, Spanned};
 use crate::{
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert,
-    }, engine_threading::*, language::{
+    },
+    engine_threading::*,
+    language::{
         parsed::{EnumDeclaration, ImplItem, StructDeclaration},
         ty::{self, TyDecl, TyImplItem, TyTraitItem},
         CallPath,
-    }, type_system::{SubstTypes, TypeId}, GenericArgument, IncludeSelf, SubstTypesContext, TraitConstraint, TypeEngine, TypeInfo, TypeParameter, TypeSubstMap, UnifyCheck
+    },
+    type_system::{SubstTypes, TypeId},
+    GenericArgument, IncludeSelf, SubstTypesContext, TraitConstraint, TypeEngine, TypeInfo,
+    TypeParameter, TypeSubstMap, UnifyCheck,
 };
 
 use super::Module;
@@ -816,13 +821,13 @@ impl TraitMap {
                     }
                     for p in decl.type_parameters.iter() {
                         match p {
-                            crate::TypeParameter::Type(_) => {},
+                            crate::TypeParameter::Type(_) => {}
                             crate::TypeParameter::Const(p) => {
                                 let new_id = engines.de().map_duplicate(p.decl_ref.id(), |x| {
-                                    x.value = None; // TODO should not need this
+                                    // x.value = None; // TODO should not need this
                                 });
-                                type_mapping.insert_const_decl_id(*p.decl_ref.id(), new_id);
-                            },
+                                //type_mapping.insert_const_decl_id(*p.decl_ref.id(), new_id);
+                            }
                         }
                     }
                     decl.subst(&SubstTypesContext::new(
@@ -1265,17 +1270,19 @@ impl TraitMap {
                             let mut type_subst_map = TypeSubstMap::default();
                             for p in decl.type_parameters.iter() {
                                 match p {
-                                    TypeParameter::Type(_) => {},
+                                    TypeParameter::Type(_) => {}
                                     TypeParameter::Const(p) => {
-                                        let new_id = engines.de().map_duplicate(p.decl_ref.id(), |x| {
-                                            x.value = None;
-                                        });
-                                        type_subst_map.insert_const_decl_id(*p.decl_ref.id(), new_id);
-                                    },
+                                        let new_id =
+                                            engines.de().map_duplicate(p.decl_ref.id(), |x| {
+                                                // x.value = None;
+                                            });
+                                        // type_subst_map
+                                        //     .insert_const_decl_id(*p.decl_ref.id(), new_id);
+                                    }
                                 }
                             }
 
-                            decl.subst(&SubstTypesContext { 
+                            decl.subst(&SubstTypesContext {
                                 engines: engines,
                                 type_subst_map: Some(&type_subst_map),
                                 subst_function_body: true,

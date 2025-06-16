@@ -1,10 +1,20 @@
+use std::collections::BTreeMap;
+
 use sway_features::ExperimentalFeatures;
 
 use crate::{
     build_config::DbgGeneration,
-    language::parsed::{Declaration, TreeType},
+    decl_engine::DeclId,
+    language::{
+        parsed::{Declaration, TreeType},
+        ty::TyConstGenericDecl,
+    },
     BuildTarget,
 };
+
+struct ConstGenericScope {
+    map: BTreeMap<String, DeclId<TyConstGenericDecl>>,
+}
 
 pub struct Context {
     pub experimental: ExperimentalFeatures,
@@ -36,6 +46,8 @@ pub struct Context {
 
     /// Keeps track of the implementing type as we convert the tree.
     pub(crate) implementing_type: Option<Declaration>,
+
+    const_generics_scopes: Vec<ConstGenericScope>,
 }
 
 impl Context {
@@ -56,7 +68,27 @@ impl Context {
             for_unique_suffix: std::default::Default::default(),
             program_type: std::default::Default::default(),
             implementing_type: None,
+            const_generics_scopes: vec![],
         }
+    }
+
+    pub fn const_generic_scope<R>(&mut self, f: impl FnOnce(&mut Context) -> R) -> R {
+        self.const_generics_scopes.push(ConstGenericScope {
+            map: BTreeMap::default(),
+        });
+        let r = f(self);
+        let _ = self.const_generics_scopes.pop();
+        r
+    }
+
+    pub fn insert_const_generic(&mut self, name: &str, decl_id: DeclId<TyConstGenericDecl>) {
+        let scope = self.const_generics_scopes.last_mut().unwrap();
+        scope.map.insert(name.to_string(), decl_id);
+    }
+
+    pub fn get_const_generic(&self, name: &str) -> Option<&DeclId<TyConstGenericDecl>> {
+        let scope = self.const_generics_scopes.last().unwrap();
+        scope.map.get(name)
     }
 
     /// Updates the value of `module_has_configurable_block`.

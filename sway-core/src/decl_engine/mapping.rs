@@ -1,9 +1,15 @@
-use std::{collections::{BTreeMap, HashSet}, fmt};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fmt,
+};
 
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
-    decl_engine::DeclId, engine_threading::DebugWithEngines, language::ty::{TyConstGenericDecl, TyTraitInterfaceItem, TyTraitItem}, Engines, TypeId, UnifyCheck
+    decl_engine::DeclId,
+    engine_threading::DebugWithEngines,
+    language::ty::{TyConstGenericDecl, TyTraitInterfaceItem, TyTraitItem},
+    Engines, TypeId, UnifyCheck,
 };
 
 use super::{AssociatedItemDeclId, InterfaceItemMap, ItemMap};
@@ -122,7 +128,10 @@ impl DeclMapping {
                 mapping.push((interface_decl_ref, new_decl_ref));
             }
         }
-        DeclMapping { mapping, const_generic_mapping: BTreeMap::default() }
+        DeclMapping {
+            mapping,
+            const_generic_mapping: BTreeMap::default(),
+        }
     }
 
     pub(crate) fn find_match(

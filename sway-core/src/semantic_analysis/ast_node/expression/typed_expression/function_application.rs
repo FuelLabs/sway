@@ -1,6 +1,7 @@
 use crate::{
     decl_engine::{
-        engine::DeclEngineGetParsedDeclId, DeclEngineGet as _, DeclEngineInsert, DeclRefFunction, ReplaceDecls
+        engine::DeclEngineGetParsedDeclId, DeclEngineGet as _, DeclEngineInsert, DeclRefFunction,
+        ReplaceDecls,
     },
     language::{
         ty::{self, TyFunctionSig},
@@ -31,22 +32,22 @@ pub(crate) fn instantiate_function_application(
     let decl_engine = engines.de();
 
     let mut function_decl = (*decl_engine.get_function(&function_decl_ref)).clone();
-    
+
     let mut type_subst_map = TypeSubstMap::default();
     for p in function_decl.type_parameters.iter() {
         match p {
-            TypeParameter::Type(_) => {},
+            TypeParameter::Type(_) => {}
             TypeParameter::Const(p) => {
                 let new_id = engines.de().duplicate(p.decl_ref.id());
-                type_subst_map.insert_const_decl_id(*p.decl_ref.id(), new_id);
-            },
+                //type_subst_map.insert_const_decl_id(*p.decl_ref.id(), new_id);
+            }
         }
     }
 
-    function_decl.subst(&SubstTypesContext { 
+    function_decl.subst(&SubstTypesContext {
         engines,
         type_subst_map: Some(&type_subst_map),
-        subst_function_body: true
+        subst_function_body: true,
     });
 
     if arguments.is_none() {

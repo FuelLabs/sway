@@ -1,7 +1,13 @@
+use sway_types::Spanned;
+
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, ParsedDeclEngineInsert}, engine_threading::{
+    ast_elements::type_parameter::ConstGenericExpr,
+    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef, ParsedDeclEngineInsert},
+    engine_threading::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
-    }, language::ty::TyConstGenericDecl, type_system::priv_prelude::*
+    },
+    language::ty::TyConstGenericDecl,
+    type_system::priv_prelude::*,
 };
 use std::{collections::BTreeMap, fmt};
 
@@ -13,7 +19,7 @@ type DestinationType = TypeId;
 #[derive(Clone, Default)]
 pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
-    pub const_generics_materialization: BTreeMap<String, crate::language::ty::TyExpression>,
+    pub const_generics_materialization: BTreeMap<DeclId<TyConstGenericDecl>, crate::language::ty::TyExpression>,
     pub const_mapping: BTreeMap<DeclId<TyConstGenericDecl>, DeclId<TyConstGenericDecl>>,
 }
 
@@ -35,16 +41,12 @@ impl DebugWithEngines for TypeSubstMap {
                 .join(", "),
             self.const_generics_materialization
                 .iter()
-                .map(|(k, v)| {
-                    format!("{:?} -> {:?}", k, engines.help_out(v))
-                })
+                .map(|(k, v)| { format!("{:?} -> {:?}", k, engines.help_out(v)) })
                 .collect::<Vec<_>>()
                 .join(", "),
             self.const_mapping
                 .iter()
-                .map(|(k, v)| {
-                    format!("{:?} -> {:?}", k, v)
-                })
+                .map(|(k, v)| { format!("{:?} -> {:?}", k, v) })
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -288,16 +290,16 @@ impl TypeSubstMap {
                         ConstGenericExpr::AmbiguousVariableExpression { ident },
                         ConstGenericExpr::Literal { val, .. },
                     ) => {
-                        map.const_generics_materialization.insert(
-                            ident.as_str().into(),
-                            crate::language::ty::TyExpression {
-                                expression: crate::language::ty::TyExpressionVariant::Literal(
-                                    crate::language::Literal::U64(*val as u64),
-                                ),
-                                return_type: type_engine.id_of_u64(),
-                                span: sway_types::Span::dummy(),
-                            },
-                        );
+                        // map.const_generics_materialization.insert(
+                        //     ident.as_str().into(),
+                        //     crate::language::ty::TyExpression {
+                        //         expression: crate::language::ty::TyExpressionVariant::Literal(
+                        //             crate::language::Literal::U64(*val as u64),
+                        //         ),
+                        //         return_type: type_engine.id_of_u64(),
+                        //         span: sway_types::Span::dummy(),
+                        //     },
+                        // );
                         map
                     }
                     _ => map,
@@ -373,7 +375,7 @@ impl TypeSubstMap {
     pub(crate) fn from_type_parameters_and_type_arguments_and_const_generics(
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
-        const_generics_materialization: BTreeMap<String, crate::language::ty::TyExpression>,
+        const_generics_materialization: BTreeMap<DeclId<TyConstGenericDecl>, crate::language::ty::TyExpression>,
     ) -> TypeSubstMap {
         let mapping = type_parameters.into_iter().zip(type_arguments).collect();
         TypeSubstMap {
@@ -391,8 +393,11 @@ impl TypeSubstMap {
                 .iter()
                 .map(|x| (x.0.clone(), x.1.clone())),
         );
-        self.const_mapping.extend(other.const_mapping.iter()
-            .map(|x| (x.0.clone(), x.1.clone()))
+        self.const_mapping.extend(
+            other
+                .const_mapping
+                .iter()
+                .map(|x| (x.0.clone(), x.1.clone())),
         );
     }
 
@@ -400,7 +405,11 @@ impl TypeSubstMap {
         self.mapping.insert(source, destination);
     }
 
-    pub(crate) fn insert_const_decl_id(&mut self, old: DeclId<TyConstGenericDecl>, new: DeclId<TyConstGenericDecl>) {
+    pub(crate) fn insert_const_decl_id(
+        &mut self,
+        old: DeclId<TyConstGenericDecl>,
+        new: DeclId<TyConstGenericDecl>,
+    ) {
         self.const_mapping.insert(old, new);
     }
 
@@ -500,22 +509,35 @@ impl TypeSubstMap {
             TypeInfo::Struct(decl_id) => {
                 let mut decl = (*decl_engine.get_struct(&decl_id)).clone();
                 let mut need_to_create_new = false;
+
                 for field in &mut decl.fields {
                     if let Some(type_id) = self.find_match(field.type_argument.type_id(), engines) {
                         need_to_create_new = true;
                         *field.type_argument.type_id_mut() = type_id;
                     }
                 }
-                for type_param in &mut decl
-                    .generic_parameters
-                    .iter_mut()
-                    .filter_map(|x| x.as_type_parameter_mut())
-                {
-                    if let Some(type_id) = self.find_match(type_param.type_id, engines) {
-                        need_to_create_new = true;
-                        type_param.type_id = type_id;
+
+                for p in &mut decl.generic_parameters.iter_mut() {
+                    match p {
+                        TypeParameter::Type(p) => {
+                            if let Some(type_id) = self.find_match(p.type_id, engines) {
+                                need_to_create_new = true;
+                                p.type_id = type_id;
+                            }
+                        },
+                        TypeParameter::Const(p) => {
+                            if let Some(new_id) = self.const_mapping.get(p.decl_ref.id()) {
+                                need_to_create_new = true;
+                                p.decl_ref = DeclRef::new(
+                                    p.decl_ref.name().clone(),
+                                    *new_id,
+                                    p.decl_ref.span()
+                                )
+                            }
+                        },
                     }
                 }
+
                 if need_to_create_new {
                     let new_decl_ref =
                         decl_engine.insert(decl, decl_engine.get_parsed_decl_id(&decl_id).as_ref());
@@ -536,15 +558,27 @@ impl TypeSubstMap {
                     }
                 }
 
-                for type_param in &mut decl.generic_parameters {
-                    let Some(type_param) = type_param.as_type_parameter_mut() else {
-                        continue;
-                    };
-                    if let Some(type_id) = self.find_match(type_param.type_id, engines) {
-                        need_to_create_new = true;
-                        type_param.type_id = type_id;
+                for p in &mut decl.generic_parameters.iter_mut() {
+                    match p {
+                        TypeParameter::Type(p) => {
+                            if let Some(type_id) = self.find_match(p.type_id, engines) {
+                                need_to_create_new = true;
+                                p.type_id = type_id;
+                            }
+                        },
+                        TypeParameter::Const(p) => {
+                            if let Some(new_id) = self.const_mapping.get(p.decl_ref.id()) {
+                                need_to_create_new = true;
+                                p.decl_ref = DeclRef::new(
+                                    p.decl_ref.name().clone(),
+                                    *new_id,
+                                    p.decl_ref.span()
+                                )
+                            }
+                        },
                     }
                 }
+
                 if need_to_create_new {
                     let new_decl_ref =
                         decl_engine.insert(decl, decl_engine.get_parsed_decl_id(&decl_id).as_ref());
@@ -553,12 +587,42 @@ impl TypeSubstMap {
                     None
                 }
             }
-            TypeInfo::Array(mut elem_type, length) => self
-                .find_match(elem_type.type_id(), engines)
-                .map(|type_id| {
-                    *elem_type.type_id_mut() = type_id;
-                    type_engine.insert_array(engines, elem_type, length)
-                }),
+            TypeInfo::Array(mut elem_type, length) => {
+                let new_type_id = self.find_match(elem_type.type_id(), engines);
+
+                let new_decl_id = match length.expr() {
+                    ConstGenericExpr::DeclId { id, span } => {
+                        self.const_mapping.get(id).zip(Some(span))
+                    },
+                    _ => None
+                };
+
+                if new_type_id.is_some() || new_decl_id.is_some() {
+                    let new_type_id = new_type_id.unwrap_or(elem_type.type_id());
+                    let new_length = new_decl_id.map(|(new_decl_id, span)| {
+                        Length(ConstGenericExpr::DeclId { id: *new_decl_id, span: span.clone() })
+                    }).unwrap_or(length);
+
+                    *elem_type.type_id_mut() = new_type_id;
+                    Some(type_engine.insert_array(engines, elem_type, new_length))
+                } else {
+                    None
+                }
+            },
+            TypeInfo::StringArray(length) => {
+                match length.expr() {
+                    ConstGenericExpr::DeclId { id, span } => {
+                        if let Some(new_decl_id) = self.const_mapping.get(id) {
+                            Some(type_engine.insert_string_array(engines, Length(
+                                ConstGenericExpr::DeclId { id: *new_decl_id, span: span.clone() })
+                            ))
+                        } else {
+                            None
+                        }
+                    },
+                    _ => None,
+                }
+            }
             TypeInfo::Slice(mut elem_type) => {
                 self.find_match(elem_type.type_id(), engines)
                     .map(|type_id| {
@@ -604,7 +668,6 @@ impl TypeSubstMap {
             }),
             TypeInfo::Unknown
             | TypeInfo::Never
-            | TypeInfo::StringArray(..)
             | TypeInfo::StringSlice
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean

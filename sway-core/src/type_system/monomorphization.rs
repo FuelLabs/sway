@@ -7,9 +7,9 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, MaterializeConstGenerics},
+    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, MaterializeConstGenerics},
     language::{
-        ty::{self, TyExpression},
+        ty::{self, TyConstGenericDecl, TyExpression},
         CallPath,
     },
     namespace::{ModulePath, ResolvedDeclaration},
@@ -150,7 +150,7 @@ where
                     }
                     (TypeParameter::Const(p), GenericArgument::Const(a)) => {
                         consts.insert(
-                            p.decl_ref.name().as_str().to_string(),
+                            *p.decl_ref.id(),
                             a.expr.to_ty_expression(engines),
                         );
                     }
@@ -206,7 +206,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
     namespace: &Namespace,
     value: &mut T,
     type_arguments: &mut [GenericArgument],
-    const_generics: BTreeMap<String, TyExpression>,
+    const_generics: BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,
@@ -216,7 +216,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
 where
     T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
 {
-    let type_mapping = prepare_type_subst_map_for_monomorphize(
+    let mut type_mapping = prepare_type_subst_map_for_monomorphize(
         handler,
         engines,
         namespace,
@@ -228,15 +228,16 @@ where
         self_type,
         subst_ctx,
     )?;
+    type_mapping.const_generics_materialization.extend(const_generics.into_iter());
     value.subst(&SubstTypesContext::new(engines, &type_mapping, true));
 
-    for (name, expr) in const_generics.iter() {
-        let _ = value.materialize_const_generics(engines, handler, name, expr);
-    }
+    // for (name, expr) in const_generics.iter() {
+    //     let _ = value.materialize_const_generics(engines, handler, name, expr);
+    // }
 
-    for (name, expr) in type_mapping.const_generics_materialization.iter() {
-        let _ = value.materialize_const_generics(engines, handler, name, expr);
-    }
+    // for (name, expr) in type_mapping.const_generics_materialization.iter() {
+    //     let _ = value.materialize_const_generics(engines, handler, name, expr);
+    // }
 
     Ok(())
 }

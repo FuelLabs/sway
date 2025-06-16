@@ -166,7 +166,8 @@ impl TyTraitDecl {
                 ctx.insert_trait_implementation(
                     handler,
                     CallPath::ident_to_fullpath(name.clone(), ctx.namespace),
-                    new_type_parameters.iter()
+                    new_type_parameters
+                        .iter()
                         .map(|x| GenericArgument::from(engines, x))
                         .collect(),
                     self_type,
@@ -237,7 +238,8 @@ impl TyTraitDecl {
                 ctx.insert_trait_implementation(
                     handler,
                     CallPath::ident_to_fullpath(name.clone(), ctx.namespace()),
-                    new_type_parameters.iter()
+                    new_type_parameters
+                        .iter()
                         .map(|x| GenericArgument::from(engines, x))
                         .collect(),
                     self_type,
@@ -421,11 +423,11 @@ impl TyTraitDecl {
                     let mut type_mapping = type_mapping.clone();
                     for p in method.type_parameters.iter() {
                         match p {
-                            TypeParameter::Type(_) => {},
+                            TypeParameter::Type(_) => {}
                             TypeParameter::Const(p) => {
                                 let new_id = engines.de().duplicate(p.decl_ref.id());
-                                type_mapping.insert_const_decl_id(*p.decl_ref.id(), new_id);
-                            },
+                                //type_mapping.insert_const_decl_id(*p.decl_ref.id(), new_id);
+                            }
                         }
                     }
 

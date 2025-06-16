@@ -1,8 +1,12 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr, decl_engine::DeclEngineGet as _, engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext}, language::{
+    ast_elements::type_parameter::ConstGenericExpr,
+    decl_engine::DeclEngineGet as _,
+    engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
+    language::{
         ty::{TyEnumDecl, TyStructDecl},
         CallPathType,
-    }, type_system::priv_prelude::*
+    },
+    type_system::priv_prelude::*,
 };
 
 #[derive(Debug, Clone)]
@@ -252,21 +256,72 @@ impl<'a> UnifyCheck<'a> {
     }
 
     fn check_length(&self, l1: &Length, r1: &Length) -> bool {
-        match (&l1.expr(), &r1.expr()) {
+        let mut debug = false;
+        let r = match (&l1.expr(), &r1.expr()) {
             (
                 ConstGenericExpr::Literal { val: l, .. },
                 ConstGenericExpr::Literal { val: r, .. },
             ) => l == r,
             (
-                ConstGenericExpr::AmbiguousVariableExpression { ident: l },
-                ConstGenericExpr::AmbiguousVariableExpression { ident: r },
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
             ) => true,
             (
                 ConstGenericExpr::Literal { .. },
                 ConstGenericExpr::AmbiguousVariableExpression { .. },
             ) => true,
-            _ => false,
+            (ConstGenericExpr::Literal { val, .. }, ConstGenericExpr::DeclId { id, .. }) => {
+                debug = true;
+                let decl = self.engines.de().get(id);
+                match decl.value.as_ref() {
+                    Some(v) => *val as u64 == *v,
+                    None => true,
+                }
+            }
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+                ConstGenericExpr::Literal { .. },
+            ) => todo!(),
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+                ConstGenericExpr::DeclId { .. },
+            ) => {
+                true
+            },
+            (ConstGenericExpr::DeclId { id, .. }, ConstGenericExpr::Literal { val, .. }) => {
+                debug = true;
+                let decl = self.engines.de().get(id);
+                match decl.value.as_ref() {
+                    Some(v) => *val as u64 == *v,
+                    None => true,
+                }
+            }
+            (
+                ConstGenericExpr::DeclId { .. },
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+            ) => todo!(),
+            (ConstGenericExpr::DeclId { id: l, .. }, ConstGenericExpr::DeclId { id: r, .. }) => {
+                debug = true;
+
+                if r.inner() == 11 {
+                    eprintln!("1 Check Length: {:?} {:?}", self.engines.help_out(l1.expr()), self.engines.help_out(r1.expr()));
+                    eprintln!("{}", std::backtrace::Backtrace::force_capture());
+                }
+
+                let l = self.engines.de().get(l);
+                let r = self.engines.de().get(r);
+                match (l.value.as_ref(), r.value.as_ref()) {
+                    (Some(l), Some(r)) => *l == *r,
+                    (None, Some(_)) => false,
+                    (Some(_), None) => false,
+                    (None, None) => true,
+                }
+            }
+        };
+        if debug {
+            eprintln!("Check Length: {:?} {:?}: {}", self.engines.help_out(l1.expr()), self.engines.help_out(r1.expr()), r);
         }
+        r
     }
 
     fn check_inner(&self, left: TypeId, right: TypeId) -> bool {
@@ -819,15 +874,9 @@ impl<'a> UnifyCheck<'a> {
                         (None, None) => {}
                         (None, Some(_)) => {}
                         (Some(_), None) => {}
-                        (
-                            Some(ConstGenericExpr::Literal { val: l_val, .. }),
-                            Some(ConstGenericExpr::Literal { val: r_val, .. }),
-                        ) => {
+                        (Some(l_val), Some(r_val)) => {
                             assert!(l_val == r_val);
                         }
-                        (Some(_), Some(_)) => todo!(
-                            "Will be implemented by https://github.com/FuelLabs/sway/issues/6860"
-                        ),
                     }
                 }
                 _ => return false,

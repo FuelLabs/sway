@@ -1,13 +1,12 @@
 use crate::{
     decl_engine::{
-        DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
-        MaterializeConstGenerics, ReplaceFunctionImplementingType,
+        DeclEngineReplace, DeclId, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType, MaterializeConstGenerics, ReplaceFunctionImplementingType
     },
     engine_threading::*,
     has_changes,
     language::{
         parsed::{self, TraitDeclaration},
-        ty::{TyDecl, TyDeclParsedType},
+        ty::{TyConstGenericDecl, TyDecl, TyDeclParsedType},
         CallPath, Visibility,
     },
     semantic_analysis::{
@@ -171,7 +170,7 @@ impl MaterializeConstGenerics for TyTraitDecl {
         &mut self,
         _engines: &Engines,
         _handler: &Handler,
-        _name: &str,
+        _name: DeclId<TyConstGenericDecl>,
         _value: &crate::language::ty::TyExpression,
     ) -> Result<(), ErrorEmitted> {
         Ok(())
