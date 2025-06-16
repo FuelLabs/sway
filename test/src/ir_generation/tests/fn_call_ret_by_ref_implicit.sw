@@ -43,15 +43,15 @@ fn main() -> u64 {
 
 // check: $(idx_0=$VAL) = const u64 0
 // check: $(field_0_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_0
-// check: store $x_arg to $field_0_ptr
+// check: mem_copy_val $field_0_ptr, $VAL
 
 // check: $(idx_1=$VAL) = const u64 1
 // check: $(field_1_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_1
-// check: store $x_arg to $field_1_ptr
+// check: mem_copy_val $field_1_ptr, $VAL
 
 // check: $(idx_2=$VAL) = const u64 2
 // check: $(field_2_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_2
-// check: store $x_arg to $field_2_ptr
+// check: mem_copy_val $field_2_ptr, $VAL
 
 // check: mem_copy_val $ret_val_arg_ptr, $temp_ptr
 // check: ret ptr { u64, u64, u64 } $ret_val_arg_ptr
