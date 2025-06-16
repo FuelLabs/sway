@@ -2,7 +2,7 @@
 //! Protocol. This module specifically handles requests.
 
 use crate::{
-    capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
+    capabilities, core::session::{self, build_plan, program_id_from_path}, lsp_ext, server_state::ServerState, utils::debug,
 };
 use forc_tracing::{tracing_subscriber, FmtSpan, TracingWriter};
 use lsp_types::{
@@ -62,8 +62,7 @@ pub async fn handle_document_symbol(
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
     let _ = state.wait_for_parsing().await;
     match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((uri, session)) => Ok(session
-            .document_symbols(&uri, &state.token_map, &state.engines.read())
+        Ok((uri, session)) => Ok(session::document_symbols(&uri, &state.token_map, &state.engines.read(), &state.compiled_programs)
             .map(DocumentSymbolResponse::Nested)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -76,12 +75,12 @@ pub fn handle_goto_definition(
     state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
-    match state.sync_uri_and_session_from_workspace(
+    match state.sync_and_uri_from_workspace(
         &params.text_document_position_params.text_document.uri,
     ) {
-        Ok((sync, uri, session)) => {
+        Ok((sync, uri)) => {
             let position = params.text_document_position_params.position;
-            Ok(session.token_definition_response(
+            Ok(session::token_definition_response(
                 &uri,
                 position,
                 &state.engines.read(),
@@ -107,13 +106,13 @@ pub fn handle_completion(
         .unwrap_or("");
     let position = params.text_document_position.position;
     match state.uri_and_session_from_workspace(&params.text_document_position.text_document.uri) {
-        Ok((uri, session)) => Ok(session
-            .completion_items(
+        Ok((uri, session)) => Ok(session::completion_items(
                 &uri,
                 position,
                 trigger_char,
                 &state.token_map,
                 &state.engines.read(),
+                &state.compiled_programs,
             )
             .map(CompletionResponse::Array)),
         Err(err) => {
@@ -127,16 +126,15 @@ pub fn handle_hover(
     state: &ServerState,
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_types::Hover>> {
-    match state.sync_uri_and_session_from_workspace(
+    match state.sync_and_uri_from_workspace(
         &params.text_document_position_params.text_document.uri,
     ) {
-        Ok((sync, uri, session)) => {
+        Ok((sync, uri)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::hover::hover_data(
                 state,
                 sync,
                 &state.engines.read(),
-                session,
                 &uri,
                 position,
             ))
@@ -209,7 +207,6 @@ pub async fn handle_document_highlight(
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::highlight::get_highlights(
-                session,
                 &state.engines.read(),
                 &state.token_map,
                 &uri,
@@ -229,11 +226,11 @@ pub async fn handle_references(
 ) -> Result<Option<Vec<lsp_types::Location>>> {
     let _ = state.wait_for_parsing().await;
     match state
-        .sync_uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
+        .sync_and_uri_from_workspace(&params.text_document_position.text_document.uri)
     {
-        Ok((sync, uri, session)) => {
+        Ok((sync, uri)) => {
             let position = params.text_document_position.position;
-            Ok(session.token_references(
+            Ok(session::token_references(
                 &uri,
                 position,
                 &state.token_map,
@@ -271,13 +268,13 @@ pub async fn handle_code_action(
     let _ = state.wait_for_parsing().await;
     match state.uri_and_session_from_workspace(&params.text_document.uri) {
         Ok((temp_uri, session)) => Ok(capabilities::code_actions(
-            session,
             &state.engines.read(),
             &state.token_map,
             &params.range,
             &params.text_document.uri,
             &temp_uri,
             &params.context.diagnostics,
+            &state.compiled_programs,
         )),
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -292,7 +289,7 @@ pub async fn handle_code_lens(
 ) -> Result<Option<Vec<CodeLens>>> {
     let _ = state.wait_for_parsing().await;
     match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
+        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&state.runnables, &url))),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -306,7 +303,7 @@ pub async fn handle_semantic_tokens_range(
 ) -> Result<Option<SemanticTokensRangeResult>> {
     let _ = state.wait_for_parsing().await;
     match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((uri, _session)) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
+        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
             &state.token_map,
             &uri,
             &params.range,
@@ -324,7 +321,7 @@ pub async fn handle_semantic_tokens_full(
 ) -> Result<Option<SemanticTokensResult>> {
     let _ = state.wait_for_parsing().await;
     match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((uri, _session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
+        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
             &state.token_map,
             &uri,
         )),
@@ -378,7 +375,8 @@ pub fn handle_show_ast(
         Ok((_, session)) => {
             let current_open_file = &params.text_document.uri;
             // Convert the Uri to a PathBuf
-            let path = current_open_file.to_file_path().ok();
+            let path = current_open_file.to_file_path().unwrap();
+            let program_id = program_id_from_path(&path, &state.engines.read()).unwrap();
 
             let write_ast_to_file =
                 |path: &Path, ast_string: &String| -> Option<TextDocumentIdentifier> {
@@ -393,20 +391,21 @@ pub fn handle_show_ast(
                 };
 
             // Returns true if the current path matches the path of a submodule
-            let path_is_submodule = |ident: &Ident, path: &Option<PathBuf>| -> bool {
+            let path_is_submodule = |ident: &Ident, path: &PathBuf| -> bool {
                 ident
                     .span()
                     .source_id()
                     .map(|p| state.engines.read().se().get_path(p))
-                    == *path
+                    == Some(path.clone())
             };
 
             let ast_path = PathBuf::from(params.save_path.path());
             {
-                let program = session.compiled_program.read();
+                let program = state.compiled_programs.get(&program_id).unwrap();
                 match params.ast_kind.as_str() {
                     "lexed" => {
-                        Ok(program.lexed.as_ref().and_then(|lexed_program| {
+                        let lexed_program = program.value().lexed.clone();
+                        Ok({
                             let mut formatted_ast = format!("{:#?}", program.lexed);
                             for (ident, submodule) in &lexed_program.root.submodules {
                                 if path_is_submodule(ident, &path) {
@@ -415,10 +414,11 @@ pub fn handle_show_ast(
                                 }
                             }
                             write_ast_to_file(ast_path.join("lexed.rs").as_path(), &formatted_ast)
-                        }))
+                        })
                     }
                     "parsed" => {
-                        Ok(program.parsed.as_ref().and_then(|parsed_program| {
+                        let parsed_program = program.value().parsed.clone();
+                        Ok({
                             // Initialize the string with the AST from the root
                             let mut formatted_ast =
                                 format!("{:#?}", parsed_program.root.tree.root_nodes);
@@ -430,10 +430,11 @@ pub fn handle_show_ast(
                                 }
                             }
                             write_ast_to_file(ast_path.join("parsed.rs").as_path(), &formatted_ast)
-                        }))
+                        })
                     }
                     "typed" => {
-                        Ok(program.typed.as_ref().and_then(|typed_program| {
+                        let typed_program = program.value().typed.clone();
+                        Ok({
                             // Initialize the string with the AST from the root
                             let mut formatted_ast = debug::print_decl_engine_types(
                                 &typed_program.root_module.all_nodes,
@@ -449,7 +450,7 @@ pub fn handle_show_ast(
                                 }
                             }
                             write_ast_to_file(ast_path.join("typed.rs").as_path(), &formatted_ast)
-                        }))
+                        })
                     }
                     _ => Ok(None),
                 }

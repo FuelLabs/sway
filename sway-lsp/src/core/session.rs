@@ -10,7 +10,7 @@ use crate::{
         token_map::{TokenMap, TokenMapExt},
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
-    server_state::{self, CompilationContext, CompiledProgram, CompiledPrograms},
+    server_state::{self, CompilationContext, CompiledProgram, CompiledPrograms, RunnableMap},
     traverse::{
         dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree, typed_tree::TypedTree,
         ParseContext,
@@ -28,10 +28,7 @@ use pkg::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
-    ops::Deref,
-    path::PathBuf,
-    sync::{atomic::AtomicBool, Arc},
-    time::SystemTime,
+    collections::HashMap, ops::Deref, path::PathBuf, sync::{atomic::AtomicBool, Arc}, time::SystemTime
 };
 use sway_ast::{attribute::Annotated, ItemKind};
 use sway_core::{
@@ -48,16 +45,11 @@ use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning}
 use sway_types::{ProgramId, SourceEngine, Spanned};
 use sway_utils::PerformanceData;
 
-pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
-pub type ProjectDirectory = PathBuf;
-
-
 /// A `Session` is used to store information about a single member in a workspace.
 ///
 /// The API provides methods for responding to LSP requests from the server.
 #[derive(Debug)]
 pub struct Session {
-    pub runnables: RunnableMap,
     pub build_plan_cache: BuildPlanCache,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
@@ -73,7 +65,6 @@ impl Default for Session {
 impl Session {
     pub fn new() -> Self {
         Session {
-            runnables: DashMap::new(),
             build_plan_cache: BuildPlanCache::default(),
             metrics: DashMap::new(),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
@@ -430,7 +421,8 @@ pub fn parse_project(
         .get_or_update(&sync.workspace_manifest_path(), || build_plan(uri))?;
     let token_map = ctx.token_map.clone();
     let compiled_programs = ctx.compiled_programs.as_ref().unwrap().clone();
-    
+    let runnables = ctx.runnables.as_ref().unwrap().clone();
+
     eprintln!("compile begins");
     let results = compile(&build_plan, engines_clone, retrigger_compilation, lsp_mode)?;
     eprintln!("compile done");
@@ -506,7 +498,6 @@ pub fn parse_project(
             }
         }
 
-        session.runnables.clear();
         if let Some(metrics) = session.metrics.get(&program_id) {
             // Check if the cached AST was returned by the compiler for the users workspace.
             // If it was, then we need to use the original engines.
@@ -519,7 +510,7 @@ pub fn parse_project(
             // we do with the programs
             let program = compiled_programs.program_from_uri(&uri, engines_clone).unwrap();
             create_runnables(
-                &session.runnables,
+                &runnables,
                 Some(program.value().typed.as_ref()),
                 engines.de(),
                 engines.se(),
@@ -638,6 +629,9 @@ fn create_runnables(
     let _p = tracing::trace_span!("create_runnables").entered();
     let root_module = typed_program.map(|program| &program.root_module);
 
+    // Use a local map to collect all runnables per path first
+    let mut new_runnables: HashMap<PathBuf, Vec<Box<dyn Runnable>>> = HashMap::new();
+
     // Insert runnable test functions.
     for (decl, _) in root_module
         .into_iter()
@@ -654,7 +648,7 @@ fn create_runnables(
                 range: token::get_range_from_span(&span),
                 test_name: Some(decl.name.to_string()),
             });
-            runnables.entry(path).or_default().push(runnable);
+            new_runnables.entry(path).or_default().push(runnable);
         }
     }
 
@@ -671,8 +665,13 @@ fn create_runnables(
                 range: token::get_range_from_span(&span),
                 tree_type: sway_core::language::parsed::TreeType::Script,
             });
-            runnables.entry(path).or_default().push(runnable);
+            new_runnables.entry(path).or_default().push(runnable);
         }
+    }
+
+    // Now overwrite each path's entry with the new complete vector
+    for (path, new_runnable_vec) in new_runnables {
+        runnables.insert(path, new_runnable_vec);
     }
 }
 
@@ -764,6 +763,7 @@ mod tests {
             token_map,
             engines: engines_original,
             compiled_programs: None,
+            runnables: None,
             optimized_build: false,
             file_versions: Default::default(),
             uri: Some(uri.clone()),

@@ -69,6 +69,7 @@ fn send_new_compilation_request(
             engines: state.engines.clone(),
             token_map: state.token_map.clone(),
             compiled_programs: Some(state.compiled_programs.clone()),
+            runnables: Some(state.runnables.clone()),
             uri: Some(uri.clone()),
             version,
             optimized_build,
