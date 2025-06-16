@@ -1,5 +1,7 @@
 script;
 
+mod other;
+
 fn main() {
     revert(0);
 }

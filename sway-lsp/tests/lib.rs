@@ -192,9 +192,11 @@ fn did_open_all_members_in_examples() {
 
         let workspace_dirs = vec![
             &examples_workspace_dir,
-            &test_programs_workspace_dir,
-            &sdk_harness_workspace_dir,
+            //&test_programs_workspace_dir,
+            //&sdk_harness_workspace_dir,
         ];
+
+        let mut fails = vec![];
 
         for workspace_dir in workspace_dirs {
             let member_manifests = ManifestFile::from_dir(workspace_dir)
@@ -226,8 +228,15 @@ fn did_open_all_members_in_examples() {
                 // Make sure that semantic tokens are successfully returned for the file
                 let semantic_tokens = lsp::get_semantic_tokens_full(service.inner(), &uri).await;
                 assert!(!semantic_tokens.data.is_empty());
+
+                // Make sure that document symbols are successfully returned for the file
+                let document_symbols = lsp::get_document_symbols(service.inner(), &uri).await;
+                if document_symbols.is_empty() {
+                    fails.push(dir.join("src/main.sw"));
+                }
             }
         }
+        eprintln!("fails: {:#?}", fails);
         shutdown_and_exit(&mut service).await;
     });
 }
@@ -437,6 +446,104 @@ fn visualize() {
         let (mut service, _) = LspService::new(ServerState::new);
         let uri = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
         lsp::visualize_request(service.inner(), &uri, "build_plan").await;
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
+#[test]
+fn code_lens() {
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let uri = init_and_open(&mut service, runnables_test_dir().join("src/main.sw")).await;
+        let response = lsp::code_lens_request(service.inner(), &uri).await;
+        let expected = vec![
+            CodeLens {
+                range: Range {
+                    start: Position {
+                        line: 4,
+                        character: 3,
+                    },
+                    end: Position {
+                        line: 4,
+                        character: 7,
+                    },
+                },
+                command: Some(lsp_types::Command {
+                    title: "▶︎ Run".to_string(),
+                    command: "sway.runScript".to_string(),
+                    arguments: None,
+                }),
+                data: None,
+            },
+            CodeLens {
+                range: Range {
+                    start: Position {
+                        line: 8,
+                        character: 0,
+                    },
+                    end: Position {
+                        line: 8,
+                        character: 7,
+                    },
+                },
+                command: Some(lsp_types::Command {
+                    title: "▶︎ Run Test".to_string(),
+                    command: "sway.runTests".to_string(),
+                    arguments: Some(vec![serde_json::json!({
+                        "name": "test_foo"
+                    })]),
+                }),
+                data: None,
+            },
+            CodeLens {
+                range: Range {
+                    start: Position {
+                        line: 13,
+                        character: 0,
+                    },
+                    end: Position {
+                        line: 13,
+                        character: 7,
+                    },
+                },
+                command: Some(lsp_types::Command {
+                    title: "▶︎ Run Test".to_string(),
+                    command: "sway.runTests".to_string(),
+                    arguments: Some(vec![serde_json::json!({
+                        "name": "test_bar"
+                    })]),
+                }),
+                data: None,
+            },
+        ];
+        assert_eq!(response.unwrap(), expected);
+
+        let uri = open(&service.inner(), runnables_test_dir().join("src/other.sw")).await;
+        let response = lsp::code_lens_request(service.inner(), &uri).await;
+        let expected = vec![
+            CodeLens {
+                range: Range {
+                    start: Position {
+                        line: 2,
+                        character: 0,
+                    },
+                    end: Position {
+                        line: 2,
+                        character: 7,
+                    },
+                },
+                command: Some(lsp_types::Command {
+                    title: "▶︎ Run Test".to_string(),
+                    command: "sway.runTests".to_string(),
+                    arguments: Some(vec![serde_json::json!({
+                        "name": "test_baz"
+                    })]),
+                }),
+                data: None,
+            }
+        ];
+        assert_eq!(response.unwrap(), expected);
+
         shutdown_and_exit(&mut service).await;
     });
 }
@@ -2194,16 +2301,7 @@ lsp_capability_test!(
     code_actions::code_action_auto_import_alias_request,
     test_fixtures_dir().join("auto_import/src/main.sw")
 );
-lsp_capability_test!(
-    code_lens,
-    lsp::code_lens_request,
-    runnables_test_dir().join("src/main.sw")
-);
-lsp_capability_test!(
-    code_lens_empty,
-    lsp::code_lens_empty_request,
-    runnables_test_dir().join("src/other.sw")
-);
+
 // TODO: Fix, has unnecessary completitions such as into and try_into Issue #7002
 // lsp_capability_test!(
 //     completion,

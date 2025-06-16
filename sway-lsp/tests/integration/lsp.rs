@@ -519,74 +519,13 @@ pub(crate) async fn references_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response);
 }
 
-pub(crate) async fn code_lens_request(server: &ServerState, uri: &Url) {
+pub(crate) async fn code_lens_request(server: &ServerState, uri: &Url) -> Option<Vec<CodeLens>>{
     let params = CodeLensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    let response = request::handle_code_lens(server, params).await.unwrap();
-    let expected = vec![
-        CodeLens {
-            range: Range {
-                start: Position {
-                    line: 4,
-                    character: 3,
-                },
-                end: Position {
-                    line: 4,
-                    character: 7,
-                },
-            },
-            command: Some(Command {
-                title: "▶︎ Run".to_string(),
-                command: "sway.runScript".to_string(),
-                arguments: None,
-            }),
-            data: None,
-        },
-        CodeLens {
-            range: Range {
-                start: Position {
-                    line: 8,
-                    character: 0,
-                },
-                end: Position {
-                    line: 8,
-                    character: 7,
-                },
-            },
-            command: Some(Command {
-                title: "▶︎ Run Test".to_string(),
-                command: "sway.runTests".to_string(),
-                arguments: Some(vec![json!({
-                    "name": "test_foo"
-                })]),
-            }),
-            data: None,
-        },
-        CodeLens {
-            range: Range {
-                start: Position {
-                    line: 13,
-                    character: 0,
-                },
-                end: Position {
-                    line: 13,
-                    character: 7,
-                },
-            },
-            command: Some(Command {
-                title: "▶︎ Run Test".to_string(),
-                command: "sway.runTests".to_string(),
-                arguments: Some(vec![json!({
-                    "name": "test_bar"
-                })]),
-            }),
-            data: None,
-        },
-    ];
-    assert_eq!(expected, response.unwrap());
+    request::handle_code_lens(server, params).await.unwrap()    
 }
 
 // pub(crate) async fn completion_request(server: &ServerState, uri: &Url) {
