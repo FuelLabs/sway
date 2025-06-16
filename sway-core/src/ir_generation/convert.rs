@@ -154,7 +154,16 @@ fn convert_resolved_type_info(
         }
         TypeInfo::RawUntypedPtr => Type::get_uint64(context),
         TypeInfo::RawUntypedSlice => Type::get_slice(context),
-        TypeInfo::Ptr(_) => Type::get_uint64(context),
+        TypeInfo::Ptr(pointee_ty) => {
+            let pointee_ty = convert_resolved_type_id(
+                type_engine,
+                decl_engine,
+                context,
+                pointee_ty.type_id(),
+                span,
+            )?;
+            Type::new_ptr(context, pointee_ty)
+        }
         TypeInfo::Alias { ty, .. } => {
             convert_resolved_type_id(type_engine, decl_engine, context, ty.type_id(), span)?
         }
@@ -173,7 +182,14 @@ fn convert_resolved_type_info(
                 )?;
                 Type::get_typed_slice(context, elem_ir_type)
             } else {
-                Type::get_uint64(context)
+                let referenced_ir_type = convert_resolved_type_id(
+                    type_engine,
+                    decl_engine,
+                    context,
+                    referenced_type.type_id(),
+                    span,
+                )?;
+                Type::new_ptr(context, referenced_ir_type)
             }
         }
         TypeInfo::Never => Type::get_never(context),
