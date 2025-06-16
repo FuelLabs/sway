@@ -182,6 +182,7 @@ fn did_open_all_std_lib_files() {
 }
 
 // Opens all members in the workspaces and assert that we are able to return semantic tokens for each workspace member.
+// TODO: this seems to take much longer to run than the test above. Investigate why.
 #[test]
 fn did_open_all_members_in_examples() {
     run_async!({
@@ -192,11 +193,9 @@ fn did_open_all_members_in_examples() {
 
         let workspace_dirs = vec![
             &examples_workspace_dir,
-            //&test_programs_workspace_dir,
-            //&sdk_harness_workspace_dir,
+            &test_programs_workspace_dir,
+            &sdk_harness_workspace_dir,
         ];
-
-        let mut fails = vec![];
 
         for workspace_dir in workspace_dirs {
             let member_manifests = ManifestFile::from_dir(workspace_dir)
@@ -231,12 +230,9 @@ fn did_open_all_members_in_examples() {
 
                 // Make sure that document symbols are successfully returned for the file
                 let document_symbols = lsp::get_document_symbols(service.inner(), &uri).await;
-                if document_symbols.is_empty() {
-                    fails.push(dir.join("src/main.sw"));
-                }
+                assert!(!document_symbols.is_empty());
             }
         }
-        eprintln!("fails: {:#?}", fails);
         shutdown_and_exit(&mut service).await;
     });
 }

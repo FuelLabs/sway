@@ -10,13 +10,12 @@ use crate::{
         token_map::{TokenMap, TokenMapExt},
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
-    server_state::{self, CompilationContext, CompiledProgram, CompiledPrograms, RunnableMap},
+    server_state::{self, CompilationContext, CompiledPrograms, RunnableMap},
     traverse::{
         dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree, typed_tree::TypedTree,
         ParseContext,
     },
 };
-use dashmap::DashMap;
 use forc_pkg as pkg;
 use lsp_types::{
     CompletionItem, DocumentSymbol, GotoDefinitionResponse, Location, Position, Range, Url,
@@ -43,7 +42,6 @@ use sway_core::{
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{ProgramId, SourceEngine, Spanned};
-use sway_utils::PerformanceData;
 
 /// A `Session` is used to store information about a single member in a workspace.
 ///
@@ -53,7 +51,6 @@ pub struct Session {
     pub build_plan_cache: BuildPlanCache,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
-    pub metrics: DashMap<ProgramId, PerformanceData>,
 }
 
 impl Default for Session {
@@ -66,7 +63,6 @@ impl Session {
     pub fn new() -> Self {
         Session {
             build_plan_cache: BuildPlanCache::default(),
-            metrics: DashMap::new(),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }
     }       
@@ -178,7 +174,7 @@ pub fn completion_items(
     let fn_token = fn_tokens.first()?.value();
     if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
         return Some(capabilities::completion::to_completion_items(
-            &program.value().typed.namespace,
+            &program.value().typed.as_ref().unwrap().namespace,
             engines,
             ident_to_complete,
             fn_decl,
@@ -198,7 +194,7 @@ pub fn document_symbols(
     let _p = tracing::trace_span!("document_symbols").entered();
     let path = url.to_file_path().ok()?;
     let program = compiled_programs.program_from_uri(url, engines)?;
-    let typed_program = program.value().typed.clone();
+    let typed_program = program.value().typed.as_ref().unwrap().clone();
     Some(capabilities::document_symbol::to_document_symbols(
         url, &path, &typed_program, engines, token_map,
     ))
@@ -259,20 +255,17 @@ pub fn traverse(
     results: Vec<(Option<Programs>, Handler)>,
     engines_original: Arc<RwLock<Engines>>,
     engines_clone: &Engines,
-    session: Arc<Session>,
     token_map: &TokenMap,
     compiled_programs: &CompiledPrograms,
     modified_file: Option<&PathBuf>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     let _p = tracing::trace_span!("traverse").entered();
-    eprintln!("⤵️ traverse begins");
 
     // Remove tokens for the modified file from the token map.
     if let Some(path) = modified_file {
         token_map.remove_tokens_for_file(path);
     }
 
-    session.metrics.clear();
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
     for (value, handler) in results.into_iter() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -306,7 +299,6 @@ pub fn traverse(
             .se()
             .get_manifest_path_from_program_id(&program_id)
             .unwrap();
-        eprintln!("program_path: {:?}", program_path);
 
         // Check if the cached AST was returned by the compiler for the users workspace.
         // If it was, then we need to use the original engines for traversal.
@@ -325,7 +317,6 @@ pub fn traverse(
         if let Some(source_id) = lexed.root.tree.value.span().source_id() {
             let path = engines.se().get_path(source_id);
             let program_id = program_id_from_path(&path, engines)?;
-            session.metrics.insert(program_id, metrics.clone());
 
             if let Some(modified_file) = &modified_file {
                 let modified_program_id = program_id_from_path(modified_file, engines)?;
@@ -379,13 +370,10 @@ pub fn traverse(
                 typed_tree.traverse_node(node);
             });
 
-            eprintln!("✍️ Writing typed program");
-            let compiled_program = CompiledProgram::new(value.expect("value was checked above"));
+            let compiled_program = value.expect("value was checked above");
             if let Some(mut item) = compiled_programs.get_mut(&program_id) {
-                eprintln!("✍️ Updating existing compiled program");
                 *item.value_mut() = compiled_program;
             } else {
-                eprintln!("✍️ Inserting new compiled program");
                 compiled_programs.insert(program_id, compiled_program);
             }
         } else {
@@ -411,7 +399,6 @@ pub fn parse_project(
     ctx: &CompilationContext,
     lsp_mode: Option<&LspConfig>,
 ) -> Result<(), LanguageServerError> {
-    eprintln!("parse_project begins");
     let _p = tracing::trace_span!("parse_project").entered();
     let engines_original = ctx.engines.clone();
     let session = ctx.session.as_ref().unwrap().clone();
@@ -423,9 +410,7 @@ pub fn parse_project(
     let compiled_programs = ctx.compiled_programs.as_ref().unwrap().clone();
     let runnables = ctx.runnables.as_ref().unwrap().clone();
 
-    eprintln!("compile begins");
     let results = compile(&build_plan, engines_clone, retrigger_compilation, lsp_mode)?;
-    eprintln!("compile done");
 
     // First check if results is empty or if all program values are None,
     // indicating an error occurred in the compiler
@@ -434,12 +419,10 @@ pub fn parse_project(
             .iter()
             .all(|(programs_opt, _)| programs_opt.is_none())
     {
-        eprintln!("results is empty");
         return Err(LanguageServerError::ProgramsIsNone);
     }
 
     let path = uri.to_file_path().unwrap();
-    let program_id = program_id_from_path(&path, engines_clone)?;
     let member_path = sync
         .member_path(uri)
         .ok_or(DirectoryError::TempMemberDirNotFound)?;
@@ -462,7 +445,6 @@ pub fn parse_project(
     });
 
     if !found_program_for_member {
-        eprintln!("found_program_for_member is false");
         // If we don't return an error here, then we will likely crash when trying to access the Engines
         // during traversal or when creating runnables.
         return Err(LanguageServerError::MemberProgramNotFound);
@@ -472,7 +454,6 @@ pub fn parse_project(
     let (needs_reprocessing, modified_file) =
         server_state::needs_reprocessing(&ctx.token_map, &path, lsp_mode);
 
-    eprintln!("needs_reprocessing: {:?}", needs_reprocessing);
     // Only traverse and create runnables if we have no tokens yet, or if a file was modified
     if needs_reprocessing {
         let diagnostics = traverse(
@@ -480,7 +461,6 @@ pub fn parse_project(
             results,
             engines_original.clone(),
             engines_clone,
-            session.clone(),
             &token_map,
             &compiled_programs,
             modified_file,
@@ -498,20 +478,17 @@ pub fn parse_project(
             }
         }
 
-        if let Some(metrics) = session.metrics.get(&program_id) {
+        if let Some(program) = compiled_programs.program_from_uri(&uri, engines_clone) {
             // Check if the cached AST was returned by the compiler for the users workspace.
             // If it was, then we need to use the original engines.
-            let engines = if metrics.reused_programs > 0 {
+            let engines = if program.value().metrics.reused_programs > 0 {
                 &*engines_original.read()
             } else {
                 engines_clone
             };
-            // TODO: I think we should handle creating all of the runnables during the first travese like
-            // we do with the programs
-            let program = compiled_programs.program_from_uri(&uri, engines_clone).unwrap();
             create_runnables(
                 &runnables,
-                Some(program.value().typed.as_ref()),
+                Some(program.value().typed.as_ref().unwrap()),
                 engines.de(),
                 engines.se(),
             );

@@ -1,30 +1,26 @@
 //! The context or environment in which the language server functions.
 
 use crate::{
-    config::{Config, GarbageCollectionConfig, Warnings},
-    core::{
+    capabilities::runnable::Runnable, config::{Config, GarbageCollectionConfig, Warnings}, core::{
         document::{Documents, PidLockedFiles},
         session::{self, program_id_from_path, Session},
         sync::SyncWorkspace,
         token_map::TokenMap,
-    },
-    error::{DirectoryError, DocumentError, LanguageServerError},
-    utils::{debug, keyword_docs::KeywordDocs},
+    }, error::{DirectoryError, DocumentError, LanguageServerError}, utils::{debug, keyword_docs::KeywordDocs}
 };
 use crossbeam_channel::{Receiver, Sender};
 use dashmap::{mapref::{multiple::RefMulti, one::Ref}, DashMap};
-use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
-use forc_pkg::PackageManifestFile;
+use forc_pkg::{
+    manifest::{GenericManifestFile, ManifestFile},
+    PackageManifestFile,
+};
 use lsp_types::{
     Diagnostic, DidChangeWatchedFilesRegistrationOptions, FileSystemWatcher, GlobPattern,
     Registration, Url, WatchKind,
 };
 use parking_lot::{Mutex, RwLock};
-use sway_types::ProgramId;
 use std::{
-    collections::{BTreeMap, VecDeque}, ops::Deref, process::Command
-};
-use std::{
+    collections::{BTreeMap, VecDeque}, ops::Deref, process::Command,
     mem,
     path::PathBuf,
     sync::{
@@ -36,48 +32,17 @@ use sway_core::{language::{
     lexed::LexedProgram,
     parsed::ParseProgram,
     ty,
+    Programs,
 }, Engines, LspConfig,
 };
+use sway_types::ProgramId;
+use sway_utils::PerformanceData;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
 const DEFAULT_SESSION_CACHE_CAPACITY: usize = 4;
 
-
-#[derive(Debug)]
-pub struct CompiledPrograms (DashMap<ProgramId, CompiledProgram>); 
-
-impl CompiledPrograms {
-    pub fn program_from_uri(&self, uri: &Url, engines: &Engines) -> Option<Ref<'_, ProgramId, CompiledProgram>> {
-        let path = uri.to_file_path().ok()?;
-        let program_id = program_id_from_path(&path, engines).ok()?;
-        self.get(&program_id)
-    }
-}
-
-impl Deref for CompiledPrograms {
-    type Target = DashMap<ProgramId, CompiledProgram>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[derive(Debug)]
-pub struct CompiledProgram {
-    pub lexed: Arc<LexedProgram>,
-    pub parsed: Arc<ParseProgram>,
-    pub typed: Arc<ty::TyProgram>,
-}
-
-impl CompiledProgram {
-    pub fn new(lexed: Arc<LexedProgram>, parsed: Arc<ParseProgram>, typed: Arc<ty::TyProgram>) -> Self {
-        Self {
-            lexed,
-            parsed,
-            typed,
-        }
-    }
-}
+pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
 
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
@@ -87,6 +52,7 @@ pub struct ServerState {
     pub token_map: Arc<TokenMap>,
     pub engines: Arc<RwLock<Engines>>,
     pub compiled_programs: Arc<CompiledPrograms>,
+    pub runnables: Arc<RunnableMap>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
     /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
@@ -112,6 +78,7 @@ impl Default for ServerState {
             token_map: Arc::new(TokenMap::new()),
             engines: Arc::new(RwLock::new(Engines::default())),
             compiled_programs: Arc::new(CompiledPrograms(DashMap::new())),
+            runnables: Arc::new(RunnableMap::new()),
             config: Arc::new(RwLock::new(Config::default())),
             sync_workspaces: DashMap::new(),
             keyword_docs: Arc::new(KeywordDocs::new()),
@@ -158,6 +125,7 @@ pub struct CompilationContext {
     pub token_map: Arc<TokenMap>,
     pub engines: Arc<RwLock<Engines>>,
     pub compiled_programs: Option<Arc<CompiledPrograms>>,
+    pub runnables: Option<Arc<RunnableMap>>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
     pub optimized_build: bool,
@@ -234,7 +202,7 @@ impl ServerState {
                             // Call this on the engines clone so we don't clear types that are still in use
                             // and might be needed in the case cancel compilation was triggered.
                             if let Err(err) =
-                                session.garbage_collect_module(&mut engines_clone, &uri)
+                                session::garbage_collect_module(&mut engines_clone, &uri)
                             {
                                 tracing::error!(
                                     "Unable to perform garbage collection: {}",
@@ -253,38 +221,35 @@ impl ServerState {
                             lsp_mode.as_ref(),
                         ) {
                             Ok(()) => {
-                                // Find the program id from the path
-                                match session::program_id_from_path(&path, &engines_clone) {
-                                    Ok(program_id) => {
-                                        // Use the program id to get the metrics for the program
-                                        if let Some(metrics) = session.metrics.get(&program_id) {
-                                            // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
-                                            // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
-                                            // as the engines_clone might have cleared some types that are still in use.
-                                            if metrics.reused_programs == 0 {
-                                                // Commit local changes in the programs, module, and function caches to the shared state.
-                                                // This ensures that any modifications made during compilation are preserved
-                                                // before we swap the engines.
-                                                engines_clone.qe().commit();
-                                                // The compiler did not reuse the workspace AST.
-                                                // We need to overwrite the old engines with the engines clone.
-                                                mem::swap(
-                                                    &mut *ctx.engines.write(),
-                                                    &mut engines_clone,
-                                                );
-                                            }
+                                // Use the uri to get the metrics for the program
+                                match ctx.compiled_programs.as_ref().unwrap().program_from_uri(&uri, &engines_clone) {
+                                    Some(program) => {
+                                        // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
+                                        // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
+                                        // as the engines_clone might have cleared some types that are still in use.
+                                        if program.value().metrics.reused_programs == 0 {
+                                            // Commit local changes in the programs, module, and function caches to the shared state.
+                                            // This ensures that any modifications made during compilation are preserved
+                                            // before we swap the engines.
+                                            engines_clone.qe().commit();
+                                            // The compiler did not reuse the workspace AST.
+                                            // We need to overwrite the old engines with the engines clone.
+                                            mem::swap(
+                                                &mut *ctx.engines.write(),
+                                                &mut engines_clone,
+                                            );
                                         }
                                         *last_compilation_state.write() =
                                             LastCompilationState::Success;
                                     }
-                                    Err(err) => {
-                                        tracing::error!("{}", err.to_string());
+                                    None => {
                                         *last_compilation_state.write() =
                                             LastCompilationState::Failed;
                                     }
                                 }
                             }
-                            Err(_err) => {
+                            Err(err) => {
+                                tracing::error!("{}", err.to_string());
                                 *last_compilation_state.write() = LastCompilationState::Failed;
                             }
                         }
@@ -656,6 +621,25 @@ pub fn modified_file(lsp_mode: Option<&LspConfig>) -> Option<&PathBuf> {
             .find_map(|(path, version)| version.map(|_| path))
     })
 }
+
+#[derive(Debug)]
+pub struct CompiledPrograms (DashMap<ProgramId, Programs>); 
+
+impl CompiledPrograms {
+    pub fn program_from_uri(&self, uri: &Url, engines: &Engines) -> Option<Ref<'_, ProgramId, Programs>> {
+        let path = uri.to_file_path().ok()?;
+        let program_id = program_id_from_path(&path, engines).ok()?;
+        self.get(&program_id)
+    }
+}
+
+impl Deref for CompiledPrograms {
+    type Target = DashMap<ProgramId, Programs>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 
 /// A Least Recently Used (LRU) cache for storing and managing `Session` objects.
 /// This cache helps limit memory usage by maintaining a fixed number of active sessions.

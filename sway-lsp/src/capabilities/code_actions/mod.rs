@@ -53,7 +53,7 @@ pub fn code_actions(
     let t = token_map.token_at_position(temp_uri, range.start)?;
     let token = t.value();
     let program = compiled_programs.program_from_uri(temp_uri, engines)?;
-    let namespace = &program.value().typed.namespace;
+    let namespace = &program.value().typed.as_ref().unwrap().namespace;
 
     let ctx = CodeActionContext {
         engines,

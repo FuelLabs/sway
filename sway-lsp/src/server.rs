@@ -1,6 +1,8 @@
 //! This module implements the [LanguageServer] trait for [ServerState].
 //! It provides an interface between the LSP protocol and the sway-lsp internals.
 
+use std::sync::Arc;
+
 use crate::{
     handlers::{notification, request},
     lsp_ext::{MetricsParams, OnEnterParams, ShowAstParams, VisualizeParams},

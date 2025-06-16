@@ -14,7 +14,7 @@ use lsp_types::{
 use std::{
     fs::File,
     io::Write,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, sync::Arc,
 };
 use sway_types::{Ident, Spanned};
 use sway_utils::PerformanceData;
@@ -433,7 +433,7 @@ pub fn handle_show_ast(
                         })
                     }
                     "typed" => {
-                        let typed_program = program.value().typed.clone();
+                        let typed_program = program.value().typed.as_ref().unwrap();
                         Ok({
                             // Initialize the string with the AST from the root
                             let mut formatted_ast = debug::print_decl_engine_types(
@@ -507,27 +507,20 @@ pub fn handle_visualize(
 /// This method is triggered by the test suite to request the latest compilation metrics.
 pub(crate) fn metrics(
     state: &ServerState,
+    // TODO: this seems wrong. why aren't we using the params?
     params: &lsp_ext::MetricsParams,
 ) -> Result<Option<Vec<(String, PerformanceData)>>> {
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((_, session)) => {
-            let mut metrics = vec![];
-            for kv in &session.metrics {
-                let path = state
-                    .engines
-                    .read()
-                    .se()
-                    .get_manifest_path_from_program_id(kv.key())
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
-                metrics.push((path, kv.value().clone()));
-            }
-            Ok(Some(metrics))
-        }
-        Err(err) => {
-            tracing::error!("{}", err.to_string());
-            Ok(None)
-        }
+    let mut metrics = vec![];
+    for item in state.compiled_programs.iter() {
+        let path = state
+            .engines
+            .read()
+            .se()
+            .get_manifest_path_from_program_id(item.key())
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        metrics.push((path, item.value().metrics.clone()));
     }
+    Ok(Some(metrics))
 }

@@ -3,7 +3,7 @@ use lsp_types::{
     CompletionResponse, DocumentSymbolResponse, Position, Range, TextDocumentContentChangeEvent,
     TextDocumentIdentifier,
 };
-use sway_lsp::{capabilities, lsp_ext::OnEnterParams};
+use sway_lsp::{capabilities, core::session, lsp_ext::OnEnterParams};
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
@@ -20,8 +20,7 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("document_symbol", |b| {
         b.iter(|| {
-            session
-                .document_symbols(&uri, &state.token_map, &engines)
+            session::document_symbols(&uri, &state.token_map, &engines)
                 .map(DocumentSymbolResponse::Nested)
         })
     });
@@ -29,8 +28,7 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("completion", |b| {
         let position = Position::new(1698, 28);
         b.iter(|| {
-            session
-                .completion_items(&uri, position, ".", &state.token_map, &engines)
+            session::completion_items(&uri, position, ".", &state.token_map, &engines)
                 .map(CompletionResponse::Array)
         })
     });
@@ -50,7 +48,6 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("highlight", |b| {
         b.iter(|| {
             capabilities::highlight::get_highlights(
-                session.clone(),
                 &engines,
                 &state.token_map,
                 &uri,
@@ -60,12 +57,12 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("find_all_references", |b| {
-        b.iter(|| session.token_references(&uri, position, &state.token_map, &engines, &sync))
+        b.iter(|| session::token_references(&uri, position, &state.token_map, &engines, &sync))
     });
 
     c.bench_function("goto_definition", |b| {
         b.iter(|| {
-            session.token_definition_response(&uri, position, &engines, &state.token_map, &sync)
+            session::token_definition_response(&uri, position, &engines, &state.token_map, &sync)
         })
     });
 
