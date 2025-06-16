@@ -5,9 +5,18 @@ entry = "lib.sw"
 license = "Apache-2.0"
 implicit-std = false
 
+# This test tries to replicate a setup that happens with Mira where
+# we end up having two versions of sway-standards in the same package,
+# which needs special checking in the trait coherence checks.
+
+# This is currently only possible to setup with the `{ git = "url", tag = "foo" }`
+# dependency versioning scheme, but trying to use that here causes additional
+# problems, and trying to use the dependency patching feature also proved problematic
+# due to forc collapsing the remote package entries patched to the same local path.
+
+# TODO: This test should be updated to use a same-named differently versioned
+# package once that feature is added to forc.
+
 [dependencies]
-standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.7.1" }
-# Uncomment this to replace with local version of standards, which uncovers
-# a trait coherence checking bug related to conflict between local and remote std.
-#standards = { path = "../standards" }
+standards = { path = "../standards" }
 sway_libs = { path = "../sway_libs" }

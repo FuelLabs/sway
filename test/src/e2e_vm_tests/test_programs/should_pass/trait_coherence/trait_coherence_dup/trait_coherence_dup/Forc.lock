@@ -1,38 +1,21 @@
 [[package]]
 name = "standards"
-source = "git+https://github.com/FuelLabs/sway-standards?tag=v0.7.0#7d35df95e0b96dc8ad188ab169fbbeeac896aae8"
+source = "path+from-root-874859307D9CEE33"
 dependencies = ["std"]
 
 [[package]]
-name = "standards"
-source = "git+https://github.com/FuelLabs/sway-standards?tag=v0.7.1#1b00ccc05af5886ae3abd07a9a0ce6122738fc48"
-dependencies = [
-    "std",
-    "sway_libs git+https://github.com/FuelLabs/sway-libs?tag=v0.25.2#f43d8b4aacf60867989408991414958f8eab28c0",
-]
-
-[[package]]
 name = "std"
-version = "0.68.7"
-source = "registry+std?0.68.7#QmXtvuy4DJqoVfTmMSygtwh5Zx9JvWsKfx2p83pXEGnZrC!"
-
-[[package]]
-name = "sway_libs"
-source = "git+https://github.com/FuelLabs/sway-libs?tag=v0.25.2#f43d8b4aacf60867989408991414958f8eab28c0"
-dependencies = [
-    "standards git+https://github.com/FuelLabs/sway-standards?tag=v0.7.0#7d35df95e0b96dc8ad188ab169fbbeeac896aae8",
-    "std",
-]
+source = "path+from-root-874859307D9CEE33"
 
 [[package]]
 name = "sway_libs"
 source = "path+from-root-874859307D9CEE33"
-dependencies = ["standards git+https://github.com/FuelLabs/sway-standards?tag=v0.7.0#7d35df95e0b96dc8ad188ab169fbbeeac896aae8"]
+dependencies = ["standards"]
 
 [[package]]
 name = "trait_coherence_dup"
 source = "member"
 dependencies = [
-    "standards git+https://github.com/FuelLabs/sway-standards?tag=v0.7.1#1b00ccc05af5886ae3abd07a9a0ce6122738fc48",
-    "sway_libs path+from-root-874859307D9CEE33",
+    "standards",
+    "sway_libs",
 ]

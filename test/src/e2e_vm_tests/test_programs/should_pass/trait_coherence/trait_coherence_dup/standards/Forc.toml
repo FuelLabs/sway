@@ -6,4 +6,4 @@ name = "standards"
 implicit-std = false
 
 [dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../../../../../sway-lib-std" }

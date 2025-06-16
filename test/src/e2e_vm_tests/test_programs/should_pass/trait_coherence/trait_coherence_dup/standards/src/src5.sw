@@ -1,6 +1,6 @@
 library;
 
-pub enum State {}
+pub enum State { Uninitialized: () }
 
 abi SRC5 {
     fn owner() -> State;

@@ -5,5 +5,4 @@ license = "Apache-2.0"
 name = "sway_libs"
 
 [dependencies]
-standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.7.0" }
-#standards = { path = "../sway-standards-v0.7.1" }
+standards = { path = "../standards" }
