@@ -8,7 +8,7 @@ use fuels::{
 };
 use std::str::FromStr;
 
-async fn setup() -> (Vec<u8>, Address, Wallet, u128, AssetId) {
+async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
     let predicate_code =
         std::fs::read("test_projects/predicate_data_simple/out/release/predicate_data_simple.bin")
             .unwrap();
@@ -156,7 +156,7 @@ async fn valid_predicate_data_simple() {
 
     let receiver_balance_after = get_balance(&wallet, receiver_address, asset_id).await;
     assert_eq!(
-        receiver_balance_before + amount_to_predicate - 1,
+        receiver_balance_before + amount_to_predicate as u128 - 1,
         receiver_balance_after
     );
 
