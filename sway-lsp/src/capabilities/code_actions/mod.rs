@@ -52,7 +52,7 @@ pub fn code_actions(
 ) -> Option<CodeActionResponse> {
     let t = token_map.token_at_position(temp_uri, range.start)?;
     let token = t.value();
-    let program = compiled_programs.program_from_uri(uri, engines)?;
+    let program = compiled_programs.program_from_uri(temp_uri, engines)?;
     let namespace = &program.value().typed.namespace;
 
     let ctx = CodeActionContext {
@@ -96,7 +96,6 @@ pub fn code_actions(
         .unwrap_or_default();
 
     let actions_by_diagnostic = diagnostic::code_actions(&ctx).unwrap_or_default();
-
     Some([actions_by_type, actions_by_diagnostic].concat())
 }
 
