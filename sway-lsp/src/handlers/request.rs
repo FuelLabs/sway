@@ -19,7 +19,6 @@ use std::{
     fs::File,
     io::Write,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 use sway_types::{Ident, Spanned};
 use sway_utils::PerformanceData;

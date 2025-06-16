@@ -7,7 +7,7 @@ use sway_lsp::{capabilities, core::session, lsp_ext::OnEnterParams};
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, state, engines, sync) = Runtime::new()
+    let (uri, _, state, engines, sync) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
     let config = sway_lsp::config::Config::default();
@@ -20,7 +20,7 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("document_symbol", |b| {
         b.iter(|| {
-            session::document_symbols(&uri, &state.token_map, &engines)
+            session::document_symbols(&uri, &state.token_map, &engines, &state.compiled_programs)
                 .map(DocumentSymbolResponse::Nested)
         })
     });
@@ -28,7 +28,7 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("completion", |b| {
         let position = Position::new(1698, 28);
         b.iter(|| {
-            session::completion_items(&uri, position, ".", &state.token_map, &engines)
+            session::completion_items(&uri, position, ".", &state.token_map, &engines, &state.compiled_programs)
                 .map(CompletionResponse::Array)
         })
     });
@@ -88,19 +88,19 @@ fn benchmarks(c: &mut Criterion) {
         let range = Range::new(Position::new(4, 10), Position::new(4, 10));
         b.iter(|| {
             capabilities::code_actions::code_actions(
-                session.clone(),
                 &engines,
                 &state.token_map,
                 &range,
                 &uri,
                 &uri,
                 &vec![],
+                &state.compiled_programs,
             )
         })
     });
 
     c.bench_function("code_lens", |b| {
-        b.iter(|| capabilities::code_lens::code_lens(&session, &uri.clone()))
+        b.iter(|| capabilities::code_lens::code_lens(&state.runnables, &uri.clone()))
     });
 
     c.bench_function("on_enter", |b| {

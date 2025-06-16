@@ -37,12 +37,8 @@ use std::{
         Arc,
     },
 };
-use sway_core::{
-    language::{lexed::LexedProgram, parsed::ParseProgram, ty, Programs},
-    Engines, LspConfig,
-};
+use sway_core::{language::Programs, Engines, LspConfig};
 use sway_types::ProgramId;
-use sway_utils::PerformanceData;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
