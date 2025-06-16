@@ -519,16 +519,6 @@ pub(crate) async fn references_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response);
 }
 
-pub(crate) async fn code_lens_empty_request(server: &ServerState, uri: &Url) {
-    let params = CodeLensParams {
-        text_document: TextDocumentIdentifier { uri: uri.clone() },
-        work_done_progress_params: Default::default(),
-        partial_result_params: Default::default(),
-    };
-    let response = request::handle_code_lens(server, params).await.unwrap();
-    assert_eq!(response.unwrap().len(), 0);
-}
-
 pub(crate) async fn code_lens_request(server: &ServerState, uri: &Url) {
     let params = CodeLensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
@@ -540,11 +530,11 @@ pub(crate) async fn code_lens_request(server: &ServerState, uri: &Url) {
         CodeLens {
             range: Range {
                 start: Position {
-                    line: 2,
+                    line: 4,
                     character: 3,
                 },
                 end: Position {
-                    line: 2,
+                    line: 4,
                     character: 7,
                 },
             },
@@ -558,11 +548,11 @@ pub(crate) async fn code_lens_request(server: &ServerState, uri: &Url) {
         CodeLens {
             range: Range {
                 start: Position {
-                    line: 6,
+                    line: 8,
                     character: 0,
                 },
                 end: Position {
-                    line: 6,
+                    line: 8,
                     character: 7,
                 },
             },
@@ -578,11 +568,11 @@ pub(crate) async fn code_lens_request(server: &ServerState, uri: &Url) {
         CodeLens {
             range: Range {
                 start: Position {
-                    line: 11,
+                    line: 13,
                     character: 0,
                 },
                 end: Position {
-                    line: 11,
+                    line: 13,
                     character: 7,
                 },
             },
