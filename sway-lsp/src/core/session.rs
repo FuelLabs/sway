@@ -27,7 +27,11 @@ use pkg::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
-    collections::HashMap, ops::Deref, path::PathBuf, sync::{atomic::AtomicBool, Arc}, time::SystemTime
+    collections::HashMap,
+    ops::Deref,
+    path::PathBuf,
+    sync::{atomic::AtomicBool, Arc},
+    time::SystemTime,
 };
 use sway_ast::{attribute::Annotated, ItemKind};
 use sway_core::{
@@ -65,7 +69,7 @@ impl Session {
             build_plan_cache: BuildPlanCache::default(),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }
-    }       
+    }
 }
 
 /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
@@ -83,10 +87,7 @@ pub fn garbage_collect_program(
 }
 
 /// Clean up memory in the [TypeEngine] and [DeclEngine] for the modified file.
-pub fn garbage_collect_module(
-    engines: &mut Engines,
-    uri: &Url,
-) -> Result<(), LanguageServerError> {
+pub fn garbage_collect_module(engines: &mut Engines, uri: &Url) -> Result<(), LanguageServerError> {
     let path = uri.to_file_path().unwrap();
     let source_id = { engines.se().get_source_id(&path) };
     engines.clear_module(&source_id);
@@ -112,7 +113,7 @@ pub fn token_references(
         })
         .collect();
     Some(token_references)
-} 
+}
 
 pub fn token_ranges(
     engines: &Engines,
@@ -196,7 +197,11 @@ pub fn document_symbols(
     let program = compiled_programs.program_from_uri(url, engines)?;
     let typed_program = program.value().typed.as_ref().unwrap().clone();
     Some(capabilities::document_symbol::to_document_symbols(
-        url, &path, &typed_program, engines, token_map,
+        url,
+        &path,
+        &typed_program,
+        engines,
+        token_map,
     ))
 }
 
@@ -348,7 +353,11 @@ pub fn traverse(
         // We do an extensive traversal of the users program to populate the token_map.
         // Perhaps we should do this for the workspace now as well and not just the workspace member?
         // if program_path == member_path {
-        if program_path.to_str().unwrap().contains(SyncWorkspace::LSP_TEMP_PREFIX) {
+        if program_path
+            .to_str()
+            .unwrap()
+            .contains(SyncWorkspace::LSP_TEMP_PREFIX)
+        {
             // First, populate our token_map with sway keywords.
             let lexed_tree = LexedTree::new(&ctx);
             lexed_tree.collect_module_kinds(lexed);

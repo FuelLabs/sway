@@ -7,12 +7,12 @@ use crate::{
         sync::SyncWorkspace,
         token::{SymbolKind, Token, TypedAstToken},
     },
-    utils::{attributes::doc_comment_attributes, markdown, markup::Markup},
     server_state::ServerState,
+    utils::{attributes::doc_comment_attributes, markdown, markup::Markup},
 };
 use lsp_types::{self, Position, Url};
-use sway_core::Namespace;
 use std::sync::Arc;
+use sway_core::Namespace;
 use sway_core::{
     language::{ty, Visibility},
     Engines, TypeId,
@@ -58,7 +58,7 @@ pub fn hover_data(
         Some(decl_ident) => {
             let t = state.token_map.try_get(decl_ident).try_unwrap()?;
             let decl_token = t.value();
-            
+
             hover_format(
                 engines,
                 decl_token,

@@ -2,7 +2,11 @@
 //! Protocol. This module specifically handles requests.
 
 use crate::{
-    capabilities, core::session::{self, build_plan, program_id_from_path}, lsp_ext, server_state::ServerState, utils::debug,
+    capabilities,
+    core::session::{self, build_plan, program_id_from_path},
+    lsp_ext,
+    server_state::ServerState,
+    utils::debug,
 };
 use forc_tracing::{tracing_subscriber, FmtSpan, TracingWriter};
 use lsp_types::{
@@ -14,7 +18,8 @@ use lsp_types::{
 use std::{
     fs::File,
     io::Write,
-    path::{Path, PathBuf}, sync::Arc,
+    path::{Path, PathBuf},
+    sync::Arc,
 };
 use sway_types::{Ident, Spanned};
 use sway_utils::PerformanceData;
@@ -62,8 +67,13 @@ pub async fn handle_document_symbol(
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
     let _ = state.wait_for_parsing().await;
     match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((uri, session)) => Ok(session::document_symbols(&uri, &state.token_map, &state.engines.read(), &state.compiled_programs)
-            .map(DocumentSymbolResponse::Nested)),
+        Ok((uri, session)) => Ok(session::document_symbols(
+            &uri,
+            &state.token_map,
+            &state.engines.read(),
+            &state.compiled_programs,
+        )
+        .map(DocumentSymbolResponse::Nested)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -75,9 +85,8 @@ pub fn handle_goto_definition(
     state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
-    match state.sync_and_uri_from_workspace(
-        &params.text_document_position_params.text_document.uri,
-    ) {
+    match state.sync_and_uri_from_workspace(&params.text_document_position_params.text_document.uri)
+    {
         Ok((sync, uri)) => {
             let position = params.text_document_position_params.position;
             Ok(session::token_definition_response(
@@ -107,14 +116,14 @@ pub fn handle_completion(
     let position = params.text_document_position.position;
     match state.uri_and_session_from_workspace(&params.text_document_position.text_document.uri) {
         Ok((uri, session)) => Ok(session::completion_items(
-                &uri,
-                position,
-                trigger_char,
-                &state.token_map,
-                &state.engines.read(),
-                &state.compiled_programs,
-            )
-            .map(CompletionResponse::Array)),
+            &uri,
+            position,
+            trigger_char,
+            &state.token_map,
+            &state.engines.read(),
+            &state.compiled_programs,
+        )
+        .map(CompletionResponse::Array)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -126,9 +135,8 @@ pub fn handle_hover(
     state: &ServerState,
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_types::Hover>> {
-    match state.sync_and_uri_from_workspace(
-        &params.text_document_position_params.text_document.uri,
-    ) {
+    match state.sync_and_uri_from_workspace(&params.text_document_position_params.text_document.uri)
+    {
         Ok((sync, uri)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::hover::hover_data(
@@ -225,9 +233,7 @@ pub async fn handle_references(
     params: lsp_types::ReferenceParams,
 ) -> Result<Option<Vec<lsp_types::Location>>> {
     let _ = state.wait_for_parsing().await;
-    match state
-        .sync_and_uri_from_workspace(&params.text_document_position.text_document.uri)
-    {
+    match state.sync_and_uri_from_workspace(&params.text_document_position.text_document.uri) {
         Ok((sync, uri)) => {
             let position = params.text_document_position.position;
             Ok(session::token_references(
@@ -289,7 +295,10 @@ pub async fn handle_code_lens(
 ) -> Result<Option<Vec<CodeLens>>> {
     let _ = state.wait_for_parsing().await;
     match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&state.runnables, &url))),
+        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(
+            &state.runnables,
+            &url,
+        ))),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)

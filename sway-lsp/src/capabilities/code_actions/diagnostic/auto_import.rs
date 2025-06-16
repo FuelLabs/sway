@@ -107,13 +107,16 @@ pub(crate) fn get_call_paths_for_name<'s>(
                     }
                     TyDecl::EnumDecl(decl) => {
                         let enum_decl = ctx.engines.de().get_enum(&decl.decl_id);
-                        let call_path = enum_decl.call_path.to_import_path(ctx.engines, &ctx.namespace);
+                        let call_path = enum_decl
+                            .call_path
+                            .to_import_path(ctx.engines, &ctx.namespace);
                         Some(call_path)
                     }
                     TyDecl::TraitDecl(decl) => {
                         let trait_decl = ctx.engines.de().get_trait(&decl.decl_id);
-                        let call_path =
-                            trait_decl.call_path.to_import_path(ctx.engines, &ctx.namespace);
+                        let call_path = trait_decl
+                            .call_path
+                            .to_import_path(ctx.engines, &ctx.namespace);
                         Some(call_path)
                     }
                     TyDecl::FunctionDecl(decl) => {

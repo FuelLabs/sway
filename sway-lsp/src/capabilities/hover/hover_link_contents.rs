@@ -3,10 +3,13 @@ use crate::{
     utils::document::get_url_from_span,
 };
 use sway_core::{
-    engine_threading::SpannedWithEngines, language::{
+    engine_threading::SpannedWithEngines,
+    language::{
         ty::{TyDecl, TyTraitDecl},
         CallPath,
-    }, namespace::TraitMap, Engines, Namespace, TypeId, TypeInfo
+    },
+    namespace::TraitMap,
+    Engines, Namespace, TypeId, TypeInfo,
 };
 
 use lsp_types::{Range, Url};
@@ -105,7 +108,7 @@ impl<'a> HoverLinkContents<'a> {
             self.engines,
             ty_decl,
         );
-        self.add_implementations(&ty_decl.span(self.engines), impl_spans); 
+        self.add_implementations(&ty_decl.span(self.engines), impl_spans);
     }
 
     /// Adds implementations of the given type to the list of implementations using the [`TypeId`].

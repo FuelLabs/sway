@@ -10,11 +10,14 @@ pub mod struct_decl;
 pub mod struct_field;
 pub mod trait_fn;
 
-use crate::{core::{
-    token::{Token, TypedAstToken},
-    token_map::TokenMap,
-}, server_state::CompiledPrograms};
 pub use crate::error::DocumentError;
+use crate::{
+    core::{
+        token::{Token, TypedAstToken},
+        token_map::TokenMap,
+    },
+    server_state::CompiledPrograms,
+};
 use lsp_types::{
     CodeAction as LspCodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand,
     CodeActionResponse, Diagnostic, Position, Range, TextEdit, Url, WorkspaceEdit,

@@ -3,7 +3,9 @@ use lsp_types::{self, DocumentSymbol, Url};
 use std::path::PathBuf;
 use sway_core::{
     language::ty::{
-        TyAbiDecl, TyAstNodeContent, TyConstantDecl, TyDecl, TyEnumDecl, TyFunctionDecl, TyFunctionParameter, TyIncludeStatement, TyProgram, TySideEffectVariant, TyStorageDecl, TyStructDecl, TyTraitInterfaceItem, TyTraitItem, TyTraitType
+        TyAbiDecl, TyAstNodeContent, TyConstantDecl, TyDecl, TyEnumDecl, TyFunctionDecl,
+        TyFunctionParameter, TyIncludeStatement, TyProgram, TySideEffectVariant, TyStorageDecl,
+        TyStructDecl, TyTraitInterfaceItem, TyTraitItem, TyTraitType,
     },
     Engines, GenericArgument,
 };
@@ -50,7 +52,9 @@ pub fn to_document_symbols(
     .filter_map(|node| {
         match &node.content {
             TyAstNodeContent::SideEffect(side_effect) => {
-                if let TySideEffectVariant::IncludeStatement(include_statement) = &side_effect.side_effect {
+                if let TySideEffectVariant::IncludeStatement(include_statement) =
+                    &side_effect.side_effect
+                {
                     Some(build_include_symbol(include_statement))
                 } else {
                     None

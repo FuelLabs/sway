@@ -1,15 +1,22 @@
 //! The context or environment in which the language server functions.
 
 use crate::{
-    capabilities::runnable::Runnable, config::{Config, GarbageCollectionConfig, Warnings}, core::{
+    capabilities::runnable::Runnable,
+    config::{Config, GarbageCollectionConfig, Warnings},
+    core::{
         document::{Documents, PidLockedFiles},
         session::{self, program_id_from_path, Session},
         sync::SyncWorkspace,
         token_map::TokenMap,
-    }, error::{DirectoryError, DocumentError, LanguageServerError}, utils::{debug, keyword_docs::KeywordDocs}
+    },
+    error::{DirectoryError, DocumentError, LanguageServerError},
+    utils::{debug, keyword_docs::KeywordDocs},
 };
 use crossbeam_channel::{Receiver, Sender};
-use dashmap::{mapref::{multiple::RefMulti, one::Ref}, DashMap};
+use dashmap::{
+    mapref::{multiple::RefMulti, one::Ref},
+    DashMap,
+};
 use forc_pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     PackageManifestFile,
@@ -20,20 +27,19 @@ use lsp_types::{
 };
 use parking_lot::{Mutex, RwLock};
 use std::{
-    collections::{BTreeMap, VecDeque}, ops::Deref, process::Command,
+    collections::{BTreeMap, VecDeque},
     mem,
+    ops::Deref,
     path::PathBuf,
+    process::Command,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
 };
-use sway_core::{language::{
-    lexed::LexedProgram,
-    parsed::ParseProgram,
-    ty,
-    Programs,
-}, Engines, LspConfig,
+use sway_core::{
+    language::{lexed::LexedProgram, parsed::ParseProgram, ty, Programs},
+    Engines, LspConfig,
 };
 use sway_types::ProgramId;
 use sway_utils::PerformanceData;
@@ -222,7 +228,12 @@ impl ServerState {
                         ) {
                             Ok(()) => {
                                 // Use the uri to get the metrics for the program
-                                match ctx.compiled_programs.as_ref().unwrap().program_from_uri(&uri, &engines_clone) {
+                                match ctx
+                                    .compiled_programs
+                                    .as_ref()
+                                    .unwrap()
+                                    .program_from_uri(&uri, &engines_clone)
+                                {
                                     Some(program) => {
                                         // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                         // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
@@ -623,10 +634,14 @@ pub fn modified_file(lsp_mode: Option<&LspConfig>) -> Option<&PathBuf> {
 }
 
 #[derive(Debug)]
-pub struct CompiledPrograms (DashMap<ProgramId, Programs>); 
+pub struct CompiledPrograms(DashMap<ProgramId, Programs>);
 
 impl CompiledPrograms {
-    pub fn program_from_uri(&self, uri: &Url, engines: &Engines) -> Option<Ref<'_, ProgramId, Programs>> {
+    pub fn program_from_uri(
+        &self,
+        uri: &Url,
+        engines: &Engines,
+    ) -> Option<Ref<'_, ProgramId, Programs>> {
         let path = uri.to_file_path().ok()?;
         let program_id = program_id_from_path(&path, engines).ok()?;
         self.get(&program_id)
@@ -639,7 +654,6 @@ impl Deref for CompiledPrograms {
         &self.0
     }
 }
-
 
 /// A Least Recently Used (LRU) cache for storing and managing `Session` objects.
 /// This cache helps limit memory usage by maintaining a fixed number of active sessions.

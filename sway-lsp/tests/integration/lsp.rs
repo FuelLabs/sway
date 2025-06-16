@@ -519,13 +519,13 @@ pub(crate) async fn references_request(server: &ServerState, uri: &Url) {
     assert_eq!(expected, response);
 }
 
-pub(crate) async fn code_lens_request(server: &ServerState, uri: &Url) -> Option<Vec<CodeLens>>{
+pub(crate) async fn code_lens_request(server: &ServerState, uri: &Url) -> Option<Vec<CodeLens>> {
     let params = CodeLensParams {
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     };
-    request::handle_code_lens(server, params).await.unwrap()    
+    request::handle_code_lens(server, params).await.unwrap()
 }
 
 // pub(crate) async fn completion_request(server: &ServerState, uri: &Url) {

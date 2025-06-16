@@ -516,28 +516,26 @@ fn code_lens() {
 
         let uri = open(&service.inner(), runnables_test_dir().join("src/other.sw")).await;
         let response = lsp::code_lens_request(service.inner(), &uri).await;
-        let expected = vec![
-            CodeLens {
-                range: Range {
-                    start: Position {
-                        line: 2,
-                        character: 0,
-                    },
-                    end: Position {
-                        line: 2,
-                        character: 7,
-                    },
+        let expected = vec![CodeLens {
+            range: Range {
+                start: Position {
+                    line: 2,
+                    character: 0,
                 },
-                command: Some(lsp_types::Command {
-                    title: "▶︎ Run Test".to_string(),
-                    command: "sway.runTests".to_string(),
-                    arguments: Some(vec![serde_json::json!({
-                        "name": "test_baz"
-                    })]),
-                }),
-                data: None,
-            }
-        ];
+                end: Position {
+                    line: 2,
+                    character: 7,
+                },
+            },
+            command: Some(lsp_types::Command {
+                title: "▶︎ Run Test".to_string(),
+                command: "sway.runTests".to_string(),
+                arguments: Some(vec![serde_json::json!({
+                    "name": "test_baz"
+                })]),
+            }),
+            data: None,
+        }];
         assert_eq!(response.unwrap(), expected);
 
         shutdown_and_exit(&mut service).await;

@@ -34,25 +34,12 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("hover", |b| {
-        b.iter(|| {
-            capabilities::hover::hover_data(
-                &state,
-                sync.clone(),
-                &engines,
-                &uri,
-                position,
-            )
-        })
+        b.iter(|| capabilities::hover::hover_data(&state, sync.clone(), &engines, &uri, position))
     });
 
     c.bench_function("highlight", |b| {
         b.iter(|| {
-            capabilities::highlight::get_highlights(
-                &engines,
-                &state.token_map,
-                &uri,
-                position,
-            )
+            capabilities::highlight::get_highlights(&engines, &state.token_map, &uri, position)
         })
     });
 
