@@ -487,7 +487,7 @@ pub fn parse_project(
             }
         }
 
-        if let Some(program) = compiled_programs.program_from_uri(&uri, engines_clone) {
+        if let Some(program) = compiled_programs.program_from_uri(uri, engines_clone) {
             // Check if the cached AST was returned by the compiler for the users workspace.
             // If it was, then we need to use the original engines.
             let engines = if program.value().metrics.reused_programs > 0 {
@@ -656,7 +656,8 @@ fn create_runnables(
     }
 
     // Now overwrite each path's entry with the new complete vector
-    for (path, new_runnable_vec) in new_runnables {
+    let runnables_to_insert: Vec<_> = new_runnables.into_iter().collect();
+    for (path, new_runnable_vec) in runnables_to_insert {
         runnables.insert(path, new_runnable_vec);
     }
 }

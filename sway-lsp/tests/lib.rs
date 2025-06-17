@@ -514,7 +514,7 @@ fn code_lens() {
         ];
         assert_eq!(response.unwrap(), expected);
 
-        let uri = open(&service.inner(), runnables_test_dir().join("src/other.sw")).await;
+        let uri = open(service.inner(), runnables_test_dir().join("src/other.sw")).await;
         let response = lsp::code_lens_request(service.inner(), &uri).await;
         let expected = vec![CodeLens {
             range: Range {

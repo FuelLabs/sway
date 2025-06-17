@@ -514,7 +514,7 @@ pub fn handle_visualize(
 pub(crate) fn metrics(
     state: &ServerState,
     // TODO: this seems wrong. why aren't we using the params?
-    params: &lsp_ext::MetricsParams,
+    _params: &lsp_ext::MetricsParams,
 ) -> Result<Option<Vec<(String, PerformanceData)>>> {
     let mut metrics = vec![];
     for item in state.compiled_programs.iter() {

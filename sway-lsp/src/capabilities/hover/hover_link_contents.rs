@@ -95,7 +95,7 @@ impl<'a> HoverLinkContents<'a> {
     /// Adds all implementations of the given [`TyTraitDecl`] to the list of implementations.
     pub fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl) {
         let call_path =
-            CallPath::from(trait_decl.name.clone()).to_fullpath(self.engines, &self.namespace);
+            CallPath::from(trait_decl.name.clone()).to_fullpath(self.engines, self.namespace);
         let impl_spans =
             TraitMap::get_impl_spans_for_trait_name(self.namespace.current_module(), &call_path);
         self.add_implementations(&trait_decl.span(), impl_spans);
