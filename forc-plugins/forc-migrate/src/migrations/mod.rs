@@ -9,6 +9,7 @@
 //! the migration tool.
 
 mod demo;
+mod error_type;
 mod merge_core_std;
 mod partial_eq;
 mod references;
@@ -34,6 +35,8 @@ use sway_types::Span;
 use crate::internal_error;
 
 pub(crate) struct ProgramInfo<'a> {
+    /// The name of the current package being migrated.
+    pub pkg_name: String,
     pub lexed_program: Arc<LexedProgram>,
     pub ty_program: Arc<TyProgram>,
     pub engines: &'a Engines,
@@ -44,6 +47,8 @@ pub(crate) struct ProgramInfo<'a> {
 /// [TyProgram] and the [Engines]. It is used in migrations
 /// that modify the source code by altering the lexed program.
 pub(crate) struct MutProgramInfo<'a> {
+    /// The name of the current package being migrated.
+    pub pkg_name: &'a str,
     pub lexed_program: &'a mut LexedProgram,
     pub ty_program: &'a TyProgram,
     pub engines: &'a Engines,
@@ -52,7 +57,11 @@ pub(crate) struct MutProgramInfo<'a> {
 impl ProgramInfo<'_> {
     pub(crate) fn as_mut(&mut self) -> MutProgramInfo {
         MutProgramInfo {
-            lexed_program: Arc::get_mut(&mut self.lexed_program).unwrap(),
+            pkg_name: &self.pkg_name,
+            // Because the `ProgramsCacheEntry` clones the `programs`, the compilation will always
+            // result in two strong `Arc` references to the `lexed_program`.
+            // Therefore, we must use `Arc::make_mut` to get the copy-on-write behavior.
+            lexed_program: Arc::make_mut(&mut self.lexed_program),
             ty_program: &self.ty_program,
             engines: self.engines,
         }
@@ -485,4 +494,7 @@ fn assert_migration_steps_consistency(migration_steps: MigrationSteps) {
 
 /// The list of the migration steps, grouped by the Sway feature that causes
 /// the breaking changes behind the migration steps.
-const MIGRATION_STEPS: MigrationSteps = &[];
+const MIGRATION_STEPS: MigrationSteps = &[(
+    Feature::ErrorType,
+    &[error_type::RENAME_EXISTING_PANIC_IDENTIFIERS_TO_R_PANIC_STEP],
+)];

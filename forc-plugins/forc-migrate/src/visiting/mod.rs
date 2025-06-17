@@ -7,9 +7,10 @@ use std::sync::Arc;
 
 use duplicate::duplicate_item;
 use sway_ast::{
-    expr::{LoopControlFlow, ReassignmentOpVariant},
-    CodeBlockContents, Expr, IfCondition, IfExpr, ItemFn, ItemImpl, ItemImplItem, ItemKind,
-    ItemUse, PathExprSegment, Statement, StatementLet,
+    expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
+    keywords::*,
+    Assignable, CodeBlockContents, Expr, IfCondition, IfExpr, ItemFn, ItemImpl, ItemImplItem,
+    ItemKind, ItemStruct, ItemUse, PathExprSegment, Statement, StatementLet,
 };
 use sway_core::{
     decl_engine::DeclEngine,
@@ -17,8 +18,9 @@ use sway_core::{
         lexed::LexedModule,
         ty::{
             self, TyAstNodeContent, TyCodeBlock, TyDecl, TyExpression, TyExpressionVariant,
-            TyFunctionDecl, TyImplSelfOrTrait, TyIntrinsicFunctionKind, TyModule, TySideEffect,
-            TySideEffectVariant, TyTraitItem, TyUseStatement, TyVariableDecl,
+            TyFunctionDecl, TyImplSelfOrTrait, TyIntrinsicFunctionKind, TyModule,
+            TyReassignmentTarget, TySideEffect, TySideEffectVariant, TyStructDecl, TyTraitItem,
+            TyUseStatement, TyVariableDecl,
         },
         CallPath,
     },
@@ -32,6 +34,8 @@ use crate::{
 };
 
 pub(crate) struct VisitingContext<'a> {
+    /// The name of the current package being migrated.
+    pub pkg_name: &'a str,
     pub engines: &'a Engines,
     pub dry_run: DryRun,
 }
@@ -97,7 +101,16 @@ pub(crate) trait __TreesVisitor<O> {
     ) -> Result<InvalidateTypedElement> {
         Ok(InvalidateTypedElement::No)
     }
-    fn visit_fn(
+    fn visit_struct_decl(
+        &mut self,
+        ctx: &VisitingContext,
+        lexed_struct: __ref_type([ItemStruct]),
+        ty_struct: Option<Arc<TyStructDecl>>,
+        output: &mut Vec<O>,
+    ) -> Result<InvalidateTypedElement> {
+        Ok(InvalidateTypedElement::No)
+    }
+    fn visit_fn_decl(
         &mut self,
         ctx: &VisitingContext,
         lexed_fn: __ref_type([ItemFn]),
@@ -169,6 +182,32 @@ pub(crate) trait __TreesVisitor<O> {
     ) -> Result<InvalidateTypedElement> {
         Ok(InvalidateTypedElement::No)
     }
+    #[allow(clippy::too_many_arguments)]
+    fn visit_reassignment(
+        &mut self,
+        ctx: &VisitingContext,
+        lexed_op: __ref_type([ReassignmentOp]),
+        lexed_lhs: __ref_type([Assignable]),
+        ty_lhs: Option<&TyReassignmentTarget>,
+        lexed_rhs: __ref_type([Expr]),
+        ty_rhs: Option<&TyExpression>,
+        output: &mut Vec<O>,
+    ) -> Result<InvalidateTypedElement> {
+        Ok(InvalidateTypedElement::No)
+    }
+    #[allow(clippy::too_many_arguments)]
+    fn visit_binary_op(
+        &mut self,
+        ctx: &VisitingContext,
+        op: &'static str,
+        lexed_lhs: __ref_type([Expr]),
+        ty_lhs: Option<&TyExpression>,
+        lexed_rhs: __ref_type([Expr]),
+        ty_rhs: Option<&TyExpression>,
+        output: &mut Vec<O>,
+    ) -> Result<InvalidateTypedElement> {
+        Ok(InvalidateTypedElement::No)
+    }
 }
 
 #[allow(dead_code)]
@@ -190,6 +229,8 @@ impl __ProgramVisitor {
         V: __TreesVisitor<O>,
     {
         let ctx = VisitingContext {
+            #[allow(clippy::needless_borrow)] // Clippy lint false positive. Actually, a Clippy bug.
+            pkg_name: &program_info.pkg_name,
             engines: program_info.engines,
             dry_run,
         };
@@ -257,15 +298,35 @@ impl __ProgramVisitor {
                             .find_map(|node| match &node.content {
                                 TyAstNodeContent::SideEffect(TySideEffect {
                                     side_effect: TySideEffectVariant::UseStatement(ty_use),
-                                }) => Some(ty_use),
+                                }) if ty_use.span == item_use.span() => Some(ty_use),
                                 _ => None,
                             })
                     });
 
                     visitor.visit_use(ctx, item_use, ty_use, output)?;
                 }
-                ItemKind::Struct(_item_struct) => {
-                    // TODO: Implement visiting `struct`.
+                ItemKind::Struct(item_struct) => {
+                    let ty_struct_decl = ty_module.and_then(|ty_module| {
+                        ty_module
+                            .all_nodes
+                            .iter()
+                            .find_map(|node| match &node.content {
+                                TyAstNodeContent::Declaration(TyDecl::StructDecl(
+                                    ty_struct_decl,
+                                )) => {
+                                    let ty_struct_decl =
+                                        ctx.engines.de().get_struct(&ty_struct_decl.decl_id);
+                                    if ty_struct_decl.span == item_struct.span() {
+                                        Some(ty_struct_decl)
+                                    } else {
+                                        None
+                                    }
+                                }
+                                _ => None,
+                            })
+                    });
+
+                    visitor.visit_struct_decl(ctx, item_struct, ty_struct_decl, output)?;
                 }
                 ItemKind::Enum(_item_enum) => {
                     // TODO: Implement visiting `enum`.
@@ -288,7 +349,7 @@ impl __ProgramVisitor {
                             })
                     });
 
-                    Self::visit_fn(ctx, item_fn, ty_fn, visitor, output)?;
+                    Self::visit_fn_decl(ctx, item_fn, ty_fn, visitor, output)?;
                 }
                 ItemKind::Trait(_item_trait) => {
                     // TODO: Implement visiting `trait`.
@@ -335,7 +396,7 @@ impl __ProgramVisitor {
         Ok(())
     }
 
-    fn visit_fn<V, O>(
+    fn visit_fn_decl<V, O>(
         ctx: &VisitingContext,
         lexed_fn: __ref_type([ItemFn]),
         ty_fn: Option<Arc<TyFunctionDecl>>,
@@ -345,7 +406,7 @@ impl __ProgramVisitor {
     where
         V: __TreesVisitor<O>,
     {
-        let ty_fn = match visitor.visit_fn(ctx, lexed_fn, ty_fn.clone(), output)? {
+        let ty_fn = match visitor.visit_fn_decl(ctx, lexed_fn, ty_fn.clone(), output)? {
             InvalidateTypedElement::Yes => None,
             InvalidateTypedElement::No => ty_fn,
         };
@@ -393,7 +454,7 @@ impl __ProgramVisitor {
                         })
                     });
 
-                    Self::visit_fn(ctx, item_fn, ty_item_fn, visitor, output)?;
+                    Self::visit_fn_decl(ctx, item_fn, ty_item_fn, visitor, output)?;
                 }
                 ItemImplItem::Const(_item_const) => {
                     // TODO: Implement visiting `associated consts`.
@@ -517,6 +578,38 @@ impl __ProgramVisitor {
         Ok(())
     }
 
+    fn visit_binary_op<V, O>(
+        ctx: &VisitingContext,
+        op: &'static str,
+        lexed_lhs: __ref_type([Expr]),
+        lexed_rhs: __ref_type([Expr]),
+        visitor: &mut V,
+        output: &mut Vec<O>,
+    ) -> Result<()>
+    where
+        V: __TreesVisitor<O>,
+    {
+        // TODO: Implement getting typed LHS and RHS when visiting operands' expressions.
+        //       We need to properly handle the desugaring.
+        //       E.g., `x + func(1, 2);`
+        //       will be desugared into `add(x, func(1, 2));`
+        //       When visiting the operands in the lexed tree, in the typed tree
+        //       we need to skip the operator method call, like `add` in the above example,
+        //       and provide the typed arguments instead.
+        let ty_lhs = None;
+        let ty_rhs = None;
+
+        match visitor.visit_binary_op(ctx, op, lexed_lhs, ty_lhs, lexed_rhs, ty_rhs, output)? {
+            InvalidateTypedElement::No => (ty_lhs, ty_rhs),
+            InvalidateTypedElement::Yes => (None, None),
+        };
+
+        Self::visit_expr(ctx, lexed_lhs, ty_lhs, visitor, output)?;
+        Self::visit_expr(ctx, lexed_rhs, ty_rhs, visitor, output)?;
+
+        Ok(())
+    }
+
     fn visit_expr<V, O>(
         ctx: &VisitingContext,
         lexed_expr: __ref_type([Expr]),
@@ -550,9 +643,7 @@ impl __ProgramVisitor {
             Expr::Error(..) => {
                 bail!(internal_error("`Expr::Error` cannot happen, because `forc migrate` analyzes only successfully compiled programs."));
             }
-            Expr::Path(_path_expr) => {
-                // TODO: Implement visiting `path_expr`.
-            }
+            Expr::Path(_path_expr) => {}
             Expr::Literal(_literal) => {}
             Expr::AbiCast { args, .. } => {
                 let ty_abi_cast_expr = ty_expr
@@ -690,8 +781,13 @@ impl __ProgramVisitor {
 
                 Self::visit_args(ctx, lexed_expr, ty_expr, false, visitor, output)?;
             }
-            Expr::Index { target: _, arg: _ } => {
-                // TODO: Implement visiting `array[index]`.
+            Expr::Index { target, arg } => {
+                // TODO: Implement extracting typed elements for `array[index]`.
+                let ty_target = None;
+                let ty_arg = None;
+
+                Self::visit_expr(ctx, target.__as_ref(), ty_target, visitor, output)?;
+                Self::visit_expr(ctx, arg.inner.__as_ref(), ty_arg, visitor, output)?;
             }
             Expr::MethodCall {
                 target: _,
@@ -711,19 +807,25 @@ impl __ProgramVisitor {
                 Self::visit_args(ctx, lexed_expr, ty_expr, true, visitor, output)?;
             }
             Expr::FieldProjection {
-                target: _,
+                target,
                 dot_token: _,
                 name: _,
             } => {
-                // TODO: Implement visiting `struct.field`.
+                // TODO: Implement extracting typed target for `struct.field`.
+                let ty_target = None;
+
+                Self::visit_expr(ctx, target.__as_ref(), ty_target, visitor, output)?;
             }
             Expr::TupleFieldProjection {
-                target: _,
+                target,
                 dot_token: _,
                 field: _,
                 field_span: _,
             } => {
-                // TODO: Implement visiting `tuple.0`.
+                // TODO: Implement extracting typed target for `tuple.N`.
+                let ty_target = None;
+
+                Self::visit_expr(ctx, target.__as_ref(), ty_target, visitor, output)?;
             }
             Expr::Ref {
                 ampersand_token: _,
@@ -740,174 +842,327 @@ impl __ProgramVisitor {
             }
             Expr::Not {
                 bang_token: _,
-                expr: _,
+                expr,
             } => {
-                // TODO: Implement visiting `not`.
+                // TODO: Implement extracting typed expressions when visiting `not`.
+                let ty_expr = None;
+                Self::visit_expr(ctx, expr.__as_ref(), ty_expr, visitor, output)?;
             }
             Expr::Mul {
-                lhs: _,
+                lhs,
                 star_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `mul`.
+                Self::visit_binary_op(
+                    ctx,
+                    <StarToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::Div {
-                lhs: _,
+                lhs,
                 forward_slash_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `div`.
+                Self::visit_binary_op(
+                    ctx,
+                    <ForwardSlashToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::Pow {
-                lhs: _,
+                lhs,
                 double_star_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `pow`.
+                Self::visit_binary_op(
+                    ctx,
+                    <DoubleStarToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::Modulo {
-                lhs: _,
+                lhs,
                 percent_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `modulo`.
+                Self::visit_binary_op(
+                    ctx,
+                    <PercentToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::Add {
-                lhs: _,
+                lhs,
                 add_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `add`.
+                Self::visit_binary_op(
+                    ctx,
+                    <AddToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::Sub {
-                lhs: _,
+                lhs,
                 sub_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `sub`.
+                Self::visit_binary_op(
+                    ctx,
+                    <SubToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::Shl {
-                lhs: _,
+                lhs,
                 shl_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `<<`.
+                Self::visit_binary_op(
+                    ctx,
+                    <ShlToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::Shr {
-                lhs: _,
+                lhs,
                 shr_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `>>`.
+                Self::visit_binary_op(
+                    ctx,
+                    <ShrToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::BitAnd {
-                lhs: _,
+                lhs,
                 ampersand_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `bit_and`.
+                Self::visit_binary_op(
+                    ctx,
+                    <AmpersandToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::BitXor {
-                lhs: _,
+                lhs,
                 caret_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `bit_xor`.
+                Self::visit_binary_op(
+                    ctx,
+                    <CaretToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::BitOr {
-                lhs: _,
+                lhs,
                 pipe_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `bit_or`.
+                Self::visit_binary_op(
+                    ctx,
+                    <PipeToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::Equal {
-                lhs: _,
+                lhs,
                 double_eq_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `==`.
+                Self::visit_binary_op(
+                    ctx,
+                    <DoubleEqToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::NotEqual {
-                lhs: _,
+                lhs,
                 bang_eq_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `!=`.
+                Self::visit_binary_op(
+                    ctx,
+                    <BangEqToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::LessThan {
-                lhs: _,
+                lhs,
                 less_than_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `<`.
+                Self::visit_binary_op(
+                    ctx,
+                    <LessThanToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::GreaterThan {
-                lhs: _,
+                lhs,
                 greater_than_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `>`.
+                Self::visit_binary_op(
+                    ctx,
+                    <GreaterThanToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::LessThanEq {
-                lhs: _,
+                lhs,
                 less_than_eq_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `<=`.
+                Self::visit_binary_op(
+                    ctx,
+                    <LessThanEqToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::GreaterThanEq {
-                lhs: _,
+                lhs,
                 greater_than_eq_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `>=`.
+                Self::visit_binary_op(
+                    ctx,
+                    <GreaterThanEqToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::LogicalAnd {
-                lhs: _,
+                lhs,
                 double_ampersand_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `logical_and`.
+                Self::visit_binary_op(
+                    ctx,
+                    <DoubleAmpersandToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::LogicalOr {
-                lhs: _,
+                lhs,
                 double_pipe_token: _,
-                rhs: _,
+                rhs,
             } => {
-                // TODO: Implement visiting `logical_or`.
+                Self::visit_binary_op(
+                    ctx,
+                    <DoublePipeToken as Token>::AS_STR,
+                    lhs.__as_ref(),
+                    rhs.__as_ref(),
+                    visitor,
+                    output,
+                )?;
             }
             Expr::Reassignment {
-                assignable: _,
+                assignable,
                 reassignment_op,
                 expr,
             } => {
+                let ty_reassignment = ty_expr
+                    .map(|ty_expr| match &ty_expr.expression {
+                        ty::TyExpressionVariant::Reassignment(ty_reassignment) => {
+                            Ok(ty_reassignment.as_ref())
+                        }
+                        _ => bail!(invalid_ty_expression_variant(
+                            "Reassignment",
+                            "Reassignment"
+                        )),
+                    })
+                    .transpose()?;
+                let ty_lhs = ty_reassignment.map(|ty_reassignment| &ty_reassignment.lhs);
+                let ty_rhs = ty_reassignment.map(|ty_reassignment| &ty_reassignment.rhs);
+
+                let (_ty_lhs, ty_rhs) = match visitor.visit_reassignment(
+                    ctx,
+                    reassignment_op,
+                    assignable,
+                    ty_lhs,
+                    expr.__as_ref(),
+                    ty_rhs,
+                    output,
+                )? {
+                    InvalidateTypedElement::Yes => (None, None),
+                    InvalidateTypedElement::No => (ty_lhs, ty_rhs),
+                };
+
                 match reassignment_op.variant {
                     ReassignmentOpVariant::Equals => {
-                        let ty_reassignment_rhs = ty_expr
-                            .map(|ty_expr| match &ty_expr.expression {
-                                ty::TyExpressionVariant::Reassignment(ty_reassignment) => {
-                                    Ok(&ty_reassignment.rhs)
-                                }
-                                _ => bail!(invalid_ty_expression_variant(
-                                    "Reassignment",
-                                    "Reassignment"
-                                )),
-                            })
-                            .transpose()?;
-
-                        Self::visit_expr(ctx, expr, ty_reassignment_rhs, visitor, output)?;
+                        // TODO: Implement visiting expressions in the reassignment LHS.
+                        Self::visit_expr(ctx, expr, ty_rhs, visitor, output)?;
                     }
                     _ => {
                         // TODO: Implement getting `ty_expr` when visiting `compound reassignments`.
                         //       We need to properly handle the desugaring.
                         //       E.g., `x += func(1, 2);`
-                        //       will be desugared into `x = x.add(func(1, 2));`
+                        //       will be desugared into `x = add(x, func(1, 2));`
                         //       When visiting the RHS in the lexed tree, we need to skip the
-                        //       operator method call in the typed tree.
+                        //       operator method call in the typed tree, and provide the
+                        //       typed arguments instead.
                         //       To provide visiting without loosing the information about compound
                         //       reassignment, we will need to have a dedicated `visit_reassignment`
                         //       method.
+                        // TODO: Implement visiting expressions in the reassignment LHS.
                         Self::visit_expr(ctx, expr, None, visitor, output)?;
                     }
                 }
@@ -929,8 +1184,8 @@ impl __ProgramVisitor {
     where
         V: __TreesVisitor<O>,
     {
-        match &lexed_if.condition {
-            IfCondition::Expr(_) => {
+        match __ref([lexed_if.condition]) {
+            IfCondition::Expr(lexed_condition) => {
                 let ty_if = ty_if_expr
                     .map(|ty_expr| match &ty_expr.expression {
                         ty::TyExpressionVariant::IfExp {
@@ -945,7 +1200,7 @@ impl __ProgramVisitor {
                         _ => bail!(invalid_ty_expression_variant("IfExpr", "If")),
                     })
                     .transpose()?;
-                let _ty_if_condition = ty_if.map(|ty_if| ty_if.0);
+                let ty_if_condition = ty_if.map(|ty_if| ty_if.0);
                 let ty_if_then = ty_if
                     .map(|ty_if| match &ty_if.1.expression {
                         ty::TyExpressionVariant::CodeBlock(ty_code_block) => Ok(ty_code_block),
@@ -957,7 +1212,7 @@ impl __ProgramVisitor {
                     .transpose()?;
                 let ty_if_else = ty_if.and_then(|ty_if| ty_if.2);
 
-                // TODO: Implement visiting `if_condition`.
+                visitor.visit_expr(ctx, lexed_condition.__as_ref(), ty_if_condition, output)?;
 
                 Self::visit_block(
                     ctx,
