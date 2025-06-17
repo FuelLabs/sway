@@ -576,6 +576,8 @@ impl ServerState {
         }
     }
 
+    /// Initializes a new SyncWorkspace by creating a temporary directory structure and syncing manifest files.
+    /// This sets up the workspace environment needed for language server operations.
     pub async fn initialize_workspace_sync(
         &self,
         file_uri_triggering_init: &Url,

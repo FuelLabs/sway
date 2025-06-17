@@ -182,7 +182,7 @@ fn did_open_all_std_lib_files() {
 }
 
 // Opens all members in the workspaces and assert that we are able to return semantic tokens for each workspace member.
-// TODO: this seems to take much longer to run than the test above. Investigate why.
+// TODO: this seems to take much longer to run than the test above. Investigate why. https://github.com/FuelLabs/sway/issues/7233
 #[test]
 fn did_open_all_members_in_examples() {
     run_async!({
