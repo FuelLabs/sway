@@ -65,8 +65,8 @@ pub async fn handle_document_symbol(
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((uri, session)) => Ok(session::document_symbols(
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(uri) => Ok(session::document_symbols(
             &uri,
             &state.token_map,
             &state.engines.read(),
@@ -113,8 +113,8 @@ pub fn handle_completion(
         .and_then(|ctx| ctx.trigger_character.as_deref())
         .unwrap_or("");
     let position = params.text_document_position.position;
-    match state.uri_and_session_from_workspace(&params.text_document_position.text_document.uri) {
-        Ok((uri, session)) => Ok(session::completion_items(
+    match state.uri_from_workspace(&params.text_document_position.text_document.uri) {
+        Ok(uri) => Ok(session::completion_items(
             &uri,
             position,
             trigger_char,
@@ -208,10 +208,8 @@ pub async fn handle_document_highlight(
     params: lsp_types::DocumentHighlightParams,
 ) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
     let _ = state.wait_for_parsing().await;
-    match state
-        .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
-    {
-        Ok((uri, session)) => {
+    match state.uri_from_workspace(&params.text_document_position_params.text_document.uri) {
+        Ok(uri) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::highlight::get_highlights(
                 &state.engines.read(),
@@ -271,8 +269,8 @@ pub async fn handle_code_action(
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<lsp_types::CodeActionResponse>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((temp_uri, session)) => Ok(capabilities::code_actions(
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(temp_uri) => Ok(capabilities::code_actions(
             &state.engines.read(),
             &state.token_map,
             &params.range,
@@ -293,8 +291,8 @@ pub async fn handle_code_lens(
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(url) => Ok(Some(capabilities::code_lens::code_lens(
             &state.runnables,
             &url,
         ))),
@@ -310,8 +308,8 @@ pub async fn handle_semantic_tokens_range(
     params: SemanticTokensRangeParams,
 ) -> Result<Option<SemanticTokensRangeResult>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(uri) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
             &state.token_map,
             &uri,
             &params.range,
@@ -328,8 +326,8 @@ pub async fn handle_semantic_tokens_full(
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(uri) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
             &state.token_map,
             &uri,
         )),
@@ -379,8 +377,8 @@ pub fn handle_show_ast(
     state: &ServerState,
     params: &lsp_ext::ShowAstParams,
 ) -> Result<Option<TextDocumentIdentifier>> {
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((_, session)) => {
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(_uri) => {
             let current_open_file = &params.text_document.uri;
             // Convert the Uri to a PathBuf
             let path = current_open_file.to_file_path().unwrap();

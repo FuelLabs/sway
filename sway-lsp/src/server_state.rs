@@ -189,7 +189,6 @@ impl ServerState {
                     TaskMessage::CompilationContext(ctx) => {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let path = uri.to_file_path().unwrap();
-                        let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = ctx.engines.read().clone();
                         let lsp_mode = Some(LspConfig {
                             optimized_build: ctx.optimized_build,
@@ -425,10 +424,16 @@ impl ServerState {
         &self,
         workspace_uri: &Url,
     ) -> Result<(Url, Arc<Session>), LanguageServerError> {
-        let sync = self.get_sync_workspace_for_uri(workspace_uri)?;
-        let temp_uri = sync.workspace_to_temp_url(workspace_uri)?;
+        let temp_uri = self.uri_from_workspace(workspace_uri)?;
         let session = self.url_to_session(workspace_uri)?;
         Ok((temp_uri, session))
+    }
+
+    /// Constructs and returns the temp directory URL from a given workspace URI.
+    pub fn uri_from_workspace(&self, workspace_uri: &Url) -> Result<Url, LanguageServerError> {
+        let sync = self.get_sync_workspace_for_uri(workspace_uri)?;
+        sync.workspace_to_temp_url(workspace_uri)
+            .map_err(LanguageServerError::from)
     }
 
     fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {

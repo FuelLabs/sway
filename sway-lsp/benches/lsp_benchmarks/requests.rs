@@ -28,8 +28,15 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("completion", |b| {
         let position = Position::new(1698, 28);
         b.iter(|| {
-            session::completion_items(&uri, position, ".", &state.token_map, &engines, &state.compiled_programs)
-                .map(CompletionResponse::Array)
+            session::completion_items(
+                &uri,
+                position,
+                ".",
+                &state.token_map,
+                &engines,
+                &state.compiled_programs,
+            )
+            .map(CompletionResponse::Array)
         })
     });
 
