@@ -378,10 +378,9 @@ pub fn handle_show_ast(
     params: &lsp_ext::ShowAstParams,
 ) -> Result<Option<TextDocumentIdentifier>> {
     match state.uri_from_workspace(&params.text_document.uri) {
-        Ok(_uri) => {
-            let current_open_file = &params.text_document.uri;
+        Ok(uri) => {
             // Convert the Uri to a PathBuf
-            let path = current_open_file.to_file_path().unwrap();
+            let path = uri.to_file_path().unwrap();
             let program_id = program_id_from_path(&path, &state.engines.read()).unwrap();
 
             let write_ast_to_file =
