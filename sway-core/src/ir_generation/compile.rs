@@ -595,6 +595,8 @@ fn compile_fn(
         ..
     } = ast_fn_decl;
 
+    eprintln!("compile_fn: {}", span.as_str());
+
     if *is_trait_method_dummy {
         return Err(vec![CompileError::InternalOwned(
             format!("Method {name} is a trait method dummy and was not properly replaced."),

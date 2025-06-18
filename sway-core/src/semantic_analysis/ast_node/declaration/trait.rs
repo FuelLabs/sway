@@ -395,8 +395,7 @@ impl TyTraitDecl {
         }
 
         // Retrieve the implemented items for this type.
-        let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-            type_parameters
+        let a = type_parameters
                 .iter()
                 .map(|t| {
                     let t = t
@@ -404,8 +403,13 @@ impl TyTraitDecl {
                         .expect("only works with type parameters");
                     t.type_id
                 })
-                .collect(),
-            type_arguments.iter().map(|t| t.type_id()).collect(),
+                .collect::<Vec<_>>();
+        let b = type_arguments.iter().map(|t| t.type_id()).collect::<Vec<_>>();
+        let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(a.clone(), b.clone());
+        eprintln!("retrieve_interface_surface_and_items_and_implemented_items_for_type: {:?} {:?} {:?}",
+            engines.help_out(&a),
+            engines.help_out(&b),
+            engines.help_out(&type_mapping),
         );
 
         for item in ctx

@@ -19,7 +19,7 @@ type DestinationType = TypeId;
 #[derive(Clone, Default)]
 pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
-    pub const_generics_materialization: BTreeMap<DeclId<TyConstGenericDecl>, crate::language::ty::TyExpression>,
+    pub const_generics_materialization: BTreeMap<DeclId<TyConstGenericDecl>, u64>,
     pub const_mapping: BTreeMap<DeclId<TyConstGenericDecl>, DeclId<TyConstGenericDecl>>,
 }
 
@@ -41,7 +41,7 @@ impl DebugWithEngines for TypeSubstMap {
                 .join(", "),
             self.const_generics_materialization
                 .iter()
-                .map(|(k, v)| { format!("{:?} -> {:?}", k, engines.help_out(v)) })
+                .map(|(k, v)| { format!("{:?} -> {:?}", k, v) })
                 .collect::<Vec<_>>()
                 .join(", "),
             self.const_mapping
@@ -285,25 +285,18 @@ impl TypeSubstMap {
                     vec![type_parameter.type_id()],
                     vec![type_argument.type_id()],
                 );
-                match (&l.expr(), &r.expr()) {
-                    (
-                        ConstGenericExpr::AmbiguousVariableExpression { ident },
-                        ConstGenericExpr::Literal { val, .. },
-                    ) => {
-                        // map.const_generics_materialization.insert(
-                        //     ident.as_str().into(),
-                        //     crate::language::ty::TyExpression {
-                        //         expression: crate::language::ty::TyExpressionVariant::Literal(
-                        //             crate::language::Literal::U64(*val as u64),
-                        //         ),
-                        //         return_type: type_engine.id_of_u64(),
-                        //         span: sway_types::Span::dummy(),
-                        //     },
-                        // );
-                        map
+
+                match (l.expr(), r.expr()) {
+                    (ConstGenericExpr::DeclId { id: l, .. }, ConstGenericExpr::DeclId { id: r, .. }) => {
+                        map.const_mapping.insert(*l, *r);
+                    },
+                    (ConstGenericExpr::DeclId { id, ..}, ConstGenericExpr::Literal { val, .. }) => {
+                        map.const_generics_materialization.insert(*id, *val as u64);
                     }
-                    _ => map,
+                    x => todo!("{x:?}"),
                 }
+
+                map
             }
             (TypeInfo::Slice(type_parameter), TypeInfo::Slice(type_argument)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
@@ -375,7 +368,7 @@ impl TypeSubstMap {
     pub(crate) fn from_type_parameters_and_type_arguments_and_const_generics(
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
-        const_generics_materialization: BTreeMap<DeclId<TyConstGenericDecl>, crate::language::ty::TyExpression>,
+        const_generics_materialization: BTreeMap<DeclId<TyConstGenericDecl>, u64>,
     ) -> TypeSubstMap {
         let mapping = type_parameters.into_iter().zip(type_arguments).collect();
         TypeSubstMap {

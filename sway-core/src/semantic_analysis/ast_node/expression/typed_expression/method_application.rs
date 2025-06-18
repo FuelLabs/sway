@@ -96,6 +96,11 @@ pub(crate) fn type_check_method_application(
             None => type_engine.new_unknown(),
         })
         .collect::<Vec<_>>();
+    eprintln!("type_check_method_aplication: {:?} {:?} {:?}", 
+        method_name_binding.inner.easy_name(),
+        engines.help_out(&arguments_types),
+        arguments.iter().map(|x| x.span.as_str()).collect::<Vec<_>>(),
+    );
     let method_result = resolve_method_name(
         handler,
         ctx.by_ref(),
@@ -121,7 +126,7 @@ pub(crate) fn type_check_method_application(
             engines: &Engines,
             l: impl Iterator<Item = &'a str>,
             r: &[TypeParameter],
-            v: &mut BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
+            v: &mut BTreeMap<DeclId<TyConstGenericDecl>, u64>,
         ) {
             for (l, r) in l.zip(r.iter()) {
                 match r {
@@ -151,7 +156,7 @@ pub(crate) fn type_check_method_application(
             engines: &Engines,
             l: Option<&ConstGenericExpr>,
             r: Option<&ConstGenericExpr>,
-            v: &mut BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
+            v: &mut BTreeMap<DeclId<TyConstGenericDecl>, u64>,
         ) {
             match (l, r) {
                 (
@@ -173,11 +178,7 @@ pub(crate) fn type_check_method_application(
                 ) => {
                     v.insert(
                         *id,
-                        TyExpression {
-                            expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
-                            return_type: engines.te().id_of_u64(),
-                            span: span.clone(),
-                        },
+                        *val as u64,
                     );
                 }
                 _ => {}
@@ -188,7 +189,7 @@ pub(crate) fn type_check_method_application(
             engines: &Engines,
             decl_type_id: TypeId,
             arg_type_id: TypeId,
-            v: &mut BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
+            v: &mut BTreeMap<DeclId<TyConstGenericDecl>, u64>,
         ) {
             let decl_type = engines.te().get(decl_type_id);
             let arg_type = engines.te().get(arg_type_id);
@@ -962,6 +963,8 @@ pub(crate) fn type_check_method_application(
             )
             .ok();
 
+            eprintln!("{:#?}", engines.help_out(&decl_mapping));
+
             if let Some(decl_mapping) = decl_mapping {
                 method.replace_decls(&decl_mapping, handler, &mut ctx)?;
             }
@@ -1193,7 +1196,7 @@ pub(crate) fn monomorphize_method(
     mut ctx: TypeCheckContext,
     decl_ref: DeclRefFunction,
     type_arguments: &mut [GenericArgument],
-    const_generics: BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
+    const_generics: BTreeMap<DeclId<TyConstGenericDecl>, u64>,
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();

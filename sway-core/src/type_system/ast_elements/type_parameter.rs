@@ -390,19 +390,11 @@ impl IsConcrete for GenericTypeParameter {
 
 impl DebugWithEngines for GenericTypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{}", self.name)?;
-        if !self.trait_constraints.is_empty() {
-            write!(
-                f,
-                ":{}",
-                self.trait_constraints
-                    .iter()
-                    .map(|c| format!("{:?}", engines.help_out(c)))
-                    .collect::<Vec<_>>()
-                    .join("+")
-            )?;
-        }
-        Ok(())
+        write!(f, "TypeParam")?;
+        f.debug_map().entry(
+            &engines.help_out(self.initial_type_id),
+            &engines.help_out(self.type_id),
+        ).finish()
     }
 }
 
@@ -685,6 +677,11 @@ impl GenericTypeParameter {
         let mut impld_item_refs: ItemMap = BTreeMap::new();
         let engines = ctx.engines();
 
+        eprintln!("gather_decl_mapping_from_trait_constraints: {:?} {:?}",
+            function_name,
+            ctx.engines.help_out(type_parameters.to_vec()),
+        );
+
         handler.scope(|handler| {
             for type_param in type_parameters.iter().filter_map(|x| x.as_type_parameter()) {
                 let GenericTypeParameter {
@@ -701,18 +698,20 @@ impl GenericTypeParameter {
                     if !type_id.is_concrete(engines, TreatNumericAs::Concrete) && trait_constraints.len() == 1 {
                         let concrete_trait_type_ids : Vec<(TypeId, String)>=
                             TraitMap::get_trait_constraints_are_satisfied_for_types(
-                                ctx
-                            .namespace()
-                            .current_module(), handler, *type_id, trait_constraints, engines,
+                                ctx.namespace().current_module(), 
+                                handler,
+                                *type_id,
+                                trait_constraints,
+                                engines
                             )?
-                            .into_iter()
-                            .filter_map(|t| {
-                                if t.0.is_concrete(engines, TreatNumericAs::Concrete) {
-                                    Some(t)
-                                } else {
-                                    None
-                                }
-                            }).collect();
+                                .into_iter()
+                                .filter_map(|t| {
+                                    if t.0.is_concrete(engines, TreatNumericAs::Concrete) {
+                                        Some(t)
+                                    } else {
+                                        None
+                                    }
+                                }).collect();
 
                         match concrete_trait_type_ids.len().cmp(&1) {
                             Ordering::Equal => {
@@ -790,6 +789,12 @@ impl GenericTypeParameter {
                 interface_item_refs,
                 item_refs,
                 impld_item_refs,
+            );
+
+            eprintln!("1 gather_decl_mapping_from_trait_constraints: {:?} {:?} {:#?}",
+                function_name,
+                ctx.engines.help_out(type_parameters.to_vec()),
+                ctx.engines.help_out(&decl_mapping),
             );
             Ok(decl_mapping)
         })

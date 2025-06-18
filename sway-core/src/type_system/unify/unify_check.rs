@@ -303,11 +303,6 @@ impl<'a> UnifyCheck<'a> {
             (ConstGenericExpr::DeclId { id: l, .. }, ConstGenericExpr::DeclId { id: r, .. }) => {
                 debug = true;
 
-                if r.inner() == 11 {
-                    eprintln!("1 Check Length: {:?} {:?}", self.engines.help_out(l1.expr()), self.engines.help_out(r1.expr()));
-                    eprintln!("{}", std::backtrace::Backtrace::force_capture());
-                }
-
                 let l = self.engines.de().get(l);
                 let r = self.engines.de().get(r);
                 match (l.value.as_ref(), r.value.as_ref()) {

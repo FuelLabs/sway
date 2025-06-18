@@ -7,16 +7,10 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, MaterializeConstGenerics},
-    language::{
+    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, MaterializeConstGenerics}, language::{
         ty::{self, TyConstGenericDecl, TyExpression},
         CallPath,
-    },
-    namespace::{ModulePath, ResolvedDeclaration},
-    semantic_analysis::type_resolve::{resolve_type, VisibilityCheck},
-    type_system::ast_elements::create_type_id::CreateTypeId,
-    EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes, SubstTypesContext,
-    TypeId, TypeParameter, TypeSubstMap,
+    }, namespace::{ModulePath, ResolvedDeclaration}, semantic_analysis::type_resolve::{resolve_type, VisibilityCheck}, type_system::ast_elements::create_type_id::CreateTypeId, EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes, SubstTypesContext, TypeId, TypeParameter, TypeSubstMap
 };
 
 pub(crate) trait MonomorphizeHelper {
@@ -151,7 +145,10 @@ where
                     (TypeParameter::Const(p), GenericArgument::Const(a)) => {
                         consts.insert(
                             *p.decl_ref.id(),
-                            a.expr.to_ty_expression(engines),
+                            match &a.expr {
+                                ConstGenericExpr::Literal { val, .. } => *val as u64,
+                                _ => todo!(),
+                            },
                         );
                     }
                     // TODO const generic was not materialized yet
@@ -206,7 +203,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
     namespace: &Namespace,
     value: &mut T,
     type_arguments: &mut [GenericArgument],
-    const_generics: BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
+    const_generics: BTreeMap<DeclId<TyConstGenericDecl>, u64>,
     enforce_type_arguments: EnforceTypeArguments,
     call_site_span: &Span,
     mod_path: &ModulePath,

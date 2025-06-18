@@ -533,7 +533,7 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         value: &mut T,
         type_arguments: &mut [GenericArgument],
-        const_generics: BTreeMap<DeclId<TyConstGenericDecl>, TyExpression>,
+        const_generics: BTreeMap<DeclId<TyConstGenericDecl>, u64>,
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
     ) -> Result<(), ErrorEmitted>

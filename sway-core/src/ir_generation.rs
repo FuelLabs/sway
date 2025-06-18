@@ -72,7 +72,7 @@ impl CompiledFunctionCache {
         let fn_key = hasher.finish();
 
         let (fn_key, item) = (Some(fn_key), self.recreated_fns.get(&fn_key).copied());
-        let new_callee = match item {
+        let new_callee = match None {
             Some(func) => func,
             None => {
                 let name = Ident::new(Span::from_string(format!(

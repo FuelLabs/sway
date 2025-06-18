@@ -28,6 +28,12 @@ impl Handler {
 
     /// Emit the error `err`.
     pub fn emit_err(&self, err: CompileError) -> ErrorEmitted {
+        match &err {
+            CompileError::TraitConstraintNotSatisfied { .. } => {
+                eprintln!("{:?} {}", err, std::backtrace::Backtrace::force_capture());
+            },
+            _ => {},
+        }
         self.inner.borrow_mut().errors.push(err);
         ErrorEmitted { _priv: () }
     }

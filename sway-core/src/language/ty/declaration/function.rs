@@ -468,17 +468,15 @@ impl SubstTypes for TyFunctionDecl {
                 self.parameters.subst(ctx);
                 self.return_type.subst(ctx);
                 self.implementing_for_typeid.subst(ctx);
+                self.body.subst(ctx);
             }
         };
 
         if let Some(map) = ctx.type_subst_map.as_ref() {
-            let handler = Handler::default();
-            for (id, value) in &map.const_generics_materialization {
-                //let _ = self.materialize_const_generics(ctx.engines, &handler, name, value);
-                let decl = ctx.engines.de().get(id);
-                let mut new_decl = (&*decl).clone();
-                new_decl.value = Some(value.extract_literal_value().unwrap().cast_value_to_u64().unwrap());
-                ctx.engines.de().replace(*id, new_decl);
+            if let Some(map) = ctx.type_subst_map.as_ref() {
+                for (id, value) in map.const_generics_materialization.iter() {
+                    TyConstGenericDecl::materialize(ctx.engines, id, *value);
+                }
             }
             HasChanges::Yes
         } else {

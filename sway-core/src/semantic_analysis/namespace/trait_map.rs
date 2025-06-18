@@ -816,20 +816,11 @@ impl TraitMap {
             ResolvedTraitImplItem::Typed(item) => match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
+                    
                     if let Some(decl_implementing_for_typeid) = decl.implementing_for_typeid {
                         type_mapping.insert(decl_implementing_for_typeid, type_id);
                     }
-                    for p in decl.type_parameters.iter() {
-                        match p {
-                            crate::TypeParameter::Type(_) => {}
-                            crate::TypeParameter::Const(p) => {
-                                let new_id = engines.de().map_duplicate(p.decl_ref.id(), |x| {
-                                    // x.value = None; // TODO should not need this
-                                });
-                                //type_mapping.insert_const_decl_id(*p.decl_ref.id(), new_id);
-                            }
-                        }
-                    }
+
                     decl.subst(&SubstTypesContext::new(
                         engines,
                         &type_mapping,
@@ -1070,6 +1061,11 @@ impl TraitMap {
                             engines,
                             e.inner.key.type_id,
                             type_id,
+                        );
+                        eprintln!("get_items_for_type_and_trait_name_and_trait_type_arguments: {:?} {:?} {:?}",
+                            engines.help_out(e.inner.key.type_id),
+                            engines.help_out(type_id),
+                            engines.help_out(&type_mapping),
                         );
 
                         let mut trait_items = Self::filter_dummy_methods(
@@ -1375,19 +1371,19 @@ impl TraitMap {
         }
 
         // Check we can use the cache
-        let mut hasher = DefaultHasher::default();
-        type_id.hash(&mut hasher);
-        for c in constraints {
-            c.hash(&mut hasher, engines);
-        }
-        let hash = hasher.finish();
+        // let mut hasher = DefaultHasher::default();
+        // type_id.hash(&mut hasher);
+        // for c in constraints {
+        //     c.hash(&mut hasher, engines);
+        // }
+        // let hash = hasher.finish();
 
-        {
-            let trait_map = &mut module.current_lexical_scope_mut().items.implemented_traits;
-            if trait_map.satisfied_cache.contains(&hash) {
-                return Ok(());
-            }
-        }
+        // {
+        //     let trait_map = &mut module.current_lexical_scope_mut().items.implemented_traits;
+        //     if trait_map.satisfied_cache.contains(&hash) {
+        //         return Ok(());
+        //     }
+        // }
 
         let all_impld_traits: BTreeSet<(Ident, TypeId)> =
             Self::get_all_implemented_traits(module, type_id, engines);
@@ -1403,7 +1399,7 @@ impl TraitMap {
         ) {
             Ok(()) => {
                 let trait_map = &mut module.current_lexical_scope_mut().items.implemented_traits;
-                trait_map.satisfied_cache.insert(hash);
+                //trait_map.satisfied_cache.insert(hash);
                 Ok(())
             }
             r => r,
@@ -1439,6 +1435,7 @@ impl TraitMap {
         self.for_each_impls(engines, type_id, true, |e| {
             let key = &e.inner.key;
             let suffix = &key.name.suffix;
+            eprintln!("get_implemented_traits: {:?} {:?}", engines.help_out(type_id), engines.help_out(key.type_id));
             if unify_check.check(type_id, key.type_id) {
                 let map_trait_type_id = type_engine.new_custom(
                     engines,
@@ -1449,6 +1446,7 @@ impl TraitMap {
                         Some(suffix.args.to_vec())
                     },
                 );
+                eprintln!("    {} {:?}", suffix.name.clone(), engines.help_out(map_trait_type_id));
                 all_impld_traits.insert((suffix.name.clone(), map_trait_type_id));
             }
         });
@@ -1493,6 +1491,7 @@ impl TraitMap {
                 !all_impld_traits
                     .iter()
                     .any(|(trait_name, constraint_type_id)| {
+                        eprintln!("check_if_trait_constraints_are_satisfied_for_type_inner: {:?} {:?}, {trait_name} {required_trait_name}", engines.help_out(constraint_type_id), engines.help_out(required_trait_type_id));
                         trait_name == required_trait_name
                             && unify_check.check(*constraint_type_id, *required_trait_type_id)
                     })

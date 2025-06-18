@@ -486,6 +486,8 @@ impl<'a> FnCompiler<'a> {
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
     ) -> Result<TerminatorValue, CompileError> {
+        eprintln!("{}", ast_expr.span.as_str());
+
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
         match &ast_expr.expression {
             ty::TyExpressionVariant::Literal(Literal::String(s)) => {
