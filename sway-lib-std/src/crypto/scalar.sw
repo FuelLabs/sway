@@ -3,6 +3,7 @@ library;
 use ::convert::{From, TryFrom};
 use ::bytes::{Bytes, *};
 use ::option::Option::{self, *};
+use ::hash::{Hash, Hasher};
 use ::ops::*;
 use ::primitive_conversions::u256::*;
 use ::codec::*;
@@ -23,6 +24,12 @@ impl PartialEq for Scalar {
 // Note that `Scalar` implements `PartialEq` but not `Eq`,
 // because an uninitialized `Scalar`, created by `Scalar::new`
 // is not equal to any other scalar, including itself.
+
+impl Hash for Scalar {
+    fn hash(self, ref mut state: Hasher) {
+        self.bytes.hash(state);
+    }
+}
 
 impl Scalar {
     /// Returns a new, uninitialized Scalar.

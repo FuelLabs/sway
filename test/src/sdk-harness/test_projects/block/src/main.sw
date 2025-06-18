@@ -24,7 +24,7 @@ impl BlockTest for Contract {
         let res = block_header_hash(h);
         match res {
             Ok(h) => h,
-            Err(e) => revert(0),
+            Err(_) => revert(0),
         }
     }
 

@@ -95,6 +95,6 @@ impl Eq for Message {}
 
 impl Hash for Message {
     fn hash(self, ref mut state: Hasher) {
-        state.write(self.bytes);
+        self.bytes.hash(state);
     }
 }

@@ -1,7 +1,7 @@
 //! A UTF-8 encoded growable string.
 library;
 
-use ::assert::assert;
+use ::assert::assert_eq;
 use ::bytes::*;
 use ::convert::*;
 use ::hash::{Hash, Hasher};
@@ -293,7 +293,7 @@ impl From<String> for str {
 #[test]
 fn test_string_str() {
     let string = String::from_ascii_str("Fuel");
-    assert(string.as_str() == "Fuel");
+    assert_eq(string.as_str(), "Fuel");
 }
 
 impl AsRawSlice for String {
