@@ -123,10 +123,22 @@ impl<'a> HoverLinkContents<'a> {
 
     /// Adds implementations to the list of implementation spans, with the declaration span first.
     /// Ensure that all paths are converted to workspace paths before adding them.
-    fn add_implementations(&mut self, decl_span: &Span, mut impl_spans: Vec<Span>) {
-        let mut all_spans = vec![decl_span.clone()];
-        all_spans.append(&mut impl_spans);
-        all_spans.dedup();
+    fn add_implementations(&mut self, decl_span: &Span, impl_spans: Vec<Span>) {
+        let mut seen = std::collections::HashSet::new();
+        let mut all_spans = Vec::new();
+
+        // Always add declaration span first
+        if seen.insert(decl_span.clone()) {
+            all_spans.push(decl_span.clone());
+        }
+
+        // Add implementation spans, skipping duplicates
+        for span in impl_spans {
+            if seen.insert(span.clone()) {
+                all_spans.push(span);
+            }
+        }
+
         for span in &all_spans {
             let span_result = self.sync.temp_to_workspace_span(self.engines.se(), span);
             if let Ok(span) = span_result {

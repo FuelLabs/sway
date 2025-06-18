@@ -203,7 +203,7 @@ impl ServerState {
                             // Call this on the engines clone so we don't clear types that are still in use
                             // and might be needed in the case cancel compilation was triggered.
                             if let Err(err) =
-                                session::garbage_collect_module(&mut engines_clone, &uri)
+                                session::garbage_collect_module(&mut engines_clone, uri)
                             {
                                 tracing::error!(
                                     "Unable to perform garbage collection: {}",
@@ -215,7 +215,7 @@ impl ServerState {
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(
-                            &uri,
+                            uri,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
                             &ctx,
@@ -223,7 +223,7 @@ impl ServerState {
                         ) {
                             Ok(()) => {
                                 // Use the uri to get the metrics for the program
-                                match ctx.compiled_programs.program_from_uri(&uri, &engines_clone) {
+                                match ctx.compiled_programs.program_from_uri(uri, &engines_clone) {
                                     Some(program) => {
                                         // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                         // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
@@ -634,9 +634,15 @@ pub fn modified_file(lsp_mode: Option<&LspConfig>) -> Option<&PathBuf> {
 #[derive(Debug)]
 pub struct CompiledPrograms(DashMap<ProgramId, Programs>);
 
+impl Default for CompiledPrograms {
+    fn default() -> Self {
+        CompiledPrograms(DashMap::new())
+    }
+}
+
 impl CompiledPrograms {
     pub fn new() -> Self {
-        CompiledPrograms(DashMap::new())
+        CompiledPrograms::default()
     }
 
     pub fn program_from_uri(
