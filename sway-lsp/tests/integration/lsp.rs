@@ -274,14 +274,8 @@ pub(crate) async fn visualize_request(server: &ServerState, uri: &Url, graph_kin
 
 pub(crate) async fn metrics_request(
     service: &mut LspService<ServerState>,
-    uri: &Url,
 ) -> Vec<(String, PerformanceData)> {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
-        },
-    });
-    let request = build_request_with_id("sway/metrics", params, 1);
+    let request = Request::build("sway/metrics").id(1).finish();
     let result = call_request(service, request.clone())
         .await
         .unwrap()

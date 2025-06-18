@@ -294,26 +294,25 @@ fn sync_with_updates_to_manifest_in_workspace() {
     });
 }
 
-// TODO: Fix this test Issue #7002
-// #[test]
-// fn did_cache_test() {
-//     run_async!({
-//         let (mut service, _) = LspService::build(ServerState::new)
-//             .custom_method("sway/metrics", ServerState::metrics)
-//             .finish();
-//         let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-//         let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
-//         service.inner().wait_for_parsing().await;
-//         let metrics = lsp::metrics_request(&mut service, &uri).await;
-//         assert!(metrics.len() >= 2);
-//         for (path, metrics) in metrics {
-//             if path.contains("sway-lib-std") {
-//                 assert!(metrics.reused_programs >= 1);
-//             }
-//         }
-//         shutdown_and_exit(&mut service).await;
-//     });
-// }
+#[test]
+fn did_cache_test() {
+    run_async!({
+        let (mut service, _) = LspService::build(ServerState::new)
+            .custom_method("sway/metrics", ServerState::metrics)
+            .finish();
+        let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
+        service.inner().wait_for_parsing().await;
+        let metrics = lsp::metrics_request(&mut service).await;
+        assert!(metrics.len() >= 2);
+        for (path, metrics) in metrics {
+            if path.contains("sway-lib-std") {
+                assert!(metrics.reused_programs >= 1);
+            }
+        }
+        shutdown_and_exit(&mut service).await;
+    });
+}
 
 #[allow(dead_code)]
 // #[test]
@@ -330,7 +329,7 @@ fn did_change_stress_test() {
             if version == 0 {
                 service.inner().wait_for_parsing().await;
             }
-            let metrics = lsp::metrics_request(&mut service, &uri).await;
+            let metrics = lsp::metrics_request(&mut service).await;
             for (path, metrics) in metrics {
                 if path.contains("sway-lib-std") {
                     assert!(metrics.reused_programs >= 1);

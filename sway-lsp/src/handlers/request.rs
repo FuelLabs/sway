@@ -510,11 +510,7 @@ pub fn handle_visualize(
 }
 
 /// This method is triggered by the test suite to request the latest compilation metrics.
-pub(crate) fn metrics(
-    state: &ServerState,
-    // TODO: this seems wrong. why aren't we using the params?
-    _params: &lsp_ext::MetricsParams,
-) -> Result<Option<Vec<(String, PerformanceData)>>> {
+pub(crate) fn metrics(state: &ServerState) -> Result<Option<Vec<(String, PerformanceData)>>> {
     let mut metrics = vec![];
     for item in state.compiled_programs.iter() {
         let path = state

@@ -327,6 +327,10 @@ pub fn traverse(
                 let modified_program_id = program_id_from_path(modified_file, engines)?;
                 // We can skip traversing the programs for this iteration as they are unchanged.
                 if program_id != modified_program_id {
+                    // Update the metrics for the program before continuing. Otherwise we can't query if the program was reused.
+                    compiled_programs.get_mut(&program_id).map(|mut item| {
+                        item.value_mut().metrics = metrics.clone();
+                    });
                     continue;
                 }
             }
@@ -378,13 +382,6 @@ pub fn traverse(
             parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, _ctx| {
                 typed_tree.traverse_node(node);
             });
-
-            let compiled_program = value.expect("value was checked above");
-            if let Some(mut item) = compiled_programs.get_mut(&program_id) {
-                *item.value_mut() = compiled_program;
-            } else {
-                compiled_programs.insert(program_id, compiled_program);
-            }
         } else {
             // Collect tokens from dependencies and the standard library prelude.
             parse_ast_to_tokens(parsed, &ctx, modified_file, |an, ctx| {
@@ -394,6 +391,14 @@ pub fn traverse(
             parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, ctx| {
                 dependency::collect_typed_declaration(node, ctx);
             });
+        }
+
+        // Update the compiled program in the cache.
+        let compiled_program = value.expect("value was checked above");
+        if let Some(mut item) = compiled_programs.get_mut(&program_id) {
+            *item.value_mut() = compiled_program;
+        } else {
+            compiled_programs.insert(program_id, compiled_program);
         }
     }
 

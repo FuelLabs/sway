@@ -3,7 +3,7 @@
 
 use crate::{
     handlers::{notification, request},
-    lsp_ext::{MetricsParams, OnEnterParams, ShowAstParams, VisualizeParams},
+    lsp_ext::{OnEnterParams, ShowAstParams, VisualizeParams},
     server_state::ServerState,
 };
 use lsp_types::{
@@ -160,10 +160,7 @@ impl ServerState {
         request::handle_visualize(self, &params)
     }
 
-    pub async fn metrics(
-        &self,
-        params: MetricsParams,
-    ) -> Result<Option<Vec<(String, PerformanceData)>>> {
-        request::metrics(self, &params)
+    pub async fn metrics(&self) -> Result<Option<Vec<(String, PerformanceData)>>> {
+        request::metrics(self)
     }
 }
