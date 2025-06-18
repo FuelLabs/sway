@@ -540,15 +540,16 @@ impl ServerState {
     ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
         // First try to find the workspace root for this URI
         let workspace_root = self.find_workspace_root_for_uri(uri)?;
+        let canonical_root = workspace_root.canonicalize().unwrap_or(workspace_root);
 
         // Check if we already have a SyncWorkspace for this root
-        if let Some(sw_arc) = self.sync_workspaces.get(&workspace_root) {
+        if let Some(sw_arc) = self.sync_workspaces.get(&canonical_root) {
             return Ok(sw_arc.value().clone());
         }
 
         // Otherwise, initialize a new workspace sync for this root
         let initialized_sw = self.initialize_workspace_sync(uri).await?;
-        let canonical_root = workspace_root.canonicalize().unwrap_or(workspace_root);
+
         self.sync_workspaces
             .insert(canonical_root.clone(), initialized_sw.clone());
 
