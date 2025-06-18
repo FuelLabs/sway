@@ -3,14 +3,13 @@ use lsp_types::{
     CompletionResponse, DocumentSymbolResponse, Position, Range, TextDocumentContentChangeEvent,
     TextDocumentIdentifier,
 };
-use sway_lsp::{capabilities, lsp_ext::OnEnterParams};
+use sway_lsp::{capabilities, core::session, lsp_ext::OnEnterParams};
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, state, engines) = Runtime::new()
+    let (uri, _, state, engines, sync) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
-    let sync = state.sync_workspace.get().unwrap();
     let config = sway_lsp::config::Config::default();
     let position = Position::new(1717, 24);
     let range = Range::new(Position::new(1628, 0), Position::new(1728, 0));
@@ -21,8 +20,7 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("document_symbol", |b| {
         b.iter(|| {
-            session
-                .document_symbols(&uri, &state.token_map, &engines)
+            session::document_symbols(&uri, &state.token_map, &engines, &state.compiled_programs)
                 .map(DocumentSymbolResponse::Nested)
         })
     });
@@ -30,37 +28,35 @@ fn benchmarks(c: &mut Criterion) {
     c.bench_function("completion", |b| {
         let position = Position::new(1698, 28);
         b.iter(|| {
-            session
-                .completion_items(&uri, position, ".", &state.token_map, &engines)
-                .map(CompletionResponse::Array)
+            session::completion_items(
+                &uri,
+                position,
+                ".",
+                &state.token_map,
+                &engines,
+                &state.compiled_programs,
+            )
+            .map(CompletionResponse::Array)
         })
     });
 
     c.bench_function("hover", |b| {
-        b.iter(|| {
-            capabilities::hover::hover_data(&state, &engines, session.clone(), &uri, position)
-        })
+        b.iter(|| capabilities::hover::hover_data(&state, sync.clone(), &engines, &uri, position))
     });
 
     c.bench_function("highlight", |b| {
         b.iter(|| {
-            capabilities::highlight::get_highlights(
-                session.clone(),
-                &engines,
-                &state.token_map,
-                &uri,
-                position,
-            )
+            capabilities::highlight::get_highlights(&engines, &state.token_map, &uri, position)
         })
     });
 
     c.bench_function("find_all_references", |b| {
-        b.iter(|| session.token_references(&uri, position, &state.token_map, &engines, sync))
+        b.iter(|| session::token_references(&uri, position, &state.token_map, &engines, &sync))
     });
 
     c.bench_function("goto_definition", |b| {
         b.iter(|| {
-            session.token_definition_response(&uri, position, &engines, &state.token_map, sync)
+            session::token_definition_response(&uri, position, &engines, &state.token_map, &sync)
         })
     });
 
@@ -78,7 +74,7 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("prepare_rename", |b| {
         b.iter(|| {
-            capabilities::rename::prepare_rename(&engines, &state.token_map, &uri, position, sync)
+            capabilities::rename::prepare_rename(&engines, &state.token_map, &uri, position, &sync)
         })
     });
 
@@ -90,7 +86,7 @@ fn benchmarks(c: &mut Criterion) {
                 "new_token_name".to_string(),
                 &uri,
                 position,
-                sync,
+                &sync,
             )
         })
     });
@@ -99,19 +95,19 @@ fn benchmarks(c: &mut Criterion) {
         let range = Range::new(Position::new(4, 10), Position::new(4, 10));
         b.iter(|| {
             capabilities::code_actions::code_actions(
-                session.clone(),
                 &engines,
                 &state.token_map,
                 &range,
                 &uri,
                 &uri,
                 &vec![],
+                &state.compiled_programs,
             )
         })
     });
 
     c.bench_function("code_lens", |b| {
-        b.iter(|| capabilities::code_lens::code_lens(&session, &uri.clone()))
+        b.iter(|| capabilities::code_lens::code_lens(&state.runnables, &uri.clone()))
     });
 
     c.bench_function("on_enter", |b| {

@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use sway_core::{
     language::ty::{
         TyAbiDecl, TyAstNodeContent, TyConstantDecl, TyDecl, TyEnumDecl, TyFunctionDecl,
-        TyFunctionParameter, TyProgram, TyStorageDecl, TyStructDecl, TyTraitInterfaceItem,
-        TyTraitItem, TyTraitType,
+        TyFunctionParameter, TyIncludeStatement, TyProgram, TySideEffectVariant, TyStorageDecl,
+        TyStructDecl, TyTraitInterfaceItem, TyTraitItem, TyTraitType,
     },
     Engines, GenericArgument,
 };
@@ -23,7 +23,6 @@ pub fn to_document_symbols(
     token_map: &TokenMap,
 ) -> Vec<DocumentSymbol> {
     let source_id = engines.se().get_source_id(path);
-
     // Find if there is a configurable symbol in the token map that belongs to the current file
     // We will add children symbols to this when we encounter configurable declarations below.
     let mut configurable_symbol = token_map
@@ -38,7 +37,6 @@ pub fn to_document_symbols(
                 .children(vec![])
                 .build()
         });
-
     // Only include nodes that originate from the file.
     let mut nodes: Vec<_> = (if ty_program.root_module.span.source_id() == Some(&source_id) {
         Some(ty_program.root_module.all_nodes.iter())
@@ -53,7 +51,30 @@ pub fn to_document_symbols(
     .flatten()
     .filter_map(|node| {
         match &node.content {
+            TyAstNodeContent::SideEffect(side_effect) => {
+                if let TySideEffectVariant::IncludeStatement(include_statement) =
+                    &side_effect.side_effect
+                {
+                    Some(build_include_symbol(include_statement))
+                } else {
+                    None
+                }
+            }
             TyAstNodeContent::Declaration(decl) => match decl {
+                TyDecl::TypeAliasDecl(decl) => {
+                    let type_alias_decl = engines.de().get_type_alias(&decl.decl_id);
+                    let span = type_alias_decl.call_path.suffix.span();
+                    let range = get_range_from_span(&span);
+                    let detail = Some(type_alias_decl.ty.span().as_str().to_string());
+                    let type_alias_symbol = DocumentSymbolBuilder::new()
+                        .name(span.str().to_string())
+                        .kind(lsp_types::SymbolKind::TYPE_PARAMETER)
+                        .range(range)
+                        .selection_range(range)
+                        .detail(detail)
+                        .build();
+                    Some(type_alias_symbol)
+                }
                 TyDecl::FunctionDecl(decl) => {
                     let fn_decl = engines.de().get_function(&decl.decl_id);
                     let range = get_range_from_span(&fn_decl.name.span());
@@ -205,6 +226,17 @@ pub fn to_document_symbols(
     // Sort by range start position
     nodes.sort_by_key(|node| node.range.start);
     nodes
+}
+
+fn build_include_symbol(include_statement: &TyIncludeStatement) -> DocumentSymbol {
+    let span = include_statement.span();
+    let range = get_range_from_span(&span);
+    DocumentSymbolBuilder::new()
+        .name(span.str().to_string())
+        .kind(lsp_types::SymbolKind::MODULE)
+        .range(range)
+        .selection_range(range)
+        .build()
 }
 
 fn build_constant_symbol(const_decl: &TyConstantDecl) -> DocumentSymbol {
