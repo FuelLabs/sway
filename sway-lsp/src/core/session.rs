@@ -328,9 +328,9 @@ pub fn traverse(
                 // We can skip traversing the programs for this iteration as they are unchanged.
                 if program_id != modified_program_id {
                     // Update the metrics for the program before continuing. Otherwise we can't query if the program was reused.
-                    compiled_programs.get_mut(&program_id).map(|mut item| {
+                    if let Some(mut item) = compiled_programs.get_mut(&program_id) {
                         item.value_mut().metrics = metrics.clone();
-                    });
+                    }
                     continue;
                 }
             }
