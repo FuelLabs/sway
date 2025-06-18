@@ -3,7 +3,7 @@
 
 use crate::{
     handlers::{notification, request},
-    lsp_ext::{MetricsParams, OnEnterParams, ShowAstParams, VisualizeParams},
+    lsp_ext::{OnEnterParams, ShowAstParams, VisualizeParams},
     server_state::ServerState,
 };
 use lsp_types::{
@@ -30,14 +30,6 @@ impl LanguageServer for ServerState {
         // Register a file system watcher for Forc.toml files with the client.
         if let Err(err) = self.register_forc_toml_watcher().await {
             tracing::error!("Failed to register Forc.toml file watcher: {}", err);
-        }
-        // Populate documents from temp dir
-        if let Some(sw) = self.sync_workspace.get() {
-            if let Ok(temp_dir) = sw.temp_dir() {
-                if let Err(err) = self.documents.store_sway_files_from_temp(temp_dir).await {
-                    tracing::warn!("Failed to populate documents from temp dir: {}", err);
-                }
-            }
         }
         tracing::info!("Sway Language Server Initialized");
     }
@@ -168,10 +160,7 @@ impl ServerState {
         request::handle_visualize(self, &params)
     }
 
-    pub async fn metrics(
-        &self,
-        params: MetricsParams,
-    ) -> Result<Option<Vec<(String, PerformanceData)>>> {
-        request::metrics(self, &params)
+    pub async fn metrics(&self) -> Result<Option<Vec<(String, PerformanceData)>>> {
+        request::metrics(self)
     }
 }
