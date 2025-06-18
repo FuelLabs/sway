@@ -110,7 +110,7 @@ async fn send_request(server: &ServerState, params: &CodeActionParams) -> Vec<Co
     request::handle_code_action(server, params.clone())
         .await
         .unwrap()
-        .unwrap_or_else(|| panic!("Empty response from server for request: {:?}", params))
+        .unwrap_or_else(|| panic!("Empty response from server for request: {:#?}", params))
 }
 
 pub(crate) async fn code_action_abi_request(server: &ServerState, uri: &Url) {
