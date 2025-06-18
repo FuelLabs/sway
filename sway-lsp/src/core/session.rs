@@ -167,7 +167,7 @@ pub fn completion_items(
     let program = compiled_programs.program_from_uri(uri, engines)?;
     let shifted_position = Position {
         line: position.line,
-        character: position.character - trigger_char.len() as u32 - 1,
+        character: position.character.saturating_sub(trigger_char.len() as u32 + 1),
     };
     let t = token_map.token_at_position(uri, shifted_position)?;
     let ident_to_complete = t.key();
