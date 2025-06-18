@@ -65,17 +65,17 @@ fn send_new_compilation_request(
     let _ = state
         .cb_tx
         .send(TaskMessage::CompilationContext(CompilationContext {
-            session: Some(session.clone()),
+            session: session.clone(),
             engines: state.engines.clone(),
             token_map: state.token_map.clone(),
-            compiled_programs: Some(state.compiled_programs.clone()),
-            runnables: Some(state.runnables.clone()),
-            uri: Some(uri.clone()),
+            compiled_programs: state.compiled_programs.clone(),
+            runnables: state.runnables.clone(),
+            uri: uri.clone(),
             version,
             optimized_build,
             gc_options: state.config.read().garbage_collection.clone(),
             file_versions,
-            sync: Some(sync_workspace),
+            sync: sync_workspace,
         }));
 }
 

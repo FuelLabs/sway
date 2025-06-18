@@ -120,15 +120,15 @@ pub enum TaskMessage {
 
 /// `CompilationContext` encapsulates all the necessary details required by the compilation thread to execute a compilation process.
 /// It acts as a container for shared resources and state information relevant to a specific compilation task.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CompilationContext {
-    pub session: Option<Arc<Session>>,
-    pub sync: Option<Arc<SyncWorkspace>>,
+    pub session: Arc<Session>,
+    pub sync: Arc<SyncWorkspace>,
     pub token_map: Arc<TokenMap>,
     pub engines: Arc<RwLock<Engines>>,
-    pub compiled_programs: Option<Arc<CompiledPrograms>>,
-    pub runnables: Option<Arc<RunnableMap>>,
-    pub uri: Option<Url>,
+    pub compiled_programs: Arc<CompiledPrograms>,
+    pub runnables: Arc<RunnableMap>,
+    pub uri: Url,
     pub version: Option<i32>,
     pub optimized_build: bool,
     pub gc_options: GarbageCollectionConfig,
@@ -187,7 +187,7 @@ impl ServerState {
             while let Ok(msg) = rx.recv() {
                 match msg {
                     TaskMessage::CompilationContext(ctx) => {
-                        let uri = ctx.uri.as_ref().unwrap().clone();
+                        let uri = &ctx.uri;
                         let path = uri.to_file_path().unwrap();
                         let mut engines_clone = ctx.engines.read().clone();
                         let lsp_mode = Some(LspConfig {
@@ -223,12 +223,7 @@ impl ServerState {
                         ) {
                             Ok(()) => {
                                 // Use the uri to get the metrics for the program
-                                match ctx
-                                    .compiled_programs
-                                    .as_ref()
-                                    .unwrap()
-                                    .program_from_uri(&uri, &engines_clone)
-                                {
+                                match ctx.compiled_programs.program_from_uri(&uri, &engines_clone) {
                                     Some(program) => {
                                         // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                         // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
@@ -640,6 +635,10 @@ pub fn modified_file(lsp_mode: Option<&LspConfig>) -> Option<&PathBuf> {
 pub struct CompiledPrograms(DashMap<ProgramId, Programs>);
 
 impl CompiledPrograms {
+    pub fn new() -> Self {
+        CompiledPrograms(DashMap::new())
+    }
+
     pub fn program_from_uri(
         &self,
         uri: &Url,

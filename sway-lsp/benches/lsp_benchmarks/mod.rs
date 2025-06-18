@@ -26,15 +26,15 @@ pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState, Engines,
 
     state.documents.handle_open_file(&temp_uri).await;
     let ctx = CompilationContext {
-        session: Some(session.clone()),
-        sync: Some(sync.clone()),
+        session: session.clone(),
+        sync: sync.clone(),
         token_map: state.token_map.clone(),
         engines: state.engines.clone(),
-        compiled_programs: Some(state.compiled_programs.clone()),
-        runnables: Some(state.runnables.clone()),
+        compiled_programs: state.compiled_programs.clone(),
+        runnables: state.runnables.clone(),
         optimized_build: false,
         file_versions: Default::default(),
-        uri: Some(uri.clone()),
+        uri: uri.clone(),
         version: None,
         gc_options: GarbageCollectionConfig::default(),
     };

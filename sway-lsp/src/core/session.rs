@@ -415,15 +415,13 @@ pub fn parse_project(
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
     let engines_original = ctx.engines.clone();
-    let session = ctx.session.as_ref().unwrap().clone();
-    let sync = ctx.sync.as_ref().unwrap().clone();
-    let build_plan = session
+    let build_plan = ctx
+        .session
         .build_plan_cache
-        .get_or_update(&sync.workspace_manifest_path(), || build_plan(uri))?;
+        .get_or_update(&ctx.sync.workspace_manifest_path(), || build_plan(uri))?;
     let token_map = ctx.token_map.clone();
-    let compiled_programs = ctx.compiled_programs.as_ref().unwrap().clone();
-    let runnables = ctx.runnables.as_ref().unwrap().clone();
 
+    // Compile the project.
     let results = compile(&build_plan, engines_clone, retrigger_compilation, lsp_mode)?;
 
     // First check if results is empty or if all program values are None,
@@ -437,7 +435,8 @@ pub fn parse_project(
     }
 
     let path = uri.to_file_path().unwrap();
-    let member_path = sync
+    let member_path = ctx
+        .sync
         .member_path(uri)
         .ok_or(DirectoryError::TempMemberDirNotFound)?;
 
@@ -476,7 +475,7 @@ pub fn parse_project(
             engines_original.clone(),
             engines_clone,
             &token_map,
-            &compiled_programs,
+            &ctx.compiled_programs,
             modified_file,
         )?;
 
@@ -487,12 +486,12 @@ pub fn parse_project(
         }) = &lsp_mode
         {
             if let Some((errors, warnings)) = &diagnostics {
-                *session.diagnostics.write() =
+                *ctx.session.diagnostics.write() =
                     capabilities::diagnostic::get_diagnostics(warnings, errors, engines_clone.se());
             }
         }
 
-        if let Some(program) = compiled_programs.program_from_uri(uri, engines_clone) {
+        if let Some(program) = ctx.compiled_programs.program_from_uri(uri, engines_clone) {
             // Check if the cached AST was returned by the compiler for the users workspace.
             // If it was, then we need to use the original engines.
             let engines = if program.value().metrics.reused_programs > 0 {
@@ -501,7 +500,7 @@ pub fn parse_project(
                 engines_clone
             };
             create_runnables(
-                &runnables,
+                &ctx.runnables,
                 Some(program.value().typed.as_ref().unwrap()),
                 engines.de(),
                 engines.se(),
@@ -738,6 +737,7 @@ impl BuildPlanCache {
 mod tests {
     use super::*;
     use crate::config::GarbageCollectionConfig;
+    use dashmap::DashMap;
     use sway_lsp_test_utils::{get_absolute_path, get_url};
 
     #[test]
@@ -746,19 +746,19 @@ mod tests {
         let uri = get_url(&dir);
         let engines_original = Arc::new(RwLock::new(Engines::default()));
         let engines = Engines::default();
-        let session = Some(Arc::new(Session::new()));
-        let sync = Some(Arc::new(SyncWorkspace::new()));
+        let session = Arc::new(Session::new());
+        let sync = Arc::new(SyncWorkspace::new());
         let token_map = Arc::new(TokenMap::new());
         let ctx = CompilationContext {
             session,
             sync,
             token_map,
             engines: engines_original,
-            compiled_programs: None,
-            runnables: None,
+            compiled_programs: Arc::new(CompiledPrograms::new()),
+            runnables: Arc::new(DashMap::new()),
             optimized_build: false,
             file_versions: Default::default(),
-            uri: Some(uri.clone()),
+            uri: uri.clone(),
             version: None,
             gc_options: GarbageCollectionConfig::default(),
         };
