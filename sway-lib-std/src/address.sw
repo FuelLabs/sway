@@ -184,7 +184,6 @@ impl Into<Bytes> for Address {
 
 impl Hash for Address {
     fn hash(self, ref mut state: Hasher) {
-        let Address { bits } = self;
-        bits.hash(state);
+        self.bits.hash(state);
     }
 }

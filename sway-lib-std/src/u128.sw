@@ -14,6 +14,7 @@ use ::math::*;
 use ::result::Result::{self, *};
 use ::option::Option::{self, None, Some};
 use ::revert::revert;
+use ::hash::{Hash, Hasher};
 use ::ops::*;
 use ::codec::*;
 use ::debug::*;
@@ -166,6 +167,13 @@ impl Ord for U128 {
 }
 
 impl OrdEq for U128 {}
+
+impl Hash for U128 {
+    fn hash(self, ref mut state: Hasher) {
+        self.upper.hash(state);
+        self.lower.hash(state);
+    }
+}
 
 impl u64 {
     /// Performs addition between two `u64` values, returning a `U128`.

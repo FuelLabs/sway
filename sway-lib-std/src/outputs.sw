@@ -18,6 +18,7 @@ use ::tx::{
     TX_TYPE_MINT,
 };
 use ::option::Option::{self, *};
+use ::hash::{Hash, Hasher};
 use ::ops::*;
 use ::primitive_conversions::u16::*;
 use ::raw_ptr::*;
@@ -66,6 +67,28 @@ impl PartialEq for Output {
     }
 }
 impl Eq for Output {}
+
+impl Hash for Output {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::Coin => {
+                0_u8.hash(state);
+            },
+            Self::Contract => {
+                1_u8.hash(state);
+            },
+            Self::Change => {
+                2_u8.hash(state);
+            },
+            Self::Variable => {
+                3_u8.hash(state);
+            },
+            Self::ContractCreated => {
+                4_u8.hash(state);
+            },
+        }
+    }
+}
 
 const OUTPUT_TYPE_COIN: u8 = 0;
 const OUTPUT_TYPE_CONTRACT: u8 = 1;
