@@ -543,32 +543,20 @@ impl ServerState {
 
         // Check if we already have a SyncWorkspace for this root
         if let Some(sw_arc) = self.sync_workspaces.get(&workspace_root) {
-            Ok(sw_arc.value().clone())
-        } else {
-            // Initialize a new workspace sync for this root
-            match self.initialize_workspace_sync(uri).await {
-                Ok(initialized_sw) => {
-                    let canonical_root = workspace_root
-                        .canonicalize()
-                        .unwrap_or(workspace_root.clone());
-                    self.sync_workspaces
-                        .insert(canonical_root.clone(), initialized_sw.clone());
-                    tracing::info!(
-                        "SyncWorkspace successfully initialized for {:?}",
-                        canonical_root
-                    );
-                    Ok(initialized_sw)
-                }
-                Err(e) => {
-                    tracing::error!(
-                        "Failed to initialize SyncWorkspace for {:?}: {:?}",
-                        workspace_root,
-                        e
-                    );
-                    Err(e)
-                }
-            }
+            return Ok(sw_arc.value().clone());
         }
+
+        // Otherwise, initialize a new workspace sync for this root
+        let initialized_sw = self.initialize_workspace_sync(uri).await?;
+        let canonical_root = workspace_root.canonicalize().unwrap_or(workspace_root);
+        self.sync_workspaces
+            .insert(canonical_root.clone(), initialized_sw.clone());
+
+        tracing::info!(
+            "SyncWorkspace successfully initialized for {:?}",
+            canonical_root
+        );
+        Ok(initialized_sw)
     }
 
     /// Initializes a new SyncWorkspace by creating a temporary directory structure and syncing manifest files.
