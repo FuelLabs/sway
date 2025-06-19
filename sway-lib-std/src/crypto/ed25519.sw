@@ -204,6 +204,6 @@ impl Eq for Ed25519 {}
 
 impl Hash for Ed25519 {
     fn hash(self, ref mut state: Hasher) {
-        state.write(Bytes::from(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64)));
+        state.write_raw_slice(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64));
     }
 }

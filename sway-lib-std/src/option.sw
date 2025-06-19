@@ -196,7 +196,7 @@ impl<T> Option<T> {
     /// ```
     pub fn unwrap(self) -> T {
         match self {
-            Self::Some(inner_value) => inner_value,
+            Self::Some(v) => v,
             _ => revert(0),
         }
     }
@@ -221,7 +221,7 @@ impl<T> Option<T> {
     /// ```
     pub fn unwrap_or(self, default: T) -> T {
         match self {
-            Self::Some(x) => x,
+            Self::Some(v) => v,
             Self::None => default,
         }
     }

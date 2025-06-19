@@ -3,6 +3,7 @@ library;
 
 use ::revert::revert;
 use ::option::Option::{self, *};
+use ::hash::{Hash, Hasher};
 use ::alloc::alloc_bytes;
 use ::ops::*;
 use ::codec::*;
@@ -80,6 +81,31 @@ impl PartialEq for Transaction {
     }
 }
 impl Eq for Transaction {}
+
+impl Hash for Transaction {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::Script => {
+                0_u8.hash(state);
+            },
+            Self::Create => {
+                1_u8.hash(state);
+            },
+            Self::Mint => {
+                2_u8.hash(state);
+            },
+            Self::Upgrade => {
+                3_u8.hash(state);
+            },
+            Self::Upload => {
+                4_u8.hash(state);
+            },
+            Self::Blob => {
+                5_u8.hash(state);
+            },
+        }
+    }
+}
 
 pub const TX_TYPE_SCRIPT: u8 = 0u8;
 pub const TX_TYPE_CREATE: u8 = 1u8;

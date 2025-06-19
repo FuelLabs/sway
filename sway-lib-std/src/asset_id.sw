@@ -29,8 +29,7 @@ pub struct AssetId {
 
 impl Hash for AssetId {
     fn hash(self, ref mut state: Hasher) {
-        let Self { bits } = self;
-        bits.hash(state);
+        self.bits.hash(state);
     }
 }
 

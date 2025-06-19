@@ -2,7 +2,11 @@
 //! Protocol. This module specifically handles requests.
 
 use crate::{
-    capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
+    capabilities,
+    core::session::{self, build_plan, program_id_from_path},
+    lsp_ext,
+    server_state::ServerState,
+    utils::debug,
 };
 use forc_tracing::{tracing_subscriber, FmtSpan, TracingWriter};
 use lsp_types::{
@@ -61,10 +65,14 @@ pub async fn handle_document_symbol(
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((uri, session)) => Ok(session
-            .document_symbols(&uri, &state.token_map, &state.engines.read())
-            .map(DocumentSymbolResponse::Nested)),
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(uri) => Ok(session::document_symbols(
+            &uri,
+            &state.token_map,
+            &state.engines.read(),
+            &state.compiled_programs,
+        )
+        .map(DocumentSymbolResponse::Nested)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -76,18 +84,16 @@ pub fn handle_goto_definition(
     state: &ServerState,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
-    match state
-        .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
+    match state.sync_and_uri_from_workspace(&params.text_document_position_params.text_document.uri)
     {
-        Ok((uri, session)) => {
-            let sync = state.sync_workspace();
+        Ok((sync, uri)) => {
             let position = params.text_document_position_params.position;
-            Ok(session.token_definition_response(
+            Ok(session::token_definition_response(
                 &uri,
                 position,
                 &state.engines.read(),
                 &state.token_map,
-                sync,
+                &sync,
             ))
         }
         Err(err) => {
@@ -107,16 +113,16 @@ pub fn handle_completion(
         .and_then(|ctx| ctx.trigger_character.as_deref())
         .unwrap_or("");
     let position = params.text_document_position.position;
-    match state.uri_and_session_from_workspace(&params.text_document_position.text_document.uri) {
-        Ok((uri, session)) => Ok(session
-            .completion_items(
-                &uri,
-                position,
-                trigger_char,
-                &state.token_map,
-                &state.engines.read(),
-            )
-            .map(CompletionResponse::Array)),
+    match state.uri_from_workspace(&params.text_document_position.text_document.uri) {
+        Ok(uri) => Ok(session::completion_items(
+            &uri,
+            position,
+            trigger_char,
+            &state.token_map,
+            &state.engines.read(),
+            &state.compiled_programs,
+        )
+        .map(CompletionResponse::Array)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -128,15 +134,14 @@ pub fn handle_hover(
     state: &ServerState,
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_types::Hover>> {
-    match state
-        .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
+    match state.sync_and_uri_from_workspace(&params.text_document_position_params.text_document.uri)
     {
-        Ok((uri, session)) => {
+        Ok((sync, uri)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::hover::hover_data(
                 state,
+                sync,
                 &state.engines.read(),
-                session,
                 &uri,
                 position,
             ))
@@ -152,53 +157,47 @@ pub fn handle_prepare_rename(
     state: &ServerState,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
-    match state.uri_from_workspace(&params.text_document.uri) {
-        Ok(uri) => {
-            let sync = state.sync_workspace();
-            match capabilities::rename::prepare_rename(
-                &state.engines.read(),
-                &state.token_map,
-                &uri,
-                params.position,
-                sync,
-            ) {
-                Ok(res) => Ok(Some(res)),
-                Err(err) => {
-                    tracing::error!("{}", err.to_string());
-                    Ok(None)
-                }
-            }
-        }
-        Err(err) => {
-            tracing::error!("{}", err.to_string());
+    match state.sync_and_uri_from_workspace(&params.text_document.uri) {
+        Ok((sync, uri)) => capabilities::rename::prepare_rename(
+            &state.engines.read(),
+            &state.token_map,
+            &uri,
+            params.position,
+            &sync,
+        )
+        .map(Some)
+        .or_else(|e| {
+            tracing::error!("{}", e);
+            Ok(None)
+        }),
+        Err(e) => {
+            tracing::error!("{}", e);
             Ok(None)
         }
     }
 }
 
 pub fn handle_rename(state: &ServerState, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
-    match state.uri_from_workspace(&params.text_document_position.text_document.uri) {
-        Ok(uri) => {
+    match state.sync_and_uri_from_workspace(&params.text_document_position.text_document.uri) {
+        Ok((sync, uri)) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
-            let sync = state.sync_workspace();
-            match capabilities::rename::rename(
+            capabilities::rename::rename(
                 &state.engines.read(),
                 &state.token_map,
                 new_name,
                 &uri,
                 position,
-                sync,
-            ) {
-                Ok(res) => Ok(Some(res)),
-                Err(err) => {
-                    tracing::error!("{}", err.to_string());
-                    Ok(None)
-                }
-            }
+                &sync,
+            )
+            .map(Some)
+            .or_else(|e| {
+                tracing::error!("{}", e);
+                Ok(None)
+            })
         }
-        Err(err) => {
-            tracing::error!("{}", err.to_string());
+        Err(e) => {
+            tracing::error!("{}", e);
             Ok(None)
         }
     }
@@ -209,13 +208,10 @@ pub async fn handle_document_highlight(
     params: lsp_types::DocumentHighlightParams,
 ) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
     let _ = state.wait_for_parsing().await;
-    match state
-        .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
-    {
-        Ok((uri, session)) => {
+    match state.uri_from_workspace(&params.text_document_position_params.text_document.uri) {
+        Ok(uri) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::highlight::get_highlights(
-                session,
                 &state.engines.read(),
                 &state.token_map,
                 &uri,
@@ -234,16 +230,15 @@ pub async fn handle_references(
     params: lsp_types::ReferenceParams,
 ) -> Result<Option<Vec<lsp_types::Location>>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document_position.text_document.uri) {
-        Ok((uri, session)) => {
+    match state.sync_and_uri_from_workspace(&params.text_document_position.text_document.uri) {
+        Ok((sync, uri)) => {
             let position = params.text_document_position.position;
-            let sync = state.sync_workspace();
-            Ok(session.token_references(
+            Ok(session::token_references(
                 &uri,
                 position,
                 &state.token_map,
                 &state.engines.read(),
-                sync,
+                &sync,
             ))
         }
         Err(err) => {
@@ -274,15 +269,15 @@ pub async fn handle_code_action(
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<lsp_types::CodeActionResponse>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((temp_uri, session)) => Ok(capabilities::code_actions(
-            session,
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(temp_uri) => Ok(capabilities::code_actions(
             &state.engines.read(),
             &state.token_map,
             &params.range,
             &params.text_document.uri,
             &temp_uri,
             &params.context.diagnostics,
+            &state.compiled_programs,
         )),
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -296,8 +291,11 @@ pub async fn handle_code_lens(
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(url) => Ok(Some(capabilities::code_lens::code_lens(
+            &state.runnables,
+            &url,
+        ))),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -310,8 +308,8 @@ pub async fn handle_semantic_tokens_range(
     params: SemanticTokensRangeParams,
 ) -> Result<Option<SemanticTokensRangeResult>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((uri, _session)) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(uri) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
             &state.token_map,
             &uri,
             &params.range,
@@ -328,8 +326,8 @@ pub async fn handle_semantic_tokens_full(
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
     let _ = state.wait_for_parsing().await;
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((uri, _session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(uri) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
             &state.token_map,
             &uri,
         )),
@@ -379,11 +377,11 @@ pub fn handle_show_ast(
     state: &ServerState,
     params: &lsp_ext::ShowAstParams,
 ) -> Result<Option<TextDocumentIdentifier>> {
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((_, session)) => {
-            let current_open_file = &params.text_document.uri;
+    match state.uri_from_workspace(&params.text_document.uri) {
+        Ok(uri) => {
             // Convert the Uri to a PathBuf
-            let path = current_open_file.to_file_path().ok();
+            let path = uri.to_file_path().unwrap();
+            let program_id = program_id_from_path(&path, &state.engines.read()).unwrap();
 
             let write_ast_to_file =
                 |path: &Path, ast_string: &String| -> Option<TextDocumentIdentifier> {
@@ -398,20 +396,21 @@ pub fn handle_show_ast(
                 };
 
             // Returns true if the current path matches the path of a submodule
-            let path_is_submodule = |ident: &Ident, path: &Option<PathBuf>| -> bool {
+            let path_is_submodule = |ident: &Ident, path: &PathBuf| -> bool {
                 ident
                     .span()
                     .source_id()
                     .map(|p| state.engines.read().se().get_path(p))
-                    == *path
+                    == Some(path.clone())
             };
 
             let ast_path = PathBuf::from(params.save_path.path());
             {
-                let program = session.compiled_program.read();
+                let program = state.compiled_programs.get(&program_id).unwrap();
                 match params.ast_kind.as_str() {
                     "lexed" => {
-                        Ok(program.lexed.as_ref().and_then(|lexed_program| {
+                        let lexed_program = program.value().lexed.clone();
+                        Ok({
                             let mut formatted_ast = format!("{:#?}", program.lexed);
                             for (ident, submodule) in &lexed_program.root.submodules {
                                 if path_is_submodule(ident, &path) {
@@ -420,10 +419,11 @@ pub fn handle_show_ast(
                                 }
                             }
                             write_ast_to_file(ast_path.join("lexed.rs").as_path(), &formatted_ast)
-                        }))
+                        })
                     }
                     "parsed" => {
-                        Ok(program.parsed.as_ref().and_then(|parsed_program| {
+                        let parsed_program = program.value().parsed.clone();
+                        Ok({
                             // Initialize the string with the AST from the root
                             let mut formatted_ast =
                                 format!("{:#?}", parsed_program.root.tree.root_nodes);
@@ -435,10 +435,11 @@ pub fn handle_show_ast(
                                 }
                             }
                             write_ast_to_file(ast_path.join("parsed.rs").as_path(), &formatted_ast)
-                        }))
+                        })
                     }
                     "typed" => {
-                        Ok(program.typed.as_ref().and_then(|typed_program| {
+                        let typed_program = program.value().typed.as_ref().unwrap();
+                        Ok({
                             // Initialize the string with the AST from the root
                             let mut formatted_ast = debug::print_decl_engine_types(
                                 &typed_program.root_module.all_nodes,
@@ -454,7 +455,7 @@ pub fn handle_show_ast(
                                 }
                             }
                             write_ast_to_file(ast_path.join("typed.rs").as_path(), &formatted_ast)
-                        }))
+                        })
                     }
                     _ => Ok(None),
                 }
@@ -472,8 +473,8 @@ pub fn handle_on_enter(
     state: &ServerState,
     params: &lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
-    match state.uri_from_workspace(&params.text_document.uri) {
-        Ok(uri) => {
+    match state.sync_and_uri_from_workspace(&params.text_document.uri) {
+        Ok((_, uri)) => {
             // handle on_enter capabilities if they are enabled
             Ok(capabilities::on_enter(
                 &state.config.read().on_enter,
@@ -509,29 +510,18 @@ pub fn handle_visualize(
 }
 
 /// This method is triggered by the test suite to request the latest compilation metrics.
-pub(crate) fn metrics(
-    state: &ServerState,
-    params: &lsp_ext::MetricsParams,
-) -> Result<Option<Vec<(String, PerformanceData)>>> {
-    match state.uri_and_session_from_workspace(&params.text_document.uri) {
-        Ok((_, session)) => {
-            let mut metrics = vec![];
-            for kv in &session.metrics {
-                let path = state
-                    .engines
-                    .read()
-                    .se()
-                    .get_manifest_path_from_program_id(kv.key())
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
-                metrics.push((path, kv.value().clone()));
-            }
-            Ok(Some(metrics))
-        }
-        Err(err) => {
-            tracing::error!("{}", err.to_string());
-            Ok(None)
-        }
+pub(crate) fn metrics(state: &ServerState) -> Result<Option<Vec<(String, PerformanceData)>>> {
+    let mut metrics = vec![];
+    for item in state.compiled_programs.iter() {
+        let path = state
+            .engines
+            .read()
+            .se()
+            .get_manifest_path_from_program_id(item.key())
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        metrics.push((path, item.value().metrics.clone()));
     }
+    Ok(Some(metrics))
 }

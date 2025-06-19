@@ -205,7 +205,6 @@ impl Into<Bytes> for EvmAddress {
 
 impl Hash for EvmAddress {
     fn hash(self, ref mut state: Hasher) {
-        let Address { bits } = self;
-        bits.hash(state);
+        self.bits.hash(state);
     }
 }
