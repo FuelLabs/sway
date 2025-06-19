@@ -422,6 +422,6 @@ impl Eq for Secp256r1 {}
 
 impl Hash for Secp256r1 {
     fn hash(self, ref mut state: Hasher) {
-        state.write(Bytes::from(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64)));
+        state.write_raw_slice(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64));
     }
 }

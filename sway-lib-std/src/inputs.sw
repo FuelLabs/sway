@@ -9,6 +9,7 @@ use ::asset_id::AssetId;
 use ::bytes::Bytes;
 use ::contract_id::ContractId;
 use ::option::Option::{self, *};
+use ::hash::{Hash, Hasher};
 use ::tx::{
     GTF_CREATE_INPUT_AT_INDEX,
     GTF_CREATE_INPUTS_COUNT,
@@ -75,6 +76,22 @@ impl PartialEq for Input {
     }
 }
 impl Eq for Input {}
+
+impl Hash for Input {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::Coin => {
+                0_u8.hash(state);
+            },
+            Self::Contract => {
+                1_u8.hash(state);
+            },
+            Self::Message => {
+                2_u8.hash(state);
+            },
+        }
+    }
+}
 
 const INPUT_TYPE_COIN: u8 = 0;
 const INPUT_TYPE_CONTRACT: u8 = 1;

@@ -81,7 +81,7 @@ impl source::Fetch for Pinned {
                 let cid = &self.0;
                 let ipfs_client = ipfs_client();
                 let dest = cache_dir();
-                futures::executor::block_on(async {
+                crate::source::reg::block_on_any_runtime(async {
                     match ctx.ipfs_node() {
                         source::IPFSNode::Local => {
                             println_action_green("Fetching", "with local IPFS node");

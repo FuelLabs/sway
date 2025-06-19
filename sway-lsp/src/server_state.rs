@@ -1,10 +1,11 @@
 //! The context or environment in which the language server functions.
 
 use crate::{
+    capabilities::runnable::Runnable,
     config::{Config, GarbageCollectionConfig, Warnings},
     core::{
         document::{Documents, PidLockedFiles},
-        session::{self, Session},
+        session::{self, program_id_from_path, Session},
         sync::SyncWorkspace,
         token_map::TokenMap,
     },
@@ -12,9 +13,14 @@ use crate::{
     utils::{debug, keyword_docs::KeywordDocs},
 };
 use crossbeam_channel::{Receiver, Sender};
-use dashmap::{mapref::multiple::RefMulti, DashMap};
-use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
-use forc_pkg::PackageManifestFile;
+use dashmap::{
+    mapref::{multiple::RefMulti, one::Ref},
+    DashMap,
+};
+use forc_pkg::{
+    manifest::{GenericManifestFile, ManifestFile},
+    PackageManifestFile,
+};
 use lsp_types::{
     Diagnostic, DidChangeWatchedFilesRegistrationOptions, FileSystemWatcher, GlobPattern,
     Registration, Url, WatchKind,
@@ -22,29 +28,33 @@ use lsp_types::{
 use parking_lot::{Mutex, RwLock};
 use std::{
     collections::{BTreeMap, VecDeque},
-    process::Command,
-};
-use std::{
     mem,
+    ops::Deref,
     path::PathBuf,
+    process::Command,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, OnceLock,
+        Arc,
     },
 };
-use sway_core::{Engines, LspConfig};
+use sway_core::{language::Programs, Engines, LspConfig};
+use sway_types::ProgramId;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
 const DEFAULT_SESSION_CACHE_CAPACITY: usize = 4;
 
+pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
+
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
     pub(crate) client: Option<Client>,
     pub config: Arc<RwLock<Config>>,
-    pub sync_workspace: OnceLock<Arc<SyncWorkspace>>,
+    pub sync_workspaces: DashMap<PathBuf, Arc<SyncWorkspace>>,
     pub token_map: Arc<TokenMap>,
     pub engines: Arc<RwLock<Engines>>,
+    pub compiled_programs: Arc<CompiledPrograms>,
+    pub runnables: Arc<RunnableMap>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
     /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
@@ -69,8 +79,10 @@ impl Default for ServerState {
             client: None,
             token_map: Arc::new(TokenMap::new()),
             engines: Arc::new(RwLock::new(Engines::default())),
+            compiled_programs: Arc::new(CompiledPrograms(DashMap::new())),
+            runnables: Arc::new(RunnableMap::new()),
             config: Arc::new(RwLock::new(Config::default())),
-            sync_workspace: OnceLock::new(),
+            sync_workspaces: DashMap::new(),
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: LruSessionCache::new(DEFAULT_SESSION_CACHE_CAPACITY),
             documents: Documents::new(),
@@ -108,13 +120,15 @@ pub enum TaskMessage {
 
 /// `CompilationContext` encapsulates all the necessary details required by the compilation thread to execute a compilation process.
 /// It acts as a container for shared resources and state information relevant to a specific compilation task.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CompilationContext {
-    pub session: Option<Arc<Session>>,
-    pub sync: Option<Arc<SyncWorkspace>>,
+    pub session: Arc<Session>,
+    pub sync: Arc<SyncWorkspace>,
     pub token_map: Arc<TokenMap>,
     pub engines: Arc<RwLock<Engines>>,
-    pub uri: Option<Url>,
+    pub compiled_programs: Arc<CompiledPrograms>,
+    pub runnables: Arc<RunnableMap>,
+    pub uri: Url,
     pub version: Option<i32>,
     pub optimized_build: bool,
     pub gc_options: GarbageCollectionConfig,
@@ -173,9 +187,8 @@ impl ServerState {
             while let Ok(msg) = rx.recv() {
                 match msg {
                     TaskMessage::CompilationContext(ctx) => {
-                        let uri = ctx.uri.as_ref().unwrap().clone();
+                        let uri = &ctx.uri;
                         let path = uri.to_file_path().unwrap();
-                        let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = ctx.engines.read().clone();
                         let lsp_mode = Some(LspConfig {
                             optimized_build: ctx.optimized_build,
@@ -190,7 +203,7 @@ impl ServerState {
                             // Call this on the engines clone so we don't clear types that are still in use
                             // and might be needed in the case cancel compilation was triggered.
                             if let Err(err) =
-                                session.garbage_collect_module(&mut engines_clone, &uri)
+                                session::garbage_collect_module(&mut engines_clone, uri)
                             {
                                 tracing::error!(
                                     "Unable to perform garbage collection: {}",
@@ -202,45 +215,42 @@ impl ServerState {
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(
-                            &uri,
+                            uri,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
                             &ctx,
                             lsp_mode.as_ref(),
                         ) {
                             Ok(()) => {
-                                // Find the program id from the path
-                                match session::program_id_from_path(&path, &engines_clone) {
-                                    Ok(program_id) => {
-                                        // Use the program id to get the metrics for the program
-                                        if let Some(metrics) = session.metrics.get(&program_id) {
-                                            // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
-                                            // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
-                                            // as the engines_clone might have cleared some types that are still in use.
-                                            if metrics.reused_programs == 0 {
-                                                // Commit local changes in the programs, module, and function caches to the shared state.
-                                                // This ensures that any modifications made during compilation are preserved
-                                                // before we swap the engines.
-                                                engines_clone.qe().commit();
-                                                // The compiler did not reuse the workspace AST.
-                                                // We need to overwrite the old engines with the engines clone.
-                                                mem::swap(
-                                                    &mut *ctx.engines.write(),
-                                                    &mut engines_clone,
-                                                );
-                                            }
+                                // Use the uri to get the metrics for the program
+                                match ctx.compiled_programs.program_from_uri(uri, &engines_clone) {
+                                    Some(program) => {
+                                        // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
+                                        // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
+                                        // as the engines_clone might have cleared some types that are still in use.
+                                        if program.value().metrics.reused_programs == 0 {
+                                            // Commit local changes in the programs, module, and function caches to the shared state.
+                                            // This ensures that any modifications made during compilation are preserved
+                                            // before we swap the engines.
+                                            engines_clone.qe().commit();
+                                            // The compiler did not reuse the workspace AST.
+                                            // We need to overwrite the old engines with the engines clone.
+                                            mem::swap(
+                                                &mut *ctx.engines.write(),
+                                                &mut engines_clone,
+                                            );
                                         }
                                         *last_compilation_state.write() =
                                             LastCompilationState::Success;
                                     }
-                                    Err(err) => {
-                                        tracing::error!("{}", err.to_string());
+                                    None => {
                                         *last_compilation_state.write() =
                                             LastCompilationState::Failed;
                                     }
                                 }
                             }
-                            Err(_err) => {
+                            Err(err) => {
+                                tracing::error!("{}", err.to_string());
                                 *last_compilation_state.write() = LastCompilationState::Failed;
                             }
                         }
@@ -325,9 +335,9 @@ impl ServerState {
             .send(TaskMessage::Terminate)
             .expect("failed to send terminate message");
 
-        // Delete the temporary directory.
-        if let Some(sw) = self.sync_workspace.get() {
-            sw.remove_temp_dir();
+        // Delete all temporary directories.
+        for entry in self.sync_workspaces.iter() {
+            entry.value().remove_temp_dir();
         }
 
         Ok(())
@@ -380,6 +390,29 @@ impl ServerState {
         diagnostics_to_publish
     }
 
+    /// Constructs and returns a tuple of `(Arc<SyncWorkspace>, Url)` from a given workspace URI.
+    /// The returned URL represents the temp directory workspace.
+    pub fn sync_and_uri_from_workspace(
+        &self,
+        workspace_uri: &Url,
+    ) -> Result<(Arc<SyncWorkspace>, Url), LanguageServerError> {
+        let sync = self.get_sync_workspace_for_uri(workspace_uri)?;
+        let uri = sync.workspace_to_temp_url(workspace_uri)?;
+        Ok((sync, uri))
+    }
+
+    /// Constructs and returns a tuple of `(Arc<SyncWorkspace>, Url, Arc<Session>)` from a given workspace URI.
+    /// The returned URL represents the temp directory workspace.
+    pub fn sync_uri_and_session_from_workspace(
+        &self,
+        workspace_uri: &Url,
+    ) -> Result<(Arc<SyncWorkspace>, Url, Arc<Session>), LanguageServerError> {
+        let sync = self.get_sync_workspace_for_uri(workspace_uri)?;
+        let uri = sync.workspace_to_temp_url(workspace_uri)?;
+        let session = self.url_to_session(workspace_uri)?;
+        Ok((sync, uri, session))
+    }
+
     /// Constructs and returns a tuple of `(Url, Arc<Session>)` from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
     pub fn uri_and_session_from_workspace(
@@ -391,17 +424,11 @@ impl ServerState {
         Ok((temp_uri, session))
     }
 
-    /// Constructs and returns a [Url] from a given workspace URI.
-    /// The returned URL represents the temp directory workspace.
+    /// Constructs and returns the temp directory URL from a given workspace URI.
     pub fn uri_from_workspace(&self, workspace_uri: &Url) -> Result<Url, LanguageServerError> {
-        let sw = self
-            .sync_workspace
-            .get()
-            .ok_or(LanguageServerError::GlobalWorkspaceNotInitialized)?; // Should be initialized by now.
-
-        // Convert the workspace URI to its corresponding temporary URI.
-        let temp_uri = sw.workspace_to_temp_url(workspace_uri)?;
-        Ok(temp_uri)
+        let sync = self.get_sync_workspace_for_uri(workspace_uri)?;
+        sync.workspace_to_temp_url(workspace_uri)
+            .map_err(LanguageServerError::from)
     }
 
     fn url_to_session(&self, uri: &Url) -> Result<Arc<Session>, LanguageServerError> {
@@ -440,39 +467,9 @@ impl ServerState {
         Ok(session)
     }
 
-    /// Gets the existing SyncWorkspace or initializes it if it doesn't exist.
-    /// This is specific to a single SyncWorkspace managed by an OnceLock.
-    pub async fn get_or_init_global_sync_workspace(
-        &self,
-        uri: &Url,
-    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
-        if let Some(sw_arc) = self.sync_workspace.get() {
-            Ok(sw_arc.clone())
-        } else {
-            match self.initialize_workspace_sync(uri).await {
-                Ok(initialized_sw) => {
-                    if self.sync_workspace.set(initialized_sw).is_ok() {
-                        tracing::info!("SyncWorkspace successfully initialized and set.");
-                    } else {
-                        tracing::debug!(
-                            "SyncWorkspace was set by another concurrent operation after check."
-                        );
-                    }
-                    Ok(self.sync_workspace.get().unwrap().clone())
-                }
-                Err(e) => {
-                    tracing::error!("Failed to initialize global SyncWorkspace: {:?}. LSP functions requiring it may fail.", e);
-                    Err(e)
-                }
-            }
-        }
-    }
-
-    pub async fn initialize_workspace_sync(
-        &self,
-        file_uri_triggering_init: &Url,
-    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
-        let path = PathBuf::from(file_uri_triggering_init.path());
+    /// Determines the workspace root for the given file URI.
+    fn find_workspace_root_for_uri(&self, file_uri: &Url) -> Result<PathBuf, LanguageServerError> {
+        let path = PathBuf::from(file_uri.path());
         let search_dir = path.parent().unwrap_or(&path);
 
         // Find the initial manifest (could be package or workspace)
@@ -494,7 +491,7 @@ impl ServerState {
                 {
                     Some(ws_mf) => {
                         // It's part of a workspace, use the workspace's directory
-                        tracing::debug!(
+                        tracing::trace!(
                             "Package {:?} is part of workspace {:?}. Using workspace root.",
                             pkg_mf.path(),
                             ws_mf.path()
@@ -503,7 +500,7 @@ impl ServerState {
                     }
                     None => {
                         // It's a standalone package, use its directory
-                        tracing::debug!(
+                        tracing::trace!(
                             "Package {:?} is standalone. Using package root.",
                             pkg_mf.path()
                         );
@@ -513,7 +510,7 @@ impl ServerState {
             }
             ManifestFile::Workspace(ws_mf) => {
                 // It's already a workspace manifest, use its directory
-                tracing::debug!(
+                tracing::trace!(
                     "Initial manifest is a workspace: {:?}. Using its root.",
                     ws_mf.path()
                 );
@@ -521,8 +518,58 @@ impl ServerState {
             }
         };
 
+        Ok(actual_sync_root)
+    }
+
+    /// Gets the SyncWorkspace for the given URI.
+    pub fn get_sync_workspace_for_uri(
+        &self,
+        uri: &Url,
+    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
+        let workspace_root = self.find_workspace_root_for_uri(uri)?;
+        self.sync_workspaces
+            .get(&workspace_root)
+            .map(|entry| entry.value().clone())
+            .ok_or(LanguageServerError::GlobalWorkspaceNotInitialized)
+    }
+
+    /// Gets the existing SyncWorkspace for a file URI or initializes it if it doesn't exist.
+    pub async fn get_or_init_sync_workspace(
+        &self,
+        uri: &Url,
+    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
+        // First try to find the workspace root for this URI
+        let workspace_root = self.find_workspace_root_for_uri(uri)?;
+        let canonical_root = workspace_root.canonicalize().unwrap_or(workspace_root);
+
+        // Check if we already have a SyncWorkspace for this root
+        if let Some(sw_arc) = self.sync_workspaces.get(&canonical_root) {
+            return Ok(sw_arc.value().clone());
+        }
+
+        // Otherwise, initialize a new workspace sync for this root
+        let initialized_sw = self.initialize_workspace_sync(uri).await?;
+
+        self.sync_workspaces
+            .insert(canonical_root.clone(), initialized_sw.clone());
+
+        tracing::info!(
+            "SyncWorkspace successfully initialized for {:?}",
+            canonical_root
+        );
+        Ok(initialized_sw)
+    }
+
+    /// Initializes a new SyncWorkspace by creating a temporary directory structure and syncing manifest files.
+    /// This sets up the workspace environment needed for language server operations.
+    pub async fn initialize_workspace_sync(
+        &self,
+        file_uri_triggering_init: &Url,
+    ) -> Result<Arc<SyncWorkspace>, LanguageServerError> {
+        let actual_sync_root = self.find_workspace_root_for_uri(file_uri_triggering_init)?;
+
         tracing::debug!(
-            "Determined actual root for SyncWorkspace: {:?}",
+            "Initializing SyncWorkspace for root: {:?}",
             actual_sync_root
         );
 
@@ -539,17 +586,13 @@ impl ServerState {
         Ok(sw)
     }
 
-    /// Returns a cloned `Arc` of the `SyncWorkspace`.
-    ///
-    /// Panics if `sync_workspace` has not been initialized by a prior call to
-    /// `get_or_init_global_sync_workspace`. This scenario is not expected in normal operation.
-    pub fn sync_workspace(&self) -> &SyncWorkspace {
-        // `sync_workspace` is initialized once during the first call to `get_or_init_global_sync_workspace`.
-        // After initialization, it's always expected to be `Some`.
-        // Using `expect` here simplifies the code, as the `None` case should not occur in normal operation.
-        self.sync_workspace
-            .get()
-            .expect("SyncWorkspace not initialized")
+    /// Checks if a workspace is already initialized for the given URI
+    pub fn is_workspace_initialized(&self, uri: &Url) -> bool {
+        if let Ok(workspace_root) = self.find_workspace_root_for_uri(uri) {
+            self.sync_workspaces.contains_key(&workspace_root)
+        } else {
+            false
+        }
     }
 }
 
@@ -575,6 +618,38 @@ pub fn modified_file(lsp_mode: Option<&LspConfig>) -> Option<&PathBuf> {
             .iter()
             .find_map(|(path, version)| version.map(|_| path))
     })
+}
+
+#[derive(Debug)]
+pub struct CompiledPrograms(DashMap<ProgramId, Programs>);
+
+impl Default for CompiledPrograms {
+    fn default() -> Self {
+        CompiledPrograms(DashMap::new())
+    }
+}
+
+impl CompiledPrograms {
+    pub fn new() -> Self {
+        CompiledPrograms::default()
+    }
+
+    pub fn program_from_uri(
+        &self,
+        uri: &Url,
+        engines: &Engines,
+    ) -> Option<Ref<'_, ProgramId, Programs>> {
+        let path = uri.to_file_path().ok()?;
+        let program_id = program_id_from_path(&path, engines).ok()?;
+        self.get(&program_id)
+    }
+}
+
+impl Deref for CompiledPrograms {
+    type Target = DashMap<ProgramId, Programs>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 /// A Least Recently Used (LRU) cache for storing and managing `Session` objects.

@@ -3,6 +3,7 @@ library;
 use ::convert::{From, TryFrom};
 use ::bytes::{Bytes, *};
 use ::option::Option::{self, *};
+use ::hash::{Hash, Hasher};
 use ::ops::*;
 use ::primitive_conversions::u256::*;
 use ::codec::*;
@@ -30,6 +31,13 @@ impl PartialEq for Point2D {
 // Note that `Point2D` implements `PartialEq` but not `Eq`,
 // because an uninitialized `Point2D`, created by `Point2D::new`
 // is not equal to any other point, including itself.
+
+impl Hash for Point2D {
+    fn hash(self, ref mut state: Hasher) {
+        self.x.hash(state);
+        self.y.hash(state);
+    }
+}
 
 impl Point2D {
     /// Returns a new, uninitialized Point2D.
