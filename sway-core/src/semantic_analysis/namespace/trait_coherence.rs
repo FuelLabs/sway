@@ -1,12 +1,16 @@
-use std::{cell::Cell, collections::HashMap};
+use std::{
+    cell::Cell,
+    collections::{HashMap, HashSet},
+};
 
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_types::Spanned;
 
 use crate::{
-    engine_threading::{PartialEqWithEngines, PartialEqWithEnginesContext},
+    engine_threading::{GetCallPathWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::CallPath,
     Engines, IncludeSelf, SubstTypes, SubstTypesContext, TypeId, TypeInfo, TypeParameter,
     TypeSubstMap, UnifyCheck,
@@ -172,7 +176,14 @@ fn check_orphan_rules_for_impls_in_scope(
                 references_local_type(engines, current_package, trait_entry.inner.key.type_id);
 
             if !has_local_type {
+                let trait_name = trait_entry.inner.key.name.suffix.name.to_string();
+                let type_name = {
+                    let ty = engines.te().get(trait_entry.inner.key.type_id);
+                    ty.get_type_str(engines)
+                };
                 handler.emit_err(CompileError::IncoherentImplDueToOrphanRule {
+                    trait_name,
+                    type_name,
                     span: trait_entry.inner.value.impl_span.clone(),
                 });
             }
@@ -207,7 +218,7 @@ pub(crate) fn check_impls_for_overlap(
 ) -> Result<(), ErrorEmitted> {
     let mut overlap_err = None;
     let unify_check = UnifyCheck::constraint_subset(engines);
-    let mut traits_types = HashMap::<CallPath, Vec<TypeId>>::new();
+    let mut traits_types = HashMap::<CallPath, HashSet<TypeId>>::new();
     trait_map.get_traits_types(&mut traits_types)?;
     other.get_traits_types(&mut traits_types)?;
 
@@ -234,11 +245,30 @@ pub(crate) fn check_impls_for_overlap(
                 })
                 .collect::<Vec<_>>();
 
+            let self_call_path = engines
+                .te()
+                .get(self_entry.inner.key.type_id)
+                .call_path(engines);
             other.for_each_impls(engines, self_entry.inner.key.type_id, true, |other_entry| {
+                let other_call_path = engines
+                    .te()
+                    .get(other_entry.inner.key.type_id)
+                    .call_path(engines);
+
+                // This prevents us from checking duplicated types as might happen when
+                // compiling different versions of the same library.
+                let is_duplicated_type = matches!(
+                    (&self_call_path, &other_call_path),
+                    (Some(v1), Some(v2))
+                        if v1.prefixes == v2.prefixes
+                            && v1.span().source_id() != v2.span().source_id()
+                );
+
                 if self_entry.inner.key.name.eq(
                     &*other_entry.inner.key.name,
                     &PartialEqWithEnginesContext::new(engines),
                 ) && self_entry.inner.value.impl_span != other_entry.inner.value.impl_span
+                    && !is_duplicated_type
                     && (unify_check
                         .check(self_entry.inner.key.type_id, other_entry.inner.key.type_id)
                         || unify_check
@@ -307,7 +337,13 @@ pub(crate) fn check_impls_for_overlap(
                                     overlap_err = Some(
                                         handler.emit_err(
                                             CompileError::ConflictingImplsForTraitAndType {
-                                                trait_name: trait_item_name1.to_string(),
+                                                trait_name: self_entry
+                                                    .inner
+                                                    .key
+                                                    .name
+                                                    .suffix
+                                                    .name
+                                                    .to_string(),
                                                 type_implementing_for: engines
                                                     .help_out(self_entry.inner.key.type_id)
                                                     .to_string(),

@@ -1077,8 +1077,12 @@ pub enum CompileError {
     },
     #[error("This expression has type \"{argument_type}\", which does not implement \"std::marker::Error\". Panic expression arguments must implement \"Error\".")]
     PanicExpressionArgumentIsNotError { argument_type: String, span: Span },
-    #[error("Incoherent impl was found due to breaking orphan rule check.")]
-    IncoherentImplDueToOrphanRule { span: Span },
+    #[error("Coherence violation: only traits defined in this crate can be implemented for external types.")]
+    IncoherentImplDueToOrphanRule {
+        trait_name: String,
+        type_name: String,
+        span: Span,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -3078,6 +3082,33 @@ impl ToDiagnostic for CompileError {
                         Diagnostic::help_empty_line(),
                     ];
                     help.append(&mut error_marker_trait_help_msg());
+                    help
+                },
+            },
+            IncoherentImplDueToOrphanRule { trait_name, type_name, span } => Diagnostic {
+                reason: Some(Reason::new(
+                    code(1),
+                    "coherence violation: only traits defined in this module can be implemented for external types".into()
+                )),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!(
+                        "cannot implement `{trait_name}` for `{type_name}`: both originate outside this module"
+                    ),
+                ),
+                hints: vec![],
+                help: {
+                    let help = vec![
+                        "only traits defined in this module can be implemented for external types".to_string(),
+                        Diagnostic::help_empty_line(),
+                        format!(
+                            "move this impl into the module that defines `{type_name}`"
+                        ),
+                        format!(
+                            "or define and use a local trait instead of `{trait_name}` to avoid the orphan rule"
+                        ),
+                    ];
                     help
                 },
             },
