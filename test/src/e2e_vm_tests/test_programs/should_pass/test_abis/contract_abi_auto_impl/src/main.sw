@@ -6,7 +6,6 @@ impl Contract {
 
 #[test]
 fn tests() {
-    // let caller = abi(ContractAbiAutoImplAbi, CONTRACT_ID); // If tested from within project's directory
-    let caller = abi(AnonymousAbi, CONTRACT_ID); // If tested from outside project's directory
+    let caller = abi(ContractAbiAutoImplAbi, CONTRACT_ID);
     assert(caller.impl_method() == 42)
 }

@@ -98,9 +98,10 @@ pub fn parse(
     engines: &Engines,
     config: Option<&BuildConfig>,
     experimental: ExperimentalFeatures,
+    package_name: &str
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     match config {
-        None => parse_in_memory(handler, engines, src, experimental, DbgGeneration::None),
+        None => parse_in_memory(handler, engines, src, experimental, DbgGeneration::None, package_name),
         // When a `BuildConfig` is given,
         // the module source may declare `mod`s that must be parsed from other files.
         Some(config) => parse_module_tree(
@@ -114,6 +115,7 @@ pub fn parse(
             config.include_tests,
             experimental,
             config.lsp_mode.as_ref(),
+            package_name,
         )
         .map(
             |ParsedModuleTree {
@@ -371,6 +373,7 @@ fn parse_in_memory(
     src: Source,
     experimental: ExperimentalFeatures,
     dbg_generation: DbgGeneration,
+    package_name: &str,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     let mut hasher = DefaultHasher::new();
     src.text.hash(&mut hasher);
@@ -385,7 +388,7 @@ fn parse_in_memory(
     let attributes_error_emitted = handler.append(attributes_handler);
 
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::new(BuildTarget::EVM, dbg_generation, experimental),
+        &mut to_parsed_lang::Context::new(BuildTarget::EVM, dbg_generation, experimental, package_name),
         handler,
         engines,
         module.value.clone(),
@@ -438,6 +441,7 @@ fn parse_submodules(
     include_tests: bool,
     experimental: ExperimentalFeatures,
     lsp_mode: Option<&LspConfig>,
+    package_name: &str,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(module.submodules().count());
@@ -471,6 +475,7 @@ fn parse_submodules(
             include_tests,
             experimental,
             lsp_mode,
+            package_name,
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
                 let source_id = engines.se().get_source_id(submod_path.as_ref());
@@ -525,6 +530,7 @@ fn parse_module_tree(
     include_tests: bool,
     experimental: ExperimentalFeatures,
     lsp_mode: Option<&LspConfig>,
+    package_name: &str,
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
     let query_engine = engines.qe();
 
@@ -546,6 +552,7 @@ fn parse_module_tree(
         include_tests,
         experimental,
         lsp_mode,
+        package_name,
     );
 
     let (attributes_handler, attributes) = attr_decls_to_attributes(
@@ -557,7 +564,7 @@ fn parse_module_tree(
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::new(build_target, dbg_generation, experimental),
+        &mut to_parsed_lang::Context::new(build_target, dbg_generation, experimental, package_name),
         handler,
         engines,
         module.value.clone(),
@@ -1006,7 +1013,7 @@ pub fn compile_to_ast(
         package_name,
         "parse the program to a concrete syntax tree (CST)",
         "parse_cst",
-        parse(src, handler, engines, build_config, experimental),
+        parse(src, handler, engines, build_config, experimental, package_name),
         build_config,
         metrics
     );
