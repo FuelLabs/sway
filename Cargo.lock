@@ -3220,17 +3220,6 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.67.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af5495b9956dada79b2429d6b20c87c43db958105386221f0af206f3a123b720"
-dependencies = [
- "ansiterm",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "forc-tracing"
 version = "0.68.8"
 dependencies = [
  "ansiterm",
@@ -3238,6 +3227,18 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-test",
+]
+
+[[package]]
+name = "forc-tracing"
+version = "0.68.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c36a046da28526264755d87c0b4dfd6e13a5153eb00d271d3a34b8ab1412f224"
+dependencies = [
+ "ansiterm",
+ "regex",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3267,7 +3268,7 @@ dependencies = [
  "dirs 5.0.1",
  "fd-lock",
  "forc-tracing 0.68.8",
- "fuel-abi-types 0.12.0",
+ "fuel-abi-types",
  "fuel-asm",
  "fuel-tx",
  "fuels-core",
@@ -3289,14 +3290,14 @@ dependencies = [
 
 [[package]]
 name = "forc-wallet"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d07eb3638e038c272c6d3054406150360918817b1be3e42fe1a428a78841bdc9"
+checksum = "fe26faaf6b845bb47672ed9d9213a3031e694d55357d7642fe376d38380ada14"
 dependencies = [
  "anyhow",
  "clap",
  "eth-keystore",
- "forc-tracing 0.67.2",
+ "forc-tracing 0.68.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "fuels",
  "futures",
  "hex",
