@@ -120,7 +120,10 @@ impl Renderable for ModuleIndex {
         let doc_links = self.module_docs.clone().render(render_plan.clone())?;
         let sidebar = self.sidebar().render(render_plan)?;
         let title_prefix = match self.module_docs.style {
-            DocStyle::ProjectIndex(ref program_type) => format!("{program_type} "),
+            DocStyle::ProjectIndex {
+                kind: ref program_type,
+                ..
+            } => format!("{program_type} "),
             DocStyle::ModuleIndex => "Module ".to_string(),
             _ => unreachable!("Module Index can only be either a project or module at this time."),
         };

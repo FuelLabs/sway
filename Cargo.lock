@@ -3057,6 +3057,7 @@ dependencies = [
  "sway-lsp",
  "sway-types",
  "swayfmt",
+ "tokio",
 ]
 
 [[package]]
