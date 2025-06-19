@@ -109,10 +109,10 @@ async fn submit_to_predicate(
     let _call_result = provider.send_transaction_and_await_commit(new_tx).await;
 }
 
-async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {
+async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u128 {
     wallet
         .provider()
-        .get_asset_balance(&address.into(), asset_id)
+        .get_asset_balance(&address.into(), &asset_id)
         .await
         .unwrap()
 }
@@ -160,7 +160,7 @@ async fn should_pass_with_valid_struct() {
 
     let receiver_balance_after = get_balance(&wallet, receiver_address, asset_id).await;
     assert_eq!(
-        receiver_balance_before + amount_to_predicate,
+        receiver_balance_before + amount_to_predicate as u128,
         receiver_balance_after
     );
 
@@ -199,7 +199,7 @@ async fn should_fail_with_invalid_struct_u64() {
     assert_eq!(receiver_balance_before, receiver_balance_after);
 
     let predicate_balance = get_balance(&wallet, predicate_address, asset_id).await;
-    assert_eq!(predicate_balance, amount_to_predicate);
+    assert_eq!(predicate_balance, amount_to_predicate as u128);
 }
 
 #[tokio::test]
@@ -233,5 +233,5 @@ async fn should_fail_with_invalid_struct_bool() {
     assert_eq!(receiver_balance_before, receiver_balance_after);
 
     let predicate_balance = get_balance(&wallet, predicate_address, asset_id).await;
-    assert_eq!(predicate_balance, amount_to_predicate);
+    assert_eq!(predicate_balance, amount_to_predicate as u128);
 }

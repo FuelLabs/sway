@@ -346,7 +346,7 @@ impl Command {
                 return Err("Direct transfers are only supported in live mode".to_string());
             }
             return Ok(Operation::DirectTransfer {
-                recipient: (*self.address).into(),
+                recipient: self.address,
                 amount: self.call_parameters.amount,
                 asset_id: self.call_parameters.asset_id,
             });

@@ -35,7 +35,7 @@ async fn get_instance(wallet: Wallet) -> (TestAssetId<Wallet>, ContractId) {
     .contract_id;
 
     wallet
-        .force_transfer_to_contract(&fuelcontract_id, 1000, AssetId::BASE, TxPolicies::default())
+        .force_transfer_to_contract(fuelcontract_id, 1000, AssetId::BASE, TxPolicies::default())
         .await
         .unwrap();
     let fuelcontract_instance = TestAssetId::new(fuelcontract_id.clone(), wallet);

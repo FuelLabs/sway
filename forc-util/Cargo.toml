@@ -8,6 +8,9 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+tx = ["dep:fuel-tx", "dep:fuel-abi-types", "dep:fuels-core"]
+
 [dependencies]
 annotate-snippets.workspace = true
 ansiterm.workspace = true
@@ -40,6 +43,3 @@ unicode-xid.workspace = true
 
 [dev-dependencies]
 mark-flaky-tests.workspace = true
-
-[features]
-tx = ["dep:fuel-tx", "dep:fuel-abi-types", "dep:fuels-core"]

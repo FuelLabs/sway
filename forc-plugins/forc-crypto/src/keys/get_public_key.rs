@@ -1,7 +1,6 @@
 use crate::args::read_content_filepath_or_stdin;
 use anyhow::Result;
 use fuel_crypto::{fuel_types::Address, Message, Signature};
-use fuels_core::types::bech32::Bech32Address;
 use serde_json::json;
 
 forc_util::cli_examples! {
@@ -33,12 +32,10 @@ pub fn handler(arg: Arg) -> Result<serde_json::Value> {
 
     let bytes = *public_key.hash();
 
-    let bech32 = Bech32Address::from(Address::from(bytes));
     let addr = Address::from(bytes);
 
     Ok(json!({
         "PublicKey": public_key.to_string(),
-        "Bech32": bech32.to_string(),
         "Address": addr.to_string(),
     }))
 }
@@ -57,10 +54,10 @@ mod test {
         };
         let json = handler(arg).unwrap();
         assert_eq!(
-            "fuel1fmmfhjapeak3knq96arrvttwrtmzghe0w9gx79gkcl2jhaweakdqfqhzdr",
+            "4ef69bcba1cf6d1b4c05d746362d6e1af6245f2f71506f1516c7d52bf5d9ed9a",
             json.as_object()
                 .unwrap()
-                .get("Bech32")
+                .get("Address")
                 .unwrap()
                 .as_str()
                 .unwrap(),

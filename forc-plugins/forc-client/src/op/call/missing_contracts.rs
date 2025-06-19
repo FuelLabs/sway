@@ -1,4 +1,5 @@
 use anyhow::{bail, Result};
+use fuel_tx::ContractId;
 use fuels::programs::calls::{
     traits::TransactionTuner, utils::find_ids_of_missing_contracts, ContractCall,
 };
@@ -7,9 +8,7 @@ use fuels_accounts::{
     signers::private_key::PrivateKeySigner,
     wallet::{Unlocked, Wallet},
 };
-use fuels_core::types::{
-    bech32::Bech32ContractId, transaction::TxPolicies, transaction_builders::VariableOutputPolicy,
-};
+use fuels_core::types::{transaction::TxPolicies, transaction_builders::VariableOutputPolicy};
 
 /// Get the missing contracts from a contract call by dry-running the transaction
 /// to find contracts that are not explicitly listed in the call's `external_contracts` field.
@@ -21,7 +20,7 @@ pub async fn determine_missing_contracts(
     variable_output_policy: &VariableOutputPolicy,
     log_decoder: &fuels_core::codec::LogDecoder,
     account: &Wallet<Unlocked<PrivateKeySigner>>,
-) -> Result<Vec<Bech32ContractId>> {
+) -> Result<Vec<ContractId>> {
     let tb = call
         .transaction_builder(*tx_policies, *variable_output_policy, account)
         .await

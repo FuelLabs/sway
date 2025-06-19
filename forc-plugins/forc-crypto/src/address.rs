@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use fuel_crypto::fuel_types::Address;
-use fuels_core::types::bech32::Bech32Address;
 use serde_json::json;
 use std::str::{from_utf8, FromStr};
 
@@ -17,8 +16,7 @@ forc_util::cli_examples! {
     after_help = help(),
 )]
 pub struct Args {
-    /// The address to convert. It can be either a valid address in any format
-    /// (Bech32 or hex)
+    /// The address to convert. It can be either a valid address in hex format
     pub address: String,
 }
 
@@ -27,27 +25,17 @@ pub struct Args {
 /// address format to all other formats
 pub fn dump_address<T: AsRef<[u8]>>(data: T) -> anyhow::Result<serde_json::Value> {
     let bytes_32: Result<[u8; 32], _> = data.as_ref().try_into();
-    let (bech32, addr) = match bytes_32 {
-        Ok(bytes) => (
-            Bech32Address::from(Address::from(bytes)),
-            Address::from(bytes),
-        ),
+    let addr = match bytes_32 {
+        Ok(bytes) => Address::from(bytes),
         Err(_) => handle_string_conversion(data)?,
     };
 
     Ok(json!({
-        "Bench32": bech32.to_string(),
         "Address": addr.to_string(),
     }))
 }
 
-fn handle_string_conversion<T: AsRef<[u8]>>(data: T) -> anyhow::Result<(Bech32Address, Address)> {
+fn handle_string_conversion<T: AsRef<[u8]>>(data: T) -> anyhow::Result<Address> {
     let addr = from_utf8(data.as_ref())?;
-    if let Ok(bech32) = Bech32Address::from_str(addr) {
-        Ok((bech32.clone(), Address::from(bech32)))
-    } else if let Ok(addr) = Address::from_str(addr) {
-        Ok((Bech32Address::from(addr), addr))
-    } else {
-        Err(anyhow!("{} cannot be parsed to a valid address", addr))
-    }
+    Address::from_str(addr).map_err(|_| anyhow!("{} cannot be parsed to a valid address", addr))
 }

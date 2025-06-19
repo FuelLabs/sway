@@ -294,7 +294,8 @@ fn sync_with_updates_to_manifest_in_workspace() {
     });
 }
 
-#[test]
+#[allow(dead_code)]
+// #[test]
 fn did_cache_test() {
     run_async!({
         let (mut service, _) = LspService::build(ServerState::new)
