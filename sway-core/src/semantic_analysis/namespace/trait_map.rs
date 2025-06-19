@@ -586,7 +586,7 @@ impl TraitMap {
 
     pub(crate) fn get_traits_types(
         &self,
-        traits_types: &mut HashMap<CallPath, Vec<TypeId>>,
+        traits_types: &mut HashMap<CallPath, HashSet<TypeId>>,
     ) -> Result<(), ErrorEmitted> {
         for key in self.trait_impls.keys() {
             for self_entry in self.trait_impls[key].iter() {
@@ -595,10 +595,13 @@ impl TraitMap {
                     suffix: self_entry.inner.key.name.suffix.name.clone(),
                     callpath_type: self_entry.inner.key.name.callpath_type,
                 };
-                if let Some(vec) = traits_types.get_mut(&callpath) {
-                    vec.push(self_entry.inner.key.type_id);
+                if let Some(set) = traits_types.get_mut(&callpath) {
+                    set.insert(self_entry.inner.key.type_id);
                 } else {
-                    traits_types.insert(callpath, vec![self_entry.inner.key.type_id]);
+                    traits_types.insert(
+                        callpath,
+                        vec![self_entry.inner.key.type_id].into_iter().collect(),
+                    );
                 }
             }
         }
