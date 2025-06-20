@@ -1,4 +1,4 @@
-use forc_doc::{self, cli::Command, compile_html, get_doc_dir};
+use forc_doc::{self, cli::Command, generate_docs};
 use std::path::Path;
 
 #[test]
@@ -9,6 +9,6 @@ fn builds_lib_std_docs() {
         ..Default::default()
     };
     println!("Building docs for {:?}", build_instructions.path);
-    let res = compile_html(&build_instructions, &get_doc_dir);
+    let res = generate_docs(&build_instructions);
     assert!(res.is_ok());
 }

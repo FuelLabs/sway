@@ -1,18 +1,23 @@
-use codspeed_criterion_compat::{
-    Criterion,
-    criterion_group,
-    criterion_main,
-};
+use std::path::Path;
+
+use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
+use forc_doc::{cli::Command, compile, compile_html, DocContext};
 
 fn benchmarks(c: &mut Criterion) {
-
-
-    c.bench_function("add_market", |b| {
+    let path = Path::new("./../../sway-lib-std");
+    let opts = Command {
+        path: Some(path.to_str().unwrap().to_string()),
+        ..Default::default()
+    };
+    let ctx = DocContext::from_options(&opts).unwrap();
+    let compile_results = compile(&ctx, &opts).unwrap().collect::<Vec<_>>();
+    
+    c.bench_function("build_std_lib_docs", |b| {
         b.iter(|| {
-            // TODO: Implement benchmarks
+            let mut results = compile_results.clone();
+            let _ = compile_html(&opts, &ctx, &mut results);
         });
     });
-
 }
 
 criterion_group! {

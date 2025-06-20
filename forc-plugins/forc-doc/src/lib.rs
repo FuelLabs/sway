@@ -7,7 +7,7 @@ pub mod tests;
 use anyhow::{bail, Result};
 use cli::Command;
 use doc::Documentation;
-use forc_pkg as pkg;
+use forc_pkg::{self as pkg, Programs};
 use forc_pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     PackageManifestFile,
@@ -49,100 +49,124 @@ impl<'e> RenderPlan<'e> {
 
 pub struct ProgramInfo<'a> {
     pub ty_program: Arc<TyProgram>,
-    pub engines: &'a Engines,
     pub manifest: &'a ManifestFile,
     pub pkg_manifest: &'a PackageManifestFile,
 }
 
-pub fn compile_html(
-    build_instructions: &Command,
-    get_doc_dir: &dyn Fn(&Command) -> String,
-) -> Result<(PathBuf, Box<PackageManifestFile>)> {
-    // get manifest directory
-    let dir = if let Some(ref path) = build_instructions.path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir()?
-    };
-    let manifest = ManifestFile::from_dir(dir)?;
-    let ManifestFile::Package(pkg_manifest) = &manifest else {
-        bail!("forc-doc does not support workspaces.")
-    };
+pub struct DocContext {
+    pub manifest: ManifestFile,
+    pub pkg_manifest: Box<PackageManifestFile>,
+    pub doc_path: PathBuf,
+    pub engines: Engines,
+    pub build_plan: pkg::BuildPlan,
+}
 
-    // create doc path
-    let out_path = default_output_directory(manifest.dir());
-    let doc_dir = get_doc_dir(build_instructions);
-    let doc_path = out_path.join(doc_dir);
-    if doc_path.exists() {
-        std::fs::remove_dir_all(&doc_path)?;
+impl DocContext {
+    pub fn from_options(opts: &Command) -> Result<Self> {
+        // get manifest directory
+        let dir = if let Some(ref path) = opts.path {
+            PathBuf::from(path)
+        } else {
+            std::env::current_dir()?
+        };
+        let manifest = ManifestFile::from_dir(dir)?;
+        let ManifestFile::Package(pkg_manifest) = &manifest else {
+            bail!("forc-doc does not support workspaces.")
+        };
+        let pkg_manifest = pkg_manifest.clone();
+
+        // create doc path
+        let out_path = default_output_directory(manifest.dir());
+        let doc_dir = get_doc_dir(opts);
+        let doc_path = out_path.join(doc_dir);
+        if doc_path.exists() {
+            std::fs::remove_dir_all(&doc_path)?;
+        }
+        fs::create_dir_all(&doc_path)?;
+
+        // Build Plan
+        let member_manifests = manifest.member_manifests()?;
+    let lock_path = manifest.lock_path()?;
+
+    let ipfs_node = opts.ipfs_node.clone().unwrap_or_default();
+    let build_plan = pkg::BuildPlan::from_lock_and_manifests(
+        &lock_path,
+        &member_manifests,
+        opts.locked,
+        opts.offline,
+        &ipfs_node,
+    )?;
+
+        Ok(Self {
+            manifest,
+            pkg_manifest,
+            doc_path,
+            engines: Engines::default(),
+            build_plan,
+        })
     }
-    fs::create_dir_all(&doc_path)?;
+}
 
+pub fn compile(ctx: &DocContext, opts: &Command) -> Result<impl Iterator<Item = Option<Programs>>> {
     println_action_green(
         "Compiling",
         &format!(
             "{} ({})",
-            pkg_manifest.project_name(),
-            manifest.dir().to_string_lossy()
+            ctx.pkg_manifest.project_name(),
+            ctx.manifest.dir().to_string_lossy()
         ),
     );
 
-    let member_manifests = manifest.member_manifests()?;
-    let lock_path = manifest.lock_path()?;
-
-    let ipfs_node = build_instructions.ipfs_node.clone().unwrap_or_default();
-    let plan = pkg::BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        &member_manifests,
-        build_instructions.locked,
-        build_instructions.offline,
-        &ipfs_node,
-    )?;
-
-    let engines = Engines::default();
-    let tests_enabled = build_instructions.document_private_items;
-    let mut compile_results = pkg::check(
-        &plan,
+    let tests_enabled = opts.document_private_items;
+    pkg::check(
+        &ctx.build_plan,
         BuildTarget::default(),
-        build_instructions.silent,
+        opts.silent,
         None,
         tests_enabled,
-        &engines,
+        &ctx.engines,
         None,
-        &build_instructions.experimental.experimental,
-        &build_instructions.experimental.no_experimental,
+        &opts.experimental.experimental,
+        &opts.experimental.no_experimental,
         sway_core::DbgGeneration::Full,
-    )?;
+    ).map(|results| {
+        results.into_iter().map(|(programs, _handler)| programs)
+    })
+}
 
-    let raw_docs = if build_instructions.no_deps {
+pub fn compile_html(
+    opts: &Command,
+    ctx: &DocContext,
+    compile_results: &mut Vec<Option<Programs>>,
+) -> Result<()> {
+    let raw_docs = if opts.no_deps {
         let Some(ty_program) = compile_results
             .pop()
-            .and_then(|(programs, _handler)| programs)
+            .and_then(|programs| programs)
             .and_then(|p| p.typed.ok())
         else {
             bail! {
                 "documentation could not be built from manifest located at '{}'",
-                pkg_manifest.path().display()
+                ctx.pkg_manifest.path().display()
             }
         };
         let program_info = ProgramInfo {
             ty_program,
-            engines: &engines,
-            manifest: &manifest,
-            pkg_manifest,
+            manifest: &ctx.manifest,
+            pkg_manifest: &ctx.pkg_manifest,
         };
-        build_docs(program_info, &doc_path, build_instructions)?
+        build_docs(program_info, opts, ctx)?
     } else {
-        let order = plan.compilation_order();
-        let graph = plan.graph();
-        let manifest_map = plan.manifest_map();
+        let order = ctx.build_plan.compilation_order();
+        let graph = ctx.build_plan.graph();
+        let manifest_map = ctx.build_plan.manifest_map();
         let mut raw_docs = Documentation(Vec::new());
 
-        for (node, (compile_result, _handler)) in order.iter().zip(compile_results) {
+        for (node, compile_result) in order.iter().zip(compile_results) {
             let id = &graph[*node].id();
             if let Some(pkg_manifest_file) = manifest_map.get(id) {
                 let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
-                let Some(ty_program) = compile_result.and_then(|programs| programs.typed.ok())
+                let Some(ty_program) = compile_result.as_ref().and_then(|programs| programs.typed.clone().ok())
                 else {
                     bail!(
                         "documentation could not be built from manifest located at '{}'",
@@ -151,36 +175,34 @@ pub fn compile_html(
                 };
                 let program_info = ProgramInfo {
                     ty_program,
-                    engines: &engines,
                     manifest: &manifest_file,
                     pkg_manifest: pkg_manifest_file,
                 };
                 raw_docs
                     .0
-                    .extend(build_docs(program_info, &doc_path, build_instructions)?.0);
+                    .extend(build_docs(program_info, opts, ctx)?.0);
             }
         }
         raw_docs
     };
-    search::write_search_index(&doc_path, &raw_docs)?;
+    search::write_search_index(&ctx.doc_path, &raw_docs)?;
 
-    Ok((doc_path, pkg_manifest.to_owned()))
+    Ok(())
 }
 
 fn build_docs(
     program_info: ProgramInfo,
-    doc_path: &Path,
-    build_instructions: &Command,
+    opts: &Command,
+    ctx: &DocContext,
 ) -> Result<Documentation> {
     let Command {
         document_private_items,
         no_deps,
         experimental,
         ..
-    } = build_instructions;
+    } = opts;
     let ProgramInfo {
         ty_program,
-        engines,
         manifest,
         pkg_manifest,
     } = program_info;
@@ -202,7 +224,7 @@ fn build_docs(
     );
 
     let raw_docs = Documentation::from_ty_program(
-        engines,
+        &ctx.engines,
         pkg_manifest.project_name(),
         &ty_program,
         *document_private_items,
@@ -218,14 +240,14 @@ fn build_docs(
     // render docs to HTML
     let rendered_docs = RenderedDocumentation::from_raw_docs(
         raw_docs.clone(),
-        RenderPlan::new(*no_deps, *document_private_items, engines),
+        RenderPlan::new(*no_deps, *document_private_items, &ctx.engines),
         root_attributes,
         &ty_program.kind,
         forc_version,
     )?;
 
     // write file contents to doc folder
-    write_content(rendered_docs, doc_path)?;
+    write_content(rendered_docs, &ctx.doc_path)?;
     println_action_green("Finished", pkg_manifest.project_name());
 
     Ok(raw_docs)
@@ -247,4 +269,11 @@ fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Resul
 const DOC_DIR_NAME: &str = "doc";
 pub fn get_doc_dir(_build_instructions: &Command) -> String {
     DOC_DIR_NAME.into()
+}
+
+pub fn generate_docs(opts: &Command) -> Result<DocContext> {
+    let ctx = DocContext::from_options(opts)?;
+    let mut compile_results = compile(&ctx, opts)?.collect::<Vec<_>>();
+    compile_html(opts, &ctx, &mut compile_results)?;
+    Ok(ctx)
 }
