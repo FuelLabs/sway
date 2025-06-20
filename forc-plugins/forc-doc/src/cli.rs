@@ -47,8 +47,11 @@ pub struct Command {
     /// Possible values: FUEL, PUBLIC, LOCAL, <GATEWAY_URL>
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
-    #[cfg(test)]
-    pub(crate) doc_path: Option<String>,
+    /// The path to the documentation output directory.
+    ///
+    /// If not specified, the default documentation output directory will be used.
+    #[clap(long)]
+    pub doc_path: Option<String>,
     #[clap(flatten)]
     pub experimental: sway_features::CliFields,
     /// Silent mode. Don't output any warnings or errors to the command line.

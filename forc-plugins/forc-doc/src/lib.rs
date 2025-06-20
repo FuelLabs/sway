@@ -2,7 +2,6 @@ pub mod cli;
 pub mod doc;
 pub mod render;
 pub mod search;
-pub mod tests;
 
 use anyhow::{bail, Result};
 use cli::Command;
@@ -79,7 +78,11 @@ impl DocContext {
 
         // create doc path
         let out_path = default_output_directory(manifest.dir());
-        let doc_path = out_path.join(get_doc_dir(opts));
+        let doc_dir = opts
+            .doc_path
+            .clone()
+            .unwrap_or_else(|| DOC_DIR_NAME.to_string());
+        let doc_path = out_path.join(doc_dir);
         if doc_path.exists() {
             std::fs::remove_dir_all(&doc_path)?;
         }
@@ -249,18 +252,4 @@ fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Resul
         fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
     }
     Ok(())
-}
-
-pub fn get_doc_dir(_opts: &Command) -> String {
-    #[cfg(test)]
-    {
-        _opts
-            .doc_path
-            .clone()
-            .unwrap_or_else(|| DOC_DIR_NAME.to_string())
-    }
-    #[cfg(not(test))]
-    {
-        DOC_DIR_NAME.to_string()
-    }
 }
