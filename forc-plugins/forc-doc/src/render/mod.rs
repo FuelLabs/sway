@@ -5,7 +5,6 @@ use crate::{
         Document, Documentation,
     },
     render::{
-        constant::{ALL_DOC_FILENAME, INDEX_FILENAME},
         index::{AllDocIndex, ModuleIndex},
         link::{DocLink, DocLinks},
         title::BlockTitle,
@@ -22,7 +21,6 @@ use std::{
 use sway_core::{language::ty::TyProgramKind, transform::Attributes};
 use sway_types::BaseIdent;
 
-pub mod constant;
 mod index;
 pub mod item;
 pub mod link;
@@ -30,6 +28,10 @@ mod search;
 mod sidebar;
 mod title;
 pub mod util;
+
+pub const ALL_DOC_FILENAME: &str = "all.html";
+pub const INDEX_FILENAME: &str = "index.html";
+pub const IDENTITY: &str = "#";
 
 /// Something that can be rendered to HTML.
 pub(crate) trait Renderable {

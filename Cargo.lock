@@ -3039,6 +3039,7 @@ version = "0.68.8"
 dependencies = [
  "anyhow",
  "clap",
+ "codspeed-criterion-compat",
  "comrak",
  "dir_indexer",
  "expect-test",

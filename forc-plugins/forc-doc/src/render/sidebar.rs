@@ -4,8 +4,7 @@ use std::path::PathBuf;
 use crate::{
     doc::module::ModuleInfo,
     render::{
-        constant::{ALL_DOC_FILENAME, IDENTITY, INDEX_FILENAME},
-        BlockTitle, DocLinks, DocStyle, Renderable,
+        BlockTitle, DocLinks, DocStyle, Renderable, {ALL_DOC_FILENAME, IDENTITY, INDEX_FILENAME},
     },
     RenderPlan,
 };
