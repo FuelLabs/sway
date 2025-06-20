@@ -1,9 +1,5 @@
 #![cfg(test)]
-use crate::{
-    cli::Command,
-    generate_docs,
-    tests::expects::{check_file, get_doc_dir},
-};
+use crate::{cli::Command, generate_docs, tests::expects::check_file};
 use dir_indexer::get_relative_file_paths_set;
 use expect_test::{expect, Expect};
 use std::{

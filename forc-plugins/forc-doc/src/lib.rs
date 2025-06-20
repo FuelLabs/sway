@@ -7,15 +7,14 @@ pub mod tests;
 use anyhow::{bail, Result};
 use cli::Command;
 use doc::Documentation;
-use forc_pkg::{self as pkg, Programs};
 use forc_pkg::{
+    self as pkg,
     manifest::{GenericManifestFile, ManifestFile},
-    PackageManifestFile,
+    PackageManifestFile, Programs,
 };
 use forc_tracing::println_action_green;
 use forc_util::default_output_directory;
 use render::RenderedDocumentation;
-use std::sync::Arc;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -23,7 +22,16 @@ use std::{
 use sway_core::{language::ty::TyProgram, BuildTarget, Engines};
 use sway_features::ExperimentalFeatures;
 
+pub const DOC_DIR_NAME: &str = "doc";
 pub const ASSETS_DIR_NAME: &str = "static.files";
+
+/// Generate documentation for a given package.
+pub fn generate_docs(opts: &Command) -> Result<DocContext> {
+    let ctx = DocContext::from_options(opts)?;
+    let mut compile_results = compile(&ctx, opts)?.collect::<Vec<_>>();
+    compile_html(opts, &ctx, &mut compile_results)?;
+    Ok(ctx)
+}
 
 /// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
 #[derive(Clone)]
@@ -71,8 +79,7 @@ impl DocContext {
 
         // create doc path
         let out_path = default_output_directory(manifest.dir());
-        let doc_dir = get_doc_dir(opts);
-        let doc_path = out_path.join(doc_dir);
+        let doc_path = out_path.join(get_doc_dir(opts));
         if doc_path.exists() {
             std::fs::remove_dir_all(&doc_path)?;
         }
@@ -133,36 +140,38 @@ pub fn compile_html(
     compile_results: &mut Vec<Option<Programs>>,
 ) -> Result<()> {
     let raw_docs = if opts.no_deps {
-        let Some(ty_program) = compile_results
+        let ty_program = compile_results
             .pop()
-            .and_then(|programs| programs)
+            .flatten()
             .and_then(|p| p.typed.ok())
-        else {
-            bail! {
-                "documentation could not be built from manifest located at '{}'",
-                ctx.pkg_manifest.path().display()
-            }
-        };
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "documentation could not be built from manifest located at '{}'",
+                    ctx.pkg_manifest.path().display()
+                )
+            })?;
         build_docs(opts, ctx, &ty_program, &ctx.manifest, &ctx.pkg_manifest)?
     } else {
-        let order = ctx.build_plan.compilation_order();
-        let graph = ctx.build_plan.graph();
-        let manifest_map = ctx.build_plan.manifest_map();
+        let (order, graph, manifest_map) = (
+            ctx.build_plan.compilation_order(),
+            ctx.build_plan.graph(),
+            ctx.build_plan.manifest_map(),
+        );
         let mut raw_docs = Documentation(Vec::new());
 
         for (node, compile_result) in order.iter().zip(compile_results) {
             let id = &graph[*node].id();
             if let Some(pkg_manifest_file) = manifest_map.get(id) {
                 let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
-                let Some(ty_program) = compile_result
+                let ty_program = compile_result
                     .as_ref()
                     .and_then(|programs| programs.typed.clone().ok())
-                else {
-                    bail!(
-                        "documentation could not be built from manifest located at '{}'",
-                        pkg_manifest_file.path().display()
-                    )
-                };
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "documentation could not be built from manifest located at '{}'",
+                            pkg_manifest_file.path().display()
+                        )
+                    })?;
 
                 raw_docs.0.extend(
                     build_docs(opts, ctx, &ty_program, &manifest_file, pkg_manifest_file)?.0,
@@ -171,8 +180,8 @@ pub fn compile_html(
         }
         raw_docs
     };
-    search::write_search_index(&ctx.doc_path, &raw_docs)?;
 
+    search::write_search_index(&ctx.doc_path, &raw_docs)?;
     Ok(())
 }
 
@@ -183,17 +192,10 @@ fn build_docs(
     manifest: &ManifestFile,
     pkg_manifest: &PackageManifestFile,
 ) -> Result<Documentation> {
-    let Command {
-        document_private_items,
-        no_deps,
-        experimental,
-        ..
-    } = opts;
-
     let experimental = ExperimentalFeatures::new(
         &pkg_manifest.project.experimental,
-        &experimental.experimental,
-        &experimental.no_experimental,
+        &opts.experimental.experimental,
+        &opts.experimental.no_experimental,
     )
     .map_err(|err| anyhow::anyhow!("{err}"))?;
 
@@ -210,7 +212,7 @@ fn build_docs(
         &ctx.engines,
         pkg_manifest.project_name(),
         &ty_program,
-        *document_private_items,
+        opts.document_private_items,
         experimental,
     )?;
     let root_attributes = (!ty_program.root_module.attributes.is_empty())
@@ -223,7 +225,7 @@ fn build_docs(
     // render docs to HTML
     let rendered_docs = RenderedDocumentation::from_raw_docs(
         raw_docs.clone(),
-        RenderPlan::new(*no_deps, *document_private_items, &ctx.engines),
+        RenderPlan::new(opts.no_deps, opts.document_private_items, &ctx.engines),
         root_attributes,
         &ty_program.kind,
         forc_version,
@@ -249,14 +251,16 @@ fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Resul
     Ok(())
 }
 
-const DOC_DIR_NAME: &str = "doc";
-pub fn get_doc_dir(_build_instructions: &Command) -> String {
-    DOC_DIR_NAME.into()
-}
-
-pub fn generate_docs(opts: &Command) -> Result<DocContext> {
-    let ctx = DocContext::from_options(opts)?;
-    let mut compile_results = compile(&ctx, opts)?.collect::<Vec<_>>();
-    compile_html(opts, &ctx, &mut compile_results)?;
-    Ok(ctx)
+pub fn get_doc_dir(_opts: &Command) -> String {
+    #[cfg(test)]
+    {
+        _opts
+            .doc_path
+            .clone()
+            .unwrap_or_else(|| DOC_DIR_NAME.to_string())
+    }
+    #[cfg(not(test))]
+    {
+        DOC_DIR_NAME.to_string()
+    }
 }
