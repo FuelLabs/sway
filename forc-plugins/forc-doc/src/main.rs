@@ -1,8 +1,6 @@
 use anyhow::{bail, Result};
 use clap::Parser;
-use forc_doc::{
-    cli::Command, generate_docs, render::constant::INDEX_FILENAME, ASSETS_DIR_NAME,
-};
+use forc_doc::{cli::Command, generate_docs, render::constant::INDEX_FILENAME, ASSETS_DIR_NAME};
 use include_dir::{include_dir, Dir};
 use std::{
     process::Command as Process,
@@ -30,7 +28,8 @@ pub fn main() -> Result<()> {
     // if opening in the browser fails, attempt to open using a file explorer
     if build_instructions.open {
         const BROWSER_ENV_VAR: &str = "BROWSER";
-        let path = ctx.doc_path
+        let path = ctx
+            .doc_path
             .join(ctx.pkg_manifest.project_name())
             .join(INDEX_FILENAME);
         let default_browser_opt = std::env::var_os(BROWSER_ENV_VAR);

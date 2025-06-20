@@ -47,12 +47,6 @@ impl<'e> RenderPlan<'e> {
     }
 }
 
-pub struct ProgramInfo<'a> {
-    pub ty_program: Arc<TyProgram>,
-    pub manifest: &'a ManifestFile,
-    pub pkg_manifest: &'a PackageManifestFile,
-}
-
 pub struct DocContext {
     pub manifest: ManifestFile,
     pub pkg_manifest: Box<PackageManifestFile>,
@@ -86,16 +80,16 @@ impl DocContext {
 
         // Build Plan
         let member_manifests = manifest.member_manifests()?;
-    let lock_path = manifest.lock_path()?;
+        let lock_path = manifest.lock_path()?;
 
-    let ipfs_node = opts.ipfs_node.clone().unwrap_or_default();
-    let build_plan = pkg::BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        &member_manifests,
-        opts.locked,
-        opts.offline,
-        &ipfs_node,
-    )?;
+        let ipfs_node = opts.ipfs_node.clone().unwrap_or_default();
+        let build_plan = pkg::BuildPlan::from_lock_and_manifests(
+            &lock_path,
+            &member_manifests,
+            opts.locked,
+            opts.offline,
+            &ipfs_node,
+        )?;
 
         Ok(Self {
             manifest,
@@ -129,9 +123,8 @@ pub fn compile(ctx: &DocContext, opts: &Command) -> Result<impl Iterator<Item = 
         &opts.experimental.experimental,
         &opts.experimental.no_experimental,
         sway_core::DbgGeneration::Full,
-    ).map(|results| {
-        results.into_iter().map(|(programs, _handler)| programs)
-    })
+    )
+    .map(|results| results.into_iter().map(|(programs, _handler)| programs))
 }
 
 pub fn compile_html(
@@ -150,12 +143,7 @@ pub fn compile_html(
                 ctx.pkg_manifest.path().display()
             }
         };
-        let program_info = ProgramInfo {
-            ty_program,
-            manifest: &ctx.manifest,
-            pkg_manifest: &ctx.pkg_manifest,
-        };
-        build_docs(program_info, opts, ctx)?
+        build_docs(opts, ctx, &ty_program, &ctx.manifest, &ctx.pkg_manifest)?
     } else {
         let order = ctx.build_plan.compilation_order();
         let graph = ctx.build_plan.graph();
@@ -166,21 +154,19 @@ pub fn compile_html(
             let id = &graph[*node].id();
             if let Some(pkg_manifest_file) = manifest_map.get(id) {
                 let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
-                let Some(ty_program) = compile_result.as_ref().and_then(|programs| programs.typed.clone().ok())
+                let Some(ty_program) = compile_result
+                    .as_ref()
+                    .and_then(|programs| programs.typed.clone().ok())
                 else {
                     bail!(
                         "documentation could not be built from manifest located at '{}'",
                         pkg_manifest_file.path().display()
                     )
                 };
-                let program_info = ProgramInfo {
-                    ty_program,
-                    manifest: &manifest_file,
-                    pkg_manifest: pkg_manifest_file,
-                };
-                raw_docs
-                    .0
-                    .extend(build_docs(program_info, opts, ctx)?.0);
+
+                raw_docs.0.extend(
+                    build_docs(opts, ctx, &ty_program, &manifest_file, pkg_manifest_file)?.0,
+                );
             }
         }
         raw_docs
@@ -191,9 +177,11 @@ pub fn compile_html(
 }
 
 fn build_docs(
-    program_info: ProgramInfo,
     opts: &Command,
     ctx: &DocContext,
+    ty_program: &TyProgram,
+    manifest: &ManifestFile,
+    pkg_manifest: &PackageManifestFile,
 ) -> Result<Documentation> {
     let Command {
         document_private_items,
@@ -201,11 +189,6 @@ fn build_docs(
         experimental,
         ..
     } = opts;
-    let ProgramInfo {
-        ty_program,
-        manifest,
-        pkg_manifest,
-    } = program_info;
 
     let experimental = ExperimentalFeatures::new(
         &pkg_manifest.project.experimental,

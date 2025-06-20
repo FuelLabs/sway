@@ -1,7 +1,6 @@
-use std::path::Path;
-
 use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
 use forc_doc::{cli::Command, compile, compile_html, DocContext};
+use std::path::Path;
 
 fn benchmarks(c: &mut Criterion) {
     let path = Path::new("./../../sway-lib-std");
@@ -11,7 +10,7 @@ fn benchmarks(c: &mut Criterion) {
     };
     let ctx = DocContext::from_options(&opts).unwrap();
     let compile_results = compile(&ctx, &opts).unwrap().collect::<Vec<_>>();
-    
+
     c.bench_function("build_std_lib_docs", |b| {
         b.iter(|| {
             let mut results = compile_results.clone();
