@@ -5,14 +5,6 @@ on:
     branches:
       - "master"
   pull_request:
-    paths:
-       - forc-plugins/forc-lsp/**
-       - sway-lsp/**
-       - forc-pkg/**
-       - sway-core/**
-
-  # `workflow_dispatch` allows CodSpeed to trigger backtest
-  # performance analysis in order to generate initial data.
   workflow_dispatch:
 
 concurrency:
@@ -20,8 +12,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  benchmarks:
+  changes:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    outputs:
+      sway-lsp: ${{ steps.changes.outputs.sway-lsp }}
+      forc-doc: ${{ steps.changes.outputs.forc-doc }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            sway-lsp:
+              - 'forc-plugins/forc-lsp/**'
+              - 'sway-lsp/**'
+              - 'forc-pkg/**'
+              - 'sway-core/**'
+            forc-doc:
+              - 'forc-plugins/forc-doc/**'
+
+  sway-lsp-benchmarks:
     runs-on: buildjet-4vcpu-ubuntu-2204
+    needs: changes
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      needs.changes.outputs.sway-lsp == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -33,16 +50,48 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-sway-lsp-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-codspeed
 
-      - name: Build the benchmark target(s)
-        run: cargo codspeed build
+      - name: Build sway-lsp benchmark target(s)
+        run: cargo codspeed build -p sway-lsp
 
-      - name: Run the benchmarks
+      - name: Run sway-lsp benchmarks
         uses: CodSpeedHQ/action@v3
         with:
-          run: cargo codspeed run
+          run: cargo codspeed run -p sway-lsp
+          token: ${{ secrets.CODSPEED_TOKEN }}
+
+  forc-doc-benchmarks:
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    needs: changes
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      needs.changes.outputs.forc-doc == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: buildjet/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-forc-doc-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-codspeed
+
+      - name: Build forc-doc benchmark target(s)
+        run: cargo codspeed build -p forc-doc
+
+      - name: Run forc-doc benchmarks
+        uses: CodSpeedHQ/action@v3
+        with:
+          run: cargo codspeed run -p forc-doc
           token: ${{ secrets.CODSPEED_TOKEN }}
