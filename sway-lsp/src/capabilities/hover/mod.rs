@@ -1,18 +1,18 @@
 pub(crate) mod hover_link_contents;
 
 use self::hover_link_contents::HoverLinkContents;
-use crate::config::LspClient;
-use crate::core::sync::SyncWorkspace;
-use crate::server_state::ServerState;
 use crate::{
+    config::LspClient,
     core::{
-        session::Session,
+        sync::SyncWorkspace,
         token::{SymbolKind, Token, TypedAstToken},
     },
+    server_state::ServerState,
     utils::{attributes::doc_comment_attributes, markdown, markup::Markup},
 };
 use lsp_types::{self, Position, Url};
 use std::sync::Arc;
+use sway_core::Namespace;
 use sway_core::{
     language::{ty, Visibility},
     Engines, TypeId,
@@ -22,8 +22,8 @@ use sway_types::{Span, Spanned};
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(
     state: &ServerState,
+    sync: Arc<SyncWorkspace>,
     engines: &Engines,
-    session: Arc<Session>,
     url: &Url,
     position: Position,
 ) -> Option<lsp_types::Hover> {
@@ -51,29 +51,32 @@ pub fn hover_data(
         });
     }
 
+    let program = state.compiled_programs.program_from_uri(url, engines)?;
+    let namespace = &program.value().typed.as_ref().ok()?.namespace;
     let client_config = state.config.read().client.clone();
     let contents = match &token.declared_token_ident(engines) {
         Some(decl_ident) => {
             let t = state.token_map.try_get(decl_ident).try_unwrap()?;
             let decl_token = t.value();
+
             hover_format(
-                session.clone(),
                 engines,
                 decl_token,
                 &decl_ident.name,
                 client_config,
-                state.sync_workspace(),
+                &sync,
+                namespace,
             )
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
         // we use the `Ident` of the token itself.
         None => hover_format(
-            session.clone(),
             &state.engines.read(),
             token,
             &ident.name,
             client_config,
-            state.sync_workspace(),
+            &sync,
+            namespace,
         ),
     };
 
@@ -129,12 +132,12 @@ fn markup_content(markup: &Markup) -> lsp_types::MarkupContent {
 }
 
 fn hover_format(
-    session: Arc<Session>,
     engines: &Engines,
     token: &Token,
     ident_name: &str,
     client_config: LspClient,
     sync: &SyncWorkspace,
+    namespace: &Namespace,
 ) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
     let doc_comment = format_doc_attributes(engines, token);
@@ -145,7 +148,7 @@ fn hover_format(
     };
 
     // Used to collect all the information we need to generate links for the hover component.
-    let mut hover_link_contents = HoverLinkContents::new(session, engines, sync);
+    let mut hover_link_contents = HoverLinkContents::new(engines, sync, namespace);
 
     let sway_block = token
         .as_typed()

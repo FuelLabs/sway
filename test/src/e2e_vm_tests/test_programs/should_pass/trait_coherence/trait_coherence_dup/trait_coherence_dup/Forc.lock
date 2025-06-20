@@ -1,0 +1,21 @@
+[[package]]
+name = "standards"
+source = "path+from-root-874859307D9CEE33"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-874859307D9CEE33"
+
+[[package]]
+name = "sway_libs"
+source = "path+from-root-874859307D9CEE33"
+dependencies = ["standards"]
+
+[[package]]
+name = "trait_coherence_dup"
+source = "member"
+dependencies = [
+    "standards",
+    "sway_libs",
+]

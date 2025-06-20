@@ -25,9 +25,3 @@ pub struct VisualizeParams {
     pub text_document: TextDocumentIdentifier,
     pub graph_kind: String,
 }
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MetricsParams {
-    pub text_document: TextDocumentIdentifier,
-}

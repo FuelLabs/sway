@@ -96,6 +96,15 @@ pub struct Bytes {
     len: u64,
 }
 
+impl AsRawSlice for Bytes {
+    /// Returns a raw slice of all of the elements in the type.
+    fn as_raw_slice(self) -> raw_slice {
+        asm(ptr: (self.buf.ptr, self.len)) {
+            ptr: raw_slice
+        }
+    }
+}
+
 impl Bytes {
     /// Constructs a new, empty `Bytes`.
     ///
@@ -660,16 +669,16 @@ impl Bytes {
         (left_bytes, right_bytes)
     }
 
-    /// Copies all elements of `other` into `self`
+    /// Appends copies of all elements of `other` into `self`.
     ///
     /// # Additional Information
     ///
     /// NOTE: Appending `self` to itself will duplicate the `Bytes`. i.e. [0, 1, 2] => [0, 1, 2, 0, 1, 2]
-    /// This function differs from the rust `append` function in that it does not clear the `other` `Bytes`
+    /// This function differs from the Rust `append` function in that it does not clear the `other` `Bytes`.
     ///
     /// # Arguments
     ///
-    /// * `other`: [Bytes] - The Bytes to append to self.
+    /// * `other`: [Bytes] - The `Bytes` to append to `self`.
     ///
     /// # Examples
     ///
@@ -692,29 +701,58 @@ impl Bytes {
     ///
     ///     let first_length = bytes.len();
     ///     let second_length = bytes2.len();
-    ///     let first_cap = bytes.capacity();
-    ///     let second_cap = bytes2.capacity();
+    ///
     ///     bytes.append(bytes2);
+    ///
     ///     assert(bytes.len() == first_length + second_length);
-    ///     assert(bytes.capacity() == first_cap + second_cap);
+    ///     assert(bytes2.len() == second_length);
     /// }
     /// ```
     pub fn append(ref mut self, ref mut other: Self) {
-        let other_len = other.len;
-        if other_len == 0 {
-            return
-        };
+        self.append_raw_slice(other.as_raw_slice());
+    }
 
-        // optimization for when starting with empty bytes and appending to it
-        if self.len == 0 {
-            self = other;
+    /// Appends copies of all bytes from the `slice` into `self`.
+    ///
+    /// # Arguments
+    ///
+    /// * `slice`: [raw_slice] - The `raw_slice` from which to append to `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    ///
+    /// use std:bytes::Bytes;
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5u8);
+    ///     bytes.push(7u8);
+    ///     bytes.push(9u8);
+    ///
+    ///     let mut bytes2 = Bytes::new();
+    ///     bytes2.push(5u8);
+    ///     bytes2.push(7u8);
+    ///     bytes2.push(9u8);
+    ///
+    ///     let first_length = bytes.len();
+    ///     let second_length = bytes2.len();
+    ///
+    ///     bytes.append_raw_slice(bytes2.as_raw_slice());
+    ///
+    ///     assert(bytes.len() == first_length + second_length);
+    /// }
+    /// ```
+    pub fn append_raw_slice(ref mut self, slice: raw_slice) {
+        let slice_len = slice.number_of_bytes();
+        if slice_len == 0 {
             return;
         };
 
-        let both_len = self.len + other_len;
+        let both_len = self.len + slice_len;
         let other_start = self.len;
 
-        // reallocate with combined capacity, write `other`, set buffer capacity
+        // reallocate with combined capacity, write `slice`, set buffer capacity
         if self.buf.cap < both_len {
             let new_slice = raw_slice::from_parts::<u8>(
                 realloc_bytes(self.buf.ptr, self.buf.cap, both_len),
@@ -724,9 +762,9 @@ impl Bytes {
         }
 
         let new_ptr = self.buf.ptr.add_uint_offset(other_start);
-        other.buf.ptr.copy_bytes_to(new_ptr, other_len);
+        slice.ptr().copy_bytes_to(new_ptr, slice_len);
 
-        // set capacity and length
+        // set length
         self.len = both_len;
     }
 
@@ -1011,15 +1049,6 @@ impl PartialEq for Bytes {
     }
 }
 impl Eq for Bytes {}
-
-impl AsRawSlice for Bytes {
-    /// Returns a raw slice of all of the elements in the type.
-    fn as_raw_slice(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr, self.len)) {
-            ptr: raw_slice
-        }
-    }
-}
 
 // TODO: Once const generics are available implement `From<[u8; N]>`.
 

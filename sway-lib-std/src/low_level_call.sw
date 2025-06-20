@@ -11,6 +11,7 @@ use ::debug::*;
 use ::option::Option;
 use ::revert::require;
 use ::vec::Vec;
+use ::hash::{Hash, Hasher};
 
 /// A struct representing the call parameters of a function call.
 pub struct CallParams {
@@ -20,6 +21,14 @@ pub struct CallParams {
     pub asset_id: AssetId,
     /// Gas to forward.
     pub gas: u64,
+}
+
+impl Hash for CallParams {
+    fn hash(self, ref mut state: Hasher) {
+        self.coins.hash(state);
+        self.asset_id.hash(state);
+        self.gas.hash(state);
+    }
 }
 
 /// Represent a raw pointer as a `Bytes`, so it can be concatenated with a payload.

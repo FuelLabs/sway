@@ -10,13 +10,12 @@ use crate::{
         token_map::{TokenMap, TokenMapExt},
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
-    server_state::{self, CompilationContext},
+    server_state::{self, CompilationContext, CompiledPrograms, RunnableMap},
     traverse::{
         dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree, typed_tree::TypedTree,
         ParseContext,
     },
 };
-use dashmap::DashMap;
 use forc_pkg as pkg;
 use lsp_types::{
     CompletionItem, DocumentSymbol, GotoDefinitionResponse, Location, Position, Range, Url,
@@ -28,6 +27,7 @@ use pkg::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
+    collections::HashMap,
     ops::Deref,
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
@@ -42,33 +42,19 @@ use sway_core::{
         ty::{self},
         HasSubmodules,
     },
-    BuildTarget, Engines, LspConfig, Namespace, Programs,
+    BuildTarget, Engines, LspConfig, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{ProgramId, SourceEngine, Spanned};
-use sway_utils::PerformanceData;
-
-pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
-pub type ProjectDirectory = PathBuf;
-
-#[derive(Default, Debug)]
-pub struct CompiledProgram {
-    pub lexed: Option<Arc<LexedProgram>>,
-    pub parsed: Option<Arc<ParseProgram>>,
-    pub typed: Option<Arc<ty::TyProgram>>,
-}
 
 /// A `Session` is used to store information about a single member in a workspace.
 ///
 /// The API provides methods for responding to LSP requests from the server.
 #[derive(Debug)]
 pub struct Session {
-    pub runnables: RunnableMap,
     pub build_plan_cache: BuildPlanCache,
-    pub compiled_program: RwLock<CompiledProgram>,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
-    pub metrics: DashMap<ProgramId, PerformanceData>,
 }
 
 impl Default for Session {
@@ -80,166 +66,145 @@ impl Default for Session {
 impl Session {
     pub fn new() -> Self {
         Session {
-            runnables: DashMap::new(),
             build_plan_cache: BuildPlanCache::default(),
-            metrics: DashMap::new(),
-            compiled_program: RwLock::new(CompiledProgram::default()),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }
     }
+}
 
-    /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
-    pub fn garbage_collect_program(
-        &self,
-        engines: &mut Engines,
-        sync: &SyncWorkspace,
-    ) -> Result<(), LanguageServerError> {
-        let _p = tracing::trace_span!("garbage_collect").entered();
-        let path = sync.temp_dir()?;
-        let program_id = { engines.se().get_program_id_from_manifest_path(&path) };
-        if let Some(program_id) = program_id {
-            engines.clear_program(&program_id);
-        }
-        Ok(())
+/// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
+pub fn garbage_collect_program(
+    engines: &mut Engines,
+    sync: &SyncWorkspace,
+) -> Result<(), LanguageServerError> {
+    let _p = tracing::trace_span!("garbage_collect").entered();
+    let path = sync.temp_dir()?;
+    let program_id = { engines.se().get_program_id_from_manifest_path(&path) };
+    if let Some(program_id) = program_id {
+        engines.clear_program(&program_id);
     }
+    Ok(())
+}
 
-    /// Clean up memory in the [TypeEngine] and [DeclEngine] for the modified file.
-    pub fn garbage_collect_module(
-        &self,
-        engines: &mut Engines,
-        uri: &Url,
-    ) -> Result<(), LanguageServerError> {
-        let path = uri.to_file_path().unwrap();
-        let source_id = { engines.se().get_source_id(&path) };
-        engines.clear_module(&source_id);
+/// Clean up memory in the [TypeEngine] and [DeclEngine] for the modified file.
+pub fn garbage_collect_module(engines: &mut Engines, uri: &Url) -> Result<(), LanguageServerError> {
+    let path = uri.to_file_path().unwrap();
+    let source_id = { engines.se().get_source_id(&path) };
+    engines.clear_module(&source_id);
+    Ok(())
+}
 
-        Ok(())
-    }
+pub fn token_references(
+    url: &Url,
+    position: Position,
+    token_map: &TokenMap,
+    engines: &Engines,
+    sync: &SyncWorkspace,
+) -> Option<Vec<Location>> {
+    let _p = tracing::trace_span!("token_references").entered();
+    let token_references: Vec<_> = token_map
+        .iter()
+        .all_references_of_token(token_map.token_at_position(url, position)?.value(), engines)
+        .filter_map(|item| {
+            let path = item.key().path.as_ref()?;
+            let uri = Url::from_file_path(path).ok()?;
+            sync.to_workspace_url(uri)
+                .map(|workspace_url| Location::new(workspace_url, item.key().range))
+        })
+        .collect();
+    Some(token_references)
+}
 
-    pub fn token_references(
-        &self,
-        url: &Url,
-        position: Position,
-        token_map: &TokenMap,
-        engines: &Engines,
-        sync: &SyncWorkspace,
-    ) -> Option<Vec<Location>> {
-        let _p = tracing::trace_span!("token_references").entered();
-        let token_references: Vec<_> = token_map
-            .iter()
-            .all_references_of_token(token_map.token_at_position(url, position)?.value(), engines)
-            .filter_map(|item| {
-                let path = item.key().path.as_ref()?;
-                let uri = Url::from_file_path(path).ok()?;
-                sync.to_workspace_url(uri)
-                    .map(|workspace_url| Location::new(workspace_url, item.key().range))
-            })
-            .collect();
-        Some(token_references)
-    }
+pub fn token_ranges(
+    engines: &Engines,
+    token_map: &TokenMap,
+    url: &Url,
+    position: Position,
+) -> Option<Vec<Range>> {
+    let _p = tracing::trace_span!("token_ranges").entered();
+    let mut token_ranges: Vec<_> = token_map
+        .tokens_for_file(url)
+        .all_references_of_token(token_map.token_at_position(url, position)?.value(), engines)
+        .map(|item| item.key().range)
+        .collect();
 
-    pub fn token_ranges(
-        &self,
-        engines: &Engines,
-        token_map: &TokenMap,
-        url: &Url,
-        position: Position,
-    ) -> Option<Vec<Range>> {
-        let _p = tracing::trace_span!("token_ranges").entered();
-        let mut token_ranges: Vec<_> = token_map
-            .tokens_for_file(url)
-            .all_references_of_token(token_map.token_at_position(url, position)?.value(), engines)
-            .map(|item| item.key().range)
-            .collect();
+    token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
+    Some(token_ranges)
+}
 
-        token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
-        Some(token_ranges)
-    }
-
-    pub fn token_definition_response(
-        &self,
-        uri: &Url,
-        position: Position,
-        engines: &Engines,
-        token_map: &TokenMap,
-        sync: &SyncWorkspace,
-    ) -> Option<GotoDefinitionResponse> {
-        let _p = tracing::trace_span!("token_definition_response").entered();
-        token_map
-            .token_at_position(uri, position)
-            .and_then(|item| item.value().declared_token_ident(engines))
-            .and_then(|decl_ident| {
-                decl_ident.path.and_then(|path| {
-                    // We use ok() here because we don't care about propagating the error from from_file_path
-                    Url::from_file_path(path).ok().and_then(|url| {
-                        sync.to_workspace_url(url).map(|url| {
-                            GotoDefinitionResponse::Scalar(Location::new(url, decl_ident.range))
-                        })
+pub fn token_definition_response(
+    uri: &Url,
+    position: Position,
+    engines: &Engines,
+    token_map: &TokenMap,
+    sync: &SyncWorkspace,
+) -> Option<GotoDefinitionResponse> {
+    let _p = tracing::trace_span!("token_definition_response").entered();
+    token_map
+        .token_at_position(uri, position)
+        .and_then(|item| item.value().declared_token_ident(engines))
+        .and_then(|decl_ident| {
+            decl_ident.path.and_then(|path| {
+                // We use ok() here because we don't care about propagating the error from from_file_path
+                Url::from_file_path(path).ok().and_then(|url| {
+                    sync.to_workspace_url(url).map(|url| {
+                        GotoDefinitionResponse::Scalar(Location::new(url, decl_ident.range))
                     })
                 })
             })
-    }
+        })
+}
 
-    pub fn completion_items(
-        &self,
-        uri: &Url,
-        position: Position,
-        trigger_char: &str,
-        token_map: &TokenMap,
-        engines: &Engines,
-    ) -> Option<Vec<CompletionItem>> {
-        let _p = tracing::trace_span!("completion_items").entered();
-        let shifted_position = Position {
-            line: position.line,
-            character: position.character - trigger_char.len() as u32 - 1,
-        };
-        let t = token_map.token_at_position(uri, shifted_position)?;
-        let ident_to_complete = t.key();
-        let fn_tokens = token_map.tokens_at_position(engines, uri, shifted_position, Some(true));
-        let fn_token = fn_tokens.first()?.value();
-        let compiled_program = &*self.compiled_program.read();
-        if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
-            if let Some(program) = &compiled_program.typed {
-                return Some(capabilities::completion::to_completion_items(
-                    &program.namespace,
-                    engines,
-                    ident_to_complete,
-                    fn_decl,
-                    position,
-                ));
-            }
-        }
-        None
+pub fn completion_items(
+    uri: &Url,
+    position: Position,
+    trigger_char: &str,
+    token_map: &TokenMap,
+    engines: &Engines,
+    compiled_programs: &CompiledPrograms,
+) -> Option<Vec<CompletionItem>> {
+    let _p = tracing::trace_span!("completion_items").entered();
+    let program = compiled_programs.program_from_uri(uri, engines)?;
+    let shifted_position = Position {
+        line: position.line,
+        character: position
+            .character
+            .saturating_sub(trigger_char.len() as u32 + 1),
+    };
+    let t = token_map.token_at_position(uri, shifted_position)?;
+    let ident_to_complete = t.key();
+    let fn_tokens = token_map.tokens_at_position(engines, uri, shifted_position, Some(true));
+    let fn_token = fn_tokens.first()?.value();
+    if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.as_typed() {
+        return Some(capabilities::completion::to_completion_items(
+            &program.value().typed.as_ref().unwrap().namespace,
+            engines,
+            ident_to_complete,
+            fn_decl,
+            position,
+        ));
     }
+    None
+}
 
-    /// Returns the [Namespace] from the compiled program if it exists.
-    pub fn namespace(&self) -> Option<Namespace> {
-        let compiled_program = &*self.compiled_program.read();
-        if let Some(program) = &compiled_program.typed {
-            return Some(program.namespace.clone());
-        }
-        None
-    }
-
-    /// Generate hierarchical document symbols for the given file.
-    pub fn document_symbols(
-        &self,
-        url: &Url,
-        token_map: &TokenMap,
-        engines: &Engines,
-    ) -> Option<Vec<DocumentSymbol>> {
-        let _p = tracing::trace_span!("document_symbols").entered();
-        let path = url.to_file_path().ok()?;
-        self.compiled_program
-            .read()
-            .typed
-            .as_ref()
-            .map(|ty_program| {
-                capabilities::document_symbol::to_document_symbols(
-                    url, &path, ty_program, engines, token_map,
-                )
-            })
-    }
+/// Generate hierarchical document symbols for the given file.
+pub fn document_symbols(
+    url: &Url,
+    token_map: &TokenMap,
+    engines: &Engines,
+    compiled_programs: &CompiledPrograms,
+) -> Option<Vec<DocumentSymbol>> {
+    let _p = tracing::trace_span!("document_symbols").entered();
+    let path = url.to_file_path().ok()?;
+    let program = compiled_programs.program_from_uri(url, engines)?;
+    let typed_program = program.value().typed.as_ref().unwrap().clone();
+    Some(capabilities::document_symbol::to_document_symbols(
+        url,
+        &path,
+        &typed_program,
+        engines,
+        token_map,
+    ))
 }
 
 /// Create a [BuildPlan] from the given [Url] appropriate for the language server.
@@ -297,8 +262,8 @@ pub fn traverse(
     results: Vec<(Option<Programs>, Handler)>,
     engines_original: Arc<RwLock<Engines>>,
     engines_clone: &Engines,
-    session: Arc<Session>,
     token_map: &TokenMap,
+    compiled_programs: &CompiledPrograms,
     modified_file: Option<&PathBuf>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     let _p = tracing::trace_span!("traverse").entered();
@@ -308,7 +273,6 @@ pub fn traverse(
         token_map.remove_tokens_for_file(path);
     }
 
-    session.metrics.clear();
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
     for (value, handler) in results.into_iter() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -360,12 +324,15 @@ pub fn traverse(
         if let Some(source_id) = lexed.root.tree.value.span().source_id() {
             let path = engines.se().get_path(source_id);
             let program_id = program_id_from_path(&path, engines)?;
-            session.metrics.insert(program_id, metrics.clone());
 
             if let Some(modified_file) = &modified_file {
                 let modified_program_id = program_id_from_path(modified_file, engines)?;
                 // We can skip traversing the programs for this iteration as they are unchanged.
                 if program_id != modified_program_id {
+                    // Update the metrics for the program before continuing. Otherwise we can't query if the program was reused.
+                    if let Some(mut item) = compiled_programs.get_mut(&program_id) {
+                        item.value_mut().metrics = metrics.clone();
+                    }
                     continue;
                 }
             }
@@ -391,7 +358,12 @@ pub fn traverse(
 
         // We do an extensive traversal of the users program to populate the token_map.
         // Perhaps we should do this for the workspace now as well and not just the workspace member?
-        if program_path == member_path {
+        // if program_path == member_path {
+        if program_path
+            .to_str()
+            .unwrap()
+            .contains(SyncWorkspace::LSP_TEMP_PREFIX)
+        {
             // First, populate our token_map with sway keywords.
             let lexed_tree = LexedTree::new(&ctx);
             lexed_tree.collect_module_kinds(lexed);
@@ -412,11 +384,6 @@ pub fn traverse(
             parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, _ctx| {
                 typed_tree.traverse_node(node);
             });
-
-            let compiled_program = &mut *session.compiled_program.write();
-            compiled_program.lexed = Some(lexed.clone());
-            compiled_program.parsed = Some(parsed.clone());
-            compiled_program.typed = typed.as_ref().map(|x| x.clone()).ok();
         } else {
             // Collect tokens from dependencies and the standard library prelude.
             parse_ast_to_tokens(parsed, &ctx, modified_file, |an, ctx| {
@@ -426,6 +393,14 @@ pub fn traverse(
             parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, ctx| {
                 dependency::collect_typed_declaration(node, ctx);
             });
+        }
+
+        // Update the compiled program in the cache.
+        let compiled_program = value.expect("value was checked above");
+        if let Some(mut item) = compiled_programs.get_mut(&program_id) {
+            *item.value_mut() = compiled_program;
+        } else {
+            compiled_programs.insert(program_id, compiled_program);
         }
     }
 
@@ -442,13 +417,13 @@ pub fn parse_project(
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
     let engines_original = ctx.engines.clone();
-    let session = ctx.session.as_ref().unwrap().clone();
-    let sync = ctx.sync.as_ref().unwrap().clone();
-    let token_map = ctx.token_map.clone();
-    let build_plan = session
+    let build_plan = ctx
+        .session
         .build_plan_cache
-        .get_or_update(&sync.workspace_manifest_path(), || build_plan(uri))?;
+        .get_or_update(&ctx.sync.workspace_manifest_path(), || build_plan(uri))?;
+    let token_map = ctx.token_map.clone();
 
+    // Compile the project.
     let results = compile(&build_plan, engines_clone, retrigger_compilation, lsp_mode)?;
 
     // First check if results is empty or if all program values are None,
@@ -462,8 +437,8 @@ pub fn parse_project(
     }
 
     let path = uri.to_file_path().unwrap();
-    let program_id = program_id_from_path(&path, engines_clone)?;
-    let member_path = sync
+    let member_path = ctx
+        .sync
         .member_path(uri)
         .ok_or(DirectoryError::TempMemberDirNotFound)?;
 
@@ -501,8 +476,8 @@ pub fn parse_project(
             results,
             engines_original.clone(),
             engines_clone,
-            session.clone(),
             &token_map,
+            &ctx.compiled_programs,
             modified_file,
         )?;
 
@@ -513,24 +488,22 @@ pub fn parse_project(
         }) = &lsp_mode
         {
             if let Some((errors, warnings)) = &diagnostics {
-                *session.diagnostics.write() =
+                *ctx.session.diagnostics.write() =
                     capabilities::diagnostic::get_diagnostics(warnings, errors, engines_clone.se());
             }
         }
 
-        session.runnables.clear();
-        if let Some(metrics) = session.metrics.get(&program_id) {
+        if let Some(program) = ctx.compiled_programs.program_from_uri(uri, engines_clone) {
             // Check if the cached AST was returned by the compiler for the users workspace.
             // If it was, then we need to use the original engines.
-            let engines = if metrics.reused_programs > 0 {
+            let engines = if program.value().metrics.reused_programs > 0 {
                 &*engines_original.read()
             } else {
                 engines_clone
             };
-            let compiled_program = session.compiled_program.read();
             create_runnables(
-                &session.runnables,
-                compiled_program.typed.as_deref(),
+                &ctx.runnables,
+                Some(program.value().typed.as_ref().unwrap()),
                 engines.de(),
                 engines.se(),
             );
@@ -638,20 +611,23 @@ fn parse_ast_to_typed_tokens(
         .for_each(|n| f(n, ctx));
 }
 
-/// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
+/// Create runnables for script main and all test functions.
 fn create_runnables(
     runnables: &RunnableMap,
     typed_program: Option<&ty::TyProgram>,
     decl_engine: &DeclEngine,
     source_engine: &SourceEngine,
 ) {
+    let _p = tracing::trace_span!("create_runnables").entered();
     let root_module = typed_program.map(|program| &program.root_module);
 
-    let _p = tracing::trace_span!("create_runnables").entered();
+    // Use a local map to collect all runnables per path first
+    let mut new_runnables: HashMap<PathBuf, Vec<Box<dyn Runnable>>> = HashMap::new();
+
     // Insert runnable test functions.
     for (decl, _) in root_module
         .into_iter()
-        .flat_map(|x| x.test_fns(decl_engine))
+        .flat_map(|x| x.test_fns_recursive(decl_engine))
     {
         // Get the span of the first attribute if it exists, otherwise use the span of the function name.
         let span = decl
@@ -661,10 +637,10 @@ fn create_runnables(
         if let Some(source_id) = span.source_id() {
             let path = source_engine.get_path(source_id);
             let runnable = Box::new(RunnableTestFn {
-                range: token::get_range_from_span(&span.clone()),
+                range: token::get_range_from_span(&span),
                 test_name: Some(decl.name.to_string()),
             });
-            runnables.entry(path).or_default().push(runnable);
+            new_runnables.entry(path).or_default().push(runnable);
         }
     }
 
@@ -678,11 +654,17 @@ fn create_runnables(
         if let Some(source_id) = span.source_id() {
             let path = source_engine.get_path(source_id);
             let runnable = Box::new(RunnableMainFn {
-                range: token::get_range_from_span(&span.clone()),
+                range: token::get_range_from_span(&span),
                 tree_type: sway_core::language::parsed::TreeType::Script,
             });
-            runnables.entry(path).or_default().push(runnable);
+            new_runnables.entry(path).or_default().push(runnable);
         }
+    }
+
+    // Now overwrite each path's entry with the new complete vector
+    let runnables_to_insert: Vec<_> = new_runnables.into_iter().collect();
+    for (path, new_runnable_vec) in runnables_to_insert {
+        runnables.insert(path, new_runnable_vec);
     }
 }
 
@@ -757,6 +739,7 @@ impl BuildPlanCache {
 mod tests {
     use super::*;
     use crate::config::GarbageCollectionConfig;
+    use dashmap::DashMap;
     use sway_lsp_test_utils::{get_absolute_path, get_url};
 
     #[test]
@@ -765,17 +748,19 @@ mod tests {
         let uri = get_url(&dir);
         let engines_original = Arc::new(RwLock::new(Engines::default()));
         let engines = Engines::default();
-        let session = Some(Arc::new(Session::new()));
-        let sync = Some(Arc::new(SyncWorkspace::new()));
+        let session = Arc::new(Session::new());
+        let sync = Arc::new(SyncWorkspace::new());
         let token_map = Arc::new(TokenMap::new());
         let ctx = CompilationContext {
             session,
             sync,
             token_map,
             engines: engines_original,
+            compiled_programs: Arc::new(CompiledPrograms::new()),
+            runnables: Arc::new(DashMap::new()),
             optimized_build: false,
             file_versions: Default::default(),
-            uri: Some(uri.clone()),
+            uri: uri.clone(),
             version: None,
             gc_options: GarbageCollectionConfig::default(),
         };

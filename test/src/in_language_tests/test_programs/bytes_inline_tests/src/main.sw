@@ -685,10 +685,10 @@ fn revert_bytes_split_at_out_of_bounds() {
 #[test()]
 fn bytes_append() {
     let (mut bytes, a, b, c) = setup();
-    assert(bytes.len() == 3);
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == b);
-    assert(bytes.get(2).unwrap() == c);
+    assert_eq(bytes.len(), 3);
+    assert_eq(bytes.get(0).unwrap(), a);
+    assert_eq(bytes.get(1).unwrap(), b);
+    assert_eq(bytes.get(2).unwrap(), c);
 
     let mut bytes2 = Bytes::new();
     let d = 5u8;
@@ -697,28 +697,55 @@ fn bytes_append() {
     bytes2.push(d);
     bytes2.push(e);
     bytes2.push(f);
-    assert(bytes2.len() == 3);
-    assert(bytes2.get(0).unwrap() == d);
-    assert(bytes2.get(1).unwrap() == e);
-    assert(bytes2.get(2).unwrap() == f);
+    assert_eq(bytes2.len(), 3);
+    assert_eq(bytes2.get(0).unwrap(), d);
+    assert_eq(bytes2.get(1).unwrap(), e);
+    assert_eq(bytes2.get(2).unwrap(), f);
 
     let first_length = bytes.len();
     let second_length = bytes2.len();
     bytes.append(bytes2);
-    assert(bytes.len() == first_length + second_length);
-    assert(bytes.capacity() == first_length + first_length);
+    assert_eq(bytes.len(), first_length + second_length);
+    assert_eq(bytes.capacity(), first_length + first_length);
 
-    assert(bytes2.len() == second_length);
+    assert_eq(bytes2.len(), second_length);
     assert(!bytes2.is_empty());
 
-    assert(bytes2.get(0).unwrap() == d);
-    assert(bytes2.get(1).unwrap() == e);
-    assert(bytes2.get(2).unwrap() == f);
+    assert_eq(bytes2.get(0).unwrap(), d);
+    assert_eq(bytes2.get(1).unwrap(), e);
+    assert_eq(bytes2.get(2).unwrap(), f);
 
     let values = [a, b, c, d, e, f];
     let mut i = 0;
     while i < 6 {
-        assert(bytes.get(i).unwrap() == values[i]);
+        assert_eq(bytes.get(i).unwrap(), values[i]);
+        i += 1;
+    };
+
+    // Ensure the actual copy of bytes is made and that
+    // the `bytes` and `bytes2` are independent and do not overlap.
+
+    // Modifying `bytes` should not affect `bytes2`.
+    let mut i = 0;
+    while i < 6 {
+        bytes.set(i, 42);
+        i += 1;
+    };
+
+    assert_eq(bytes2.get(0).unwrap(), d);
+    assert_eq(bytes2.get(1).unwrap(), e);
+    assert_eq(bytes2.get(2).unwrap(), f);
+
+    // Modifying `bytes2` should not affect `bytes`.
+    let mut i = 0;
+    while i < 3 {
+        bytes2.set(i, 24);
+        i += 1;
+    };
+
+    let mut i = 0;
+    while i < 6 {
+        assert_eq(bytes.get(i).unwrap(), 42);
         i += 1;
     };
 }
@@ -733,15 +760,31 @@ fn bytes_append_empty() {
     let mut empty_bytes = Bytes::new();
     bytes.append(empty_bytes);
 
-    // Because empty bytes were appended, no changes to length and capacity were made
-    assert(bytes.len() == bytes_length);
-    assert(bytes.capacity() == bytes_original_capacity);
+    // Because empty bytes were appended, no changes to length were made.
+    // Note that adjusting the capacity is an internal implementation detail
+    // and, in general, we don't provide any guarantees about it.
+    // Still, for this corner case, it should not change.
+    assert_eq(bytes.len(), bytes_length);
+    assert_eq(bytes.capacity(), bytes_original_capacity);
     assert(empty_bytes.is_empty());
 
     let values = [a, b, c];
     let mut i = 0;
     while i < 3 {
-        assert(bytes.get(i).unwrap() == values[i]);
+        assert_eq(bytes.get(i).unwrap(), values[i]);
+        i += 1;
+    };
+
+    // Ensure the `bytes` and `empty_bytes` are independent and do not overlap.
+    empty_bytes.push(42u8);
+    assert_eq(empty_bytes.len(), 1);
+    assert_eq(bytes.len(), bytes_length);
+    assert_eq(bytes.capacity(), bytes_original_capacity);
+    
+    // `bytes` stay the same after changing `empty_bytes`.
+    let mut i = 0;
+    while i < 3 {
+        assert_eq(bytes.get(i).unwrap(), values[i]);
         i += 1;
     };
 }
@@ -751,24 +794,53 @@ fn bytes_append_to_empty() {
     // Append to empty bytes
     let (mut bytes, a, b, c) = setup();
     let bytes_length = bytes.len();
-    let bytes_original_capacity = bytes.capacity();
 
-    // Because empty bytes were appended, no changes to capacity were made
+    // Because empty bytes were appended, no changes to length were made.
+    // Note that adjusting the capacity is an internal implementation detail
+    // and, in general, we don't provide any guarantees about it.
     let mut empty_bytes = Bytes::new();
     empty_bytes.append(bytes);
-    assert(empty_bytes.len() == bytes_length);
-    assert(empty_bytes.capacity() == bytes_original_capacity);
+    assert_eq(empty_bytes.len(), bytes_length);
 
-    assert(bytes.len() == bytes_length);
+    assert_eq(bytes.len(), bytes_length);
     assert(!bytes.is_empty());
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == b);
-    assert(bytes.get(2).unwrap() == c);
+    assert_eq(bytes.get(0).unwrap(), a);
+    assert_eq(bytes.get(1).unwrap(), b);
+    assert_eq(bytes.get(2).unwrap(), c);
 
     let values = [a, b, c];
     let mut i = 0;
     while i < 3 {
-        assert(empty_bytes.get(i).unwrap() == values[i]);
+        assert_eq(empty_bytes.get(i).unwrap(), values[i]);
+        i += 1;
+    };
+
+    // Ensure the actual copy of bytes is made and that
+    // the `bytes` and `empty_bytes` are independent and do not overlap.
+
+    // Modifying `bytes` should not affect `empty_bytes`.
+    let mut i = 0;
+    while i < 3 {
+        bytes.set(i, 42);
+        i += 1;
+    };
+
+    let mut i = 0;
+    while i < 3 {
+        assert_eq(empty_bytes.get(i).unwrap(), values[i]);
+        i += 1;
+    };
+
+    // Modifying `empty_bytes` should not affect `bytes`.
+    let mut i = 0;
+    while i < 3 {
+        empty_bytes.set(i, 24);
+        i += 1;
+    };
+
+    let mut i = 0;
+    while i < 3 {
+        assert_eq(bytes.get(i).unwrap(), 42);
         i += 1;
     };
 }
@@ -776,20 +848,46 @@ fn bytes_append_to_empty() {
 #[test()]
 fn bytes_append_self() {
     let (mut bytes, a, b, c) = setup();
-    assert(bytes.len() == 3);
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == b);
-    assert(bytes.get(2).unwrap() == c);
+    assert_eq(bytes.len(), 3);
+    assert_eq(bytes.get(0).unwrap(), a);
+    assert_eq(bytes.get(1).unwrap(), b);
+    assert_eq(bytes.get(2).unwrap(), c);
 
     bytes.append(bytes);
 
-    assert(bytes.len() == 6);
-    assert(bytes.get(0).unwrap() == a);
-    assert(bytes.get(1).unwrap() == b);
-    assert(bytes.get(2).unwrap() == c);
-    assert(bytes.get(3).unwrap() == a);
-    assert(bytes.get(4).unwrap() == b);
-    assert(bytes.get(5).unwrap() == c);
+    assert_eq(bytes.len(), 6);
+    assert_eq(bytes.get(0).unwrap(), a);
+    assert_eq(bytes.get(1).unwrap(), b);
+    assert_eq(bytes.get(2).unwrap(), c);
+    assert_eq(bytes.get(3).unwrap(), a);
+    assert_eq(bytes.get(4).unwrap(), b);
+    assert_eq(bytes.get(5).unwrap(), c);
+
+    // Ensure the actual copy of bytes is made.
+
+    // Modifying first half of the `bytes` should not affect the second half.
+    let mut i = 0;
+    while i < 3 {
+        bytes.set(i, 42);
+        i += 1;
+    };
+
+    assert_eq(bytes.get(3).unwrap(), a);
+    assert_eq(bytes.get(4).unwrap(), b);
+    assert_eq(bytes.get(5).unwrap(), c);
+
+    // Modifying second half of the `bytes` should not affect the first half.
+    let mut i = 3;
+    while i < 6 {
+        bytes.set(i, 42);
+        i += 1;
+    };
+
+    let mut i = 0;
+    while i < 3 {
+        assert_eq(bytes.get(i).unwrap(), 42);
+        i += 1;
+    };
 }
 
 #[test()]
@@ -799,6 +897,21 @@ fn bytes_append_empty_self() {
     empty_bytes.append(empty_bytes);
 
     assert(empty_bytes.len() == 0);
+}
+
+// This test proves that the https://github.com/FuelLabs/sway/issues/7234 is fixed.
+#[test]
+fn bytes_append_empty_self_bug() {
+    let mut empty_bytes = Bytes::new();
+
+    let mut other = Bytes::new();
+    other.push(111);
+    
+    empty_bytes.append(other);
+
+    empty_bytes.set(0, 222);
+
+    assert_eq(other.get(0).unwrap(), 111);
 }
 
 #[test()]
@@ -1173,7 +1286,7 @@ fn bytes_test_u8_limits() {
 
 #[test]
 fn bytes_resize() {
-    let (mut bytes_1, a, b, c) = setup();
+    let (mut bytes_1, _a, _b, _c) = setup();
     assert(bytes_1.len() == 3);
     assert(bytes_1.capacity() == 4);
 

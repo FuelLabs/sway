@@ -22,7 +22,7 @@ impl Format for ExprStructField {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write!(formatted_code, "{}", self.field_name.as_str())?;
+        write!(formatted_code, "{}", self.field_name.as_raw_ident_str())?;
         if let Some((_colon_token, expr)) = &self.expr_opt {
             formatter.with_shape(
                 formatter
