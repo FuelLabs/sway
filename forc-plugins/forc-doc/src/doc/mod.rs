@@ -1,4 +1,7 @@
 //! Handles conversion of compiled typed Sway programs into [Document]s that can be rendered into HTML.
+mod descriptor;
+pub mod module;
+
 use crate::{
     doc::{descriptor::Descriptor, module::ModuleInfo},
     render::{
@@ -22,11 +25,7 @@ use sway_core::{
     Engines,
 };
 use sway_features::ExperimentalFeatures;
-use sway_types::BaseIdent;
-use sway_types::Spanned;
-
-mod descriptor;
-pub mod module;
+use sway_types::{BaseIdent, Spanned};
 
 #[derive(Default, Clone)]
 pub struct Documentation(pub Vec<Document>);
