@@ -86,7 +86,7 @@ impl Documentation {
             if let Ok(Descriptor::Documentable(doc)) =
                 Descriptor::from_type_info(impl_for_type.as_ref(), engines, module_info.clone())
             {
-                if !docs.iter().any(|existing_doc| *existing_doc == doc) {
+                if !docs.contains(&doc) {
                     docs.push(doc);
                 }
             }

@@ -11,6 +11,8 @@ on:
        - forc-pkg/**
        - sway-core/**
        - forc-plugins/forc-doc/**
+  # `workflow_dispatch` allows CodSpeed to trigger backtest
+  # performance analysis in order to generate initial data.
   workflow_dispatch:
 
 concurrency:

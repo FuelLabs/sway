@@ -214,7 +214,7 @@ fn build_docs(
     let raw_docs = Documentation::from_ty_program(
         &ctx.engines,
         pkg_manifest.project_name(),
-        &ty_program,
+        ty_program,
         opts.document_private_items,
         experimental,
     )?;
