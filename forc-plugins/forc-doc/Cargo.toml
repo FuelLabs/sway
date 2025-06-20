@@ -31,3 +31,11 @@ swayfmt.workspace = true
 [dev-dependencies]
 dir_indexer.workspace = true
 expect-test.workspace = true
+codspeed-criterion-compat.workspace = true
+
+[[bench]]
+name = "bench_main"
+harness = false
+
+[lib]
+bench = false
