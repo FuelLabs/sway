@@ -1,6 +1,6 @@
 use dir_indexer::get_relative_file_paths_set;
 use expect_test::{expect, Expect};
-use forc_doc::{self, cli::Command, generate_docs};
+use forc_doc::{self, generate_docs, Command};
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},

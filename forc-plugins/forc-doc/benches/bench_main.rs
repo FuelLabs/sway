@@ -1,5 +1,5 @@
 use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
-use forc_doc::{cli::Command, compile, compile_html, DocContext};
+use forc_doc::{Command, compile, compile_html, DocContext};
 use std::path::Path;
 
 fn benchmarks(c: &mut Criterion) {
