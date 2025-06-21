@@ -13,7 +13,6 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_features::Feature;
 use sway_types::{BaseIdent, Named, SourceId, Span, Spanned};
 
 use crate::{
@@ -27,7 +26,6 @@ use crate::{
     },
     query_engine::{ModuleCacheKey, TypedModuleInfo},
     semantic_analysis::*,
-    transform::AttributeKind,
     BuildConfig, Engines, TypeInfo,
 };
 
@@ -618,44 +616,18 @@ impl ty::TyModule {
 
             // Always auto impl marker traits. If an explicit implementation exists, that will be
             // reported as an error when type-checking trait impls.
-            if ctx.experimental.error_type {
-                let mut ctx = MarkerTraitsAutoImplContext::new(&mut ctx);
-                if let TyAstNodeContent::Declaration(TyDecl::EnumDecl(enum_decl)) = &node.content {
-                    let enum_decl = &*ctx.engines().de().get(&enum_decl.decl_id);
+            let mut ctx = MarkerTraitsAutoImplContext::new(&mut ctx);
+            if let TyAstNodeContent::Declaration(TyDecl::EnumDecl(enum_decl)) = &node.content {
+                let enum_decl = &*ctx.engines().de().get(&enum_decl.decl_id);
 
-                    let enum_marker_trait_impl =
-                        ctx.generate_enum_marker_trait_impl(engines, enum_decl);
-                    generated.extend(enum_marker_trait_impl);
+                let enum_marker_trait_impl =
+                    ctx.generate_enum_marker_trait_impl(engines, enum_decl);
+                generated.extend(enum_marker_trait_impl);
 
-                    if check_is_valid_error_type_enum(handler, enum_decl).is_ok_and(|res| res) {
-                        let error_type_marker_trait_impl =
-                            ctx.generate_error_type_marker_trait_impl_for_enum(engines, enum_decl);
-                        generated.extend(error_type_marker_trait_impl);
-                    }
-                }
-            } else {
-                // Check for usages of `error_type` and `error` attributes without the feature enabled.
-                if let TyAstNodeContent::Declaration(TyDecl::EnumDecl(enum_decl)) = &node.content {
-                    let enum_decl = &*ctx.engines().de().get(&enum_decl.decl_id);
-                    for attr in enum_decl.attributes.of_kind(AttributeKind::ErrorType) {
-                        handler.emit_err(CompileError::FeatureIsDisabled {
-                            feature: Feature::ErrorType.name().to_string(),
-                            url: Feature::ErrorType.url().to_string(),
-                            span: attr.name.span(),
-                        });
-                    }
-
-                    for attr in enum_decl
-                        .variants
-                        .iter()
-                        .flat_map(|variant| variant.attributes.of_kind(AttributeKind::Error))
-                    {
-                        handler.emit_err(CompileError::FeatureIsDisabled {
-                            feature: Feature::ErrorType.name().to_string(),
-                            url: Feature::ErrorType.url().to_string(),
-                            span: attr.name.span(),
-                        });
-                    }
+                if check_is_valid_error_type_enum(handler, enum_decl).is_ok_and(|res| res) {
+                    let error_type_marker_trait_impl =
+                        ctx.generate_error_type_marker_trait_impl_for_enum(engines, enum_decl);
+                    generated.extend(error_type_marker_trait_impl);
                 }
             }
 

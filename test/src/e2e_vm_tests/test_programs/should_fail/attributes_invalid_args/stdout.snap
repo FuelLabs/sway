@@ -193,7 +193,6 @@ error: Attribute argument is invalid
   |       ----- help:   - program_type
   |       ----- help:   - target
   |       ----- help:   - experimental_const_generics
-  |       ----- help:   - experimental_error_type
   |       ----- help:   - experimental_new_encoding
   |       ----- help:   - experimental_references
   |

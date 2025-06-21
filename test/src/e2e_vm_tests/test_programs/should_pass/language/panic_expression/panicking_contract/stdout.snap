@@ -2,7 +2,7 @@
 source: test/src/snapshot/mod.rs
 assertion_line: 162
 ---
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_contract --release --experimental error_type --test-threads 1 --logs --reverts
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_contract --release --test-threads 1 --logs --reverts
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_contract

@@ -1,3 +1,2 @@
 category = "compile"
 validate_abi = true
-experimental = { error_type = true, new_encoding = true }

@@ -1,1 +1,1 @@
-cmds = ["forc test --path {root} --experimental error_type --logs --test-threads 1"]
+cmds = ["forc test --path {root} --logs --test-threads 1"]

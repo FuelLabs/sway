@@ -36,5 +36,4 @@ pub use ::raw_ptr::*;
 pub use ::raw_slice::*;
 pub use ::codec::*;
 pub use ::str::*;
-#[cfg(experimental_error_type = true)]
 pub use ::marker::*;

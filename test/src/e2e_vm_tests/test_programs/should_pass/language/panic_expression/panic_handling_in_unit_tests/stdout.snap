@@ -1,8 +1,7 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 162
 ---
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests --experimental error_type --logs --raw-logs --dbgs --reverts passing_
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests --logs --raw-logs --dbgs --reverts passing_
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests
@@ -39,7 +38,7 @@ test result: OK. 2 passed; 0 failed; finished in ???
 
     Finished in ???
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests --experimental error_type
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests
 exit status: 101
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests

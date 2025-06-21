@@ -2,7 +2,7 @@
 source: test/src/snapshot/mod.rs
 assertion_line: 162
 ---
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions --experimental error_type --logs --test-threads 1
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions --logs --test-threads 1
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions

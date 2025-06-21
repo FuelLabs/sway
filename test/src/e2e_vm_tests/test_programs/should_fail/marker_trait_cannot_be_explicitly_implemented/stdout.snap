@@ -1,7 +1,7 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented --experimental error_type
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented

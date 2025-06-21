@@ -146,8 +146,7 @@ impl Parse for Ident {
                 }
 
                 if !ident.is_raw_ident()
-                    && (RESERVED_KEYWORDS.contains(ident_str)
-                        || (parser.experimental.error_type && ident_str == PanicToken::AS_STR))
+                    && (RESERVED_KEYWORDS.contains(ident_str) || ident_str == PanicToken::AS_STR)
                 {
                     return Err(parser.emit_error_with_span(
                         ParseErrorKind::ReservedKeywordIdentifier,
