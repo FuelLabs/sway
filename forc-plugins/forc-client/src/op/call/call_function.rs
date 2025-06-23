@@ -6,16 +6,19 @@ use crate::{
         Abi, CallData, CallResponse, Either,
     },
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use fuel_abi_types::abi::unified_program::UnifiedProgramABI;
+use fuel_core_client::client::types::TransactionStatus;
+use fuel_core_types::services::executor::{TransactionExecutionResult, TransactionExecutionStatus};
 use fuels::{
     accounts::ViewOnlyAccount,
+    client::FuelClient,
     programs::calls::{
         receipt_parser::ReceiptParser,
         traits::{ContractDependencyConfigurator, TransactionTuner},
         ContractCall,
     },
-    types::tx_status::TxStatus,
+    types::transaction::Transaction,
 };
 use fuels_core::{
     codec::{
@@ -24,12 +27,11 @@ use fuels_core::{
     },
     types::{
         param_types::ParamType,
-        transaction::Transaction,
         transaction_builders::{BuildableTransaction, ScriptBuildStrategy, VariableOutputPolicy},
         ContractId,
     },
 };
-use std::{collections::HashMap, path::PathBuf, str::FromStr};
+use std::{collections::HashMap, path::PathBuf};
 use url::Url;
 
 /// Calls a contract function with the given parameters
@@ -48,12 +50,17 @@ pub async fn call_function(
         gas,
         mut output,
         external_contracts,
+        contract_abis,
         ..
     } = cmd;
 
-    // Load ABI (already provided in the operation)
-    let abi_str = super::load_abi(&abi).await?;
-    let abi = Abi::from_str(&abi_str).map_err(|e| anyhow!("Failed to parse ABI: {}", e))?;
+    // Use the reusable function to create ABI map
+    let abi_map = super::create_abi_map(contract_id, &abi, contract_abis).await?;
+
+    // Get the main ABI for compatibility with existing code
+    let abi = abi_map
+        .get(&contract_id)
+        .ok_or_else(|| anyhow!("Main contract ABI not found in abi_map"))?;
 
     let cmd::call::FuncType::Selector(selector) = function;
 
@@ -134,25 +141,34 @@ pub async fn call_function(
     };
 
     // Execute the call based on execution mode
-    let chain_id = wallet.provider().consensus_parameters().await?.chain_id();
+    let client = FuelClient::new(wallet.provider().url()).context("Failed to create client")?;
+    let consensus_params = wallet.provider().consensus_parameters().await?;
+    let chain_id = consensus_params.chain_id();
+
     let tb = call
         .clone()
         .with_external_contracts(external_contracts)
         .transaction_builder(tx_policies, variable_output_policy, &wallet)
         .await
         .map_err(|e| anyhow!("Failed to initialize transaction builder: {e}"))?;
-    let (tx, tx_status) = match mode {
+
+    let (tx, tx_execution, storage_reads) = match mode {
         cmd::call::ExecutionMode::DryRun => {
             let tx = call
                 .build_tx(tb, &wallet)
                 .await
                 .map_err(|e| anyhow!("Failed to build transaction: {e}"))?;
-            let tx_status = wallet
-                .provider()
-                .dry_run(tx.clone())
+            let (tx_execs, storage_reads) = client
+                .dry_run_opt_record_storage_reads(&[tx.clone().into()], None, None, None)
                 .await
-                .map_err(|e| anyhow!("Failed to dry run transaction: {e}"))?;
-            (tx, tx_status)
+                .context("Failed to dry run transaction")?;
+            let tx_exec = tx_execs
+                .first()
+                .ok_or(anyhow!(
+                    "Failed to extract transaction from dry run execution"
+                ))?
+                .to_owned();
+            (tx, tx_exec, storage_reads)
         }
         cmd::call::ExecutionMode::Simulate => {
             let tb = tb.with_build_strategy(ScriptBuildStrategy::StateReadOnly);
@@ -161,12 +177,17 @@ pub async fn call_function(
                 .await
                 .map_err(|e| anyhow!("Failed to build transaction: {e}"))?;
             let gas_price = gas.map(|g| g.price).unwrap_or(Some(0));
-            let tx_status = wallet
-                .provider()
-                .dry_run_opt(tx.clone(), false, gas_price, None)
+            let (tx_execs, storage_reads) = client
+                .dry_run_opt_record_storage_reads(&[tx.clone().into()], None, gas_price, None)
                 .await
-                .map_err(|e| anyhow!("Failed to simulate transaction: {e}"))?;
-            (tx, tx_status)
+                .context("Failed to dry run transaction")?;
+            let tx_exec = tx_execs
+                .first()
+                .ok_or(anyhow!(
+                    "Failed to extract transaction from dry run execution"
+                ))?
+                .to_owned();
+            (tx, tx_exec, storage_reads)
         }
         cmd::call::ExecutionMode::Live => {
             forc_tracing::println_action_green(
@@ -177,56 +198,73 @@ pub async fn call_function(
                 .build_tx(tb, &wallet)
                 .await
                 .map_err(|e| anyhow!("Failed to build transaction: {e}"))?;
-            let tx_status = wallet
-                .provider()
-                .send_transaction_and_await_commit(tx.clone())
+            let tx_status = client.submit_and_await_commit(&tx.clone().into()).await?;
+
+            #[allow(unused_variables)]
+            let (block_height, tx_exec) = match tx_status {
+                TransactionStatus::Success {
+                    block_height,
+                    program_state,
+                    receipts,
+                    total_gas,
+                    total_fee,
+                    ..
+                } => (
+                    block_height,
+                    TransactionExecutionStatus {
+                        id: tx.id(chain_id),
+                        result: TransactionExecutionResult::Success {
+                            result: program_state,
+                            receipts,
+                            total_gas,
+                            total_fee,
+                        },
+                    },
+                ),
+                TransactionStatus::Failure {
+                    total_gas,
+                    total_fee,
+                    program_state,
+                    receipts,
+                    block_height,
+                    ..
+                } => (
+                    block_height,
+                    TransactionExecutionStatus {
+                        id: tx.id(chain_id),
+                        result: TransactionExecutionResult::Failed {
+                            result: program_state,
+                            receipts,
+                            total_gas,
+                            total_fee,
+                        },
+                    },
+                ),
+                _ => bail!("Transaction status not found"),
+            };
+
+            #[cfg(not(test))]
+            let storage_reads = client
+                .storage_read_replay(&block_height)
                 .await
-                .map_err(|e| anyhow!("Failed to send transaction: {e}"))?;
-            (tx, tx_status)
+                .context("Failed to get storage reads")?;
+
+            #[cfg(test)]
+            let storage_reads = vec![];
+
+            (tx, tx_exec, storage_reads)
         }
     };
-    let tx_hash = tx.id(chain_id);
+
     let fuel_tx::Transaction::Script(script) = tx.into() else {
-        return Err(anyhow!("Transaction is not a script"));
+        bail!("Transaction is not a script");
     };
 
-    // Display the script JSON when verbosity level is 2 or higher (vv)
-    let script_json = if cmd.verbosity >= 2 {
-        let script_json = serde_json::to_value(&script).unwrap();
-        forc_tracing::println_label_green(
-            "transaction script:\n",
-            &serde_json::to_string_pretty(&script_json).unwrap(),
-        );
-        Some(script_json)
-    } else {
-        None
-    };
-
-    let abi_map = HashMap::from([(contract_id, abi)]);
-
-    // Process transaction results
-    let receipts = match tx_status.clone().take_receipts_checked(Some(&log_decoder)) {
-        Ok(receipts) => receipts,
-        Err(e) => {
-            // Print receipts when an error occurs and verbosity is high enough
-            super::print_receipts_and_trace(
-                tx_status.total_gas(),
-                &tx_status.clone().take_receipts(),
-                cmd.verbosity,
-                &abi_map,
-                &mut output,
-            )?;
-            match tx_status {
-                TxStatus::Failure(e) | TxStatus::PreconfirmationFailure(e) => {
-                    bail!("Failed to process transaction; reason: {:#?}", e.reason);
-                }
-                _ => bail!("Failed to process transaction: {:#?}", e),
-            }
-        }
-    };
+    let script_json = serde_json::to_value(&script).context("Failed to convert script to JSON")?;
 
     // Parse the result based on output format
-    let mut receipt_parser = ReceiptParser::new(&receipts, DecoderConfig::default());
+    let mut receipt_parser =
+        ReceiptParser::new(tx_execution.result.receipts(), DecoderConfig::default());
     let result = match output {
         cmd::call::OutputFormat::Default | cmd::call::OutputFormat::Json => {
             let data = receipt_parser
