@@ -17,8 +17,15 @@ use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
-use std::{fs, io::Read, path::PathBuf, str::FromStr};
-use sway_core::{asm_generation::ProgramABI, BuildTarget};
+use std::{
+    collections::HashMap,
+    fs,
+    io::Read,
+    path::PathBuf,
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
+use sway_core::{asm_generation::ProgramABI, engine_threading::Callbacks, BuildTarget};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
@@ -288,7 +295,81 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         no_experimental: run_config.experimental.no_experimental.clone(),
         ..Default::default()
     };
-    match std::panic::catch_unwind(|| forc_pkg::build_with_options(&build_opts)) {
+
+    let pkg_name_cache = Arc::new(Mutex::new(HashMap::new()));
+
+    fn get_package_name<'a>(
+        span: &sway_types::Span,
+        engines: &sway_core::Engines,
+        pkg_name_cache: &'a mut Arc<Mutex<HashMap<PathBuf, String>>>,
+    ) -> Option<String> {
+        if let Some(sid) = span.source_id() {
+            let filename = engines.se().get_path(sid);
+            if let Some(pid) = engines.se().get_program_id_from_manifest_path(&filename) {
+                let path = engines
+                    .se()
+                    .get_manifest_path_from_program_id(&pid)
+                    .unwrap()
+                    .join("Forc.toml");
+                let mut pkg_name_cache = pkg_name_cache.lock().unwrap();
+                Some(if let Some(pkg_name) = pkg_name_cache.get(&path).cloned() {
+                    pkg_name
+                } else {
+                    let toml = std::fs::read_to_string(&path).unwrap();
+                    let forc_toml: toml::Table = toml::from_str(&toml).unwrap();
+                    let pkg_name = forc_toml["project"]["name"].as_str().unwrap().to_string();
+                    pkg_name_cache.insert(path.clone(), pkg_name.clone());
+                    pkg_name
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    match std::panic::catch_unwind(|| {
+        let callbacks = Callbacks {
+            on_before_method_resolution: Some(Box::new({
+                let mut pkg_name_cache = pkg_name_cache.clone();
+                move |ctx, method_name, arg_types| {
+                    if let Some(pkg_name) =
+                        get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
+                    {
+                        if pkg_name != "std" {
+                            eprintln!(
+                                "on_before_method_resolution: {:?} {:?} {:?}",
+                                method_name.inner,
+                                method_name.type_arguments,
+                                ctx.engines.help_out(arg_types.to_vec()),
+                            );
+                        }
+                    }
+                }
+            })),
+            on_after_method_resolution: Some(Box::new({
+                let mut pkg_name_cache = pkg_name_cache.clone();
+                move |ctx, method_name, arg_types, fn_ref, t| {
+                    if let Some(pkg_name) =
+                        get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
+                    {
+                        if pkg_name != "std" {
+                            eprintln!(
+                                "on_after_method_resolution: {:?} {:?} {:?} {:?} {:?}",
+                                method_name.inner,
+                                method_name.type_arguments,
+                                ctx.engines.help_out(arg_types.to_vec()),
+                                ctx.engines.help_out(fn_ref.id()),
+                                ctx.engines.help_out(t),
+                            );
+                        }
+                    }
+                }
+            })),
+        };
+        forc_pkg::build_with_options(&build_opts, Some(callbacks))
+    }) {
         Ok(result) => {
             // Print the result of the compilation (i.e., any errors Forc produces).
             if let Err(ref e) = result {
