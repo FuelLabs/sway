@@ -156,9 +156,7 @@ fn list_functions_for_single_contract<W: Write>(
 mod tests {
     use super::*;
     use crate::op::call::tests::get_contract_instance;
-    use fuel_abi_types::abi::program::ProgramABI;
-    use std::io::Cursor;
-    use std::path::Path;
+    use std::{io::Cursor, path::Path, str::FromStr};
 
     #[tokio::test]
     async fn test_list_contract_functions() {
@@ -167,17 +165,19 @@ mod tests {
         // Load a test ABI
         let abi_path_str = "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json";
         let abi_path = Path::new(abi_path_str);
-        let abi = Either::Left(abi_path.to_path_buf());
 
         let abi_str = std::fs::read_to_string(abi_path).unwrap();
-        let parsed_abi: ProgramABI = serde_json::from_str(&abi_str).unwrap();
-        let unified_program_abi = UnifiedProgramABI::from_counterpart(&parsed_abi).unwrap();
+        let abi = Abi::from_str(&abi_str).unwrap();
+
+        // Create the abi_map
+        let mut abi_map = HashMap::new();
+        abi_map.insert(id, abi);
 
         // Use a buffer to capture the output
         let mut output = Cursor::new(Vec::<u8>::new());
 
         // Call function with our buffer as the writer
-        list_contract_functions(&id, &abi, &unified_program_abi, &mut output)
+        list_contract_functions(&id, &abi_map, &mut output)
             .expect("Failed to list contract functions");
 
         // Get the output as a string
@@ -191,14 +191,14 @@ mod tests {
             "\u{1b}[34mtest_struct_with_generic\u{1b}[0m(a: GenericStruct) -> GenericStruct"
         ));
         assert!(output_string.contains("forc call \\"));
-        assert!(output_string.contains(format!("--abi {abi_path_str} \\").as_str()));
+        assert!(output_string.contains("--abi ./contract-abi.json \\"));
         assert!(output_string.contains(format!("{id} \\").as_str()));
         assert!(output_string.contains("test_struct_with_generic \"{0, aaaa}\""));
 
         assert!(output_string
             .contains("\u{1b}[34mtest_complex_struct\u{1b}[0m(a: ComplexStruct) -> ComplexStruct"));
         assert!(output_string.contains("forc call \\"));
-        assert!(output_string.contains(format!("--abi {abi_path_str} \\").as_str()));
+        assert!(output_string.contains("--abi ./contract-abi.json \\"));
         assert!(output_string.contains(format!("{id} \\").as_str()));
         assert!(output_string.contains(
             "test_complex_struct \"{({aa, 0}, 0), (Active:false), 0, {{0, aaaa}, aaaa}}\""
