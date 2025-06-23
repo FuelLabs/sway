@@ -209,7 +209,6 @@ impl Op {
         }
     }
 
-
     /// Moves the register in the second argument into the register in the first argument
     pub(crate) fn register_move(
         r1: VirtualRegister,
@@ -281,7 +280,6 @@ impl Op {
             owning_span: None,
         }
     }
-
 
     pub(crate) fn parse_opcode(
         handler: &Handler,

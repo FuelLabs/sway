@@ -1226,7 +1226,11 @@ impl VirtualOp {
                 i.clone(),
             ),
             JNZI(r1, i) => Self::JNZI(update_reg(reg_to_reg_map, r1), i.clone()),
-            JAL(r1, r2, i) => Self::JAL(update_reg(reg_to_reg_map, r1), update_reg(reg_to_reg_map, r2), i.clone()),
+            JAL(r1, r2, i) => Self::JAL(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
             RET(r1) => Self::RET(update_reg(reg_to_reg_map, r1)),
 
             /* Memory Instructions */
@@ -1735,7 +1739,11 @@ impl VirtualOp {
                 imm.clone(),
             ),
             JNZI(reg1, imm) => AllocatedInstruction::JNZI(map_reg(&mapping, reg1), imm.clone()),
-            JAL(reg1, reg2, imm) => AllocatedInstruction::JAL(map_reg(&mapping, reg1), map_reg(&mapping, reg2), imm.clone()),
+            JAL(reg1, reg2, imm) => AllocatedInstruction::JAL(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                imm.clone(),
+            ),
             RET(reg) => AllocatedInstruction::RET(map_reg(&mapping, reg)),
 
             /* Memory Instructions */

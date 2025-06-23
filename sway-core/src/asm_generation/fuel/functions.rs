@@ -358,14 +358,15 @@ impl FuelAsmBuilder<'_, '_> {
             });
 
             // Jump to the return address.
-            self.cur_bytecode.push(
-                Op {
-                    opcode: Either::Left(VirtualOp::JAL(ConstantRegister::Zero.into(), 
-                    ConstantRegister::CallReturnAddress.into(), VirtualImmediate12::new_unchecked(0, "Zero must fit into 12 bits"))),
-                    comment: "return from call".into(),
-                    owning_span: None,
-                }
-            );
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::JAL(
+                    ConstantRegister::Zero.into(),
+                    ConstantRegister::CallReturnAddress.into(),
+                    VirtualImmediate12::new_unchecked(0, "Zero must fit into 12 bits"),
+                )),
+                comment: "return from call".into(),
+                owning_span: None,
+            });
         }
 
         // Save this function.
