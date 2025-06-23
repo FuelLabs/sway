@@ -317,7 +317,6 @@ impl source::Pin for Source {
     type Pinned = Pinned;
     fn pin(&self, ctx: source::PinCtx) -> anyhow::Result<(Self::Pinned, PathBuf)> {
         let pkg_name = ctx.name.to_string();
-
         let fetch_id = ctx.fetch_id();
         let source = self.clone();
         let pkg_name = pkg_name.clone();
@@ -370,7 +369,16 @@ impl source::Fetch for Pinned {
                 let fetch_id = ctx.fetch_id();
                 let ipfs_node = ctx.ipfs_node().clone();
 
-                block_on_any_runtime(async move { fetch(fetch_id, &pinned, &ipfs_node).await })?;
+                block_on_any_runtime(async move {
+                    // If the user is trying to use public IPFS node with
+                    // registry sources. Use fuel operated ipfs node
+                    // instead.
+                    let node = match ipfs_node {
+                        node if node == IPFSNode::public() => IPFSNode::fuel(),
+                        node => node,
+                    };
+                    fetch(fetch_id, &pinned, &node).await
+                })?;
             }
         }
         let path = {
