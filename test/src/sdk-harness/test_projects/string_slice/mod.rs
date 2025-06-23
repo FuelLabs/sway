@@ -70,10 +70,10 @@ async fn create_predicate(
     provider.send_transaction_and_await_commit(tx).await.unwrap();
 }
 
-async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {
+async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u128 {
     wallet
         .provider()
-        .get_asset_balance(&address.into(), asset_id)
+        .get_asset_balance(&address.into(), &asset_id)
         .await
         .unwrap()
 }
@@ -156,7 +156,7 @@ async fn test_string_slice_predicate() {
 
     let receiver_balance_after = get_balance(&wallet, receiver_address, asset_id).await;
     assert_eq!(
-        receiver_balance_before + amount_to_predicate,
+        receiver_balance_before + amount_to_predicate as u128,
         receiver_balance_after
     );
 

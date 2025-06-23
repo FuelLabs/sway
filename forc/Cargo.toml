@@ -16,6 +16,12 @@ path = "src/lib.rs"
 name = "forc"
 path = "src/main.rs"
 
+[features]
+default = []
+test = []
+util = []
+profile = []
+
 [dependencies]
 annotate-snippets.workspace = true
 ansiterm.workspace = true
@@ -47,12 +53,6 @@ tracing.workspace = true
 url.workspace = true
 walkdir.workspace = true
 whoami.workspace = true
-
-[features]
-default = []
-test = []
-util = []
-profile = []
 
 [dev-dependencies]
 completest-pty.workspace = true

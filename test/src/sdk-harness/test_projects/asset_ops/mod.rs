@@ -512,7 +512,7 @@ async fn get_fuelcoin_instance(wallet: Wallet) -> (TestFuelCoinContract<Wallet>,
     .contract_id;
 
     wallet
-        .force_transfer_to_contract(&fuelcontract_id, 1000, AssetId::BASE, TxPolicies::default())
+        .force_transfer_to_contract(fuelcontract_id, 1000, AssetId::BASE, TxPolicies::default())
         .await
         .unwrap();
     let fuelcontract_instance = TestFuelCoinContract::new(fuelcontract_id.clone(), wallet);
