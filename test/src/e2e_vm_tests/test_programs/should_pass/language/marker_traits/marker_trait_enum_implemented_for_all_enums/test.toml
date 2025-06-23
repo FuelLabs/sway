@@ -1,2 +1,1 @@
 category = "compile"
-experimental = { error_type = true }

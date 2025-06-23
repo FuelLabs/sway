@@ -9,9 +9,10 @@ use fuels::{
 use std::str::FromStr;
 
 async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
-    let predicate_code =
-        std::fs::read("test_projects/predicate_panic_expression/out/release/predicate_panic_expression.bin")
-            .unwrap();
+    let predicate_code = std::fs::read(
+        "test_projects/predicate_panic_expression/out/release/predicate_panic_expression.bin",
+    )
+    .unwrap();
     let predicate_address = fuel_tx::Input::predicate_owner(&predicate_code);
 
     let mut node_config = NodeConfig::default();
@@ -62,7 +63,10 @@ async fn create_predicate(
     tx.add_signer(wallet.signer().clone()).unwrap();
     let tx = tx.build(provider).await.unwrap();
 
-    provider.send_transaction_and_await_commit(tx).await.unwrap();
+    provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
 }
 
 async fn submit_to_predicate(
@@ -113,13 +117,17 @@ async fn submit_to_predicate(
     .await
     .unwrap();
 
-    wallet.provider().send_transaction_and_await_commit(new_tx).await.map(|_| ())
-}
-
-async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {
     wallet
         .provider()
-        .get_asset_balance(&address.into(), asset_id)
+        .send_transaction_and_await_commit(new_tx)
+        .await
+        .map(|_| ())
+}
+
+async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u128 {
+    wallet
+        .provider()
+        .get_asset_balance(&address.into(), &asset_id)
         .await
         .unwrap()
 }
@@ -137,7 +145,8 @@ async fn valid_predicate() {
         let receiver_address =
             Address::from_str("0xd926978a28a565531a06cbf5fab5402d6ee2021e5a5dce2d2f7c61e5521be109")
                 .unwrap();
-        let (predicate_code, predicate_address, wallet, amount_to_predicate, asset_id) = setup().await;
+        let (predicate_code, predicate_address, wallet, amount_to_predicate, asset_id) =
+            setup().await;
 
         create_predicate(predicate_address, &wallet, amount_to_predicate, asset_id).await;
 
@@ -158,10 +167,7 @@ async fn valid_predicate() {
 
         // The receiver balance stays the same.
         let receiver_balance_after = get_balance(&wallet, receiver_address, asset_id).await;
-        assert_eq!(
-            receiver_balance_before,
-            receiver_balance_after
-        );
+        assert_eq!(receiver_balance_before, receiver_balance_after);
 
         // The predicate balance stays the same.
         let predicate_balance = get_balance(&wallet, predicate_address, asset_id).await;
@@ -200,7 +206,7 @@ async fn valid_predicate() {
     // The receiver balance gets increased.
     let receiver_balance_after = get_balance(&wallet, receiver_address, asset_id).await;
     assert_eq!(
-        receiver_balance_before + amount_to_predicate - 1,
+        receiver_balance_before + u128::from(amount_to_predicate) - 1,
         receiver_balance_after
     );
 

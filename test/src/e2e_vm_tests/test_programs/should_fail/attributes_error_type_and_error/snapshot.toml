@@ -1,4 +1,4 @@
 cmds = [
-    "forc build --path {root} --release --experimental error_type",
+    "forc build --path {root} --release",
     "forc build --path {root} --release",
 ]
