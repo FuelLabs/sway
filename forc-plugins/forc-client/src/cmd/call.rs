@@ -181,6 +181,16 @@ forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     -vv
 ```
 
+### Call a contract with address labels for better trace readability
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+    --abi ./contract-abi.json \
+    transfer 0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07 \
+    --label 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97:MainContract \
+    --label 0xf8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07:TokenContract \
+    -vv
+```
+
 ### Call a contract without function parameters
 ```sh
 forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
@@ -266,6 +276,13 @@ pub struct Command {
     /// Required when making function calls or listing functions
     #[clap(long, value_parser = parse_abi_path)]
     pub abi: Option<Either<PathBuf, Url>>,
+
+    /// Label addresses in the trace output for better readability.
+    /// Format: address:label (can be used multiple times)
+    /// Example: --label 0x123:MainContract --label 0x456:TokenContract
+    /// Addresses can be provided with or without 0x prefix
+    #[clap(long, value_parser = parse_label, action = clap::ArgAction::Append, help_heading = "OUTPUT")]
+    pub label: Option<Vec<(ContractId, String)>>,
 
     /// The function selector to call.
     /// The function selector is the name of the function to call (e.g. "transfer").
@@ -380,4 +397,20 @@ fn parse_abi_path(s: &str) -> Result<Either<PathBuf, Url>, String> {
     } else {
         Ok(Either::Left(PathBuf::from(s)))
     }
+}
+
+fn parse_label(s: &str) -> Result<(ContractId, String), String> {
+    let parts: Vec<&str> = s.trim().split(':').collect();
+    let [contract_id_str, label] = parts.try_into().map_err(|_| {
+        format!(
+            "Invalid label format: '{}'. Expected format: contract_id:label",
+            s
+        )
+    })?;
+
+    let contract_id =
+        ContractId::from_str(&format!("0x{}", contract_id_str.trim_start_matches("0x")))
+            .map_err(|e| format!("Invalid contract ID '{}': {}", contract_id_str, e))?;
+
+    Ok((contract_id, label.to_string()))
 }
