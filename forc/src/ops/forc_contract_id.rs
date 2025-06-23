@@ -27,7 +27,7 @@ pub fn contract_id(command: ContractIdCommand) -> Result<()> {
             please do so within the `[contract-dependencies]` table."
         )
     }
-    let built = build_with_options(&build_options)?;
+    let built = build_with_options(&build_options, None)?;
     for (pinned_contract, built_contract) in built.into_members() {
         let salt = command
             .salt
