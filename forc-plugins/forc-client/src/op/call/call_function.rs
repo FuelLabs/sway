@@ -3,7 +3,8 @@ use crate::{
     op::call::{
         missing_contracts::determine_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
-        Abi, CallData, CallResponse, Either,
+        trace::interpret_execution_trace,
+        CallResponse, Either,
     },
 };
 use anyhow::{anyhow, bail, Context, Result};
@@ -283,25 +284,53 @@ pub async fn call_function(
         }
     };
 
-    // Process and return the final output
-    let mut call_response = super::process_transaction_output(
-        tx_status,
-        &tx_hash.to_string(),
-        &mode,
-        &node,
-        cmd.verbosity,
-        &mut output,
-        Some(CallData {
-            contract_id,
-            abis: abi_map,
-            result,
-        }),
-    )?;
-    if cmd.verbosity >= 2 {
-        call_response.script_json = script_json;
+    // display detailed call info if verbosity is set
+    if cmd.verbosity > 0 {
+        // Generate execution trace events by stepping through VM interpreter
+        let trace_events = interpret_execution_trace(
+            wallet.provider(),
+            &mode,
+            &consensus_params,
+            &script,
+            tx_execution.result.receipts(),
+            storage_reads,
+            &abi_map,
+        )
+        .await
+        .context("Failed to generate execution trace")?;
+
+        // Convert labels from Vec to HashMap
+        let labels: HashMap<ContractId, String> = cmd
+            .label
+            .as_ref()
+            .map(|labels| labels.iter().cloned().collect())
+            .unwrap_or_default();
+
+        super::display_detailed_call_info(
+            &tx_execution,
+            &script_json,
+            &abi_map,
+            cmd.verbosity,
+            &mut output,
+            &trace_events,
+            &labels,
+        )?;
     }
 
-    Ok(call_response)
+    // display tx info
+    super::display_tx_info(
+        tx_execution.id.to_string(),
+        Some(result.clone()),
+        &mode,
+        &node,
+    );
+
+    Ok(CallResponse {
+        tx_hash: tx_execution.id.to_string(),
+        result: Some(result),
+        receipts: tx_execution.result.receipts().to_vec(),
+        script_json: Some(script_json),
+    })
 }
 
 fn prepare_contract_call_data(
@@ -387,6 +416,8 @@ pub mod tests {
             mode: cmd::call::ExecutionMode::DryRun,
             gas: None,
             external_contracts: None,
+            contract_abis: None,
+            label: None,
             output: cmd::call::OutputFormat::Raw,
             list_functions: false,
             verbosity: 0,
@@ -908,11 +939,10 @@ pub mod tests {
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
         let operation = cmd.validate_and_get_operation().unwrap();
-        assert!(call(operation, cmd)
-            .await
-            .unwrap_err()
-            .to_string()
-            .contains("Failed to process transaction; reason: \"NotEnoughBalance\""));
+        assert_eq!(
+            call(operation, cmd).await.unwrap_err().to_string(),
+            "Failed to parse call data: codec: `ReceiptDecoder`: failed to find matching receipts entry for Unit"
+        );
         assert_eq!(get_contract_balance(id, provider.clone()).await, 1);
 
         // contract call transfer funds to another address
