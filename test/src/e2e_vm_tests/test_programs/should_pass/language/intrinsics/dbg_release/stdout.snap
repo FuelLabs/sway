@@ -1,9 +1,22 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 162
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --asm final | sub ecal
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
 ecal $r4 $r0 $r1 $r3          ; ecal id fd buf count
-ecal $r2 $r1 $zero $zero      ; ecal id fd zero zero
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --release --asm final | sub ecal
 ecal $r4 $r5 $r2 $r3          ; ecal id fd buf count
@@ -23,4 +36,5 @@ ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero
 ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero
 ecal $r0 $r3 $r2 $$retv       ; ecal id fd buf count
 ecal $r3 $r4 $r1 $r2          ; ecal id fd buf count
-ecal $r1 $r2 $$locbase $one   ; ecal id fd buf count
+ecal $r3 $r4 $r2 $one         ; ecal id fd buf count
+ecal $r2 $r3 $r0 $one         ; ecal id fd buf count
