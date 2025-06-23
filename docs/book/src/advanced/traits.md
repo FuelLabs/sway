@@ -167,8 +167,6 @@ fn panic_with_error<E>(err: E) where E: Error {
 }
 ```
 
-> **Note** `panic` expression and error types [have not yet been implemented](https://github.com/FuelLabs/sway/issues/6765)
-
 All marker traits are defined in the `std::marker` module.
 
 ## Use Cases
