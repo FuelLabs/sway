@@ -2,7 +2,7 @@ use fuel_core::types::fuel_tx::ContractIdExt;
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{
     prelude::*,
-    types::{Bits256, Bytes32, ContractId},
+    types::{Bits256, SubAssetId, ContractId},
 };
 
 abigen!(
@@ -74,7 +74,7 @@ async fn can_get_this_balance() {
 
     let result = context_instance
         .methods()
-        .get_this_balance(Bits256(*caller_id.asset_id(&Bytes32::zeroed())))
+        .get_this_balance(Bits256(*caller_id.asset_id(&SubAssetId::zeroed())))
         .call()
         .await
         .unwrap();
@@ -96,7 +96,7 @@ async fn can_get_balance_of_contract() {
 
     let result = context_instance
         .methods()
-        .get_balance_of_contract(Bits256(*caller_id.asset_id(&Bytes32::zeroed())), caller_id)
+        .get_balance_of_contract(Bits256(*caller_id.asset_id(&SubAssetId::zeroed())), caller_id)
         .with_contracts(&[&caller_instance])
         .call()
         .await
@@ -150,7 +150,7 @@ async fn can_get_msg_id() {
 
     assert_eq!(
         result.value,
-        Bits256(*caller_id.asset_id(&Bytes32::zeroed()))
+        Bits256(*caller_id.asset_id(&SubAssetId::zeroed()))
     );
 }
 

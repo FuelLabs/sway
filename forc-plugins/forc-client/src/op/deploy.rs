@@ -29,7 +29,7 @@ use fuels::{
         contract::{LoadConfiguration, StorageConfiguration},
         executable::Executable,
     },
-    types::{bech32::Bech32ContractId, transaction_builders::Blob},
+    types::transaction_builders::Blob,
 };
 use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
@@ -205,8 +205,7 @@ async fn deploy_chunked(
         fuels::programs::contract::Contract::loader_from_blobs(blobs, salt, storage_slots)?
             .deploy(account, tx_policies)
             .await?
-            .contract_id
-            .into();
+            .contract_id;
 
     println_action_green(
         "Finished",
@@ -237,7 +236,7 @@ async fn deploy_new_proxy(
 
     let configurables = ProxyContractConfigurables::default()
         .with_INITIAL_TARGET(Some(*impl_contract))?
-        .with_INITIAL_OWNER(State::Initialized(Address::from(address).into()))?;
+        .with_INITIAL_OWNER(State::Initialized(address.into()))?;
 
     let configuration = LoadConfiguration::default()
         .with_storage_configuration(storage_configuration)
@@ -250,8 +249,7 @@ async fn deploy_new_proxy(
     )?
     .deploy(account, tx_policies)
     .await?
-    .contract_id
-    .into();
+    .contract_id;
 
     let chain_info = provider.chain_info().await?;
     let target = Target::from_str(&chain_info.name).unwrap_or_default();
@@ -265,8 +263,7 @@ async fn deploy_new_proxy(
         &format!("deploying proxy contract for {pkg_name} {contract_url}{proxy_contract_id}"),
     );
 
-    let proxy_contract_bech_id: Bech32ContractId = proxy_contract_id.into();
-    let instance = ProxyContract::new(&proxy_contract_bech_id, account.clone());
+    let instance = ProxyContract::new(proxy_contract_id, account.clone());
     instance.methods().initialize_proxy().call().await?;
     println_action_green("Initialized", &format!("proxy contract for {pkg_name}"));
     Ok(proxy_contract_id)

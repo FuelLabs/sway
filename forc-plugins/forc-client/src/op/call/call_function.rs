@@ -23,7 +23,6 @@ use fuels_core::{
         EncoderConfig, ErrorDetails, LogDecoder,
     },
     types::{
-        bech32::Bech32ContractId,
         param_types::ParamType,
         transaction::Transaction,
         transaction_builders::{BuildableTransaction, ScriptBuildStrategy, VariableOutputPolicy},
@@ -70,7 +69,7 @@ pub async fn call_function(
 
     // Create the contract call
     let call = ContractCall {
-        contract_id: contract_id.into(),
+        contract_id,
         encoded_selector: encode_fn_selector(&selector),
         encoded_args: Ok(encoded_data),
         call_parameters: call_parameters.clone().into(),
@@ -110,10 +109,7 @@ pub async fn call_function(
 
     // Get external contracts (either provided or auto-detected)
     let external_contracts = match external_contracts {
-        Some(external_contracts) => external_contracts
-            .iter()
-            .map(|addr| Bech32ContractId::from(*addr))
-            .collect(),
+        Some(external_contracts) => external_contracts,
         None => {
             // Automatically retrieve missing contract addresses from the call
             let external_contracts = determine_missing_contracts(
@@ -130,7 +126,7 @@ pub async fn call_function(
                     "Automatically provided external contract addresses with call (max 10):",
                 );
                 external_contracts.iter().for_each(|addr| {
-                    forc_tracing::println_warning(&format!("- 0x{}", ContractId::from(addr)));
+                    forc_tracing::println_warning(&format!("- 0x{}", addr));
                 });
             }
             external_contracts
@@ -175,7 +171,7 @@ pub async fn call_function(
         cmd::call::ExecutionMode::Live => {
             forc_tracing::println_action_green(
                 "Sending transaction with wallet",
-                &format!("0x{}", wallet.address().hash()),
+                &format!("0x{}", wallet.address()),
             );
             let tx = call
                 .build_tx(tb, &wallet)
@@ -242,7 +238,7 @@ pub async fn call_function(
         }
         cmd::call::OutputFormat::Raw => {
             let token = receipt_parser
-                .parse_call(&Bech32ContractId::from(contract_id), &output_param)
+                .parse_call(contract_id, &output_param)
                 .map_err(|e| anyhow!("Failed to parse call data: {e}"))?;
             token_to_string(&token)
                 .map_err(|e| anyhow!("Failed to convert token to string: {e}"))?
@@ -386,9 +382,9 @@ pub mod tests {
         .unwrap()
         .contract_id;
 
-        let instance = TestContract::new(id.clone(), wallet.clone());
+        let instance = TestContract::new(id, wallet.clone());
 
-        (instance, id.into(), provider, secret_key)
+        (instance, id, provider, secret_key)
     }
 
     #[tokio::test]
@@ -775,15 +771,15 @@ pub mod tests {
 
         let consensus_parameters = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_parameters.base_asset_id();
-        let get_recipient_balance = |addr: Bech32Address, provider: Provider| async move {
+        let get_recipient_balance = |addr: Address, provider: Provider| async move {
             provider
-                .get_asset_balance(&addr, *base_asset_id)
+                .get_asset_balance(&addr, base_asset_id)
                 .await
                 .unwrap()
         };
         let get_contract_balance = |id: ContractId, provider: Provider| async move {
             provider
-                .get_contract_asset_balance(&Bech32ContractId::from(id), *base_asset_id)
+                .get_contract_asset_balance(&id, base_asset_id)
                 .await
                 .unwrap()
         };
@@ -828,7 +824,7 @@ pub mod tests {
         let (amount, asset_id, recipient) = (
             "2",
             &format!("{{0x{}}}", base_asset_id),
-            &format!("(Address:{{0x{}}})", random_wallet.address().hash()),
+            &format!("(Address:{{0x{}}})", random_wallet.address()),
         );
         let mut cmd = get_contract_call_cmd(
             id,
@@ -846,7 +842,7 @@ pub mod tests {
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result.unwrap(), "()");
         assert_eq!(
-            get_recipient_balance(random_wallet.address().clone(), provider.clone()).await,
+            get_recipient_balance(random_wallet.address(), provider.clone()).await,
             2
         );
         assert_eq!(get_contract_balance(id, provider.clone()).await, 1);
@@ -858,7 +854,7 @@ pub mod tests {
         let (amount, asset_id, recipient) = (
             "5",
             &format!("{{0x{}}}", base_asset_id),
-            &format!("(Address:{{0x{}}})", random_wallet.address().hash()),
+            &format!("(Address:{{0x{}}})", random_wallet.address()),
         );
         let mut cmd = get_contract_call_cmd(
             id,
@@ -887,7 +883,7 @@ pub mod tests {
         let (amount, asset_id, recipient) = (
             "3",
             &format!("{{0x{}}}", base_asset_id),
-            &format!("(Address:{{0x{}}})", random_wallet.address().hash()),
+            &format!("(Address:{{0x{}}})", random_wallet.address()),
         );
         let mut cmd = get_contract_call_cmd(
             id,
@@ -905,7 +901,7 @@ pub mod tests {
         let operation = cmd.validate_and_get_operation().unwrap();
         assert_eq!(call(operation, cmd).await.unwrap().result.unwrap(), "()");
         assert_eq!(
-            get_recipient_balance(random_wallet.address().clone(), provider.clone()).await,
+            get_recipient_balance(random_wallet.address(), provider.clone()).await,
             3
         );
         assert_eq!(get_contract_balance(id, provider.clone()).await, 6); // extra amount (5) is forwarded to the contract

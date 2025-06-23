@@ -155,7 +155,7 @@ async fn collect_account_balances(
 ) -> Result<AccountBalances> {
     let accounts: Vec<_> = accounts_map
         .values()
-        .map(|addr| Wallet::new_locked((*addr).into(), provider.clone()))
+        .map(|addr| Wallet::new_locked(*addr, provider.clone()))
         .collect();
 
     futures::future::try_join_all(accounts.iter().map(|acc| acc.get_balances()))
@@ -324,24 +324,21 @@ pub async fn update_proxy_contract_target(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fuels::types::bech32::Bech32Address;
     use std::collections::{BTreeMap, HashMap};
 
     #[test]
     fn test_format_base_asset_account_balances() {
         let mut accounts_map: AccountsMap = BTreeMap::new();
 
-        let address1: fuel_tx::Address = Bech32Address::from_str(
-            "fuel1dved7k25uxadatl7l5kql309jnw07dcn4t3a6x9hm9nxyjcpqqns50p7n2",
+        let address1 = fuel_tx::Address::from_str(
+            "7bbd8a4ea06e94461b959ab18d35802bbac3cf47e2bf29195f7db2ce41630cd7",
         )
-        .expect("address1")
-        .into();
+        .expect("address1");
 
-        let address2: fuel_tx::Address = Bech32Address::from_str(
-            "fuel1x9f3ysyk7fmey5ac23s2p4rwg4gjye2kke3nu3pvrs5p4qc4m4qqwx56k3",
+        let address2 = fuel_tx::Address::from_str(
+            "99bd8a4ea06e94461b959ab18d35802bbac3cf47e2bf29195f7db2ce41630cd7",
         )
-        .expect("address2")
-        .into();
+        .expect("address2");
 
         let base_asset_id = AssetId::zeroed();
 
@@ -359,9 +356,9 @@ mod tests {
         account_balances.push(balance2);
 
         let address1_expected =
-            "0x6B32DF5954e1BaDEAFFEFD2c0fc5E594dcff3713aaE3Dd18B7d966624B010027";
+            "0x7bBD8a4ea06E94461b959aB18d35802BbAC3cf47e2bF29195F7db2CE41630CD7";
         let address2_expected =
-            "0x3153124096f2779253B85460a0D46e4551226556b6633E442c1C281a8315dd40";
+            "0x99Bd8a4eA06E94461b959AB18d35802bBaC3Cf47E2Bf29195f7DB2cE41630cD7";
         let expected = vec![
             format!("[0] {address1_expected} - 1.5 ETH"),
             format!("[1] {address2_expected} - 0 ETH"),
