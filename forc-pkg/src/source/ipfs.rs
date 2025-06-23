@@ -78,13 +78,15 @@ impl source::Fetch for Pinned {
                     "Fetching",
                     &format!("{} {}", ansiterm::Style::new().bold().paint(ctx.name), self),
                 );
-                let cid = &self.0;
-                let ipfs_client = ipfs_client();
-                let dest = cache_dir();
-                crate::source::reg::block_on_any_runtime(async {
-                    match ctx.ipfs_node() {
+                let cid = self.0.clone();
+                let ipfs_node = ctx.ipfs_node().clone();
+                let dest = repo_path.to_path_buf();
+
+                crate::source::reg::block_on_any_runtime(async move {
+                    match ipfs_node {
                         source::IPFSNode::Local => {
                             println_action_green("Fetching", "with local IPFS node");
+                            let ipfs_client = ipfs_client();
                             cid.fetch_with_client(&ipfs_client, &dest).await
                         }
                         source::IPFSNode::WithUrl(ipfs_node_gateway_url) => {
@@ -95,7 +97,7 @@ impl source::Fetch for Pinned {
                                     ipfs_node_gateway_url
                                 ),
                             );
-                            cid.fetch_with_gateway_url(ipfs_node_gateway_url, &dest)
+                            cid.fetch_with_gateway_url(&ipfs_node_gateway_url, &dest)
                                 .await
                         }
                     }

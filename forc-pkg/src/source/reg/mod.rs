@@ -19,6 +19,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
     str::FromStr,
+    thread,
     time::Duration,
 };
 
@@ -315,19 +316,32 @@ fn tmp_registry_package_dir(
 impl source::Pin for Source {
     type Pinned = Pinned;
     fn pin(&self, ctx: source::PinCtx) -> anyhow::Result<(Self::Pinned, PathBuf)> {
-        let pkg_name = ctx.name;
-        let cid = block_on_any_runtime(async {
-            with_tmp_fetch_index(ctx.fetch_id(), pkg_name, self, |index_file| async move {
-                let version = &self.version;
-                let pkg_entry = index_file
-                    .get(version)
-                    .ok_or_else(|| anyhow!("No {} found for {}", version, pkg_name))?;
-                let cid = Cid::from_str(pkg_entry.source_cid());
-                Ok(cid)
-            })
+        let pkg_name = ctx.name.to_string();
+
+        let fetch_id = ctx.fetch_id();
+        let source = self.clone();
+        let pkg_name = pkg_name.clone();
+
+        let cid = block_on_any_runtime(async move {
+            with_tmp_fetch_index(
+                fetch_id,
+                &pkg_name,
+                &source,
+                |index_file| {
+                    let version = source.version.clone();
+                    let pkg_name = pkg_name.clone();
+                    async move {
+                        let pkg_entry = index_file.get(&version).ok_or_else(|| {
+                            anyhow!("No {} found for {}", version, pkg_name)
+                        })?;
+                        Cid::from_str(pkg_entry.source_cid()).map_err(anyhow::Error::from)
+                    }
+                },
+            )
             .await
-        })??;
-        let path = registry_package_dir(&self.namespace, pkg_name, &self.version);
+        })?;
+
+        let path = registry_package_dir(&self.namespace, &ctx.name.to_string(), &self.version);
         let pinned = Pinned {
             source: self.clone(),
             cid,
@@ -357,15 +371,12 @@ impl source::Fetch for Pinned {
                         self.source.version
                     ),
                 );
-                block_on_any_runtime(async {
-                    // If the user is trying to use public IPFS node with
-                    // registry sources. Use fuel operated ipfs node
-                    // instead.
-                    let node = match ctx.ipfs_node() {
-                        node if node == &IPFSNode::public() => &IPFSNode::fuel(),
-                        node => node,
-                    };
-                    fetch(ctx.fetch_id(), self, node).await
+                let pinned = self.clone();
+                let fetch_id = ctx.fetch_id();
+                let ipfs_node = ctx.ipfs_node().clone();
+
+                block_on_any_runtime(async move {
+                    fetch(fetch_id, &pinned, &ipfs_node).await
                 })?;
             }
         }
@@ -526,15 +537,30 @@ where
     Ok(res)
 }
 
-/// Execute an async block on the current Tokio runtime if available.
-/// If not in a runtime context, a new one is created to run the future.
+/// Execute an async block on a Tokio runtime.
+///
+/// If we are already in a runtime, this will spawn a new OS thread to create a new runtime.
+/// This is to avoid the "cannot start a runtime from within a runtime" panic.
+///
+/// If we are not in a runtime, a new runtime is created and the future is blocked on.
 pub(crate) fn block_on_any_runtime<F>(future: F) -> F::Output
 where
-    F: std::future::Future,
+    F: std::future::Future + Send + 'static,
+    F::Output: Send + 'static,
 {
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        handle.block_on(future)
+    if tokio::runtime::Handle::try_current().is_ok() {
+        // In a runtime context. Spawn a new thread to run the async code.
+        thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(future)
+        })
+        .join()
+        .unwrap()
     } else {
+        // Not in a runtime context. Okay to create a new runtime and block.
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
