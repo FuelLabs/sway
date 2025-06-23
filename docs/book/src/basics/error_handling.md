@@ -55,6 +55,7 @@ test some_test, "path/to/failing/test.sw":42
 ### Error Types
 
 Passing textual error messages directly as a `panic` argument is the most convenient way to provide a helpful error message. It is sufficient for many use-cases. However, often we want:
+
 - to provide an additional runtime information about the error.
 - group a certain family of errors together.
 
