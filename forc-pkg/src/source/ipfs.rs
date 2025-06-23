@@ -80,13 +80,13 @@ impl source::Fetch for Pinned {
                 );
                 let cid = self.0.clone();
                 let ipfs_node = ctx.ipfs_node().clone();
-                let dest = repo_path.to_path_buf();
+                let ipfs_client = ipfs_client();
+                let dest = cache_dir();
 
                 crate::source::reg::block_on_any_runtime(async move {
                     match ipfs_node {
                         source::IPFSNode::Local => {
                             println_action_green("Fetching", "with local IPFS node");
-                            let ipfs_client = ipfs_client();
                             cid.fetch_with_client(&ipfs_client, &dest).await
                         }
                         source::IPFSNode::WithUrl(ipfs_node_gateway_url) => {
