@@ -8,7 +8,7 @@ pub fn predicate_root(command: PredicateRootCommand) -> Result<()> {
     // Building predicates will output the predicate root by default.
     // So to display all predicate roots in the current workspace we just need to build the
     // workspace with a member filter that filters out every project type other than predicates.
-    build_with_options(&build_options)?;
+    build_with_options(&build_options, None)?;
     Ok(())
 }
 
