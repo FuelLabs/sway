@@ -3220,7 +3220,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.68.8"
+version = "0.68.9"
 dependencies = [
  "ansiterm",
  "regex",
@@ -3232,6 +3232,8 @@ dependencies = [
 [[package]]
 name = "forc-tracing"
 version = "0.68.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13d2cd68ae8f3d08d7b30af3cc37825f5cd8b08e5d322519942becab403e6134"
 dependencies = [
  "ansiterm",
  "regex",
@@ -3266,7 +3268,7 @@ dependencies = [
  "dirs 5.0.1",
  "fd-lock",
  "forc-tracing 0.68.9",
- "fuel-abi-types 0.12.0",
+ "fuel-abi-types",
  "fuel-asm",
  "fuel-tx",
  "fuels-core",
@@ -3295,7 +3297,7 @@ dependencies = [
  "anyhow",
  "clap",
  "eth-keystore",
- "forc-tracing 0.68.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "forc-tracing 0.68.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "fuels",
  "futures",
  "hex",
