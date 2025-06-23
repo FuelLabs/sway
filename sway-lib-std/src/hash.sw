@@ -1,11 +1,13 @@
 //! Utility functions for cryptographic hashing.
 library;
 
+use ::option::Option;
+use ::result::Result;
+use ::vec::Vec;
 use ::alloc::alloc_bytes;
 use ::bytes::*;
 use ::codec::*;
 use ::debug::*;
-use ::vec::Vec;
 
 pub struct Hasher {
     bytes: Bytes,
@@ -18,9 +20,42 @@ impl Hasher {
         }
     }
 
-    /// Writes some data into this `Hasher`.
+    pub fn with_capacity(capacity: u64) -> Self {
+        Self {
+            bytes: Bytes::with_capacity(capacity),
+        }
+    }
+
+    /// Appends `bytes` to this `Hasher`.
     pub fn write(ref mut self, bytes: Bytes) {
         self.bytes.append(bytes);
+    }
+
+    /// Appends bytes from the `slice` to this `Hasher`.
+    pub fn write_raw_slice(ref mut self, slice: raw_slice) {
+        self.bytes.append_raw_slice(slice);
+    }
+
+    /// Appends `u8` `value` to this `Hasher`.
+    pub fn write_u8(ref mut self, value: u8) {
+        self.bytes.push(value);
+    }
+
+    /// Appends a single `str` to this `Hasher`.
+    pub fn write_str(ref mut self, s: str) {
+        self.bytes
+            .append_raw_slice(raw_slice::from_parts::<u8>(s.as_ptr(), s.len()));
+    }
+
+    /// Appends a single string array to this `Hasher`.
+    #[inline(never)]
+    pub fn write_str_array<S>(ref mut self, s: S) {
+        __assert_is_str_array::<S>();
+        let str_size = __size_of_str_array::<S>();
+        let str_ptr = __addr_of(s);
+
+        self.bytes
+            .append_raw_slice(raw_slice::from_parts::<u8>(str_ptr, str_size));
     }
 
     pub fn sha256(self) -> b256 {
@@ -48,129 +83,72 @@ impl Hasher {
     }
 }
 
-impl Hasher {
-    /// Writes a single `str` into this hasher.
-    pub fn write_str(ref mut self, s: str) {
-        let str_size = s.len();
-        let str_ptr = s.as_ptr();
-
-        self.write(Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)));
-    }
-
-    #[inline(never)]
-    pub fn write_str_array<S>(ref mut self, s: S) {
-        __assert_is_str_array::<S>();
-        let str_size = __size_of_str_array::<S>();
-        let str_ptr = __addr_of(s);
-
-        self.write(Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)));
-    }
-}
-
 pub trait Hash {
     fn hash(self, ref mut state: Hasher);
 }
 
 impl Hash for u8 {
     fn hash(self, ref mut state: Hasher) {
-        let mut bytes = Bytes::with_capacity(1);
-        bytes.push(self);
-        state.write(bytes);
+        state.write_u8(self);
     }
 }
 
 impl Hash for u16 {
     fn hash(self, ref mut state: Hasher) {
-        let ptr = alloc_bytes(8); // one word capacity
-        asm(ptr: ptr, val: self, r1) {
-            slli r1 val i48;
-            sw ptr r1 i0;
+        // TODO: Remove this workaround once `__addr_of(self)` is supported
+        //       for `u16`.
+        let temp = self;
+        let ptr = asm(ptr: &temp) {
+            ptr: raw_ptr
         };
+        let ptr = ptr.add::<u8>(6);
 
-        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 2)));
+        state.write_raw_slice(raw_slice::from_parts::<u8>(ptr, 2));
     }
 }
 
 impl Hash for u32 {
     fn hash(self, ref mut state: Hasher) {
-        let ptr = alloc_bytes(8); // one word capacity
-        asm(ptr: ptr, val: self, r1) {
-            slli r1 val i32;
-            sw ptr r1 i0;
+        // TODO: Remove this workaround once `__addr_of(self)` is supported
+        //       for `u32`.
+        let temp = self;
+        let ptr = asm(ptr: &temp) {
+            ptr: raw_ptr
         };
+        let ptr = ptr.add::<u8>(4);
 
-        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 4)));
+        state.write_raw_slice(raw_slice::from_parts::<u8>(ptr, 4));
     }
 }
 
 impl Hash for u64 {
     fn hash(self, ref mut state: Hasher) {
-        let ptr = alloc_bytes(8); // one word capacity
-        asm(ptr: ptr, val: self) {
-            sw ptr val i0;
+        // TODO: Remove this workaround once `__addr_of(self)` is supported
+        //       for `u64`.
+        let temp = self;
+        let ptr = asm(ptr: &temp) {
+            ptr: raw_ptr
         };
 
-        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 8)));
+        state.write_raw_slice(raw_slice::from_parts::<u8>(ptr, 8));
     }
 }
 
 impl Hash for b256 {
     fn hash(self, ref mut state: Hasher) {
-        let ptr = alloc_bytes(32); // four word capacity
-        let (word_1, word_2, word_3, word_4) = asm(r1: self) {
-            r1: (u64, u64, u64, u64)
-        };
-
-        asm(
-            ptr: ptr,
-            val_1: word_1,
-            val_2: word_2,
-            val_3: word_3,
-            val_4: word_4,
-        ) {
-            sw ptr val_1 i0;
-            sw ptr val_2 i1;
-            sw ptr val_3 i2;
-            sw ptr val_4 i3;
-        };
-
-        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 32)));
+        state.write_raw_slice(raw_slice::from_parts::<u8>(__addr_of(self), 32));
     }
 }
 
 impl Hash for u256 {
     fn hash(self, ref mut state: Hasher) {
-        let ptr = alloc_bytes(32); // four word capacity
-        let (word_1, word_2, word_3, word_4) = asm(r1: self) {
-            r1: (u64, u64, u64, u64)
-        };
-
-        asm(
-            ptr: ptr,
-            val_1: word_1,
-            val_2: word_2,
-            val_3: word_3,
-            val_4: word_4,
-        ) {
-            sw ptr val_1 i0;
-            sw ptr val_2 i1;
-            sw ptr val_3 i2;
-            sw ptr val_4 i3;
-        };
-
-        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 32)));
+        state.write_raw_slice(raw_slice::from_parts::<u8>(__addr_of(self), 32));
     }
 }
 
 impl Hash for bool {
     fn hash(self, ref mut state: Hasher) {
-        let mut bytes = Bytes::with_capacity(1);
-        if self {
-            bytes.push(1_u8);
-        } else {
-            bytes.push(0_u8);
-        }
-        state.write(bytes);
+        state.write_u8(if self { 1_u8 } else { 0_u8 });
     }
 }
 
@@ -183,6 +161,20 @@ impl Hash for Bytes {
 impl Hash for str {
     fn hash(self, ref mut state: Hasher) {
         state.write_str(self);
+    }
+}
+
+impl Hash for () {
+    fn hash(self, ref mut _state: Hasher) {}
+}
+
+impl<A> Hash for (A, )
+where
+    A: Hash,
+{
+    #[inline(never)]
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
     }
 }
 
@@ -241,6 +233,14 @@ where
         self.3.hash(state);
         self.4.hash(state);
     }
+}
+
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 0]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut _state: Hasher) {}
 }
 
 #[cfg(experimental_const_generics = false)]
@@ -425,6 +425,55 @@ where
     }
 }
 
+impl<T> Hash for Option<T>
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::None => {
+                0_u8.hash(state);
+            },
+            Self::Some(v) => {
+                1_u8.hash(state);
+                v.hash(state);
+            },
+        }
+    }
+}
+
+impl<T, E> Hash for Result<T, E>
+where
+    T: Hash,
+    E: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::Ok(v) => {
+                0_u8.hash(state);
+                v.hash(state);
+            },
+            Self::Err(err) => {
+                1_u8.hash(state);
+                err.hash(state);
+            },
+        }
+    }
+}
+
+/// Returns the `Hasher`'s initial capacity optimal for hashing
+/// an instance of type `T`.
+fn get_initial_capacity<T>() -> u64 {
+    if __is_str_array::<T>() {
+        __size_of_str_array::<T>()
+    } else {
+        // This will work accurately for all non-heap types.
+        // For heap types, it still gives a slightly better
+        // start then having the empty buffer.
+        __size_of::<T>()
+    }
+}
+
 /// Returns the `SHA-2-256` hash of `param`.
 ///
 /// # Arguments
@@ -450,13 +499,19 @@ pub fn sha256<T>(s: T) -> b256
 where
     T: Hash,
 {
-    let mut hasher = Hasher::new();
+    // TODO: Replace `capacity` with a compile-time constant once
+    //       `const fn` is implemented and const evaluation is
+    //       deferred for generic functions:
+    //
+    //       const CAPACITY: u64 = get_initial_capacity::<T>();
+    let capacity = get_initial_capacity::<T>();
+    let mut hasher = Hasher::with_capacity(capacity);
     s.hash(hasher);
     hasher.sha256()
 }
 
 /// Returns the `SHA-2-256` hash of `param`.
-/// This function is specific for string arrays
+/// This function is specific for string arrays.
 ///
 /// # Examples
 ///
@@ -470,15 +525,14 @@ where
 /// ```
 #[inline(never)]
 pub fn sha256_str_array<S>(param: S) -> b256 {
-    __assert_is_str_array::<S>();
-    let str_size = __size_of_str_array::<S>();
-    let str_ptr = __addr_of(param);
-
-    let ptr = alloc_bytes(str_size);
-    str_ptr.copy_bytes_to(ptr, str_size);
-
-    let mut hasher = Hasher::new();
-    hasher.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, str_size)));
+    // TODO: Replace `capacity` with a compile-time constant once
+    //       `const fn` is implemented and const evaluation is
+    //       deferred for generic functions:
+    //
+    //       const CAPACITY: u64 = get_initial_capacity::<S>();
+    let capacity = get_initial_capacity::<S>();
+    let mut hasher = Hasher::with_capacity(capacity);
+    hasher.write_str_array(param);
     hasher.sha256()
 }
 
@@ -507,7 +561,13 @@ pub fn keccak256<T>(s: T) -> b256
 where
     T: Hash,
 {
-    let mut hasher = Hasher::new();
+    // TODO: Replace `capacity` with a compile-time constant once
+    //       `const fn` is implemented and const evaluation is
+    //       deferred for generic functions:
+    //
+    //       const CAPACITY: u64 = get_initial_capacity::<T>();
+    let capacity = get_initial_capacity::<T>();
+    let mut hasher = Hasher::with_capacity(capacity);
     s.hash(hasher);
     hasher.keccak256()
 }

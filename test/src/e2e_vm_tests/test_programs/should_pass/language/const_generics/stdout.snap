@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 162
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --release
 exit status: 1
@@ -286,18 +287,19 @@ ____
   Aborting due to 20 errors.
 error: Failed to compile const_generics
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --experimental const_generics --test-threads 1 --logs --revert-codes
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --experimental const_generics --test-threads 1 --dbgs --reverts
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
-    Finished debug [unoptimized + fuel] target(s) [6.288 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [7.512 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-      test run_main ... ok (???, 11510 gas)
+      test run_main ... ok (???, 13986 gas)
+           debug output:
 [src/main.sw:65:13] a = [1, 2]
 [src/main.sw:69:13] [C {}].len() = 1
 [src/main.sw:74:13] [C {}, C {}].len() = 2

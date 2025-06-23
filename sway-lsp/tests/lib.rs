@@ -166,7 +166,8 @@ fn did_open_all_std_lib_files() {
 
             // If the workspace is not initialized, we need to initialize it
             // Otherwise, we can just open the file
-            let uri = if service.inner().sync_workspace.get().is_none() {
+            let file_url = Url::from_file_path(&file).unwrap();
+            let uri = if !service.inner().is_workspace_initialized(&file_url) {
                 init_and_open(&mut service, file.to_path_buf()).await
             } else {
                 open(service.inner(), file.to_path_buf()).await
@@ -180,27 +181,23 @@ fn did_open_all_std_lib_files() {
     });
 }
 
-// Opens all members in the examples workspace and assert that we are able to return semantic tokens for each workspace member.
-// This test is expected to run for a while although should be much faster once https://github.com/FuelLabs/sway/pull/7139 is merged.
+// Opens all members in the workspaces and assert that we are able to return semantic tokens for each workspace member.
+// TODO: this seems to take much longer to run than the test above. Investigate why. https://github.com/FuelLabs/sway/issues/7233
 #[test]
 fn did_open_all_members_in_examples() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
         let examples_workspace_dir = sway_workspace_dir().join("examples");
-        let _test_programs_workspace_dir = sway_workspace_dir().join(in_language_test_dir());
-        let _sdk_harness_workspace_dir = sway_workspace_dir().join(sdk_harness_test_projects_dir());
+        let test_programs_workspace_dir = sway_workspace_dir().join(in_language_test_dir());
+        let sdk_harness_workspace_dir = sway_workspace_dir().join(sdk_harness_test_projects_dir());
 
-        // TODO: Support multiple workspaces: https://github.com/FuelLabs/sway/issues/7177
         let workspace_dirs = vec![
             &examples_workspace_dir,
-            //&test_programs_workspace_dir,
-            //&sdk_harness_workspace_dir,
+            &test_programs_workspace_dir,
+            &sdk_harness_workspace_dir,
         ];
 
-        //----------------------------------
         for workspace_dir in workspace_dirs {
-            // we need to init and open if this is the first time we are opening a workspace
-            // TODO: https://github.com/FuelLabs/sway/issues/7177
             let member_manifests = ManifestFile::from_dir(workspace_dir)
                 .unwrap()
                 .member_manifests()
@@ -213,14 +210,16 @@ fn did_open_all_members_in_examples() {
 
                 // If the workspace is not initialized, we need to initialize it
                 // Otherwise, we can just open the file
-                let uri = if service.inner().sync_workspace.get().is_none() {
-                    init_and_open(&mut service, dir.join("src/main.sw")).await
+                let path = dir.join("src/main.sw");
+                let uri = if service.inner().sync_workspaces.is_empty() {
+                    init_and_open(&mut service, path).await
                 } else {
-                    open(service.inner(), dir.join("src/main.sw")).await
+                    open(service.inner(), path).await
                 };
 
                 // Make sure that program was parsed and the token map is populated
-                let tmp_uri = service.inner().uri_from_workspace(&uri).unwrap();
+                let sync = service.inner().get_sync_workspace_for_uri(&uri).unwrap();
+                let tmp_uri = sync.workspace_to_temp_url(&uri).unwrap();
                 let num_tokens_for_file =
                     service.inner().token_map.tokens_for_file(&tmp_uri).count();
                 assert!(num_tokens_for_file > 0);
@@ -228,6 +227,10 @@ fn did_open_all_members_in_examples() {
                 // Make sure that semantic tokens are successfully returned for the file
                 let semantic_tokens = lsp::get_semantic_tokens_full(service.inner(), &uri).await;
                 assert!(!semantic_tokens.data.is_empty());
+
+                // Make sure that document symbols are successfully returned for the file
+                let document_symbols = lsp::get_document_symbols(service.inner(), &uri).await;
+                assert!(!document_symbols.is_empty());
             }
         }
         shutdown_and_exit(&mut service).await;
@@ -251,7 +254,7 @@ fn sync_with_updates_to_manifest_in_workspace() {
         let (mut service, _) = LspService::new(ServerState::new);
         let workspace_dir = test_fixtures_dir().join("workspace");
         let path = workspace_dir.join("test-contract/src/main.sw");
-        let uri = init_and_open(&mut service, path).await;
+        let workspace_uri = init_and_open(&mut service, path.clone()).await;
 
         // add test-library as a dependency to the test-contract manifest file
         let test_lib_string = "test-library = { path = \"../test-library\" }";
@@ -263,28 +266,23 @@ fn sync_with_updates_to_manifest_in_workspace() {
         // notify the server that the manifest file has changed
         let params = DidChangeWatchedFilesParams {
             changes: vec![FileEvent {
-                uri: uri.clone(),
+                uri: workspace_uri.clone(),
                 typ: FileChangeType::CHANGED,
             }],
         };
         lsp::did_change_watched_files_notification(&mut service, params).await;
 
         // Check that the build plan now has 3 items
-        let (_, session) = service
+        let (sync, uri, session) = service
             .inner()
-            .uri_and_session_from_workspace(&uri)
+            .sync_uri_and_session_from_workspace(&workspace_uri)
             .unwrap();
+
         let build_plan = session
             .build_plan_cache
-            .get_or_update(
-                &service
-                    .inner()
-                    .sync_workspace
-                    .get()
-                    .unwrap()
-                    .workspace_manifest_path(),
-                || sway_lsp::core::session::build_plan(&uri),
-            )
+            .get_or_update(&sync.workspace_manifest_path(), || {
+                sway_lsp::core::session::build_plan(&uri)
+            })
             .unwrap();
         assert_eq!(build_plan.compilation_order().len(), 3);
 
@@ -296,26 +294,25 @@ fn sync_with_updates_to_manifest_in_workspace() {
     });
 }
 
-// TODO: Fix this test Issue #7002
-// #[test]
-// fn did_cache_test() {
-//     run_async!({
-//         let (mut service, _) = LspService::build(ServerState::new)
-//             .custom_method("sway/metrics", ServerState::metrics)
-//             .finish();
-//         let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-//         let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
-//         service.inner().wait_for_parsing().await;
-//         let metrics = lsp::metrics_request(&mut service, &uri).await;
-//         assert!(metrics.len() >= 2);
-//         for (path, metrics) in metrics {
-//             if path.contains("sway-lib-std") {
-//                 assert!(metrics.reused_programs >= 1);
-//             }
-//         }
-//         shutdown_and_exit(&mut service).await;
-//     });
-// }
+#[test]
+fn did_cache_test() {
+    run_async!({
+        let (mut service, _) = LspService::build(ServerState::new)
+            .custom_method("sway/metrics", ServerState::metrics)
+            .finish();
+        let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
+        service.inner().wait_for_parsing().await;
+        let metrics = lsp::metrics_request(&mut service).await;
+        assert!(metrics.len() >= 2);
+        for (path, metrics) in metrics {
+            if path.contains("sway-lib-std") {
+                assert!(metrics.reused_programs >= 1);
+            }
+        }
+        shutdown_and_exit(&mut service).await;
+    });
+}
 
 #[allow(dead_code)]
 // #[test]
@@ -332,7 +329,7 @@ fn did_change_stress_test() {
             if version == 0 {
                 service.inner().wait_for_parsing().await;
             }
-            let metrics = lsp::metrics_request(&mut service, &uri).await;
+            let metrics = lsp::metrics_request(&mut service).await;
             for (path, metrics) in metrics {
                 if path.contains("sway-lib-std") {
                     assert!(metrics.reused_programs >= 1);
@@ -444,6 +441,102 @@ fn visualize() {
         let (mut service, _) = LspService::new(ServerState::new);
         let uri = init_and_open(&mut service, e2e_test_dir().join("src/main.sw")).await;
         lsp::visualize_request(service.inner(), &uri, "build_plan").await;
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
+#[test]
+fn code_lens() {
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let uri = init_and_open(&mut service, runnables_test_dir().join("src/main.sw")).await;
+        let response = lsp::code_lens_request(service.inner(), &uri).await;
+        let expected = vec![
+            CodeLens {
+                range: Range {
+                    start: Position {
+                        line: 4,
+                        character: 3,
+                    },
+                    end: Position {
+                        line: 4,
+                        character: 7,
+                    },
+                },
+                command: Some(lsp_types::Command {
+                    title: "▶︎ Run".to_string(),
+                    command: "sway.runScript".to_string(),
+                    arguments: None,
+                }),
+                data: None,
+            },
+            CodeLens {
+                range: Range {
+                    start: Position {
+                        line: 8,
+                        character: 0,
+                    },
+                    end: Position {
+                        line: 8,
+                        character: 7,
+                    },
+                },
+                command: Some(lsp_types::Command {
+                    title: "▶︎ Run Test".to_string(),
+                    command: "sway.runTests".to_string(),
+                    arguments: Some(vec![serde_json::json!({
+                        "name": "test_foo"
+                    })]),
+                }),
+                data: None,
+            },
+            CodeLens {
+                range: Range {
+                    start: Position {
+                        line: 13,
+                        character: 0,
+                    },
+                    end: Position {
+                        line: 13,
+                        character: 7,
+                    },
+                },
+                command: Some(lsp_types::Command {
+                    title: "▶︎ Run Test".to_string(),
+                    command: "sway.runTests".to_string(),
+                    arguments: Some(vec![serde_json::json!({
+                        "name": "test_bar"
+                    })]),
+                }),
+                data: None,
+            },
+        ];
+        assert_eq!(response.unwrap(), expected);
+
+        let uri = open(service.inner(), runnables_test_dir().join("src/other.sw")).await;
+        let response = lsp::code_lens_request(service.inner(), &uri).await;
+        let expected = vec![CodeLens {
+            range: Range {
+                start: Position {
+                    line: 2,
+                    character: 0,
+                },
+                end: Position {
+                    line: 2,
+                    character: 7,
+                },
+            },
+            command: Some(lsp_types::Command {
+                title: "▶︎ Run Test".to_string(),
+                command: "sway.runTests".to_string(),
+                arguments: Some(vec![serde_json::json!({
+                    "name": "test_baz"
+                })]),
+            }),
+            data: None,
+        }];
+        assert_eq!(response.unwrap(), expected);
+
         shutdown_and_exit(&mut service).await;
     });
 }
@@ -2201,16 +2294,7 @@ lsp_capability_test!(
     code_actions::code_action_auto_import_alias_request,
     test_fixtures_dir().join("auto_import/src/main.sw")
 );
-lsp_capability_test!(
-    code_lens,
-    lsp::code_lens_request,
-    runnables_test_dir().join("src/main.sw")
-);
-lsp_capability_test!(
-    code_lens_empty,
-    lsp::code_lens_empty_request,
-    runnables_test_dir().join("src/other.sw")
-);
+
 // TODO: Fix, has unnecessary completitions such as into and try_into Issue #7002
 // lsp_capability_test!(
 //     completion,

@@ -372,6 +372,27 @@ impl Type {
         })
     }
 
+    /// What's the type of the struct/array value indexed by indices.
+    pub fn get_value_indexed_type(&self, context: &Context, indices: &[Value]) -> Option<Type> {
+        // Fetch the field type from the vector of Values.  If the value is a constant int then
+        // unwrap it and try to fetch the field type (which will fail for arrays) otherwise (i.e.,
+        // not a constant int or not a struct) fetch the array element type, which will fail for
+        // non-arrays.
+        indices.iter().try_fold(*self, |ty, idx_val| {
+            idx_val
+                .get_constant(context)
+                .and_then(|const_ref| {
+                    if let ConstantValue::Uint(n) = const_ref.get_content(context).value {
+                        Some(n)
+                    } else {
+                        None
+                    }
+                })
+                .and_then(|idx| ty.get_field_type(context, idx))
+                .or_else(|| ty.get_array_elem_type(context))
+        })
+    }
+
     /// What's the offset, in bytes, of the indexed element?
     /// Returns `None` on invalid indices.
     /// Panics if `self` is not an aggregate (struct, union, or array).

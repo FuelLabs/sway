@@ -46,6 +46,7 @@ fn get_validate_local_var(
 fn is_promotable_type(context: &Context, ty: Type) -> bool {
     ty.is_unit(context)
         || ty.is_bool(context)
+        || ty.is_ptr(context)
         || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64)
 }
 
@@ -66,12 +67,20 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
             ValueDatum::Instruction(Instruction {
                 op: InstOp::Load(_),
                 ..
-            })
-            | ValueDatum::Instruction(Instruction {
-                op: InstOp::Store { .. },
+            }) => {}
+            ValueDatum::Instruction(Instruction {
+                op:
+                    InstOp::Store {
+                        dst_val_ptr: _,
+                        stored_val,
+                    },
                 ..
             }) => {
-                // We understand load and store, so no problem.
+                // Make sure that a local's address isn't stored.
+                // E.g., in cases like `let r = &some_local;`.
+                if let Some((local, _)) = get_validate_local_var(context, function, &stored_val) {
+                    locals.remove(&local);
+                }
             }
             _ => {
                 // Make sure that no local escapes into instructions we don't understand.

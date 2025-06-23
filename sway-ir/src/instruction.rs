@@ -42,6 +42,10 @@ impl Instruction {
     pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) {
         self.op.replace_values(replace_map)
     }
+    /// Get the function containing this instruction
+    pub fn get_function(&self, context: &Context) -> Function {
+        context.blocks[self.parent.0].function
+    }
 }
 
 #[derive(Debug, Clone, DebugWithContext)]
@@ -475,6 +479,379 @@ impl InstOp {
                 } => vec![*result, *arg1, *arg2, *arg3],
                 FuelVmInstruction::Retd { ptr, len } => {
                     vec![*ptr, *len]
+                }
+            },
+        }
+    }
+
+    /// Set the operand at the given index to the provided value.
+    /// The indices are in the same order as returned by `get_operands`.
+    pub fn set_operand(&mut self, replacement: Value, idx: usize) {
+        match self {
+            InstOp::AsmBlock(_, args) => {
+                // Because get_operand only returns operands that have an
+                // initializer, we also iterate over only those, to match indices.
+                let mut cur_idx = 0;
+                for arg in args.iter_mut() {
+                    if let Some(_asm_arg) = arg.initializer {
+                        if cur_idx == idx {
+                            arg.initializer = Some(replacement);
+                            return;
+                        }
+                        cur_idx += 1;
+                    }
+                }
+                panic!("Invalid index for AsmBlock");
+            }
+            InstOp::BitCast(v, _) | InstOp::UnaryOp { arg: v, .. } => {
+                if idx == 0 {
+                    *v = replacement;
+                } else {
+                    panic!("Invalid index for Op");
+                }
+            }
+            InstOp::BinaryOp { op: _, arg1, arg2 } => {
+                if idx == 0 {
+                    *arg1 = replacement;
+                } else if idx == 1 {
+                    *arg2 = replacement;
+                } else {
+                    panic!("Invalid index for BinaryOp");
+                }
+            }
+            InstOp::Branch(BranchToWithArgs { args, .. }) => {
+                if idx < args.len() {
+                    args[idx] = replacement;
+                } else {
+                    panic!("Invalid index for Branch");
+                }
+            }
+            InstOp::Call(_, vs) => {
+                if idx < vs.len() {
+                    vs[idx] = replacement;
+                } else {
+                    panic!("Invalid index for Call");
+                }
+            }
+            InstOp::CastPtr(val, _ty) => {
+                if idx == 0 {
+                    *val = replacement;
+                } else {
+                    panic!("Invalid index for CastPtr");
+                }
+            }
+            InstOp::Cmp(_, lhs, rhs) => {
+                if idx == 0 {
+                    *lhs = replacement;
+                } else if idx == 1 {
+                    *rhs = replacement;
+                } else {
+                    panic!("Invalid index for Cmp");
+                }
+            }
+            InstOp::ConditionalBranch {
+                cond_value,
+                true_block,
+                false_block,
+            } => {
+                if idx == 0 {
+                    *cond_value = replacement;
+                } else if idx - 1 < true_block.args.len() {
+                    true_block.args[idx - 1] = replacement;
+                } else if idx - 1 - true_block.args.len() < false_block.args.len() {
+                    false_block.args[idx - 1 - true_block.args.len()] = replacement;
+                } else {
+                    panic!("Invalid index for ConditionalBranch");
+                }
+            }
+            InstOp::ContractCall {
+                return_type: _,
+                name: _,
+                params,
+                coins,
+                asset_id,
+                gas,
+            } => {
+                if idx == 0 {
+                    *params = replacement;
+                } else if idx == 1 {
+                    *coins = replacement;
+                } else if idx == 2 {
+                    *asset_id = replacement;
+                } else if idx == 3 {
+                    *gas = replacement;
+                } else {
+                    panic!("Invalid index for ContractCall");
+                }
+            }
+            InstOp::GetElemPtr {
+                base,
+                elem_ptr_ty: _,
+                indices,
+            } => {
+                use std::cmp::Ordering;
+                match idx.cmp(&indices.len()) {
+                    Ordering::Less => {
+                        indices[idx] = replacement;
+                    }
+                    Ordering::Equal => {
+                        *base = replacement;
+                    }
+                    Ordering::Greater => {
+                        panic!("Invalid index for GetElemPtr");
+                    }
+                }
+            }
+            InstOp::GetLocal(_local_var) => {
+                // `GetLocal` returns an SSA `Value` but does not take any as an operand.
+                panic!("Invalid index for GetLocal");
+            }
+            InstOp::GetGlobal(_global_var) => {
+                // `GetGlobal` returns an SSA `Value` but does not take any as an operand.
+                panic!("Invalid index for GetGlobal");
+            }
+            InstOp::GetConfig(_, _) => {
+                // `GetConfig` returns an SSA `Value` but does not take any as an operand.
+                panic!("Invalid index for GetConfig");
+            }
+            InstOp::IntToPtr(v, _) => {
+                if idx == 0 {
+                    *v = replacement;
+                } else {
+                    panic!("Invalid index for IntToPtr");
+                }
+            }
+            InstOp::Load(v) => {
+                if idx == 0 {
+                    *v = replacement;
+                } else {
+                    panic!("Invalid index for Load");
+                }
+            }
+            InstOp::MemCopyBytes {
+                dst_val_ptr,
+                src_val_ptr,
+                byte_len: _,
+            } => {
+                if idx == 0 {
+                    *dst_val_ptr = replacement;
+                } else if idx == 1 {
+                    *src_val_ptr = replacement;
+                } else {
+                    panic!("Invalid index for MemCopyBytes");
+                }
+            }
+            InstOp::MemCopyVal {
+                dst_val_ptr,
+                src_val_ptr,
+            } => {
+                if idx == 0 {
+                    *dst_val_ptr = replacement;
+                } else if idx == 1 {
+                    *src_val_ptr = replacement;
+                } else {
+                    panic!("Invalid index for MemCopyVal");
+                }
+            }
+            InstOp::Nop => (),
+            InstOp::PtrToInt(v, _) => {
+                if idx == 0 {
+                    *v = replacement;
+                } else {
+                    panic!("Invalid index for PtrToInt");
+                }
+            }
+            InstOp::Ret(v, _) => {
+                if idx == 0 {
+                    *v = replacement;
+                } else {
+                    panic!("Invalid index for Ret");
+                }
+            }
+            InstOp::Store {
+                dst_val_ptr,
+                stored_val,
+            } => {
+                if idx == 0 {
+                    *dst_val_ptr = replacement;
+                } else if idx == 1 {
+                    *stored_val = replacement;
+                } else {
+                    panic!("Invalid index for Store");
+                }
+            }
+
+            InstOp::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
+                FuelVmInstruction::Gtf {
+                    index,
+                    tx_field_id: _,
+                } => {
+                    if idx == 0 {
+                        *index = replacement;
+                    } else {
+                        panic!("Invalid index for Gtf");
+                    }
+                }
+                FuelVmInstruction::Log {
+                    log_val, log_id, ..
+                } => {
+                    if idx == 0 {
+                        *log_val = replacement;
+                    } else if idx == 1 {
+                        *log_id = replacement;
+                    } else {
+                        panic!("Invalid index for Log");
+                    }
+                }
+                FuelVmInstruction::ReadRegister(_) => {
+                    // `ReadRegister` returns an SSA `Value` but does not take any as an operand.
+                    panic!("Invalid index for ReadRegister");
+                }
+                FuelVmInstruction::Revert(v) => {
+                    if idx == 0 {
+                        *v = replacement;
+                    } else {
+                        panic!("Invalid index for Revert");
+                    }
+                }
+                FuelVmInstruction::JmpMem => {
+                    // `JmpMem` does not take any operand.
+                    panic!("Invalid index for JmpMem");
+                }
+                FuelVmInstruction::Smo {
+                    recipient,
+                    message,
+                    message_size,
+                    coins,
+                } => {
+                    if idx == 0 {
+                        *recipient = replacement;
+                    } else if idx == 1 {
+                        *message = replacement;
+                    } else if idx == 2 {
+                        *message_size = replacement;
+                    } else if idx == 3 {
+                        *coins = replacement;
+                    } else {
+                        panic!("Invalid index for Smo");
+                    }
+                }
+                FuelVmInstruction::StateClear {
+                    key,
+                    number_of_slots,
+                } => {
+                    if idx == 0 {
+                        *key = replacement;
+                    } else if idx == 1 {
+                        *number_of_slots = replacement;
+                    } else {
+                        panic!("Invalid index for StateClear");
+                    }
+                }
+                FuelVmInstruction::StateLoadQuadWord {
+                    load_val,
+                    key,
+                    number_of_slots,
+                } => {
+                    if idx == 0 {
+                        *load_val = replacement;
+                    } else if idx == 1 {
+                        *key = replacement;
+                    } else if idx == 2 {
+                        *number_of_slots = replacement;
+                    } else {
+                        panic!("Invalid index for StateLoadQuadWord");
+                    }
+                }
+                FuelVmInstruction::StateLoadWord(key) => {
+                    if idx == 0 {
+                        *key = replacement;
+                    } else {
+                        panic!("Invalid index for StateLoadWord");
+                    }
+                }
+                FuelVmInstruction::StateStoreQuadWord {
+                    stored_val,
+                    key,
+                    number_of_slots,
+                } => {
+                    if idx == 0 {
+                        *stored_val = replacement;
+                    } else if idx == 1 {
+                        *key = replacement;
+                    } else if idx == 2 {
+                        *number_of_slots = replacement;
+                    } else {
+                        panic!("Invalid index for StateStoreQuadWord");
+                    }
+                }
+                FuelVmInstruction::StateStoreWord { stored_val, key } => {
+                    if idx == 0 {
+                        *stored_val = replacement;
+                    } else if idx == 1 {
+                        *key = replacement;
+                    } else {
+                        panic!("Invalid index for StateStoreWord");
+                    }
+                }
+                FuelVmInstruction::WideUnaryOp { arg, result, .. } => {
+                    if idx == 0 {
+                        *result = replacement;
+                    } else if idx == 1 {
+                        *arg = replacement;
+                    } else {
+                        panic!("Invalid index for WideUnaryOp");
+                    }
+                }
+                FuelVmInstruction::WideBinaryOp {
+                    arg1, arg2, result, ..
+                } => {
+                    if idx == 0 {
+                        *result = replacement;
+                    } else if idx == 1 {
+                        *arg1 = replacement;
+                    } else if idx == 2 {
+                        *arg2 = replacement;
+                    } else {
+                        panic!("Invalid index for WideBinaryOp");
+                    }
+                }
+                FuelVmInstruction::WideCmpOp { arg1, arg2, .. } => {
+                    if idx == 0 {
+                        *arg1 = replacement;
+                    } else if idx == 1 {
+                        *arg2 = replacement;
+                    } else {
+                        panic!("Invalid index for WideCmpOp");
+                    }
+                }
+                FuelVmInstruction::WideModularOp {
+                    result,
+                    arg1,
+                    arg2,
+                    arg3,
+                    ..
+                } => {
+                    if idx == 0 {
+                        *result = replacement;
+                    } else if idx == 1 {
+                        *arg1 = replacement;
+                    } else if idx == 2 {
+                        *arg2 = replacement;
+                    } else if idx == 3 {
+                        *arg3 = replacement;
+                    } else {
+                        panic!("Invalid index for WideModularOp");
+                    }
+                }
+                FuelVmInstruction::Retd { ptr, len } => {
+                    if idx == 0 {
+                        *ptr = replacement;
+                    } else if idx == 1 {
+                        *len = replacement;
+                    } else {
+                        panic!("Invalid index for Retd");
+                    }
                 }
             },
         }

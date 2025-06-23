@@ -10,11 +10,10 @@ use tokio::runtime::Runtime;
 const NUM_DID_CHANGE_ITERATIONS: usize = 10;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session, state, _) = Runtime::new()
+    let (uri, session, state, _, sync) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
 
-    let sync = state.sync_workspace.get().unwrap();
     let build_plan = session
         .build_plan_cache
         .get_or_update(&sync.workspace_manifest_path(), || {
@@ -42,7 +41,6 @@ fn benchmarks(c: &mut Criterion) {
         let results = black_box(
             session::compile(&build_plan, &engines_clone, None, lsp_mode.as_ref()).unwrap(),
         );
-        let session = Arc::new(session::Session::new());
         let member_path = sync.member_path(&uri).unwrap();
         let modified_file = sway_lsp::server_state::modified_file(lsp_mode.as_ref());
 
@@ -53,8 +51,8 @@ fn benchmarks(c: &mut Criterion) {
                     results.clone(),
                     engines_original.clone(),
                     &engines_clone,
-                    session.clone(),
                     &state.token_map,
+                    &state.compiled_programs,
                     modified_file,
                 )
                 .unwrap(),
