@@ -1775,8 +1775,7 @@ pub fn compile(
 
     const ENCODING_V0: &str = "0";
     const ENCODING_V1: &str = "1";
-    const SPEC_VERSION: &str = "1";
-    const SPEC_VERSION_ERROR_TYPE: &str = "1.1";
+    const SPEC_VERSION: &str = "1.1";
 
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
@@ -1798,11 +1797,7 @@ pub fn compile(
                     } else {
                         ENCODING_V0.into()
                     },
-                    if experimental.error_type {
-                        SPEC_VERSION_ERROR_TYPE.into()
-                    } else {
-                        SPEC_VERSION.into()
-                    }
+                    SPEC_VERSION.into()
                 ),
                 Some(sway_build_config.clone()),
                 metrics

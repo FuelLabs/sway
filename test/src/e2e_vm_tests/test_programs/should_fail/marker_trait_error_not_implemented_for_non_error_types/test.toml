@@ -1,5 +1,4 @@
 category = "fail"
-experimental = { error_type = true }
 
 #check: $()error
 #check: $()implements_error(0u64);

@@ -1,1 +1,1 @@
-cmds = ["forc build --path {root} --experimental error_type"]
+cmds = ["forc build --path {root}"]
