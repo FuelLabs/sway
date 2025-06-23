@@ -8,9 +8,104 @@ use std::{
     cmp::Ordering,
     fmt,
     hash::{BuildHasher, Hash, Hasher},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 use sway_types::{SourceEngine, Span};
+
+#[derive(Default)]
+pub struct Callbacks {
+    pub on_before_method_resolution: Option<
+        Box<
+            dyn FnMut(
+                    &crate::semantic_analysis::TypeCheckContext,
+                    &crate::TypeBinding<crate::language::parsed::MethodName>,
+                    &[crate::TypeId],
+                ) + 'static,
+        >,
+    >,
+    pub on_after_method_resolution: Option<
+        Box<
+            dyn FnMut(
+                &crate::semantic_analysis::TypeCheckContext,
+                &crate::TypeBinding<crate::language::parsed::MethodName>,
+                &[crate::TypeId],
+                crate::decl_engine::DeclRefFunction,
+                crate::TypeId,
+            ),
+        >,
+    >,
+}
+
+#[derive(Default)]
+pub struct ObservabilityEngine {
+    log: Vec<String>,
+    callbacks: Mutex<Callbacks>,
+}
+
+impl fmt::Debug for ObservabilityEngine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ObservabilityEngine")
+            .field("log", &self.log)
+            .field(
+                "on_before_method_resolution",
+                if self
+                    .callbacks
+                    .lock()
+                    .unwrap()
+                    .on_before_method_resolution
+                    .is_some()
+                {
+                    &"Some(...)"
+                } else {
+                    &"None"
+                },
+            )
+            .finish()
+    }
+}
+
+impl ObservabilityEngine {
+    pub fn set_callbacks(&self, c: Callbacks) {
+        let mut callbacks = self.callbacks.lock().unwrap();
+        *callbacks = c;
+    }
+
+    pub fn raise_on_before_method_resolution(
+        &self,
+        ctx: &crate::semantic_analysis::TypeCheckContext,
+        method_name: &crate::TypeBinding<crate::language::parsed::MethodName>,
+        arguments_types: &[crate::TypeId],
+    ) {
+        if let Some(f) = self
+            .callbacks
+            .lock()
+            .unwrap()
+            .on_before_method_resolution
+            .as_mut()
+        {
+            (*f)(ctx, method_name, arguments_types);
+        }
+    }
+
+    pub fn raise_on_after_method_resolution(
+        &self,
+        ctx: &crate::semantic_analysis::TypeCheckContext,
+        method_name: &crate::TypeBinding<crate::language::parsed::MethodName>,
+        arguments_types: &[crate::TypeId],
+        ref_function: crate::decl_engine::DeclRefFunction,
+        tid: crate::TypeId,
+    ) {
+        if let Some(f) = self
+            .callbacks
+            .lock()
+            .unwrap()
+            .on_after_method_resolution
+            .as_mut()
+        {
+            (*f)(ctx, method_name, arguments_types, ref_function, tid);
+        }
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct Engines {
@@ -19,6 +114,7 @@ pub struct Engines {
     parsed_decl_engine: ParsedDeclEngine,
     query_engine: QueryEngine,
     source_engine: SourceEngine,
+    obs_engine: Arc<ObservabilityEngine>,
 }
 
 impl Engines {
@@ -40,6 +136,10 @@ impl Engines {
 
     pub fn se(&self) -> &SourceEngine {
         &self.source_engine
+    }
+
+    pub fn obs(&self) -> &ObservabilityEngine {
+        &self.obs_engine
     }
 
     /// Removes all data associated with `program_id` from the engines.

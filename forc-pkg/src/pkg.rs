@@ -28,6 +28,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
+use sway_core::engine_threading::Callbacks;
 use sway_core::namespace::Package;
 use sway_core::transform::AttributeArg;
 pub use sway_core::Programs;
@@ -2178,7 +2179,10 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
 }
 
 /// Builds a project with given BuildOptions.
-pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
+pub fn build_with_options(
+    build_options: &BuildOpts,
+    callbacks: Option<Callbacks>,
+) -> Result<Built> {
     let BuildOpts {
         hex_outfile,
         minify,
@@ -2236,6 +2240,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         &outputs,
         experimental,
         no_experimental,
+        callbacks,
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     let total_size = built_packages
@@ -2359,6 +2364,7 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     experimental: &[sway_features::Feature],
     no_experimental: &[sway_features::Feature],
+    callbacks: Option<Callbacks>,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2368,6 +2374,10 @@ pub fn build(
         .collect();
 
     let engines = Engines::default();
+    if let Some(callbacks) = callbacks {
+        engines.obs().set_callbacks(callbacks);
+    }
+
     let include_tests = profile.include_tests;
 
     // This is the Contract ID of the current contract being compiled.

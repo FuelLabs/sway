@@ -68,7 +68,7 @@ pub(crate) fn built_pkgs(path: &Path, build_opts: &BuildOpts) -> Result<Vec<Arc<
         &build_opts.pkg.ipfs_node,
     )?;
     let graph = build_plan.graph();
-    let built = build_with_options(build_opts)?;
+    let built = build_with_options(build_opts, None)?;
     let mut members: HashMap<&pkg::Pinned, Arc<_>> = built.into_members().collect();
     let mut built_pkgs = Vec::new();
 

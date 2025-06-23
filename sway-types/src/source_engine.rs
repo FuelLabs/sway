@@ -129,8 +129,9 @@ impl SourceEngine {
     }
 
     /// This function provides the [ProgramId] corresponding to a specified manifest file path.
-    pub fn get_program_id_from_manifest_path(&self, path: &PathBuf) -> Option<ProgramId> {
-        let manifest_path = sway_utils::find_parent_manifest_dir(path).unwrap_or(path.clone());
+    pub fn get_program_id_from_manifest_path(&self, path: impl AsRef<Path>) -> Option<ProgramId> {
+        let manifest_path = sway_utils::find_parent_manifest_dir(&path)
+            .unwrap_or_else(|| path.as_ref().to_path_buf());
         self.manifest_path_to_program_map
             .read()
             .get(&manifest_path)
