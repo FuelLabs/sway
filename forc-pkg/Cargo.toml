@@ -24,7 +24,7 @@ futures.workspace = true
 git2 = { workspace = true, features = ["vendored-libgit2", "vendored-openssl"] }
 gix-url = { workspace = true, features = ["serde"] }
 hex.workspace = true
-ipfs-api-backend-hyper = { workspace = true, features = ["with-builder"] }
+ipfs-api-backend-hyper = { workspace = true, features = ["with-builder", "with-send-sync"] }
 petgraph = { workspace = true, features = ["serde-1"] }
 reqwest.workspace = true
 scopeguard.workspace = true
