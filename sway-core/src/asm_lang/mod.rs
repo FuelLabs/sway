@@ -209,19 +209,6 @@ impl Op {
         }
     }
 
-    /// Move an address at a label into a register.
-    pub(crate) fn save_ret_addr(
-        reg: VirtualRegister,
-        label: Label,
-        comment: impl Into<String>,
-        owning_span: Option<Span>,
-    ) -> Self {
-        Op {
-            opcode: Either::Right(OrganizationalOp::SaveRetAddr(reg, label)),
-            comment: comment.into(),
-            owning_span,
-        }
-    }
 
     /// Moves the register in the second argument into the register in the first argument
     pub(crate) fn register_move(
@@ -295,18 +282,6 @@ impl Op {
         }
     }
 
-    /// Dynamically jumps to a register value.
-    pub(crate) fn jump_to_register(
-        reg: VirtualRegister,
-        comment: impl Into<String>,
-        owning_span: Option<Span>,
-    ) -> Self {
-        Op {
-            opcode: Either::Left(VirtualOp::JMP(reg)),
-            comment: comment.into(),
-            owning_span,
-        }
-    }
 
     pub(crate) fn parse_opcode(
         handler: &Handler,
@@ -1211,6 +1186,7 @@ impl fmt::Display for VirtualOp {
             JNE(a, b, c) => write!(fmtr, "jne {a} {b} {c}"),
             JNEI(a, b, c) => write!(fmtr, "jnei {a} {b} {c}"),
             JNZI(a, b) => write!(fmtr, "jnzi {a} {b}"),
+            JAL(a, b, c) => write!(fmtr, "jal {a} {b} {c}"),
             RET(a) => write!(fmtr, "ret {a}"),
 
             /* Memory Instructions */

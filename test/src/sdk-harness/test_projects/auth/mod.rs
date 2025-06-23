@@ -585,7 +585,7 @@ async fn can_get_predicate_address() {
 
     // Setup predicate.
     let hex_predicate_address: &str =
-        "0xa9e0330870e3ed1f537684021c02ad88d8116e91daff9651413169a77b26e509";
+        "0xeddbd8cc2be5fb1d4ae24a5f789e61308750ff698865f311c9818d7eb76d4777";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_data = AuthPredicateEncoder::default()
@@ -599,7 +599,7 @@ async fn can_get_predicate_address() {
 
     // If this test fails, it can be that the predicate address got changed.
     // Uncomment the next line, get the predicate address, and update it above.
-    // dbg!(&predicate);
+    dbg!(&predicate);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
@@ -710,7 +710,7 @@ async fn when_incorrect_predicate_address_passed() {
 async fn can_get_predicate_address_in_message() {
     // Setup predicate address.
     let hex_predicate_address: &str =
-        "0xa9e0330870e3ed1f537684021c02ad88d8116e91daff9651413169a77b26e509";
+        "0xeddbd8cc2be5fb1d4ae24a5f789e61308750ff698865f311c9818d7eb76d4777";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
 

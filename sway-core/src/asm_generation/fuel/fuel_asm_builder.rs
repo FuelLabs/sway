@@ -163,15 +163,6 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                     owning_span: None,
                 });
 
-                // Set a new return address.
-                let ret_label = self.reg_seqr.get_label();
-                self.before_entries.push(Op::save_ret_addr(
-                    VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-                    ret_label,
-                    "set new return address",
-                    None,
-                ));
-
                 // call decode
                 self.before_entries.push(Op {
                     opcode: Either::Right(crate::asm_lang::ControlFlowOp::Jump {
@@ -181,8 +172,6 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                     comment: format!("decode configurable {}", name),
                     owning_span: None,
                 });
-
-                self.before_entries.push(Op::unowned_jump_label(ret_label));
             }
         }
     }
