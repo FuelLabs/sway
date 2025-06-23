@@ -323,25 +323,20 @@ impl source::Pin for Source {
         let pkg_name = pkg_name.clone();
 
         let cid = block_on_any_runtime(async move {
-            with_tmp_fetch_index(
-                fetch_id,
-                &pkg_name,
-                &source,
-                |index_file| {
-                    let version = source.version.clone();
-                    let pkg_name = pkg_name.clone();
-                    async move {
-                        let pkg_entry = index_file.get(&version).ok_or_else(|| {
-                            anyhow!("No {} found for {}", version, pkg_name)
-                        })?;
-                        Cid::from_str(pkg_entry.source_cid()).map_err(anyhow::Error::from)
-                    }
-                },
-            )
+            with_tmp_fetch_index(fetch_id, &pkg_name, &source, |index_file| {
+                let version = source.version.clone();
+                let pkg_name = pkg_name.clone();
+                async move {
+                    let pkg_entry = index_file
+                        .get(&version)
+                        .ok_or_else(|| anyhow!("No {} found for {}", version, pkg_name))?;
+                    Cid::from_str(pkg_entry.source_cid()).map_err(anyhow::Error::from)
+                }
+            })
             .await
         })?;
 
-        let path = registry_package_dir(&self.namespace, &ctx.name.to_string(), &self.version);
+        let path = registry_package_dir(&self.namespace, ctx.name, &self.version);
         let pinned = Pinned {
             source: self.clone(),
             cid,
@@ -375,9 +370,7 @@ impl source::Fetch for Pinned {
                 let fetch_id = ctx.fetch_id();
                 let ipfs_node = ctx.ipfs_node().clone();
 
-                block_on_any_runtime(async move {
-                    fetch(fetch_id, &pinned, &ipfs_node).await
-                })?;
+                block_on_any_runtime(async move { fetch(fetch_id, &pinned, &ipfs_node).await })?;
             }
         }
         let path = {
@@ -540,7 +533,6 @@ where
 /// Execute an async block on a Tokio runtime.
 ///
 /// If we are already in a runtime, this will spawn a new OS thread to create a new runtime.
-/// This is to avoid the "cannot start a runtime from within a runtime" panic.
 ///
 /// If we are not in a runtime, a new runtime is created and the future is blocked on.
 pub(crate) fn block_on_any_runtime<F>(future: F) -> F::Output
