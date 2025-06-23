@@ -56,7 +56,7 @@ For example:
 ```sway
 #[test(should_revert)]
 fn test_meaning_of_life() {
-    assert(6 * 6 == 42);
+    assert_eq(6 * 6, 42);
 }
 ```
 
@@ -65,17 +65,18 @@ It is also possible to specify an expected revert code, like the following examp
 ```sway
 #[test(should_revert = "18446744073709486084")]
 fn test_meaning_of_life() {
-    assert(6 * 6 == 42);
+    assert_eq(6 * 6, 42);
 }
 ```
 
 Tests with `#[test(should_revert)]` are considered to be passing if they are reverting.
 
-Revert codes are not shown by default in passing tests that have `should_revert`. To see revert codes, use the `--revert-codes` flag, `forc test --revert-codes`:
+Available information about reverts is not shown by default in passing tests that have `should_revert`. To see revert information, use the `--reverts` flag, `forc test --reverts`:
 
 ```console
-      test test_meaning_of_life ... ok (23.099µs, 0 gas)
-Revert code: ffffffffffff0004
+  test test_meaning_of_life ... ok (52.432µs, 508 gas)
+       revert code: ffffffffffff0003
+        └─ error message: Failing call to `std::assert::assert_eq`
 ```
 
 ## Calling Contracts

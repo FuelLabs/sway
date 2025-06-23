@@ -31,6 +31,7 @@
   - [Constants](./basics/constants.md)
   - [Comments and Logging](./basics/comments_and_logging.md)
   - [Control Flow](./basics/control_flow.md)
+  - [Error Handling](./basics/error_handling.md)
 - [Blockchain Development with Sway](./blockchain-development/index.md)
   - [Hashing and Cryptography](./blockchain-development/hashing_and_cryptography.md)
   - [Contract Storage](./blockchain-development/storage.md)

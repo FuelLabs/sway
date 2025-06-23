@@ -8,3 +8,7 @@
   - [ ] Remove testing experimental features from `ci.yml`.
   - [ ] Close the GitHub tracking issues.
 - [ ] In the breaking change release, unregister all the migration steps in the `forc migrate`. (Do not delete the migrations. We want to keep them as examples for similar future migrations and for learning purposes.)
+- [ ] Update documentation;
+  - [ ] Ensure that the experimental feature itself is fully documented.
+  - [ ] Ensure that all _Notes_ describing the feature as experimental are removed.
+  - [ ] Ensure that all related documentation is updated.
