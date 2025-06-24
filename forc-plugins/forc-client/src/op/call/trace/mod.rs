@@ -335,22 +335,53 @@ pub(crate) fn display_transaction_trace<W: std::io::Write>(
                 depth = depth.saturating_sub(1);
             }
             TraceEvent::Transfer {
-                amount, asset_id, to, ..
+                amount,
+                asset_id,
+                to,
+                ..
             } => {
-                writeln!(writer, "{}    ├─ [Transfer] to:{} asset_id:{} amount:{}", indent, to, asset_id, amount)?;
+                writeln!(
+                    writer,
+                    "{}    ├─ [Transfer] to:{} asset_id:{} amount:{}",
+                    indent, to, asset_id, amount
+                )?;
             }
             TraceEvent::Mint { asset_id, val, .. } => {
-                writeln!(writer, "{}    ├─ [Mint] asset_id:{} val:{}", indent, asset_id, val)?;
+                writeln!(
+                    writer,
+                    "{}    ├─ [Mint] asset_id:{} val:{}",
+                    indent, asset_id, val
+                )?;
             }
             TraceEvent::Burn { asset_id, val, .. } => {
-                writeln!(writer, "{}    ├─ [Burn] asset_id:{} val:{}", indent, asset_id, val)?;
+                writeln!(
+                    writer,
+                    "{}    ├─ [Burn] asset_id:{} val:{}",
+                    indent, asset_id, val
+                )?;
             }
 
             TraceEvent::Log { rb, .. } => {
                 writeln!(writer, "{}    ├─ [Log] rb: 0x{:x}", indent, rb)?;
             }
-            TraceEvent::MessageOut { amount, recipient, nonce, digest, data, .. } => {
-                writeln!(writer, "{}    ├─ [MessageOut] recipient:{} amount:{} nonce:{} digest:{} data:{}", indent, recipient, amount, nonce, digest, data.clone().unwrap_or("()".to_string()))?;
+            TraceEvent::MessageOut {
+                amount,
+                recipient,
+                nonce,
+                digest,
+                data,
+                ..
+            } => {
+                writeln!(
+                    writer,
+                    "{}    ├─ [MessageOut] recipient:{} amount:{} nonce:{} digest:{} data:{}",
+                    indent,
+                    recipient,
+                    amount,
+                    nonce,
+                    digest,
+                    data.clone().unwrap_or("()".to_string())
+                )?;
             }
             TraceEvent::ScriptResult {
                 result, gas_used, ..
@@ -595,7 +626,9 @@ impl<'a> CallRetTracer<'a> {
                         amount: *amount,
                         data: data_hex,
                         nonce: 0,
-                        digest: "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                        digest:
+                            "0x0000000000000000000000000000000000000000000000000000000000000000"
+                                .to_string(),
                     }
                 }
 
