@@ -26,12 +26,18 @@ impl Hasher {
         }
     }
 
-    /// Appends `bytes` to this `Hasher`.
+    /// Appends content of `bytes` to this `Hasher`.
+    ///
+    /// Note that the length of `bytes` is not appended to the
+    /// `Hasher`, just the content.
     pub fn write(ref mut self, bytes: Bytes) {
         self.bytes.append(bytes);
     }
 
     /// Appends bytes from the `slice` to this `Hasher`.
+    ///
+    /// Note that the length of `slice` is not appended to the
+    /// `Hasher`, just the bytes within the `slice`.
     pub fn write_raw_slice(ref mut self, slice: raw_slice) {
         self.bytes.append_raw_slice(slice);
     }
@@ -42,12 +48,18 @@ impl Hasher {
     }
 
     /// Appends a single `str` to this `Hasher`.
+    ///
+    /// Note that the length of `s` is not appended to the
+    /// `Hasher`, just the bytes forming the string `s`.
     pub fn write_str(ref mut self, s: str) {
         self.bytes
             .append_raw_slice(raw_slice::from_parts::<u8>(s.as_ptr(), s.len()));
     }
 
     /// Appends a single string array to this `Hasher`.
+    ///
+    /// Note that the length of `s` is not appended to the
+    /// `Hasher`, just the bytes forming the string array `s`.
     #[inline(never)]
     pub fn write_str_array<S>(ref mut self, s: S) {
         __assert_is_str_array::<S>();
@@ -152,14 +164,32 @@ impl Hash for bool {
     }
 }
 
+#[cfg(experimental_new_hashing = false)]
 impl Hash for Bytes {
     fn hash(self, ref mut state: Hasher) {
         state.write(self);
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+impl Hash for Bytes {
+    fn hash(self, ref mut state: Hasher) {
+        self.len().hash(state);
+        state.write(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 impl Hash for str {
     fn hash(self, ref mut state: Hasher) {
+        state.write_str(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+impl Hash for str {
+    fn hash(self, ref mut state: Hasher) {
+        self.len().hash(state);
         state.write_str(self);
     }
 }
@@ -235,6 +265,7 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 0]
 where
@@ -243,6 +274,18 @@ where
     fn hash(self, ref mut _state: Hasher) {}
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 0]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        0_u64.hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 1]
 where
@@ -253,6 +296,19 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 1]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        1_u64.hash(state);
+        self[0].hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 2]
 where
@@ -264,6 +320,20 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 2]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        2_u64.hash(state);
+        self[0].hash(state);
+        self[1].hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 3]
 where
@@ -276,6 +346,21 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 3]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        3_u64.hash(state);
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 4]
 where
@@ -289,6 +374,22 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 4]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        4_u64.hash(state);
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 5]
 where
@@ -303,6 +404,23 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 5]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        5_u64.hash(state);
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 6]
 where
@@ -318,6 +436,24 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 6]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        6_u64.hash(state);
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+        self[5].hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 7]
 where
@@ -334,6 +470,25 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 7]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        7_u64.hash(state);
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+        self[5].hash(state);
+        self[6].hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 8]
 where
@@ -351,6 +506,26 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 8]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        8_u64.hash(state);
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+        self[5].hash(state);
+        self[6].hash(state);
+        self[7].hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 9]
 where
@@ -369,6 +544,27 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 9]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        9_u64.hash(state);
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+        self[5].hash(state);
+        self[6].hash(state);
+        self[7].hash(state);
+        self[8].hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 10]
 where
@@ -388,6 +584,28 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = false)]
+impl<T> Hash for [T; 10]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        10_u64.hash(state);
+        self[0].hash(state);
+        self[1].hash(state);
+        self[2].hash(state);
+        self[3].hash(state);
+        self[4].hash(state);
+        self[5].hash(state);
+        self[6].hash(state);
+        self[7].hash(state);
+        self[8].hash(state);
+        self[9].hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = true)]
 impl<T, const N: u64> Hash for [T; N]
 where
@@ -403,12 +621,56 @@ where
     }
 }
 
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = true)]
+impl<T, const N: u64> Hash for [T; N]
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        N.hash(state);
+        let mut i = 0;
+        while __lt(i, N) {
+            let item: T = *__elem_at(&self, i);
+            item.hash(state);
+            i = __add(i, 1);
+        }
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 impl<T> Hash for Vec<T>
 where
     T: Hash,
 {
     fn hash(self, ref mut state: Hasher) {
         let len = self.len();
+        // `__elem_at` accepts only a reference to a slice or an array.
+        // To satisfy this requirement, we cast the pointer to the underlying
+        // vector data to an array reference.
+        let ptr = asm(ptr: self.ptr()) {
+            ptr: &[T; 0]
+        };
+
+        let mut i = 0;
+        while __lt(i, len) {
+            let item: T = *__elem_at(ptr, i);
+            item.hash(state);
+            i = __add(i, 1);
+        }
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+impl<T> Hash for Vec<T>
+where
+    T: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        let len = self.len();
+
+        len.hash(state);
+
         // `__elem_at` accepts only a reference to a slice or an array.
         // To satisfy this requirement, we cast the pointer to the underlying
         // vector data to an array reference.
