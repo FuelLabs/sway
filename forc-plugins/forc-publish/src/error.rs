@@ -35,7 +35,7 @@ pub enum Error {
     #[error("Project is missing a version field, add one under [project]")]
     MissingVersionField,
 
-    #[error("Workspace is not supported yet, deploy each member seperately")]
+    #[error("Workspace is not supported yet, deploy each member separately")]
     WorkspaceNotSupported,
 
     #[error("{0} is not a forc.pub dependency, depend on it using version.")]
