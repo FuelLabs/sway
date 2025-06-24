@@ -260,12 +260,14 @@ forc call <CONTRACT_ID> \
 ```
 
 **Without labels:**
+
 ```log
 ├─ [8793] 0x2af09151f8276611ba65f14650970657bc42c1503d6502ffbb4d085ec37065dd::transfer(100, 0x123)
 │    └─ ← ()
 ```
 
 **With labels:**
+
 ```log
 ├─ [8793] TokenContract::transfer(100, 0x123)
 │    └─ ← ()
@@ -286,6 +288,7 @@ forc call <CONTRACT_ID> \
 ```
 
 This helps decode:
+
 - Function names
 - Function parameters in readable format
 - Return values in structured format instead of raw hex
