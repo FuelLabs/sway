@@ -2,10 +2,8 @@
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "lib.sw"
 license = "Apache-2.0"
-name = "deps_without_version"
+name = "without_version"
 implicit-std = false
 version = "0.0.0"
 
 [dependencies]
-dep_a = { git = "https://test.test", branch = "test" }
-dep_b = "0.1.2"

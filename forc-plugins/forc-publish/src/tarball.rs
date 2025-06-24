@@ -86,6 +86,7 @@ fn copy_project_excluding_out(temp_project_dir: &Path) -> Result<()> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::error::Error;
     use flate2::read::GzDecoder;
     use serial_test::serial;
     use std::{env, fs};
@@ -95,18 +96,15 @@ mod test {
     #[test]
     #[serial]
     fn test_create_tarball_success() {
-        // Create a temporary directory
-        let temp_project_dir = tempdir().unwrap();
-
-        // Create a fake Forc.toml
-        let forc_toml_path = temp_project_dir.path().join("Forc.toml");
-        fs::write(&forc_toml_path, "[package]\nname = \"test_project\"").unwrap();
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let tests_path = manifest_dir.join("tests").join("data");
+        let src_dir = tests_path.join("success_with_no_deps");
 
         // Create another temporary directory for storing the tarball
         let temp_output_dir = tempdir().unwrap();
 
         // Run the function
-        env::set_current_dir(&temp_project_dir).unwrap();
+        env::set_current_dir(&src_dir).unwrap();
         let result = create_tarball_from_current_dir(&temp_output_dir);
         assert!(result.is_ok());
 
@@ -156,7 +154,7 @@ mod test {
         // Create necessary files
         fs::write(
             temp_project_dir.path().join("Forc.toml"),
-            "[package]\nname = \"test_project\"",
+            "[project]\nname = \"test_project\"\nversion = \"0.0.0\"\nentry = \"main.sw\"\nlicense=\"Apache-2.0\"",
         )
         .unwrap();
         fs::create_dir(temp_project_dir.path().join("src/")).unwrap();
@@ -174,6 +172,8 @@ mod test {
         std::env::set_current_dir(temp_project_dir.path()).unwrap();
 
         // Run the function
+        let result = create_tarball_from_current_dir(&temp_output_dir);
+        result.unwrap();
         let result = create_tarball_from_current_dir(&temp_output_dir);
         assert!(result.is_ok());
 

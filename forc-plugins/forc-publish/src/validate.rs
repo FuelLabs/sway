@@ -42,3 +42,55 @@ pub fn validate_dir(path: &Path) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use super::validate_dir;
+    use std::path::PathBuf;
+
+    #[test]
+    fn without_version_should_fail() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let tests_path = manifest_dir.join("tests").join("data");
+
+        let no_version_project_test = tests_path.join("without_version");
+        let res = validate_dir(&no_version_project_test);
+
+        assert!(res.is_err());
+        assert!(res.err().is_some_and(|err| {
+            err.to_string() == "Project is missing a version field, add one under [project]"
+        }));
+    }
+
+    #[test]
+    fn deps_without_version_should_fail() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let tests_path = manifest_dir.join("tests").join("data");
+
+        let no_version_project_test = tests_path.join("deps_without_version");
+        let res = validate_dir(&no_version_project_test);
+
+        assert!(res.is_err());
+        assert!(res.err().is_some_and(|err| {
+            err.to_string() == "dep_a is not a forc.pub dependency, depend on it using version."
+        }));
+    }
+
+    #[test]
+    fn success_without_deps() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let tests_path = manifest_dir.join("tests").join("data");
+
+        let success_without_deps = tests_path.join("success_with_no_deps");
+        validate_dir(&success_without_deps).unwrap()
+    }
+
+    #[test]
+    fn success_with_deps() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let tests_path = manifest_dir.join("tests").join("data");
+
+        let success_without_deps = tests_path.join("success_with_deps");
+        validate_dir(&success_without_deps).unwrap()
+    }
+}
