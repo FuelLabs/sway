@@ -7,7 +7,7 @@ use crate::{
         CallResponse, Either,
     },
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use fuel_abi_types::abi::unified_program::UnifiedProgramABI;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_types::services::executor::{TransactionExecutionResult, TransactionExecutionStatus};
@@ -142,7 +142,8 @@ pub async fn call_function(
     };
 
     // Execute the call based on execution mode
-    let client = FuelClient::new(wallet.provider().url()).context("Failed to create client")?;
+    let client = FuelClient::new(wallet.provider().url())
+        .map_err(|e| anyhow!("Failed to create client: {e}"))?;
     let consensus_params = wallet.provider().consensus_parameters().await?;
     let chain_id = consensus_params.chain_id();
 
@@ -162,7 +163,7 @@ pub async fn call_function(
             let (tx_execs, storage_reads) = client
                 .dry_run_opt_record_storage_reads(&[tx.clone().into()], None, None, None)
                 .await
-                .context("Failed to dry run transaction")?;
+                .map_err(|e| anyhow!("Failed to dry run transaction: {e}"))?;
             let tx_exec = tx_execs
                 .first()
                 .ok_or(anyhow!(
@@ -181,7 +182,7 @@ pub async fn call_function(
             let (tx_execs, storage_reads) = client
                 .dry_run_opt_record_storage_reads(&[tx.clone().into()], None, gas_price, None)
                 .await
-                .context("Failed to dry run transaction")?;
+                .map_err(|e| anyhow!("Failed to dry run transaction: {e}"))?;
             let tx_exec = tx_execs
                 .first()
                 .ok_or(anyhow!(
@@ -248,7 +249,7 @@ pub async fn call_function(
             let storage_reads = client
                 .storage_read_replay(&block_height)
                 .await
-                .context("Failed to get storage reads")?;
+                .map_err(|e| anyhow!("Failed to get storage reads: {e}"))?;
 
             #[cfg(test)]
             let storage_reads = vec![];
@@ -261,7 +262,8 @@ pub async fn call_function(
         bail!("Transaction is not a script");
     };
 
-    let script_json = serde_json::to_value(&script).context("Failed to convert script to JSON")?;
+    let script_json = serde_json::to_value(&script)
+        .map_err(|e| anyhow!("Failed to convert script to JSON: {e}"))?;
 
     // Parse the result based on output format
     let mut receipt_parser =
@@ -297,7 +299,7 @@ pub async fn call_function(
             &abi_map,
         )
         .await
-        .context("Failed to generate execution trace")?;
+        .map_err(|e| anyhow!("Failed to generate execution trace: {e}"))?;
 
         // Convert labels from Vec to HashMap
         let labels: HashMap<ContractId, String> = cmd
