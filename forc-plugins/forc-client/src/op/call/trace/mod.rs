@@ -586,9 +586,9 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Transfer {
                     index,
                     id: *id,
-                    to: format!("0x{}", to.to_string()),
+                    to: format!("0x{}", to),
                     amount: *amount,
-                    asset_id: format!("0x{}", asset_id.to_string()),
+                    asset_id: format!("0x{}", asset_id),
                 },
 
                 Receipt::TransferOut {
@@ -600,9 +600,9 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Transfer {
                     index,
                     id: *id,
-                    to: format!("0x{}", to.to_string()),
+                    to: format!("0x{}", to),
                     amount: *amount,
-                    asset_id: format!("0x{}", asset_id.to_string()),
+                    asset_id: format!("0x{}", asset_id),
                 },
 
                 Receipt::ScriptResult { result, gas_used } => TraceEvent::ScriptResult {
@@ -621,8 +621,8 @@ impl<'a> CallRetTracer<'a> {
                     let data_hex = data.as_ref().map(|d| format!("0x{}", hex::encode(d)));
                     TraceEvent::MessageOut {
                         index,
-                        sender: format!("0x{}", sender.to_string()),
-                        recipient: format!("0x{}", recipient.to_string()),
+                        sender: format!("0x{}", sender),
+                        recipient: format!("0x{}", recipient),
                         amount: *amount,
                         data: data_hex,
                         nonce: 0,
@@ -640,7 +640,7 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Mint {
                     index,
                     contract_id: *contract_id,
-                    asset_id: format!("0x{}", sub_id.to_string()),
+                    asset_id: format!("0x{}", sub_id),
                     val: *val,
                 },
 
@@ -652,7 +652,7 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Burn {
                     index,
                     contract_id: *contract_id,
-                    asset_id: format!("0x{}", sub_id.to_string()),
+                    asset_id: format!("0x{}", sub_id),
                     val: *val,
                 },
             };
