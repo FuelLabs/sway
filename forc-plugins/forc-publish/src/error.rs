@@ -29,6 +29,18 @@ pub enum Error {
     #[error("Forc.toml not found in the current directory")]
     ForcTomlNotFound,
 
+    #[error("Invalid forc.toml: {0}")]
+    InvalidForcToml(#[from] anyhow::Error),
+
+    #[error("Project is missing a version field, add one under [project]")]
+    MissingVersionField,
+
+    #[error("Workspace is not supported yet, deploy each member seperately")]
+    WorkspaceNotSupported,
+
+    #[error("{0} is not a forc.pub dependency, depend on it using version.")]
+    DependencyMissingVersion(String),
+
     #[error("Server error")]
     ServerError,
 

@@ -1,5 +1,6 @@
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::md_pre_process::flatten_markdown;
+use crate::validate::validate_dir;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use forc_tracing::println_warning;
@@ -16,11 +17,7 @@ const TARBALL_FILE_NAME: &str = "sway-project.tgz";
 pub fn create_tarball_from_current_dir(temp_tarball_dir: &TempDir) -> Result<PathBuf> {
     let current_dir = std::env::current_dir()?;
 
-    // Check if Forc.toml exists
-    let forc_toml_path = current_dir.join("Forc.toml");
-    if !forc_toml_path.exists() {
-        return Err(Error::ForcTomlNotFound);
-    }
+    validate_dir(&current_dir)?;
 
     // Copy project to a temporary directory, excluding `/out/`
     let temp_project_dir = tempdir()?;
