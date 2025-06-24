@@ -12,9 +12,9 @@ repository.workspace = true
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 flate2.workspace = true
+forc-pkg.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
-forc-pkg.workspace = true
 futures-util.workspace = true
 regex.workspace = true
 reqwest = { workspace = true, features = ["json", "stream"] }
