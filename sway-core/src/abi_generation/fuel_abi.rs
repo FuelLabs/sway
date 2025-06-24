@@ -9,7 +9,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_parse::is_valid_identifier_or_path;
-use sway_types::Span;
+use sway_types::{Named, Span, Spanned};
 
 use crate::{
     ast_elements::type_parameter::GenericTypeParameter,
@@ -20,12 +20,27 @@ use crate::{
 
 use super::abi_str::AbiStrContext;
 
+#[derive(Clone, Debug)]
+pub enum AbiNameDiagnosticSpan {
+    Attribute(Span),
+    Type(Span),
+}
+
+impl AbiNameDiagnosticSpan {
+    pub fn span(self) -> Span {
+        match self {
+            Self::Attribute(span) => span,
+            Self::Type(span) => span,
+        }
+    }
+}
+
 pub struct AbiContext<'a> {
     pub program: &'a TyProgram,
     pub panic_occurrences: &'a PanicOccurrences,
     pub abi_with_callpaths: bool,
     pub type_ids_to_full_type_str: HashMap<String, String>,
-    pub unique_names: HashSet<String>,
+    pub unique_names: HashMap<String, AbiNameDiagnosticSpan>,
 }
 
 impl AbiContext<'_> {
@@ -37,6 +52,40 @@ impl AbiContext<'_> {
             abi_root_type_without_generic_type_parameters: true,
         }
     }
+}
+
+pub fn extract_abi_name_inner(span: &Span) -> Option<Span> {
+    let text = &span.src().text;
+    let full_attr: &str = &text[span.start()..span.end()];
+
+    // Find the "name" key.
+    let name_key_pos = full_attr.find("name")?;
+    let after_name = &full_attr[name_key_pos..];
+
+    // Find the '=' after "name".
+    let eq_offset_rel = after_name.find('=')?;
+    let after_eq = &after_name[eq_offset_rel + 1..];
+
+    // Find the opening quote of the literal.
+    let first_quote_rel = after_eq.find('"')?;
+    let ident_abs_start = span.start()
+        + name_key_pos
+        + eq_offset_rel
+        + 1        // move past '='
+        + first_quote_rel
+        + 1; // move past the opening '"'
+
+    // Starting at ident_abs_start, locate the closing quote.
+    let rest_after_ident = &text[ident_abs_start..span.end()];
+    let second_quote_rel = rest_after_ident.find('"')?;
+    let ident_abs_end = ident_abs_start + second_quote_rel;
+
+    Span::new(
+        span.src().clone(),
+        ident_abs_start - 1,
+        ident_abs_end + 1,
+        span.source_id().cloned(),
+    )
 }
 
 impl TypeId {
@@ -73,7 +122,7 @@ impl TypeId {
                     }
                     None => Ok(None),
                 }
-            },
+            }
             _ => Ok(None),
         }
     }
@@ -107,7 +156,7 @@ impl TypeId {
 
         if should_check_name {
             let mut has_abi_name_attribute = false;
-            let (name, span) =
+            let (name, attribute_span) =
                 match Self::get_abi_name_and_span_from_type_id(engines, resolved_type_id)? {
                     Some(res) => {
                         has_abi_name_attribute = true;
@@ -116,15 +165,42 @@ impl TypeId {
                     None => (String::new(), Span::dummy()),
                 };
 
-            let inserted = ctx.unique_names.insert(type_str.clone());
+            let attribute_name_span =
+                extract_abi_name_inner(&attribute_span).unwrap_or(attribute_span.clone());
+
+            let type_span = match *engines.te().get(resolved_type_id) {
+                TypeInfo::Enum(decl_id) => engines.de().get_enum(&decl_id).name().span(),
+                TypeInfo::Struct(decl_id) => engines.de().get_struct(&decl_id).name().span(),
+                _ => unreachable!(),
+            };
+
+            let insert_span = if has_abi_name_attribute {
+                AbiNameDiagnosticSpan::Attribute(attribute_span.clone())
+            } else {
+                AbiNameDiagnosticSpan::Type(type_span.clone())
+            };
+
+            let prev_span_opt = if ctx.unique_names.contains_key(&type_str) {
+                ctx.unique_names.get(&type_str).cloned()
+            } else {
+                ctx.unique_names.insert(type_str.clone(), insert_span)
+            };
+
             if has_abi_name_attribute {
                 if name.is_empty() || !is_valid_identifier_or_path(name.as_str()) {
-                    err =
-                        Some(handler.emit_err(CompileError::ABIInvalidName { span: span.clone() }));
+                    err = Some(handler.emit_err(CompileError::ABIInvalidName {
+                        span: attribute_name_span.clone(),
+                        name,
+                    }));
                 }
 
-                if !inserted {
-                    err = Some(handler.emit_err(CompileError::ABIDuplicateName { span }));
+                if let Some(prev_span) = prev_span_opt {
+                    let is_attribute = matches!(prev_span, AbiNameDiagnosticSpan::Attribute(_));
+                    err = Some(handler.emit_err(CompileError::ABIDuplicateName {
+                        span: attribute_name_span.clone(),
+                        other_span: prev_span.span(),
+                        is_attribute,
+                    }));
                 }
             }
         }
@@ -157,6 +233,47 @@ impl TypeId {
     }
 }
 
+fn insert_unique_type(ctx: &mut AbiContext, name: String, span: Span) {
+    let _ = ctx
+        .unique_names
+        .insert(name, AbiNameDiagnosticSpan::Type(span));
+}
+
+fn process_type_name(ctx: &mut AbiContext, engines: &Engines, type_id: TypeId) {
+    match &*engines.te().get(type_id) {
+        TypeInfo::Enum(decl_id) => {
+            let enum_decl = engines.de().get_enum(decl_id);
+            insert_unique_type(
+                ctx,
+                format!("enum {}", enum_decl.name()),
+                enum_decl.name().span(),
+            );
+        }
+        TypeInfo::Struct(decl_id) => {
+            let struct_decl = engines.de().get_struct(decl_id);
+            insert_unique_type(
+                ctx,
+                format!("struct {}", struct_decl.name()),
+                struct_decl.name().span(),
+            );
+        }
+        TypeInfo::Alias { name: _, ty } => process_type_name(ctx, engines, ty.type_id()),
+        _ => {}
+    }
+}
+
+fn process_type_names_from_function(
+    ctx: &mut AbiContext,
+    engines: &Engines,
+    function: &TyFunctionDecl,
+) {
+    process_type_name(ctx, engines, function.return_type.type_id());
+
+    for param in &function.parameters {
+        process_type_name(ctx, engines, param.type_argument.type_id());
+    }
+}
+
 pub fn generate_program_abi(
     handler: &Handler,
     ctx: &mut AbiContext,
@@ -167,6 +284,25 @@ pub fn generate_program_abi(
     let decl_engine = engines.de();
     let metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration> = &mut vec![];
     let concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration> = &mut vec![];
+
+    match &ctx.program.kind {
+        TyProgramKind::Contract { abi_entries, .. } => {
+            abi_entries.iter().for_each(|x| {
+                let fn_decl = decl_engine.get_function(x);
+                process_type_names_from_function(ctx, engines, &fn_decl);
+            });
+        }
+        TyProgramKind::Script { main_function, .. } => {
+            let main_function = decl_engine.get_function(main_function);
+            process_type_names_from_function(ctx, engines, &main_function);
+        }
+        TyProgramKind::Predicate { main_function, .. } => {
+            let main_function = decl_engine.get_function(main_function);
+            process_type_names_from_function(ctx, engines, &main_function);
+        }
+        TyProgramKind::Library { .. } => {}
+    };
+
     let mut program_abi = handler.scope(|handler| match &ctx.program.kind {
         TyProgramKind::Contract { abi_entries, .. } => {
             let functions = abi_entries
