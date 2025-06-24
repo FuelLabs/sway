@@ -122,6 +122,7 @@ pub async fn interpret_execution_trace(
     Ok(tracer.into_events())
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum TraceEvent {
     Call {
@@ -211,6 +212,10 @@ pub enum TraceEvent {
         sender: String,
         /// Recipient address
         recipient: String,
+        /// Nonce
+        nonce: u64,
+        /// Digest
+        digest: String,
         /// Amount
         amount: u64,
         /// Message data (hex encoded)
@@ -221,7 +226,7 @@ pub enum TraceEvent {
         /// Contract that minted
         contract_id: ContractId,
         /// Sub asset ID
-        sub_id: String,
+        asset_id: String,
         /// Amount minted
         val: u64,
     },
@@ -230,7 +235,7 @@ pub enum TraceEvent {
         /// Contract that burned
         contract_id: ContractId,
         /// Sub asset ID
-        sub_id: String,
+        asset_id: String,
         /// Amount burned
         val: u64,
     },
@@ -306,6 +311,8 @@ pub(crate) fn display_transaction_trace<W: std::io::Write>(
                         indent,
                         Color::BrightCyan.paint(log_value)
                     )?;
+                } else {
+                    writeln!(writer, "{}    ├─ emit ()", indent)?;
                 }
             }
             TraceEvent::Revert { .. } => {
@@ -328,23 +335,22 @@ pub(crate) fn display_transaction_trace<W: std::io::Write>(
                 depth = depth.saturating_sub(1);
             }
             TraceEvent::Transfer {
-                amount, asset_id, ..
+                amount, asset_id, to, ..
             } => {
-                writeln!(writer, "{}    ├─ [TransferOut] amount: {}", indent, amount)?;
+                writeln!(writer, "{}    ├─ [Transfer] to:{} asset_id:{} amount:{}", indent, to, asset_id, amount)?;
             }
-            TraceEvent::Mint { val, .. } => {
-                writeln!(writer, "{}    ├─ [Mint] val: {}", indent, val)?;
+            TraceEvent::Mint { asset_id, val, .. } => {
+                writeln!(writer, "{}    ├─ [Mint] asset_id:{} val:{}", indent, asset_id, val)?;
             }
-            TraceEvent::Burn { val, .. } => {
-                writeln!(writer, "{}    ├─ [Burn] val: {}", indent, val)?;
+            TraceEvent::Burn { asset_id, val, .. } => {
+                writeln!(writer, "{}    ├─ [Burn] asset_id:{} val:{}", indent, asset_id, val)?;
             }
 
-            TraceEvent::Log { ra, rb, rc, rd, .. } => {
+            TraceEvent::Log { rb, .. } => {
                 writeln!(writer, "{}    ├─ [Log] rb: 0x{:x}", indent, rb)?;
             }
-
-            TraceEvent::MessageOut { amount, .. } => {
-                writeln!(writer, "{}    ├─ [MessageOut] amount: {}", indent, amount)?;
+            TraceEvent::MessageOut { amount, recipient, nonce, digest, data, .. } => {
+                writeln!(writer, "{}    ├─ [MessageOut] recipient:{} amount:{} nonce:{} digest:{} data:{}", indent, recipient, amount, nonce, digest, data.clone().unwrap_or("()".to_string()))?;
             }
             TraceEvent::ScriptResult {
                 result, gas_used, ..
@@ -549,9 +555,9 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Transfer {
                     index,
                     id: *id,
-                    to: format!("{:?}", to),
+                    to: format!("0x{}", to.to_string()),
                     amount: *amount,
-                    asset_id: format!("{:?}", asset_id),
+                    asset_id: format!("0x{}", asset_id.to_string()),
                 },
 
                 Receipt::TransferOut {
@@ -563,9 +569,9 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Transfer {
                     index,
                     id: *id,
-                    to: format!("{:?}", to),
+                    to: format!("0x{}", to.to_string()),
                     amount: *amount,
-                    asset_id: format!("{:?}", asset_id),
+                    asset_id: format!("0x{}", asset_id.to_string()),
                 },
 
                 Receipt::ScriptResult { result, gas_used } => TraceEvent::ScriptResult {
@@ -584,10 +590,12 @@ impl<'a> CallRetTracer<'a> {
                     let data_hex = data.as_ref().map(|d| format!("0x{}", hex::encode(d)));
                     TraceEvent::MessageOut {
                         index,
-                        sender: format!("{:?}", sender),
-                        recipient: format!("{:?}", recipient),
+                        sender: format!("0x{}", sender.to_string()),
+                        recipient: format!("0x{}", recipient.to_string()),
                         amount: *amount,
                         data: data_hex,
+                        nonce: 0,
+                        digest: "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
                     }
                 }
 
@@ -599,7 +607,7 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Mint {
                     index,
                     contract_id: *contract_id,
-                    sub_id: format!("{:?}", sub_id),
+                    asset_id: format!("0x{}", sub_id.to_string()),
                     val: *val,
                 },
 
@@ -611,7 +619,7 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Burn {
                     index,
                     contract_id: *contract_id,
-                    sub_id: format!("{:?}", sub_id),
+                    asset_id: format!("0x{}", sub_id.to_string()),
                     val: *val,
                 },
             };
@@ -868,7 +876,7 @@ mod tests {
             TraceEvent::Mint {
                 index: 1,
                 contract_id,
-                sub_id: "0000000000000000000000000000000000000000000000000000000000000000"
+                asset_id: "0000000000000000000000000000000000000000000000000000000000000000"
                     .to_string(),
                 val: 100,
             },
@@ -883,7 +891,7 @@ mod tests {
             TraceEvent::Burn {
                 index: 3,
                 contract_id,
-                sub_id: "0000000000000000000000000000000000000000000000000000000000000000"
+                asset_id: "0000000000000000000000000000000000000000000000000000000000000000"
                     .to_string(),
                 val: 100,
             },
@@ -912,9 +920,9 @@ mod tests {
         Traces:
           [Script]
             ├─ [46023] 0x5598f77f568631ad7e37e1d88b248d0c5002705ae4582fd544c9a87662a6af03::unknown()
-            │    ├─ [Mint] val: 100
-            │    ├─ [TransferOut] amount: 100
-            │    ├─ [Burn] val: 100
+            │    ├─ [Mint] asset_id:0000000000000000000000000000000000000000000000000000000000000000 val:100
+            │    ├─ [Transfer] to:de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c asset_id:f8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07 amount:100
+            │    ├─ [Burn] asset_id:0000000000000000000000000000000000000000000000000000000000000000 val:100
             │    └─ ← ()
             └─ ← [Return] val: 1
           [ScriptResult] result: Success, gas_used: 37228
