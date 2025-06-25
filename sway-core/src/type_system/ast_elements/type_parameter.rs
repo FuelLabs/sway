@@ -226,12 +226,23 @@ impl OrdWithEngines for TypeParameter {
 
 impl DebugWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        match self {
-            TypeParameter::Type(p) => p.fmt(f, engines),
-            TypeParameter::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+        let s = match self {
+            TypeParameter::Type(p) => {
+                format!(
+                    "{:?} -> {:?}",
+                    engines.help_out(p.initial_type_id),
+                    engines.help_out(p.type_id)
+                )
             }
-        }
+            TypeParameter::Const(p) => {
+                match p.expr.as_ref() {
+                    Some(ConstGenericExpr::Literal { val, .. }) => format!("{} -> {}", p.name, val),
+                    Some(ConstGenericExpr::AmbiguousVariableExpression { ident }) => format!("{}", ident),
+                    None => format!("{} -> None", p.name)
+                }
+            }
+        };
+        write!(f, "{}", s)
     }
 }
 
