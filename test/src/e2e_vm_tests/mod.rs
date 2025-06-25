@@ -84,12 +84,6 @@ impl FileCheck {
     }
 }
 
-#[derive(Clone, Debug)]
-struct LogsCommand {
-    cond: String,
-    cmds: String,
-}
-
 #[derive(Clone)]
 struct TestDescription {
     name: String,
@@ -111,7 +105,7 @@ struct TestDescription {
     run_config: RunConfig,
     experimental: ExperimentalFeatures,
     has_experimental_field: bool,
-    logs: Vec<LogsCommand>,
+    logs: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -1274,15 +1268,10 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         supported_targets
     });
 
-    let mut logs = vec![];
-    if let Some(toml_logs) = toml_content.get("logs").and_then(|x| x.as_array()) {
-        for l in toml_logs.iter() {
-            logs.push(LogsCommand {
-                cond: l.as_array().unwrap()[0].as_str().unwrap().to_string(),
-                cmds: l.as_array().unwrap()[1].as_str().unwrap().to_string(),
-            });
-        }
-    }
+    let logs = toml_content
+        .get("logs")
+        .and_then(|x| x.as_str())
+        .map(|x| x.to_string());
 
     Ok(TestDescription {
         name,

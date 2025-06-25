@@ -1,5 +1,3 @@
-use crate::e2e_vm_tests::LogsCommand;
-
 use super::RunConfig;
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
@@ -270,7 +268,7 @@ pub(crate) fn runs_in_vm(
 pub(crate) async fn compile_to_bytes(
     file_name: &str,
     run_config: &RunConfig,
-    logs: &[LogsCommand],
+    logs: &Option<String>,
 ) -> Result<Built> {
     println!("Compiling {} ...", file_name.bold());
 
@@ -302,7 +300,7 @@ pub(crate) async fn compile_to_bytes(
         ..Default::default()
     };
 
-    let pkg_name_cache = Arc::new(Mutex::new(HashMap::new()));
+    let pkg_name_cache = Arc::new(Mutex::new(HashMap::<PathBuf, String>::new()));
 
     fn get_package_name<'a>(
         span: &sway_types::Span,
@@ -335,69 +333,101 @@ pub(crate) async fn compile_to_bytes(
         }
     }
 
-    //match std::panic::catch_unwind(|| {
-    let callbacks = Callbacks {
-        on_before_method_resolution: Some(Box::new({
-            let mut pkg_name_cache = pkg_name_cache.clone();
-            let logs = logs.to_vec();
-            move |ctx, method_name, arg_types| {
-                let pkg_name= get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache).unwrap_or_default();
-                let mut scope = rhai::Scope::new();
-                scope
-                    .push_constant("pkg", pkg_name.clone())
-                    .push_constant("event", "on_before_method_resolution")
-                    .push_constant("method", method_name.inner.easy_name().as_str().to_string());
-                check_and_run_logs_cmds(&logs, scope, format!("on_before_method_resolution: {:?}; {:?}; {:?}",
-                    method_name.inner,
-                    method_name.type_arguments,
-                    ctx.engines.help_out(arg_types.to_vec())
-                ));
-            }
-        })),
-        on_after_method_resolution: Some(Box::new({
-            let mut pkg_name_cache = pkg_name_cache.clone();
-            let logs = logs.to_vec();
-            move |ctx, method_name, arg_types, fn_ref, t| {
-                let pkg_name= get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache).unwrap_or_default();
-                let mut scope = rhai::Scope::new();
-                scope
-                    .push_constant("pkg", pkg_name.clone())
-                    .push_constant("event", "on_after_method_resolution")
-                    .push_constant("method", method_name.inner.easy_name().as_str().to_string());
-                check_and_run_logs_cmds(&logs, scope, format!(
-                    "on_after_method_resolution: {:?}; {:?}; {:?}; {:?}; {:?}",
-                    method_name.inner,
-                    method_name.type_arguments,
-                    ctx.engines.help_out(arg_types.to_vec()),
-                    ctx.engines.help_out(fn_ref.id()),
-                    ctx.engines.help_out(t),
-                ));
-            }
-        })),
-    };
-    let result = forc_pkg::build_with_options(&build_opts, Some(callbacks));
-    //}) {
-    //     Ok(result) => {
-    // Print the result of the compilation (i.e., any errors Forc produces).
-    if let Err(ref e) = result {
-        println!("\n{e}");
-    }
-    result
-    //     }
-    //     Err(_) => Err(anyhow!("Compiler panic")),
-    // }
-}
+    match std::panic::catch_unwind(|| {
+        let callbacks = if let Some(script) = logs {
+            let mut rhai_eng = rhai::Engine::new();
+            rhai_eng.register_fn("print_args", move || {});
+            let scope2 = rhai::Scope::new();
+            let ast = rhai_eng.compile_into_self_contained(&scope2, script).unwrap();
+            let rhai = Arc::new(Mutex::new(
+                (rhai_eng, ast)
+            ));
 
-fn check_and_run_logs_cmds(logs: &[LogsCommand], mut scope: rhai::Scope, args: String) {
-    let mut rhai_eng = rhai::Engine::new();
-    rhai_eng.register_fn("print_args", {
-        move || { eprintln!("{}", args); }
-    });
-    for cmd in logs.iter() {
-        let r = rhai_eng.eval_with_scope::<bool>(&mut scope, &cmd.cond).unwrap();
-        if r {
-            rhai_eng.eval_with_scope::<()>(&mut scope, &cmd.cmds).unwrap();
+            Some(Callbacks {
+                on_before_method_resolution: Some(Box::new({
+                    let mut pkg_name_cache = pkg_name_cache.clone();
+                    let rhai_eng = rhai.clone();
+                    move |ctx, method_name, arg_types| {
+                        let pkg_name =
+                            get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
+                                .unwrap_or_default();
+
+                        if pkg_name == "std" {
+                            return;
+                        }
+
+                        let args = format!(
+                            "on_before_method_resolution: {:?}; {:?}; {:?}",
+                            method_name.inner,
+                            method_name.type_arguments,
+                            ctx.engines.help_out(arg_types.to_vec())
+                        );
+                        let mut rhai_eng = rhai_eng.lock().unwrap();
+                        rhai_eng.0.register_fn("print_args", move || { eprintln!("{}", args); });
+
+                        
+                        let mut scope = rhai::Scope::new();
+                        scope
+                            .push_constant("pkg", pkg_name.clone())
+                            .push_constant("event", "on_before_method_resolution")
+                            .push_constant(
+                                "method",
+                                method_name.inner.easy_name().as_str().to_string(),
+                            );
+
+                        let _ = rhai_eng.0.eval_ast_with_scope::<()>(&mut scope, &rhai_eng.1);
+                    }
+                })),
+                on_after_method_resolution: Some(Box::new({
+                    let mut pkg_name_cache = pkg_name_cache.clone();
+                    let rhai_eng = rhai.clone();
+                    move |ctx, method_name, arg_types, fn_ref, t| {
+                        let pkg_name =
+                            get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
+                                .unwrap_or_default();
+
+                        if pkg_name == "std" {
+                            return;
+                        }
+
+                        let args = format!(
+                            "on_after_method_resolution: {:?}; {:?}; {:?}; {:?}; {:?}",
+                            method_name.inner,
+                            method_name.type_arguments,
+                            ctx.engines.help_out(arg_types.to_vec()),
+                            ctx.engines.help_out(fn_ref.id()),
+                            ctx.engines.help_out(t),
+                        );
+                        let mut rhai_eng = rhai_eng.lock().unwrap();
+                        rhai_eng.0.register_fn("print_args", move || { eprintln!("{}", args); });
+
+                        let mut scope = rhai::Scope::new();
+                        scope
+                            .push_constant("pkg", pkg_name.clone())
+                            .push_constant("event", "on_after_method_resolution")
+                            .push_constant(
+                                "method",
+                                method_name.inner.easy_name().as_str().to_string(),
+                            );
+
+                        let _ = rhai_eng.0.eval_ast_with_scope::<()>(&mut scope, &rhai_eng.1);
+                    }
+                })),
+            })
+        } else {
+            None
+        };
+
+        forc_pkg::build_with_options(&build_opts, callbacks)
+    }) {
+        Ok(result) => {
+            // Print the result of the compilation (i.e., any errors Forc produces).
+            if let Err(ref e) = result {
+                println!("\n{e}");
+            }
+            result
         }
+        Err(_) => Err(anyhow!("Compiler panic")),
     }
 }
 
