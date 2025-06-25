@@ -1,3 +1,5 @@
+use crate::e2e_vm_tests::LogsCommand;
+
 use super::RunConfig;
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
@@ -265,7 +267,11 @@ pub(crate) fn runs_in_vm(
 
 /// Compiles the code and optionally captures the output of forc and the compilation.
 /// Returns a tuple with the result of the compilation, as well as the output.
-pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) -> Result<Built> {
+pub(crate) async fn compile_to_bytes(
+    file_name: &str,
+    run_config: &RunConfig,
+    logs: &[LogsCommand],
+) -> Result<Built> {
     println!("Compiling {} ...", file_name.bold());
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -329,55 +335,69 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         }
     }
 
-    match std::panic::catch_unwind(|| {
-        let callbacks = Callbacks {
-            on_before_method_resolution: Some(Box::new({
-                let mut pkg_name_cache = pkg_name_cache.clone();
-                move |ctx, method_name, arg_types| {
-                    if let Some(pkg_name) =
-                        get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
-                    {
-                        if pkg_name != "std" {
-                            eprintln!(
-                                "on_before_method_resolution: {:?} {:?} {:?}",
-                                method_name.inner,
-                                method_name.type_arguments,
-                                ctx.engines.help_out(arg_types.to_vec()),
-                            );
-                        }
-                    }
-                }
-            })),
-            on_after_method_resolution: Some(Box::new({
-                let mut pkg_name_cache = pkg_name_cache.clone();
-                move |ctx, method_name, arg_types, fn_ref, t| {
-                    if let Some(pkg_name) =
-                        get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
-                    {
-                        if pkg_name != "std" {
-                            eprintln!(
-                                "on_after_method_resolution: {:?} {:?} {:?} {:?} {:?}",
-                                method_name.inner,
-                                method_name.type_arguments,
-                                ctx.engines.help_out(arg_types.to_vec()),
-                                ctx.engines.help_out(fn_ref.id()),
-                                ctx.engines.help_out(t),
-                            );
-                        }
-                    }
-                }
-            })),
-        };
-        forc_pkg::build_with_options(&build_opts, Some(callbacks))
-    }) {
-        Ok(result) => {
-            // Print the result of the compilation (i.e., any errors Forc produces).
-            if let Err(ref e) = result {
-                println!("\n{e}");
+    //match std::panic::catch_unwind(|| {
+    let callbacks = Callbacks {
+        on_before_method_resolution: Some(Box::new({
+            let mut pkg_name_cache = pkg_name_cache.clone();
+            let logs = logs.to_vec();
+            move |ctx, method_name, arg_types| {
+                let pkg_name= get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache).unwrap_or_default();
+                let mut scope = rhai::Scope::new();
+                scope
+                    .push_constant("pkg", pkg_name.clone())
+                    .push_constant("event", "on_before_method_resolution")
+                    .push_constant("method", method_name.inner.easy_name().as_str().to_string());
+                check_and_run_logs_cmds(&logs, scope, format!("on_before_method_resolution: {:?}; {:?}; {:?}",
+                    method_name.inner,
+                    method_name.type_arguments,
+                    ctx.engines.help_out(arg_types.to_vec())
+                ));
             }
-            result
+        })),
+        on_after_method_resolution: Some(Box::new({
+            let mut pkg_name_cache = pkg_name_cache.clone();
+            let logs = logs.to_vec();
+            move |ctx, method_name, arg_types, fn_ref, t| {
+                let pkg_name= get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache).unwrap_or_default();
+                let mut scope = rhai::Scope::new();
+                scope
+                    .push_constant("pkg", pkg_name.clone())
+                    .push_constant("event", "on_after_method_resolution")
+                    .push_constant("method", method_name.inner.easy_name().as_str().to_string());
+                check_and_run_logs_cmds(&logs, scope, format!(
+                    "on_after_method_resolution: {:?}; {:?}; {:?}; {:?}; {:?}",
+                    method_name.inner,
+                    method_name.type_arguments,
+                    ctx.engines.help_out(arg_types.to_vec()),
+                    ctx.engines.help_out(fn_ref.id()),
+                    ctx.engines.help_out(t),
+                ));
+            }
+        })),
+    };
+    let result = forc_pkg::build_with_options(&build_opts, Some(callbacks));
+    //}) {
+    //     Ok(result) => {
+    // Print the result of the compilation (i.e., any errors Forc produces).
+    if let Err(ref e) = result {
+        println!("\n{e}");
+    }
+    result
+    //     }
+    //     Err(_) => Err(anyhow!("Compiler panic")),
+    // }
+}
+
+fn check_and_run_logs_cmds(logs: &[LogsCommand], mut scope: rhai::Scope, args: String) {
+    let mut rhai_eng = rhai::Engine::new();
+    rhai_eng.register_fn("print_args", {
+        move || { eprintln!("{}", args); }
+    });
+    for cmd in logs.iter() {
+        let r = rhai_eng.eval_with_scope::<bool>(&mut scope, &cmd.cond).unwrap();
+        if r {
+            rhai_eng.eval_with_scope::<()>(&mut scope, &cmd.cmds).unwrap();
         }
-        Err(_) => Err(anyhow!("Compiler panic")),
     }
 }
 
