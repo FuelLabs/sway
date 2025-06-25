@@ -2,7 +2,3 @@ category = "run"
 expected_result = { action = "return", value = 1 }
 expected_result_new_encoding = { action = "return_data", value = "0000000000000001" }
 validate_abi = true
-logs = [
-    ["pkg != \"std\" && event == \"on_before_method_resolution\" && method == \"f\"", "print_args()"],
-    ["pkg != \"std\" && event == \"on_after_method_resolution\" && method == \"f\"", "print_args()"],
-]
