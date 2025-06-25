@@ -3,8 +3,7 @@
 # redundant temporary value erasure is performed.
 #
 # Once we have temporaries removal implemented this test can be re-enabled.
-category = "disabled"
-expected_result = { action = "return", value = 0 }
-expected_result_new_encoding = { action = "return_data", value = "0000000000000000" }
+category = "run"
+expected_result_new_encoding = { action = "return_data", value = "" }
 validate_abi = true
-expected_warnings = 1
+expected_warnings = 2
