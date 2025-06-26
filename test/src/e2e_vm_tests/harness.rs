@@ -1,5 +1,3 @@
-use crate::snapshot;
-
 use super::RunConfig;
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
@@ -28,7 +26,7 @@ use std::{
     str::FromStr,
     sync::{Arc, Mutex},
 };
-use sway_core::{asm_generation::ProgramABI, engine_threading::Callbacks, semantic_analysis::program::TypeCheckFailed, BuildTarget};
+use sway_core::{asm_generation::ProgramABI, engine_threading::CallbackHandler, BuildTarget};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
@@ -266,6 +264,210 @@ pub(crate) fn runs_in_vm(
     }
 }
 
+fn stdout_logs(root: &str, snapshot: &str) {
+    let root = PathBuf::from_str(root).unwrap();
+    let root = root.normalize();
+
+    let mut insta = insta::Settings::new();
+    insta.set_snapshot_path(root);
+    insta.set_prepend_module_to_snapshot(false);
+    insta.set_omit_expression(true);
+    let scope = insta.bind_to_scope();
+    insta::assert_snapshot!("logs", snapshot);
+    drop(scope);
+}
+
+enum Cmds {
+    PrintArgs,
+    Trace(bool),
+}
+
+struct Inner {
+    eng: rhai::Engine,
+    ast: rhai::AST,
+    pkg_name_cache: HashMap<PathBuf, String>,
+    cmds: Arc<Mutex<Vec<Cmds>>>,
+    snapshot: String,
+}
+
+impl Inner {
+    fn get_package_name(
+        &mut self,
+        span: &sway_types::Span,
+        engines: &sway_core::Engines,
+    ) -> Option<String> {
+        if let Some(sid) = span.source_id() {
+            let filename = engines.se().get_path(sid);
+            if let Some(pid) = engines.se().get_program_id_from_manifest_path(&filename) {
+                let path = engines
+                    .se()
+                    .get_manifest_path_from_program_id(&pid)
+                    .unwrap()
+                    .join("Forc.toml");
+
+                Some(if let Some(pkg_name) = self.pkg_name_cache.get(&path).cloned() {
+                    pkg_name
+                } else {
+                    let toml = std::fs::read_to_string(&path).unwrap();
+                    let forc_toml: toml::Table = toml::from_str(&toml).unwrap();
+                    let pkg_name = forc_toml["project"]["name"].as_str().unwrap().to_string();
+                    self.pkg_name_cache.insert(path.clone(), pkg_name.clone());
+                    pkg_name
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+     fn run_cmds(&mut self, ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>, args: String) {
+        let cmds = self.cmds.lock().unwrap();
+        for cmd in cmds.iter() {
+            match cmd {
+                Cmds::PrintArgs => {
+                    self.snapshot.push_str(&format!("{}\n", args));
+                },
+                Cmds::Trace(enable) => {
+                    ctx.engines.obs().enable_trace(*enable);
+                },
+            }
+        }
+    }
+
+    fn on_before_method_resolution(
+        &mut self,
+        ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>,
+        method_name: &sway_core::type_system::ast_elements::binding::TypeBinding<sway_core::language::parsed::MethodName>,
+        args_types: &[sway_core::TypeId],
+    ) {
+        let pkg_name = self.get_package_name(&method_name.span, ctx.engines).unwrap_or_default();
+        if pkg_name.is_empty() || pkg_name == "std" {
+            return;
+        }
+
+        let mut scope = rhai::Scope::new();
+        scope
+            .push_constant("pkg", pkg_name.clone())
+            .push_constant("event", "on_before_method_resolution")
+            .push_constant(
+                "method",
+                method_name.inner.easy_name().as_str().to_string(),
+            );
+
+        self.cmds.lock().unwrap().clear();
+        let _ = self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast);
+
+        let args = format!(
+            "on_before_method_resolution: {:?}; {:?}; {:?}",
+            method_name.inner,
+            method_name.type_arguments,
+            ctx.engines.help_out(args_types.to_vec())
+        );
+
+        self.run_cmds(ctx, args);
+    }
+
+    fn on_after_method_resolution(
+        &mut self,
+        ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>,
+        method_name: &sway_core::type_system::ast_elements::binding::TypeBinding<sway_core::language::parsed::MethodName>,
+        args_types: &[sway_core::TypeId],
+        new_ref: sway_core::decl_engine::DeclRefFunction,
+        new_type_id: sway_core::TypeId,
+    ) {
+        let pkg_name =self.get_package_name(&method_name.span, ctx.engines)
+            .unwrap_or_default();
+        if pkg_name.is_empty() || pkg_name == "std" {
+            return;
+        }
+
+        let mut scope = rhai::Scope::new();
+        scope
+            .push_constant("pkg", pkg_name.clone())
+            .push_constant("event", "on_after_method_resolution")
+            .push_constant(
+                "method",
+                method_name.inner.easy_name().as_str().to_string(),
+            );
+
+        self.cmds.lock().unwrap().clear();
+        let _ = self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast);
+
+        let args = format!(
+            "on_after_method_resolution: {:?}; {:?}; {:?}; {:?}; {:?}",
+            method_name.inner,
+            method_name.type_arguments,
+            ctx.engines.help_out(args_types.to_vec()),
+            ctx.engines.help_out(new_ref.id()),
+            ctx.engines.help_out(new_type_id),
+        );
+
+        self.run_cmds(ctx, args);
+    }
+}
+
+struct HarnessCallbackHandler {
+    inner: Mutex<Inner>,
+}
+
+impl HarnessCallbackHandler {
+    fn new(script: &str) -> Self {
+        let cmds = Arc::new(Mutex::new(vec![]));
+
+        let mut eng = rhai::Engine::new();
+        eng.register_fn("print_args", {
+            let cmds = cmds.clone();
+            move || {
+                cmds.lock().unwrap().push(Cmds::PrintArgs);
+            }
+        });
+        eng.register_fn("trace", {
+            let cmds = cmds.clone();
+            move |b| {
+                cmds.lock().unwrap().push(Cmds::Trace(b));
+            }
+        });
+
+        let scope = rhai::Scope::new();
+        let ast = eng.compile_into_self_contained(&scope, script).unwrap();
+        
+        Self { inner: Mutex::new(Inner { eng, ast, pkg_name_cache: HashMap::default(), cmds, snapshot: String::new() } ) }
+    }
+
+    fn generate_snapshot(&self, root: &str) {
+        let inner = self.inner.lock().unwrap();
+        if !inner.snapshot.is_empty() {
+            stdout_logs(&root, &inner.snapshot);
+        }
+    }
+}
+
+impl CallbackHandler for HarnessCallbackHandler {
+    fn on_before_method_resolution(
+        &self,
+        ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>,
+        method_name: &sway_core::type_system::ast_elements::binding::TypeBinding<sway_core::language::parsed::MethodName>,
+        args_types: &[sway_core::TypeId],
+    ) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.on_before_method_resolution(ctx, method_name, args_types);
+    }
+
+    fn on_after_method_resolution(
+        &self,
+        ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>,
+        method_name: &sway_core::type_system::ast_elements::binding::TypeBinding<sway_core::language::parsed::MethodName>,
+        args_types: &[sway_core::TypeId],
+        new_ref: sway_core::decl_engine::DeclRefFunction,
+        new_type_id: sway_core::TypeId,
+    ) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.on_after_method_resolution(ctx, method_name, args_types, new_ref, new_type_id);
+    }
+}
+
 /// Compiles the code and optionally captures the output of forc and the compilation.
 /// Returns a tuple with the result of the compilation, as well as the output.
 pub(crate) async fn compile_to_bytes(
@@ -302,193 +504,17 @@ pub(crate) async fn compile_to_bytes(
         ..Default::default()
     };
 
-    let pkg_name_cache = Arc::new(Mutex::new(HashMap::<PathBuf, String>::new()));
-
-    fn get_package_name<'a>(
-        span: &sway_types::Span,
-        engines: &sway_core::Engines,
-        pkg_name_cache: &'a mut Arc<Mutex<HashMap<PathBuf, String>>>,
-    ) -> Option<String> {
-        if let Some(sid) = span.source_id() {
-            let filename = engines.se().get_path(sid);
-            if let Some(pid) = engines.se().get_program_id_from_manifest_path(&filename) {
-                let path = engines
-                    .se()
-                    .get_manifest_path_from_program_id(&pid)
-                    .unwrap()
-                    .join("Forc.toml");
-                let mut pkg_name_cache = pkg_name_cache.lock().unwrap();
-                Some(if let Some(pkg_name) = pkg_name_cache.get(&path).cloned() {
-                    pkg_name
-                } else {
-                    let toml = std::fs::read_to_string(&path).unwrap();
-                    let forc_toml: toml::Table = toml::from_str(&toml).unwrap();
-                    let pkg_name = forc_toml["project"]["name"].as_str().unwrap().to_string();
-                    pkg_name_cache.insert(path.clone(), pkg_name.clone());
-                    pkg_name
-                })
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-
-    let snapshot = Arc::new(Mutex::new(String::new()));
-
-    fn stdout_logs(root: &str, snapshot: &str) {
-        let root = PathBuf::from_str(root).unwrap();
-        let root = root.normalize();
-
-        let mut insta = insta::Settings::new();
-        insta.set_snapshot_path(root);
-        insta.set_prepend_module_to_snapshot(false);
-        insta.set_omit_expression(true);
-        let scope = insta.bind_to_scope();
-        insta::assert_snapshot!("logs", snapshot);
-        drop(scope);
-    }
-
     match std::panic::catch_unwind(|| {
-        let callbacks = if let Some(script) = logs {
-            enum Cmds {
-                PrintArgs,
-                Trace(bool),
-            }
-
-            let cmds = Arc::new(Mutex::new(vec![]));
-
-            fn run_cmds(snapshot: Arc<Mutex<String>>, cmds: &[Cmds], ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>, args: String) {
-                for cmd in cmds.iter() {
-                    match cmd {
-                        Cmds::PrintArgs => {
-                            let mut snapshot = snapshot.lock().unwrap();
-                            snapshot.push_str(&format!("{}\n", args));
-                        },
-                        Cmds::Trace(enable) => {
-                            ctx.engines.obs().enable_trace(*enable);
-                        },
-                    }
-                }
-            }
-
-            let mut rhai_eng = rhai::Engine::new();
-            rhai_eng.register_fn("print_args", {
-                let cmds = cmds.clone();
-                move || {
-                    cmds.lock().unwrap().push(Cmds::PrintArgs);
-                }
-            });
-             rhai_eng.register_fn("trace", {
-                let cmds = cmds.clone();
-                move |b| {
-                    cmds.lock().unwrap().push(Cmds::Trace(b));
-                }
-            });
-
-            let scope2 = rhai::Scope::new();
-            let ast = rhai_eng.compile_into_self_contained(&scope2, script).unwrap();
-            let rhai = Arc::new(Mutex::new(
-                (rhai_eng, ast)
-            ));
-
-            Some(Callbacks {
-                on_before_method_resolution: Some(Box::new({
-                    let mut pkg_name_cache = pkg_name_cache.clone();
-                    let rhai_eng = rhai.clone();
-                    let cmds = cmds.clone();
-                    let snapshot = snapshot.clone();
-                    move |ctx, method_name, arg_types| {
-                        let pkg_name =
-                            get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
-                                .unwrap_or_default();
-
-                        if pkg_name == "std" {
-                            return;
-                        }
-
-                        let rhai_eng = rhai_eng.lock().unwrap();
-
-                        let mut scope = rhai::Scope::new();
-                        scope
-                            .push_constant("pkg", pkg_name.clone())
-                            .push_constant("event", "on_before_method_resolution")
-                            .push_constant(
-                                "method",
-                                method_name.inner.easy_name().as_str().to_string(),
-                            );
-
-                        cmds.lock().unwrap().clear();;
-                        let _ = rhai_eng.0.eval_ast_with_scope::<()>(&mut scope, &rhai_eng.1);
-
-                        let args = format!(
-                            "on_before_method_resolution: {:?}; {:?}; {:?}",
-                            method_name.inner,
-                            method_name.type_arguments,
-                            ctx.engines.help_out(arg_types.to_vec())
-                        );
-
-                        run_cmds(snapshot.clone(), cmds.lock().unwrap().as_slice(), ctx, args);
-                    }
-                })),
-                on_after_method_resolution: Some(Box::new({
-                    let mut pkg_name_cache = pkg_name_cache.clone();
-                    let rhai_eng = rhai.clone();
-                    let cmds = cmds.clone();
-                    let snapshot = snapshot.clone();
-                    move |ctx, method_name, arg_types, fn_ref, t| {
-                        let pkg_name =
-                            get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
-                                .unwrap_or_default();
-
-                        if pkg_name == "std" {
-                            return;
-                        }
-
-                        let rhai_eng = rhai_eng.lock().unwrap();
-
-                        let mut scope = rhai::Scope::new();
-                        scope
-                            .push_constant("pkg", pkg_name.clone())
-                            .push_constant("event", "on_after_method_resolution")
-                            .push_constant(
-                                "method",
-                                method_name.inner.easy_name().as_str().to_string(),
-                            );
-
-                        cmds.lock().unwrap().clear();;
-                        let _ = rhai_eng.0.eval_ast_with_scope::<()>(&mut scope, &rhai_eng.1);
-
-                        let args = format!(
-                            "on_after_method_resolution: {:?}; {:?}; {:?}; {:?}; {:?}",
-                            method_name.inner,
-                            method_name.type_arguments,
-                            ctx.engines.help_out(arg_types.to_vec()),
-                            ctx.engines.help_out(fn_ref.id()),
-                            ctx.engines.help_out(t),
-                        );
-
-                        run_cmds(snapshot.clone(), cmds.lock().unwrap().as_slice(), ctx, args);
-                    }
-                })),
-            })
+        if let Some(script) = logs {
+            let handler = Arc::new(HarnessCallbackHandler::new(&script));
+            let r = forc_pkg::build_with_options(&build_opts, Some(handler.clone()));
+            handler.generate_snapshot(&root);
+            r
         } else {
-            None
-        };
-
-        let r = forc_pkg::build_with_options(&build_opts, callbacks);
-        
-        let snapshot = snapshot.lock().unwrap();
-        if !snapshot.is_empty() {
-            stdout_logs(&root, &snapshot);
+            forc_pkg::build_with_options(&build_opts, None)
         }
-
-        r
     }) {
         Ok(result) => {
-            
-
             // Print the result of the compilation (i.e., any errors Forc produces).
             if let Err(ref e) = result {
                 println!("\n{e}");
