@@ -1,3 +1,2 @@
 category = "compile"
 expected_warnings = 0
-experimental = { error_type = true, new_encoding = true }

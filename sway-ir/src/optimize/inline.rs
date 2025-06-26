@@ -124,7 +124,7 @@ pub fn fn_inline(
         }
 
         // If the function is (still) small then also inline it.
-        const MAX_INLINE_INSTRS_COUNT: usize = 4;
+        const MAX_INLINE_INSTRS_COUNT: usize = 12;
         if func.num_instructions_incl_asm_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
             return true;
         }

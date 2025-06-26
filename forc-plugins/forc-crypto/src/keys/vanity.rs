@@ -2,10 +2,7 @@ use fuel_crypto::{fuel_types::Address, PublicKey, SecretKey};
 use fuels_accounts::signers::{
     derivation::DEFAULT_DERIVATION_PATH, private_key::generate_mnemonic_phrase,
 };
-use fuels_core::types::{
-    bech32::{Bech32Address, FUEL_BECH32_HRP},
-    checksum_address::checksum_encode,
-};
+use fuels_core::types::checksum_address::checksum_encode;
 use rayon::iter::{self, Either, ParallelIterator};
 use regex::Regex;
 use serde_json::json;
@@ -282,9 +279,9 @@ fn generate_wallet(use_mnemonic: bool) -> anyhow::Result<(Address, SecretKey, Op
 
     let public = PublicKey::from(&private_key);
     let hashed = public.hash();
-    let address = Bech32Address::new(FUEL_BECH32_HRP, hashed);
+    let address = Address::from(*hashed);
 
-    Ok((address.into(), private_key, mnemonic))
+    Ok((address, private_key, mnemonic))
 }
 
 #[cfg(test)]

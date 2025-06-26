@@ -8,6 +8,9 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+sysinfo.workspace = true
+
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 dirs.workspace = true
@@ -48,9 +51,6 @@ thiserror.workspace = true
 tracing.workspace = true
 uint.workspace = true
 vec1.workspace = true
-
-[target.'cfg(not(target_os = "macos"))'.dependencies]
-sysinfo.workspace = true
 
 [lints.clippy]
 iter_over_hash_type = "deny"

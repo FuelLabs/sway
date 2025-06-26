@@ -4,13 +4,13 @@ version = "0.0.0"
 edition = "2021"
 publish = false
 
-[[bin]]
-name = "mdbook-forc-documenter"
-path = "src/bin/mdbook-forc-documenter.rs"
-
 [lib]
 name = "mdbook_forc_documenter"
 path = "src/lib.rs"
+
+[[bin]]
+name = "mdbook-forc-documenter"
+path = "src/bin/mdbook-forc-documenter.rs"
 
 [dependencies]
 anyhow.workspace = true

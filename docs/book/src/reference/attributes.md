@@ -48,8 +48,6 @@ enum SomeErrors {
 }
 ```
 
-> **Note**: Error types are still an experimental feature. For more info, see the [tracking issue for "Error types"](https://github.com/FuelLabs/sway/issues/6765).
-
 ## Error Type
 
 The `#[error_type]` marks an enum as error type enum:
@@ -62,8 +60,6 @@ enum SomeErrors {
 ```
 
 All variants of an error type enum must be annotated with the [`#[error]` attribute](#error). Error type enums are meant to be use in `panic` expressions for rich error reporting.
-
-> **Note**: Error types are still an experimental feature. For more info, see the [tracking issue for "Error types"](https://github.com/FuelLabs/sway/issues/6765).
 
 ## Fallback
 

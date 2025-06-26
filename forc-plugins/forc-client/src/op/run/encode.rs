@@ -62,7 +62,7 @@ impl ScriptCallHandler {
 mod tests {
     use super::{ScriptCallHandler, Type};
 
-    const TEST_JSON_ABI: &str = r#"{"programType": "contract","specVersion": "1","encodingVersion": "1","metadataTypes":[],
+    const TEST_JSON_ABI: &str = r#"{"programType": "contract","specVersion": "1.1","encodingVersion": "1","metadataTypes":[],
     "concreteTypes":[{"concreteTypeId":"2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
     "type":"()"},{"concreteTypeId":"b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903","type":"bool"},
     {"concreteTypeId":"c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b","type":"u8"}],
