@@ -175,6 +175,11 @@ impl DeclRefFunction {
     /// Without this it is possible to retrieve a method from the type map unify its types and
     /// the second time it won't be possible to retrieve the same method.
     pub fn get_method_safe_to_unify(&self, engines: &Engines, type_id: TypeId) -> Self {
+        engines.obs().trace(|| format!("    before get_method_safe_to_unify: {:?} {:?}", 
+            engines.help_out(type_id),
+            engines.help_out(self.id()))
+        );
+
         let decl_engine = engines.de();
 
         let original = &*decl_engine.get_function(self);
@@ -248,14 +253,26 @@ impl DeclRefFunction {
                 true,
             ));
 
-            return engines
+            let r = engines
                 .de()
                 .insert(
                     method.clone(),
                     engines.de().get_parsed_decl_id(self.id()).as_ref(),
                 )
                 .with_parent(decl_engine, self.id().into());
+
+            engines.obs().trace(|| format!("    after get_method_safe_to_unify: {:?}; {:?}", 
+                engines.help_out(type_id),
+                engines.help_out(r.id()))
+            );
+
+            return r;
         }
+
+        engines.obs().trace(|| format!("    after get_method_safe_to_unify: {:?}; {:?}", 
+            engines.help_out(type_id),
+            engines.help_out(self.id()))
+        );
 
         self.clone()
     }
