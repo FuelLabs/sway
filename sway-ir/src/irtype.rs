@@ -336,13 +336,18 @@ impl Type {
     // TODO: (REFERENCES) Check all the usages of `is_ptr`.
     /// Returns true if `self` is a pointer type.
     pub fn is_ptr(&self, context: &Context) -> bool {
-        matches!(*self.get_content(context), TypeContent::Pointer(_))
+        matches!(
+            *self.get_content(context),
+            TypeContent::Pointer(_) | TypeContent::StringArray(_)
+        )
     }
 
-    /// Get pointed to type iff `self`` is a pointer.
+    /// Get pointed to type iff `self`` is a pointer with known pointee type.
     pub fn get_pointee_type(&self, context: &Context) -> Option<Type> {
         if let TypeContent::Pointer(to_ty) = self.get_content(context) {
             Some(*to_ty)
+        } else if let TypeContent::StringArray(_) = self.get_content(context) {
+            Some(Self::get_uint8(context))
         } else {
             None
         }
