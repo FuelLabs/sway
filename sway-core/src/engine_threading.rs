@@ -40,6 +40,7 @@ pub struct Callbacks {
 pub struct ObservabilityEngine {
     log: Vec<String>,
     callbacks: Mutex<Callbacks>,
+    trace: Mutex<bool>,
 }
 
 impl fmt::Debug for ObservabilityEngine {
@@ -104,6 +105,18 @@ impl ObservabilityEngine {
         {
             (*f)(ctx, method_name, arguments_types, ref_function, tid);
         }
+    }
+
+    pub(crate) fn trace(&self, get_txt: impl FnOnce() -> String) {
+        let trace = self.trace.lock().unwrap();
+        if *trace {
+            eprintln!("{}", get_txt())
+        }
+    }
+
+    pub fn enable_trace(&self, enable: bool) {
+        let mut trace = self.trace.lock().unwrap();
+        *trace = enable
     }
 }
 

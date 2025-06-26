@@ -25,7 +25,7 @@ use std::{
     str::FromStr,
     sync::{Arc, Mutex},
 };
-use sway_core::{asm_generation::ProgramABI, engine_threading::Callbacks, BuildTarget};
+use sway_core::{asm_generation::ProgramABI, engine_threading::Callbacks, semantic_analysis::program::TypeCheckFailed, BuildTarget};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
@@ -335,8 +335,39 @@ pub(crate) async fn compile_to_bytes(
 
     match std::panic::catch_unwind(|| {
         let callbacks = if let Some(script) = logs {
+            enum Cmds {
+                PrintArgs,
+                Trace(bool),
+            }
+            let cmds = Arc::new(Mutex::new(vec![]));
+
+            fn run_cmds(cmds: &[Cmds], ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>, args: String) {
+                for cmd in cmds.iter() {
+                    match cmd {
+                        Cmds::PrintArgs => {
+                            eprintln!("{}", args);
+                        },
+                        Cmds::Trace(enable) => {
+                            ctx.engines.obs().enable_trace(*enable);
+                        },
+                    }
+                }
+            }
+
             let mut rhai_eng = rhai::Engine::new();
-            rhai_eng.register_fn("print_args", move || {});
+            rhai_eng.register_fn("print_args", {
+                let cmds = cmds.clone();
+                move || {
+                    cmds.lock().unwrap().push(Cmds::PrintArgs);
+                }
+            });
+             rhai_eng.register_fn("trace", {
+                let cmds = cmds.clone();
+                move |b| {
+                    cmds.lock().unwrap().push(Cmds::Trace(b));
+                }
+            });
+
             let scope2 = rhai::Scope::new();
             let ast = rhai_eng.compile_into_self_contained(&scope2, script).unwrap();
             let rhai = Arc::new(Mutex::new(
@@ -347,6 +378,7 @@ pub(crate) async fn compile_to_bytes(
                 on_before_method_resolution: Some(Box::new({
                     let mut pkg_name_cache = pkg_name_cache.clone();
                     let rhai_eng = rhai.clone();
+                    let cmds = cmds.clone();
                     move |ctx, method_name, arg_types| {
                         let pkg_name =
                             get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
@@ -356,16 +388,9 @@ pub(crate) async fn compile_to_bytes(
                             return;
                         }
 
-                        let args = format!(
-                            "on_before_method_resolution: {:?}; {:?}; {:?}",
-                            method_name.inner,
-                            method_name.type_arguments,
-                            ctx.engines.help_out(arg_types.to_vec())
-                        );
-                        let mut rhai_eng = rhai_eng.lock().unwrap();
-                        rhai_eng.0.register_fn("print_args", move || { eprintln!("{}", args); });
-
                         
+                        let rhai_eng = rhai_eng.lock().unwrap();
+
                         let mut scope = rhai::Scope::new();
                         scope
                             .push_constant("pkg", pkg_name.clone())
@@ -375,12 +400,22 @@ pub(crate) async fn compile_to_bytes(
                                 method_name.inner.easy_name().as_str().to_string(),
                             );
 
+                        cmds.lock().unwrap().clear();;
                         let _ = rhai_eng.0.eval_ast_with_scope::<()>(&mut scope, &rhai_eng.1);
+
+                        let args = format!(
+                            "on_before_method_resolution: {:?}; {:?}; {:?}",
+                            method_name.inner,
+                            method_name.type_arguments,
+                            ctx.engines.help_out(arg_types.to_vec())
+                        );
+                        run_cmds(cmds.lock().unwrap().as_slice(), ctx, args);
                     }
                 })),
                 on_after_method_resolution: Some(Box::new({
                     let mut pkg_name_cache = pkg_name_cache.clone();
                     let rhai_eng = rhai.clone();
+                    let cmds = cmds.clone();
                     move |ctx, method_name, arg_types, fn_ref, t| {
                         let pkg_name =
                             get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
@@ -390,16 +425,7 @@ pub(crate) async fn compile_to_bytes(
                             return;
                         }
 
-                        let args = format!(
-                            "on_after_method_resolution: {:?}; {:?}; {:?}; {:?}; {:?}",
-                            method_name.inner,
-                            method_name.type_arguments,
-                            ctx.engines.help_out(arg_types.to_vec()),
-                            ctx.engines.help_out(fn_ref.id()),
-                            ctx.engines.help_out(t),
-                        );
-                        let mut rhai_eng = rhai_eng.lock().unwrap();
-                        rhai_eng.0.register_fn("print_args", move || { eprintln!("{}", args); });
+                        let rhai_eng = rhai_eng.lock().unwrap();
 
                         let mut scope = rhai::Scope::new();
                         scope
@@ -410,7 +436,18 @@ pub(crate) async fn compile_to_bytes(
                                 method_name.inner.easy_name().as_str().to_string(),
                             );
 
+                        cmds.lock().unwrap().clear();;
                         let _ = rhai_eng.0.eval_ast_with_scope::<()>(&mut scope, &rhai_eng.1);
+
+                        let args = format!(
+                            "on_after_method_resolution: {:?}; {:?}; {:?}; {:?}; {:?}",
+                            method_name.inner,
+                            method_name.type_arguments,
+                            ctx.engines.help_out(arg_types.to_vec()),
+                            ctx.engines.help_out(fn_ref.id()),
+                            ctx.engines.help_out(t),
+                        );
+                        run_cmds(cmds.lock().unwrap().as_slice(), ctx, args);
                     }
                 })),
             })
