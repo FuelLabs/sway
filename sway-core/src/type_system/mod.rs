@@ -1,4 +1,4 @@
-pub(crate) mod ast_elements;
+pub mod ast_elements;
 mod engine;
 mod id;
 mod info;
