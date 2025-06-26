@@ -2,6 +2,7 @@
 
 mod harness;
 mod util;
+mod harness_callback_handler;
 
 use crate::e2e_vm_tests::harness::run_and_capture_output;
 use crate::{FilterConfig, RunConfig};
