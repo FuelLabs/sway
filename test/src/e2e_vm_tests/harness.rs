@@ -1,3 +1,5 @@
+use crate::snapshot;
+
 use super::RunConfig;
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
@@ -14,6 +16,7 @@ use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use futures::Future;
+use normalize_path::NormalizePath as _;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
@@ -273,6 +276,7 @@ pub(crate) async fn compile_to_bytes(
     println!("Compiling {} ...", file_name.bold());
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let root = format!("{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}");
     let build_opts = forc_pkg::BuildOpts {
         build_target: run_config.build_target,
         build_profile: BuildProfile::DEBUG.into(),
@@ -288,9 +292,7 @@ pub(crate) async fn compile_to_bytes(
             reverse_order: false,
         },
         pkg: forc_pkg::PkgOpts {
-            path: Some(format!(
-                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}",
-            )),
+            path: Some(root.clone()),
             locked: run_config.locked,
             terse: false,
             ..Default::default()
@@ -333,19 +335,36 @@ pub(crate) async fn compile_to_bytes(
         }
     }
 
+    let snapshot = Arc::new(Mutex::new(String::new()));
+
+    fn stdout_logs(root: &str, snapshot: &str) {
+        let root = PathBuf::from_str(root).unwrap();
+        let root = root.normalize();
+
+        let mut insta = insta::Settings::new();
+        insta.set_snapshot_path(root);
+        insta.set_prepend_module_to_snapshot(false);
+        insta.set_omit_expression(true);
+        let scope = insta.bind_to_scope();
+        insta::assert_snapshot!("logs", snapshot);
+        drop(scope);
+    }
+
     match std::panic::catch_unwind(|| {
         let callbacks = if let Some(script) = logs {
             enum Cmds {
                 PrintArgs,
                 Trace(bool),
             }
+
             let cmds = Arc::new(Mutex::new(vec![]));
 
-            fn run_cmds(cmds: &[Cmds], ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>, args: String) {
+            fn run_cmds(snapshot: Arc<Mutex<String>>, cmds: &[Cmds], ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>, args: String) {
                 for cmd in cmds.iter() {
                     match cmd {
                         Cmds::PrintArgs => {
-                            eprintln!("{}", args);
+                            let mut snapshot = snapshot.lock().unwrap();
+                            snapshot.push_str(&format!("{}\n", args));
                         },
                         Cmds::Trace(enable) => {
                             ctx.engines.obs().enable_trace(*enable);
@@ -379,6 +398,7 @@ pub(crate) async fn compile_to_bytes(
                     let mut pkg_name_cache = pkg_name_cache.clone();
                     let rhai_eng = rhai.clone();
                     let cmds = cmds.clone();
+                    let snapshot = snapshot.clone();
                     move |ctx, method_name, arg_types| {
                         let pkg_name =
                             get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
@@ -388,7 +408,6 @@ pub(crate) async fn compile_to_bytes(
                             return;
                         }
 
-                        
                         let rhai_eng = rhai_eng.lock().unwrap();
 
                         let mut scope = rhai::Scope::new();
@@ -409,13 +428,15 @@ pub(crate) async fn compile_to_bytes(
                             method_name.type_arguments,
                             ctx.engines.help_out(arg_types.to_vec())
                         );
-                        run_cmds(cmds.lock().unwrap().as_slice(), ctx, args);
+
+                        run_cmds(snapshot.clone(), cmds.lock().unwrap().as_slice(), ctx, args);
                     }
                 })),
                 on_after_method_resolution: Some(Box::new({
                     let mut pkg_name_cache = pkg_name_cache.clone();
                     let rhai_eng = rhai.clone();
                     let cmds = cmds.clone();
+                    let snapshot = snapshot.clone();
                     move |ctx, method_name, arg_types, fn_ref, t| {
                         let pkg_name =
                             get_package_name(&method_name.span, ctx.engines, &mut pkg_name_cache)
@@ -447,7 +468,8 @@ pub(crate) async fn compile_to_bytes(
                             ctx.engines.help_out(fn_ref.id()),
                             ctx.engines.help_out(t),
                         );
-                        run_cmds(cmds.lock().unwrap().as_slice(), ctx, args);
+
+                        run_cmds(snapshot.clone(), cmds.lock().unwrap().as_slice(), ctx, args);
                     }
                 })),
             })
@@ -455,9 +477,18 @@ pub(crate) async fn compile_to_bytes(
             None
         };
 
-        forc_pkg::build_with_options(&build_opts, callbacks)
+        let r = forc_pkg::build_with_options(&build_opts, callbacks);
+        
+        let snapshot = snapshot.lock().unwrap();
+        if !snapshot.is_empty() {
+            stdout_logs(&root, &snapshot);
+        }
+
+        r
     }) {
         Ok(result) => {
+            
+
             // Print the result of the compilation (i.e., any errors Forc produces).
             if let Err(ref e) = result {
                 println!("\n{e}");
