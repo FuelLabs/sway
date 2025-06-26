@@ -11,9 +11,9 @@ use forc_tracing::println_action_green;
 use sway_core::{BuildTarget, Engines};
 use sway_error::diagnostic::*;
 use sway_features::{ExperimentalFeatures, Feature};
-use sway_types::{SourceEngine, Span};
+use sway_types::SourceEngine;
 
-use crate::migrations::{MigrationStepKind, MigrationStepsWithOccurrences};
+use crate::migrations::{MigrationStepKind, MigrationStepsWithOccurrences, Occurrence};
 use crate::{
     instructive_error,
     migrations::{MigrationStep, MigrationStepExecution, ProgramInfo},
@@ -242,20 +242,30 @@ pub(crate) fn create_migration_diagnostic(
     source_engine: &SourceEngine,
     feature: &Feature,
     migration_step: &MigrationStep,
-    occurrences_spans: &[Span],
+    occurrences: &[Occurrence],
 ) -> Option<Diagnostic> {
-    if occurrences_spans.is_empty() {
+    if occurrences.is_empty() {
         return None;
     }
 
     let description = format!("[{}] {}", feature.name(), migration_step.title);
     Some(Diagnostic {
         reason: Some(Reason::new(Code::migrations(1), description)),
-        issue: Issue::info(source_engine, occurrences_spans[0].clone(), "".into()),
-        hints: occurrences_spans
+        issue: Issue::info(
+            source_engine,
+            occurrences[0].span.clone(),
+            occurrences[0].msg_or_empty(),
+        ),
+        hints: occurrences
             .iter()
             .skip(1)
-            .map(|span| Hint::info(source_engine, span.clone(), "".into()))
+            .map(|occurrence| {
+                Hint::info(
+                    source_engine,
+                    occurrence.span.clone(),
+                    occurrence.msg_or_empty(),
+                )
+            })
             .collect(),
         help: migration_step
             .help

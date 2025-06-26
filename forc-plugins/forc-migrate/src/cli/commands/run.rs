@@ -29,7 +29,7 @@ use crate::{
     get_migration_steps_or_return, instructive_error,
     migrations::{
         ContinueMigrationProcess, DryRun, InteractionResponse, MigrationStep, MigrationStepKind,
-        MigrationSteps, ProgramInfo,
+        MigrationSteps, Occurrence, ProgramInfo,
     },
 };
 
@@ -137,17 +137,17 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         for migration_step in migration_steps.iter() {
             match migration_step.kind {
                 MigrationStepKind::Instruction(instruction) => {
-                    let occurrences_spans = instruction(&program_info)?;
+                    let occurrences = instruction(&program_info)?;
 
                     print_instruction_result(
                         &engines,
                         max_len,
                         feature,
                         migration_step,
-                        &occurrences_spans,
+                        &occurrences,
                     );
 
-                    if !occurrences_spans.is_empty() {
+                    if !occurrences.is_empty() {
                         println_yellow_bold("If you've already reviewed the above points, you can ignore this info.");
                     }
                 }
@@ -156,12 +156,12 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                     manual_migration_actions,
                     continue_migration_process,
                 ) => {
-                    let occurrences_spans = modification(&mut program_info.as_mut(), DryRun::No)?;
+                    let occurrences = modification(&mut program_info.as_mut(), DryRun::No)?;
 
                     output_modified_modules(
                         &build_instructions.manifest_dir()?,
                         &program_info,
-                        &occurrences_spans,
+                        &occurrences,
                         experimental,
                     )?;
 
@@ -171,7 +171,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
                         migration_step,
                         manual_migration_actions,
                         continue_migration_process,
-                        &occurrences_spans,
+                        &occurrences,
                         InteractionResponse::None,
                         &mut current_feature_migration_has_code_changes,
                     );
@@ -263,11 +263,11 @@ fn print_modification_result(
     migration_step: &MigrationStep,
     manual_migration_actions: &[&str],
     continue_migration_process: ContinueMigrationProcess,
-    occurrences_spans: &[Span],
+    occurrences: &[Occurrence],
     interaction_response: InteractionResponse,
     current_feature_migration_has_code_changes: &mut bool,
 ) -> StopMigrationProcess {
-    if occurrences_spans.is_empty() {
+    if occurrences.is_empty() {
         if interaction_response == InteractionResponse::PostponeStep {
             print_postponed_action(max_len, feature, migration_step);
         } else {
@@ -280,8 +280,8 @@ fn print_modification_result(
         // Print the confirmation.
         println!(
             "Source code successfully changed ({} change{}).",
-            occurrences_spans.len(),
-            plural_s(occurrences_spans.len())
+            occurrences.len(),
+            plural_s(occurrences.len())
         );
 
         // Check if we can proceed with the next migration step,
@@ -322,15 +322,15 @@ fn print_instruction_result(
     max_len: usize,
     feature: &Feature,
     migration_step: &MigrationStep,
-    occurrences_spans: &[Span],
+    occurrences: &[Occurrence],
 ) {
-    if occurrences_spans.is_empty() {
+    if occurrences.is_empty() {
         print_checked_action(max_len, feature, migration_step);
     } else {
         print_review_action(max_len, feature, migration_step);
 
         if let Some(diagnostic) =
-            create_migration_diagnostic(engines.se(), feature, migration_step, occurrences_spans)
+            create_migration_diagnostic(engines.se(), feature, migration_step, occurrences)
         {
             format_diagnostic(&diagnostic);
         }
@@ -344,14 +344,20 @@ fn print_instruction_result(
 fn output_modified_modules(
     manifest_dir: &Path,
     program_info: &ProgramInfo,
-    occurrences_spans: &[Span],
+    occurrences: &[Occurrence],
     experimental: ExperimentalFeatures,
 ) -> Result<()> {
-    if occurrences_spans.is_empty() {
+    if occurrences.is_empty() {
         return Ok(());
     }
 
-    let modified_modules = ModifiedModules::new(program_info.engines.se(), occurrences_spans);
+    let modified_modules = ModifiedModules::new(
+        program_info.engines.se(),
+        &occurrences
+            .iter()
+            .map(|o| o.span.clone())
+            .collect::<Vec<_>>(),
+    );
 
     check_that_modified_modules_are_not_dirty(&modified_modules)?;
 

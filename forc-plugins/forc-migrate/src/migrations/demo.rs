@@ -7,7 +7,7 @@ use std::vec;
 use crate::{
     internal_error,
     matching::{lexed_match, lexed_match_mut, with_name, with_name_mut},
-    migrations::{visit_all_modules_mut, MutProgramInfo},
+    migrations::{visit_all_modules_mut, MutProgramInfo, Occurrence},
     modifying::*,
 };
 use anyhow::{bail, Ok, Result};
@@ -42,13 +42,13 @@ pub(super) const INSERT_EMPTY_FUNCTION_STEP: MigrationStep = MigrationStep {
 fn insert_empty_function_step(
     program_info: &mut MutProgramInfo,
     dry_run: DryRun,
-) -> Result<Vec<Span>> {
+) -> Result<Vec<Occurrence>> {
     fn insert_empty_function_step_impl(
         _engines: &Engines,
         module: &mut Module,
         _ty_module: &TyModule,
         dry_run: DryRun,
-    ) -> Result<Vec<Span>> {
+    ) -> Result<Vec<Occurrence>> {
         let mut result = vec![];
 
         let existing_empty_function =
@@ -75,7 +75,7 @@ fn insert_empty_function_step(
                 // Rename the existing `empty_function` to `empty_function_old`, and insert a new `empty_function`.
 
                 // We report the occurrence of the code relevant for migration...
-                result.push(report_span.clone());
+                result.push(report_span.clone().into());
 
                 // ...and proceed with the code change only if it is not a dry-run.
                 if dry_run == DryRun::Yes {
@@ -97,7 +97,7 @@ fn insert_empty_function_step(
             (None, _) => {
                 // `empty_function` does not exist, create a new one.
 
-                result.push(report_span.clone());
+                result.push(report_span.clone().into());
 
                 if dry_run == DryRun::Yes {
                     return Ok(result);
