@@ -12,63 +12,42 @@ use std::{
 };
 use sway_types::{SourceEngine, Span};
 
-#[derive(Default)]
-pub struct Callbacks {
-    pub on_before_method_resolution: Option<
-        Box<
-            dyn FnMut(
-                    &crate::semantic_analysis::TypeCheckContext,
-                    &crate::TypeBinding<crate::language::parsed::MethodName>,
-                    &[crate::TypeId],
-                ) + 'static,
-        >,
-    >,
-    pub on_after_method_resolution: Option<
-        Box<
-            dyn FnMut(
-                &crate::semantic_analysis::TypeCheckContext,
-                &crate::TypeBinding<crate::language::parsed::MethodName>,
-                &[crate::TypeId],
-                crate::decl_engine::DeclRefFunction,
-                crate::TypeId,
-            ),
-        >,
-    >,
+pub trait CallbackHandler {
+    fn on_before_method_resolution(
+        &self,
+        _ctx: &crate::semantic_analysis::TypeCheckContext<'_>,
+        _method_name: &crate::TypeBinding<crate::language::parsed::MethodName>,
+        _args_types: &[crate::TypeId],
+    ) { }
+
+    fn on_after_method_resolution(
+        &self,
+        _ctx: &crate::semantic_analysis::TypeCheckContext<'_>,
+        _method_name: &crate::TypeBinding<crate::language::parsed::MethodName>,
+        _args_types: &[crate::TypeId],
+        _new_ref: crate::decl_engine::DeclRefFunction,
+        _new_type_id: crate::TypeId,
+    ) { }
 }
 
 #[derive(Default)]
 pub struct ObservabilityEngine {
-    log: Vec<String>,
-    callbacks: Mutex<Callbacks>,
+    callbacks: Mutex<Option<Arc<dyn CallbackHandler>>>,
     trace: Mutex<bool>,
 }
 
 impl fmt::Debug for ObservabilityEngine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ObservabilityEngine")
-            .field("log", &self.log)
-            .field(
-                "on_before_method_resolution",
-                if self
-                    .callbacks
-                    .lock()
-                    .unwrap()
-                    .on_before_method_resolution
-                    .is_some()
-                {
-                    &"Some(...)"
-                } else {
-                    &"None"
-                },
-            )
+            .field("trace", &self.trace)
             .finish()
     }
 }
 
 impl ObservabilityEngine {
-    pub fn set_callbacks(&self, c: Callbacks) {
+    pub fn set_callbacks(&self, handler: Arc<dyn CallbackHandler>) {
         let mut callbacks = self.callbacks.lock().unwrap();
-        *callbacks = c;
+        *callbacks = Some(handler);
     }
 
     pub fn raise_on_before_method_resolution(
@@ -77,14 +56,13 @@ impl ObservabilityEngine {
         method_name: &crate::TypeBinding<crate::language::parsed::MethodName>,
         arguments_types: &[crate::TypeId],
     ) {
-        if let Some(f) = self
+        if let Some(handler) = self
             .callbacks
             .lock()
             .unwrap()
-            .on_before_method_resolution
             .as_mut()
         {
-            (*f)(ctx, method_name, arguments_types);
+            handler.on_before_method_resolution(ctx, method_name, arguments_types);
         }
     }
 
@@ -96,14 +74,13 @@ impl ObservabilityEngine {
         ref_function: crate::decl_engine::DeclRefFunction,
         tid: crate::TypeId,
     ) {
-        if let Some(f) = self
+        if let Some(handler) = self
             .callbacks
             .lock()
             .unwrap()
-            .on_after_method_resolution
             .as_mut()
         {
-            (*f)(ctx, method_name, arguments_types, ref_function, tid);
+            handler.on_after_method_resolution(ctx, method_name, arguments_types, ref_function, tid);
         }
     }
 
