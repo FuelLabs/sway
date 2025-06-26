@@ -16,5 +16,5 @@ pub(crate) mod type_resolve;
 pub use ast_node::*;
 pub use namespace::Namespace;
 pub(crate) use type_check_analysis::*;
-pub(crate) use type_check_context::TypeCheckContext;
+pub use type_check_context::TypeCheckContext;
 pub(crate) use type_check_finalization::*;

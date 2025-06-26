@@ -1139,7 +1139,10 @@ impl<'a> TypeCheckContext<'a> {
         };
 
         if let Some(method_decl_ref) = matching_method_decl_ref {
-            return Ok(method_decl_ref.get_method_safe_to_unify(self.engines, type_id));
+            self.engines.obs().trace(|| format!("    {:?}", self.engines.help_out(method_decl_ref.id())));
+            let new_decl_ref = method_decl_ref.get_method_safe_to_unify(self.engines, type_id);
+            self.engines.obs().trace(|| format!("    {:?}", self.engines.help_out(new_decl_ref.id())));
+            return Ok(new_decl_ref);
         }
 
         if let Some(TypeInfo::ErrorRecovery(err)) = arguments_types
