@@ -13,6 +13,8 @@ use std::{
 use sway_types::{SourceEngine, Span};
 
 pub trait CallbackHandler {
+    fn on_trace(&self, _msg: &str) { }
+
     fn on_before_method_resolution(
         &self,
         _ctx: &crate::semantic_analysis::TypeCheckContext<'_>,
@@ -87,7 +89,14 @@ impl ObservabilityEngine {
     pub(crate) fn trace(&self, get_txt: impl FnOnce() -> String) {
         let trace = self.trace.lock().unwrap();
         if *trace {
-            eprintln!("{}", get_txt())
+             if let Some(handler) = self
+                .callbacks
+                .lock()
+                .unwrap()
+                .as_mut()
+            {
+                handler.on_trace( &get_txt());
+            }
         }
     }
 
