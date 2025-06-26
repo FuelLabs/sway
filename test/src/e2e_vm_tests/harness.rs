@@ -445,6 +445,12 @@ impl HarnessCallbackHandler {
 }
 
 impl CallbackHandler for HarnessCallbackHandler {
+    fn on_trace(&self, msg: &str) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.snapshot.push_str(msg);
+        inner.snapshot.push_str("\n");
+    }
+
     fn on_before_method_resolution(
         &self,
         ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>,
