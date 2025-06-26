@@ -1,6 +1,6 @@
 script {
-    fn test(v1: b256) -> u64 {
-        entry(v1: b256):
+    fn test(v1: ptr b256) -> u64 {
+        entry(v1: ptr b256):
         v2 = ptr_to_int v1 to u64
         ret u64 v2
     }
@@ -9,8 +9,7 @@ script {
 
         entry():
         foo_ptr = get_local ptr b256, foo
-        foo = load foo_ptr
-        v1 = call test(foo)
+        v1 = call test(foo_ptr)
         ret u64 v1
     }
 }
