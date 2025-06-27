@@ -50,6 +50,7 @@ forc-debug = { path = "forc-plugins/forc-debug/", version = "0.69.1" }
 forc-doc = { path = "forc-plugins/forc-doc/", version = "0.69.1" }
 forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.69.1" }
 forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.69.1" }
+forc-mcp = { path = "forc-plugins/forc-mcp/", version = "0.69.1" }
 forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.69.1" }
 forc-publish = { path = "forc-plugins/forc-publish/", version = "0.69.1" }
 forc-tx = { path = "forc-plugins/forc-tx/", version = "0.69.1" }

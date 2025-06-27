@@ -1,0 +1,42 @@
+[package]
+name = "forc-mcp"
+version.workspace = true
+description = "Model Context Protocol (MCP) server plugin for Forc"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords = ["blockchain", "fuel", "sway", "mcp"]
+
+# [lib]
+# path = "src/lib.rs"
+
+[[bin]]
+name = "forc-mcp"
+path = "src/main.rs"
+
+[dependencies]
+# CLI
+clap = { version = "4.5", default-features = false, features = ["derive", "std", "help", "usage"] }
+
+# MCP SDK
+rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", branch = "main", features = ["server", "transport-io"] }
+
+# Async runtime
+tokio = { version = "1.45", default-features = false, features = ["rt-multi-thread", "macros", "net"] }
+
+# Serialization
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["std"] }
+
+# Error handling
+anyhow = { version = "1.0", default-features = false, features = ["std"] }
+
+# Logging
+tracing = { version = "0.1", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+
+# HTTP server for SSE  
+axum = { version = "0.7", default-features = false, features = ["json", "tokio", "http1"] }
+tower-http = { version = "0.6", default-features = false, features = ["cors"] }
