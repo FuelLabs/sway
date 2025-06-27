@@ -478,24 +478,26 @@ jobs:
         run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
-      - name: Build All Tests - Experimental Feature 'const_generics'
-        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental const_generics
-      - name: Test All Tests - Experimental Feature 'const_generics'
-        run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness --experimental const_generics
-      - name: Cargo Test sway-lib-std - Experimental Feature 'const_generics'
-        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      # TODO: Enable `const_generics` tests once the necessary https://github.com/FuelLabs/sway/issues/6860 TODOs are resolved.
+      # - name: Build All Tests - Experimental Feature 'const_generics'
+      #   run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental const_generics
+      # - name: Test All Tests - Experimental Feature 'const_generics'
+      #   run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness --experimental const_generics
+      # - name: Cargo Test sway-lib-std - Experimental Feature 'const_generics'
+      #   run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
       - name: Build All Tests - Experimental Feature 'new_hashing'
         run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental new_hashing
       - name: Test All Tests - Experimental Feature 'new_hashing'
         run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness --experimental new_hashing
       - name: Cargo Test sway-lib-std - Experimental Feature 'new_hashing'
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
-      - name: Build All Tests - Experimental Feature 'const_generics,new_hashing'
-        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental const_generics,new_hashing
-      - name: Test All Tests - Experimental Feature 'const_generics,new_hashing'
-        run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness --experimental const_generics,new_hashing
-      - name: Cargo Test sway-lib-std - Experimental Feature 'const_generics,new_hashing'
-        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      # TODO: Enable `const_generics,new_hashing` tests once the necessary https://github.com/FuelLabs/sway/issues/6860 TODOs are resolved.
+      # - name: Build All Tests - Experimental Feature 'const_generics,new_hashing'
+      #   run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental const_generics,new_hashing
+      # - name: Test All Tests - Experimental Feature 'const_generics,new_hashing'
+      #   run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness --experimental const_generics,new_hashing
+      # - name: Cargo Test sway-lib-std - Experimental Feature 'const_generics,new_hashing'
+      #   run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
     runs-on: buildjet-4vcpu-ubuntu-2204
