@@ -2,12 +2,6 @@ contract;
 
 use std::hash::*;
 
-impl Hash for str[4] {
-    fn hash(self, ref mut state: Hasher) {
-        state.write_str_array(self);
-    }
-}
-
 impl Hash for Location {
     fn hash(self, ref mut state: Hasher) {
         match self {

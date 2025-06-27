@@ -638,6 +638,233 @@ where
     }
 }
 
+// TODO: Enable `#[cfg(experimental_const_generics = false)]` once const generics are supported for string arrays.
+#[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[0]
+{
+    fn hash(self, ref mut _state: Hasher) {}
+}
+
+#[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[0]
+{
+    fn hash(self, ref mut state: Hasher) {
+        0_u64.hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[1]
+{
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[1]
+{
+    fn hash(self, ref mut state: Hasher) {
+        1_u64.hash(state);
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[2]
+{
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[2]
+{
+    fn hash(self, ref mut state: Hasher) {
+        2_u64.hash(state);
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[3]
+{
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[3]
+{
+    fn hash(self, ref mut state: Hasher) {
+        3_u64.hash(state);
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[4]
+{
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[4]
+{
+    fn hash(self, ref mut state: Hasher) {
+        4_u64.hash(state);
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[5]
+{
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[5]
+{
+    fn hash(self, ref mut state: Hasher) {
+        5_u64.hash(state);
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[6]
+{
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[6]
+{
+    fn hash(self, ref mut state: Hasher) {
+        6_u64.hash(state);
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[7]
+{
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[7]
+{
+    fn hash(self, ref mut state: Hasher) {
+        7_u64.hash(state);
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[8]
+{
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[8]
+{
+    fn hash(self, ref mut state: Hasher) {
+        8_u64.hash(state);
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[9]
+{
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[9]
+{
+    fn hash(self, ref mut state: Hasher) {
+        9_u64.hash(state);
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[10]
+{
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = false)]
+impl Hash for str[10]
+{
+    fn hash(self, ref mut state: Hasher) {
+        10_u64.hash(state);
+        state.write_str_array(self);
+    }
+}
+
+// TODO: Enable this once const generics are supported for string arrays.
+// #[cfg(experimental_new_hashing = false)]
+// #[cfg(experimental_const_generics = true)]
+// impl<const N: u64> Hash for str[N]
+// {
+//     fn hash(self, ref mut state: Hasher) {
+//         state.write_str_array(self);
+//     }
+// }
+
+// #[cfg(experimental_new_hashing = true)]
+// #[cfg(experimental_const_generics = true)]
+// impl<const N: u64> Hash for str[N]
+// {
+//     fn hash(self, ref mut state: Hasher) {
+//         N.hash(state);
+//         state.write_str_array(self);
+//     }
+// }
+
 #[cfg(experimental_new_hashing = false)]
 impl<T> Hash for Vec<T>
 where
