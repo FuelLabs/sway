@@ -104,8 +104,8 @@ mod tests {
     #[test]
     fn test_get_forc_command_from_file_name() {
         assert_eq!(
-            "forc explore",
-            get_forc_command_from_file_name(OsString::from("forc_explore.md")),
+            "forc fmt",
+            get_forc_command_from_file_name(OsString::from("forc_fmt.md")),
         );
     }
 }
