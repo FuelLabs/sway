@@ -1,0 +1,24 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [],
+  "programType": "script",
+  "specVersion": "1.1"
+}
