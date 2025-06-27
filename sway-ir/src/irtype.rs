@@ -339,7 +339,7 @@ impl Type {
         matches!(*self.get_content(context), TypeContent::Pointer(_))
     }
 
-    /// Get pointed to type iff `self`` is a pointer with known pointee type.
+    /// Get pointed to type iff `self`` is a pointer.
     pub fn get_pointee_type(&self, context: &Context) -> Option<Type> {
         if let TypeContent::Pointer(to_ty) = self.get_content(context) {
             Some(*to_ty)
