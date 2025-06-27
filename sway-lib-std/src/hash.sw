@@ -834,6 +834,7 @@ where
     hasher.keccak256()
 }
 
+#[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = true)]
 #[test]
 fn ok_array_hash() {
@@ -841,6 +842,20 @@ fn ok_array_hash() {
 
     let a = sha256([1, 2, 3]);
     let b = sha256((1, 2, 3));
+
+    if a != b {
+        __revert(0);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = true)]
+#[test]
+fn ok_array_hash() {
+    use ::ops::*;
+
+    let a = sha256([1, 2, 3]);
+    let b = sha256((3_u64, 1, 2, 3));
 
     if a != b {
         __revert(0);
