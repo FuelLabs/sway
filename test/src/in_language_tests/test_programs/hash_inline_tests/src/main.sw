@@ -75,6 +75,7 @@ fn hash_fn_sha256_str_array() {
 }
 
 // Test `Hash` implementations for all `std` types.
+
 // Standard library types that implement `Hash` trait can be used in cases that
 // semantically assume that the hash is deterministic. E.g., as a key in a `StorageMap`.
 // These tests ensure that the hash values for these types are stable and deterministic.
@@ -86,8 +87,7 @@ fn hash_fn_sha256_str_array() {
 // `Hasher::new`.
 
 // The hashes used in tests can be obtained in Rust by running the following script:
-// TODO-IG!: Update the script and the link.
-// https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=cc885f4ba8c7ded1da707909ce38c11b
+// https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=313b37226f0ed82c5daeb9fe120018f5
 //
 // Note that the **script cannot be executed directly in the Rust Playground**, because
 // of the missing dependencies.
@@ -2018,6 +2018,214 @@ fn hash_result() {
             42_u64,
         )
     );
+}
+
+// Test `Hash` implementations for user defined types.
+
+enum EnumWithUnitVariantsOnly {
+    A: (),
+    B: (),
+    C: (),
+}
+
+impl Hash for EnumWithUnitVariantsOnly {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::A => 0_u8.hash(state),
+            Self::B => 1_u8.hash(state),
+            Self::C => 2_u8.hash(state),
+        }
+    }
+}
+
+enum EnumWithUnitVariantsAndData {
+    A: (),
+    B: u8,
+    C: u64,
+    D: (u8, u64),
+}
+
+impl Hash for EnumWithUnitVariantsAndData {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::A => 0_u8.hash(state),
+            Self::B(data) => (1_u8, data).hash(state),
+            Self::C(data) => (2_u8, data).hash(state),
+            Self::D(data) => (3_u8, data).hash(state),
+        }
+    }
+}
+
+struct Struct {
+    f_unit: (),
+    f_bool: bool,
+    f_u8: u8,
+    f_u16: u16,
+    f_u32: u32,
+    f_u64: u64,
+    f_u256: u256,
+    f_b256: b256,
+    f_b512: B512,
+    f_array: [u64; 3],
+    f_str_array: str[5],
+    f_empty_str: str,
+    f_str: str,
+    f_empty_vec: Vec<u64>,
+    f_vec: Vec<u64>,
+    f_empty_bytes: Bytes,
+    f_bytes: Bytes,
+    f_enum_units_only: EnumWithUnitVariantsOnly,
+    f_enum_units_and_data: EnumWithUnitVariantsAndData,
+}
+
+impl Hash for Struct {
+    fn hash(self, ref mut state: Hasher) {
+        self.f_unit.hash(state);
+        self.f_bool.hash(state);
+        self.f_u8.hash(state);
+        self.f_u16.hash(state);
+        self.f_u32.hash(state);
+        self.f_u64.hash(state);
+        self.f_u256.hash(state);
+        self.f_b256.hash(state);
+        self.f_b512.hash(state);
+        self.f_array.hash(state);
+        self.f_str_array.hash(state);
+        self.f_empty_str.hash(state);
+        self.f_str.hash(state);
+        self.f_empty_vec.hash(state);
+        self.f_vec.hash(state);
+        self.f_empty_bytes.hash(state);
+        self.f_bytes.hash(state);
+        self.f_enum_units_only.hash(state);
+        self.f_enum_units_and_data.hash(state);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
+#[test]
+fn hash_user_defined_type() {
+    let mut vec = Vec::new();
+    vec.push(42_u64);
+
+    let mut bytes = Bytes::new();
+    bytes.push(42);
+
+    let r#struct = Struct {
+        f_unit: (),
+        f_bool: true,
+        f_u8: 80,
+        f_u16: 160,
+        f_u32: 320,
+        f_u64: 640,
+        f_u256: 2560_u256,
+        f_b256: b256::min(),
+        f_b512: B512::from((b256::min(), b256::max())),
+        f_array: [47_u64, 48_u64, 49_u64],
+        f_str_array: __to_str_array("aaaaa"),
+        f_empty_str: "",
+        f_str: "bbb",
+        f_empty_vec: Vec::new(),
+        f_vec: vec,
+        f_empty_bytes: Bytes::new(),
+        f_bytes: bytes,
+        f_enum_units_only: EnumWithUnitVariantsOnly::B,
+        f_enum_units_and_data: EnumWithUnitVariantsAndData::D((42, 4422)),
+    };
+    
+    let expected = (
+        (
+            // Nothing for the unit field.
+            1_u8, // True.
+            80_u8,
+            160_u16,
+            320_u32,
+            640_u64,
+        ),
+        (
+            2560_u256,
+            b256::min(),
+            (b256::min(), b256::max()),
+            (47_u64, 48_u64, 49_u64),
+            (97_u8, 97_u8, 97_u8, 97_u8, 97_u8), // "aaaaa".
+        ),
+        (
+            // Nothing for the empty string slice.
+            (98_u8, 98_u8, 98_u8), // "bbb".
+            // Nothing for the empty vector.
+            42_u64,
+            // Nothing for the empty bytes.
+            42_u8,
+            1_u8, // Variant B.
+            (3_u8, (42_u8, 4422_u64)), // Variant D.
+        ),
+    );
+
+    assert_eq_hashes(r#struct, expected);
+}
+
+#[cfg(experimental_new_hashing = true)]
+#[test]
+fn hash_user_defined_type() {
+    let mut vec = Vec::new();
+    vec.push(42_u64);
+
+    let mut bytes = Bytes::new();
+    bytes.push(42);
+
+    let r#struct = Struct {
+        f_unit: (),
+        f_bool: true,
+        f_u8: 80,
+        f_u16: 160,
+        f_u32: 320,
+        f_u64: 640,
+        f_u256: 2560_u256,
+        f_b256: b256::min(),
+        f_b512: B512::from((b256::min(), b256::max())),
+        f_array: [47_u64, 48_u64, 49_u64],
+        f_str_array: __to_str_array("aaaaa"),
+        f_empty_str: "",
+        f_str: "bbb",
+        f_empty_vec: Vec::new(),
+        f_vec: vec,
+        f_empty_bytes: Bytes::new(),
+        f_bytes: bytes,
+        f_enum_units_only: EnumWithUnitVariantsOnly::B,
+        f_enum_units_and_data: EnumWithUnitVariantsAndData::D((42, 4422)),
+    };
+    
+    let expected = (
+        (
+            // Nothing for the unit field.
+            1_u8, // True.
+            80_u8,
+            160_u16,
+            320_u32,
+            640_u64,
+        ),
+        (
+            2560_u256,
+            b256::min(),
+            (b256::min(), b256::max()),
+            (3_u64, (47_u64, 48_u64, 49_u64)),
+            (5_u64, (97_u8, 97_u8, 97_u8, 97_u8, 97_u8)), // "aaaaa".
+        ),
+        (
+            0_u64, // "".
+            (3_u64, (98_u8, 98_u8, 98_u8)), // "bbb".
+            0_u64, // Empty `Vec`.
+            (1_u64, (42_u64, )),
+            0_u64, // Empty `Bytes`.
+        ),
+        (
+            (1_u64, (42_u8, )),
+            1_u8, // Variant B.
+            (3_u8, (42_u8, 4422_u64)), // Variant D.
+        ),
+    );
+
+    assert_eq_hashes(r#struct, expected);
 }
 
 /// Asserts that two values `a` and `b` hash to the same SHA256 and Keccak256 hashes.
