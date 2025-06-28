@@ -943,21 +943,6 @@ impl TypeId {
                     None
                 }
             }
-            TypeInfo::Alias { .. } => {
-                if let TypeInfo::Alias { ty, .. } = &*type_engine.get(resolved_type_id) {
-                    ty.initial_type_id().get_abi_type_components(
-                        handler,
-                        ctx,
-                        engines,
-                        metadata_types,
-                        concrete_types,
-                        ty.type_id(),
-                        metadata_types_to_add,
-                    )?
-                } else {
-                    None
-                }
-            }
             TypeInfo::UnknownGeneric { .. } => {
                 // avoid infinite recursion
                 if *self == resolved_type_id {
