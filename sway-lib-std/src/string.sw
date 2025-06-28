@@ -371,7 +371,7 @@ impl Eq for String {}
 
 impl Hash for String {
     fn hash(self, ref mut state: Hasher) {
-        state.write(self.bytes);
+        self.bytes.hash(state);
     }
 }
 

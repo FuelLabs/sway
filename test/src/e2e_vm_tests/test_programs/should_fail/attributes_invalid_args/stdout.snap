@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 125
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args
 exit status: 1
@@ -194,6 +193,7 @@ error: Attribute argument is invalid
   |       ----- help:   - target
   |       ----- help:   - experimental_const_generics
   |       ----- help:   - experimental_new_encoding
+  |       ----- help:   - experimental_new_hashing
   |       ----- help:   - experimental_references
   |
 ____

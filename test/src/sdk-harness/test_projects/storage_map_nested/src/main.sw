@@ -37,12 +37,6 @@ impl PartialEq for E {
 }
 impl Eq for E {}
 
-impl Hash for str[4] {
-    fn hash(self, ref mut state: Hasher) {
-        state.write_str_array(self);
-    }
-}
-
 storage {
     nested_map_1: StorageMap<u64, StorageMap<u64, StorageMap<u64, u64>>> = StorageMap::<u64, StorageMap<u64, StorageMap<u64, u64>>> {},
     nested_map_2: StorageMap<(u64, u64), StorageMap<str[4], StorageMap<u64, M>>> = StorageMap::<(u64, u64), StorageMap<str[4], StorageMap<u64, M>>> {},
