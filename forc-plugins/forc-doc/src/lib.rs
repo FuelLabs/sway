@@ -45,7 +45,7 @@ pub struct Command {
     /// Path to the project.
     ///
     /// If not specified, current working directory will be used.
-    #[clap(short, alias = "manifest-path")]
+    #[clap(short, long, alias = "manifest-path")]
     pub path: Option<String>,
     /// Include non-public items in the documentation.
     pub document_private_items: bool,
