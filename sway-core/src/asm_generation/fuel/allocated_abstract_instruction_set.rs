@@ -15,7 +15,7 @@ use super::{
 
 use fuel_vm::fuel_asm::Imm12;
 use indexmap::{IndexMap, IndexSet};
-use rustc_hash::FxHashSet;
+use rustc_hash::FxHashMap;
 use sway_types::span::Span;
 
 use std::collections::{BTreeSet, HashMap};
@@ -198,18 +198,17 @@ impl AllocatedAbstractInstructionSet {
     pub(crate) fn realize_labels(
         mut self,
         data_section: &mut DataSection,
-        far_jump_indices: &FxHashSet<usize>,
+        far_jump_sizes: &FxHashMap<usize, u64>,
     ) -> Result<(RealizedAbstractInstructionSet, LabeledBlocks), crate::CompileError> {
         let label_offsets = self.resolve_labels(data_section);
         let mut curr_offset = 0;
 
         let mut realized_ops = vec![];
         for (op_idx, op) in self.ops.iter().enumerate() {
-            let op_size = if far_jump_indices.contains(&op_idx) {
-                2
-            } else {
-                Self::instruction_size_not_far_jump(op, data_section)
-            };
+            let op_size = far_jump_sizes
+                .get(&op_idx)
+                .copied()
+                .unwrap_or_else(|| Self::instruction_size_not_far_jump(op, data_section));
             let rel_offset =
                 |curr_offset, lab| label_offsets.get(lab).unwrap().offs.abs_diff(curr_offset);
             let AllocatedAbstractOp {
@@ -226,19 +225,31 @@ impl AllocatedAbstractInstructionSet {
                 Either::Right(org_op) => match org_op {
                     ControlFlowOp::Jump { to, type_ } => {
                         let target_offset = label_offsets.get(&to).unwrap().offs;
-                        let ops = compile_jump(
-                            data_section,
-                            curr_offset,
-                            target_offset,
-                            match type_ {
-                                JumpType::NotZero(cond) => Some(cond),
-                                _ => None,
-                            },
-                            far_jump_indices.contains(&op_idx),
-                            comment,
-                            owning_span,
-                        );
-                        debug_assert_eq!(ops.len() as u64, op_size);
+                        let ops = if matches!(type_, JumpType::Call) {
+                            compile_call(
+                                data_section,
+                                curr_offset,
+                                target_offset,
+                                far_jump_sizes.get(&op_idx).copied(),
+                                comment,
+                                owning_span,
+                            )
+                        } else {
+                            compile_jump(
+                                data_section,
+                                curr_offset,
+                                target_offset,
+                                match type_ {
+                                    JumpType::NotZero(cond) => Some(cond),
+                                    _ => None,
+                                },
+                                far_jump_sizes.contains_key(&op_idx),
+                                comment,
+                                owning_span,
+                            )
+                        };
+                        assert_eq!(far_jump_sizes.get(&op_idx).copied().unwrap_or(1), op_size);
+                        assert_eq!(ops.len() as u64, op_size);
                         realized_ops.extend(ops);
                     }
                     ControlFlowOp::SaveRetAddr(r1, ref to) => {
@@ -348,8 +359,12 @@ impl AllocatedAbstractInstructionSet {
             // This is a concrete op, size is fixed
             Either::Left(_) => 1,
 
-            // Worst case for jump is 2 opcodes
-            Either::Right(Jump { .. }) => 2,
+            // Worst case for jump is 2 opcodes, and 3 for calls
+            Either::Right(Jump { ref type_, .. }) => match type_ {
+                JumpType::Unconditional => 2,
+                JumpType::NotZero(_) => 2,
+                JumpType::Call => 3,
+            },
 
             // We use three instructions to save the absolute address for return.
             // SUB r1 $pc $is
@@ -445,19 +460,19 @@ impl AllocatedAbstractInstructionSet {
 
     /// Go through all jumps and check if they could require a far jump in the worst case.
     /// For far jumps we have to reserve space for an extra opcode to load target address.
+    /// For far calls, we need to reserve two extra opcodes.
     /// Also, this will be mark self-jumps, as they require a noop to be inserted before them.
-    pub(crate) fn collect_far_jumps(&self) -> FxHashSet<usize> {
+    pub(crate) fn collect_far_jumps(&self) -> FxHashMap<usize, u64> {
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
         let mut cur_basic_block = None;
 
-        let mut far_jump_indices = FxHashSet::default();
+        let mut far_jump_sizes = FxHashMap::default();
 
         struct JumpInfo {
             to: Label,
             offset: u64,
             op_idx: usize,
-            limit: u64,
         }
 
         let mut jumps = Vec::new();
@@ -475,16 +490,11 @@ impl AllocatedAbstractInstructionSet {
                 cur_basic_block = Some((cur_lab, op_idx, cur_offset));
             }
 
-            if let Either::Right(ControlFlowOp::Jump { to, type_, .. }) = &op.opcode {
+            if let Either::Right(ControlFlowOp::Jump { to, .. }) = &op.opcode {
                 jumps.push(JumpInfo {
                     to: *to,
                     offset: cur_offset,
                     op_idx,
-                    limit: if matches!(type_, JumpType::NotZero(_)) {
-                        consts::TWELVE_BITS
-                    } else {
-                        consts::EIGHTEEN_BITS
-                    },
                 });
             }
 
@@ -498,30 +508,52 @@ impl AllocatedAbstractInstructionSet {
         }
 
         for jump in jumps {
-            let rel_offset = labelled_blocks
-                .get(&jump.to)
-                .unwrap()
-                .offs
-                .abs_diff(jump.offset);
+            let offs = labelled_blocks.get(&jump.to).unwrap().offs;
+            let is_forward = offs > jump.offset;
+            let rel_offset = offs.abs_diff(jump.offset);
             // Self jumps need a NOOP inserted before it so that we can jump to the NOOP.
-            // This is handled by the force_far machinery as well.
-            if rel_offset == 0 || rel_offset > jump.limit {
-                debug_assert!(matches!(
-                    self.ops[jump.op_idx].opcode,
-                    Either::Right(ControlFlowOp::Jump { .. })
-                ));
-                far_jump_indices.insert(jump.op_idx);
-            }
+            let Either::Right(ControlFlowOp::Jump { ref type_, .. }) = self.ops[jump.op_idx].opcode
+            else {
+                unreachable!("Jump info should only be collected for jumps");
+            };
+            match type_ {
+                JumpType::Unconditional => {
+                    if rel_offset == 0 || rel_offset > consts::EIGHTEEN_BITS {
+                        far_jump_sizes.insert(jump.op_idx, 2);
+                    }
+                }
+                JumpType::NotZero(_) => {
+                    if rel_offset == 0 || rel_offset > consts::TWELVE_BITS {
+                        far_jump_sizes.insert(jump.op_idx, 2);
+                    }
+                }
+                JumpType::Call => {
+                    if is_forward {
+                        if rel_offset > consts::TWELVE_BITS {
+                            far_jump_sizes.insert(jump.op_idx, 3);
+                        }
+                    } else {
+                        far_jump_sizes.insert(
+                            jump.op_idx,
+                            if rel_offset > consts::TWELVE_BITS {
+                                3
+                            } else {
+                                2
+                            },
+                        );
+                    }
+                }
+            };
         }
 
-        far_jump_indices
+        far_jump_sizes
     }
 
     /// Map the labels to their offsets in the program.
     fn map_label_offsets(
         &self,
         data_section: &DataSection,
-        far_jump_indices: &FxHashSet<usize>,
+        far_jump_sizes: &FxHashMap<usize, u64>,
     ) -> LabeledBlocks {
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
@@ -541,11 +573,10 @@ impl AllocatedAbstractInstructionSet {
             }
 
             // Update the offset.
-            let op_size = if far_jump_indices.contains(&op_idx) {
-                2
-            } else {
-                Self::instruction_size_not_far_jump(op, data_section)
-            };
+            let op_size = far_jump_sizes
+                .get(&op_idx)
+                .copied()
+                .unwrap_or_else(|| Self::instruction_size_not_far_jump(op, data_section));
             cur_offset += op_size;
         }
 
@@ -725,5 +756,127 @@ pub(crate) fn compile_jump(
             owning_span,
             comment,
         }]
+    }
+}
+
+/// Compiles a function call into the appropriate operations.
+/// Near jumps are compiled into a single instruction, while far jumps are compiled into
+/// two instructions: one to load the target address and another to jump to it.
+pub(crate) fn compile_call(
+    data_section: &mut DataSection,
+    curr_offset: u64,
+    target_offset: u64,
+    far_size: Option<u64>,
+    comment: String,
+    owning_span: Option<Span>,
+) -> Vec<RealizedOp> {
+    if curr_offset <= target_offset {
+        let delta = target_offset - curr_offset;
+        return if far_size == Some(3) {
+            let data_id = data_section.insert_data_value(Entry::new_word(
+                (delta - 1) * 4,
+                EntryName::NonConfigurable,
+                None,
+            ));
+
+            vec![
+                RealizedOp {
+                    opcode: AllocatedInstruction::LoadDataId(
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        data_id,
+                    ),
+                    owning_span: owning_span.clone(),
+                    comment: "load far jump target address".into(),
+                },
+                RealizedOp {
+                    opcode: AllocatedInstruction::ADD(
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                    ),
+                    owning_span: owning_span.clone(),
+                    comment: "load far jump target address".into(),
+                },
+                RealizedOp {
+                    opcode: AllocatedInstruction::JAL(
+                        AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                    ),
+                    owning_span,
+                    comment,
+                },
+            ]
+        } else {
+            vec![RealizedOp {
+                opcode: AllocatedInstruction::JAL(
+                    AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                    VirtualImmediate12::new_unchecked(delta, "unreachable()"),
+                ),
+                owning_span,
+                comment,
+            }]
+        };
+    }
+
+    let delta = curr_offset - target_offset;
+
+    if far_size == Some(3) {
+        let data_id = data_section.insert_data_value(Entry::new_word(
+            (delta - 1) * 4,
+            EntryName::NonConfigurable,
+            None,
+        ));
+
+        vec![
+            RealizedOp {
+                opcode: AllocatedInstruction::LoadDataId(
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    data_id,
+                ),
+                owning_span: owning_span.clone(),
+                comment: "load far jump target address".into(),
+            },
+            RealizedOp {
+                opcode: AllocatedInstruction::SUB(
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                ),
+                owning_span: owning_span.clone(),
+                comment: "load far jump target address".into(),
+            },
+            RealizedOp {
+                opcode: AllocatedInstruction::JAL(
+                    AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                ),
+                owning_span,
+                comment,
+            },
+        ]
+    } else {
+        vec![
+            RealizedOp {
+                opcode: AllocatedInstruction::SUBI(
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                    VirtualImmediate12::new_unchecked(delta * 4, "unreachable()"),
+                ),
+                owning_span: owning_span.clone(),
+                comment: "load far jump target address".into(),
+            },
+            RealizedOp {
+                opcode: AllocatedInstruction::JAL(
+                    AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                ),
+                owning_span,
+                comment,
+            },
+        ]
     }
 }
