@@ -18,6 +18,7 @@ use petgraph::{
     Directed, Direction,
 };
 use serde::{Deserialize, Serialize};
+use sway_core::engine_threading::CallbackHandler;
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
     fmt,
@@ -2177,7 +2178,10 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
 }
 
 /// Builds a project with given BuildOptions.
-pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
+pub fn build_with_options(
+    build_options: &BuildOpts,
+    callback_handler: Option<Arc<dyn CallbackHandler>>
+) -> Result<Built> {
     let BuildOpts {
         hex_outfile,
         minify,
@@ -2235,6 +2239,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         &outputs,
         experimental,
         no_experimental,
+        callback_handler,
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     let total_size = built_packages
@@ -2358,6 +2363,7 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     experimental: &[sway_features::Feature],
     no_experimental: &[sway_features::Feature],
+    callback_handler: Option<Arc<dyn CallbackHandler>>,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2367,6 +2373,10 @@ pub fn build(
         .collect();
 
     let engines = Engines::default();
+    if let Some(callbacks) = callback_handler {
+        engines.obs().set_callbacks(callbacks);
+    }
+
     let include_tests = profile.include_tests;
 
     // This is the Contract ID of the current contract being compiled.
