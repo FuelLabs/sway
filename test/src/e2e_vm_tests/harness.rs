@@ -16,17 +16,15 @@ use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use futures::Future;
-use normalize_path::NormalizePath as _;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
 use std::{
-    collections::HashMap,
     fs,
     io::Read,
     path::PathBuf,
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 use sway_core::{asm_generation::ProgramABI, engine_threading::CallbackHandler, BuildTarget};
 
@@ -303,14 +301,12 @@ pub(crate) async fn compile_to_bytes(
     };
 
     match std::panic::catch_unwind(|| {
-        if let Some(script) = logs {
-            let handler = Arc::new(HarnessCallbackHandler::new(&script));
-            let r = forc_pkg::build_with_options(&build_opts, Some(handler.clone()));
-            handler.generate_snapshot(&root);
-            r
+        let callback_handler: Option<Arc<dyn CallbackHandler>> = if let Some(script) = logs {
+            Some(Arc::new(HarnessCallbackHandler::new(&root, &script)))
         } else {
-            forc_pkg::build_with_options(&build_opts, None)
-        }
+            None
+        };
+        forc_pkg::build_with_options(&build_opts, callback_handler.clone())
     }) {
         Ok(result) => {
             // Print the result of the compilation (i.e., any errors Forc produces).

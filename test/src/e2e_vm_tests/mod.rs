@@ -1,8 +1,8 @@
 // Please take a look in test_programs/README.md for details on how these tests work.
 
 mod harness;
-mod util;
 mod harness_callback_handler;
+mod util;
 
 use crate::e2e_vm_tests::harness::run_and_capture_output;
 use crate::{FilterConfig, RunConfig};

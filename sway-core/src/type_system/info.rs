@@ -758,7 +758,9 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.name.as_str(),
-                    decl.type_parameters.iter().map(|arg| format!("{:?}", engines.help_out(arg))),
+                    decl.type_parameters
+                        .iter()
+                        .map(|arg| format!("{:?}", engines.help_out(arg))),
                 )
             }
             UntypedStruct(decl_id) => {
@@ -766,7 +768,9 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.name.as_str(),
-                    decl.type_parameters.iter().map(|arg| format!("{:?}", engines.help_out(arg))),
+                    decl.type_parameters
+                        .iter()
+                        .map(|arg| format!("{:?}", engines.help_out(arg))),
                 )
             }
             Enum(decl_ref) => {
@@ -774,7 +778,9 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.call_path.suffix.as_str(),
-                    decl.generic_parameters.iter().map(|arg| format!("{:?}", engines.help_out(arg))),
+                    decl.generic_parameters
+                        .iter()
+                        .map(|arg| format!("{:?}", engines.help_out(arg))),
                 )
             }
             Struct(decl_ref) => {
@@ -782,7 +788,9 @@ impl DebugWithEngines for TypeInfo {
                 print_inner_types_debug(
                     engines,
                     decl.call_path.suffix.as_str(),
-                    decl.generic_parameters.iter().map(|arg| format!("{:?}", engines.help_out(arg))),
+                    decl.generic_parameters
+                        .iter()
+                        .map(|arg| format!("{:?}", engines.help_out(arg))),
                 )
             }
             ContractCaller { abi_name, address } => {
