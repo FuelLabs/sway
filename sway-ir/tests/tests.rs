@@ -274,8 +274,8 @@ fn dce() {
         pass_mgr.register(create_escaped_symbols_pass());
         let pass = pass_mgr.register(create_dce_pass());
         pass_group.append_pass(pass);
-        // TODO: needed by dce_dead_constant_assignment test. Improve DCE and remove this.
-        // https://github.com/FuelLabs/sway/issues/7262
+        // Some tests require multiple passes of DCE to be run,
+        // this also reflects our actual compiler pipeline where DCE runs multiple times.
         pass_group.append_pass(pass);
         pass_mgr.run(ir, &pass_group).unwrap()
     })
