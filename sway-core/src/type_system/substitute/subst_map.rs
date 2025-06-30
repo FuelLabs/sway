@@ -1,3 +1,4 @@
+use sway_types::Ident;
 use crate::{
     ast_elements::type_parameter::ConstGenericExpr,
     decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert},
@@ -17,13 +18,14 @@ type DestinationType = TypeId;
 pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
     pub const_generics_materialization: BTreeMap<String, crate::language::ty::TyExpression>,
+    pub const_generics_renaming: BTreeMap<Ident, Ident>,
 }
 
 impl DebugWithEngines for TypeSubstMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(
             f,
-            "TypeSubstMap {{ {} }}",
+            "TypeSubstMap {{ {}; {}; {} }}",
             self.mapping
                 .iter()
                 .map(|(source_type, dest_type)| {
@@ -33,6 +35,16 @@ impl DebugWithEngines for TypeSubstMap {
                         engines.help_out(dest_type)
                     )
                 })
+                .collect::<Vec<_>>()
+                .join(", "),
+             self.const_generics_materialization
+                .iter()
+                .map(|(a, b)| format!("{:?} -> {:?}", a, engines.help_out(b)))
+                .collect::<Vec<_>>()
+                .join(", "),
+             self.const_generics_renaming
+                .iter()
+                .map(|(a, b)| format!("{:?} -> {:?}", a, b))
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -56,7 +68,7 @@ impl fmt::Debug for TypeSubstMap {
 impl TypeSubstMap {
     /// Returns `true` if the [TypeSubstMap] is empty.
     pub(crate) fn is_empty(&self) -> bool {
-        self.mapping.is_empty()
+        self.mapping.is_empty() && self.const_generics_renaming.is_empty()
     }
 
     /// Constructs a new empty [TypeSubstMap].
@@ -64,6 +76,7 @@ impl TypeSubstMap {
         TypeSubstMap {
             mapping: BTreeMap::<SourceType, DestinationType>::new(),
             const_generics_materialization: BTreeMap::new(),
+            const_generics_renaming: BTreeMap::default(),
         }
     }
 
@@ -102,6 +115,7 @@ impl TypeSubstMap {
         TypeSubstMap {
             mapping,
             const_generics_materialization: BTreeMap::new(),
+            const_generics_renaming: BTreeMap::default(),
         }
     }
 
@@ -164,6 +178,7 @@ impl TypeSubstMap {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
                 mapping: BTreeMap::from([(superset, subset)]),
                 const_generics_materialization: BTreeMap::new(),
+                const_generics_renaming: BTreeMap::default(),
             },
             (
                 TypeInfo::Custom {
@@ -307,10 +322,12 @@ impl TypeSubstMap {
             | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
                 mapping: BTreeMap::new(),
                 const_generics_materialization: BTreeMap::new(),
+                const_generics_renaming: BTreeMap::default(),
             },
             _ => TypeSubstMap {
                 mapping: BTreeMap::new(),
                 const_generics_materialization: BTreeMap::new(),
+                const_generics_renaming: BTreeMap::default(),
             },
         }
     }
@@ -349,6 +366,7 @@ impl TypeSubstMap {
         TypeSubstMap {
             mapping,
             const_generics_materialization: BTreeMap::new(),
+            const_generics_renaming: BTreeMap::default(),
         }
     }
 
@@ -361,6 +379,7 @@ impl TypeSubstMap {
         TypeSubstMap {
             mapping,
             const_generics_materialization,
+            const_generics_renaming: BTreeMap::default(),
         }
     }
 
@@ -474,20 +493,28 @@ impl TypeSubstMap {
             TypeInfo::Struct(decl_id) => {
                 let mut decl = (*decl_engine.get_struct(&decl_id)).clone();
                 let mut need_to_create_new = false;
+
                 for field in &mut decl.fields {
                     if let Some(type_id) = self.find_match(field.type_argument.type_id(), engines) {
                         need_to_create_new = true;
                         *field.type_argument.type_id_mut() = type_id;
                     }
                 }
-                for type_param in &mut decl
-                    .generic_parameters
-                    .iter_mut()
-                    .filter_map(|x| x.as_type_parameter_mut())
-                {
-                    if let Some(type_id) = self.find_match(type_param.type_id, engines) {
-                        need_to_create_new = true;
-                        type_param.type_id = type_id;
+
+                for p in &mut decl.generic_parameters.iter_mut() {
+                    match p {
+                        TypeParameter::Type(p) => {
+                            if let Some(type_id) = self.find_match(p.type_id, engines) {
+                                need_to_create_new = true;
+                                p.type_id = type_id;
+                            }
+                        }
+                        TypeParameter::Const(p) => {
+                            let ctx = &SubstTypesContext { engines, type_subst_map: Some(self), subst_function_body: false };
+                            if matches!(p.subst_inner(&ctx), HasChanges::Yes) {
+                                need_to_create_new = true
+                            }
+                        }
                     }
                 }
                 if need_to_create_new {

@@ -904,7 +904,7 @@ pub(crate) fn resolve_method_name(
         MethodName::FromType {
             call_path_binding,
             method_name,
-        } => { 
+        } => {
             // type check the call path
             let type_id = call_path_binding
                 .type_check_with_type_info(handler, &mut ctx)

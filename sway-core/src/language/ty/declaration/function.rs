@@ -148,8 +148,14 @@ impl MaterializeConstGenerics for TyFunctionDecl {
                     .type_id
                     .materialize_const_generics(engines, handler, name, value)?,
                 TypeParameter::Const(p) if p.name.as_str() == name => {
-                    assert!(p.expr.is_none());
-                    p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                    match p.expr.as_ref() {
+                        Some(v) => {
+                            assert!(v.as_literal_val().unwrap() as u64 == value.extract_literal_value().unwrap().cast_value_to_u64().unwrap());
+                        }
+                        None => {
+                            p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -169,16 +175,69 @@ impl MaterializeConstGenerics for TyFunctionDecl {
     }
 }
 
+fn rename_const_generics(
+    engines: &Engines,
+    impl_self_or_trait: &TyImplSelfOrTrait,
+    m: &mut TyFunctionDecl,
+) {
+    let from = impl_self_or_trait.implementing_for.initial_type_id();
+    let to = impl_self_or_trait.implementing_for.type_id();
+
+    let from = engines.te().get(from);
+    let to = engines.te().get(to);
+
+    match (&*from, &*to) {
+        (TypeInfo::Custom { type_arguments, .. }, TypeInfo::Struct(s)) => {
+            if let Some(type_arguments) = type_arguments {
+                let decl = engines.de().get(s);
+                for a in type_arguments.iter().zip(decl.generic_parameters.iter()) {
+                    match (a.0, a.1) {
+                        (GenericArgument::Type(a), TypeParameter::Const(b)) => {
+                            // replace all references from "p.name.as_str()" to "b.name.as_str()"
+                            let mut type_subst_map = TypeSubstMap::default();
+                            type_subst_map.const_generics_renaming.insert(
+                                a.call_path_tree
+                                    .as_ref()
+                                    .unwrap()
+                                    .qualified_call_path
+                                    .call_path
+                                    .suffix
+                                    .clone(),
+                                b.name.clone(),
+                            );
+                            m.subst_inner(&SubstTypesContext {
+                                engines,
+                                type_subst_map: Some(&type_subst_map),
+                                subst_function_body: true,
+                            });
+                        }
+                        (GenericArgument::Const(a), TypeParameter::Const(b)) => {
+                            engines
+                                .obs()
+                                .trace(|| format!("{:?} -> {:?}", a.expr, b.expr));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
 impl DeclRefFunction {
     /// Makes method with a copy of type_id.
     /// This avoids altering the type_id already in the type map.
     /// Without this it is possible to retrieve a method from the type map unify its types and
     /// the second time it won't be possible to retrieve the same method.
     pub fn get_method_safe_to_unify(&self, engines: &Engines, type_id: TypeId) -> Self {
-        engines.obs().trace(|| format!("    before get_method_safe_to_unify: {:?} {:?}", 
-            engines.help_out(type_id),
-            engines.help_out(self.id()))
-        );
+        engines.obs().trace(|| {
+            format!(
+                "    before get_method_safe_to_unify: {:?} {:?}",
+                engines.help_out(type_id),
+                engines.help_out(self.id())
+            )
+        });
 
         let decl_engine = engines.de();
 
@@ -188,8 +247,9 @@ impl DeclRefFunction {
         if let Some(method_implementing_for_typeid) = method.implementing_for_typeid {
             let mut type_id_type_subst_map = TypeSubstMap::new();
 
-            if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
+            if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
                 let impl_self_or_trait = &*engines.de().get(&t.decl_id);
+                rename_const_generics(engines, &impl_self_or_trait, &mut method);
 
                 let mut type_id_type_parameters = vec![];
                 let mut const_generic_parameters = BTreeMap::default();
@@ -261,18 +321,24 @@ impl DeclRefFunction {
                 )
                 .with_parent(decl_engine, self.id().into());
 
-            engines.obs().trace(|| format!("    after get_method_safe_to_unify: {:?}; {:?}", 
-                engines.help_out(type_id),
-                engines.help_out(r.id()))
-            );
+            engines.obs().trace(|| {
+                format!(
+                    "    after get_method_safe_to_unify: {:?}; {:?}",
+                    engines.help_out(type_id),
+                    engines.help_out(r.id())
+                )
+            });
 
             return r;
         }
 
-        engines.obs().trace(|| format!("    after get_method_safe_to_unify: {:?}; {:?}", 
-            engines.help_out(type_id),
-            engines.help_out(self.id()))
-        );
+        engines.obs().trace(|| {
+            format!(
+                "    after get_method_safe_to_unify: {:?}; {:?}",
+                engines.help_out(type_id),
+                engines.help_out(self.id())
+            )
+        });
 
         self.clone()
     }
