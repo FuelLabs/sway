@@ -19,7 +19,7 @@ use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
-use std::{fs, io::Read, path::PathBuf, str::FromStr, sync::Arc};
+use std::{fs, io::Read, path::PathBuf, str::FromStr};
 use sway_core::{asm_generation::ProgramABI, engine_threading::CallbackHandler, BuildTarget};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
@@ -295,12 +295,12 @@ pub(crate) async fn compile_to_bytes(
     };
 
     match std::panic::catch_unwind(|| {
-        let callback_handler: Option<Arc<dyn CallbackHandler>> = if let Some(script) = logs {
-            Some(Arc::new(HarnessCallbackHandler::new(&root, &script)))
+        let callback_handler: Option<Box<dyn CallbackHandler>> = if let Some(script) = logs {
+            Some(Box::new(HarnessCallbackHandler::new(&root, script)))
         } else {
             None
         };
-        forc_pkg::build_with_options(&build_opts, callback_handler.clone())
+        forc_pkg::build_with_options(&build_opts, callback_handler)
     }) {
         Ok(result) => {
             // Print the result of the compilation (i.e., any errors Forc produces).
