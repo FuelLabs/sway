@@ -1,31 +1,28 @@
 # Plugins
 
-Plugins can be used to extend `forc` with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (`forc-fmt`, `forc-client`, `forc-lsp`, `forc-explore`), anyone can write their own!
+Plugins can be used to extend `forc` with new commands that go beyond the native commands mentioned in the previous chapter. While the Fuel ecosystem provides a few commonly useful plugins (`forc-fmt`, `forc-client`, `forc-lsp`, `forc-migrate`), anyone can write their own!
 
-Let's install a plugin, `forc-explore`, and see what's underneath the plugin:
+Let's install a plugin, `forc-install`, and see what's underneath the plugin:
 
 ```sh
-cargo install forc-explore
+git clone https://github.com/darthbenro008/forc-install
+cd forc-install
+cargo install --path .
 ```
 
-Check that we have installed `forc-explore`:
+Check that we have installed `forc-install`:
 
 ```console
 $ forc plugins
 Installed Plugins:
-forc-explore
+forc-install
 ```
 
-`forc-explore` runs the Fuel Network Explorer, which you can run and check out for yourself:
+`forc-install` is a tool to manage GitHub dependencies in your Forc.toml file: For example, to install a sway library hosted on github:
 
 ```console
-$ forc explore
-Fuel Network Explorer 0.1.1
-Running server on http://127.0.0.1:3030
-Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
+forc install https://github.com/user/sway-library
 ```
-
-You can visit <http://127.0.0.1:3030> to check out the network explorer!
 
 Note that some plugin crates can also provide more than one command. For example, installing the `forc-client` plugin provides the `forc deploy` and `forc run` commands. This is achieved by specifying multiple `[[bin]]` targets within the `forc-client` manifest.
 
