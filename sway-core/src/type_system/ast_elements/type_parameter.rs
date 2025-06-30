@@ -234,13 +234,11 @@ impl DebugWithEngines for TypeParameter {
                     engines.help_out(p.type_id)
                 )
             }
-            TypeParameter::Const(p) => {
-                match p.expr.as_ref() {
-                    Some(ConstGenericExpr::Literal { val, .. }) => format!("{} -> {}", p.name, val),
-                    Some(ConstGenericExpr::AmbiguousVariableExpression { ident }) => format!("{}", ident),
-                    None => format!("{} -> None", p.name)
-                }
-            }
+            TypeParameter::Const(p) => match p.expr.as_ref() {
+                Some(ConstGenericExpr::Literal { val, .. }) => format!("{} -> {}", p.name, val),
+                Some(ConstGenericExpr::AmbiguousVariableExpression { ident }) => format!("{}", ident),
+                None => format!("{} -> None", p.name),
+            },
         };
         write!(f, "{}", s)
     }
@@ -280,6 +278,13 @@ impl TypeParameter {
     }
 
     pub fn as_const_parameter(&self) -> Option<&ConstGenericParameter> {
+        match self {
+            TypeParameter::Type(_) => None,
+            TypeParameter::Const(p) => Some(p),
+        }
+    }
+
+    pub fn as_const_parameter_mut(&mut self) -> Option<&mut ConstGenericParameter> {
         match self {
             TypeParameter::Type(_) => None,
             TypeParameter::Const(p) => Some(p),
@@ -1102,8 +1107,33 @@ impl PartialEqWithEngines for ConstGenericParameter {
 }
 
 impl SubstTypes for ConstGenericParameter {
-    fn subst_inner(&mut self, _ctx: &SubstTypesContext) -> HasChanges {
-        HasChanges::No
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        let mut has_changes = HasChanges::No;
+
+        let Some(map) = ctx.type_subst_map.clone() else {
+            return HasChanges::No;
+        };
+
+        // Check if it needs to be renamed
+        if let Some(new_name) =
+            map.const_generics_renaming.get(&self.name)
+        {
+            self.name = new_name.clone();
+            has_changes = HasChanges::Yes;
+        }
+
+        // Check if it needs to be materialized
+        if let Some(v) =
+            map.const_generics_materialization.get(self.name.as_str())
+        {
+            let handler = sway_error::handler::Handler::default();
+            self.expr = Some(
+                ConstGenericExpr::from_ty_expression(&handler, v).unwrap(),
+            );
+            has_changes = HasChanges::Yes;
+        }
+
+        has_changes
     }
 }
 

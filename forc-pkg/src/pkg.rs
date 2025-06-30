@@ -18,7 +18,6 @@ use petgraph::{
     Directed, Direction,
 };
 use serde::{Deserialize, Serialize};
-use sway_core::engine_threading::CallbackHandler;
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
     fmt,
@@ -29,6 +28,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
+use sway_core::engine_threading::CallbackHandler;
 use sway_core::namespace::Package;
 use sway_core::transform::AttributeArg;
 pub use sway_core::Programs;
@@ -2181,7 +2181,7 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
 /// Builds a project with given BuildOptions.
 pub fn build_with_options(
     build_options: &BuildOpts,
-    callback_handler: Option<Arc<dyn CallbackHandler>>
+    callback_handler: Option<Arc<dyn CallbackHandler>>,
 ) -> Result<Built> {
     let BuildOpts {
         hex_outfile,

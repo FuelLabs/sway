@@ -27,9 +27,9 @@ impl<T, const N: u64> A for [T; N] {
 struct S<T, const N: u64> {
 }
 
-impl<T, const N: u64> S<T, N> {
+impl<T, const Z: u64> S<T, Z> {
     pub fn len_xxx(self) -> u64 {
-        N
+        Z
     }
 }
 
