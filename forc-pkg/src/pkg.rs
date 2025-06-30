@@ -2181,7 +2181,7 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
 /// Builds a project with given BuildOptions.
 pub fn build_with_options(
     build_options: &BuildOpts,
-    callback_handler: Option<Arc<dyn CallbackHandler>>,
+    callback_handler: Option<Box<dyn CallbackHandler>>,
 ) -> Result<Built> {
     let BuildOpts {
         hex_outfile,
@@ -2364,7 +2364,7 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     experimental: &[sway_features::Feature],
     no_experimental: &[sway_features::Feature],
-    callback_handler: Option<Arc<dyn CallbackHandler>>,
+    callback_handler: Option<Box<dyn CallbackHandler>>,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 

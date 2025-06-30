@@ -1,8 +1,5 @@
 use crate::{
-    decl_engine::*,
-    engine_threading::*,
-    has_changes,
-    language::{
+    decl_engine::*, engine_threading::*, has_changes, language::{
         parsed::{self, FunctionDeclaration, FunctionDeclarationKind},
         ty::*,
         CallPath, Inline, Purity, Trace, Visibility,
@@ -191,42 +188,37 @@ fn rename_const_generics(
     let from = engines.te().get(from);
     let to = engines.te().get(to);
 
-    match (&*from, &*to) {
-        (TypeInfo::Custom { type_arguments, .. }, TypeInfo::Struct(s)) => {
-            if let Some(type_arguments) = type_arguments {
-                let decl = engines.de().get(s);
-                for a in type_arguments.iter().zip(decl.generic_parameters.iter()) {
-                    match (a.0, a.1) {
-                        (GenericArgument::Type(a), TypeParameter::Const(b)) => {
-                            // replace all references from "p.name.as_str()" to "b.name.as_str()"
-                            let mut type_subst_map = TypeSubstMap::default();
-                            type_subst_map.const_generics_renaming.insert(
-                                a.call_path_tree
-                                    .as_ref()
-                                    .unwrap()
-                                    .qualified_call_path
-                                    .call_path
-                                    .suffix
-                                    .clone(),
-                                b.name.clone(),
-                            );
-                            m.subst_inner(&SubstTypesContext {
-                                engines,
-                                type_subst_map: Some(&type_subst_map),
-                                subst_function_body: true,
-                            });
-                        }
-                        (GenericArgument::Const(a), TypeParameter::Const(b)) => {
-                            engines
-                                .obs()
-                                .trace(|| format!("{:?} -> {:?}", a.expr, b.expr));
-                        }
-                        _ => {}
-                    }
+    if let (TypeInfo::Custom { type_arguments: Some(type_arguments), .. }, TypeInfo::Struct(s)) = (&*from, &*to) {
+        let decl = engines.de().get(s);
+        for a in type_arguments.iter().zip(decl.generic_parameters.iter()) {
+            match (a.0, a.1) {
+                (GenericArgument::Type(a), TypeParameter::Const(b)) => {
+                    // replace all references from "p.name.as_str()" to "b.name.as_str()"
+                    let mut type_subst_map = TypeSubstMap::default();
+                    type_subst_map.const_generics_renaming.insert(
+                        a.call_path_tree
+                            .as_ref()
+                            .unwrap()
+                            .qualified_call_path
+                            .call_path
+                            .suffix
+                            .clone(),
+                        b.name.clone(),
+                    );
+                    m.subst_inner(&SubstTypesContext {
+                        engines,
+                        type_subst_map: Some(&type_subst_map),
+                        subst_function_body: true,
+                    });
                 }
+                (GenericArgument::Const(a), TypeParameter::Const(b)) => {
+                    engines
+                        .obs()
+                        .trace(|| format!("{:?} -> {:?}", a.expr, b.expr));
+                }
+                _ => {}
             }
         }
-        _ => {}
     }
 }
 
@@ -254,7 +246,7 @@ impl DeclRefFunction {
 
             if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
                 let impl_self_or_trait = &*engines.de().get(&t.decl_id);
-                rename_const_generics(engines, &impl_self_or_trait, &mut method);
+                rename_const_generics(engines, impl_self_or_trait, &mut method);
 
                 let mut type_id_type_parameters = vec![];
                 let mut const_generic_parameters = BTreeMap::default();

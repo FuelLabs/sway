@@ -1112,7 +1112,7 @@ impl SubstTypes for ConstGenericParameter {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         let mut has_changes = HasChanges::No;
 
-        let Some(map) = ctx.type_subst_map.clone() else {
+        let Some(map) = ctx.type_subst_map else {
             return HasChanges::No;
         };
 

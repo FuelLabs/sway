@@ -36,9 +36,12 @@ pub trait CallbackHandler {
 
 #[derive(Default)]
 pub struct ObservabilityEngine {
-    callbacks: Mutex<Option<Arc<dyn CallbackHandler>>>,
+    callbacks: Mutex<Option<Box<dyn CallbackHandler>>>,
     trace: Mutex<bool>,
 }
+
+unsafe impl Send for ObservabilityEngine {}
+unsafe impl Sync for ObservabilityEngine {} 
 
 impl fmt::Debug for ObservabilityEngine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -49,7 +52,7 @@ impl fmt::Debug for ObservabilityEngine {
 }
 
 impl ObservabilityEngine {
-    pub fn set_callbacks(&self, handler: Arc<dyn CallbackHandler>) {
+    pub fn set_callbacks(&self, handler: Box<dyn CallbackHandler>) {
         let mut callbacks = self.callbacks.lock().unwrap();
         *callbacks = Some(handler);
     }
