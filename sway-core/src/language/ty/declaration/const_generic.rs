@@ -1,5 +1,9 @@
 use crate::{
-    decl_engine::MaterializeConstGenerics, has_changes, language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath}, semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext}, HasChanges, SubstTypes, TypeId
+    decl_engine::MaterializeConstGenerics,
+    has_changes,
+    language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath},
+    semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext},
+    HasChanges, SubstTypes, TypeId,
 };
 use serde::{Deserialize, Serialize};
 use sway_error::handler::{ErrorEmitted, Handler};
