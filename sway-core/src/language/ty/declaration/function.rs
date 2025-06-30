@@ -1,9 +1,16 @@
 use crate::{
-    decl_engine::*, engine_threading::*, has_changes, language::{
+    decl_engine::*,
+    engine_threading::*,
+    has_changes,
+    language::{
         parsed::{self, FunctionDeclaration, FunctionDeclarationKind},
         ty::*,
         CallPath, Inline, Purity, Visibility,
-    }, semantic_analysis::TypeCheckContext, transform::{self, AttributeKind}, type_system::*, types::*
+    },
+    semantic_analysis::TypeCheckContext,
+    transform::{self, AttributeKind},
+    type_system::*,
+    types::*,
 };
 use ast_elements::type_parameter::ConstGenericExpr;
 use monomorphization::MonomorphizeHelper;
@@ -184,7 +191,14 @@ fn rename_const_generics(
     let from = engines.te().get(from);
     let to = engines.te().get(to);
 
-    if let (TypeInfo::Custom { type_arguments: Some(type_arguments), .. }, TypeInfo::Struct(s)) = (&*from, &*to) {
+    if let (
+        TypeInfo::Custom {
+            type_arguments: Some(type_arguments),
+            ..
+        },
+        TypeInfo::Struct(s),
+    ) = (&*from, &*to)
+    {
         let decl = engines.de().get(s);
         for a in type_arguments.iter().zip(decl.generic_parameters.iter()) {
             match (a.0, a.1) {
