@@ -73,10 +73,10 @@ error
    |
 28 | }
 29 | 
-30 | impl<T, const N: u64> S<T, N> {
+30 | impl<T, const Z: u64> S<T, Z> {
    |               ^ This needs "const_generics" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6860.
 31 |     pub fn len_xxx(self) -> u64 {
-32 |         N
+32 |         Z
    |
 ____
 
