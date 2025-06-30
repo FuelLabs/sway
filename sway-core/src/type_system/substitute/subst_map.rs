@@ -1,4 +1,3 @@
-use sway_types::Ident;
 use crate::{
     ast_elements::type_parameter::ConstGenericExpr,
     decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert},
@@ -8,6 +7,7 @@ use crate::{
     type_system::priv_prelude::*,
 };
 use std::{collections::BTreeMap, fmt};
+use sway_types::Ident;
 
 type SourceType = TypeId;
 type DestinationType = TypeId;
@@ -37,12 +37,12 @@ impl DebugWithEngines for TypeSubstMap {
                 })
                 .collect::<Vec<_>>()
                 .join(", "),
-             self.const_generics_materialization
+            self.const_generics_materialization
                 .iter()
                 .map(|(a, b)| format!("{:?} -> {:?}", a, engines.help_out(b)))
                 .collect::<Vec<_>>()
                 .join(", "),
-             self.const_generics_renaming
+            self.const_generics_renaming
                 .iter()
                 .map(|(a, b)| format!("{:?} -> {:?}", a, b))
                 .collect::<Vec<_>>()
@@ -510,7 +510,11 @@ impl TypeSubstMap {
                             }
                         }
                         TypeParameter::Const(p) => {
-                            let ctx = &SubstTypesContext { engines, type_subst_map: Some(self), subst_function_body: false };
+                            let ctx = &SubstTypesContext {
+                                engines,
+                                type_subst_map: Some(self),
+                                subst_function_body: false,
+                            };
                             if matches!(p.subst_inner(&ctx), HasChanges::Yes) {
                                 need_to_create_new = true
                             }

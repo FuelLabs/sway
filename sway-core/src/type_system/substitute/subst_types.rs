@@ -1,5 +1,5 @@
-use sway_types::Ident;
 use crate::{engine_threading::Engines, type_system::priv_prelude::*};
+use sway_types::Ident;
 
 #[derive(Default)]
 pub enum HasChanges {
@@ -53,7 +53,9 @@ impl<'eng, 'tsm> SubstTypesContext<'eng, 'tsm> {
     }
 
     pub fn get_renamed_const_generic(&self, name: &Ident) -> Option<&sway_types::BaseIdent> {
-        self.type_subst_map.as_ref().and_then(|map| map.const_generics_renaming.get(name))
+        self.type_subst_map
+            .as_ref()
+            .and_then(|map| map.const_generics_renaming.get(name))
     }
 }
 

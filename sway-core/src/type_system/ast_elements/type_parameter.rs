@@ -236,7 +236,9 @@ impl DebugWithEngines for TypeParameter {
             }
             TypeParameter::Const(p) => match p.expr.as_ref() {
                 Some(ConstGenericExpr::Literal { val, .. }) => format!("{} -> {}", p.name, val),
-                Some(ConstGenericExpr::AmbiguousVariableExpression { ident }) => format!("{}", ident),
+                Some(ConstGenericExpr::AmbiguousVariableExpression { ident }) => {
+                    format!("{}", ident)
+                }
                 None => format!("{} -> None", p.name),
             },
         };
@@ -1115,21 +1117,15 @@ impl SubstTypes for ConstGenericParameter {
         };
 
         // Check if it needs to be renamed
-        if let Some(new_name) =
-            map.const_generics_renaming.get(&self.name)
-        {
+        if let Some(new_name) = map.const_generics_renaming.get(&self.name) {
             self.name = new_name.clone();
             has_changes = HasChanges::Yes;
         }
 
         // Check if it needs to be materialized
-        if let Some(v) =
-            map.const_generics_materialization.get(self.name.as_str())
-        {
+        if let Some(v) = map.const_generics_materialization.get(self.name.as_str()) {
             let handler = sway_error::handler::Handler::default();
-            self.expr = Some(
-                ConstGenericExpr::from_ty_expression(&handler, v).unwrap(),
-            );
+            self.expr = Some(ConstGenericExpr::from_ty_expression(&handler, v).unwrap());
             has_changes = HasChanges::Yes;
         }
 

@@ -19,13 +19,7 @@ use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
-use std::{
-    fs,
-    io::Read,
-    path::PathBuf,
-    str::FromStr,
-    sync::Arc,
-};
+use std::{fs, io::Read, path::PathBuf, str::FromStr, sync::Arc};
 use sway_core::{asm_generation::ProgramABI, engine_threading::CallbackHandler, BuildTarget};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
