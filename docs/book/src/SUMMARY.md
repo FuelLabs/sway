@@ -107,7 +107,6 @@
     - [forc crypto](./forc/plugins/forc_crypto.md)
     - [forc debug](./forc/plugins/forc_debug.md)
     - [forc doc](./forc/plugins/forc_doc.md)
-    - [forc explore](./forc/plugins/forc_explore.md)
     - [forc fmt](./forc/plugins/forc_fmt.md)
     - [forc lsp](./forc/plugins/forc_lsp.md)
     - [forc migrate](./forc/plugins/forc_migrate.md)

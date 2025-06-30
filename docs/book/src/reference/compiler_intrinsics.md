@@ -120,7 +120,7 @@ __addr_of<T>(val: T) -> raw_ptr
 
 **Description:** Returns the address in memory where `val` is stored.
 
-**Constraints:** `T` is a reference type.
+**Constraints:** None.
 
 ---
 

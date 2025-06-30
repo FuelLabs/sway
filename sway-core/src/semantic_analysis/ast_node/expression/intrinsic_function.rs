@@ -1021,7 +1021,6 @@ fn type_check_gtf(
 
 /// Signature: `__addr_of<T>(val: T) -> raw_ptr`
 /// Description: Returns the address in memory where `val` is stored.
-/// Constraints: `T` is a reference type.
 fn type_check_addr_of(
     handler: &Handler,
     ctx: TypeCheckContext,
@@ -1042,18 +1041,6 @@ fn type_check_addr_of(
         .with_help_text("")
         .with_type_annotation(type_engine.new_unknown());
     let exp = ty::TyExpression::type_check(handler, ctx, &arguments[0])?;
-    let copy_type_info = type_engine
-        .to_typeinfo(exp.return_type, &span)
-        .map_err(|e| handler.emit_err(e.into()))
-        .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if copy_type_info.is_copy_type() {
-        return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span,
-            hint: "Only a reference type can be used as argument here".to_string(),
-        }));
-    }
-
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![exp],
