@@ -274,6 +274,9 @@ fn dce() {
         pass_mgr.register(create_escaped_symbols_pass());
         let pass = pass_mgr.register(create_dce_pass());
         pass_group.append_pass(pass);
+        // Some tests require multiple passes of DCE to be run,
+        // this also reflects our actual compiler pipeline where DCE runs multiple times.
+        pass_group.append_pass(pass);
         pass_mgr.run(ir, &pass_group).unwrap()
     })
 }
