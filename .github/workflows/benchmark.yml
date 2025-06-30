@@ -10,7 +10,7 @@ on:
        - sway-lsp/**
        - forc-pkg/**
        - sway-core/**
-
+       - forc-plugins/forc-doc/**
   # `workflow_dispatch` allows CodSpeed to trigger backtest
   # performance analysis in order to generate initial data.
   workflow_dispatch:
@@ -38,11 +38,15 @@ jobs:
         with:
           tool: cargo-codspeed
 
-      - name: Build the benchmark target(s)
-        run: cargo codspeed build
+      - name: Build the benchmark targets
+        run: |
+          cargo codspeed build -p sway-lsp
+          cargo codspeed build -p forc-doc
 
       - name: Run the benchmarks
         uses: CodSpeedHQ/action@v3
         with:
-          run: cargo codspeed run
+          run: |
+            cargo codspeed run -p sway-lsp
+            cargo codspeed run -p forc-doc
           token: ${{ secrets.CODSPEED_TOKEN }}
