@@ -147,16 +147,21 @@ impl MaterializeConstGenerics for TyFunctionDecl {
                 TypeParameter::Type(p) => p
                     .type_id
                     .materialize_const_generics(engines, handler, name, value)?,
-                TypeParameter::Const(p) if p.name.as_str() == name => {
-                    match p.expr.as_ref() {
-                        Some(v) => {
-                            assert!(v.as_literal_val().unwrap() as u64 == value.extract_literal_value().unwrap().cast_value_to_u64().unwrap());
-                        }
-                        None => {
-                            p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
-                        }
+                TypeParameter::Const(p) if p.name.as_str() == name => match p.expr.as_ref() {
+                    Some(v) => {
+                        assert!(
+                            v.as_literal_val().unwrap() as u64
+                                == value
+                                    .extract_literal_value()
+                                    .unwrap()
+                                    .cast_value_to_u64()
+                                    .unwrap()
+                        );
                     }
-                }
+                    None => {
+                        p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                    }
+                },
                 _ => {}
             }
         }
