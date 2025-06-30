@@ -643,10 +643,10 @@ impl<'a> Unifier<'a> {
 
     fn assign_args<T>(&self, r: T, e: T) -> (String, String)
     where
-        WithEngines<'a, T>: fmt::Debug,
+        WithEngines<'a, T>: fmt::Display,
     {
-        let r = format!("{:?}", self.engines.help_out(r));
-        let e = format!("{:?}", self.engines.help_out(e));
+        let r = format!("{}", self.engines.help_out(r));
+        let e = format!("{}", self.engines.help_out(e));
         (r, e)
     }
 }
