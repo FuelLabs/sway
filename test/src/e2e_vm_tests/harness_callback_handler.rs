@@ -207,7 +207,7 @@ impl CallbackHandler for HarnessCallbackHandler {
     fn on_trace(&self, msg: &str) {
         let mut inner = self.inner.lock().unwrap();
         inner.snapshot.push_str(msg);
-        inner.snapshot.push_str("\n");
+        inner.snapshot.push('\n');
     }
 
     fn on_before_method_resolution(
