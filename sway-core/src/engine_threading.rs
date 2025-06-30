@@ -41,7 +41,7 @@ pub struct ObservabilityEngine {
 }
 
 unsafe impl Send for ObservabilityEngine {}
-unsafe impl Sync for ObservabilityEngine {} 
+unsafe impl Sync for ObservabilityEngine {}
 
 impl fmt::Debug for ObservabilityEngine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
