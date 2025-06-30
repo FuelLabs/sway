@@ -275,6 +275,7 @@ fn dce() {
         let pass = pass_mgr.register(create_dce_pass());
         pass_group.append_pass(pass);
         // TODO: needed by dce_dead_constant_assignment test. Improve DCE and remove this.
+        // https://github.com/FuelLabs/sway/issues/7262
         pass_group.append_pass(pass);
         pass_mgr.run(ir, &pass_group).unwrap()
     })
