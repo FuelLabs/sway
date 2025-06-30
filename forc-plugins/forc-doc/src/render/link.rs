@@ -16,12 +16,14 @@ pub struct DocLink {
     pub html_filename: String,
     pub preview_opt: Option<String>,
 }
+
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct DocLinks {
     pub style: DocStyle,
     /// The title and link info for each doc item.
     pub links: BTreeMap<BlockTitle, Vec<DocLink>>,
 }
+
 impl Renderable for DocLinks {
     fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let mut links_vec = Vec::new();
