@@ -29,12 +29,12 @@ impl WorkspaceIndex {
 }
 impl SidebarNav for WorkspaceIndex {
     fn sidebar(&self) -> Sidebar {
-        // Create empty doc links for workspace sidebar (like a simple page)
+        // Create empty doc links for workspace sidebar
         let doc_links = DocLinks {
             style: DocStyle::WorkspaceIndex,
             links: BTreeMap::new(),
         };
-        
+
         Sidebar::new(
             None,
             DocStyle::WorkspaceIndex,
@@ -46,11 +46,11 @@ impl SidebarNav for WorkspaceIndex {
 impl Renderable for WorkspaceIndex {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let sidebar = self.sidebar().render(render_plan)?;
-        
+
         // For workspace index, we're at the root level, so no path prefix needed
-        let assets_path = format!("{ASSETS_DIR_NAME}");
-        
-        // Create a custom searchbar for workspace (at root level)
+        let assets_path = ASSETS_DIR_NAME.to_string();
+
+        // Create a custom searchbar for workspace
         let workspace_searchbar = box_html! {
             script(src="search.js", type="text/javascript");
             script {
@@ -134,7 +134,7 @@ impl Renderable for WorkspaceIndex {
                 }
             }
         };
-        
+
         Ok(box_html! {
             head {
                 meta(charset="utf-8");

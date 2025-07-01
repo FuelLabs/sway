@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use clap::Parser;
-use forc_doc::{generate_docs, render::INDEX_FILENAME, Command, ASSETS_DIR_NAME, DocResult};
+use forc_doc::{generate_docs, render::INDEX_FILENAME, Command, DocResult, ASSETS_DIR_NAME};
 use include_dir::{include_dir, Dir};
 use std::{
     process::Command as Process,

@@ -13,12 +13,15 @@ use forc_pkg::{
 };
 use forc_tracing::println_action_green;
 use forc_util::default_output_directory;
-use render::{index::WorkspaceIndex, RenderedDocumentation, HTMLString, Renderable};
+use render::{index::WorkspaceIndex, HTMLString, Renderable, RenderedDocumentation};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
-use sway_core::{language::ty::{TyProgram, TyProgramKind}, BuildTarget, Engines};
+use sway_core::{
+    language::ty::{TyProgram, TyProgramKind},
+    BuildTarget, Engines,
+};
 use sway_features::ExperimentalFeatures;
 
 pub const DOC_DIR_NAME: &str = "doc";
@@ -85,7 +88,10 @@ pub struct Command {
 #[derive(Debug, Clone)]
 pub enum DocResult {
     Package(Box<PackageManifestFile>),
-    Workspace { name: String, libraries: Vec<String> },
+    Workspace {
+        name: String,
+        libraries: Vec<String>,
+    },
 }
 
 /// Generate documentation for a given package or workspace.
@@ -137,17 +143,17 @@ impl DocContext {
             std::env::current_dir()?
         };
         let manifest = ManifestFile::from_dir(dir)?;
-        
+
         // Get workspace name for later use
         let workspace_name = std::env::current_dir()?
             .file_name()
             .and_then(|name| name.to_str())
             .unwrap_or("workspace")
             .to_string();
-        
-        // Handle Package vs Workspace manifests  
+
+        // Handle Package vs Workspace manifests
         let is_workspace = matches!(&manifest, ManifestFile::Workspace(_));
-        
+
         // Get package manifest for single packages (None for workspaces)
         let pkg_manifest = match &manifest {
             ManifestFile::Package(pkg_manifest) => Some(pkg_manifest.clone()),
@@ -169,7 +175,7 @@ impl DocContext {
         // Build Plan
         let member_manifests = manifest.member_manifests()?;
         let lock_path = manifest.lock_path()?;
-        
+
         // Check for empty workspaces
         if is_workspace && member_manifests.is_empty() {
             bail!("Workspace contains no members");
@@ -199,8 +205,8 @@ impl DocContext {
 pub fn compile(ctx: &DocContext, opts: &Command) -> Result<impl Iterator<Item = Option<Programs>>> {
     if ctx.is_workspace {
         println_action_green(
-            "Compiling", 
-            &format!("workspace ({})", ctx.manifest.dir().to_string_lossy())
+            "Compiling",
+            &format!("workspace ({})", ctx.manifest.dir().to_string_lossy()),
         );
     } else if let Some(ref pkg_manifest) = ctx.pkg_manifest {
         println_action_green(
@@ -249,7 +255,7 @@ pub fn compile_html(
                     pkg_manifest.path().display()
                 }
             };
-            
+
             // Only document if it's a library
             if matches!(ty_program.kind, TyProgramKind::Library { .. }) {
                 documented_libraries.push(pkg_manifest.project_name().to_string());
@@ -297,12 +303,17 @@ pub fn compile_html(
         }
         raw_docs
     };
-    
+
     // Create workspace index if this is a workspace
     if ctx.is_workspace && !documented_libraries.is_empty() {
-        create_workspace_index(&ctx.doc_path, &documented_libraries, &ctx.engines, &ctx.workspace_name)?;
+        create_workspace_index(
+            &ctx.doc_path,
+            &documented_libraries,
+            &ctx.engines,
+            &ctx.workspace_name,
+        )?;
     }
-    
+
     search::write_search_index(&ctx.doc_path, &raw_docs)?;
 
     let result = if ctx.is_workspace {
@@ -385,24 +396,22 @@ fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Resul
     Ok(())
 }
 
-fn create_workspace_index(doc_path: &Path, documented_libraries: &[String], engines: &Engines, workspace_name: &str) -> Result<()> {
+fn create_workspace_index(
+    doc_path: &Path,
+    documented_libraries: &[String],
+    engines: &Engines,
+    workspace_name: &str,
+) -> Result<()> {
     // Create a workspace module info with the actual directory name
-    let workspace_info = ModuleInfo::from_ty_module(
-        vec![workspace_name.to_string()], // Use actual workspace name
-        None,
-    );
-    
+    let workspace_info = ModuleInfo::from_ty_module(vec![workspace_name.to_string()], None);
+
     // Create the workspace index
-    let workspace_index = WorkspaceIndex::new(
-        workspace_info,
-        documented_libraries.to_vec(),
-    );
-    
-    // Render using the existing infrastructure
+    let workspace_index = WorkspaceIndex::new(workspace_info, documented_libraries.to_vec());
+
     let render_plan = RenderPlan::new(false, false, engines);
     let rendered_content = workspace_index.render(render_plan)?;
     let html_content = HTMLString::from_rendered_content(rendered_content)?;
-    
+
     fs::write(doc_path.join("index.html"), html_content.0.as_bytes())?;
     Ok(())
 }
