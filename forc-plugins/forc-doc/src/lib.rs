@@ -4,7 +4,7 @@ pub mod search;
 
 use anyhow::{bail, Result};
 use clap::Parser;
-use doc::Documentation;
+use doc::{module::ModuleInfo, Documentation};
 use forc_pkg::{
     self as pkg,
     manifest::{GenericManifestFile, ManifestFile},
@@ -13,12 +13,12 @@ use forc_pkg::{
 };
 use forc_tracing::println_action_green;
 use forc_util::default_output_directory;
-use render::RenderedDocumentation;
+use render::{index::WorkspaceIndex, RenderedDocumentation, HTMLString, Renderable};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
-use sway_core::{language::ty::TyProgram, BuildTarget, Engines};
+use sway_core::{language::ty::{TyProgram, TyProgramKind}, BuildTarget, Engines};
 use sway_features::ExperimentalFeatures;
 
 pub const DOC_DIR_NAME: &str = "doc";
@@ -81,12 +81,19 @@ pub struct Command {
     pub silent: bool,
 }
 
-/// Generate documentation for a given package.
-pub fn generate_docs(opts: &Command) -> Result<DocContext> {
+/// Result of documentation generation, either for a single package or a workspace.
+#[derive(Debug, Clone)]
+pub enum DocResult {
+    Package(Box<PackageManifestFile>),
+    Workspace { name: String, libraries: Vec<String> },
+}
+
+/// Generate documentation for a given package or workspace.
+pub fn generate_docs(opts: &Command) -> Result<(PathBuf, DocResult)> {
     let ctx = DocContext::from_options(opts)?;
     let mut compile_results = compile(&ctx, opts)?.collect::<Vec<_>>();
-    compile_html(opts, &ctx, &mut compile_results)?;
-    Ok(ctx)
+    let doc_result = compile_html(opts, &ctx, &mut compile_results)?;
+    Ok((ctx.doc_path, doc_result))
 }
 
 /// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
@@ -113,10 +120,12 @@ impl<'e> RenderPlan<'e> {
 
 pub struct DocContext {
     pub manifest: ManifestFile,
-    pub pkg_manifest: Box<PackageManifestFile>,
+    pub pkg_manifest: Option<Box<PackageManifestFile>>,
     pub doc_path: PathBuf,
     pub engines: Engines,
     pub build_plan: pkg::BuildPlan,
+    pub is_workspace: bool,
+    pub workspace_name: String,
 }
 
 impl DocContext {
@@ -128,10 +137,22 @@ impl DocContext {
             std::env::current_dir()?
         };
         let manifest = ManifestFile::from_dir(dir)?;
-        let ManifestFile::Package(pkg_manifest) = &manifest else {
-            bail!("forc-doc does not support workspaces.")
+        
+        // Get workspace name for later use
+        let workspace_name = std::env::current_dir()?
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("workspace")
+            .to_string();
+        
+        // Handle Package vs Workspace manifests  
+        let is_workspace = matches!(&manifest, ManifestFile::Workspace(_));
+        
+        // Get package manifest for single packages (None for workspaces)
+        let pkg_manifest = match &manifest {
+            ManifestFile::Package(pkg_manifest) => Some(pkg_manifest.clone()),
+            ManifestFile::Workspace(_) => None,
         };
-        let pkg_manifest = pkg_manifest.clone();
 
         // create doc path
         let out_path = default_output_directory(manifest.dir());
@@ -148,6 +169,11 @@ impl DocContext {
         // Build Plan
         let member_manifests = manifest.member_manifests()?;
         let lock_path = manifest.lock_path()?;
+        
+        // Check for empty workspaces
+        if is_workspace && member_manifests.is_empty() {
+            bail!("Workspace contains no members");
+        }
 
         let ipfs_node = opts.ipfs_node.clone().unwrap_or_default();
         let build_plan = pkg::BuildPlan::from_lock_and_manifests(
@@ -164,19 +190,28 @@ impl DocContext {
             doc_path,
             engines: Engines::default(),
             build_plan,
+            is_workspace,
+            workspace_name,
         })
     }
 }
 
 pub fn compile(ctx: &DocContext, opts: &Command) -> Result<impl Iterator<Item = Option<Programs>>> {
-    println_action_green(
-        "Compiling",
-        &format!(
-            "{} ({})",
-            ctx.pkg_manifest.project_name(),
-            ctx.manifest.dir().to_string_lossy()
-        ),
-    );
+    if ctx.is_workspace {
+        println_action_green(
+            "Compiling", 
+            &format!("workspace ({})", ctx.manifest.dir().to_string_lossy())
+        );
+    } else if let Some(ref pkg_manifest) = ctx.pkg_manifest {
+        println_action_green(
+            "Compiling",
+            &format!(
+                "{} ({})",
+                pkg_manifest.project_name(),
+                ctx.manifest.dir().to_string_lossy()
+            ),
+        );
+    }
 
     let tests_enabled = opts.document_private_items;
     pkg::check(
@@ -198,19 +233,37 @@ pub fn compile_html(
     opts: &Command,
     ctx: &DocContext,
     compile_results: &mut Vec<Option<Programs>>,
-) -> Result<()> {
+) -> Result<DocResult> {
+    let mut documented_libraries = Vec::new();
+
     let raw_docs = if opts.no_deps {
-        let ty_program = compile_results
-            .pop()
-            .flatten()
-            .and_then(|p| p.typed.ok())
-            .ok_or_else(|| {
-                anyhow::anyhow!(
+        if let Some(ref pkg_manifest) = ctx.pkg_manifest {
+            // Single package mode
+            let Some(ty_program) = compile_results
+                .pop()
+                .and_then(|programs| programs)
+                .and_then(|p| p.typed.ok())
+            else {
+                bail! {
                     "documentation could not be built from manifest located at '{}'",
-                    ctx.pkg_manifest.path().display()
-                )
-            })?;
-        build_docs(opts, ctx, &ty_program, &ctx.manifest, &ctx.pkg_manifest)?
+                    pkg_manifest.path().display()
+                }
+            };
+            
+            // Only document if it's a library
+            if matches!(ty_program.kind, TyProgramKind::Library { .. }) {
+                documented_libraries.push(pkg_manifest.project_name().to_string());
+                build_docs(opts, ctx, &ty_program, &ctx.manifest, pkg_manifest)?
+            } else {
+                bail!(
+                    "forc-doc only supports libraries. '{}' is not a library.",
+                    pkg_manifest.project_name()
+                );
+            }
+        } else {
+            // Workspace mode with no_deps
+            bail!("--no-deps flag is not meaningful for workspaces");
+        }
     } else {
         let (order, graph, manifest_map) = (
             ctx.build_plan.compilation_order(),
@@ -233,16 +286,37 @@ pub fn compile_html(
                         )
                     })?;
 
-                raw_docs.0.extend(
-                    build_docs(opts, ctx, &ty_program, &manifest_file, pkg_manifest_file)?.0,
-                );
+                // Only document libraries
+                if matches!(ty_program.kind, TyProgramKind::Library { .. }) {
+                    documented_libraries.push(pkg_manifest_file.project_name().to_string());
+                    raw_docs.0.extend(
+                        build_docs(opts, ctx, &ty_program, &manifest_file, pkg_manifest_file)?.0,
+                    );
+                }
             }
         }
         raw_docs
     };
-
+    
+    // Create workspace index if this is a workspace
+    if ctx.is_workspace && !documented_libraries.is_empty() {
+        create_workspace_index(&ctx.doc_path, &documented_libraries, &ctx.engines, &ctx.workspace_name)?;
+    }
+    
     search::write_search_index(&ctx.doc_path, &raw_docs)?;
-    Ok(())
+
+    let result = if ctx.is_workspace {
+        DocResult::Workspace {
+            name: ctx.workspace_name.clone(),
+            libraries: documented_libraries,
+        }
+    } else if let Some(ref pkg_manifest) = ctx.pkg_manifest {
+        DocResult::Package(pkg_manifest.clone())
+    } else {
+        unreachable!("Should have either workspace or package")
+    };
+
+    Ok(result)
 }
 
 fn build_docs(
@@ -308,5 +382,27 @@ fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Resul
         doc_path.push(doc.html_filename);
         fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
     }
+    Ok(())
+}
+
+fn create_workspace_index(doc_path: &Path, documented_libraries: &[String], engines: &Engines, workspace_name: &str) -> Result<()> {
+    // Create a workspace module info with the actual directory name
+    let workspace_info = ModuleInfo::from_ty_module(
+        vec![workspace_name.to_string()], // Use actual workspace name
+        None,
+    );
+    
+    // Create the workspace index
+    let workspace_index = WorkspaceIndex::new(
+        workspace_info,
+        documented_libraries.to_vec(),
+    );
+    
+    // Render using the existing infrastructure
+    let render_plan = RenderPlan::new(false, false, engines);
+    let rendered_content = workspace_index.render(render_plan)?;
+    let html_content = HTMLString::from_rendered_content(rendered_content)?;
+    
+    fs::write(doc_path.join("index.html"), html_content.0.as_bytes())?;
     Ok(())
 }

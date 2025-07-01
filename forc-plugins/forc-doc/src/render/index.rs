@@ -9,6 +9,187 @@ use crate::{
 };
 use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox};
+use std::collections::BTreeMap;
+
+/// Workspace level index page
+#[derive(Clone)]
+pub(crate) struct WorkspaceIndex {
+    /// The workspace root module info
+    workspace_info: ModuleInfo,
+    /// All documented libraries in the workspace
+    documented_libraries: Vec<String>,
+}
+impl WorkspaceIndex {
+    pub(crate) fn new(workspace_info: ModuleInfo, documented_libraries: Vec<String>) -> Self {
+        Self {
+            workspace_info,
+            documented_libraries,
+        }
+    }
+}
+impl SidebarNav for WorkspaceIndex {
+    fn sidebar(&self) -> Sidebar {
+        // Create empty doc links for workspace sidebar (like a simple page)
+        let doc_links = DocLinks {
+            style: DocStyle::WorkspaceIndex,
+            links: BTreeMap::new(),
+        };
+        
+        Sidebar::new(
+            None,
+            DocStyle::WorkspaceIndex,
+            self.workspace_info.clone(),
+            doc_links,
+        )
+    }
+}
+impl Renderable for WorkspaceIndex {
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let sidebar = self.sidebar().render(render_plan)?;
+        
+        // For workspace index, we're at the root level, so no path prefix needed
+        let assets_path = format!("{ASSETS_DIR_NAME}");
+        
+        // Create a custom searchbar for workspace (at root level)
+        let workspace_searchbar = box_html! {
+            script(src="search.js", type="text/javascript");
+            script {
+                : Raw(r#"
+                function onSearchFormSubmit(event) {
+                    event.preventDefault();
+                    const searchQuery = document.getElementById("search-input").value;
+                    const url = new URL(window.location.href);
+                    if (searchQuery) {
+                        url.searchParams.set('search', searchQuery);
+                    } else {
+                        url.searchParams.delete('search');
+                    }
+                    history.pushState({ search: searchQuery }, "", url);
+                    window.dispatchEvent(new HashChangeEvent("hashchange"));
+                }
+                
+                document.addEventListener('DOMContentLoaded', () => {
+                    const searchbar = document.getElementById("search-input");
+                    searchbar.addEventListener("keyup", function(event) {
+                        onSearchFormSubmit(event);
+                    });
+                    searchbar.addEventListener("search", function(event) {
+                        onSearchFormSubmit(event);
+                    });
+                
+                    function onQueryParamsChange() {
+                        const searchParams = new URLSearchParams(window.location.search);
+                        const query = searchParams.get("search");
+                        const searchSection = document.getElementById('search');
+                        const mainSection = document.getElementById('main-content');
+                        const searchInput = document.getElementById('search-input');
+                        if (query) {
+                            searchInput.value = query;
+                            const results = Object.values(SEARCH_INDEX).flat().filter(item => {
+                                const lowerQuery = query.toLowerCase();
+                                return item.name.toLowerCase().includes(lowerQuery);
+                            });
+                            const header = `<h1>Results for ${query}</h1>`;
+                            if (results.length > 0) {
+                                const resultList = results.map(item => {
+                                    const formattedName = `<span class="type ${item.type_name}">${item.name}</span>`;
+                                    const name = item.type_name === "module"
+                                        ? [...item.module_info.slice(0, -1), formattedName].join("::")
+                                        : [...item.module_info, formattedName].join("::");
+                                    // Fix path generation for workspace - no leading slash, proper relative path
+                                    const path = [...item.module_info, item.html_filename].join("/");
+                                    const left = `<td><span>${name}</span></td>`;
+                                    const right = `<td><p>${item.preview}</p></td>`;
+                                    return `<tr onclick="window.location='${path}';">${left}${right}</tr>`;
+                                }).join('');
+                                searchSection.innerHTML = `${header}<table>${resultList}</table>`;
+                            } else {
+                                searchSection.innerHTML = `${header}<p>No results found.</p>`;
+                            }
+                            searchSection.setAttribute("class", "search-results");
+                            mainSection.setAttribute("class", "content hidden");
+                        } else {
+                            searchSection.setAttribute("class", "search-results hidden");
+                            mainSection.setAttribute("class", "content");
+                        }
+                    }
+                    window.addEventListener('hashchange', onQueryParamsChange);
+                    onQueryParamsChange();
+                });
+                "#)
+            }
+            nav(class="sub") {
+                form(id="search-form", class="search-form", onsubmit="onSearchFormSubmit(event)") {
+                    div(class="search-container") {
+                        input(
+                            id="search-input",
+                            class="search-input",
+                            name="search",
+                            autocomplete="off",
+                            spellcheck="false",
+                            placeholder="Search the docs...",
+                            type="search"
+                        );
+                    }
+                }
+            }
+        };
+        
+        Ok(box_html! {
+            head {
+                meta(charset="utf-8");
+                meta(name="viewport", content="width=device-width, initial-scale=1.0");
+                meta(name="generator", content="swaydoc");
+                meta(
+                    name="description",
+                    content="Workspace documentation index"
+                );
+                meta(name="keywords", content="sway, swaylang, sway-lang, workspace");
+                link(rel="icon", href=format!("{}/sway-logo.svg", assets_path));
+                title: "Workspace Documentation";
+                link(rel="stylesheet", type="text/css", href=format!("{}/normalize.css", assets_path));
+                link(rel="stylesheet", type="text/css", href=format!("{}/swaydoc.css", assets_path), id="mainThemeStyle");
+                link(rel="stylesheet", type="text/css", href=format!("{}/ayu.css", assets_path));
+                link(rel="stylesheet", href=format!("{}/ayu.min.css", assets_path));
+            }
+            body(class="swaydoc mod") {
+                : sidebar;
+                main {
+                    div(class="width-limiter") {
+                        : *workspace_searchbar;
+                        section(id="main-content", class="content") {
+                            div(class="main-heading") {
+                                p { : "This workspace contains the following libraries:" }
+                            }
+                            h2(class="small-section-header") {
+                                : "Libraries";
+                            }
+                            div(class="item-table") {
+                                @ for lib in &self.documented_libraries {
+                                    div(class="item-row") {
+                                        div(class="item-left module-item") {
+                                            a(class="mod", href=format!("{}/index.html", lib)) {
+                                                : lib;
+                                            }
+                                        }
+                                        div(class="item-right docblock-short") {
+                                            : format!("Library {}", lib);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        section(id="search", class="search-results");
+                    }
+                }
+                script(src=format!("{}/highlight.js", assets_path));
+                script {
+                    : "hljs.highlightAll();";
+                }
+            }
+        })
+    }
+}
 
 /// Project level, all items belonging to a project
 #[derive(Clone)]
