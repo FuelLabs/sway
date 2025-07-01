@@ -2,11 +2,10 @@
 use crate::{
     doc::module::ModuleInfo,
     render::{
-        constant::IDENTITY,
         item::context::ItemContext,
         search::generate_searchbar,
         sidebar::{Sidebar, SidebarNav},
-        DocStyle, Renderable,
+        DocStyle, Renderable, IDENTITY,
     },
     RenderPlan, ASSETS_DIR_NAME,
 };

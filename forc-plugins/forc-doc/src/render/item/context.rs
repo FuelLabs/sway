@@ -2,13 +2,12 @@
 use crate::{
     doc::module::ModuleInfo,
     render::{
-        constant::IDENTITY,
         item::type_anchor::render_type_anchor,
         link::{DocLink, DocLinks},
         title::BlockTitle,
         title::DocBlock,
         util::format::docstring::DocStrings,
-        DocStyle, Renderable,
+        DocStyle, Renderable, IDENTITY,
     },
     RenderPlan,
 };
@@ -43,6 +42,7 @@ pub struct Context {
     module_info: ModuleInfo,
     context_type: ContextType,
 }
+
 impl Context {
     pub fn new(module_info: ModuleInfo, context_type: ContextType) -> Self {
         Self {
@@ -51,6 +51,7 @@ impl Context {
         }
     }
 }
+
 impl Renderable for Context {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let mut rendered_list: Vec<String> = Vec::new();

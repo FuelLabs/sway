@@ -539,8 +539,11 @@ impl<'a> FnCompiler<'a> {
             ty::TyExpressionVariant::Literal(Literal::String(s)) => {
                 let string_data =
                     ConstantContent::get_string(context, s.as_str().as_bytes().to_vec());
+                let string_data_ptr =
+                    store_to_memory(self, context, CompiledValue::InRegister(string_data))?
+                        .expect_memory();
                 let string_len = s.as_str().len() as u64;
-                self.compile_string_slice(context, span_md_idx, string_data, string_len)
+                self.compile_string_slice(context, span_md_idx, string_data_ptr, string_len)
             }
             ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
                 let implied_lit = match &*self.engines.te().get(ast_expr.return_type) {
@@ -1113,7 +1116,7 @@ impl<'a> FnCompiler<'a> {
                     let val =
                         ConstantContent::get_string(context, span.as_str().as_bytes().to_vec());
                     Ok(TerminatorValue::new(
-                        CompiledValue::InRegister(val),
+                        store_to_memory(self, context, CompiledValue::InRegister(val))?,
                         context,
                     ))
                 }

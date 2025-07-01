@@ -29,5 +29,13 @@ sway-types.workspace = true
 swayfmt.workspace = true
 
 [dev-dependencies]
+codspeed-criterion-compat.workspace = true
 dir_indexer.workspace = true
 expect-test.workspace = true
+
+[[bench]]
+name = "bench_main"
+harness = false
+
+[lib]
+bench = false

@@ -7,7 +7,7 @@ use crate::{
             context::{Context, ContextType, ItemContext},
             documentable_type::DocumentableType,
         },
-        util::format::{code_block::trim_fn_body, docstring::DocStrings},
+        util::format::docstring::DocStrings,
     },
 };
 use anyhow::Result;
@@ -23,6 +23,7 @@ use swayfmt::parse;
 trait RequiredMethods {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn>;
 }
+
 impl RequiredMethods for Vec<DeclRefTraitFn> {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn> {
         self.iter()
@@ -378,5 +379,13 @@ impl Descriptor {
             })),
             _ => Ok(Descriptor::NonDocumentable),
         }
+    }
+}
+
+/// Takes a formatted function signature & body and returns only the signature.
+fn trim_fn_body(f: String) -> String {
+    match f.find('{') {
+        Some(index) => f.split_at(index).0.to_string(),
+        None => f,
     }
 }

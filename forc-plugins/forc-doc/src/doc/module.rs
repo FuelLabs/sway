@@ -1,5 +1,5 @@
 //! Handles the gathering of module information used in navigation and documentation of modules.
-use crate::render::{constant::INDEX_FILENAME, util::format::docstring::create_preview};
+use crate::render::{util::format::docstring::create_preview, INDEX_FILENAME};
 use anyhow::Result;
 use horrorshow::{box_html, Template};
 use std::{fmt::Write, path::PathBuf};

@@ -941,12 +941,11 @@ impl InstructionVerifier<'_, '_> {
             })
     }
 
-    fn verify_ptr_to_int(&self, _val: &Value, ty: &Type) -> Result<(), IrError> {
+    fn verify_ptr_to_int(&self, val: &Value, ty: &Type) -> Result<(), IrError> {
         // XXX Casting pointers to integers is a low level operation which needs to be verified in
         // the target specific verifier.  e.g., for Fuel it is assumed that b256s are 'reference
         // types' and you can to a ptr_to_int on them, but for target agnostic IR this isn't true.
-        //
-        // let _ = self.get_ptr_type(val, IrError::VerifyPtrCastFromNonPointer)?;
+        let _ = self.get_ptr_type(val, IrError::VerifyPtrCastFromNonPointer)?;
         if !ty.is_uint(self.context) {
             Err(IrError::VerifyPtrToIntToNonInteger(
                 ty.as_string(self.context),

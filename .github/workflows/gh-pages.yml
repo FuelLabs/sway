@@ -34,7 +34,6 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-migrate
           cargo install --locked --debug --path ./forc-plugins/forc-node
           cargo install --locked --debug --path ./forc-plugins/forc-publish
-          cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
