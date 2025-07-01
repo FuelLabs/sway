@@ -293,12 +293,24 @@ pub fn compile_html(
                         )
                     })?;
 
-                // Only document libraries
+                // Only document libraries that are workspace members
                 if matches!(ty_program.kind, TyProgramKind::Library { .. }) {
-                    documented_libraries.push(pkg_manifest_file.project_name().to_string());
-                    raw_docs.0.extend(
-                        build_docs(opts, ctx, &ty_program, &manifest_file, pkg_manifest_file)?.0,
-                    );
+                    // Check if this package is a workspace member
+                    let is_workspace_member = if ctx.is_workspace {
+                        ctx.manifest.member_manifests()?.iter().any(|(_, member)| {
+                            member.project_name() == pkg_manifest_file.project_name()
+                        })
+                    } else {
+                        true // For single packages, always include
+                    };
+
+                    if is_workspace_member {
+                        documented_libraries.push(pkg_manifest_file.project_name().to_string());
+                        raw_docs.0.extend(
+                            build_docs(opts, ctx, &ty_program, &manifest_file, pkg_manifest_file)?
+                                .0,
+                        );
+                    }
                 }
             }
         }
@@ -307,6 +319,8 @@ pub fn compile_html(
 
     // Create workspace index if this is a workspace
     if ctx.is_workspace && !documented_libraries.is_empty() {
+        // Sort libraries alphabetically for consistent display
+        documented_libraries.sort();
         create_workspace_index(
             &ctx.doc_path,
             &documented_libraries,

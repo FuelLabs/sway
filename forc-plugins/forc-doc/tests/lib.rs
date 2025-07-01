@@ -84,12 +84,11 @@ fn test_workspace_docs() {
             assert_eq!(name, workspace_name);
             assert_eq!(
                 libraries.len(),
-                3,
-                "Expected 3 libraries, found {}: {:?}",
+                2,
+                "Expected 2 libraries, found {}: {:?}",
                 libraries.len(),
                 libraries
             );
-            assert!(libraries.contains(&"std".to_string()));
             assert!(libraries.contains(&"lib_a".to_string()));
             assert!(libraries.contains(&"lib_b".to_string()));
         }
@@ -104,10 +103,8 @@ fn test_workspace_docs() {
     );
 
     // Check that library-specific docs were created
-    let std_index = doc_path.join("std").join("index.html");
     let lib_a_index = doc_path.join("lib_a").join("index.html");
     let lib_b_index = doc_path.join("lib_b").join("index.html");
-    assert!(std_index.exists(), "std index.html should exist");
     assert!(lib_a_index.exists(), "lib_a index.html should exist");
     assert!(lib_b_index.exists(), "lib_b index.html should exist");
 
@@ -117,10 +114,6 @@ fn test_workspace_docs() {
 
     // Read and verify the workspace index contains library links
     let workspace_content = std::fs::read_to_string(&workspace_index_path).unwrap();
-    assert!(
-        workspace_content.contains("std/index.html"),
-        "Workspace index should link to std"
-    );
     assert!(
         workspace_content.contains("lib_a/index.html"),
         "Workspace index should link to lib_a"
