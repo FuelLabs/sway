@@ -167,7 +167,7 @@ impl<'a> Unifier<'a> {
                         ConstGenericExpr::Literal { .. },
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
                     ) => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                        self.replace_expected_with_received(expected, &r_type_source_info, span);
                     }
                     (
                         ConstGenericExpr::AmbiguousVariableExpression { .. },

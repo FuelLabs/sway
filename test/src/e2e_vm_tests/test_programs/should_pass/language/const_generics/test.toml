@@ -4,7 +4,7 @@ script_data = "0000000000000005 0000000000000004"
 expected_result = { action = "return_data", value = "" }
 
 validate_abi = true
-expected_warnings = 3
+expected_warnings = 4
 experimental = { const_generics = true }
 logs = """
 if pkg != "std" && event == "on_before_method_resolution" && method == "len_xxx" {
@@ -12,6 +12,15 @@ if pkg != "std" && event == "on_before_method_resolution" && method == "len_xxx"
     trace(true);
 }
 if pkg != "std" && event == "on_after_method_resolution" && method == "len_xxx" {
+    print_args();
+    trace(false);
+}
+
+if pkg != "std" && event == "on_before_method_resolution" && method == "return_n" {
+    print_args();
+    trace(true);
+}
+if pkg != "std" && event == "on_after_method_resolution" && method == "return_n" {
     print_args();
     trace(false);
 }
