@@ -12,7 +12,7 @@ use horrorshow::{box_html, Raw, RenderBox};
 use std::collections::BTreeMap;
 
 /// Information about a documented library including its name and description
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LibraryInfo {
     pub name: String,
     pub description: String,

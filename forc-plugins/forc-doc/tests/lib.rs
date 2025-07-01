@@ -89,8 +89,8 @@ fn test_workspace_docs() {
                 libraries.len(),
                 libraries
             );
-            assert!(libraries.contains(&"lib_a".to_string()));
-            assert!(libraries.contains(&"lib_b".to_string()));
+            assert!(libraries.iter().any(|lib| lib.name == "lib_a"));
+            assert!(libraries.iter().any(|lib| lib.name == "lib_b"));
         }
         DocResult::Package(_) => panic!("Expected workspace result, got package"),
     }

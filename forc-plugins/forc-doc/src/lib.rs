@@ -13,7 +13,10 @@ use forc_pkg::{
 };
 use forc_tracing::println_action_green;
 use forc_util::default_output_directory;
-use render::{index::{WorkspaceIndex, LibraryInfo}, HTMLString, Renderable, RenderedDocumentation};
+use render::{
+    index::{LibraryInfo, WorkspaceIndex},
+    HTMLString, Renderable, RenderedDocumentation,
+};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -261,7 +264,9 @@ pub fn compile_html(
             if matches!(ty_program.kind, TyProgramKind::Library { .. }) {
                 let lib_info = LibraryInfo {
                     name: pkg_manifest.project_name().to_string(),
-                    description: pkg_manifest.project.description
+                    description: pkg_manifest
+                        .project
+                        .description
                         .clone()
                         .unwrap_or_else(|| format!("Library {}", pkg_manifest.project_name())),
                 };
@@ -313,9 +318,13 @@ pub fn compile_html(
                     if is_workspace_member {
                         let lib_info = LibraryInfo {
                             name: pkg_manifest_file.project_name().to_string(),
-                            description: pkg_manifest_file.project.description
+                            description: pkg_manifest_file
+                                .project
+                                .description
                                 .clone()
-                                .unwrap_or_else(|| format!("Library {}", pkg_manifest_file.project_name())),
+                                .unwrap_or_else(|| {
+                                    format!("Library {}", pkg_manifest_file.project_name())
+                                }),
                         };
                         documented_libraries.push(lib_info);
                         raw_docs.0.extend(
