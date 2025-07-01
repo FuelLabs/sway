@@ -173,8 +173,6 @@ mod test {
 
         // Run the function
         let result = create_tarball_from_current_dir(&temp_output_dir);
-        result.unwrap();
-        let result = create_tarball_from_current_dir(&temp_output_dir);
         assert!(result.is_ok());
 
         let tarball_path = result.unwrap();

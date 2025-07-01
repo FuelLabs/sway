@@ -32,7 +32,7 @@ pub enum Error {
     #[error("Invalid forc.toml: {0}")]
     InvalidForcToml(#[from] anyhow::Error),
 
-    #[error("Project is missing a version field, add one under [project]")]
+    #[error("missing version field in [project] section of Forc.toml")]
     MissingVersionField,
 
     #[error("Workspace is not supported yet, deploy each member separately")]
