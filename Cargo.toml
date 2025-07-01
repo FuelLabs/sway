@@ -81,6 +81,7 @@ fuel-abi-types = "0.12"
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball.
 fuel-core-client = { version = "0.44.0", default-features = false }
+fuel-core-storage = { version = "0.44", default-features = false }
 fuel-core-types = { version = "0.44", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:

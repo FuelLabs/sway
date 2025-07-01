@@ -46,6 +46,7 @@ forc-util = { workspace = true, features = ["tx"] }
 forc-wallet.workspace = true
 fuel-abi-types.workspace = true
 fuel-core-client = { workspace = true, features = ["subscriptions"] }
+fuel-core-storage = { workspace = true }
 fuel-core-types.workspace = true
 fuel-crypto.workspace = true
 fuel-tx = { workspace = true, features = ["test-helpers"] }
