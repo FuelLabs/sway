@@ -13,7 +13,7 @@ use forc_pkg::{
 };
 use forc_tracing::println_action_green;
 use forc_util::default_output_directory;
-use render::{index::WorkspaceIndex, HTMLString, Renderable, RenderedDocumentation};
+use render::{index::{WorkspaceIndex, LibraryInfo}, HTMLString, Renderable, RenderedDocumentation};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -90,7 +90,7 @@ pub enum DocResult {
     Package(Box<PackageManifestFile>),
     Workspace {
         name: String,
-        libraries: Vec<String>,
+        libraries: Vec<LibraryInfo>,
     },
 }
 
@@ -259,7 +259,13 @@ pub fn compile_html(
 
             // Only document if it's a library
             if matches!(ty_program.kind, TyProgramKind::Library { .. }) {
-                documented_libraries.push(pkg_manifest.project_name().to_string());
+                let lib_info = LibraryInfo {
+                    name: pkg_manifest.project_name().to_string(),
+                    description: pkg_manifest.project.description
+                        .clone()
+                        .unwrap_or_else(|| format!("Library {}", pkg_manifest.project_name())),
+                };
+                documented_libraries.push(lib_info);
                 build_docs(opts, ctx, &ty_program, &ctx.manifest, pkg_manifest)?
             } else {
                 bail!(
@@ -305,7 +311,13 @@ pub fn compile_html(
                     };
 
                     if is_workspace_member {
-                        documented_libraries.push(pkg_manifest_file.project_name().to_string());
+                        let lib_info = LibraryInfo {
+                            name: pkg_manifest_file.project_name().to_string(),
+                            description: pkg_manifest_file.project.description
+                                .clone()
+                                .unwrap_or_else(|| format!("Library {}", pkg_manifest_file.project_name())),
+                        };
+                        documented_libraries.push(lib_info);
                         raw_docs.0.extend(
                             build_docs(opts, ctx, &ty_program, &manifest_file, pkg_manifest_file)?
                                 .0,
@@ -320,7 +332,7 @@ pub fn compile_html(
     // Create workspace index if this is a workspace
     if ctx.is_workspace && !documented_libraries.is_empty() {
         // Sort libraries alphabetically for consistent display
-        documented_libraries.sort();
+        documented_libraries.sort_by(|a, b| a.name.cmp(&b.name));
         create_workspace_index(
             &ctx.doc_path,
             &documented_libraries,
@@ -413,7 +425,7 @@ fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Resul
 
 fn create_workspace_index(
     doc_path: &Path,
-    documented_libraries: &[String],
+    documented_libraries: &[LibraryInfo],
     engines: &Engines,
     workspace_name: &str,
 ) -> Result<()> {
