@@ -747,7 +747,7 @@ pub(crate) fn compile_call_inner(
         // with the PC register. The overflow cannot occur since programs cannot be 2**60 bytes large.
         let delta_instr = (delta - 1) * (Instruction::SIZE as u64);
 
-        // Attempt MOVI-based approach, that has larger immediate size but doens't require data section.
+        // Attempt MOVI-based approach, that has larger immediate size but doesn't require data section.
         if let Ok(imm) = VirtualImmediate18::new(delta_instr, Span::dummy()) {
             return vec![
                 RealizedOp {
