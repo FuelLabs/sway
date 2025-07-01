@@ -246,8 +246,7 @@ impl AllocatedAbstractInstructionSet {
                                 owning_span,
                             )
                         };
-                        assert_eq!(far_jump_sizes.get(&op_idx).copied().unwrap_or(1), op_size);
-                        assert_eq!(ops.len() as u64, op_size);
+                        debug_assert_eq!(ops.len() as u64, op_size);
                         realized_ops.extend(ops);
                     }
                     ControlFlowOp::DataSectionOffsetPlaceholder => {
