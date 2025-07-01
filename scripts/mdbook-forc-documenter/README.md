@@ -21,7 +21,7 @@ MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book
 Enter a new entry under the `Commands` section within `SUMMARY.md`, in this format:
 
 ```md
-- [forc explore](./forc_explore.md)
+- [forc fmt](./forc_fmt.md)
 ```
 
 ### Adding a new forc plugin

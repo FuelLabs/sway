@@ -2938,6 +2938,7 @@ dependencies = [
  "forc-wallet",
  "fuel-abi-types",
  "fuel-core-client",
+ "fuel-core-storage",
  "fuel-core-types",
  "fuel-crypto",
  "fuel-tx",
@@ -3039,6 +3040,7 @@ version = "0.69.0"
 dependencies = [
  "anyhow",
  "clap",
+ "codspeed-criterion-compat",
  "comrak",
  "dir_indexer",
  "expect-test",

@@ -2,8 +2,8 @@
 use crate::{
     doc::module::ModuleInfo,
     render::{
-        constant::IDENTITY, link::DocLinks, search::generate_searchbar, sidebar::*, BlockTitle,
-        DocStyle, Renderable,
+        link::DocLinks, search::generate_searchbar, sidebar::*, BlockTitle, DocStyle, Renderable,
+        IDENTITY,
     },
     RenderPlan, ASSETS_DIR_NAME,
 };
