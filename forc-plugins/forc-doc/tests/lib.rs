@@ -1,6 +1,6 @@
 use dir_indexer::get_relative_file_paths_set;
 use expect_test::{expect, Expect};
-use forc_doc::{self, generate_docs, Command};
+use forc_doc::{self, generate_docs, Command, DocResult};
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
@@ -65,6 +65,53 @@ fn test_impl_traits_default() {
             "impl_traits/foo/trait.Baz.html",
         ],
     );
+}
+
+#[test]
+fn test_workspace_docs() {
+    let doc_dir_name: &str = "workspace_docs";
+    let workspace_name = "sample_workspace";
+    let command = Command {
+        path: Some(format!("{}/{}", DATA_DIR, workspace_name)),
+        doc_path: Some(doc_dir_name.into()),
+        ..Default::default()
+    };
+    let (doc_path, doc_result) = generate_docs(&command).unwrap();
+    
+    // Verify that we got a workspace result
+    match &doc_result {
+        DocResult::Workspace { name, libraries } => {
+            assert_eq!(name, workspace_name);
+            assert_eq!(libraries.len(), 3, "Expected 3 libraries, found {}: {:?}", libraries.len(), libraries);
+            assert!(libraries.contains(&"std".to_string()));
+            assert!(libraries.contains(&"lib_a".to_string()));
+            assert!(libraries.contains(&"lib_b".to_string()));
+        }
+        DocResult::Package(_) => panic!("Expected workspace result, got package"),
+    }
+    
+    // Check that workspace index.html was created
+    let workspace_index_path = doc_path.join("index.html");
+    assert!(workspace_index_path.exists(), "Workspace index.html should exist");
+    
+    // Check that library-specific docs were created
+    let std_index = doc_path.join("std").join("index.html");
+    let lib_a_index = doc_path.join("lib_a").join("index.html");
+    let lib_b_index = doc_path.join("lib_b").join("index.html");
+    assert!(std_index.exists(), "std index.html should exist");
+    assert!(lib_a_index.exists(), "lib_a index.html should exist");
+    assert!(lib_b_index.exists(), "lib_b index.html should exist");
+    
+    // Check that search.js was created
+    let search_js = doc_path.join("search.js");
+    assert!(search_js.exists(), "search.js should exist");
+    
+    // Read and verify the workspace index contains library links
+    let workspace_content = std::fs::read_to_string(&workspace_index_path).unwrap();
+    assert!(workspace_content.contains("std/index.html"), "Workspace index should link to std");
+    assert!(workspace_content.contains("lib_a/index.html"), "Workspace index should link to lib_a");
+    assert!(workspace_content.contains("lib_b/index.html"), "Workspace index should link to lib_b");
+    assert!(workspace_content.contains("This workspace contains the following libraries"), "Should contain workspace description");
 }
 
 #[test]

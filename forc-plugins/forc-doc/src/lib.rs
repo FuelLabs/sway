@@ -145,7 +145,7 @@ impl DocContext {
         let manifest = ManifestFile::from_dir(dir)?;
 
         // Get workspace name for later use
-        let workspace_name = std::env::current_dir()?
+        let workspace_name = manifest.dir()
             .file_name()
             .and_then(|name| name.to_str())
             .unwrap_or("workspace")
