@@ -1,11 +1,7 @@
 use anyhow::anyhow;
-use fuels::{
-    accounts::{wallet::Wallet, Account},
-    types::tx_status::TxStatus,
-};
+use fuels::accounts::{wallet::Wallet, Account};
 use fuels_core::types::{transaction::TxPolicies, Address, AssetId};
 
-#[allow(clippy::too_many_arguments)]
 pub async fn transfer(
     wallet: &Wallet,
     recipient: Address,
@@ -13,7 +9,6 @@ pub async fn transfer(
     asset_id: AssetId,
     tx_policies: TxPolicies,
     node: &crate::NodeTarget,
-    verbosity: u8,
     writer: &mut impl std::io::Write,
 ) -> anyhow::Result<super::CallResponse> {
     let provider = wallet.provider();
@@ -42,15 +37,20 @@ pub async fn transfer(
             .map_err(|e| anyhow!("Failed to transfer funds to contract: {}", e))?
     };
 
-    super::process_transaction_output(
-        TxStatus::Success(tx_response.tx_status),
-        &tx_response.tx_id.to_string(),
+    // display tx info
+    super::display_tx_info(
+        tx_response.tx_id.to_string(),
+        None,
         &crate::cmd::call::ExecutionMode::Live,
         node,
-        verbosity,
-        writer,
-        None,
-    )
+    );
+
+    Ok(super::CallResponse {
+        tx_hash: tx_response.tx_id.to_string(),
+        result: None,
+        receipts: tx_response.tx_status.receipts,
+        script_json: None,
+    })
 }
 
 #[cfg(test)]
@@ -109,7 +109,6 @@ mod tests {
             *base_asset_id,
             tx_policies,
             &node,
-            0, // verbosity level
             &mut std::io::stdout(),
         )
         .await
@@ -161,7 +160,6 @@ mod tests {
             *base_asset_id,
             tx_policies,
             &node,
-            0, // verbosity level
             &mut std::io::stdout(),
         )
         .await

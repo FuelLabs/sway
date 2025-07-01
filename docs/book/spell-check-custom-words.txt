@@ -249,3 +249,5 @@ AbiEncode
 AbiDecode
 Durations
 durations
+invariants
+postfix

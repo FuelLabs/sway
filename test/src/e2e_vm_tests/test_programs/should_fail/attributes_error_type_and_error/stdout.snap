@@ -1,7 +1,7 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error --release --experimental error_type
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error --release
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error
@@ -80,125 +80,71 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error
    Compiling library attributes_error_type_and_error (test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error)
-error
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:4:3
-  |
-2 | 
-3 | #[allow(dead_code)]
-4 | #[error_type]
-  |   ^^^^^^^^^^ This needs "error_type" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6765.
-5 | pub enum ErrorEnumWithNonErrorVariant {
-6 |     #[error(m = "ok")]
-  |
-____
-
-error
- --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:6:7
-  |
-4 | #[error_type]
-5 | pub enum ErrorEnumWithNonErrorVariant {
-6 |     #[error(m = "ok")]
-  |       ^^^^^ This needs "error_type" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6765.
-7 |     A: (),
-8 |     #[error(m = "also ok")]
-  |
-____
-
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:8:7
+error: Error type enum cannot have non-error variants
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:5:10
    |
- 6 |     #[error(m = "ok")]
- 7 |     A: (),
- 8 |     #[error(m = "also ok")]
-   |       ^^^^^ This needs "error_type" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6765.
- 9 |     B: (),
+...
+ 5 | pub enum ErrorEnumWithNonErrorVariant {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Error type enum "ErrorEnumWithNonErrorVariant" has non-error variant "NotOk".
+...
 10 |     NotOk: (),
+   |     -----
    |
+   = help: All error type enum's variants must be marked as errors.
+   = help: To mark error variants as errors, annotate them with the `#[error]` attribute.
 ____
 
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:14:3
+error: Error type enum cannot have non-error variants
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:15:10
    |
-12 | 
-13 | #[allow(dead_code)]
-14 | #[error_type]
-   |   ^^^^^^^^^^ This needs "error_type" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6765.
+...
 15 | pub enum ErrorEnumWithTwoNonErrorVariants {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Error type enum "ErrorEnumWithTwoNonErrorVariants" has non-error variants "NotOk1" and "NotOk2".
 16 |     NotOk1: (),
-   |
-____
-
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:17:7
-   |
-15 | pub enum ErrorEnumWithTwoNonErrorVariants {
-16 |     NotOk1: (),
-17 |     #[error(m = "ok")]
-   |       ^^^^^ This needs "error_type" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6765.
-18 |     A: (),
+   |     ------
+...
 19 |     NotOk2: (),
+   |     ------
    |
+   = help: All error type enum's variants must be marked as errors.
+   = help: To mark error variants as errors, annotate them with the `#[error]` attribute.
 ____
 
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:20:7
+error: Error type enum cannot have non-error variants
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:26:10
    |
-18 |     A: (),
-19 |     NotOk2: (),
-20 |     #[error(m = "also ok")]
-   |       ^^^^^ This needs "error_type" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6765.
-21 |     B: (),
-22 | }
-   |
-____
-
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:25:3
-   |
-23 | 
-24 | #[allow(dead_code)]
-25 | #[error_type]
-   |   ^^^^^^^^^^ This needs "error_type" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6765.
+...
 26 | pub enum ErrorEnumWithMoreNonErrorVariants {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Error type enum "ErrorEnumWithMoreNonErrorVariants" has non-error variants "NotOk1", "NotOk2", and three more.
 27 |     NotOk1: (),
-   |
-____
-
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:28:7
-   |
-26 | pub enum ErrorEnumWithMoreNonErrorVariants {
-27 |     NotOk1: (),
-28 |     #[error(m = "ok")]
-   |       ^^^^^ This needs "error_type" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6765.
-29 |     A: (),
+   |     ------
+...
 30 |     NotOk2: (),
-   |
-____
-
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:32:7
-   |
-30 |     NotOk2: (),
+   |     ------
 31 |     NotOk3: (),
-32 |     #[error(m = "also ok")]
-   |       ^^^^^ This needs "error_type" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6765.
-33 |     B: (),
+   |     ------
+...
 34 |     NotOk4: (),
+   |     ------
+35 |     NotOk5: (),
+   |     ------
    |
+   = help: All error type enum's variants must be marked as errors.
+   = help: To mark error variants as errors, annotate them with the `#[error]` attribute.
 ____
 
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:40:7
+error: Error enum variants must be in error type enums
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_error_type_and_error/src/main.sw:41:5
    |
-38 | #[allow(dead_code)]
+...
 39 | pub enum ErrorAttributeInNonErrorEnum {
+   |          ---------------------------- help: Consider annotating "ErrorAttributeInNonErrorEnum" enum with the `#[error_type]` attribute.
 40 |     #[error(m = "this error is in non-error type enum")]
-   |       ^^^^^ This needs "error_type" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6765.
 41 |     NotOk: (),
-42 | }
+   |     ^^^^^ Enum variant "NotOk" is marked as `#[error]`, but its enum is not an error type enum.
    |
+   = help: Enum variants can be marked as `#[error]` only if their parent enum is annotated with the `#[error_type]` attribute.
 ____
 
-  Aborting due to 10 errors.
+  Aborting due to 4 errors.
 error: Failed to compile attributes_error_type_and_error

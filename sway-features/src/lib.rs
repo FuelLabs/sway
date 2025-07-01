@@ -169,8 +169,6 @@ features! {
     "https://github.com/FuelLabs/sway/issues/5727",
     references = true,
     "https://github.com/FuelLabs/sway/issues/5063",
-    error_type = false,
-    "https://github.com/FuelLabs/sway/issues/6765",
     const_generics = false,
     "https://github.com/FuelLabs/sway/issues/6860",
 }
