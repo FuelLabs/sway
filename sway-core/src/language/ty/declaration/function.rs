@@ -180,6 +180,8 @@ impl MaterializeConstGenerics for TyFunctionDecl {
     }
 }
 
+/// Rename cosnt generics when the name inside the struct/enum does not match
+/// the name in the impl items.
 fn rename_const_generics(
     engines: &Engines,
     impl_self_or_trait: &TyImplSelfOrTrait,
@@ -191,43 +193,59 @@ fn rename_const_generics(
     let from = engines.te().get(from);
     let to = engines.te().get(to);
 
-    if let (
-        TypeInfo::Custom {
-            type_arguments: Some(type_arguments),
-            ..
-        },
-        TypeInfo::Struct(s),
-    ) = (&*from, &*to)
-    {
-        let decl = engines.de().get(s);
-        for a in type_arguments.iter().zip(decl.generic_parameters.iter()) {
-            match (a.0, a.1) {
-                (GenericArgument::Type(a), TypeParameter::Const(b)) => {
-                    // replace all references from "p.name.as_str()" to "b.name.as_str()"
-                    let mut type_subst_map = TypeSubstMap::default();
-                    type_subst_map.const_generics_renaming.insert(
-                        a.call_path_tree
-                            .as_ref()
-                            .unwrap()
-                            .qualified_call_path
-                            .call_path
-                            .suffix
-                            .clone(),
-                        b.name.clone(),
-                    );
-                    m.subst_inner(&SubstTypesContext {
-                        engines,
-                        type_subst_map: Some(&type_subst_map),
-                        subst_function_body: true,
-                    });
-                }
-                (GenericArgument::Const(a), TypeParameter::Const(b)) => {
-                    engines
-                        .obs()
-                        .trace(|| format!("{:?} -> {:?}", a.expr, b.expr));
-                }
-                _ => {}
+    match (&*from, &*to) {
+        (
+            TypeInfo::Custom {
+                type_arguments: Some(type_arguments),
+                ..
+            },
+            TypeInfo::Struct(s),
+        ) => {
+            let decl = engines.de().get(s);
+            rename_const_generics_inner(engines, m, type_arguments, decl.type_parameters());
+        }
+         (
+            TypeInfo::Custom {
+                type_arguments: Some(type_arguments),
+                ..
+            },
+            TypeInfo::Enum(s),
+        ) => {
+            let decl = engines.de().get(s);
+            rename_const_generics_inner(engines, m, type_arguments, decl.type_parameters());
+        }
+        _ => (),
+    }
+}
+
+fn rename_const_generics_inner(engines: &Engines, m: &mut TyFunctionDecl, type_arguments: &Vec<GenericArgument>, generic_parameters: &[TypeParameter]) {
+    for a in type_arguments.iter().zip(generic_parameters.iter()) {
+        match (a.0, a.1) {
+            (GenericArgument::Type(a), TypeParameter::Const(b)) => {
+                // replace all references from "p.name.as_str()" to "b.name.as_str()"
+                let mut type_subst_map = TypeSubstMap::default();
+                type_subst_map.const_generics_renaming.insert(
+                    a.call_path_tree
+                        .as_ref()
+                        .unwrap()
+                        .qualified_call_path
+                        .call_path
+                        .suffix
+                        .clone(),
+                    b.name.clone(),
+                );
+                m.subst_inner(&SubstTypesContext {
+                    engines,
+                    type_subst_map: Some(&type_subst_map),
+                    subst_function_body: true,
+                });
             }
+            (GenericArgument::Const(a), TypeParameter::Const(b)) => {
+                engines
+                    .obs()
+                    .trace(|| format!("{:?} -> {:?}", a.expr, b.expr));
+            }
+            _ => {}
         }
     }
 }
