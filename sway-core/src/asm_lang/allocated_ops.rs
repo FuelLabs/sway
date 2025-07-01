@@ -479,7 +479,7 @@ impl fmt::Display for AllocatedInstruction {
             WQMM(a, b, c, d) => write!(fmtr, "wqmm {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
-            JMP(a) => write!(fmtr, "jmp {a}"),
+            JMP(a) => write!(fmtr, "jmp  {a}"),
             JI(a) => write!(fmtr, "ji   {a}"),
             JNE(a, b, c) => write!(fmtr, "jne  {a} {b} {c}"),
             JNEI(a, b, c) => write!(fmtr, "jnei {a} {b} {c}"),
@@ -488,7 +488,7 @@ impl fmt::Display for AllocatedInstruction {
             JMPF(a, b) => write!(fmtr, "jmpf {a} {b}"),
             JNZB(a, b, c) => write!(fmtr, "jnzb {a} {b} {c}"),
             JNZF(a, b, c) => write!(fmtr, "jnzf {a} {b} {c}"),
-            JAL(a, b, c) => write!(fmtr, "jal {a} {b} {c}"),
+            JAL(a, b, c) => write!(fmtr, "jal  {a} {b} {c}"),
             RET(a) => write!(fmtr, "ret  {a}"),
 
             /* Memory Instructions */

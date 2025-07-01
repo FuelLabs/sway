@@ -52,4 +52,4 @@ impl MyContract for Contract {
 // check: lw   $(target=$REG) $$hp i0
 // check: sub  $(jmp_target_4=$REG) $target $$is
 // check: divi $(jmp_target=$REG) $jmp_target_4 i4
-// check: jmp $jmp_target
+// check: jmp  $jmp_target
