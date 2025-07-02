@@ -17,12 +17,7 @@ pub fn list_contract_functions<W: Write>(
 ) -> Result<()> {
     // First, list functions for the main contract
     if let Some(main_abi) = abi_map.get(main_contract_id) {
-        list_functions_for_single_contract(
-            main_contract_id,
-            main_abi,
-            true, // is_main_contract
-            writer,
-        )?;
+        list_functions_for_single_contract(main_contract_id, main_abi, true, writer)?;
     } else {
         return Err(anyhow!("Main contract ABI not found in abi_map"));
     }
@@ -38,12 +33,7 @@ pub fn list_contract_functions<W: Write>(
         writeln!(writer, "Additional Contracts:\n")?;
 
         for (contract_id, abi) in additional_contracts {
-            list_functions_for_single_contract(
-                contract_id,
-                abi,
-                false, // is_main_contract
-                writer,
-            )?;
+            list_functions_for_single_contract(contract_id, abi, false, writer)?;
         }
     }
 
@@ -133,9 +123,6 @@ fn list_functions_for_single_contract<W: Write>(
                 )
             })?;
 
-        // Since we don't know the original ABI path, we'll use a placeholder
-        let abi_placeholder = "./contract-abi.json";
-
         let painted_name = forc_util::ansiterm::Colour::Blue.paint(func.name.clone());
         writeln!(
             writer,
@@ -145,7 +132,7 @@ fn list_functions_for_single_contract<W: Write>(
         writeln!(
             writer,
             "  forc call \\\n      --abi {} \\\n      {} \\\n      {} {}\n",
-            abi_placeholder, contract_id, func.name, func_args_inputs,
+            abi.source, contract_id, func.name, func_args_inputs,
         )?;
     }
 
