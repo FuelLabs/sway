@@ -98,7 +98,7 @@ fn log_demotion(context: &mut Context, function: Function) -> Result<bool, IrErr
         );
 
         // We need to replace the log instruction because we're changing the type to a pointer.
-        let ptr_ty = Type::new_ptr(context, logged_ty);
+        let ptr_ty = Type::new_typed_pointer(context, logged_ty);
         let new_log_instr_val = Value::new_instruction(
             context,
             block,
@@ -239,7 +239,7 @@ fn asm_block_ret_demotion(context: &mut Context, function: Function) -> Result<b
     let mut replace_map = FxHashMap::default();
     for (block, asm_block_instr_val, mut asm_block, asm_args, ret_ty) in candidates {
         // Change the ASM block return type to be a pointer.
-        let ret_ptr_ty = Type::new_ptr(context, ret_ty);
+        let ret_ptr_ty = Type::new_typed_pointer(context, ret_ty);
         asm_block.return_type = ret_ptr_ty;
         let new_asm_block =
             Value::new_instruction(context, block, InstOp::AsmBlock(asm_block, asm_args));

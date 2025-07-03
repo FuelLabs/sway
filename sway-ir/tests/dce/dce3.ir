@@ -3,12 +3,12 @@ script {
         local mut u64 state
 
         entry():
-        v0 = get_local ptr u64, state
+        v0 = get_local __ptr u64, state
         v1 = const u64 0
         store v1 to v0
-        v2 = get_local ptr u64, state
+        v2 = get_local __ptr u64, state
         v3 = call function_0(v2)
-        v4 = get_local ptr u64, state
+        v4 = get_local __ptr u64, state
         v5 = load v4
         v6 = const u64 42
         v7 = cmp eq v5 v6
@@ -26,8 +26,8 @@ script {
     }
 
     // check: function_0
-    fn function_0(state: ptr u64) -> () {
-        entry(state: ptr u64):
+    fn function_0(state: __ptr u64) -> () {
+        entry(state: __ptr u64):
         v0 = const u64 42
         // check: store
         store v0 to state

@@ -3,9 +3,9 @@ script {
         local u256 lhs
         local u256 rhs
         entry():
-        v0 = get_local ptr u256, lhs
+        v0 = get_local __ptr u256, lhs
         v1 = load v0, !0
-        v2 = get_local ptr u256, rhs
+        v2 = get_local __ptr u256, rhs
         v3 = load v2, !0
         v4 = add v1, v3, !0
         ret u256 v4
@@ -20,15 +20,15 @@ script {
 // check: local u256 lhs
 // check: local u256 rhs
 // check: entry():
-// check: v0 = get_local ptr u256, lhs
+// check: v0 = get_local __ptr u256, lhs
 // check: v1 = load v0
-// check: v2 = get_local ptr u256, rhs
+// check: v2 = get_local __ptr u256, rhs
 // check: v3 = load v2
-// check: v4 = get_local ptr u256, __wide_lhs
+// check: v4 = get_local __ptr u256, __wide_lhs
 // check: store v1 to v4
-// check: v5 = get_local ptr u256, __wide_rhs
+// check: v5 = get_local __ptr u256, __wide_rhs
 // check: store v3 to v5
-// check: v6 = get_local ptr u256, __wide_result
+// check: v6 = get_local __ptr u256, __wide_result
 // check: wide add v4, v5 to v6
 // check: v7 = load v6
 // check: ret u256 v7

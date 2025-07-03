@@ -5,7 +5,7 @@ script {
     global sway3::F1 : u64 = const u64 11
     pub entry fn main_0() -> u64, !15 {
         entry():
-        v0 = get_global ptr u64, sway3::F1, !16
+        v0 = get_global __ptr u64, sway3::F1, !16
         v1 = load v0
         // check: $(res=$VAR) = const u64 11
         // check ret u64 $res

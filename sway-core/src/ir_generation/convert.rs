@@ -162,7 +162,7 @@ fn convert_resolved_type_info(
                 pointee_ty.type_id(),
                 span,
             )?;
-            Type::new_ptr(context, pointee_ty)
+            Type::new_typed_pointer(context, pointee_ty)
         }
         TypeInfo::Alias { ty, .. } => {
             convert_resolved_type_id(type_engine, decl_engine, context, ty.type_id(), span)?
@@ -189,7 +189,7 @@ fn convert_resolved_type_info(
                     referenced_type.type_id(),
                     span,
                 )?;
-                Type::new_ptr(context, referenced_ir_type)
+                Type::new_typed_pointer(context, referenced_ir_type)
             }
         }
         TypeInfo::Never => Type::get_never(context),

@@ -77,12 +77,12 @@ script {
         }
         v5 = call poke_1(v4)
 
-        v6 = get_local ptr u64, arg
+        v6 = get_local __ptr u64, arg
         v7 = const u64 11
         store v7 to v6
-        v8 = get_local ptr u64, arg
+        v8 = get_local __ptr u64, arg
         v9 = load v8
-        v10 = get_local ptr u64, arg
+        v10 = get_local __ptr u64, arg
         v11 = load v10
 
         // check: = asm(a: $VAL, b: $VAL, res) -> ()
@@ -90,9 +90,9 @@ script {
             add    res a b
         }
 
-        v13 = get_local ptr u64, arg
+        v13 = get_local __ptr u64, arg
         v14 = load v13
-        v15 = get_local ptr u64, arg
+        v15 = get_local __ptr u64, arg
         v16 = load v15
 
         // check: = asm(a: $VAL, b: $VAL, res) -> u64 res
@@ -115,46 +115,46 @@ script {
         }
         v20 = asm() -> () zero {
         }
-        v21 = get_local ptr u64, arg
+        v21 = get_local __ptr u64, arg
         v22 = load v21
         v23 = asm(arg: v22) -> () {
         }
-        v24 = get_local ptr u64, arg
+        v24 = get_local __ptr u64, arg
         v25 = load v24
         v26 = asm(arg: v25) -> u64 arg {
         }
         v27 = asm() -> () {
         }
-        v28 = get_local ptr (), a
+        v28 = get_local __ptr (), a
         store v27 to v28
         v29 = asm() -> u64 zero {
         }
-        v30 = get_local ptr u64, b
+        v30 = get_local __ptr u64, b
         store v29 to v30
-        v31 = get_local ptr u64, arg
+        v31 = get_local __ptr u64, arg
         v32 = load v31
         v33 = asm(arg: v32) -> () {
         }
-        v34 = get_local ptr (), c
+        v34 = get_local __ptr (), c
         store v33 to v34
-        v35 = get_local ptr u64, arg
+        v35 = get_local __ptr u64, arg
         v36 = load v35
         v37 = asm(arg: v36) -> u64 arg {
         }
-        v38 = get_local ptr u64, d
+        v38 = get_local __ptr u64, d
         store v37 to v38
-        v39 = get_local ptr u64, arg
+        v39 = get_local __ptr u64, arg
         v40 = load v39
         v41 = asm(arg: v40) -> u64 arg {
         }
-        v42 = get_local ptr u64, e
+        v42 = get_local __ptr u64, e
         store v41 to v42
 
         // check: call function()
         v43 = call function()
         v44 = asm(arg: v43) -> u64 arg {
         }
-        v45 = get_local ptr u64, f
+        v45 = get_local __ptr u64, f
         store v44 to v45
         v46 = const unit ()
 

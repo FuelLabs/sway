@@ -13,28 +13,28 @@ script {
         cbr v4, block0(), block1()
 
         block0():
-        v0_0 = get_local ptr u64, x
-        v0_1 = cast_ptr v0_0 to ptr u8
-        v0_2 = cast_ptr v0_1 to ptr u64
+        v0_0 = get_local __ptr u64, x
+        v0_1 = cast_ptr v0_0 to __ptr u8
+        v0_2 = cast_ptr v0_1 to __ptr u64
         v0_3 = ptr_to_int v0_2 to u64
-        v0_4 = int_to_ptr v0_3 to ptr u64
+        v0_4 = int_to_ptr v0_3 to __ptr u64
         v0_5 = ptr_to_int v0_4 to u64
         br block2(v0_5)
 
         block1():
-        v1_0 = get_local ptr u64, y
-        v1_1 = cast_ptr v1_0 to ptr u8
-        v1_2 = cast_ptr v1_1 to ptr u64
+        v1_0 = get_local __ptr u64, y
+        v1_1 = cast_ptr v1_0 to __ptr u8
+        v1_2 = cast_ptr v1_1 to __ptr u64
         v1_3 = ptr_to_int v1_2 to u64
-        v1_4 = int_to_ptr v1_3 to ptr u64
+        v1_4 = int_to_ptr v1_3 to __ptr u64
         v1_5 = ptr_to_int v1_4 to u64
         br block2(v1_5)
 
         block2(v2_0: u64):
-        v2_1 = int_to_ptr v2_0 to ptr u64
+        v2_1 = int_to_ptr v2_0 to __ptr u64
         v2_2 = const u64 42
         store v2_2 to v2_1
-        v2_3 = get_local ptr u64, dummy
+        v2_3 = get_local __ptr u64, dummy
         v2_4 = const u64 42
         store v2_4 to v2_3
         v2_5 = const bool true
@@ -47,6 +47,6 @@ script {
 // not: local mut u64 y
 // check: block2
 // check: store
-// not: get_local ptr u64, dummy
+// not: get_local __ptr u64, dummy
 // not: store
 // check: ret bool

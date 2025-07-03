@@ -8,18 +8,18 @@ script {
         local { u64, u64 } __anon_0
 
         entry():
-        v0 = get_local ptr { u64, u64 }, __anon_0, !2
+        v0 = get_local __ptr { u64, u64 }, __anon_0, !2
         v1 = const u64 0
-        v2 = get_elem_ptr v0, ptr u64, v1
+        v2 = get_elem_ptr v0, __ptr u64, v1
         v3 = const u64 2, !3
         store v3 to v2, !2
         v4 = const u64 1
-        v5 = get_elem_ptr v0, ptr u64, v4
+        v5 = get_elem_ptr v0, __ptr u64, v4
         v6 = const u64 3, !4
         store v6 to v5, !2
-        v7 = get_local ptr { u64, u64 }, __anon_0, !5
+        v7 = get_local __ptr { u64, u64 }, __anon_0, !5
         v8 = const u64 0
-        v9 = get_elem_ptr v7, ptr u64, v8, !6
+        v9 = get_elem_ptr v7, __ptr u64, v8, !6
         v10 = load v9
         ret u64 v10
     }

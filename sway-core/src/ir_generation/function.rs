@@ -193,7 +193,7 @@ fn calc_addr_as_ptr(
         .append(context)
         .binary_op(BinaryOpKind::Add, ptr, len);
 
-    let ptr_to = Type::new_ptr(context, ptr_to);
+    let ptr_to = Type::new_typed_pointer(context, ptr_to);
     current_block.append(context).int_to_ptr(addr, ptr_to)
 }
 
@@ -946,7 +946,7 @@ impl<'a> FnCompiler<'a> {
                 .append(context)
                 .get_elem_ptr_with_idx(buffer_local_value, uint64, 0);
         let ptr = self.current_block.append(context).load(ptr);
-        let ptr_u8 = Type::new_ptr(context, Type::get_uint8(context));
+        let ptr_u8 = Type::new_typed_pointer(context, Type::get_uint8(context));
         let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_u8);
 
         let cap =
@@ -1214,7 +1214,7 @@ impl<'a> FnCompiler<'a> {
                         context,
                     ))
                 } else {
-                    let ptr_ty = Type::new_ptr(context, target_ir_type);
+                    let ptr_ty = Type::new_typed_pointer(context, target_ir_type);
                     let val = self
                         .current_block
                         .append(context)
@@ -1347,7 +1347,7 @@ impl<'a> FnCompiler<'a> {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 let b256_ty = Type::get_b256(context);
-                let b256_ptr_ty = Type::new_ptr(context, b256_ty);
+                let b256_ptr_ty = Type::new_typed_pointer(context, b256_ty);
                 let val_ptr = self
                     .current_block
                     .append(context)
@@ -1711,7 +1711,7 @@ impl<'a> FnCompiler<'a> {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
                 let return_type = Type::get_unit(context);
-                let return_type = Type::new_ptr(context, return_type);
+                let return_type = Type::new_typed_pointer(context, return_type);
 
                 let returned_value = self
                     .current_block
@@ -1780,7 +1780,7 @@ impl<'a> FnCompiler<'a> {
                     Some(Ident::new_no_span("hp".into())),
                 );
 
-                let ptr_u8 = Type::new_ptr(context, Type::get_uint8(context));
+                let ptr_u8 = Type::new_typed_pointer(context, Type::get_uint8(context));
                 let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_u8);
 
                 let len = ConstantContent::new_uint(context, 64, 0);
@@ -1937,7 +1937,7 @@ impl<'a> FnCompiler<'a> {
                     assert!(ptr.get_type(context).unwrap().is_ptr(context));
                     assert!(cap.get_type(context).unwrap().is_uint64(context));
 
-                    let ptr_u8 = Type::new_ptr(context, Type::get_uint8(context));
+                    let ptr_u8 = Type::new_typed_pointer(context, Type::get_uint8(context));
 
                     // merge block has two arguments: ptr, cap
                     let merge_block = s.function.create_block(context, None);
@@ -1989,7 +1989,7 @@ impl<'a> FnCompiler<'a> {
                     // hp: ptr u8
                     s.current_block = true_block_begin;
                     let u8 = Type::get_uint8(context);
-                    let ptr_u8 = Type::new_ptr(context, u8);
+                    let ptr_u8 = Type::new_typed_pointer(context, u8);
 
                     let two = ConstantContent::new_uint(context, 64, 2);
                     let two = Constant::unique(context, two);
@@ -2403,7 +2403,7 @@ impl<'a> FnCompiler<'a> {
         let de = self.engines.de();
 
         let return_type_ir_type = convert_resolved_type_id(te, de, context, return_type, span)?;
-        let return_type_ir_type_ptr = Type::new_ptr(context, return_type_ir_type);
+        let return_type_ir_type_ptr = Type::new_typed_pointer(context, return_type_ir_type);
 
         let first_argument_expr = &arguments[0];
         let first_argument_value = return_on_termination_or_extract!(
@@ -2478,7 +2478,7 @@ impl<'a> FnCompiler<'a> {
                 elem_ty,
                 &first_argument_expr.span.clone(),
             )?;
-            let return_type = Type::new_ptr(context, elem_ir_ty);
+            let return_type = Type::new_typed_pointer(context, elem_ir_ty);
             let ptr_to_first_element = self.current_block.append(context).asm_block(
                 vec![ptr_arg, ptr_out_arg],
                 vec![AsmInstruction::lw_no_span("ptr_out", "ptr", "i0")],
@@ -2536,7 +2536,7 @@ impl<'a> FnCompiler<'a> {
             initializer: None,
         };
 
-        let return_type = Type::new_ptr(context, elem_ir_type);
+        let return_type = Type::new_typed_pointer(context, elem_ir_type);
         let ptr_out = self.current_block.append(context).asm_block(
             vec![
                 idx_arg,
@@ -2632,7 +2632,7 @@ impl<'a> FnCompiler<'a> {
             .binary_op(BinaryOpKind::Sub, end, start);
 
         // compile the slice together
-        let ptr_to_elem_ty = Type::new_ptr(context, elem_ir_type);
+        let ptr_to_elem_ty = Type::new_typed_pointer(context, elem_ir_type);
         let return_type = Type::get_typed_slice(context, elem_ir_type);
         let slice_as_tuple = self.compile_tuple_from_values(
             context,
@@ -3245,7 +3245,7 @@ impl<'a> FnCompiler<'a> {
         let return_type = if ret_is_copy_type {
             return_type
         } else {
-            Type::new_ptr(context, return_type)
+            Type::new_typed_pointer(context, return_type)
         };
 
         // Insert the contract_call instruction

@@ -13,9 +13,9 @@ script {
   
       block0():
       c0 = const u64 123
-      p = get_local ptr u64, S
+      p = get_local __ptr u64, S
       store c0 to p
-      p_d = cast_ptr p to ptr u8
+      p_d = cast_ptr p to __ptr u8
       p_val = ptr_to_int p_d to u64
       p_val_aug = add p_val, c0
       p_val_res = sub p_val_aug, c0
@@ -27,7 +27,7 @@ script {
       entry(arg: u64):
       br block0(arg)
   
-      block0(arg: ptr u64):
+      block0(arg: __ptr u64):
       v0 = load arg
       ret u64 v0
     }

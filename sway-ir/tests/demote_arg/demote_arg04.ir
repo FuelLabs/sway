@@ -9,13 +9,13 @@ script {
         local b256 tmp
 
         entry():
-        v0 = get_local ptr b256, ones
+        v0 = get_local __ptr b256, ones
         v1 = load v0
-        v2 = get_local ptr b256, twos
+        v2 = get_local __ptr b256, twos
         v3 = load v2
-        v4 = get_local ptr b256, thrs
+        v4 = get_local __ptr b256, thrs
         v5 = load v4
-        v6 = get_local ptr b256, fors
+        v6 = get_local __ptr b256, fors
         v7 = load v6
         v8 = const bool false
         v9 = const bool true
@@ -24,31 +24,31 @@ script {
         block1(v10: b256, v11: bool, v12: b256):
         br block3(v12)
 
-// check: block1($(b10=$ID): ptr b256, $ID: bool, $(b12=$ID): ptr b256):
+// check: block1($(b10=$ID): __ptr b256, $ID: bool, $(b12=$ID): __ptr b256):
 // check: $ID = load $b10
 // check: $(load_val=$ID) = load $b12
-// check: $(get_loc_val=$ID) = get_local ptr b256, $ID
+// check: $(get_loc_val=$ID) = get_local __ptr b256, $ID
 // check: store $load_val to $get_loc_val
 // check: br block3($get_loc_val)
 
         block2(v13: b256, v14: bool, v15: b256):
         br block3(v15)
 
-// check: block2($(b20=$ID): ptr b256, $ID: bool, $(b22=$ID): ptr b256):
+// check: block2($(b20=$ID): __ptr b256, $ID: bool, $(b22=$ID): __ptr b256):
 // check: $ID = load $b20
 // check: $(load_val=$ID) = load $b22
-// check: $(get_loc_val=$ID) = get_local ptr b256, $ID
+// check: $(get_loc_val=$ID) = get_local __ptr b256, $ID
 // check: store $load_val to $get_loc_val
 // check: br block3($get_loc_val)
 
         block3(v16: b256):
-        v17 = get_local ptr b256, tmp
+        v17 = get_local __ptr b256, tmp
         store v16 to v17
         br exit()
 
-// check: block3($(b30=$ID): ptr b256):
+// check: block3($(b30=$ID): __ptr b256):
 // check: $(load_val=$ID) = load $b30
-// check: $(get_local_val=$ID) = get_local ptr b256, $ID
+// check: $(get_local_val=$ID) = get_local __ptr b256, $ID
 // check: store $load_val to $get_local_val
 // check: br exit()
 
