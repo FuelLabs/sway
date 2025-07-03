@@ -1,0 +1,4 @@
+category = "fail"
+
+#check: $()Trait is already implemented for type
+#check: $()Trait "TraitA" is already implemented for type "MyType".

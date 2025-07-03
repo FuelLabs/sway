@@ -13,6 +13,7 @@ use ::option::Option::{self, *};
 use ::vm::evm::evm_address::EvmAddress;
 use ::ops::*;
 use ::codec::*;
+use ::debug::*;
 
 /// A secp256k1 signature.
 pub struct Secp256k1 {
@@ -157,15 +158,9 @@ impl Secp256k1 {
     /// }
     /// ```
     pub fn address(self, message: Message) -> Result<Address, SignatureError> {
-        let pub_key_result = Self::recover(self, message);
-
-        if let Err(e) = pub_key_result {
-            // propagate the error if it exists
-            Err(e)
-        } else {
-            let pub_key = pub_key_result.unwrap();
-            let address = sha256(pub_key);
-            Ok(Address::from(address))
+        match self.recover(message) {
+            Ok(pub_key) => Ok(Address::from(sha256(pub_key))),
+            Err(e) => Err(e),
         }
     }
 
@@ -203,16 +198,10 @@ impl Secp256k1 {
     /// }
     /// ```
     pub fn evm_address(self, message: Message) -> Result<EvmAddress, SignatureError> {
-        let pub_key_result = Self::recover(self, message);
-
-        if let Err(e) = pub_key_result {
-            // propagate the error if it exists
-            Err(e)
-        } else {
-            let pub_key = pub_key_result.unwrap();
-            // Note that EVM addresses are derived from the Keccak256 hash of the pubkey (not sha256)
-            let evm_address_hash = keccak256(pub_key);
-            Ok(EvmAddress::from(evm_address_hash))
+        match self.recover(message) {
+            // EVM addresses are derived from the Keccak256 hash of the pubkey, not sha256.
+            Ok(pub_key) => Ok(EvmAddress::from(keccak256(pub_key))),
+            Err(e) => Err(e),
         }
     }
 
@@ -249,23 +238,21 @@ impl Secp256k1 {
     /// }
     /// ```
     pub fn verify(self, public_key: PublicKey, message: Message) -> Result<(), SignatureError> {
-        if public_key.bytes().len() != 64 {
+        if public_key.len() != 64 {
             return Err(SignatureError::InvalidPublicKey);
         }
 
-        let pub_key_result = Self::recover(self, message);
-
-        if let Err(e) = pub_key_result {
-            // propagate the error if it exists
-            Err(e)
-        } else if pub_key_result.unwrap() == public_key {
-            Ok(())
-        } else {
-            Err(SignatureError::InvalidSignature)
+        match self.recover(message) {
+            Ok(recovered_pub_key) => if recovered_pub_key == public_key {
+                Ok(())
+            } else {
+                Err(SignatureError::InvalidSignature)
+            },
+            Err(e) => Err(e),
         }
     }
 
-    /// Verify that an evm address matches given public key.
+    /// Verify that an address matches given public key.
     ///
     /// # Arguments
     ///
@@ -295,23 +282,21 @@ impl Secp256k1 {
     /// }
     /// ```
     pub fn verify_address(self, address: Address, message: Message) -> Result<(), SignatureError> {
-        let address_result = Self::address(self, message);
-
-        if let Err(e) = address_result {
-            // propagate the error if it exists
-            Err(e)
-        } else if address_result.unwrap() == address {
-            Ok(())
-        } else {
-            Err(SignatureError::InvalidSignature)
+        match self.address(message) {
+            Ok(recovered_address) => if recovered_address == address {
+                Ok(())
+            } else {
+                Err(SignatureError::InvalidSignature)
+            },
+            Err(e) => Err(e),
         }
     }
 
-    /// Verify that an address matches given public key.
+    /// Verify that an EVM address matches given public key.
     ///
     /// # Arguments
     ///
-    /// * `evm_address`: [EvmAddress] - The evm address to verify against.
+    /// * `evm_address`: [EvmAddress] - The EVM address to verify against.
     /// * `message`: Message - The signed data.
     ///
     /// # Returns
@@ -341,15 +326,13 @@ impl Secp256k1 {
         evm_address: EvmAddress,
         message: Message,
 ) -> Result<(), SignatureError> {
-        let evm_address_result = Self::evm_address(self, message);
-
-        if let Err(e) = evm_address_result {
-            // propagate the error if it exists
-            Err(e)
-        } else if evm_address_result.unwrap() == evm_address {
-            Ok(())
-        } else {
-            Err(SignatureError::InvalidSignature)
+        match self.evm_address(message) {
+            Ok(recovered_evm_address) => if recovered_evm_address == evm_address {
+                Ok(())
+            } else {
+                Err(SignatureError::InvalidSignature)
+            },
+            Err(e) => Err(e),
         }
     }
 }
@@ -428,21 +411,16 @@ impl Into<Bytes> for Secp256k1 {
 
 impl PartialEq for Secp256k1 {
     fn eq(self, other: Self) -> bool {
-        let mut iter = 0;
-        while iter < 64 {
-            if self.bits[iter] != other.bits[iter] {
-                return false;
-            }
-            iter += 1;
+        asm(result, r2: self.bits, r3: other.bits, r4: 64) {
+            meq result r2 r3 r4;
+            result: bool
         }
-
-        true
     }
 }
 impl Eq for Secp256k1 {}
 
 impl Hash for Secp256k1 {
     fn hash(self, ref mut state: Hasher) {
-        state.write(Bytes::from(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64)));
+        state.write_raw_slice(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64));
     }
 }

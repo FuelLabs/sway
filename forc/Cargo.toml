@@ -16,6 +16,12 @@ path = "src/lib.rs"
 name = "forc"
 path = "src/main.rs"
 
+[features]
+default = []
+test = []
+util = []
+profile = []
+
 [dependencies]
 annotate-snippets.workspace = true
 ansiterm.workspace = true
@@ -28,6 +34,7 @@ forc-test.workspace = true
 forc-tracing.workspace = true
 forc-util = { workspace = true, features = ["tx"] }
 fs_extra.workspace = true
+fuel-abi-types.workspace = true
 fuel-asm.workspace = true
 hex.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -46,12 +53,6 @@ tracing.workspace = true
 url.workspace = true
 walkdir.workspace = true
 whoami.workspace = true
-
-[features]
-default = []
-test = []
-util = []
-profile = []
 
 [dev-dependencies]
 completest-pty.workspace = true

@@ -12,11 +12,12 @@ use crate::{
         ProgramKind,
     },
     asm_lang::{
-        allocated_ops::{AllocatedOpcode, AllocatedRegister},
-        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, VirtualImmediate12,
+        allocated_ops::{AllocatedInstruction, AllocatedRegister},
+        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, VirtualImmediate12,
         VirtualImmediate18, VirtualImmediate24,
     },
     decl_engine::DeclRefFunction,
+    OptLevel,
 };
 use either::Either;
 use sway_error::error::CompileError;
@@ -82,10 +83,11 @@ impl AbstractProgram {
     pub(crate) fn into_allocated_program(
         mut self,
         fallback_fn: Option<crate::asm_lang::Label>,
+        opt_level: OptLevel,
     ) -> Result<AllocatedProgram, CompileError> {
         let mut prologue = self.build_prologue();
         self.append_globals_allocation(&mut prologue);
-        self.append_before_entries(&mut prologue)?;
+        self.append_before_entries(&mut prologue, opt_level)?;
 
         match (self.experimental.new_encoding, self.kind) {
             (true, ProgramKind::Contract) => {
@@ -120,7 +122,7 @@ impl AbstractProgram {
 
         // Optimize and then verify abstract functions.
         let abstract_functions = all_functions
-            .map(|instruction_set| instruction_set.optimize(&self.data_section))
+            .map(|instruction_set| instruction_set.optimize(&self.data_section, opt_level))
             .map(AbstractInstructionSet::verify)
             .collect::<Result<Vec<AbstractInstructionSet>, CompileError>>()?;
 
@@ -152,8 +154,12 @@ impl AbstractProgram {
     fn append_before_entries(
         &self,
         prologue: &mut AllocatedAbstractInstructionSet,
+        opt_level: OptLevel,
     ) -> Result<(), CompileError> {
-        let before_entries = self.before_entries.clone().optimize(&self.data_section);
+        let before_entries = self
+            .before_entries
+            .clone()
+            .optimize(&self.data_section, opt_level);
         let before_entries = before_entries.verify()?;
         let mut before_entries = before_entries.allocate_registers()?;
         prologue.ops.append(&mut before_entries.ops);
@@ -190,7 +196,7 @@ impl AbstractProgram {
         AllocatedAbstractInstructionSet {
             ops: [
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::MOVE(
+                    opcode: Either::Left(AllocatedInstruction::MOVE(
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
                         AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
                     )),
@@ -199,7 +205,10 @@ impl AbstractProgram {
                 },
                 // word 1.5
                 AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Jump(label)),
+                    opcode: Either::Right(ControlFlowOp::Jump {
+                        to: label,
+                        type_: JumpType::Unconditional,
+                    }),
                     comment: String::new(),
                     owning_span: None,
                 },
@@ -222,7 +231,7 @@ impl AbstractProgram {
                 },
                 // word 4 -- load the data offset into $ds
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::LW(
+                    opcode: Either::Left(AllocatedInstruction::LW(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
                         VirtualImmediate12::new_unchecked(1, "1 doesn't fit in 12 bits"),
@@ -232,7 +241,7 @@ impl AbstractProgram {
                 },
                 // word 4.5 -- add $ds $ds $is
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::ADD(
+                    opcode: Either::Left(AllocatedInstruction::ADD(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
@@ -249,7 +258,10 @@ impl AbstractProgram {
     fn append_jump_to_entry(&mut self, asm: &mut AllocatedAbstractInstructionSet) {
         let entry = self.entries.iter().find(|x| x.name == "__entry").unwrap();
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Right(ControlFlowOp::Jump(entry.label)),
+            opcode: Either::Right(ControlFlowOp::Jump {
+                to: entry.label,
+                type_: JumpType::Unconditional,
+            }),
             comment: "jump to ABI function selector".into(),
             owning_span: None,
         });
@@ -278,7 +290,7 @@ impl AbstractProgram {
 
         // Load the selector from the call frame.
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::LW(
+            opcode: Either::Left(AllocatedInstruction::LW(
                 INPUT_SELECTOR_REG,
                 AllocatedRegister::Constant(ConstantRegister::FramePointer),
                 VirtualImmediate12::new_unchecked(
@@ -307,7 +319,10 @@ impl AbstractProgram {
 
             // Load the data into a register for comparison.
             asm.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedOpcode::LoadDataId(PROG_SELECTOR_REG, data_label)),
+                opcode: Either::Left(AllocatedInstruction::LoadDataId(
+                    PROG_SELECTOR_REG,
+                    data_label,
+                )),
                 comment: format!(
                     "[function selection]: load function {} selector for comparison",
                     entry.name
@@ -317,7 +332,7 @@ impl AbstractProgram {
 
             // Compare with the input selector.
             asm.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedOpcode::EQ(
+                opcode: Either::Left(AllocatedInstruction::EQ(
                     CMP_RESULT_REG,
                     INPUT_SELECTOR_REG,
                     PROG_SELECTOR_REG,
@@ -332,7 +347,10 @@ impl AbstractProgram {
             // Jump to the function label if the selector was equal.
             asm.ops.push(AllocatedAbstractOp {
                 // If the comparison result is _not_ equal to 0, then it was indeed equal.
-                opcode: Either::Right(ControlFlowOp::JumpIfNotZero(CMP_RESULT_REG, entry.label)),
+                opcode: Either::Right(ControlFlowOp::Jump {
+                    to: entry.label,
+                    type_: JumpType::NotZero(CMP_RESULT_REG),
+                }),
                 comment: "[function selection]: jump to selected contract function".into(),
                 owning_span: None,
             });
@@ -340,14 +358,17 @@ impl AbstractProgram {
 
         if let Some(fallback_fn) = fallback_fn {
             asm.ops.push(AllocatedAbstractOp {
-                opcode: Either::Right(ControlFlowOp::Call(fallback_fn)),
+                opcode: Either::Right(ControlFlowOp::Jump {
+                    to: fallback_fn,
+                    type_: JumpType::Call,
+                }),
                 comment: "[function selection]: call contract fallback function".into(),
                 owning_span: None,
             });
         }
 
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::MOVI(
+            opcode: Either::Left(AllocatedInstruction::MOVI(
                 AllocatedRegister::Constant(ConstantRegister::Scratch),
                 VirtualImmediate18::new_unchecked(
                     compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE.into(),
@@ -359,7 +380,7 @@ impl AbstractProgram {
             owning_span: None,
         });
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::RVRT(AllocatedRegister::Constant(
+            opcode: Either::Left(AllocatedInstruction::RVRT(AllocatedRegister::Constant(
                 ConstantRegister::Scratch,
             ))),
             comment: "[function selection]: revert if no selectors have matched".into(),
@@ -370,10 +391,12 @@ impl AbstractProgram {
     fn append_globals_allocation(&self, asm: &mut AllocatedAbstractInstructionSet) {
         let len_in_bytes = self.globals_section.len_in_bytes();
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedOpcode::CFEI(VirtualImmediate24::new_unchecked(
-                len_in_bytes,
-                "length (bytes) must fit in 24 bits",
-            ))),
+            opcode: Either::Left(AllocatedInstruction::CFEI(
+                VirtualImmediate24::new_unchecked(
+                    len_in_bytes,
+                    "length (bytes) must fit in 24 bits",
+                ),
+            )),
             comment: "allocate stack space for globals".into(),
             owning_span: None,
         });

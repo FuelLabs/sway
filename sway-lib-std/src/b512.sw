@@ -8,6 +8,8 @@ use ::bytes::Bytes;
 use ::option::Option::{self, *};
 use ::raw_slice::*;
 use ::codec::*;
+use ::debug::*;
+use ::hash::*;
 
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.
@@ -220,5 +222,11 @@ impl Into<Bytes> for B512 {
     /// ```
     fn into(self) -> Bytes {
         Bytes::from(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64))
+    }
+}
+
+impl Hash for B512 {
+    fn hash(self, ref mut state: Hasher) {
+        self.bits.hash(state);
     }
 }

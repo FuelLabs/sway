@@ -1,6 +1,6 @@
 {
   "programType": "predicate",
-  "specVersion": "1",
+  "specVersion": "1.1",
   "encodingVersion": "1",
   "concreteTypes": [
     {
@@ -78,6 +78,7 @@
   ],
   "functions": [
     {
+      "name": "main",
       "inputs": [
         {
           "name": "switch",
@@ -96,7 +97,6 @@
           "concreteTypeId": "37cd1cba311039a851ac8bfa614cc41359b4ad95c8656fcef2e8f504fe7a1272"
         }
       ],
-      "name": "main",
       "output": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
       "attributes": null
     }
@@ -107,22 +107,27 @@
     {
       "name": "BOOL",
       "concreteTypeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
-      "offset": 1896
+      "offset": 1896,
+      "indirect": false
     },
     {
       "name": "U8",
       "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
-      "offset": 1936
+      "offset": 1936,
+      "indirect": false
     },
     {
       "name": "STRUCT",
       "concreteTypeId": "563310524b4f4447a10d0e50556310253dfb3b5eb4b29c3773222b737c8b7075",
-      "offset": 1920
+      "offset": 1920,
+      "indirect": false
     },
     {
       "name": "ENUM",
       "concreteTypeId": "37cd1cba311039a851ac8bfa614cc41359b4ad95c8656fcef2e8f504fe7a1272",
-      "offset": 1904
+      "offset": 1904,
+      "indirect": false
     }
-  ]
+  ],
+  "errorCodes": {}
 }

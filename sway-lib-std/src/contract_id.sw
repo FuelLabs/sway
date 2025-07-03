@@ -6,6 +6,7 @@ use ::hash::{Hash, Hasher};
 use ::ops::*;
 use ::primitives::*;
 use ::codec::*;
+use ::debug::*;
 use ::bytes::Bytes;
 use ::option::Option::{self, *};
 
@@ -144,8 +145,7 @@ impl Into<Bytes> for ContractId {
 
 impl Hash for ContractId {
     fn hash(self, ref mut state: Hasher) {
-        let Self { bits } = self;
-        bits.hash(state);
+        self.bits.hash(state);
     }
 }
 

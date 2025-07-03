@@ -11,6 +11,7 @@
   ],
   "configurables": [],
   "encodingVersion": "1",
+  "errorCodes": {},
   "functions": [
     {
       "attributes": null,
@@ -28,5 +29,5 @@
   "messagesTypes": [],
   "metadataTypes": [],
   "programType": "script",
-  "specVersion": "1"
+  "specVersion": "1.1"
 }

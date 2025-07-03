@@ -1,6 +1,7 @@
 library;
 
 use ::codec::*;
+use ::debug::*;
 
 /// The error type used when a cryptographic signature function fails.
 pub enum SignatureError {

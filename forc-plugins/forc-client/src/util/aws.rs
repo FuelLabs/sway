@@ -7,7 +7,6 @@ use aws_sdk_kms::types::{MessageType, SigningAlgorithmSpec};
 use aws_sdk_kms::{config::BehaviorVersion, Client};
 use fuel_crypto::Message;
 use fuels::prelude::*;
-use fuels::types::bech32::{Bech32Address, FUEL_BECH32_HRP};
 use fuels::types::coin_type_id::CoinTypeId;
 use fuels::types::input::Input;
 use fuels_accounts::provider::Provider;
@@ -91,7 +90,7 @@ impl AwsClient {
 pub struct AwsSigner {
     kms: AwsClient,
     key_id: String,
-    bech: Bech32Address,
+    address: Address,
     public_key_bytes: Vec<u8>,
     provider: Provider,
 }
@@ -194,11 +193,11 @@ impl AwsSigner {
 
         let public_key = fuel_crypto::PublicKey::from(k256_public_key);
         let hashed = public_key.hash();
-        let bech = Bech32Address::new(FUEL_BECH32_HRP, hashed);
+        let address = Address::from(*hashed);
         Ok(Self {
             kms,
             key_id,
-            bech,
+            address,
             public_key_bytes,
             provider,
         })
@@ -236,15 +235,15 @@ impl Signer for AwsSigner {
         Ok(sig)
     }
 
-    fn address(&self) -> &Bech32Address {
-        &self.bech
+    fn address(&self) -> Address {
+        self.address
     }
 }
 
 #[async_trait]
 impl ViewOnlyAccount for AwsSigner {
-    fn address(&self) -> &Bech32Address {
-        &self.bech
+    fn address(&self) -> Address {
+        self.address
     }
 
     fn try_provider(&self) -> Result<&Provider> {
@@ -254,7 +253,7 @@ impl ViewOnlyAccount for AwsSigner {
     async fn get_asset_inputs_for_amount(
         &self,
         asset_id: AssetId,
-        amount: u64,
+        amount: u128,
         excluded_coins: Option<Vec<CoinTypeId>>,
     ) -> Result<Vec<Input>> {
         Ok(self

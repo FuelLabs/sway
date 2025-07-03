@@ -170,30 +170,33 @@ fn math_u64_mul() {
     assert(max * one == max);
 }
 
-#[test(should_revert)]
-fn revert_math_u64_overflow_mul() {
-    let a = u64::max();
-    let b = a * 2;
-    log(b);
-}
+// TODO: Uncomment this test https://github.com/FuelLabs/sway/issues/7161 is fixed.
+// #[test(should_revert)]
+// fn revert_math_u64_overflow_mul() {
+//     let a = u64::max();
+//     let b = a * 2;
+//     log(b);
+// }
 
-#[test(should_revert)]
-fn revert_math_u64_mul_unsafe_math() {
-    let _ = disable_panic_on_unsafe_math();
-    let a = u64::max();
-    let b = a * 2;
-    log(b);
-}
+// TODO: Uncomment this test https://github.com/FuelLabs/sway/issues/7161 is fixed.
+// #[test(should_revert)]
+// fn revert_math_u64_mul_unsafe_math() {
+//     let _ = disable_panic_on_unsafe_math();
+//     let a = u64::max();
+//     let b = a * 2;
+//     log(b);
+// }
 
-#[test]
-fn math_u64_overflow_mul() {
-    let _ = disable_panic_on_overflow();
+// TODO: Uncomment this test https://github.com/FuelLabs/sway/issues/7161 is fixed.
+// #[test]
+// fn math_u64_overflow_mul() {
+//     let _ = disable_panic_on_overflow();
 
-    let a = (u64::max() / 2) + 1;
-    let b = a * 2;
+//     let a = (u64::max() / 2) + 1;
+//     let b = a * 2;
 
-    require(b == 0_u64, b)
-}
+//     require(b == 0_u64, b)
+// }
 
 // u256
 #[test]

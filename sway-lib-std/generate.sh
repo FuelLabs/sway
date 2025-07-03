@@ -2,14 +2,14 @@
 
 # Needs to exist at least one line between them
 remove_generated_code() {
-    START=`grep -n "BEGIN $1" ./src/codec.sw`
+    START=`grep -n "BEGIN $1" ./src/$2`
     START=${START%:*}
-    END=`grep -n "END $1" ./src/codec.sw`
+    END=`grep -n "END $1" ./src/$2`
     END=${END%:*}
-    sed -i "$((START+1)),$((END-1))d" ./src/codec.sw
+    sed -i "$((START+1)),$((END-1))d" ./src/$2
 }
 
-remove_generated_code "ARRAY_ENCODE"
+remove_generated_code "ARRAY_ENCODE" "codec.sw"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
@@ -17,7 +17,7 @@ for ((i=END;i>=START;i--)); do
     sed -i "s/\/\/ BEGIN ARRAY_ENCODE/\/\/ BEGIN ARRAY_ENCODE\n$CODE/g" ./src/codec.sw
 done
 
-remove_generated_code "ARRAY_DECODE"
+remove_generated_code "ARRAY_DECODE" "codec.sw"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
@@ -25,7 +25,7 @@ for ((i=END;i>=START;i--)); do
     sed -i "s/\/\/ BEGIN ARRAY_DECODE/\/\/ BEGIN ARRAY_DECODE\n$CODE/g" ./src/codec.sw
 done
 
-remove_generated_code "STRARRAY_ENCODE"
+remove_generated_code "STRARRAY_ENCODE" "codec.sw"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
@@ -33,7 +33,7 @@ for ((i=END;i>=START;i--)); do
     sed -i "s/\/\/ BEGIN STRARRAY_ENCODE/\/\/ BEGIN STRARRAY_ENCODE\n$CODE/g" ./src/codec.sw
 done
 
-remove_generated_code "STRARRAY_DECODE"
+remove_generated_code "STRARRAY_DECODE" "codec.sw"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
@@ -78,7 +78,7 @@ generate_tuple_encode() {
     sed -i "s/\/\/ BEGIN TUPLES_ENCODE/\/\/ BEGIN TUPLES_ENCODE\n$CODE/g" ./src/codec.sw
 }
 
-remove_generated_code "TUPLES_ENCODE"
+remove_generated_code "TUPLES_ENCODE" "codec.sw"
 generate_tuple_encode "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z"
 generate_tuple_encode "A B C D E F G H I J K L M N O P Q R S T U V W X Y"
 generate_tuple_encode "A B C D E F G H I J K L M N O P Q R S T U V W X"
@@ -141,7 +141,7 @@ generate_tuple_decode() {
     sed -i "s/\/\/ BEGIN TUPLES_DECODE/\/\/ BEGIN TUPLES_DECODE\n$CODE/g" ./src/codec.sw
 }
 
-remove_generated_code "TUPLES_DECODE"
+remove_generated_code "TUPLES_DECODE" "codec.sw"
 generate_tuple_decode "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z"
 generate_tuple_decode "A B C D E F G H I J K L M N O P Q R S T U V W X Y"
 generate_tuple_decode "A B C D E F G H I J K L M N O P Q R S T U V W X"
@@ -168,3 +168,86 @@ generate_tuple_decode "A B C D"
 generate_tuple_decode "A B C"
 generate_tuple_decode "A B"
 generate_tuple_decode "A"
+
+generate_tuple_debug() {
+    local CODE="impl<"
+
+    local elements=("$1")
+    for element in ${elements[@]}
+    do
+        CODE="$CODE $element,"
+    done
+
+    CODE="$CODE> Debug for ("
+
+    for element in ${elements[@]}
+    do
+        CODE="$CODE $element,"
+    done
+
+    CODE="$CODE) where " 
+
+    for element in ${elements[@]}
+    do
+        CODE="$CODE $element: Debug, "
+    done
+
+    CODE="$CODE{ fn fmt(self, ref mut f: Formatter) { let mut f = f.debug_tuple(\"\");"
+
+    i=0
+    for element in ${elements[@]}
+    do
+        CODE="$CODE let mut f = f.field(self.$i);"
+        i=$((i+1))
+    done
+
+    CODE="$CODE f.finish(); } }"
+
+    sed -i "s/\/\/ BEGIN TUPLES_DEBUG/\/\/ BEGIN TUPLES_DEBUG\n$CODE/g" ./src/debug.sw
+}
+
+remove_generated_code "TUPLES_DEBUG" "debug.sw"
+generate_tuple_debug "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z"
+generate_tuple_debug "A B C D E F G H I J K L M N O P Q R S T U V W X Y"
+generate_tuple_debug "A B C D E F G H I J K L M N O P Q R S T U V W X"
+generate_tuple_debug "A B C D E F G H I J K L M N O P Q R S T U V W"
+generate_tuple_debug "A B C D E F G H I J K L M N O P Q R S T U V"
+generate_tuple_debug "A B C D E F G H I J K L M N O P Q R S T U"
+generate_tuple_debug "A B C D E F G H I J K L M N O P Q R S T"
+generate_tuple_debug "A B C D E F G H I J K L M N O P Q R S"
+generate_tuple_debug "A B C D E F G H I J K L M N O P Q R"
+generate_tuple_debug "A B C D E F G H I J K L M N O P Q"
+generate_tuple_debug "A B C D E F G H I J K L M N O P"
+generate_tuple_debug "A B C D E F G H I J K L M N O"
+generate_tuple_debug "A B C D E F G H I J K L M N"
+generate_tuple_debug "A B C D E F G H I J K L M"
+generate_tuple_debug "A B C D E F G H I J K L"
+generate_tuple_debug "A B C D E F G H I J K"
+generate_tuple_debug "A B C D E F G H I J"
+generate_tuple_debug "A B C D E F G H I"
+generate_tuple_debug "A B C D E F G H"
+generate_tuple_debug "A B C D E F G"
+generate_tuple_debug "A B C D E F"
+generate_tuple_debug "A B C D E"
+generate_tuple_debug "A B C D"
+generate_tuple_debug "A B C"
+generate_tuple_debug "A B"
+generate_tuple_debug "A"
+
+remove_generated_code "STRARRAY_DEBUG" "debug.sw"
+START=1
+END=64
+for ((i=END;i>=START;i--)); do
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl Debug for str[$i] { fn fmt(self, ref mut f: Formatter) { use ::str::*; from_str_array(self).fmt(f); } }"
+    sed -i "s/\/\/ BEGIN STRARRAY_DEBUG/\/\/ BEGIN STRARRAY_DEBUG\n$CODE/g" ./src/debug.sw
+done
+
+remove_generated_code "ARRAY_DEBUG" "debug.sw"
+START=1
+END=64
+for ((i=END;i>=START;i--)); do
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> Debug for [T; $i] where T: Debug { fn fmt(self, ref mut f: Formatter) { let mut f = f.debug_list(); let mut i = 0; while i < $i { f = f.entry(self[i]); i += 1; }; f.finish(); } }"
+    sed -i "s/\/\/ BEGIN ARRAY_DEBUG/\/\/ BEGIN ARRAY_DEBUG\n$CODE/g" ./src/debug.sw
+done
+
+cargo r -p forc-fmt --release -- -p .

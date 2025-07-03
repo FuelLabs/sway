@@ -2,10 +2,11 @@
   "concreteTypes": [],
   "configurables": [],
   "encodingVersion": "1",
+  "errorCodes": {},
   "functions": [],
   "loggedTypes": [],
   "messagesTypes": [],
   "metadataTypes": [],
   "programType": "contract",
-  "specVersion": "1"
+  "specVersion": "1.1"
 }

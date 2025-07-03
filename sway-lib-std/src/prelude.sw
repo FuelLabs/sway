@@ -47,6 +47,7 @@ pub use ::never::*;
 pub use ::raw_ptr::*;
 pub use ::raw_slice::*;
 pub use ::codec::*;
+use ::debug::*;
 pub use ::str::*;
-#[cfg(experimental_error_type = true)]
 pub use ::marker::*;
+pub use ::debug::*;

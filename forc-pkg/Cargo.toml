@@ -8,6 +8,9 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+sysinfo.workspace = true
+
 [dependencies]
 ansiterm.workspace = true
 anyhow.workspace = true
@@ -21,9 +24,10 @@ futures.workspace = true
 git2 = { workspace = true, features = ["vendored-libgit2", "vendored-openssl"] }
 gix-url = { workspace = true, features = ["serde"] }
 hex.workspace = true
-ipfs-api-backend-hyper = { workspace = true, features = ["with-builder"] }
+ipfs-api-backend-hyper = { workspace = true, features = ["with-builder", "with-send-sync"] }
 petgraph = { workspace = true, features = ["serde-1"] }
 reqwest.workspace = true
+scopeguard.workspace = true
 semver = { workspace = true, features = ["serde"] }
 serde = { workspace = true, features = ["derive"] }
 serde_ignored.workspace = true
@@ -35,7 +39,9 @@ sway-features.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true
 tar.workspace = true
+tokio.workspace = true
 toml = { workspace = true, features = ["parse"] }
+toml_edit.workspace = true
 tracing.workspace = true
 url = { workspace = true, features = ["serde"] }
 vec1.workspace = true
@@ -44,7 +50,3 @@ walkdir.workspace = true
 [dev-dependencies]
 regex.workspace = true
 tempfile.workspace = true
-
-[target.'cfg(not(target_os = "macos"))'.dependencies]
-sysinfo.workspace = true
-

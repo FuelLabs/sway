@@ -8,7 +8,27 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "forc-deploy"
+path = "src/bin/deploy.rs"
+
+[[bin]]
+name = "forc-run"
+path = "src/bin/run.rs"
+
+[[bin]]
+name = "forc-submit"
+path = "src/bin/submit.rs"
+
+[[bin]]
+name = "forc-call"
+path = "src/bin/call.rs"
+
 [dependencies]
+ansiterm.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 aws-config.workspace = true
@@ -26,6 +46,7 @@ forc-util = { workspace = true, features = ["tx"] }
 forc-wallet.workspace = true
 fuel-abi-types.workspace = true
 fuel-core-client = { workspace = true, features = ["subscriptions"] }
+fuel-core-storage = { workspace = true }
 fuel-core-types.workspace = true
 fuel-crypto.workspace = true
 fuel-tx = { workspace = true, features = ["test-helpers"] }
@@ -58,29 +79,10 @@ toml_edit.workspace = true
 tracing.workspace = true
 url.workspace = true
 
+[build-dependencies]
+regex.workspace = true
+
 [dev-dependencies]
 portpicker.workspace = true
 pretty_assertions.workspace = true
 rexpect.workspace = true
-
-[build-dependencies]
-regex.workspace = true
-
-[[bin]]
-name = "forc-deploy"
-path = "src/bin/deploy.rs"
-
-[[bin]]
-name = "forc-run"
-path = "src/bin/run.rs"
-
-[[bin]]
-name = "forc-submit"
-path = "src/bin/submit.rs"
-
-[[bin]]
-name = "forc-call"
-path = "src/bin/call.rs"
-
-[lib]
-path = "src/lib.rs"

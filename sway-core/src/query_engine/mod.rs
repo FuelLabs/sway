@@ -12,7 +12,7 @@ use sway_types::{IdentUnique, ProgramId, SourceId, Spanned};
 use crate::{
     decl_engine::{DeclId, DeclRef},
     language::ty::{TyFunctionDecl, TyFunctionSig, TyModule},
-    {Engines, Programs},
+    namespace, Engines, Programs,
 };
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -47,6 +47,7 @@ pub struct ParsedModuleInfo {
 #[derive(Clone, Debug)]
 pub struct TypedModuleInfo {
     pub module: Arc<TyModule>,
+    pub namespace_module: Arc<namespace::Module>,
     pub version: Option<u64>,
 }
 
@@ -184,12 +185,12 @@ impl QueryEngine {
     pub fn get_function(
         &self,
         engines: &Engines,
-        ident: IdentUnique,
+        ident: &IdentUnique,
         sig: TyFunctionSig,
     ) -> Option<DeclRef<DeclId<TyFunctionDecl>>> {
         let cache = self.function_cache.read();
         cache
-            .get(&(ident, sig.get_type_str(engines)))
+            .get(&(ident.clone(), sig.get_type_str(engines)))
             .map(|s| s.fn_decl.clone())
     }
 

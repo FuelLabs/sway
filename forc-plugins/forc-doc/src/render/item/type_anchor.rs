@@ -27,7 +27,7 @@ pub(crate) fn render_type_anchor(
                 render_plan,
                 current_module_info,
             )?;
-            let len_string = format!("{:?}", render_plan.engines.help_out(len));
+            let len_string = format!("{:?}", render_plan.engines.help_out(len.expr()));
             Ok(box_html! {
                 : "[";
                 : inner;
@@ -103,7 +103,7 @@ pub(crate) fn render_type_anchor(
             : name.as_str();
         }),
         TypeInfo::StringArray(len) => Ok(box_html! {
-            : len.span().as_str();
+            : len.expr().span().as_str();
         }),
         TypeInfo::UnsignedInteger(int_bits) => {
             use sway_types::integer_bits::IntegerBits;

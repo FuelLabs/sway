@@ -43,7 +43,7 @@ async fn create_predicate(
     let wallet_coins = wallet
         .get_asset_inputs_for_amount(
             asset_id,
-            wallet.get_asset_balance(&asset_id).await.unwrap(),
+            wallet.get_asset_balance(&asset_id).await.unwrap().into(),
             None,
         )
         .await
@@ -62,7 +62,7 @@ async fn create_predicate(
     tx.add_signer(wallet.signer().clone()).unwrap();
     let tx = tx.build(provider).await.unwrap();
 
-    provider.send_transaction(tx).await.unwrap();
+    provider.send_transaction_and_await_commit(tx).await.unwrap();
 }
 
 async fn submit_to_predicate(
@@ -75,9 +75,9 @@ async fn submit_to_predicate(
     predicate_data: Vec<u8>,
 ) -> Result<()> {
     let filter = ResourceFilter {
-        from: predicate_address.into(),
+        from: predicate_address,
         asset_id: Some(asset_id),
-        amount: amount_to_predicate,
+        amount: amount_to_predicate.into(),
         ..Default::default()
     };
 
@@ -113,13 +113,13 @@ async fn submit_to_predicate(
     .await
     .unwrap();
 
-    wallet.provider().send_transaction(new_tx).await.map(|_| ())
+    wallet.provider().send_transaction_and_await_commit(new_tx).await.map(|_| ())
 }
 
-async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {
+async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u128 {
     wallet
         .provider()
-        .get_asset_balance(&address.into(), asset_id)
+        .get_asset_balance(&address.into(), &asset_id)
         .await
         .unwrap()
 }
@@ -156,7 +156,7 @@ async fn valid_predicate_data_simple() {
 
     let receiver_balance_after = get_balance(&wallet, receiver_address, asset_id).await;
     assert_eq!(
-        receiver_balance_before + amount_to_predicate - 1,
+        receiver_balance_before + amount_to_predicate as u128 - 1,
         receiver_balance_after
     );
 
@@ -198,5 +198,5 @@ async fn invalid_predicate_data_simple() {
     assert_eq!(receiver_balance_before, receiver_balance_after);
 
     let predicate_balance = get_balance(&wallet, predicate_address, asset_id).await;
-    assert_eq!(predicate_balance, amount_to_predicate);
+    assert_eq!(predicate_balance, amount_to_predicate as u128);
 }

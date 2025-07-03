@@ -10,6 +10,7 @@ use ::result::Result::{self, *};
 use ::option::Option::{self, *};
 use ::ops::*;
 use ::codec::*;
+use ::debug::*;
 
 /// An ed25519 signature.
 pub struct Ed25519 {
@@ -193,21 +194,16 @@ impl Into<Bytes> for Ed25519 {
 
 impl PartialEq for Ed25519 {
     fn eq(self, other: Self) -> bool {
-        let mut iter = 0;
-        while iter < 64 {
-            if self.bits[iter] != other.bits[iter] {
-                return false;
-            }
-            iter += 1;
+        asm(result, r2: self.bits, r3: other.bits, r4: 64) {
+            meq result r2 r3 r4;
+            result: bool
         }
-
-        true
     }
 }
 impl Eq for Ed25519 {}
 
 impl Hash for Ed25519 {
     fn hash(self, ref mut state: Hasher) {
-        state.write(Bytes::from(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64)));
+        state.write_raw_slice(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64));
     }
 }

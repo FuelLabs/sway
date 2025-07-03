@@ -91,7 +91,6 @@ pub(crate) fn get_call_paths_for_name<'s>(
     ctx: &'s CodeActionContext,
     symbol_name: &'s String,
 ) -> Option<impl 's + Iterator<Item = CallPath>> {
-    let namespace = ctx.namespace.to_owned()?;
     let mut call_paths = ctx
         .tokens
         .tokens_for_name(symbol_name)
@@ -103,54 +102,60 @@ pub(crate) fn get_call_paths_for_name<'s>(
                         let struct_decl = ctx.engines.de().get_struct(&decl.decl_id);
                         let call_path = struct_decl
                             .call_path
-                            .to_import_path(ctx.engines, &namespace);
+                            .to_import_path(ctx.engines, ctx.namespace);
                         Some(call_path)
                     }
                     TyDecl::EnumDecl(decl) => {
                         let enum_decl = ctx.engines.de().get_enum(&decl.decl_id);
-                        let call_path = enum_decl.call_path.to_import_path(ctx.engines, &namespace);
+                        let call_path = enum_decl
+                            .call_path
+                            .to_import_path(ctx.engines, ctx.namespace);
                         Some(call_path)
                     }
                     TyDecl::TraitDecl(decl) => {
                         let trait_decl = ctx.engines.de().get_trait(&decl.decl_id);
-                        let call_path =
-                            trait_decl.call_path.to_import_path(ctx.engines, &namespace);
+                        let call_path = trait_decl
+                            .call_path
+                            .to_import_path(ctx.engines, ctx.namespace);
                         Some(call_path)
                     }
                     TyDecl::FunctionDecl(decl) => {
                         let function_decl = ctx.engines.de().get_function(&decl.decl_id);
                         let call_path = function_decl
                             .call_path
-                            .to_import_path(ctx.engines, &namespace);
+                            .to_import_path(ctx.engines, ctx.namespace);
                         Some(call_path)
                     }
                     TyDecl::ConstantDecl(decl) => {
                         let constant_decl = ctx.engines.de().get_constant(&decl.decl_id);
                         let call_path = constant_decl
                             .call_path
-                            .to_import_path(ctx.engines, &namespace);
+                            .to_import_path(ctx.engines, ctx.namespace);
                         Some(call_path)
                     }
                     TyDecl::TypeAliasDecl(decl) => {
                         let type_alias_decl = ctx.engines.de().get_type_alias(&decl.decl_id);
                         let call_path = type_alias_decl
                             .call_path
-                            .to_import_path(ctx.engines, &namespace);
+                            .to_import_path(ctx.engines, ctx.namespace);
                         Some(call_path)
                     }
                     _ => None,
                 },
                 Some(TypedAstToken::TypedFunctionDeclaration(TyFunctionDecl {
                     call_path, ..
-                }))
-                | Some(TypedAstToken::TypedConstantDeclaration(TyConstantDecl {
+                })) => {
+                    let call_path = call_path.to_import_path(ctx.engines, ctx.namespace);
+                    Some(call_path)
+                }
+                Some(TypedAstToken::TypedConstantDeclaration(TyConstantDecl {
                     call_path, ..
                 }))
                 | Some(TypedAstToken::TypedTypeAliasDeclaration(TyTypeAliasDecl {
                     call_path,
                     ..
                 })) => {
-                    let call_path = call_path.to_import_path(ctx.engines, &namespace);
+                    let call_path = call_path.to_import_path(ctx.engines, ctx.namespace);
                     Some(call_path)
                 }
                 _ => None,
@@ -309,7 +314,7 @@ fn get_text_edit_fallback(
 #[cfg(test)]
 mod tests {
     use sway_core::language::Visibility;
-    use sway_types::Span;
+    use sway_types::{span::Source, Span};
 
     use super::*;
 
@@ -333,26 +338,26 @@ mod tests {
             .collect()
     }
 
-    fn get_prefixes_from_src(src: &str, prefixes: Vec<&str>) -> Vec<Ident> {
+    fn get_prefixes_from_src(src: &Source, prefixes: Vec<&str>) -> Vec<Ident> {
         prefixes
             .into_iter()
             .filter_map(|p| get_ident_from_src(src, p))
             .collect()
     }
 
-    fn get_span_from_src(src: &str, text: &str) -> Option<Span> {
-        let start = src.find(text)?;
+    fn get_span_from_src(src: &Source, text: &str) -> Option<Span> {
+        let start = src.text.find(text)?;
         let end = start + text.len();
-        Span::new(src.into(), start, end, None)
+        Span::new(src.clone(), start, end, None)
     }
 
-    fn get_ident_from_src(src: &str, name: &str) -> Option<Ident> {
+    fn get_ident_from_src(src: &Source, name: &str) -> Option<Ident> {
         let span = get_span_from_src(src, name)?;
         Some(Ident::new(span))
     }
 
     fn get_use_stmt_from_src(
-        src: &str,
+        src: &Source,
         prefixes: Vec<&str>,
         import_type: ImportType,
         text: &str,
@@ -366,7 +371,7 @@ mod tests {
         }
     }
 
-    fn get_incl_stmt_from_src(src: &str, mod_name: &str, text: &str) -> TyIncludeStatement {
+    fn get_incl_stmt_from_src(src: &Source, mod_name: &str, text: &str) -> TyIncludeStatement {
         TyIncludeStatement {
             span: get_span_from_src(src, text).unwrap(),
             mod_name: get_ident_from_src(src, mod_name).unwrap(),
@@ -376,24 +381,26 @@ mod tests {
 
     #[test]
     fn get_text_edit_existing_import() {
-        let src = r#"contract;
+        let src = Source::new(
+            r#"contract;
 
 use a:b:C;
 use b:c:*;
-"#;
+"#,
+        );
         let new_call_path = get_mock_call_path(vec!["a", "b"], "D");
         let use_statements = vec![
             get_use_stmt_from_src(
-                src,
+                &src,
                 Vec::from(["a", "b"]),
-                ImportType::Item(get_ident_from_src(src, "C").unwrap()),
+                ImportType::Item(get_ident_from_src(&src, "C").unwrap()),
                 "use a:b:C;",
             ),
-            get_use_stmt_from_src(src, Vec::from(["b", "c"]), ImportType::Star, "use b:c:*;"),
+            get_use_stmt_from_src(&src, Vec::from(["b", "c"]), ImportType::Star, "use b:c:*;"),
         ];
 
         let include_statements = vec![];
-        let program_type_keyword = get_ident_from_src(src, "contract");
+        let program_type_keyword = get_ident_from_src(&src, "contract");
 
         let expected_range = Range::new(Position::new(2, 0), Position::new(2, 10));
         let expected_text = "use a::b::{C, D};".into();
@@ -409,20 +416,22 @@ use b:c:*;
 
     #[test]
     fn get_text_edit_new_import() {
-        let src = r#"predicate;
+        let src = Source::new(
+            r#"predicate;
 
 use b:c:*;
-"#;
+"#,
+        );
         let new_call_path = get_mock_call_path(vec!["a", "b"], "C");
         let use_statements = vec![get_use_stmt_from_src(
-            src,
+            &src,
             Vec::from(["b", "c"]),
             ImportType::Star,
             "use b:c:*;",
         )];
 
         let include_statements = vec![];
-        let program_type_keyword = get_ident_from_src(src, "predicate");
+        let program_type_keyword = get_ident_from_src(&src, "predicate");
 
         let expected_range = Range::new(Position::new(2, 0), Position::new(2, 0));
         let expected_text = "use a::b::C;\n".into();
@@ -438,28 +447,30 @@ use b:c:*;
 
     #[test]
     fn get_text_edit_existing_group_import() {
-        let src = r#"contract;
+        let src = Source::new(
+            r#"contract;
 
 use b:c:{D, F};
-"#;
+"#,
+        );
         let new_call_path = get_mock_call_path(vec!["b", "c"], "E");
         let use_statements = vec![
             get_use_stmt_from_src(
-                src,
+                &src,
                 Vec::from(["b", "c"]),
-                ImportType::Item(get_ident_from_src(src, "D").unwrap()),
+                ImportType::Item(get_ident_from_src(&src, "D").unwrap()),
                 "use b:c:{D, F};",
             ),
             get_use_stmt_from_src(
-                src,
+                &src,
                 Vec::from(["b", "c"]),
-                ImportType::Item(get_ident_from_src(src, "F").unwrap()),
+                ImportType::Item(get_ident_from_src(&src, "F").unwrap()),
                 "use b:c:{D, F};",
             ),
         ];
 
         let include_statements = vec![];
-        let program_type_keyword = get_ident_from_src(src, "contract");
+        let program_type_keyword = get_ident_from_src(&src, "contract");
 
         let expected_range = Range::new(Position::new(2, 0), Position::new(2, 15));
         let expected_text = "use b::c::{D, E, F};".into();
@@ -475,19 +486,21 @@ use b:c:{D, F};
 
     #[test]
     fn get_text_edit_after_mod() {
-        let src = r#"library;
+        let src = Source::new(
+            r#"library;
 
 mod my_module;
 pub mod zz_module;
-"#;
+"#,
+        );
         let new_call_path = get_mock_call_path(vec!["b", "c"], "D");
         let use_statements = vec![];
 
         let include_statements = vec![
-            get_incl_stmt_from_src(src, "my_module", "mod my_module;"),
-            get_incl_stmt_from_src(src, "zz_module", "pub mod zz_module"),
+            get_incl_stmt_from_src(&src, "my_module", "mod my_module;"),
+            get_incl_stmt_from_src(&src, "zz_module", "pub mod zz_module"),
         ];
-        let program_type_keyword = get_ident_from_src(src, "library");
+        let program_type_keyword = get_ident_from_src(&src, "library");
 
         let expected_range = Range::new(Position::new(4, 0), Position::new(4, 0));
         let expected_text = "\nuse b::c::D;\n".into();
@@ -503,15 +516,17 @@ pub mod zz_module;
 
     #[test]
     fn get_text_edit_after_program() {
-        let src = r#"script;
+        let src = Source::new(
+            r#"script;
 
 const HI: u8 = 0;
-"#;
+"#,
+        );
         let new_call_path = get_mock_call_path(vec!["b", "c"], "D");
         let use_statements = vec![];
 
         let include_statements = vec![];
-        let program_type_keyword = get_ident_from_src(src, "script");
+        let program_type_keyword = get_ident_from_src(&src, "script");
 
         let expected_range = Range::new(Position::new(1, 0), Position::new(1, 0));
         let expected_text = "\nuse b::c::D;\n".into();

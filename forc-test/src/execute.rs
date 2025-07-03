@@ -1,3 +1,4 @@
+use crate::ecal::EcalSyscallHandler;
 use crate::maxed_consensus_params;
 use crate::setup::TestSetup;
 use crate::TestResult;
@@ -9,11 +10,8 @@ use fuel_vm::fuel_asm;
 use fuel_vm::prelude::Instruction;
 use fuel_vm::prelude::RegId;
 use fuel_vm::{
-    self as vm,
-    checked_transaction::builder::TransactionBuilderExt,
-    interpreter::{Interpreter, NotSupportedEcal},
-    prelude::SecretKey,
-    storage::MemoryStorage,
+    self as vm, checked_transaction::builder::TransactionBuilderExt, interpreter::Interpreter,
+    prelude::SecretKey, storage::MemoryStorage,
 };
 use rand::{Rng, SeedableRng};
 
@@ -26,7 +24,7 @@ use vm::state::ProgramState;
 /// An interface for executing a test within a VM [Interpreter] instance.
 #[derive(Debug, Clone)]
 pub struct TestExecutor {
-    pub interpreter: Interpreter<MemoryInstance, MemoryStorage, tx::Script, NotSupportedEcal>,
+    pub interpreter: Interpreter<MemoryInstance, MemoryStorage, tx::Script, EcalSyscallHandler>,
     pub tx: vm::checked_transaction::Ready<tx::Script>,
     pub test_entry: PkgTestEntry,
     pub name: String,
@@ -63,14 +61,14 @@ impl TestExecutor {
 
         // Prepare the transaction metadata.
         let secret_key = SecretKey::random(rng);
-        let utxo_id = rng.gen();
+        let utxo_id = rng.r#gen();
         let amount = 1;
         let maturity = 1.into();
         // NOTE: fuel-core is using dynamic asset id and interacting with the fuel-core, using static
         // asset id is not correct. But since forc-test maintains its own interpreter instance, correct
         // base asset id is indeed the static `tx::AssetId::BASE`.
         let asset_id = tx::AssetId::BASE;
-        let tx_pointer = rng.gen();
+        let tx_pointer = rng.r#gen();
         let block_height = (u32::MAX >> 1).into();
         let gas_price = 0;
 
@@ -212,6 +210,7 @@ impl TestExecutor {
             condition,
             logs,
             gas_used,
+            ecal: Box::new(self.interpreter.ecal_state().clone()),
         }))
     }
 
@@ -243,10 +242,13 @@ impl TestExecutor {
             condition,
             logs,
             gas_used,
+            ecal: Box::new(self.interpreter.ecal_state().clone()),
         }))
     }
 
     pub fn execute(&mut self) -> anyhow::Result<TestResult> {
+        self.interpreter.ecal_state_mut().clear();
+
         let start = std::time::Instant::now();
 
         let mut state = Ok(self.single_step_until_test());
@@ -282,6 +284,7 @@ impl TestExecutor {
             condition,
             logs,
             gas_used,
+            ecal: Box::new(self.interpreter.ecal_state().clone()),
         })
     }
 

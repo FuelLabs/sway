@@ -23,7 +23,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructImplCodeAction<'a> {
 
     fn new_text(&self) -> String {
         self.impl_string(
-            self.type_param_string(&self.decl.type_parameters),
+            self.type_param_string(&self.decl.generic_parameters),
             format!("\n{TAB}\n"),
             None,
         )

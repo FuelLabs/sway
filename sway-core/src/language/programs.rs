@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::{lexed::LexedProgram, parsed::ParseProgram, ty::TyProgram};
 use crate::semantic_analysis::program::TypeCheckFailed;
 use sway_utils::PerformanceData;
@@ -6,17 +8,17 @@ use sway_utils::PerformanceData;
 /// as compilation metrics.
 #[derive(Clone, Debug)]
 pub struct Programs {
-    pub lexed: LexedProgram,
-    pub parsed: ParseProgram,
-    pub typed: Result<TyProgram, TypeCheckFailed>,
+    pub lexed: Arc<LexedProgram>,
+    pub parsed: Arc<ParseProgram>,
+    pub typed: Result<Arc<TyProgram>, TypeCheckFailed>,
     pub metrics: PerformanceData,
 }
 
 impl Programs {
     pub fn new(
-        lexed: LexedProgram,
-        parsed: ParseProgram,
-        typed: Result<TyProgram, TypeCheckFailed>,
+        lexed: Arc<LexedProgram>,
+        parsed: Arc<ParseProgram>,
+        typed: Result<Arc<TyProgram>, TypeCheckFailed>,
         metrics: PerformanceData,
     ) -> Programs {
         Programs {

@@ -289,7 +289,7 @@ pub(crate) fn struct_instantiation(
                 type_id,
                 &span,
                 help_text,
-                None,
+                || None,
             );
             Ok(())
         })?;
@@ -300,10 +300,7 @@ pub(crate) fn struct_instantiation(
         .scoped(handler, None, |scoped_ctx| {
             // Insert struct type parameter into namespace.
             // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
-            for p in struct_decl.type_parameters.iter() {
-                let p = p
-                    .as_type_parameter()
-                    .expect("only works with type parameters");
+            for p in struct_decl.generic_parameters.iter() {
                 p.insert_into_namespace_self(handler, scoped_ctx.by_ref())?;
             }
 
@@ -337,7 +334,9 @@ fn collect_struct_constructors(
     // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
     // that we wish to encourage.
     namespace.current_module().read(engines, |m| {
-        m.get_items_for_type(engines, struct_type_id)
+        let mut items = vec![];
+        m.append_items_for_type(engines, struct_type_id, &mut items);
+        items
             .iter()
             .filter_map(|item| match item {
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),
@@ -476,7 +475,7 @@ fn unify_field_arguments_and_struct_fields(
                     struct_field.type_argument.type_id(),
                     &typed_field.value.span, // Use the span of the initialization value.
                     help_text,
-                    None,
+                    || None,
                 );
             }
         }

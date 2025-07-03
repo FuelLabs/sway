@@ -36,7 +36,7 @@ impl Account for ForcClientAccount {
 
 #[async_trait]
 impl ViewOnlyAccount for ForcClientAccount {
-    fn address(&self) -> &Bech32Address {
+    fn address(&self) -> Address {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.address(),
             ForcClientAccount::KmsSigner(account) => {
@@ -55,7 +55,7 @@ impl ViewOnlyAccount for ForcClientAccount {
     async fn get_asset_inputs_for_amount(
         &self,
         asset_id: AssetId,
-        amount: u64,
+        amount: u128,
         excluded_coins: Option<Vec<CoinTypeId>>,
     ) -> Result<Vec<Input>> {
         match self {
@@ -82,7 +82,7 @@ impl Signer for ForcClientAccount {
         }
     }
 
-    fn address(&self) -> &Bech32Address {
+    fn address(&self) -> Address {
         match self {
             ForcClientAccount::Wallet(wallet) => wallet.address(),
             ForcClientAccount::KmsSigner(account) => fuels_core::traits::Signer::address(account),

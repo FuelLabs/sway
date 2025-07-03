@@ -119,7 +119,7 @@ fn generic_enum_resolution() {
     let decl_ref_1 = engines.de().insert(
         TyEnumDecl {
             call_path,
-            type_parameters: vec![placeholder_type_param],
+            generic_parameters: vec![placeholder_type_param],
             variants: variant_types,
             span: sp.clone(),
             visibility: crate::language::Visibility::Public,
@@ -161,7 +161,7 @@ fn generic_enum_resolution() {
     let decl_ref_2 = engines.de().insert(
         TyEnumDecl {
             call_path,
-            type_parameters: vec![type_param],
+            generic_parameters: vec![type_param],
             variants: variant_types.clone(),
             span: sp.clone(),
             visibility: crate::language::Visibility::Public,
@@ -173,7 +173,9 @@ fn generic_enum_resolution() {
 
     // Unify them together...
     let h = Handler::default();
-    engines.te().unify(&h, &engines, ty_1, ty_2, &sp, "", None);
+    engines
+        .te()
+        .unify(&h, &engines, ty_1, ty_2, &sp, "", || None);
     let (_, errors) = h.consume();
     assert!(errors.is_empty());
 
@@ -201,7 +203,7 @@ fn basic_numeric_unknown() {
 
     // Unify them together...
     let h = Handler::default();
-    engines.te().unify(&h, &engines, id, id2, &sp, "", None);
+    engines.te().unify(&h, &engines, id, id2, &sp, "", || None);
     let (_, errors) = h.consume();
     assert!(errors.is_empty());
 
@@ -223,7 +225,7 @@ fn unify_numerics() {
 
     // Unify them together...
     let h = Handler::default();
-    engines.te().unify(&h, &engines, id2, id, &sp, "", None);
+    engines.te().unify(&h, &engines, id2, id, &sp, "", || None);
     let (_, errors) = h.consume();
     assert!(errors.is_empty());
 
@@ -246,7 +248,7 @@ fn unify_numerics_2() {
 
     // Unify them together...
     let h = Handler::default();
-    type_engine.unify(&h, &engines, id, id2, &sp, "", None);
+    type_engine.unify(&h, &engines, id, id2, &sp, "", || None);
     let (_, errors) = h.consume();
     assert!(errors.is_empty());
 

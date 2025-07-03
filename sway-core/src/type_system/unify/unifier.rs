@@ -7,8 +7,10 @@ use sway_error::{
 use sway_types::{Span, Spanned};
 
 use crate::{
+    ast_elements::type_parameter::ConstGenericExpr,
+    decl_engine::{DeclEngineGet, DeclId},
     engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext, WithEngines},
-    language::CallPath,
+    language::ty::{TyEnumDecl, TyStructDecl},
     type_system::{engine::Unification, priv_prelude::*},
 };
 
@@ -131,13 +133,22 @@ impl<'a> Unifier<'a> {
             (RawUntypedPtr, RawUntypedPtr) => (),
             (RawUntypedSlice, RawUntypedSlice) => (),
             (StringSlice, StringSlice) => (),
-            (StringArray(l), StringArray(r)) => {
-                self.unify_strs(handler, received, expected, span, l.val(), r.val());
+            (StringArray(r), StringArray(e)) => {
+                self.unify_strs(
+                    handler,
+                    received,
+                    &r_type_source_info,
+                    expected,
+                    &e_type_source_info,
+                    span,
+                    r,
+                    e,
+                );
             }
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
                 self.unify_tuples(handler, rfs, efs);
             }
-            (r @ Array(re, rc), e @ Array(ee, ec)) => {
+            (Array(re, rc), Array(ee, ec)) => {
                 if self
                     .unify_type_arguments_in_parents(handler, received, expected, span, re, ee)
                     .is_err()
@@ -145,29 +156,45 @@ impl<'a> Unifier<'a> {
                     return;
                 }
 
-                if matches!(rc, Length::AmbiguousVariableExpression { .. }) {
-                    self.replace_received_with_expected(received, e, span);
-                }
-
-                if matches!(ec, Length::AmbiguousVariableExpression { .. }) {
-                    self.replace_expected_with_received(expected, r, span);
+                match (rc.expr(), ec.expr()) {
+                    (
+                        ConstGenericExpr::Literal { val: r_eval, .. },
+                        ConstGenericExpr::Literal { val: e_eval, .. },
+                    ) => {
+                        assert!(r_eval == e_eval);
+                    }
+                    (
+                        ConstGenericExpr::Literal { .. },
+                        ConstGenericExpr::AmbiguousVariableExpression { .. },
+                    ) => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
+                    (
+                        ConstGenericExpr::AmbiguousVariableExpression { .. },
+                        ConstGenericExpr::Literal { .. },
+                    ) => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
+                    (
+                        ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
+                        ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
+                    ) => {
+                        assert!(r_ident.as_str() == e_ident.as_str());
+                    }
                 }
             }
             (Slice(re), Slice(ee)) => {
                 let _ =
                     self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee);
             }
-            (Struct(r_decl_ref), Struct(e_decl_ref)) => {
-                let r_decl = self.engines.de().get_struct(r_decl_ref);
-                let e_decl = self.engines.de().get_struct(e_decl_ref);
-
+            (Struct(received_decl_id), Struct(expected_decl_id)) => {
                 self.unify_structs(
                     handler,
                     received,
                     expected,
                     span,
-                    (r_decl.call_path.clone(), r_decl.type_parameters.clone()),
-                    (e_decl.call_path.clone(), e_decl.type_parameters.clone()),
+                    received_decl_id,
+                    expected_decl_id,
                 );
             }
             // When we don't know anything about either term, assume that
@@ -251,17 +278,7 @@ impl<'a> Unifier<'a> {
             (_, Alias { ty, .. }) => self.unify(handler, received, ty.type_id(), span, false),
 
             (Enum(r_decl_ref), Enum(e_decl_ref)) => {
-                let r_decl = self.engines.de().get_enum(r_decl_ref);
-                let e_decl = self.engines.de().get_enum(e_decl_ref);
-
-                self.unify_enums(
-                    handler,
-                    received,
-                    expected,
-                    span,
-                    (r_decl.call_path.clone(), r_decl.type_parameters.clone()),
-                    (e_decl.call_path.clone(), e_decl.type_parameters.clone()),
-                );
+                self.unify_enums(handler, received, expected, span, r_decl_ref, e_decl_ref);
             }
 
             // For integers and numerics, we (potentially) unify the numeric
@@ -354,26 +371,49 @@ impl<'a> Unifier<'a> {
         OccursCheck::new(self.engines).check(generic, other)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn unify_strs(
         &self,
         handler: &Handler,
         received: TypeId,
+        received_type_info: &TypeInfo,
         expected: TypeId,
+        _expected_type_info: &TypeInfo,
         span: &Span,
-        r: usize,
-        e: usize,
+        r: &Length,
+        e: &Length,
     ) {
-        if r != e {
-            let (received, expected) = self.assign_args(received, expected);
-            handler.emit_err(
-                TypeError::MismatchedType {
-                    expected,
-                    received,
-                    help_text: self.help_text.clone(),
-                    span: span.clone(),
-                }
-                .into(),
-            );
+        match (r.expr(), e.expr()) {
+            (
+                ConstGenericExpr::Literal { val: r_val, .. },
+                ConstGenericExpr::Literal { val: e_val, .. },
+            ) if r_val == e_val => {}
+            (
+                ConstGenericExpr::Literal { .. },
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+            ) => {
+                self.replace_expected_with_received(expected, received_type_info, span);
+            }
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+                ConstGenericExpr::Literal { .. },
+            ) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
+                ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
+            ) if r_ident == e_ident => {}
+            _ => {
+                let (received, expected) = self.assign_args(received, expected);
+                handler.emit_err(
+                    TypeError::MismatchedType {
+                        expected,
+                        received,
+                        help_text: self.help_text.clone(),
+                        span: span.clone(),
+                    }
+                    .into(),
+                );
+            }
         }
     }
 
@@ -386,26 +426,75 @@ impl<'a> Unifier<'a> {
     fn unify_structs(
         &self,
         handler: &Handler,
-        received: TypeId,
-        expected: TypeId,
+        received_type_id: TypeId,
+        expected_type_id: TypeId,
         span: &Span,
-        r: (CallPath, Vec<TypeParameter>),
-        e: (CallPath, Vec<TypeParameter>),
+        received_decl_id: &DeclId<TyStructDecl>,
+        expected_decl_id: &DeclId<TyStructDecl>,
     ) {
-        let (rn, rtps) = r;
-        let (en, etps) = e;
-        if rn == en && rtps.len() == etps.len() {
-            rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                let rtp = rtp
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                let etp = etp
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                self.unify(handler, rtp.type_id, etp.type_id, span, false);
-            });
+        let TyStructDecl {
+            call_path: received_call_path,
+            generic_parameters: received_parameters,
+            ..
+        } = &*self.engines.de().get(received_decl_id);
+        let TyStructDecl {
+            call_path: expected_call_path,
+            generic_parameters: expected_parameters,
+            ..
+        } = &*self.engines.de().get(expected_decl_id);
+
+        if received_parameters.len() == expected_parameters.len()
+            && received_call_path == expected_call_path
+        {
+            for (received_parameter, expected_parameter) in
+                received_parameters.iter().zip(expected_parameters.iter())
+            {
+                match (received_parameter, expected_parameter) {
+                    (
+                        TypeParameter::Type(received_parameter),
+                        TypeParameter::Type(expected_parameter),
+                    ) => self.unify(
+                        handler,
+                        received_parameter.type_id,
+                        expected_parameter.type_id,
+                        span,
+                        false,
+                    ),
+                    (
+                        TypeParameter::Const(received_parameter),
+                        TypeParameter::Const(expected_parameter),
+                    ) => {
+                        match (received_parameter.expr.as_ref(), expected_parameter.expr.as_ref()) {
+                            (Some(r), Some(e)) => {
+                                match (r.as_literal_val(), e.as_literal_val()) {
+                                    (Some(r), Some(e)) if r == e => {},
+                                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                                }
+                            }
+                            (Some(_), None) => {
+                                self.replace_expected_with_received(
+                                    expected_type_id,
+                                    &TypeInfo::Struct(*received_decl_id),
+                                    span,
+                                );
+                            }
+                            (None, Some(_)) => {
+                                self.replace_received_with_expected(
+                                    received_type_id,
+                                    &TypeInfo::Struct(*expected_decl_id),
+                                    span,
+                                );
+                            }
+                            (None, None) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                        }
+                    }
+                    _ => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
+                }
+            }
         } else {
-            let (received, expected) = self.assign_args(received, expected);
+            let (received, expected) = self.assign_args(received_type_id, expected_type_id);
             handler.emit_err(
                 TypeError::MismatchedType {
                     expected,
@@ -421,26 +510,80 @@ impl<'a> Unifier<'a> {
     fn unify_enums(
         &self,
         handler: &Handler,
-        received: TypeId,
-        expected: TypeId,
+        received_type_id: TypeId,
+        expected_type_id: TypeId,
         span: &Span,
-        r: (CallPath, Vec<TypeParameter>),
-        e: (CallPath, Vec<TypeParameter>),
+        received_decl_id: &DeclId<TyEnumDecl>,
+        expected_decl_id: &DeclId<TyEnumDecl>,
     ) {
-        let (rn, rtps) = r;
-        let (en, etps) = e;
-        if rn == en && rtps.len() == etps.len() {
-            rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                let rtp = rtp
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                let etp = etp
-                    .as_type_parameter()
-                    .expect("will only work with type parameters");
-                self.unify(handler, rtp.type_id, etp.type_id, span, false);
-            });
+        let TyEnumDecl {
+            call_path: received_call_path,
+            generic_parameters: received_parameters,
+            ..
+        } = &*self.engines.de().get(received_decl_id);
+        let TyEnumDecl {
+            call_path: expected_call_path,
+            generic_parameters: expected_parameters,
+            ..
+        } = &*self.engines.de().get(expected_decl_id);
+
+        if received_parameters.len() == expected_parameters.len()
+            && received_call_path == expected_call_path
+        {
+            for (received_parameter, expected_parameter) in
+                received_parameters.iter().zip(expected_parameters.iter())
+            {
+                match (received_parameter, expected_parameter) {
+                    (
+                        TypeParameter::Type(received_parameter),
+                        TypeParameter::Type(expected_parameter),
+                    ) => self.unify(
+                        handler,
+                        received_parameter.type_id,
+                        expected_parameter.type_id,
+                        span,
+                        false,
+                    ),
+                    (
+                        TypeParameter::Const(received_parameter),
+                        TypeParameter::Const(expected_parameter),
+                    ) => {
+                        match (received_parameter.expr.as_ref(), expected_parameter.expr.as_ref()) {
+                            (Some(r), Some(e)) => {
+                                match (r.as_literal_val(), e.as_literal_val()) {
+                                    (Some(r), Some(e)) if r == e => {},
+                                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                                }
+                            }
+                            (Some(_), None) => {
+                                self.replace_expected_with_received(
+                                    expected_type_id,
+                                    &TypeInfo::Enum(*received_decl_id),
+                                    span,
+                                );
+                            }
+                            (None, Some(_)) => {
+                                self.replace_received_with_expected(
+                                    received_type_id,
+                                    &TypeInfo::Enum(*expected_decl_id),
+                                    span,
+                                );
+                            }
+                            (None, None) => {
+                                if received_parameter.name == expected_parameter.name {
+                                } else {
+                                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                                }
+                            },
+                        }
+                    }
+                    _ => {
+                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    }
+                }
+            }
         } else {
-            let (received, expected) = self.assign_args(received, expected);
+            let (received, expected) = self.assign_args(received_type_id, expected_type_id);
             handler.emit_err(
                 TypeError::MismatchedType {
                     expected,

@@ -6,7 +6,7 @@ use fuels::{
     accounts::{predicate::Predicate, signers::private_key::PrivateKeySigner},
     prelude::*,
     tx::StorageSlot,
-    types::{input::Input as SdkInput, output::Output as SdkOutput, Bits256},
+    types::{input::Input as SdkInput, output::Output as SdkOutput, Bits256, ChainId},
 };
 use std::fs;
 
@@ -82,10 +82,7 @@ async fn get_contracts(msg_has_data: bool) -> (TxContractTest<Wallet>, ContractI
     coins.append(&mut deployment_coins);
 
     let msg = setup_single_message(
-        &Bech32Address {
-            hrp: "".to_string(),
-            hash: Default::default(),
-        },
+        Address::default(),
         wallet_signer.address(),
         DEFAULT_COIN_AMOUNT,
         69.into(),
@@ -124,9 +121,9 @@ async fn generate_predicate_inputs(amount: u64, wallet: &Wallet) -> (Vec<u8>, Sd
 
     let predicate_root = predicate.address();
 
-    let balance: u64 = wallet.get_asset_balance(&AssetId::default()).await.unwrap();
+    let balance: u128 = wallet.get_asset_balance(&AssetId::default()).await.unwrap();
 
-    assert!(balance >= amount);
+    assert!(balance >= amount as u128);
 
     wallet
         .transfer(
@@ -139,7 +136,7 @@ async fn generate_predicate_inputs(amount: u64, wallet: &Wallet) -> (Vec<u8>, Sd
         .unwrap();
 
     let predicate_input = predicate
-        .get_asset_inputs_for_amount(AssetId::default(), amount, None)
+        .get_asset_inputs_for_amount(AssetId::default(), amount.into(), None)
         .await
         .unwrap()
         .first()
@@ -194,7 +191,7 @@ async fn setup_output_predicate(
         .encode_data(
             index,
             Bits256([0u8; 32]),
-            Bits256(*wallet1.address().hash()),
+            Bits256(*wallet1.address()),
             expected_output_type,
         )
         .unwrap();
@@ -301,6 +298,72 @@ mod tx {
     }
 
     #[tokio::test]
+    async fn can_get_expiration() {
+        let (contract_instance, _, wallet, _) = get_contracts(true).await;
+
+        let provider = wallet.try_provider().unwrap();
+
+        // This should be an error because we are not at the genesis block
+        let err = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(0))
+            .call()
+            .await
+            .expect_err("expiration reached");
+
+        assert!(err.to_string().contains("TransactionExpiration"));
+
+        let result = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(10))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, Some(10 as u32));
+
+        let result = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(1234567890))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, Some(1234567890 as u32));
+
+        let result = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(u32::MAX.into()))
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, Some(u32::MAX));
+
+        // Assert none is returned with no expiration
+        let no_expiration = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(no_expiration.value, None);
+
+        // Assert tx errors after expiration
+        let _ = provider.produce_blocks(15, None).await;
+        let err = contract_instance
+            .methods()
+            .get_tx_expiration()
+            .with_tx_policies(TxPolicies::default().with_expiration(10))
+            .call()
+            .await
+            .expect_err("expiration reached");
+
+        assert!(err.to_string().contains("TransactionExpiration"));
+    }
+
+    #[tokio::test]
     async fn can_get_script_length() {
         let (contract_instance, _, _, _) = get_contracts(true).await;
         // TODO use programmatic script length https://github.com/FuelLabs/fuels-rs/issues/181
@@ -403,11 +466,8 @@ mod tx {
         let witnesses = tx.witnesses().clone();
 
         let provider = wallet.provider();
-        let tx_id = provider.send_transaction(tx).await.unwrap();
-        let receipts = provider
-            .tx_status(&tx_id)
-            .await
-            .unwrap()
+        let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+        let receipts = tx_status
             .take_receipts_checked(None)
             .unwrap();
 
@@ -449,15 +509,12 @@ mod tx {
         let tx = handler.build_tx().await.unwrap();
 
         let provider = wallet.provider();
-        let tx_id = provider.send_transaction(tx).await.unwrap();
-        let receipts = provider
-            .tx_status(&tx_id)
-            .await
-            .unwrap()
+        let tx_status = provider.send_transaction_and_await_commit(tx.clone()).await.unwrap();
+        let receipts = tx_status
             .take_receipts_checked(None)
             .unwrap();
 
-        let byte_array: [u8; 32] = tx_id.into();
+        let byte_array: [u8; 32] = *tx.id(ChainId::new(0));
 
         assert_eq!(receipts[1].data().unwrap(), byte_array);
     }
@@ -469,7 +526,7 @@ mod tx {
 
         let num_coins = 100;
         let coins = setup_single_asset_coins(
-            &signer.address(),
+            signer.address(),
             AssetId::zeroed(),
             num_coins,
             DEFAULT_COIN_AMOUNT,
@@ -535,7 +592,7 @@ mod tx {
 
             // Outputs for predicate
             let predicate_output =
-                wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+                wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
             builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -548,7 +605,7 @@ mod tx {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
         }
 
         // The predicate has spent it's funds
@@ -563,7 +620,7 @@ mod tx {
 
         let num_coins = 100;
         let coins = setup_single_asset_coins(
-            &signer.address(),
+            signer.address(),
             AssetId::zeroed(),
             num_coins,
             DEFAULT_COIN_AMOUNT,
@@ -634,7 +691,7 @@ mod tx {
 
             // Outputs for predicate
             let predicate_output =
-                wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+                wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
             builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -647,7 +704,7 @@ mod tx {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -722,7 +779,7 @@ mod tx {
 
         // Outputs for predicate
         let predicate_output =
-            wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+            wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
         let mut builder = BlobTransactionBuilder::default().with_blob(blob);
 
@@ -825,7 +882,7 @@ mod tx {
 
         // Outputs for predicate
         let predicate_output =
-            wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+            wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
         // Append the predicate to the transaction
         builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -838,7 +895,7 @@ mod tx {
 
         let tx = builder.build(provider.clone()).await.unwrap();
 
-        provider.send_transaction(tx).await.unwrap();
+        provider.send_transaction_and_await_commit(tx).await.unwrap();
 
         // The predicate has spent it's funds
         let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1038,7 +1095,7 @@ mod inputs {
 
                 // Outputs for predicate
                 let predicate_output =
-                    wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+                    wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
                 // Append the predicate to the transaction
                 builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -1051,7 +1108,7 @@ mod inputs {
 
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
-                provider.send_transaction(tx).await.unwrap();
+                provider.send_transaction_and_await_commit(tx).await.unwrap();
 
                 // The predicate has spent it's funds
                 let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1127,7 +1184,7 @@ mod inputs {
 
             // Outputs for predicate
             let predicate_output =
-                wallet.get_asset_outputs_for_amount(&wallet.address(), *base_asset_id, 1);
+                wallet.get_asset_outputs_for_amount(wallet.address(), *base_asset_id, 1);
 
             // Append the predicate to the transaction
             builder.inputs.push(predicate_input.get(0).unwrap().clone());
@@ -1140,7 +1197,7 @@ mod inputs {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1168,7 +1225,7 @@ mod inputs {
                     .unwrap();
                 assert_eq!(
                     response.value.unwrap().as_slice(),
-                    message.sender.hash().as_slice()
+                    message.sender.as_slice()
                 );
 
                 // Assert none returned when transaction type is not a message
@@ -1186,7 +1243,7 @@ mod inputs {
                 let (contract_instance, _, wallet, _) = get_contracts(false).await;
 
                 let message = &wallet.get_messages().await.unwrap()[0];
-                let recipient = message.recipient.hash;
+                let recipient = message.recipient;
 
                 let response = contract_instance
                     .methods()
@@ -1328,11 +1385,8 @@ mod inputs {
                 builder.add_signer(wallet.signer().clone()).unwrap();
                 let tx = builder.build(provider).await.unwrap();
 
-                let tx_id = provider.send_transaction(tx).await.unwrap();
-                let receipts = provider
-                    .tx_status(&tx_id)
-                    .await
-                    .unwrap()
+                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+                let receipts = tx_status
                     .take_receipts_checked(None)
                     .unwrap();
 
@@ -1497,7 +1551,7 @@ mod outputs {
 
             // Predicate has funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
-            assert_eq!(predicate_balance, predicate_coin_amount);
+            assert_eq!(predicate_balance, predicate_coin_amount as u128);
 
             // Get contract ready for deployment
             let binary = fs::read(TX_CONTRACT_BYTECODE_PATH).unwrap();
@@ -1518,13 +1572,13 @@ mod outputs {
 
             // Inputs
             let inputs = predicate
-                .get_asset_inputs_for_amount(*base_asset_id, predicate_coin_amount, None)
+                .get_asset_inputs_for_amount(*base_asset_id, predicate_coin_amount.into(), None)
                 .await
                 .unwrap();
 
             // Outputs
             let mut outputs = wallet.get_asset_outputs_for_amount(
-                &wallet.address(),
+                wallet.address(),
                 *base_asset_id,
                 predicate_coin_amount,
             );
@@ -1581,7 +1635,7 @@ mod outputs {
 
             let new_balance = predicate.get_asset_balance(&asset_id).await.unwrap();
             let expected_fee = 1;
-            assert_eq!(balance - transfer_amount - expected_fee, new_balance);
+            assert_eq!(balance - transfer_amount as u128 - expected_fee, new_balance);
         }
 
         #[tokio::test]
@@ -1673,7 +1727,7 @@ mod outputs {
 
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
-                provider.send_transaction(tx).await.unwrap();
+                provider.send_transaction_and_await_commit(tx).await.unwrap();
 
                 // The predicate has spent it's funds
                 let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1758,7 +1812,7 @@ mod outputs {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction(tx).await.unwrap();
+            provider.send_transaction_and_await_commit(tx).await.unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1789,7 +1843,7 @@ mod outputs {
             let instance = TxOutputContract::new(contract_id.clone(), wallet.clone());
             // Send tokens to the contract
             let _ = wallet
-                .force_transfer_to_contract(&contract_id, 10, asset_id, TxPolicies::default())
+                .force_transfer_to_contract(contract_id, 10, asset_id, TxPolicies::default())
                 .await
                 .unwrap();
 
@@ -1803,9 +1857,9 @@ mod outputs {
             let mut tb = call_handler.transaction_builder().await.unwrap();
 
             // Inputs for predicate
-            let transfer_amount = 50;
+            let transfer_amount = 50u64;
             let predicate_inputs = predicate
-                .get_asset_inputs_for_amount(asset_id, transfer_amount, None)
+                .get_asset_inputs_for_amount(asset_id, transfer_amount.into(), None)
                 .await
                 .unwrap();
 
@@ -1829,12 +1883,12 @@ mod outputs {
 
             // Assert the wallet 1 has received the change
             let wallet_1_balance = wallet.get_asset_balance(&asset_id).await.unwrap();
-            let change_amount = predicate_balance_before - transfer_amount - tx_status.total_fee();
+            let change_amount = predicate_balance_before - transfer_amount as u128 - tx_status.total_fee() as u128;
             assert_eq!(wallet_1_balance, wallet_1_balance_before + change_amount);
 
             // Assert the wallet 2 has received the transfer amount
             let wallet_2_balance = wallet_2.get_asset_balance(&asset_id).await.unwrap();
-            assert_eq!(wallet_2_balance, wallet_2_balance_before + transfer_amount);
+            assert_eq!(wallet_2_balance, wallet_2_balance_before + transfer_amount as u128);
         }
 
         #[tokio::test]
@@ -1857,7 +1911,7 @@ mod outputs {
 
             // Send tokens to the contract
             let _ = wallet
-                .force_transfer_to_contract(&contract_id, 10, asset_id, TxPolicies::default())
+                .force_transfer_to_contract(contract_id, 10, asset_id, TxPolicies::default())
                 .await
                 .unwrap();
 

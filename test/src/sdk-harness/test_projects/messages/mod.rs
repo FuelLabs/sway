@@ -32,7 +32,7 @@ async fn get_messages_contract_instance() -> (TestMessagesContract<Wallet>, Cont
     // Send assets to the contract to be able withdraw via `smo`.
     wallets[0]
         .force_transfer_to_contract(
-            &messages_contract_id,
+            messages_contract_id,
             amount_per_coin >> 1,
             AssetId::BASE,
             TxPolicies::default(),

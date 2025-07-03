@@ -58,6 +58,7 @@ library;
 use ::logging::log;
 use ::revert::revert;
 use ::codec::*;
+use ::debug::*;
 use ::ops::*;
 
 // ANCHOR: docs_result
@@ -168,7 +169,7 @@ impl<T, E> Result<T, E> {
     /// ```
     pub fn unwrap(self) -> T {
         match self {
-            Self::Ok(inner_value) => inner_value,
+            Self::Ok(v) => v,
             _ => revert(0),
         }
     }
@@ -201,7 +202,7 @@ impl<T, E> Result<T, E> {
     /// ```
     pub fn unwrap_or(self, default: T) -> T {
         match self {
-            Self::Ok(inner_value) => inner_value,
+            Self::Ok(v) => v,
             Self::Err(_) => default,
         }
     }

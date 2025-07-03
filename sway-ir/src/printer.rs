@@ -173,6 +173,21 @@ pub fn function_print(context: &Context, function: Function) {
     );
 }
 
+/// Print an instruction to stdout.
+pub fn instruction_print(context: &Context, ins_value: &Value) {
+    let mut md_namer = MetadataNamer::default();
+    let block = ins_value
+        .get_instruction(context)
+        .expect("Calling instruction printer on non-instruction value")
+        .parent;
+    let function = block.get_function(context);
+    let mut namer = Namer::new(function);
+    println!(
+        "{}",
+        instruction_to_doc(context, &mut md_namer, &mut namer, &block, ins_value).build()
+    );
+}
+
 pub const MODULE_PRINTER_NAME: &str = "module-printer";
 
 pub fn create_module_printer_pass() -> Pass {
@@ -216,7 +231,7 @@ fn module_to_doc<'a>(
     })
     .append(Doc::indent(
         4,
-        Doc::list_sep(
+        Doc::List(
             module
                 .global_variables
                 .iter()
@@ -241,9 +256,13 @@ fn module_to_doc<'a>(
                     )
                 })
                 .collect(),
-            Doc::line(Doc::Empty),
         ),
     ))
+    .append(if !module.global_variables.is_empty() {
+        Doc::line(Doc::Empty)
+    } else {
+        Doc::Empty
+    })
     .append(Doc::indent(
         4,
         Doc::list_sep(

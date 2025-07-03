@@ -2,13 +2,12 @@
 use crate::{
     doc::module::ModuleInfo,
     render::{
-        constant::IDENTITY,
         item::type_anchor::render_type_anchor,
         link::{DocLink, DocLinks},
         title::BlockTitle,
         title::DocBlock,
         util::format::docstring::DocStrings,
-        DocStyle, Renderable,
+        DocStyle, Renderable, IDENTITY,
     },
     RenderPlan,
 };
@@ -43,6 +42,7 @@ pub struct Context {
     module_info: ModuleInfo,
     context_type: ContextType,
 }
+
 impl Context {
     pub fn new(module_info: ModuleInfo, context_type: ContextType) -> Self {
         Self {
@@ -51,6 +51,7 @@ impl Context {
         }
     }
 }
+
 impl Renderable for Context {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let mut rendered_list: Vec<String> = Vec::new();
@@ -614,7 +615,7 @@ impl Renderable for TyFunctionDecl {
         let attributes = self.attributes.to_html_string();
 
         let mut fn_sig = format!("fn {}(", self.name.as_str());
-        for param in &self.parameters {
+        for param in self.parameters.iter() {
             let mut param_str = String::new();
             if param.is_reference {
                 write!(param_str, "ref ")?;
@@ -651,7 +652,7 @@ impl Renderable for TyFunctionDecl {
                             }
                             : "(";
                             @ if multiline {
-                                @ for param in &self.parameters {
+                                @ for param in self.parameters.iter() {
                                     br;
                                     : "    ";
                                     @ if param.is_reference {
@@ -672,7 +673,7 @@ impl Renderable for TyFunctionDecl {
                                 br;
                                 : ")";
                             } else {
-                                @ for param in &self.parameters {
+                                @ for param in self.parameters.iter() {
                                     @ if param.is_reference {
                                         : "ref";
                                     }

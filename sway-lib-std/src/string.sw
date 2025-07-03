@@ -1,12 +1,13 @@
 //! A UTF-8 encoded growable string.
 library;
 
-use ::assert::assert;
+use ::assert::assert_eq;
 use ::bytes::*;
 use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
 use ::codec::*;
+use ::debug::*;
 use ::ops::*;
 use ::raw_slice::AsRawSlice;
 use ::clone::Clone;
@@ -238,6 +239,29 @@ impl String {
     pub fn ptr(self) -> raw_ptr {
         self.bytes.ptr()
     }
+
+    /// Converts the `String` into a string slice.
+    ///
+    /// # Returns
+    ///
+    /// [str] - The `String` as a string slice.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let string = String::from_ascii_str("Fuel");
+    ///     assert(string.as_str() == "Fuel");
+    /// }
+    /// ```
+    pub fn as_str(self) -> str {
+        let ptr = self.bytes.ptr();
+        let str_size = self.bytes.len();
+
+        asm(s: (ptr, str_size)) {
+            s: str
+        }
+    }
 }
 
 impl From<Bytes> for String {
@@ -252,6 +276,24 @@ impl From<String> for Bytes {
     fn from(s: String) -> Bytes {
         s.as_bytes()
     }
+}
+
+impl From<str> for String {
+    fn from(s: str) -> String {
+        String::from_ascii_str(s)
+    }
+}
+
+impl From<String> for str {
+    fn from(s: String) -> str {
+        s.as_str()
+    }
+}
+
+#[test]
+fn test_string_str() {
+    let string = String::from_ascii_str("Fuel");
+    assert_eq(string.as_str(), "Fuel");
 }
 
 impl AsRawSlice for String {
@@ -352,5 +394,16 @@ impl Clone for String {
         Self {
             bytes: self.bytes.clone(),
         }
+    }
+}
+
+impl Debug for String {
+    fn fmt(self, ref mut f: Formatter) {
+        let s = asm(s: (self.bytes.ptr(), self.bytes.len())) {
+            s: str
+        };
+        f.print_string_quotes();
+        f.print_str(s);
+        f.print_string_quotes();
     }
 }

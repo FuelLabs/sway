@@ -1,3 +1,4 @@
+pub mod ecal;
 pub mod execute;
 pub mod setup;
 
@@ -5,8 +6,10 @@ use crate::execute::TestExecutor;
 use crate::setup::{
     ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
 };
+use ecal::EcalSyscallHandler;
 use forc_pkg::{self as pkg, BuildOpts};
-use fuel_abi_types::error_codes::ErrorSignal;
+use forc_util::tx_utils::RevertInfo;
+use fuel_abi_types::abi::program::ProgramABI;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
@@ -74,6 +77,8 @@ pub struct TestResult {
     pub logs: Vec<fuel_tx::Receipt>,
     /// Gas used while executing this test.
     pub gas_used: u64,
+    /// EcalState of the execution
+    pub ecal: Box<EcalSyscallHandler>,
 }
 
 const TEST_METADATA_SEED: u64 = 0x7E57u64;
@@ -512,12 +517,13 @@ impl TestResult {
         }
     }
 
-    /// Return an [ErrorSignal] for this [TestResult] if the test is failed to pass.
-    pub fn error_signal(&self) -> anyhow::Result<ErrorSignal> {
-        let revert_code = self.revert_code().ok_or_else(|| {
-            anyhow::anyhow!("there is no revert code to convert to `ErrorSignal`")
-        })?;
-        ErrorSignal::try_from_revert_code(revert_code).map_err(|e| anyhow::anyhow!(e))
+    pub fn revert_info(
+        &self,
+        program_abi: Option<&ProgramABI>,
+        logs: &[fuel_tx::Receipt],
+    ) -> Option<RevertInfo> {
+        self.revert_code()
+            .map(|revert_code| RevertInfo::new(revert_code, program_abi, logs))
     }
 
     /// Return [TestDetails] from the span of the function declaring this test.
@@ -655,14 +661,14 @@ fn deployment_transaction(
 
     // Prepare the transaction metadata.
     let secret_key = SecretKey::random(rng);
-    let utxo_id = rng.gen();
+    let utxo_id = rng.r#gen();
     let amount = 1;
     let maturity = 1u32.into();
     // NOTE: fuel-core is using dynamic asset id and interacting with the fuel-core, using static
     // asset id is not correct. But since forc-test maintains its own interpreter instance, correct
     // base asset id is indeed the static `tx::AssetId::BASE`.
     let asset_id = tx::AssetId::BASE;
-    let tx_pointer = rng.gen();
+    let tx_pointer = rng.r#gen();
     let block_height = (u32::MAX >> 1).into();
 
     let tx = tx::TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots)

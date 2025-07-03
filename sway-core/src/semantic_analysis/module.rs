@@ -13,7 +13,6 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
-use sway_features::Feature;
 use sway_types::{BaseIdent, Named, SourceId, Span, Spanned};
 
 use crate::{
@@ -27,13 +26,13 @@ use crate::{
     },
     query_engine::{ModuleCacheKey, TypedModuleInfo},
     semantic_analysis::*,
-    transform::AttributeKind,
     BuildConfig, Engines, TypeInfo,
 };
 
 use super::{
     declaration::auto_impl::{
-        abi_encoding::AbiEncodingAutoImplContext, marker_traits::MarkerTraitsAutoImplContext,
+        abi_encoding::AbiEncodingAutoImplContext, debug::DebugAutoImplContext,
+        marker_traits::MarkerTraitsAutoImplContext,
     },
     symbol_collection_context::SymbolCollectionContext,
 };
@@ -272,7 +271,7 @@ impl ty::TyModule {
         source_id: Option<&SourceId>,
         engines: &Engines,
         build_config: Option<&BuildConfig>,
-    ) -> Option<Arc<ty::TyModule>> {
+    ) -> Option<(Arc<ty::TyModule>, Arc<namespace::Module>)> {
         let source_id = source_id?;
 
         // Create a cache key and get the module cache
@@ -292,7 +291,7 @@ impl ty::TyModule {
 
                 // Return the cached module if it's up to date, otherwise None
                 if is_up_to_date {
-                    Some(typed.module.clone())
+                    Some((typed.module.clone(), typed.namespace_module.clone()))
                 } else {
                     None
                 }
@@ -321,12 +320,14 @@ impl ty::TyModule {
         } = parsed;
 
         // Try to get the cached root module if it's up to date
-        if let Some(module) = ty::TyModule::get_cached_ty_module_if_up_to_date(
-            parsed.span.source_id(),
-            engines,
-            build_config,
-        ) {
-            return Ok(module);
+        if let Some((ty_module, _namespace_module)) =
+            ty::TyModule::get_cached_ty_module_if_up_to_date(
+                parsed.span.source_id(),
+                engines,
+                build_config,
+            )
+        {
+            return Ok(ty_module);
         }
 
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
@@ -344,14 +345,17 @@ impl ty::TyModule {
                     engines,
                     build_config,
                 ) {
-                    // If cached, create TySubmodule from cached module
-                    Ok::<(BaseIdent, ty::TySubmodule), ErrorEmitted>((
-                        name.clone(),
-                        ty::TySubmodule {
-                            module: cached_module,
-                            mod_name_span: submodule.mod_name_span.clone(),
-                        },
-                    ))
+                    // If cached, restore namespace module and return cached TySubmodule
+                    let (ty_module, namespace_module) = cached_module;
+                    ctx.namespace_mut()
+                        .current_module_mut()
+                        .import_cached_submodule(name, (*namespace_module).clone());
+
+                    let ty_submod = ty::TySubmodule {
+                        module: ty_module,
+                        mod_name_span: submodule.mod_name_span.clone(),
+                    };
+                    Ok::<(BaseIdent, ty::TySubmodule), ErrorEmitted>((name.clone(), ty_submod))
                 } else {
                     // If not cached, type-check the submodule
                     let type_checked_submodule = ty::TySubmodule::type_check(
@@ -451,7 +455,7 @@ impl ty::TyModule {
                     let mut fn_generator = AbiEncodingAutoImplContext::new(&mut ctx);
                     if let Ok(node) = fn_generator.generate_contract_entry(
                         engines,
-                        parsed.span.source_id().map(|x| x.program_id()),
+                        parsed.span.source_id(),
                         &contract_fns,
                         fallback_fn,
                         handler,
@@ -485,6 +489,7 @@ impl ty::TyModule {
                 &key,
                 TypedModuleInfo {
                     module: ty_module.clone(),
+                    namespace_module: Arc::new(ctx.namespace().current_module().clone()),
                     version,
                 },
             );
@@ -547,20 +552,29 @@ impl ty::TyModule {
         let all_abi_encode_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
             decl.trait_name.suffix.as_str() == "AbiEncode"
         });
+        let all_debug_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
+            decl.trait_name.suffix.as_str() == "Debug"
+        });
 
         let mut typed_nodes = vec![];
         for node in nodes {
-            // Check if the encoding traits are explicitly implemented.
-            let auto_impl_encoding_traits = match &node.content {
+            // Check if the encoding and debug traits are explicitly implemented.
+            let (auto_impl_encoding_traits, auto_impl_debug_traits) = match &node.content {
                 AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_struct(decl_id);
-                    !all_abi_encode_impls.contains_key(&decl.name)
+                    (
+                        !all_abi_encode_impls.contains_key(&decl.name),
+                        !all_debug_impls.contains_key(&decl.name),
+                    )
                 }
                 AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_enum(decl_id);
-                    !all_abi_encode_impls.contains_key(&decl.name)
+                    (
+                        !all_abi_encode_impls.contains_key(&decl.name),
+                        !all_debug_impls.contains_key(&decl.name),
+                    )
                 }
-                _ => false,
+                _ => (false, false),
             };
 
             let Ok(node) = ty::TyAstNode::type_check(handler, ctx.by_ref(), node) else {
@@ -587,46 +601,33 @@ impl ty::TyModule {
                 };
             }
 
+            // Auto impl debug traits only if they are not explicitly implemented
+            if auto_impl_debug_traits {
+                match &node.content {
+                    TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
+                    | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {
+                        let mut ctx = DebugAutoImplContext::new(&mut ctx);
+                        let a = ctx.generate_debug_impl(engines, decl);
+                        generated.extend(a);
+                    }
+                    _ => {}
+                }
+            }
+
             // Always auto impl marker traits. If an explicit implementation exists, that will be
             // reported as an error when type-checking trait impls.
-            if ctx.experimental.error_type {
-                let mut ctx = MarkerTraitsAutoImplContext::new(&mut ctx);
-                if let TyAstNodeContent::Declaration(TyDecl::EnumDecl(enum_decl)) = &node.content {
-                    let enum_decl = &*ctx.engines().de().get(&enum_decl.decl_id);
+            let mut ctx = MarkerTraitsAutoImplContext::new(&mut ctx);
+            if let TyAstNodeContent::Declaration(TyDecl::EnumDecl(enum_decl)) = &node.content {
+                let enum_decl = &*ctx.engines().de().get(&enum_decl.decl_id);
 
-                    let enum_marker_trait_impl =
-                        ctx.generate_enum_marker_trait_impl(engines, enum_decl);
-                    generated.extend(enum_marker_trait_impl);
+                let enum_marker_trait_impl =
+                    ctx.generate_enum_marker_trait_impl(engines, enum_decl);
+                generated.extend(enum_marker_trait_impl);
 
-                    if check_is_valid_error_type_enum(handler, enum_decl).is_ok_and(|res| res) {
-                        let error_type_marker_trait_impl =
-                            ctx.generate_error_type_marker_trait_impl_for_enum(engines, enum_decl);
-                        generated.extend(error_type_marker_trait_impl);
-                    }
-                }
-            } else {
-                // Check for usages of `error_type` and `error` attributes without the feature enabled.
-                if let TyAstNodeContent::Declaration(TyDecl::EnumDecl(enum_decl)) = &node.content {
-                    let enum_decl = &*ctx.engines().de().get(&enum_decl.decl_id);
-                    for attr in enum_decl.attributes.of_kind(AttributeKind::ErrorType) {
-                        handler.emit_err(CompileError::FeatureIsDisabled {
-                            feature: Feature::ErrorType.name().to_string(),
-                            url: Feature::ErrorType.url().to_string(),
-                            span: attr.name.span(),
-                        });
-                    }
-
-                    for attr in enum_decl
-                        .variants
-                        .iter()
-                        .flat_map(|variant| variant.attributes.of_kind(AttributeKind::Error))
-                    {
-                        handler.emit_err(CompileError::FeatureIsDisabled {
-                            feature: Feature::ErrorType.name().to_string(),
-                            url: Feature::ErrorType.url().to_string(),
-                            span: attr.name.span(),
-                        });
-                    }
+                if check_is_valid_error_type_enum(handler, enum_decl).is_ok_and(|res| res) {
+                    let error_type_marker_trait_impl =
+                        ctx.generate_error_type_marker_trait_impl_for_enum(engines, enum_decl);
+                    generated.extend(error_type_marker_trait_impl);
                 }
             }
 

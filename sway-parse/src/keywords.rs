@@ -6,7 +6,7 @@ use sway_types::Spanned;
 
 fn peek_keyword<T: Keyword>(peeker: Peeker<'_>) -> Option<T> {
     let ident = peeker.peek_ident().ok()?;
-    (ident.as_str() == T::AS_STR).then(|| T::new(ident.span()))
+    (!ident.is_raw_ident() && ident.as_str() == T::AS_STR).then(|| T::new(ident.span()))
 }
 
 fn parse_keyword<T: Keyword + Peek>(parser: &mut Parser) -> ParseResult<T> {
@@ -73,7 +73,8 @@ keyword_impls! {
     ConfigurableToken,
     TypeToken,
     PtrToken,
-    SliceToken
+    SliceToken,
+    PanicToken
 }
 
 fn peek_token<T: Token>(peeker: Peeker<'_>) -> Option<T> {
@@ -191,4 +192,5 @@ pub const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "continue",
     "configurable",
     "type",
+    "panic",
 };

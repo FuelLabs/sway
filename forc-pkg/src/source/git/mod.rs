@@ -432,6 +432,12 @@ where
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
 
+    // Add a guard to ensure cleanup happens if we got out of scope whether by
+    // returning or panicking.
+    let _cleanup_guard = scopeguard::guard(&repo_dir, |dir| {
+        let _ = std::fs::remove_dir_all(dir);
+    });
+
     let config = git2::Config::open_default().unwrap();
 
     // Init auth manager
@@ -469,9 +475,6 @@ where
 
     // Call the user function.
     let output = f(repo)?;
-
-    // Clean up the temporary directory.
-    let _ = std::fs::remove_dir_all(&repo_dir);
     Ok(output)
 }
 

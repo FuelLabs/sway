@@ -1,5 +1,7 @@
 library;
 
+use ::ops::*;
+use ::raw_ptr::*;
 use ::raw_slice::*;
 
 pub struct Buffer {

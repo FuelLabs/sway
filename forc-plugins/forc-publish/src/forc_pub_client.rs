@@ -1,5 +1,6 @@
 use crate::error::Error;
 use crate::error::Result;
+use reqwest::StatusCode;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -39,6 +40,8 @@ impl ForcPubClient {
 
     /// Uploads the given file to the server
     pub async fn upload<P: AsRef<Path>>(&self, file_path: P, forc_version: &str) -> Result<Uuid> {
+        use futures_util::StreamExt;
+        use std::io::{stdout, Write};
         let url = self
             .uri
             .join(&format!("upload_project?forc_version={}", forc_version))?;
@@ -50,16 +53,55 @@ impl ForcPubClient {
             .header("Content-Type", "application/gzip")
             .body(file_bytes)
             .send()
-            .await?;
+            .await;
 
-        let status = response.status();
+        if let Ok(response) = response {
+            let mut stream = response.bytes_stream();
 
-        if status.is_success() {
-            // Extract `upload_id` from the response if available
-            let upload_response: UploadResponse = response.json().await?;
-            Ok(upload_response.upload_id)
+            // Process the SSE stream.
+            // The server sends events in the format: "data: <event>\n\n" or
+            // ": <event>\n\n" for keep-alive events.
+            // The first event is usually a progress event, and the last one contains the upload_id
+            // or an error message. If the stream is open for more than 60 seconds, it will be closed
+            // by the server, and we will return an HTTPError.
+            while let Some(chunk) = stream.next().await {
+                match chunk {
+                    Ok(bytes) => {
+                        let event_str = String::from_utf8_lossy(&bytes);
+                        for event in event_str.split("\n\n") {
+                            if let Some(stripped) = event.strip_prefix("data:") {
+                                let data = &stripped.trim();
+                                if let Ok(upload_response) =
+                                    serde_json::from_str::<UploadResponse>(data)
+                                {
+                                    return Ok(upload_response.upload_id);
+                                } else if data.starts_with("{") {
+                                    // Attempt to parse error from JSON
+                                    return Err(Error::ApiResponseError {
+                                        status: StatusCode::INTERNAL_SERVER_ERROR,
+                                        error: data.to_string(),
+                                    });
+                                } else {
+                                    // Print the event data, replacing the previous message.
+                                    print!("\r\x1b[2K  =>  {}", data);
+                                    stdout().flush().unwrap();
+                                }
+                            }
+                            // else if event.starts_with(":") {
+                            // These are keep-alive events. Uncomment if you need to debug them.
+                            // println!("Keep-alive event: {}", event);
+                            // }
+                        }
+                    }
+                    Err(e) => {
+                        return Err(Error::HttpError(e));
+                    }
+                }
+            }
+            Err(Error::ServerError)
         } else {
-            Err(Error::from_response(response).await)
+            eprintln!("Error during upload initiation: {:?}", response);
+            Err(Error::ServerError)
         }
     }
 
@@ -110,12 +152,22 @@ mod test {
     async fn test_upload_success() {
         let (client, mock_server) = get_mock_client_server().await;
         let upload_id = Uuid::new_v4();
-        let success_response = serde_json::json!({ "upload_id": upload_id });
+
+        // Simulate SSE response with a progress event and a final upload_id event
+        let sse_body = format!(
+            "data: uploading...\n\n\
+             data: {{\"upload_id\":\"{}\"}}\n\n",
+            upload_id
+        );
 
         Mock::given(method("POST"))
             .and(path("/upload_project"))
             .and(query_param("forc_version", "0.66.5"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(&success_response))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("Content-Type", "text/event-stream")
+                    .set_body_string(sse_body),
+            )
             .mount(&mock_server)
             .await;
 
@@ -133,11 +185,15 @@ mod test {
     async fn test_upload_server_error() {
         let (client, mock_server) = get_mock_client_server().await;
 
+        // Simulate SSE error event
+        let sse_body = "data: {\"error\":\"Internal Server Error\"}\n\n";
+
         Mock::given(method("POST"))
             .and(path("/upload_project"))
             .respond_with(
-                ResponseTemplate::new(500)
-                    .set_body_json(serde_json::json!({ "error": "Internal Server Error" })),
+                ResponseTemplate::new(200)
+                    .insert_header("Content-Type", "text/event-stream")
+                    .set_body_string(sse_body),
             )
             .mount(&mock_server)
             .await;
@@ -151,7 +207,7 @@ mod test {
         match result {
             Err(Error::ApiResponseError { status, error }) => {
                 assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-                assert_eq!(error, "Internal Server Error");
+                assert_eq!(error, "{\"error\":\"Internal Server Error\"}");
             }
             _ => panic!("Expected ApiResponseError"),
         }

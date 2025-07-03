@@ -1,18 +1,18 @@
 pub(crate) mod hover_link_contents;
 
 use self::hover_link_contents::HoverLinkContents;
-use crate::config::LspClient;
 use crate::{
+    config::LspClient,
     core::{
-        session::Session,
+        sync::SyncWorkspace,
         token::{SymbolKind, Token, TypedAstToken},
     },
-    utils::{
-        attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
-    },
+    server_state::ServerState,
+    utils::{attributes::doc_comment_attributes, markdown, markup::Markup},
 };
 use lsp_types::{self, Position, Url};
 use std::sync::Arc;
+use sway_core::Namespace;
 use sway_core::{
     language::{ty, Visibility},
     Engines, TypeId,
@@ -21,13 +21,13 @@ use sway_types::{Span, Spanned};
 
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(
-    session: Arc<Session>,
-    keyword_docs: &KeywordDocs,
+    state: &ServerState,
+    sync: Arc<SyncWorkspace>,
+    engines: &Engines,
     url: &Url,
     position: Position,
-    client_config: LspClient,
 ) -> Option<lsp_types::Hover> {
-    let t = session.token_map().token_at_position(url, position)?;
+    let t = state.token_map.token_at_position(url, position)?;
     let (ident, token) = t.pair();
     let range = ident.range;
 
@@ -40,7 +40,7 @@ pub fn hover_data(
             | SymbolKind::ProgramTypeKeyword
     ) {
         let name = &ident.name;
-        let documentation = keyword_docs.get(name).unwrap();
+        let documentation = state.keyword_docs.get(name).unwrap();
         let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
         let formatted_doc = format!("{prefix}{documentation}");
         let content = Markup::new().text(&formatted_doc);
@@ -51,26 +51,32 @@ pub fn hover_data(
         });
     }
 
-    let contents = match &token.declared_token_ident(&session.engines.read()) {
+    let program = state.compiled_programs.program_from_uri(url, engines)?;
+    let namespace = &program.value().typed.as_ref().ok()?.namespace;
+    let client_config = state.config.read().client.clone();
+    let contents = match &token.declared_token_ident(engines) {
         Some(decl_ident) => {
-            let t = session.token_map().try_get(decl_ident).try_unwrap()?;
+            let t = state.token_map.try_get(decl_ident).try_unwrap()?;
             let decl_token = t.value();
+
             hover_format(
-                session.clone(),
-                &session.engines.read(),
+                engines,
                 decl_token,
                 &decl_ident.name,
-                client_config.clone(),
+                client_config,
+                &sync,
+                namespace,
             )
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
         // we use the `Ident` of the token itself.
         None => hover_format(
-            session.clone(),
-            &session.engines.read(),
+            &state.engines.read(),
             token,
             &ident.name,
-            client_config.clone(),
+            client_config,
+            &sync,
+            namespace,
         ),
     };
 
@@ -126,11 +132,12 @@ fn markup_content(markup: &Markup) -> lsp_types::MarkupContent {
 }
 
 fn hover_format(
-    session: Arc<Session>,
     engines: &Engines,
     token: &Token,
     ident_name: &str,
     client_config: LspClient,
+    sync: &SyncWorkspace,
+    namespace: &Namespace,
 ) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
     let doc_comment = format_doc_attributes(engines, token);
@@ -141,7 +148,7 @@ fn hover_format(
     };
 
     // Used to collect all the information we need to generate links for the hover component.
-    let mut hover_link_contents = HoverLinkContents::new(session, engines);
+    let mut hover_link_contents = HoverLinkContents::new(engines, sync, namespace);
 
     let sway_block = token
         .as_typed()
@@ -228,7 +235,7 @@ fn hover_format(
             engines.se(),
             &hover_link_contents.related_types,
             &hover_link_contents.implementations,
-            client_config,
+            &client_config,
         );
 
     lsp_types::HoverContents::Markup(markup_content(&content))

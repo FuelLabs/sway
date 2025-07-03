@@ -57,7 +57,8 @@ fn revert_alloc_alloc_does_not_exceed_bounds() {
     let u64_ptr = alloc::<u64>(1);
     assert(u64_ptr.read::<u64>() == 0u64);
 
-    let _out_of_bounds = u64_ptr.add::<u64>(1).read::<u64>();
+    let out_of_bounds = u64_ptr.add::<u64>(1).read::<u64>();
+    log(out_of_bounds);
 }
 
 #[test]
@@ -218,7 +219,8 @@ fn revert_alloc_alloc_bytes_does_not_exceed_bounds() {
     let u64_ptr = alloc_bytes(__size_of::<u64>());
     assert(u64_ptr.read::<u64>() == 0u64);
 
-    let _out_of_bounds = u64_ptr.add::<u64>(1).read::<u64>();
+    let out_of_bounds = u64_ptr.add::<u64>(1).read::<u64>();
+    log(out_of_bounds);
 }
 
 #[test]

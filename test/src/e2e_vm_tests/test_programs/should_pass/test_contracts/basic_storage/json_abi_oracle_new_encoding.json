@@ -44,6 +44,7 @@
   ],
   "configurables": [],
   "encodingVersion": "1",
+  "errorCodes": {},
   "functions": [
     {
       "attributes": [
@@ -293,5 +294,5 @@
     }
   ],
   "programType": "contract",
-  "specVersion": "1"
+  "specVersion": "1.1"
 }

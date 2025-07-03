@@ -8,11 +8,13 @@
   "configurables": [
     {
       "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
+      "indirect": false,
       "name": "SOME_U256",
-      "offset": 752
+      "offset": 760
     }
   ],
   "encodingVersion": "1",
+  "errorCodes": {},
   "functions": [
     {
       "attributes": null,
@@ -30,5 +32,5 @@
   "messagesTypes": [],
   "metadataTypes": [],
   "programType": "script",
-  "specVersion": "1"
+  "specVersion": "1.1"
 }

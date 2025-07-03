@@ -3,7 +3,7 @@
 
 use crate::{
     handlers::{notification, request},
-    lsp_ext::{MetricsParams, OnEnterParams, ShowAstParams, VisualizeParams},
+    lsp_ext::{OnEnterParams, ShowAstParams, VisualizeParams},
     server_state::ServerState,
 };
 use lsp_types::{
@@ -27,7 +27,10 @@ impl LanguageServer for ServerState {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        let _p = tracing::trace_span!("parse_text").entered();
+        // Register a file system watcher for Forc.toml files with the client.
+        if let Err(err) = self.register_forc_toml_watcher().await {
+            tracing::error!("Failed to register Forc.toml file watcher: {}", err);
+        }
         tracing::info!("Sway Language Server Initialized");
     }
 
@@ -63,13 +66,13 @@ impl LanguageServer for ServerState {
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        if let Err(err) = notification::handle_did_change_watched_files(self, params).await {
+        if let Err(err) = notification::handle_did_change_watched_files(self, params) {
             tracing::error!("{}", err.to_string());
         }
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        request::handle_hover(self, params).await
+        request::handle_hover(self, params)
     }
 
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
@@ -81,7 +84,7 @@ impl LanguageServer for ServerState {
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        request::handle_completion(self, params).await
+        request::handle_completion(self, params)
     }
 
     async fn document_symbol(
@@ -116,7 +119,7 @@ impl LanguageServer for ServerState {
         &self,
         params: GotoDefinitionParams,
     ) -> Result<Option<GotoDefinitionResponse>> {
-        request::handle_goto_definition(self, params).await
+        request::handle_goto_definition(self, params)
     }
 
     async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
@@ -124,14 +127,14 @@ impl LanguageServer for ServerState {
     }
 
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
-        request::handle_rename(self, params).await
+        request::handle_rename(self, params)
     }
 
     async fn prepare_rename(
         &self,
         params: TextDocumentPositionParams,
     ) -> Result<Option<PrepareRenameResponse>> {
-        request::handle_prepare_rename(self, params).await
+        request::handle_prepare_rename(self, params)
     }
 
     async fn inlay_hint(&self, params: InlayHintParams) -> Result<Option<Vec<InlayHint>>> {
@@ -146,21 +149,18 @@ impl LanguageServer for ServerState {
 // Custom LSP-Server Methods
 impl ServerState {
     pub async fn show_ast(&self, params: ShowAstParams) -> Result<Option<TextDocumentIdentifier>> {
-        request::handle_show_ast(self, params).await
+        request::handle_show_ast(self, &params)
     }
 
     pub async fn on_enter(&self, params: OnEnterParams) -> Result<Option<WorkspaceEdit>> {
-        request::handle_on_enter(self, params).await
+        request::handle_on_enter(self, &params)
     }
 
     pub async fn visualize(&self, params: VisualizeParams) -> Result<Option<String>> {
-        request::handle_visualize(self, params)
+        request::handle_visualize(self, &params)
     }
 
-    pub async fn metrics(
-        &self,
-        params: MetricsParams,
-    ) -> Result<Option<Vec<(String, PerformanceData)>>> {
-        request::metrics(self, params).await
+    pub async fn metrics(&self) -> Result<Option<Vec<(String, PerformanceData)>>> {
+        request::metrics(self)
     }
 }

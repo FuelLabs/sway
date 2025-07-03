@@ -2,7 +2,7 @@
 //! Protocol. This module specifically handles notification messages sent by the Client.
 
 use crate::{
-    core::{document::Documents, session::Session},
+    core::{document::Documents, session::Session, sync::SyncWorkspace},
     error::LanguageServerError,
     server_state::{CompilationContext, ServerState, TaskMessage},
 };
@@ -20,30 +20,21 @@ pub async fn handle_did_open_text_document(
     state: &ServerState,
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
-    let (uri, session) = state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await?;
+    let file_uri = &params.text_document.uri;
+    // Initialize the SyncWorkspace for this file if it doesn't exist.
+    let sync_workspace = state.get_or_init_sync_workspace(file_uri).await?;
+
+    // Get or create a session for the original file URI.
+    let (uri, session) = state.uri_and_session_from_workspace(&params.text_document.uri)?;
     state.documents.handle_open_file(&uri).await;
-    // If the token map is empty, then we need to parse the project.
-    // Otherwise, don't recompile the project when a new file in the project is opened
-    // as the workspace is already compiled.
-    if session.token_map().is_empty() {
-        let _ = state
-            .cb_tx
-            .send(TaskMessage::CompilationContext(CompilationContext {
-                session: Some(session.clone()),
-                uri: Some(uri.clone()),
-                version: None,
-                optimized_build: false,
-                gc_options: state.config.read().garbage_collection.clone(),
-                file_versions: BTreeMap::new(),
-            }));
-        state.is_compiling.store(true, Ordering::SeqCst);
-        state.wait_for_parsing().await;
-        state
-            .publish_diagnostics(uri, params.text_document.uri, session)
-            .await;
-    }
+
+    send_new_compilation_request(state, session.clone(), &uri, None, false, sync_workspace);
+    state.is_compiling.store(true, Ordering::SeqCst);
+    state.wait_for_parsing().await;
+    state
+        .publish_diagnostics(uri, params.text_document.uri, session)
+        .await;
+
     Ok(())
 }
 
@@ -53,8 +44,10 @@ fn send_new_compilation_request(
     uri: &Url,
     version: Option<i32>,
     optimized_build: bool,
-    file_versions: BTreeMap<PathBuf, Option<u64>>,
+    sync_workspace: Arc<SyncWorkspace>,
 ) {
+    let file_versions = file_versions(&state.documents, uri, version.map(|v| v as u64));
+
     if state.is_compiling.load(Ordering::SeqCst) {
         // If we are already compiling, then we need to retrigger compilation
         state.retrigger_compilation.store(true, Ordering::SeqCst);
@@ -72,12 +65,17 @@ fn send_new_compilation_request(
     let _ = state
         .cb_tx
         .send(TaskMessage::CompilationContext(CompilationContext {
-            session: Some(session.clone()),
-            uri: Some(uri.clone()),
+            session: session.clone(),
+            engines: state.engines.clone(),
+            token_map: state.token_map.clone(),
+            compiled_programs: state.compiled_programs.clone(),
+            runnables: state.runnables.clone(),
+            uri: uri.clone(),
             version,
             optimized_build,
             gc_options: state.config.read().garbage_collection.clone(),
             file_versions,
+            sync: sync_workspace,
         }));
 }
 
@@ -92,19 +90,13 @@ pub async fn handle_did_change_text_document(
         tracing::warn!("Failed to mark file as dirty: {}", err);
     }
 
-    let (uri, session) = state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await?;
+    let (uri, session) = state.uri_and_session_from_workspace(&params.text_document.uri)?;
+    let sync_workspace = state.get_sync_workspace_for_uri(&params.text_document.uri)?;
     state
         .documents
         .write_changes_to_file(&uri, &params.content_changes)
         .await?;
 
-    let file_versions = file_versions(
-        &state.documents,
-        &uri,
-        Some(params.text_document.version as u64),
-    );
     send_new_compilation_request(
         state,
         session.clone(),
@@ -112,7 +104,7 @@ pub async fn handle_did_change_text_document(
         Some(params.text_document.version),
         // TODO: Set this back to true once https://github.com/FuelLabs/sway/issues/6576 is fixed.
         false,
-        file_versions,
+        sync_workspace,
     );
     Ok(())
 }
@@ -141,12 +133,9 @@ pub(crate) async fn handle_did_save_text_document(
     state
         .pid_locked_files
         .remove_dirty_flag(&params.text_document.uri)?;
-    let (uri, session) = state
-        .uri_and_session_from_workspace(&params.text_document.uri)
-        .await?;
-    session.sync.resync()?;
-    let file_versions = file_versions(&state.documents, &uri, None);
-    send_new_compilation_request(state, session.clone(), &uri, None, false, file_versions);
+    let (uri, session) = state.uri_and_session_from_workspace(&params.text_document.uri)?;
+    let sync_workspace = state.get_sync_workspace_for_uri(&params.text_document.uri)?;
+    send_new_compilation_request(state, session.clone(), &uri, None, false, sync_workspace);
     state.wait_for_parsing().await;
     state
         .publish_diagnostics(uri, params.text_document.uri, session)
@@ -154,15 +143,35 @@ pub(crate) async fn handle_did_save_text_document(
     Ok(())
 }
 
-pub(crate) async fn handle_did_change_watched_files(
+pub(crate) fn handle_did_change_watched_files(
     state: &ServerState,
     params: DidChangeWatchedFilesParams,
 ) -> Result<(), LanguageServerError> {
     for event in params.changes {
-        let (uri, _) = state.uri_and_session_from_workspace(&event.uri).await?;
-        if let FileChangeType::DELETED = event.typ {
-            state.pid_locked_files.remove_dirty_flag(&event.uri)?;
-            let _ = state.documents.remove_document(&uri);
+        match state.get_sync_workspace_for_uri(&event.uri) {
+            Ok(sync_workspace) => {
+                let uri = sync_workspace.workspace_to_temp_url(&event.uri)?;
+
+                match event.typ {
+                    FileChangeType::CHANGED => {
+                        if event.uri.to_string().contains("Forc.toml") {
+                            sync_workspace.sync_manifest()?;
+                            // TODO: Recompile the project | see https://github.com/FuelLabs/sway/issues/7103
+                        }
+                    }
+                    FileChangeType::DELETED => {
+                        state.pid_locked_files.remove_dirty_flag(&event.uri)?;
+                        let _ = state.documents.remove_document(&uri);
+                    }
+                    FileChangeType::CREATED => {
+                        // TODO: handle this case
+                    }
+                    _ => {}
+                }
+            }
+            Err(err) => {
+                tracing::error!("Failed to get sync workspace for {}: {}", event.uri, err);
+            }
         }
     }
     Ok(())

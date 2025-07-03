@@ -1,6 +1,6 @@
 contract;
 
-use std::block::{block_header_hash, height, timestamp, timestamp_of_block};
+use std::block::{block_header_hash, chain_id, height, timestamp, timestamp_of_block};
 use block_test_abi::BlockTest;
 
 impl BlockTest for Contract {
@@ -24,7 +24,11 @@ impl BlockTest for Contract {
         let res = block_header_hash(h);
         match res {
             Ok(h) => h,
-            Err(e) => revert(0),
+            Err(_) => revert(0),
         }
+    }
+
+    fn get_chain_id() -> u64 {
+        chain_id()
     }
 }

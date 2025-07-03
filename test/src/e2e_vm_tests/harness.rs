@@ -7,11 +7,12 @@ use forc_client::{
     NodeTarget,
 };
 use forc_pkg::{BuildProfile, Built, BuiltPackage, PrintOpts};
+use forc_test::ecal::EcalSyscallHandler;
 use fuel_tx::TransactionBuilder;
+use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
-use fuel_vm::{checked_transaction::builder::TransactionBuilderExt, interpreter::NotSupportedEcal};
 use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -143,7 +144,7 @@ pub(crate) async fn runs_on_node(
 }
 
 pub(crate) enum VMExecutionResult {
-    Fuel(ProgramState, Vec<Receipt>),
+    Fuel(ProgramState, Vec<Receipt>, Box<EcalSyscallHandler>),
     Evm(revm::primitives::result::ExecutionResult),
 }
 
@@ -177,10 +178,10 @@ pub(crate) fn runs_in_vm(
             tb.with_params(params)
                 .add_unsigned_coin_input(
                     SecretKey::random(rng),
-                    rng.gen(),
+                    rng.r#gen(),
                     1,
                     Default::default(),
-                    rng.gen(),
+                    rng.r#gen(),
                 )
                 .maturity(maturity);
 
@@ -207,13 +208,14 @@ pub(crate) fn runs_in_vm(
                 .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
             let mem_instance = MemoryInstance::new();
-            let mut i: Interpreter<_, _, _, NotSupportedEcal> =
+            let mut i: Interpreter<_, _, _, EcalSyscallHandler> =
                 Interpreter::with_storage(mem_instance, storage, Default::default());
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
 
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),
                 transition.receipts().to_vec(),
+                Box::new(i.ecal_state().clone()),
             ))
         }
         BuildTarget::EVM => {
@@ -328,6 +330,14 @@ pub(crate) async fn compile_and_run_unit_tests(
                 },
                 experimental: run_config.experimental.experimental.clone(),
                 no_experimental: run_config.experimental.no_experimental.clone(),
+                release: run_config.release,
+                print: PrintOpts {
+                    asm: run_config.print_asm,
+                    bytecode: run_config.print_bytecode,
+                    ir: run_config.print_ir.clone(),
+                    ..Default::default()
+                },
+                build_target: run_config.build_target,
                 ..Default::default()
             })
         }) {

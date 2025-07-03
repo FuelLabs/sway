@@ -7,7 +7,7 @@ use crate::{
             context::{Context, ContextType, ItemContext},
             documentable_type::DocumentableType,
         },
-        util::format::{code_block::trim_fn_body, docstring::DocStrings},
+        util::format::docstring::DocStrings,
     },
 };
 use anyhow::Result;
@@ -16,12 +16,14 @@ use sway_core::{
     language::ty::{self, TyTraitFn, TyTraitInterfaceItem},
     Engines, TypeInfo,
 };
+use sway_features::ExperimentalFeatures;
 use sway_types::{integer_bits::IntegerBits, Ident};
 use swayfmt::parse;
 
 trait RequiredMethods {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn>;
 }
+
 impl RequiredMethods for Vec<DeclRefTraitFn> {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn> {
         self.iter()
@@ -43,6 +45,7 @@ impl Descriptor {
         ty_decl: &ty::TyDecl,
         module_info: ModuleInfo,
         document_private_items: bool,
+        experimental: ExperimentalFeatures,
     ) -> Result<Self> {
         const CONTRACT_STORAGE: &str = "Contract Storage";
         match ty_decl {
@@ -72,6 +75,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemStruct>(
                                 struct_decl.span.as_str(),
+                                experimental,
                             )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
@@ -109,6 +113,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemEnum>(
                                 enum_decl.span.as_str(),
+                                experimental,
                             )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
@@ -157,6 +162,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemTrait>(
                                 trait_decl.span.as_str(),
+                                experimental,
                             )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
@@ -199,7 +205,10 @@ impl Descriptor {
                         module_info,
                         ty: DocumentableType::Declared(ty_decl.clone()),
                         item_name,
-                        code_str: parse::parse_format::<sway_ast::ItemAbi>(abi_decl.span.as_str())?,
+                        code_str: parse::parse_format::<sway_ast::ItemAbi>(
+                            abi_decl.span.as_str(),
+                            experimental,
+                        )?,
                         attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext {
                             context_opt: context,
@@ -234,6 +243,7 @@ impl Descriptor {
                         item_name,
                         code_str: parse::parse_format::<sway_ast::ItemStorage>(
                             storage_decl.span.as_str(),
+                            experimental,
                         )?,
                         attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext {
@@ -266,6 +276,7 @@ impl Descriptor {
                             item_name,
                             code_str: trim_fn_body(parse::parse_format::<sway_ast::ItemFn>(
                                 fn_decl.span.as_str(),
+                                experimental,
                             )?),
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
@@ -299,6 +310,7 @@ impl Descriptor {
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemConst>(
                                 const_decl.span.as_str(),
+                                experimental,
                             )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: Default::default(),
@@ -367,5 +379,13 @@ impl Descriptor {
             })),
             _ => Ok(Descriptor::NonDocumentable),
         }
+    }
+}
+
+/// Takes a formatted function signature & body and returns only the signature.
+fn trim_fn_body(f: String) -> String {
+    match f.find('{') {
+        Some(index) => f.split_at(index).0.to_string(),
+        None => f,
     }
 }

@@ -83,6 +83,10 @@ impl BuildProfile {
             optimization_level: OptLevel::Opt1,
         }
     }
+
+    pub fn is_release(&self) -> bool {
+        self.name == Self::RELEASE
+    }
 }
 
 impl Default for BuildProfile {

@@ -1,5 +1,5 @@
 #![allow(clippy::mutable_key_type)]
-use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclRefFunction, MaterializeConstGenerics},
@@ -30,7 +30,7 @@ use sway_features::ExperimentalFeatures;
 use sway_types::{span::Span, Ident, Spanned};
 
 use super::{
-    namespace::{Items, LexicalScopeId},
+    namespace::{IsImplInterfaceSurface, Items, LexicalScopeId},
     symbol_collection_context::SymbolCollectionContext,
     type_resolve::{resolve_call_path, resolve_qualified_call_path, resolve_type, VisibilityCheck},
     GenericShadowingMode,
@@ -316,6 +316,7 @@ impl<'a> TypeCheckContext<'a> {
             mod_name.clone(),
             visibility,
             module_span.clone(),
+            true,
         )?;
 
         self.collection_ctx.enter_submodule(
@@ -566,7 +567,7 @@ impl<'a> TypeCheckContext<'a> {
                 self.type_annotation(),
                 span,
                 self.help_text(),
-                None,
+                || None,
             )
         } else {
             self.engines.te().unify(
@@ -576,7 +577,7 @@ impl<'a> TypeCheckContext<'a> {
                 self.type_annotation(),
                 span,
                 self.help_text(),
-                None,
+                || None,
             )
         }
     }
@@ -706,14 +707,13 @@ impl<'a> TypeCheckContext<'a> {
     /// Given a name and a type (plus a `self_type` to potentially
     /// resolve it), find items matching in the namespace.
     pub(crate) fn find_items_for_type(
-        &mut self,
+        &self,
         handler: &Handler,
         type_id: TypeId,
         item_prefix: &ModulePath,
         item_name: &Ident,
     ) -> Result<Vec<ty::TyTraitItem>, ErrorEmitted> {
         let type_engine = self.engines.te();
-        let _decl_engine = self.engines.de();
 
         // If the type that we are looking for is the error recovery type, then
         // we want to return the error case without creating a new error
@@ -744,44 +744,48 @@ impl<'a> TypeCheckContext<'a> {
             .require_module_from_absolute_path(handler, &self.namespace().current_mod_path)?;
 
         // grab the local items from the local module
-        let local_items = local_module.get_items_for_type(self.engines, type_id);
+        let mut matching_item_decl_refs = vec![];
+        let mut filter_item = |item, _| match &item {
+            ResolvedTraitImplItem::Parsed(_) => todo!(),
+            ResolvedTraitImplItem::Typed(item) => match item {
+                ty::TyTraitItem::Fn(decl_ref) => {
+                    if decl_ref.name() == item_name {
+                        matching_item_decl_refs.push(item.clone());
+                    }
+                }
+                ty::TyTraitItem::Constant(decl_ref) => {
+                    if decl_ref.name() == item_name {
+                        matching_item_decl_refs.push(item.clone());
+                    }
+                }
+                ty::TyTraitItem::Type(decl_ref) => {
+                    if decl_ref.name() == item_name {
+                        matching_item_decl_refs.push(item.clone());
+                    }
+                }
+            },
+        };
 
-        let mut items = local_items;
-        if item_prefix.to_vec() != self.namespace().current_mod_path {
+        TraitMap::find_items_and_trait_key_for_type(
+            local_module,
+            self.engines,
+            type_id,
+            &mut filter_item,
+        );
+
+        if item_prefix != self.namespace().current_mod_path.as_slice() {
             // grab the module where the type itself is declared
             let type_module = self
                 .namespace()
-                .require_module_from_absolute_path(handler, &item_prefix.to_vec())?;
+                .require_module_from_absolute_path(handler, item_prefix)?;
 
             // grab the items from where the type is declared
-            let mut type_items = type_module.get_items_for_type(self.engines, type_id);
-
-            items.append(&mut type_items);
-        }
-
-        let mut matching_item_decl_refs: Vec<ty::TyTraitItem> = vec![];
-
-        for item in items.into_iter() {
-            match &item {
-                ResolvedTraitImplItem::Parsed(_) => todo!(),
-                ResolvedTraitImplItem::Typed(item) => match item {
-                    ty::TyTraitItem::Fn(decl_ref) => {
-                        if decl_ref.name() == item_name {
-                            matching_item_decl_refs.push(item.clone());
-                        }
-                    }
-                    ty::TyTraitItem::Constant(decl_ref) => {
-                        if decl_ref.name() == item_name {
-                            matching_item_decl_refs.push(item.clone());
-                        }
-                    }
-                    ty::TyTraitItem::Type(decl_ref) => {
-                        if decl_ref.name() == item_name {
-                            matching_item_decl_refs.push(item.clone());
-                        }
-                    }
-                },
-            }
+            TraitMap::find_items_and_trait_key_for_type(
+                type_module,
+                self.engines,
+                type_id,
+                &mut filter_item,
+            );
         }
 
         Ok(matching_item_decl_refs)
@@ -797,13 +801,13 @@ impl<'a> TypeCheckContext<'a> {
     /// This function will emit a [CompileError::MethodNotFound] if the method is not found.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn find_method_for_type(
-        &mut self,
+        &self,
         handler: &Handler,
         type_id: TypeId,
         method_prefix: &ModulePath,
         method_name: &Ident,
         annotation_type: TypeId,
-        arguments_types: &VecDeque<TypeId>,
+        arguments_types: &[TypeId],
         as_trait: Option<TypeId>,
     ) -> Result<DeclRefFunction, ErrorEmitted> {
         let decl_engine = self.engines.de();
@@ -861,7 +865,9 @@ impl<'a> TypeCheckContext<'a> {
             .collect::<Vec<_>>();
 
         let mut qualified_call_path = None;
-        let matching_method_decl_ref = {
+        let matching_method_decl_ref: Option<
+            crate::decl_engine::DeclRef<crate::decl_engine::DeclId<ty::TyFunctionDecl>>,
+        > = {
             // Case where multiple methods exist with the same name
             // This is the case of https://github.com/FuelLabs/sway/issues/3633
             // where multiple generic trait impls use the same method name but with different parameter types
@@ -892,7 +898,7 @@ impl<'a> TypeCheckContext<'a> {
             }
 
             if !maybe_method_decl_refs.is_empty() {
-                let mut trait_methods = HashMap::<
+                let mut trait_methods = BTreeMap::<
                     (
                         CallPath,
                         Vec<WithEngines<GenericArgument>>,
@@ -901,10 +907,10 @@ impl<'a> TypeCheckContext<'a> {
                     DeclRefFunction,
                 >::new();
                 let mut impl_self_method = None;
-                for method_ref in maybe_method_decl_refs.clone() {
-                    let method = decl_engine.get_function(&method_ref);
+                for method_ref in maybe_method_decl_refs.iter() {
+                    let method = decl_engine.get_function(method_ref);
                     if let Some(ty::TyDecl::ImplSelfOrTrait(impl_trait)) =
-                        method.implementing_type.clone()
+                        method.implementing_type.as_ref()
                     {
                         let trait_decl = decl_engine.get_impl_self_or_trait(&impl_trait.decl_id);
 
@@ -941,7 +947,7 @@ impl<'a> TypeCheckContext<'a> {
                                         } else {
                                             for (p1, p2) in params
                                                 .iter()
-                                                .zip(trait_decl.trait_type_arguments.clone())
+                                                .zip(trait_decl.trait_type_arguments.iter())
                                             {
                                                 let p1_type_id = self.resolve_type(
                                                     handler,
@@ -1015,7 +1021,7 @@ impl<'a> TypeCheckContext<'a> {
                 } else if trait_methods.len() > 1 {
                     if impl_self_method.is_some() {
                         // In case we have trait methods and a impl self method we use the impl self method.
-                        impl_self_method
+                        impl_self_method.cloned()
                     } else {
                         // Avoids following error when we already know the exact type:
                         // Multiple applicable items in scope.
@@ -1025,20 +1031,26 @@ impl<'a> TypeCheckContext<'a> {
                         //     <&mut &mut &u64 as Trait>::val
                         // If one method has the exact type an the others don't we can use that method.
                         let mut exact_matching_methods = vec![];
-                        let trait_method_values = trait_methods.values().collect::<Vec<_>>();
-                        for trait_method_ref in trait_method_values.iter() {
-                            let method = decl_engine.get_function(*trait_method_ref);
+                        let trait_method_values = trait_methods.values();
+                        for trait_method_ref in trait_method_values {
+                            let method = decl_engine.get_function(trait_method_ref);
                             if let Some(implementing_for_type) = method.implementing_for_typeid {
                                 if eq_check
                                     .with_unify_ref_mut(false)
                                     .check(implementing_for_type, type_id)
                                 {
-                                    exact_matching_methods.push(*trait_method_ref);
+                                    exact_matching_methods.push(trait_method_ref.clone());
                                 }
                             }
                         }
+
                         if exact_matching_methods.len() == 1 {
-                            exact_matching_methods.into_iter().next().cloned()
+                            let a: Option<
+                                crate::decl_engine::DeclRef<
+                                    crate::decl_engine::DeclId<ty::TyFunctionDecl>,
+                                >,
+                            > = exact_matching_methods.into_iter().next();
+                            a
                         } else {
                             fn to_string(
                                 trait_name: CallPath,
@@ -1061,6 +1073,7 @@ impl<'a> TypeCheckContext<'a> {
                                     },
                                 )
                             }
+
                             let mut trait_strings = trait_methods
                                 .keys()
                                 .map(|t| {
@@ -1075,6 +1088,7 @@ impl<'a> TypeCheckContext<'a> {
                                     )
                                 })
                                 .collect::<Vec<(String, String)>>();
+
                             // Sort so the output of the error is always the same.
                             trait_strings.sort();
                             return Err(handler.emit_err(
@@ -1091,7 +1105,12 @@ impl<'a> TypeCheckContext<'a> {
                     // When we use a qualified path the expected method should be in trait_methods.
                     None
                 } else {
-                    maybe_method_decl_refs.first().cloned()
+                    let a: Option<
+                        &crate::decl_engine::DeclRef<
+                            crate::decl_engine::DeclId<ty::TyFunctionDecl>,
+                        >,
+                    > = maybe_method_decl_refs.first();
+                    a.cloned()
                 }
             } else {
                 for decl_ref in matching_method_decl_refs.clone().into_iter() {
@@ -1124,7 +1143,7 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         if let Some(TypeInfo::ErrorRecovery(err)) = arguments_types
-            .front()
+            .first()
             .map(|x| (*type_engine.get(*x)).clone())
         {
             Err(err)
@@ -1298,6 +1317,7 @@ impl<'a> TypeCheckContext<'a> {
         trait_decl_span: Option<Span>,
         is_impl_self: IsImplSelf,
         is_extending_existing_impl: IsExtendingExistingImpl,
+        is_impl_interface_surface: IsImplInterfaceSurface,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
 
@@ -1340,6 +1360,7 @@ impl<'a> TypeCheckContext<'a> {
                 trait_decl_span,
                 is_impl_self,
                 is_extending_existing_impl,
+                is_impl_interface_surface,
                 engines,
             )
     }

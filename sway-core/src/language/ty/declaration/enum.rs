@@ -6,6 +6,7 @@ use crate::{
     transform,
     type_system::*,
 };
+use ast_elements::type_parameter::ConstGenericExpr;
 use monomorphization::MonomorphizeHelper;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -21,7 +22,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyEnumDecl {
     pub call_path: CallPath,
-    pub type_parameters: Vec<TypeParameter>,
+    pub generic_parameters: Vec<TypeParameter>,
     pub attributes: transform::Attributes,
     pub variants: Vec<TyEnumVariant>,
     pub span: Span,
@@ -42,7 +43,7 @@ impl EqWithEngines for TyEnumDecl {}
 impl PartialEqWithEngines for TyEnumDecl {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.call_path == other.call_path
-            && self.type_parameters.eq(&other.type_parameters, ctx)
+            && self.generic_parameters.eq(&other.generic_parameters, ctx)
             && self.variants.eq(&other.variants, ctx)
             && self.visibility == other.visibility
     }
@@ -52,7 +53,7 @@ impl HashWithEngines for TyEnumDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyEnumDecl {
             call_path,
-            type_parameters,
+            generic_parameters: type_parameters,
             variants,
             visibility,
             // these fields are not hashed because they aren't relevant/a
@@ -71,7 +72,7 @@ impl SubstTypes for TyEnumDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         has_changes! {
             self.variants.subst(ctx);
-            self.type_parameters.subst(ctx);
+            self.generic_parameters.subst(ctx);
         }
     }
 }
@@ -84,7 +85,7 @@ impl Spanned for TyEnumDecl {
 
 impl IsConcrete for TyEnumDecl {
     fn is_concrete(&self, engines: &Engines) -> bool {
-        self.type_parameters
+        self.generic_parameters
             .iter()
             .all(|tp| tp.is_concrete(engines))
     }
@@ -92,7 +93,7 @@ impl IsConcrete for TyEnumDecl {
 
 impl MonomorphizeHelper for TyEnumDecl {
     fn type_parameters(&self) -> &[TypeParameter] {
-        &self.type_parameters
+        &self.generic_parameters
     }
 
     fn name(&self) -> &Ident {
@@ -107,11 +108,31 @@ impl MonomorphizeHelper for TyEnumDecl {
 impl MaterializeConstGenerics for TyEnumDecl {
     fn materialize_const_generics(
         &mut self,
-        _engines: &Engines,
-        _handler: &Handler,
-        _name: &str,
-        _value: &crate::language::ty::TyExpression,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &crate::language::ty::TyExpression,
     ) -> Result<(), ErrorEmitted> {
+        for p in self.generic_parameters.iter_mut() {
+            match p {
+                TypeParameter::Const(p) if p.name.as_str() == name => {
+                    p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                }
+                TypeParameter::Type(p) => {
+                    p.type_id
+                        .materialize_const_generics(engines, handler, name, value)?;
+                }
+                _ => {}
+            }
+        }
+
+        for variant in self.variants.iter_mut() {
+            variant
+                .type_argument
+                .type_id_mut()
+                .materialize_const_generics(engines, handler, name, value)?;
+        }
+
         Ok(())
     }
 }

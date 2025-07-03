@@ -101,7 +101,7 @@ pub enum ParseErrorKind {
     InvalidDoubleUnderscore,
     #[error("Unexpected rest token, must be at the end of pattern.")]
     UnexpectedRestPattern,
-    #[error("Identifiers cannot be a reserved keyword.")]
+    #[error("Identifier cannot be a reserved keyword.")]
     ReservedKeywordIdentifier,
     #[error("Unnecessary visibility qualifier, `{}` is implied here.", visibility)]
     UnnecessaryVisibilityQualifier { visibility: Ident },

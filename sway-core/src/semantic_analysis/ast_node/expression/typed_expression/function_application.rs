@@ -70,7 +70,7 @@ pub(crate) fn instantiate_function_application(
         ctx.type_annotation(),
         &call_path_binding.span(),
         "Function return type does not match up with local type annotation.",
-        None,
+        || None,
     );
 
     let mut function_return_type_id = function_decl.return_type.type_id();
@@ -81,7 +81,7 @@ pub(crate) fn instantiate_function_application(
     let new_decl_ref = if let Some(cached_fn_ref) =
         ctx.engines()
             .qe()
-            .get_function(engines, function_ident.clone(), function_sig.clone())
+            .get_function(engines, &function_ident, function_sig.clone())
     {
         cached_fn_ref
     } else {
@@ -96,7 +96,6 @@ pub(crate) fn instantiate_function_application(
                 function_decl.name.as_str(),
                 &call_path_binding.span(),
             )?;
-
             function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
         }
 
@@ -207,7 +206,7 @@ fn unify_arguments_and_parameters(
                     param.type_argument.type_id(),
                     &arg.span,
                     UNIFY_ARGS_HELP_TEXT,
-                    None,
+                    || None,
                 );
                 Ok(())
             });

@@ -9,13 +9,14 @@
 //! the migration tool.
 
 mod demo;
+mod error_type;
 mod merge_core_std;
 mod partial_eq;
 mod references;
 mod storage_domains;
 mod try_from_bytes_for_b256;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
 use anyhow::{bail, Result};
 use duplicate::duplicate_item;
@@ -34,8 +35,10 @@ use sway_types::Span;
 use crate::internal_error;
 
 pub(crate) struct ProgramInfo<'a> {
-    pub lexed_program: LexedProgram,
-    pub ty_program: TyProgram,
+    /// The name of the current package being migrated.
+    pub pkg_name: String,
+    pub lexed_program: Arc<LexedProgram>,
+    pub ty_program: Arc<TyProgram>,
     pub engines: &'a Engines,
 }
 
@@ -44,6 +47,8 @@ pub(crate) struct ProgramInfo<'a> {
 /// [TyProgram] and the [Engines]. It is used in migrations
 /// that modify the source code by altering the lexed program.
 pub(crate) struct MutProgramInfo<'a> {
+    /// The name of the current package being migrated.
+    pub pkg_name: &'a str,
     pub lexed_program: &'a mut LexedProgram,
     pub ty_program: &'a TyProgram,
     pub engines: &'a Engines,
@@ -52,7 +57,11 @@ pub(crate) struct MutProgramInfo<'a> {
 impl ProgramInfo<'_> {
     pub(crate) fn as_mut(&mut self) -> MutProgramInfo {
         MutProgramInfo {
-            lexed_program: &mut self.lexed_program,
+            pkg_name: &self.pkg_name,
+            // Because the `ProgramsCacheEntry` clones the `programs`, the compilation will always
+            // result in two strong `Arc` references to the `lexed_program`.
+            // Therefore, we must use `Arc::make_mut` to get the copy-on-write behavior.
+            lexed_program: Arc::make_mut(&mut self.lexed_program),
             ty_program: &self.ty_program,
             engines: self.engines,
         }

@@ -10,7 +10,7 @@ use crate::{
         DeclId,
     },
     language::ty::{TyAbiDecl, TyFunctionDecl},
-    namespace::{IsExtendingExistingImpl, IsImplSelf},
+    namespace::{IsExtendingExistingImpl, IsImplInterfaceSurface, IsImplSelf},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
         TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
@@ -112,7 +112,7 @@ impl ty::TyAbiDecl {
                             &mod_path,
                             &method_name.clone(),
                             ctx.type_annotation(),
-                            &Default::default(),
+                            &[],
                             None,
                         ) {
                             let superabi_impl_method =
@@ -203,7 +203,7 @@ impl ty::TyAbiDecl {
                     )
                     .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
                     error_on_shadowing_superabi_method(&method.name, ctx);
-                    for param in &method.parameters {
+                    for param in method.parameters.iter() {
                         if param.is_reference || param.is_mutable {
                             handler.emit_err(CompileError::RefMutableNotAllowedInContractAbi {
                                 param_name: param.name.clone(),
@@ -278,7 +278,7 @@ impl ty::TyAbiDecl {
                                 &mod_path,
                                 &method.name.clone(),
                                 ctx.type_annotation(),
-                                &Default::default(),
+                                &[],
                                 None,
                             ) {
                                 let superabi_method =
@@ -352,7 +352,7 @@ impl ty::TyAbiDecl {
                             &mod_path,
                             &method.name.clone(),
                             ctx.type_annotation(),
-                            &Default::default(),
+                            &[],
                             None,
                         ) {
                             let superabi_impl_method =
@@ -434,6 +434,7 @@ impl ty::TyAbiDecl {
                 Some(self.span()),
                 IsImplSelf::No,
                 IsExtendingExistingImpl::No,
+                IsImplInterfaceSurface::No,
             );
             Ok(())
         })

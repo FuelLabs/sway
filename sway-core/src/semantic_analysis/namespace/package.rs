@@ -1,5 +1,5 @@
 use super::{module::Module, Ident, ModuleName};
-use crate::{language::Visibility, namespace::ModulePathBuf};
+use crate::language::Visibility;
 use rustc_hash::FxHasher;
 use std::hash::BuildHasherDefault;
 use sway_types::{span::Span, ProgramId};
@@ -13,7 +13,7 @@ pub struct Package {
     // The contents of the package being compiled.
     root_module: Module,
     // Program id for the package.
-    program_id: ProgramId,
+    pub program_id: ProgramId,
     // True if the current package is a contract, false otherwise.
     is_contract_package: bool,
     // The external dependencies of the current package. Note that an external package is
@@ -72,12 +72,12 @@ impl Package {
         self.program_id
     }
 
-    pub(crate) fn check_path_is_in_package(&self, mod_path: &ModulePathBuf) -> bool {
+    pub(crate) fn check_path_is_in_package(&self, mod_path: &[Ident]) -> bool {
         !mod_path.is_empty() && mod_path[0] == *self.root_module.name()
     }
 
-    pub(crate) fn package_relative_path(mod_path: &ModulePathBuf) -> ModulePathBuf {
-        mod_path[1..].to_vec()
+    pub(crate) fn package_relative_path(mod_path: &[Ident]) -> &[Ident] {
+        &mod_path[1..]
     }
 
     pub(super) fn is_contract_package(&self) -> bool {
@@ -85,16 +85,15 @@ impl Package {
     }
 
     // Find module in the current environment. `mod_path` must be a fully qualified path
-    pub fn module_from_absolute_path(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
+    pub fn module_from_absolute_path(&self, mod_path: &[Ident]) -> Option<&Module> {
         assert!(!mod_path.is_empty());
         let package_relative_path = Self::package_relative_path(mod_path);
         if mod_path[0] == *self.root_module.name() {
-            self.root_module.submodule(&package_relative_path)
-        } else if let Some(external_package) = self.external_packages.get(&mod_path[0].to_string())
-        {
+            self.root_module.submodule(package_relative_path)
+        } else if let Some(external_package) = self.external_packages.get(mod_path[0].as_str()) {
             external_package
                 .root_module()
-                .submodule(&package_relative_path)
+                .submodule(package_relative_path)
         } else {
             None
         }

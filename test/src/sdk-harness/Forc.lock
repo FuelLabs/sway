@@ -223,6 +223,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "predicate_panic_expression"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "private_struct_fields_in_storage_and_abi"
 source = "member"
 dependencies = ["std"]
@@ -393,6 +398,11 @@ dependencies = ["std"]
 
 [[package]]
 name = "svec_u8"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "time"
 source = "member"
 dependencies = ["std"]
 

@@ -31,6 +31,7 @@ use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_context_to_finalized_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
+pub use build_config::DbgGeneration;
 pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
@@ -39,6 +40,7 @@ use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
 use semantic_analysis::program::TypeCheckFailed;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -54,10 +56,11 @@ use sway_ir::{
     FN_INLINE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
     RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
-use sway_types::{SourceEngine, Span};
+use sway_types::span::Source;
+use sway_types::{SourceEngine, SourceLocation, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
 use transform::{ArgsExpectValues, Attribute, AttributeKind, Attributes, ExpectedArgs};
-use types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata};
+use types::{CollectTypesMetadata, CollectTypesMetadataContext, LogId, TypeMetadata};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -90,23 +93,24 @@ pub use engine_threading::Engines;
 /// # Panics
 /// Panics if the parser panics.
 pub fn parse(
-    input: Arc<str>,
+    src: Source,
     handler: &Handler,
     engines: &Engines,
     config: Option<&BuildConfig>,
     experimental: ExperimentalFeatures,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     match config {
-        None => parse_in_memory(handler, engines, input, experimental),
+        None => parse_in_memory(handler, engines, src, experimental, DbgGeneration::None),
         // When a `BuildConfig` is given,
-        // the module source may declare `dep`s that must be parsed from other files.
+        // the module source may declare `mod`s that must be parsed from other files.
         Some(config) => parse_module_tree(
             handler,
             engines,
-            input,
+            src,
             config.canonical_root_module(),
             None,
             config.build_target,
+            config.dbg_generation,
             config.include_tests,
             experimental,
             config.lsp_mode.as_ref(),
@@ -134,11 +138,13 @@ pub fn parse(
 /// Parses the tree kind in the input provided.
 ///
 /// This will lex the entire input, but parses only the module kind.
-pub fn parse_tree_type(
-    handler: &Handler,
-    input: Arc<str>,
-) -> Result<parsed::TreeType, ErrorEmitted> {
-    sway_parse::parse_module_kind(handler, input, None).map(|kind| convert_module_kind(&kind))
+pub fn parse_tree_type(handler: &Handler, src: Source) -> Result<parsed::TreeType, ErrorEmitted> {
+    // Parsing only the module kind does not depend on any
+    // experimental feature. So, we can just pass the default
+    // experimental features here.
+    let experimental = ExperimentalFeatures::default();
+    sway_parse::parse_module_kind(handler, src, None, experimental)
+        .map(|kind| convert_module_kind(&kind))
 }
 
 /// Converts `attribute_decls` to [Attributes].
@@ -362,13 +368,14 @@ pub(crate) fn attr_decls_to_attributes(
 fn parse_in_memory(
     handler: &Handler,
     engines: &Engines,
-    src: Arc<str>,
+    src: Source,
     experimental: ExperimentalFeatures,
+    dbg_generation: DbgGeneration,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     let mut hasher = DefaultHasher::new();
-    src.hash(&mut hasher);
+    src.text.hash(&mut hasher);
     let hash = hasher.finish();
-    let module = sway_parse::parse_file(handler, src, None)?;
+    let module = sway_parse::parse_file(handler, src, None, experimental)?;
 
     let (attributes_handler, attributes) = attr_decls_to_attributes(
         &module.attributes,
@@ -378,7 +385,7 @@ fn parse_in_memory(
     let attributes_error_emitted = handler.append(attributes_handler);
 
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::new(BuildTarget::EVM, experimental),
+        &mut to_parsed_lang::Context::new(BuildTarget::EVM, dbg_generation, experimental),
         handler,
         engines,
         module.value.clone(),
@@ -427,6 +434,7 @@ fn parse_submodules(
     module: &sway_ast::Module,
     module_dir: &Path,
     build_target: BuildTarget,
+    dbg_generation: DbgGeneration,
     include_tests: bool,
     experimental: ExperimentalFeatures,
     lsp_mode: Option<&LspConfig>,
@@ -437,8 +445,8 @@ fn parse_submodules(
         // Read the source code from the dependency.
         // If we cannot, record as an error, but continue with other files.
         let submod_path = Arc::new(module_path(module_dir, module_name, submod));
-        let submod_str: Arc<str> = match std::fs::read_to_string(&*submod_path) {
-            Ok(s) => Arc::from(s),
+        let submod_src: Source = match std::fs::read_to_string(&*submod_path) {
+            Ok(s) => s.as_str().into(),
             Err(e) => {
                 handler.emit_err(CompileError::FileCouldNotBeRead {
                     span: submod.name.span(),
@@ -455,17 +463,18 @@ fn parse_submodules(
         }) = parse_module_tree(
             handler,
             engines,
-            submod_str.clone(),
+            submod_src.clone(),
             submod_path.clone(),
             Some(submod.name.as_str()),
             build_target,
+            dbg_generation,
             include_tests,
             experimental,
             lsp_mode,
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
                 let source_id = engines.se().get_source_id(submod_path.as_ref());
-                let span = span::Span::new(submod_str, 0, 0, Some(source_id)).unwrap();
+                let span = span::Span::new(submod_src, 0, 0, Some(source_id)).unwrap();
                 handler.emit_err(CompileError::ImportMustBeLibrary { span });
                 return;
             }
@@ -508,10 +517,11 @@ pub struct ParsedModuleTree {
 fn parse_module_tree(
     handler: &Handler,
     engines: &Engines,
-    src: Arc<str>,
+    src: Source,
     path: Arc<PathBuf>,
     module_name: Option<&str>,
     build_target: BuildTarget,
+    dbg_generation: DbgGeneration,
     include_tests: bool,
     experimental: ExperimentalFeatures,
     lsp_mode: Option<&LspConfig>,
@@ -521,7 +531,7 @@ fn parse_module_tree(
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
-    let module = sway_parse::parse_file(handler, src.clone(), Some(source_id))?;
+    let module = sway_parse::parse_file(handler, src.clone(), Some(source_id), experimental)?;
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
@@ -532,6 +542,7 @@ fn parse_module_tree(
         &module.value,
         module_dir,
         build_target,
+        dbg_generation,
         include_tests,
         experimental,
         lsp_mode,
@@ -546,7 +557,7 @@ fn parse_module_tree(
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::new(build_target, experimental),
+        &mut to_parsed_lang::Context::new(build_target, dbg_generation, experimental),
         handler,
         engines,
         module.value.clone(),
@@ -567,7 +578,7 @@ fn parse_module_tree(
     };
 
     let mut hasher = DefaultHasher::new();
-    src.hash(&mut hasher);
+    src.text.hash(&mut hasher);
     let hash = hasher.finish();
 
     let parsed_submodules = submodules
@@ -635,7 +646,7 @@ pub(crate) fn is_ty_module_cache_up_to_date(
                 .and_then(|x| x.lsp_mode.as_ref())
                 .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
                 .is_none_or(|version| {
-                    version.map_or(true, |v| typed.version.is_some_and(|tv| v <= tv))
+                    version.is_none_or(|v| typed.version.is_some_and(|tv| v <= tv))
                 });
 
             // If the cache is up to date, recursively check all dependencies
@@ -685,7 +696,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
                     //   - If there's no cached version (entry.parsed.version is None), the cache is outdated.
                     //   - If there's a cached version, compare them: cache is up-to-date if the LSP file version
                     //     is not greater than the cached version.
-                    version.map_or(true, |v| entry.parsed.version.is_some_and(|ev| v <= ev))
+                    version.is_none_or(|v| entry.parsed.version.is_some_and(|ev| v <= ev))
                 },
             );
 
@@ -729,7 +740,30 @@ pub fn build_module_dep_graph(
     Ok(())
 }
 
-pub struct CompiledAsm(pub FinalizedAsm);
+/// A possible occurrence of a `panic` expression that is located in code at [PanicOccurrence::loc].
+///
+/// Note that a single `panic` expression can have multiple [PanicOccurrence]s related to it.
+///
+/// For example:
+/// - `panic "Some message.";` will have just a single occurrence, with `msg` containing the message.
+/// - `panic some_value_of_a_concrete_type;` will have just a single occurrence, with `log_id` containing the [LogId] of the concrete type.
+/// - `panic some_value_of_a_generic_type;` will have multiple occurrences, one with `log_id` for every monomorphized type.
+///
+/// **Every [PanicOccurrence] has exactly one revert code assigned to it.**
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PanicOccurrence {
+    pub loc: SourceLocation,
+    pub log_id: Option<LogId>,
+    pub msg: Option<String>,
+}
+
+/// [PanicOccurrence]s mapped to their corresponding revert codes.
+pub type PanicOccurrences = HashMap<PanicOccurrence, u64>;
+
+pub struct CompiledAsm {
+    pub finalized_asm: FinalizedAsm,
+    pub panic_occurrences: PanicOccurrences,
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn parsed_to_ast(
@@ -941,7 +975,7 @@ pub fn parsed_to_ast(
 pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
-    input: Arc<str>,
+    src: Source,
     initial_namespace: namespace::Package,
     build_config: Option<&BuildConfig>,
     package_name: &str,
@@ -972,7 +1006,7 @@ pub fn compile_to_ast(
         package_name,
         "parse the program to a concrete syntax tree (CST)",
         "parse_cst",
-        parse(input, handler, engines, build_config, experimental),
+        parse(src, handler, engines, build_config, experimental),
         build_config,
         metrics
     );
@@ -1015,7 +1049,12 @@ pub fn compile_to_ast(
 
     handler.dedup();
 
-    let programs = Programs::new(lexed_program, parsed_program, program, metrics);
+    let programs = Programs::new(
+        Arc::new(lexed_program),
+        Arc::new(parsed_program),
+        program.map(Arc::new),
+        metrics,
+    );
 
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
@@ -1037,7 +1076,7 @@ pub fn compile_to_ast(
 pub fn compile_to_asm(
     handler: &Handler,
     engines: &Engines,
-    input: Arc<str>,
+    src: Source,
     initial_namespace: namespace::Package,
     build_config: &BuildConfig,
     package_name: &str,
@@ -1046,13 +1085,14 @@ pub fn compile_to_asm(
     let ast_res = compile_to_ast(
         handler,
         engines,
-        input,
+        src,
         initial_namespace,
         Some(build_config),
         package_name,
         None,
         experimental,
     )?;
+
     ast_to_asm(handler, engines, &ast_res, build_config, experimental)
 }
 
@@ -1070,22 +1110,34 @@ pub fn ast_to_asm(
         Err(err) => return Err(err.error),
     };
 
-    let asm =
-        match compile_ast_to_ir_to_asm(handler, engines, typed_program, build_config, experimental)
-        {
-            Ok(res) => res,
-            Err(err) => {
-                handler.dedup();
-                return Err(err);
-            }
-        };
-    Ok(CompiledAsm(asm))
+    let mut panic_occurrences = PanicOccurrences::default();
+
+    let asm = match compile_ast_to_ir_to_asm(
+        handler,
+        engines,
+        typed_program,
+        &mut panic_occurrences,
+        build_config,
+        experimental,
+    ) {
+        Ok(res) => res,
+        Err(err) => {
+            handler.dedup();
+            return Err(err);
+        }
+    };
+
+    Ok(CompiledAsm {
+        finalized_asm: asm,
+        panic_occurrences,
+    })
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
     handler: &Handler,
     engines: &Engines,
     program: &ty::TyProgram,
+    panic_occurrences: &mut PanicOccurrences,
     build_config: &BuildConfig,
     experimental: ExperimentalFeatures,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
@@ -1102,6 +1154,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     let mut ir = match ir_generation::compile_program(
         program,
+        panic_occurrences,
         build_config.include_tests,
         engines,
         experimental,
@@ -1204,7 +1257,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 pub fn compile_to_bytecode(
     handler: &Handler,
     engines: &Engines,
-    input: Arc<str>,
+    src: Source,
     initial_namespace: namespace::Package,
     build_config: &BuildConfig,
     source_map: &mut SourceMap,
@@ -1214,7 +1267,7 @@ pub fn compile_to_bytecode(
     let mut asm_res = compile_to_asm(
         handler,
         engines,
-        input,
+        src,
         initial_namespace,
         build_config,
         package_name,
@@ -1260,7 +1313,7 @@ pub fn asm_to_bytecode(
     build_config: &BuildConfig,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
     let compiled_bytecode =
-        asm.0
+        asm.finalized_asm
             .to_bytecode_mut(handler, source_map, source_engine, build_config)?;
     Ok(compiled_bytecode)
 }

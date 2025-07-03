@@ -4,7 +4,7 @@ use super::{
     ProgramABI, ProgramKind,
 };
 use crate::asm_generation::fuel::data_section::{Datum, Entry, EntryName};
-use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode, FuelAsmData};
+use crate::asm_lang::allocated_ops::{AllocatedInstruction, AllocatedOp, FuelAsmData};
 use crate::decl_engine::DeclRefFunction;
 use crate::source_map::SourceMap;
 use crate::BuildConfig;
@@ -122,22 +122,22 @@ fn to_bytecode_mut(
 ) -> CompiledBytecode {
     fn op_size_in_bytes(data_section: &DataSection, item: &AllocatedOp) -> u64 {
         match &item.opcode {
-            AllocatedOpcode::LoadDataId(_reg, data_label)
+            AllocatedInstruction::LoadDataId(_reg, data_label)
                 if !data_section
                     .has_copy_type(data_label)
                     .expect("data label references non existent data -- internal error") =>
             {
                 8
             }
-            AllocatedOpcode::AddrDataId(_, id)
+            AllocatedInstruction::AddrDataId(_, id)
                 if data_section.data_id_to_offset(id) > usize::from(Imm12::MAX.to_u16()) =>
             {
                 8
             }
-            AllocatedOpcode::ConfigurablesOffsetPlaceholder => 8,
-            AllocatedOpcode::DataSectionOffsetPlaceholder => 8,
-            AllocatedOpcode::BLOB(count) => count.value() as u64 * 4,
-            AllocatedOpcode::CFEI(i) | AllocatedOpcode::CFSI(i) if i.value() == 0 => 0,
+            AllocatedInstruction::ConfigurablesOffsetPlaceholder => 8,
+            AllocatedInstruction::DataSectionOffsetPlaceholder => 8,
+            AllocatedInstruction::BLOB(count) => count.value() as u64 * 4,
+            AllocatedInstruction::CFEI(i) | AllocatedInstruction::CFSI(i) if i.value() == 0 => 0,
             _ => 4,
         }
     }
@@ -156,7 +156,7 @@ fn to_bytecode_mut(
         ops_padded.reserve(ops.len() + 1);
         ops_padded.extend(ops.iter().cloned());
         ops_padded.push(AllocatedOp {
-            opcode: AllocatedOpcode::NOOP,
+            opcode: AllocatedInstruction::NOOP,
             comment: "word-alignment of data section".into(),
             owning_span: None,
         });
@@ -167,7 +167,7 @@ fn to_bytecode_mut(
     let mut offset_from_instr_start = 0;
     for op in ops.iter() {
         match &op.opcode {
-            AllocatedOpcode::LoadDataId(_reg, data_label)
+            AllocatedInstruction::LoadDataId(_reg, data_label)
                 if !data_section
                     .has_copy_type(data_label)
                     .expect("data label references non existent data -- internal error") =>
@@ -251,7 +251,7 @@ fn to_bytecode_mut(
                         last_span = match (last_span, &span) {
                             (None, Some(span)) => {
                                 indentation = 4;
-                                let line_col = span.start_pos().line_col();
+                                let line_col = span.start_line_col_one_index();
                                 println!(
                                     "{} @ {}:{}:{}",
                                     span.as_str(),
@@ -266,7 +266,7 @@ fn to_bytecode_mut(
                             }
                             (Some(last), Some(span)) if last != *span => {
                                 indentation = 4;
-                                let line_col = span.start_pos().line_col();
+                                let line_col = span.start_line_col_one_index();
                                 println!(
                                     "{} @ {}:{}:{}",
                                     span.as_str(),
@@ -539,9 +539,11 @@ fn print_instruction(op: &Instruction) {
         Instruction::K256(x) => f("K256", x.unpack()),
         Instruction::S256(x) => f("S256", x.unpack()),
         Instruction::TIME(x) => f("TIME", x.unpack()),
+        Instruction::NIOP(x) => f("NIOP", x.unpack()),
         Instruction::NOOP(_) => f("NOOP", ()),
         Instruction::FLAG(x) => f("FLAG", x.unpack()),
         Instruction::BAL(x) => f("BAL", x.unpack()),
+        Instruction::JAL(x) => f("JAL", x.unpack()),
         Instruction::JMP(x) => f("JMP", x.unpack()),
         Instruction::JNE(x) => f("JNE", x.unpack()),
         Instruction::SMO(x) => f("SMO", x.unpack()),
@@ -558,8 +560,12 @@ fn print_instruction(op: &Instruction) {
         Instruction::XORI(x) => f("XORI", x.unpack()),
         Instruction::JNEI(x) => f("JNEI", x.unpack()),
         Instruction::LB(x) => f("LB", x.unpack()),
+        Instruction::LQW(x) => f("LQW", x.unpack()),
+        Instruction::LHW(x) => f("LHW", x.unpack()),
         Instruction::LW(x) => f("LW", x.unpack()),
         Instruction::SB(x) => f("SB", x.unpack()),
+        Instruction::SQW(x) => f("SQW", x.unpack()),
+        Instruction::SHW(x) => f("SHW", x.unpack()),
         Instruction::SW(x) => f("SW", x.unpack()),
         Instruction::MCPI(x) => f("MCPI", x.unpack()),
         Instruction::GTF(x) => f("GTF", x.unpack()),

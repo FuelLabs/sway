@@ -7,6 +7,7 @@ use ::logging::log;
 use ::primitives::*;
 use ::ops::*;
 use ::codec::*;
+use ::debug::*;
 
 /// Error type for when the block hash cannot be found.
 pub enum BlockHashError {
@@ -60,7 +61,11 @@ pub fn height() -> u32 {
 /// }
 /// ```
 pub fn timestamp() -> u64 {
-    timestamp_of_block(height())
+    asm(timestamp, height) {
+        bhei height;
+        time timestamp height;
+        timestamp: u64
+    }
 }
 
 /// Get the TAI64 timestamp of a block at a given `block_height`.
@@ -124,5 +129,29 @@ pub fn block_header_hash(block_height: u32) -> Result<b256, BlockHashError> {
         Err(BlockHashError::BlockHeightTooHigh)
     } else {
         Ok(header_hash)
+    }
+}
+
+/// Returns the chain ID.
+///
+/// # Returns
+///
+/// * [u64] - The ID of the chain.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::block::chain_id;
+///
+/// fn foo() {
+///     let id = chain_id();
+///     // The chain ID for mainnet. See https://docs.fuel.network/docs/verified-addresses/#verified-addresses for more info.
+///     assert(id == 9889);
+/// }
+/// ```
+pub fn chain_id() -> u64 {
+    asm(r1) {
+        gm r1 i4;
+        r1: u64
     }
 }

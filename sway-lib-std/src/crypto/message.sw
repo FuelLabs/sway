@@ -8,6 +8,7 @@ use ::option::Option::{self, *};
 use ::hash::*;
 use ::ops::*;
 use ::codec::*;
+use ::debug::*;
 
 /// Normalized (hashed) message authenticated by a signature.
 pub struct Message {
@@ -87,26 +88,13 @@ impl TryInto<b256> for Message {
 
 impl PartialEq for Message {
     fn eq(self, other: Self) -> bool {
-        if self.bytes.len() != other.bytes.len() {
-            return false;
-        }
-
-        let mut iter = 0;
-        while iter < self.bytes.len() {
-            if self.bytes.get(iter).unwrap() != other.bytes.get(iter).unwrap()
-            {
-                return false;
-            }
-            iter += 1;
-        }
-
-        true
+        self.bytes == other.bytes
     }
 }
 impl Eq for Message {}
 
 impl Hash for Message {
     fn hash(self, ref mut state: Hasher) {
-        state.write(self.bytes);
+        self.bytes.hash(state);
     }
 }

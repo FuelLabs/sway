@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, path::PathBuf};
 
+/// Number of levels of nesting to use for file locations.
+const NESTING_LEVELS: usize = 2;
+
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum Namespace {
     /// Flat namespace means no sub-namespace with different domains.
@@ -44,7 +47,14 @@ pub fn location_from_root(chunk_size: usize, namespace: &Namespace, package_name
         return path;
     }
 
-    let chars: Vec<char> = package_name.chars().collect();
+    let char_count = chunk_size * NESTING_LEVELS;
+    let to_be_chunked_section = package_name
+        .chars()
+        .enumerate()
+        .take_while(|(index, _)| *index < char_count)
+        .map(|(_, ch)| ch);
+
+    let chars: Vec<char> = to_be_chunked_section.collect();
     for chunk in chars.chunks(chunk_size) {
         let chunk_str: String = chunk.iter().collect();
         path.push(chunk_str);
@@ -67,7 +77,8 @@ mod tests {
         let source_cid = "QmHash".to_string();
         let abi_cid = None;
         let dependencies = vec![];
-        PackageEntry::new(name, version, source_cid, abi_cid, dependencies)
+        let yanked = false;
+        PackageEntry::new(name, version, source_cid, abi_cid, dependencies, yanked)
     }
 
     #[test]
@@ -89,8 +100,8 @@ mod tests {
 
         let path = location_from_root(chunk_size, &namespace, entry.name());
 
-        // Should produce: fo/ob/ar/foobar
-        assert_eq!(path, Path::new("fo").join("ob").join("ar").join("foobar"));
+        // Should produce: fo/ob/foobar
+        assert_eq!(path, Path::new("fo").join("ob").join("foobar"));
     }
 
     #[test]
@@ -101,14 +112,10 @@ mod tests {
 
         let path = location_from_root(chunk_size, &namespace, entry.name());
 
-        // Should produce: example/fo/ob/ar/foobar
+        // Should produce: example/fo/ob/foobar
         assert_eq!(
             path,
-            Path::new("example")
-                .join("fo")
-                .join("ob")
-                .join("ar")
-                .join("foobar")
+            Path::new("example").join("fo").join("ob").join("foobar")
         );
     }
 
@@ -120,8 +127,8 @@ mod tests {
 
         let path = location_from_root(chunk_size, &namespace, entry.name());
 
-        // Should produce: he/ll/o/hello
-        assert_eq!(path, Path::new("he").join("ll").join("o").join("hello"));
+        // Should produce: he/ll/hello
+        assert_eq!(path, Path::new("he").join("ll").join("hello"));
     }
 
     #[test]
@@ -132,11 +139,8 @@ mod tests {
 
         let path = location_from_root(chunk_size, &namespace, entry.name());
 
-        // Should produce: fib/ona/cci/fibonacci
-        assert_eq!(
-            path,
-            Path::new("fib").join("ona").join("cci").join("fibonacci")
-        );
+        // Should produce: fib/ona/fibonacci
+        assert_eq!(path, Path::new("fib").join("ona").join("fibonacci"));
     }
 
     #[test]
@@ -159,8 +163,8 @@ mod tests {
 
         let path = location_from_root(chunk_size, &namespace, entry.name());
 
-        // Should produce: hé/ll/o/héllo
-        assert_eq!(path, Path::new("hé").join("ll").join("o").join("héllo"));
+        // Should produce: hé/ll/héllo
+        assert_eq!(path, Path::new("hé").join("ll").join("héllo"));
     }
 
     #[test]

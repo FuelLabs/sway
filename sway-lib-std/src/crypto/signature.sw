@@ -11,8 +11,11 @@ use ::crypto::{
 };
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
+use ::hash::{Hash, Hasher};
 use ::vm::evm::evm_address::EvmAddress;
 use ::codec::*;
+use ::debug::*;
+use ::ops::*;
 
 /// An ECDSA signature.
 pub enum Signature {
@@ -482,6 +485,43 @@ impl Signature {
             Self::Secp256k1(sig) => sig.bits(),
             Self::Secp256r1(sig) => sig.bits(),
             Self::Ed25519(sig) => sig.bits(),
+        }
+    }
+}
+
+impl PartialEq for Signature {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Self::Secp256k1(sig_1), Self::Secp256k1(sig_2)) => {
+                sig_1 == sig_2
+            },
+            (Self::Secp256r1(sig_1), Self::Secp256r1(sig_2)) => {
+                sig_1 == sig_2
+            },
+            (Self::Ed25519(sig_1), Self::Ed25519(sig_2)) => {
+                sig_1 == sig_2
+            },
+            _ => false,
+        }
+    }
+}
+impl Eq for Signature {}
+
+impl Hash for Signature {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::Secp256k1(sig) => {
+                0_u8.hash(state);
+                sig.hash(state);
+            },
+            Self::Secp256r1(sig) => {
+                1_u8.hash(state);
+                sig.hash(state);
+            },
+            Self::Ed25519(sig) => {
+                2_u8.hash(state);
+                sig.hash(state);
+            },
         }
     }
 }

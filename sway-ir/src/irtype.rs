@@ -333,7 +333,7 @@ impl Type {
         matches!(*self.get_content(context), TypeContent::Slice)
     }
 
-    // TODO-IG: Check all the usages of `is_ptr`.
+    // TODO: (REFERENCES) Check all the usages of `is_ptr`.
     /// Returns true if `self` is a pointer type.
     pub fn is_ptr(&self, context: &Context) -> bool {
         matches!(*self.get_content(context), TypeContent::Pointer(_))
@@ -369,6 +369,27 @@ impl Type {
                     TypeContent::Array(ty, len) if idx < len => Some(*ty),
                     _ => None,
                 })
+        })
+    }
+
+    /// What's the type of the struct/array value indexed by indices.
+    pub fn get_value_indexed_type(&self, context: &Context, indices: &[Value]) -> Option<Type> {
+        // Fetch the field type from the vector of Values.  If the value is a constant int then
+        // unwrap it and try to fetch the field type (which will fail for arrays) otherwise (i.e.,
+        // not a constant int or not a struct) fetch the array element type, which will fail for
+        // non-arrays.
+        indices.iter().try_fold(*self, |ty, idx_val| {
+            idx_val
+                .get_constant(context)
+                .and_then(|const_ref| {
+                    if let ConstantValue::Uint(n) = const_ref.get_content(context).value {
+                        Some(n)
+                    } else {
+                        None
+                    }
+                })
+                .and_then(|idx| ty.get_field_type(context, idx))
+                .or_else(|| ty.get_array_elem_type(context))
         })
     }
 
@@ -633,7 +654,7 @@ impl TypeSize {
 
     /// Returns the size of the type in words (aligned to word boundary).
     pub fn in_words(&self) -> u64 {
-        (self.size_in_bytes + 7) / 8
+        self.size_in_bytes.div_ceil(8)
     }
 }
 

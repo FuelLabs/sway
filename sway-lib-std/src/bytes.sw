@@ -8,6 +8,7 @@ use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
 use ::clone::Clone;
 use ::codec::*;
+use ::debug::*;
 use ::raw_slice::*;
 use ::ops::*;
 use ::iterator::*;
@@ -93,6 +94,15 @@ pub struct Bytes {
     buf: RawBytes,
     /// The number of bytes being stored.
     len: u64,
+}
+
+impl AsRawSlice for Bytes {
+    /// Returns a raw slice of all of the elements in the type.
+    fn as_raw_slice(self) -> raw_slice {
+        asm(ptr: (self.buf.ptr, self.len)) {
+            ptr: raw_slice
+        }
+    }
 }
 
 impl Bytes {
@@ -184,13 +194,13 @@ impl Bytes {
     /// ```
     pub fn push(ref mut self, byte: u8) {
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.capacity() {
+        if self.len == self.buf.cap {
             self.buf.grow();
         };
 
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
-        let end = self.buf.ptr().add_uint_offset(self.len);
+        let end = self.buf.ptr.add_uint_offset(self.len);
 
         // Write `byte` at pointer `end`
         end.write_byte(byte);
@@ -229,7 +239,7 @@ impl Bytes {
         };
         // Decrement length.
         self.len -= 1;
-        let target = self.buf.ptr().add_uint_offset(self.len);
+        let target = self.buf.ptr.add_uint_offset(self.len);
 
         Some(target.read_byte())
     }
@@ -267,9 +277,14 @@ impl Bytes {
             return None;
         };
 
-        let item_ptr = self.buf.ptr().add_uint_offset(index);
+        let item_ptr = self.buf.ptr.add_uint_offset(index);
 
         Some(item_ptr.read_byte())
+    }
+
+    /// Fetches the element stored at `index` without bounds checking.
+    fn get_unchecked(self, index: u64) -> u8 {
+        self.buf.ptr.add_uint_offset(index).read_byte()
     }
 
     /// Updates an element at position `index` with a new element `value`.
@@ -310,7 +325,7 @@ impl Bytes {
     pub fn set(ref mut self, index: u64, value: u8) {
         assert(index < self.len);
 
-        let index_ptr = self.buf.ptr().add_uint_offset(index);
+        let index_ptr = self.buf.ptr.add_uint_offset(index);
 
         index_ptr.write_byte(value);
     }
@@ -353,11 +368,11 @@ impl Bytes {
         assert(index <= self.len);
 
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.capacity() {
+        if self.len == self.buf.cap {
             self.buf.grow();
         }
 
-        let start = self.buf.ptr();
+        let start = self.buf.ptr;
 
         // The spot to put the new value.
         let index_ptr = start.add_uint_offset(index);
@@ -413,7 +428,7 @@ impl Bytes {
     pub fn remove(ref mut self, index: u64) -> u8 {
         // Panic if index >= length.
         assert(index < self.len);
-        let start = self.buf.ptr();
+        let start = self.buf.ptr;
 
         let item_ptr = start.add_uint_offset(index);
         // Read the value at `index`
@@ -473,7 +488,7 @@ impl Bytes {
             return;
         }
 
-        let start = self.buf.ptr();
+        let start = self.buf.ptr;
 
         let element1_ptr = start.add_uint_offset(element1_index);
         let element2_ptr = start.add_uint_offset(element2_index);
@@ -586,7 +601,7 @@ impl Bytes {
     /// }
     /// ```
     pub fn ptr(self) -> raw_ptr {
-        self.buf.ptr()
+        self.buf.ptr
     }
 
     /// Divides one Bytes into two at an index.
@@ -640,13 +655,13 @@ impl Bytes {
         };
 
         if mid > 0 {
-            self.buf.ptr().copy_bytes_to(left_bytes.ptr(), left_len);
+            self.buf.ptr.copy_bytes_to(left_bytes.buf.ptr, left_len);
         };
         if mid != self.len {
             self.buf
-                .ptr()
+                .ptr
                 .add_uint_offset(mid)
-                .copy_bytes_to(right_bytes.ptr(), right_len);
+                .copy_bytes_to(right_bytes.buf.ptr, right_len);
         };
 
         left_bytes.len = left_len;
@@ -654,16 +669,16 @@ impl Bytes {
         (left_bytes, right_bytes)
     }
 
-    /// Copies all elements of `other` into `self`
+    /// Appends copies of all elements of `other` into `self`.
     ///
     /// # Additional Information
     ///
     /// NOTE: Appending `self` to itself will duplicate the `Bytes`. i.e. [0, 1, 2] => [0, 1, 2, 0, 1, 2]
-    /// This function differs from the rust `append` function in that it does not clear the `other` `Bytes`
+    /// This function differs from the Rust `append` function in that it does not clear the `other` `Bytes`.
     ///
     /// # Arguments
     ///
-    /// * `other`: [Bytes] - The Bytes to append to self.
+    /// * `other`: [Bytes] - The `Bytes` to append to `self`.
     ///
     /// # Examples
     ///
@@ -686,41 +701,70 @@ impl Bytes {
     ///
     ///     let first_length = bytes.len();
     ///     let second_length = bytes2.len();
-    ///     let first_cap = bytes.capacity();
-    ///     let second_cap = bytes2.capacity();
+    ///
     ///     bytes.append(bytes2);
+    ///
     ///     assert(bytes.len() == first_length + second_length);
-    ///     assert(bytes.capacity() == first_cap + second_cap);
+    ///     assert(bytes2.len() == second_length);
     /// }
     /// ```
     pub fn append(ref mut self, ref mut other: Self) {
-        let other_len = other.len();
-        if other_len == 0 {
-            return
-        };
+        self.append_raw_slice(other.as_raw_slice());
+    }
 
-        // optimization for when starting with empty bytes and appending to it
-        if self.len == 0 {
-            self = other;
+    /// Appends copies of all bytes from the `slice` into `self`.
+    ///
+    /// # Arguments
+    ///
+    /// * `slice`: [raw_slice] - The `raw_slice` from which to append to `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    ///
+    /// use std:bytes::Bytes;
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5u8);
+    ///     bytes.push(7u8);
+    ///     bytes.push(9u8);
+    ///
+    ///     let mut bytes2 = Bytes::new();
+    ///     bytes2.push(5u8);
+    ///     bytes2.push(7u8);
+    ///     bytes2.push(9u8);
+    ///
+    ///     let first_length = bytes.len();
+    ///     let second_length = bytes2.len();
+    ///
+    ///     bytes.append_raw_slice(bytes2.as_raw_slice());
+    ///
+    ///     assert(bytes.len() == first_length + second_length);
+    /// }
+    /// ```
+    pub fn append_raw_slice(ref mut self, slice: raw_slice) {
+        let slice_len = slice.number_of_bytes();
+        if slice_len == 0 {
             return;
         };
 
-        let both_len = self.len + other_len;
+        let both_len = self.len + slice_len;
         let other_start = self.len;
 
-        // reallocate with combined capacity, write `other`, set buffer capacity
-        if self.buf.capacity() < both_len {
+        // reallocate with combined capacity, write `slice`, set buffer capacity
+        if self.buf.cap < both_len {
             let new_slice = raw_slice::from_parts::<u8>(
-                realloc_bytes(self.buf.ptr(), self.buf.capacity(), both_len),
+                realloc_bytes(self.buf.ptr, self.buf.cap, both_len),
                 both_len,
             );
             self.buf = RawBytes::from(new_slice);
         }
 
-        let new_ptr = self.buf.ptr().add_uint_offset(other_start);
-        other.ptr().copy_bytes_to(new_ptr, other_len);
+        let new_ptr = self.buf.ptr.add_uint_offset(other_start);
+        slice.ptr().copy_bytes_to(new_ptr, slice_len);
 
-        // set capacity and length
+        // set length
         self.len = both_len;
     }
 
@@ -779,13 +823,13 @@ impl Bytes {
         assert(end <= self.len);
 
         let splice_len = end - start;
-        let replace_len = replace_with.len();
+        let replace_len = replace_with.len;
 
         // Build the Bytes to return
         let mut spliced = Bytes::with_capacity(splice_len);
         if splice_len > 0 {
-            let old_ptr = self.buf.ptr().add_uint_offset(start);
-            old_ptr.copy_bytes_to(spliced.buf.ptr(), splice_len);
+            let old_ptr = self.buf.ptr.add_uint_offset(start);
+            old_ptr.copy_bytes_to(spliced.buf.ptr, splice_len);
             spliced.len = splice_len;
         }
 
@@ -795,23 +839,23 @@ impl Bytes {
 
         // Move head
         if start > 0 {
-            let old_ptr = self.buf.ptr();
-            old_ptr.copy_bytes_to(new_buf.buf.ptr(), start);
+            let old_ptr = self.buf.ptr;
+            old_ptr.copy_bytes_to(new_buf.buf.ptr, start);
         }
 
         // Move middle
         if replace_len > 0 {
             replace_with
                 .buf
-                .ptr()
-                .copy_bytes_to(new_buf.buf.ptr().add_uint_offset(start), replace_len);
+                .ptr
+                .copy_bytes_to(new_buf.buf.ptr.add_uint_offset(start), replace_len);
         }
 
         // Move tail
         let tail_len = self.len - end;
         if tail_len > 0 {
-            let old_tail = self.buf.ptr().add_uint_offset(end);
-            let new_tail = new_buf.buf.ptr().add_uint_offset(start + replace_len);
+            let old_tail = self.buf.ptr.add_uint_offset(end);
+            let new_tail = new_buf.buf.ptr.add_uint_offset(start + replace_len);
             old_tail.copy_bytes_to(new_tail, tail_len);
         }
 
@@ -955,6 +999,41 @@ impl Bytes {
             index: 0,
         }
     }
+
+    /// Returns true if all the bytes within the `Bytes` are zero.
+    ///
+    /// # Additional Information
+    ///
+    /// If `Bytes` is empty, this function will return `true`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     bytes.resize(10, 0u8);
+    ///     assert(bytes.are_all_zero() == true);
+    ///
+    ///     bytes.resize(20, 42u8);
+    ///     assert(bytes.are_all_zero() == false);
+    ///
+    ///     bytes.resize(0, 42u8);
+    ///     assert(bytes.are_all_zero() == true);
+    /// }
+    /// ```
+    pub fn are_all_zero(self) -> bool {
+        let mut iter = 0;
+        while iter < self.len {
+            let item_ptr = self.buf.ptr().add_uint_offset(iter);
+            let item = item_ptr.read_byte();
+            if item != 0 {
+                return false;
+            }
+            iter += 1;
+        }
+
+        true
+    }
 }
 
 impl PartialEq for Bytes {
@@ -971,14 +1050,7 @@ impl PartialEq for Bytes {
 }
 impl Eq for Bytes {}
 
-impl AsRawSlice for Bytes {
-    /// Returns a raw slice of all of the elements in the type.
-    fn as_raw_slice(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr, self.len)) {
-            ptr: raw_slice
-        }
-    }
-}
+// TODO: Once const generics are available implement `From<[u8; N]>`.
 
 /// Methods for converting between the `Bytes` and the `b256` types.
 impl From<b256> for Bytes {
@@ -995,12 +1067,12 @@ impl From<b256> for Bytes {
 
 impl TryFrom<Bytes> for b256 {
     fn try_from(bytes: Bytes) -> Option<Self> {
-        if bytes.len() != 32 {
+        if bytes.len != 32 {
             return None;
         }
         let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
         let ptr = __addr_of(value);
-        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
+        bytes.buf.ptr.copy_to::<b256>(ptr, 1);
 
         Some(value)
     }
@@ -1025,7 +1097,7 @@ impl TryInto<b256> for Bytes {
         }
         let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
         let ptr = __addr_of(value);
-        self.buf.ptr().copy_to::<b256>(ptr, 1);
+        self.buf.ptr.copy_to::<b256>(ptr, 1);
 
         Some(value)
     }
@@ -1116,12 +1188,12 @@ impl From<Vec<u8>> for Bytes {
     /// assert(bytes.get(2).unwrap() == c);
     /// ```
     fn from(vec: Vec<u8>) -> Self {
-        let mut bytes = Self::with_capacity(vec.len());
-        let mut i = 0;
-        while i < vec.len() {
-            bytes.push(vec.get(i).unwrap());
-            i += 1;
-        };
+        let vec_len = vec.len();
+        let mut bytes = Self::with_capacity(vec_len);
+        asm(dest: bytes.buf.ptr, src: vec.ptr(), len: vec_len) {
+            mcp dest src len;
+        }
+        bytes.len = vec_len;
         bytes
     }
 }
@@ -1152,22 +1224,16 @@ impl From<Bytes> for Vec<u8> {
     /// assert(vec.get(2).unwrap() == c);
     /// ```
     fn from(bytes: Bytes) -> Vec<u8> {
-        let mut vec = Vec::with_capacity(bytes.len);
-        let mut i = 0;
-        while i < bytes.len {
-            vec.push(bytes.get(i).unwrap());
-            i += 1;
-        };
-        vec
+        bytes.as_raw_slice().into()
     }
 }
 
 impl Clone for Bytes {
     fn clone(self) -> Self {
-        let len = self.len();
+        let len = self.len;
         let buf = RawBytes::with_capacity(len);
         if len > 0 {
-            self.ptr().copy_bytes_to(buf.ptr(), len);
+            self.buf.ptr.copy_bytes_to(buf.ptr(), len);
         }
         Bytes { buf, len }
     }
@@ -1200,17 +1266,27 @@ impl Iterator for BytesIter {
         //
         //         If the original vector gets modified during the iteration
         //         (e.g., elements are removed), this modification will not
-        //         be reflected in `self.values.len()`.
+        //         be reflected in `self.values.len`.
         //
         //         But since modifying the vector during iteration is
         //         considered undefined behavior, this implementation,
         //         that always checks against the length at the time
         //         the iterator got created is perfectly valid.
-        if self.index >= self.values.len() {
+        if self.index >= self.values.len {
             return None
         }
 
         self.index += 1;
-        self.values.get(self.index - 1)
+        Some(self.values.get_unchecked(self.index - 1))
+    }
+}
+
+impl Debug for Bytes {
+    fn fmt(self, ref mut f: Formatter) {
+        let mut l = f.debug_list();
+        for elem in self.iter() {
+            let _ = l.entry(elem);
+        }
+        l.finish();
     }
 }

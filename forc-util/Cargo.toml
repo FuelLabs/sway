@@ -8,6 +8,9 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+tx = ["dep:fuel-tx", "dep:fuel-abi-types", "dep:fuels-core"]
+
 [dependencies]
 annotate-snippets.workspace = true
 ansiterm.workspace = true
@@ -21,12 +24,10 @@ fuel-asm.workspace = true
 fuel-tx = { workspace = true, optional = true }
 fuels-core = { workspace = true, optional = true }
 hex.workspace = true
-mark-flaky-tests.workspace = true
 paste.workspace = true
 regex.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serial_test.workspace = true
 sha2.workspace = true
 sway-core.workspace = true
 sway-error.workspace = true
@@ -40,5 +41,5 @@ tracing-subscriber = { workspace = true, features = [
 ] }
 unicode-xid.workspace = true
 
-[features]
-tx = ["dep:fuel-tx", "dep:fuel-abi-types", "dep:fuels-core"]
+[dev-dependencies]
+mark-flaky-tests.workspace = true

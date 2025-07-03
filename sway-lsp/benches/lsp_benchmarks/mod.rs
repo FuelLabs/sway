@@ -4,31 +4,48 @@ pub mod token_map;
 
 use lsp_types::Url;
 use std::{path::PathBuf, sync::Arc};
-use sway_lsp::core::{
-    document::Documents,
-    session::{self, Session},
+use sway_core::{Engines, LspConfig};
+use sway_lsp::{
+    config::GarbageCollectionConfig,
+    core::{
+        session::{self, Session},
+        sync::SyncWorkspace,
+    },
+    server_state::{CompilationContext, ServerState},
 };
 
-pub async fn compile_test_project() -> (Url, Arc<Session>, Documents) {
-    let session = Arc::new(Session::new());
-    let documents = Documents::new();
-    let lsp_mode = Some(sway_core::LspConfig {
-        optimized_build: false,
-        file_versions: Default::default(),
-    });
+pub async fn compile_test_project() -> (Url, Arc<Session>, ServerState, Engines, Arc<SyncWorkspace>)
+{
     // Load the test project
     let uri = Url::from_file_path(benchmark_dir().join("src/main.sw")).unwrap();
-    documents.handle_open_file(&uri).await;
+    let state = ServerState::default();
+    let engines_clone = state.engines.read().clone();
+    let session = Arc::new(Session::new());
+    let sync = state.get_or_init_sync_workspace(&uri).await.unwrap();
+    let temp_uri = sync.workspace_to_temp_url(&uri).unwrap();
+
+    state.documents.handle_open_file(&temp_uri).await;
+    let ctx = CompilationContext {
+        session: session.clone(),
+        sync: sync.clone(),
+        token_map: state.token_map.clone(),
+        engines: state.engines.clone(),
+        compiled_programs: state.compiled_programs.clone(),
+        runnables: state.runnables.clone(),
+        optimized_build: false,
+        file_versions: Default::default(),
+        uri: uri.clone(),
+        version: None,
+        gc_options: GarbageCollectionConfig::default(),
+    };
+    let lsp_mode = Some(LspConfig {
+        optimized_build: ctx.optimized_build,
+        file_versions: ctx.file_versions.clone(),
+    });
+
     // Compile the project
-    session::parse_project(
-        &uri,
-        &session.engines.read(),
-        None,
-        lsp_mode,
-        session.clone(),
-    )
-    .unwrap();
-    (uri, session, documents)
+    session::parse_project(&temp_uri, &engines_clone, None, &ctx, lsp_mode.as_ref()).unwrap();
+    (temp_uri, session, state, engines_clone, sync)
 }
 
 pub fn sway_workspace_dir() -> PathBuf {
