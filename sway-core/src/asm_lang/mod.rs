@@ -209,20 +209,6 @@ impl Op {
         }
     }
 
-    /// Move an address at a label into a register.
-    pub(crate) fn save_ret_addr(
-        reg: VirtualRegister,
-        label: Label,
-        comment: impl Into<String>,
-        owning_span: Option<Span>,
-    ) -> Self {
-        Op {
-            opcode: Either::Right(OrganizationalOp::SaveRetAddr(reg, label)),
-            comment: comment.into(),
-            owning_span,
-        }
-    }
-
     /// Moves the register in the second argument into the register in the first argument
     pub(crate) fn register_move(
         r1: VirtualRegister,
@@ -292,19 +278,6 @@ impl Op {
             }),
             comment: comment.into(),
             owning_span: None,
-        }
-    }
-
-    /// Dynamically jumps to a register value.
-    pub(crate) fn jump_to_register(
-        reg: VirtualRegister,
-        comment: impl Into<String>,
-        owning_span: Option<Span>,
-    ) -> Self {
-        Op {
-            opcode: Either::Left(VirtualOp::JMP(reg)),
-            comment: comment.into(),
-            owning_span,
         }
     }
 
@@ -1211,6 +1184,7 @@ impl fmt::Display for VirtualOp {
             JNE(a, b, c) => write!(fmtr, "jne {a} {b} {c}"),
             JNEI(a, b, c) => write!(fmtr, "jnei {a} {b} {c}"),
             JNZI(a, b) => write!(fmtr, "jnzi {a} {b}"),
+            JAL(a, b, c) => write!(fmtr, "jal {a} {b} {c}"),
             RET(a) => write!(fmtr, "ret {a}"),
 
             /* Memory Instructions */
@@ -1220,6 +1194,8 @@ impl fmt::Display for VirtualOp {
             CFE(_sp, a) => write!(fmtr, "cfe {a}"),
             CFS(_sp, a) => write!(fmtr, "cfs {a}"),
             LB(a, b, c) => write!(fmtr, "lb {a} {b} {c}"),
+            LQW(a, b, c) => write!(fmtr, "lqw {a} {b} {c}"),
+            LHW(a, b, c) => write!(fmtr, "lhw {a} {b} {c}"),
             LW(a, b, c) => write!(fmtr, "lw {a} {b} {c}"),
             MCL(a, b) => write!(fmtr, "mcl {a} {b}"),
             MCLI(a, b) => write!(fmtr, "mcli {a} {b}"),
@@ -1227,6 +1203,8 @@ impl fmt::Display for VirtualOp {
             MCPI(a, b, c) => write!(fmtr, "mcpi {a} {b} {c}"),
             MEQ(a, b, c, d) => write!(fmtr, "meq {a} {b} {c} {d}"),
             SB(a, b, c) => write!(fmtr, "sb {a} {b} {c}"),
+            SQW(a, b, c) => write!(fmtr, "sqw {a} {b} {c}"),
+            SHW(a, b, c) => write!(fmtr, "shw {a} {b} {c}"),
             SW(a, b, c) => write!(fmtr, "sw {a} {b} {c}"),
 
             /* Contract Instructions */
@@ -1314,8 +1292,6 @@ pub(crate) enum ControlFlowOp<Reg> {
         /// Jump type
         type_: JumpType<Reg>,
     },
-    // Save a return label address in a register.
-    SaveRetAddr(Reg, Label),
     // Placeholder for the offset into the configurables section.
     ConfigurablesOffsetPlaceholder,
     // placeholder for the DataSection offset
@@ -1342,7 +1318,6 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                     JumpType::Call => format!("fncall {to}"),
                 },
                 Comment => "".into(),
-                SaveRetAddr(r1, lab) => format!("mova {r1} {lab}"),
                 DataSectionOffsetPlaceholder =>
                     "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
                 ConfigurablesOffsetPlaceholder =>
@@ -1365,8 +1340,6 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | PushAll(_)
             | PopAll(_) => vec![],
 
-            SaveRetAddr(r1, _) => vec![r1],
-
             Jump { type_, .. } => match type_ {
                 JumpType::Unconditional => vec![],
                 JumpType::NotZero(r1) => vec![r1],
@@ -1382,7 +1355,6 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         (match self {
             Label(_)
             | Comment
-            | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
@@ -1403,7 +1375,6 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         (match self {
             Label(_)
             | Comment
-            | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
@@ -1419,20 +1390,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
     }
 
     pub(crate) fn def_registers(&self) -> BTreeSet<&Reg> {
-        use ControlFlowOp::*;
-        (match self {
-            SaveRetAddr(reg, _) => vec![reg],
-
-            Label(_)
-            | Comment
-            | Jump { .. }
-            | DataSectionOffsetPlaceholder
-            | ConfigurablesOffsetPlaceholder
-            | PushAll(_)
-            | PopAll(_) => vec![],
-        })
-        .into_iter()
-        .collect()
+        BTreeSet::new()
     }
 
     pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
@@ -1458,8 +1416,6 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 },
                 _ => self.clone(),
             },
-
-            SaveRetAddr(r1, label) => Self::SaveRetAddr(update_reg(r1), *label),
         }
     }
 
@@ -1476,7 +1432,6 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         match self {
             Label(_)
             | Comment
-            | SaveRetAddr(..)
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
@@ -1560,8 +1515,6 @@ impl ControlFlowOp<VirtualRegister> {
             ConfigurablesOffsetPlaceholder => ConfigurablesOffsetPlaceholder,
             PushAll(label) => PushAll(*label),
             PopAll(label) => PopAll(*label),
-
-            SaveRetAddr(r1, label) => SaveRetAddr(map_reg(r1), *label),
         }
     }
 }

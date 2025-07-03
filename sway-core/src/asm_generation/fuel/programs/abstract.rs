@@ -311,7 +311,7 @@ impl AbstractProgram {
             };
 
             // Put the selector in the data section.
-            let data_label = self.data_section.insert_data_value(Entry::new_word(
+            let data_label = self.data_section.insert_data_value(Entry::new_min_int(
                 u32::from_be_bytes(selector) as u64,
                 EntryName::NonConfigurable,
                 None,
