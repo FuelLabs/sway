@@ -153,7 +153,7 @@ impl Entry {
                     }
                 } else {
                     Entry {
-                        value: Datum::U64(*value as u64),
+                        value: Datum::U64(*value),
                         padding: Padding::default_for_u64(0),
                         name,
                     }
@@ -168,7 +168,7 @@ impl Entry {
             ConstantValue::String(bytes) => Entry::new_byte_array(bytes.clone(), name, padding),
             ConstantValue::Array(elements) => Entry::new_collection(
                 elements
-                    .into_iter()
+                    .iter()
                     .map(|elem| {
                         Entry::from_constant(context, elem, EntryName::NonConfigurable, padding)
                     })
@@ -178,7 +178,7 @@ impl Entry {
             ),
             ConstantValue::Struct(fields) => Entry::new_collection(
                 fields
-                    .into_iter()
+                    .iter()
                     .map(|elem| {
                         Entry::from_constant(context, elem, EntryName::NonConfigurable, padding)
                     })
@@ -373,7 +373,7 @@ impl DataSection {
             EntryName::NonConfigurable,
             None,
         ));
-        self.pointer_id.insert(pointer_value, data_id.clone());
+        self.pointer_id.insert(pointer_value, data_id);
         data_id
     }
 

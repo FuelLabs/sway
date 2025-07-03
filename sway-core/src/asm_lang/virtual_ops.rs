@@ -1510,8 +1510,8 @@ impl VirtualOp {
             BLOB(i) => Self::BLOB(i.clone()),
             DataSectionOffsetPlaceholder => Self::DataSectionOffsetPlaceholder,
             ConfigurablesOffsetPlaceholder => Self::ConfigurablesOffsetPlaceholder,
-            LoadDataId(r1, i) => Self::LoadDataId(update_reg(reg_to_reg_map, r1), i.clone()),
-            AddrDataId(r1, i) => Self::AddrDataId(update_reg(reg_to_reg_map, r1), i.clone()),
+            LoadDataId(r1, i) => Self::LoadDataId(update_reg(reg_to_reg_map, r1), *i),
+            AddrDataId(r1, i) => Self::AddrDataId(update_reg(reg_to_reg_map, r1), *i),
             Undefined => Self::Undefined,
         }
     }
@@ -2035,10 +2035,10 @@ impl VirtualOp {
             DataSectionOffsetPlaceholder => AllocatedInstruction::DataSectionOffsetPlaceholder,
             ConfigurablesOffsetPlaceholder => AllocatedInstruction::ConfigurablesOffsetPlaceholder,
             LoadDataId(reg1, label) => {
-                AllocatedInstruction::LoadDataId(map_reg(&mapping, reg1), label.clone())
+                AllocatedInstruction::LoadDataId(map_reg(&mapping, reg1), *label)
             }
             AddrDataId(reg1, label) => {
-                AllocatedInstruction::AddrDataId(map_reg(&mapping, reg1), label.clone())
+                AllocatedInstruction::AddrDataId(map_reg(&mapping, reg1), *label)
             }
             Undefined => AllocatedInstruction::Undefined,
         }
