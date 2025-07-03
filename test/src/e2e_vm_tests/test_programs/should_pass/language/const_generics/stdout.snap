@@ -342,8 +342,11 @@ output:
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [7.008 KB] in ???
 =======
+=======
+>>>>>>> aefe47720 (update snapshot tests)
 <<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [6.952 KB] in ???
 =======
@@ -353,14 +356,23 @@ output:
     Finished debug [unoptimized + fuel] target(s) [8.08 KB] in ???
 >>>>>>> 5dd869289 (update snapshot tests)
 >>>>>>> c6c149462 (update snapshot tests)
+<<<<<<< HEAD
 >>>>>>> ae09d9087 (update snapshot tests)
+=======
+=======
+    Finished debug [unoptimized + fuel] target(s) [8.312 KB] in ???
+>>>>>>> f63d45c7e (update snapshot tests)
+>>>>>>> aefe47720 (update snapshot tests)
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       test run_main ... ok (???, 13758 gas)
 =======
+=======
+>>>>>>> aefe47720 (update snapshot tests)
 <<<<<<< HEAD
       test run_main ... ok (???, 13705 gas)
 =======
@@ -370,7 +382,13 @@ tested -- const_generics
       test run_main ... ok (???, 14310 gas)
 >>>>>>> 5dd869289 (update snapshot tests)
 >>>>>>> c6c149462 (update snapshot tests)
+<<<<<<< HEAD
 >>>>>>> ae09d9087 (update snapshot tests)
+=======
+=======
+      test run_main ... ok (???, 14436 gas)
+>>>>>>> f63d45c7e (update snapshot tests)
+>>>>>>> aefe47720 (update snapshot tests)
            debug output:
 [src/main.sw:88:13] a = [1, 2]
 [src/main.sw:92:13] [C {}].len() = 1
