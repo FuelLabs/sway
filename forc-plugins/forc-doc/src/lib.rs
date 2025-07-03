@@ -129,15 +129,25 @@ impl<'e> RenderPlan<'e> {
 
 pub struct DocContext {
     pub manifest: ManifestFile,
-    pub pkg_manifest: Option<Box<PackageManifestFile>>,
     pub doc_path: PathBuf,
     pub engines: Engines,
     pub build_plan: pkg::BuildPlan,
-    pub is_workspace: bool,
     pub workspace_name: String,
 }
 
 impl DocContext {
+    pub fn is_workspace(&self) -> bool {
+        matches!(self.manifest, ManifestFile::Workspace(_))
+    }
+
+    /// package manifest for single packages. Returns None for workspaces.
+    pub fn pkg_manifest(&self) -> Option<&PackageManifestFile> {
+        match &self.manifest {
+            ManifestFile::Package(pkg) => Some(pkg),
+            ManifestFile::Workspace(_) => None,
+        }
+    }
+
     pub fn from_options(opts: &Command) -> Result<Self> {
         // get manifest directory
         let dir = if let Some(ref path) = opts.path {
@@ -154,15 +164,6 @@ impl DocContext {
             .and_then(|name| name.to_str())
             .unwrap_or("workspace")
             .to_string();
-
-        // Handle Package vs Workspace manifests
-        let is_workspace = matches!(&manifest, ManifestFile::Workspace(_));
-
-        // Get package manifest for single packages (None for workspaces)
-        let pkg_manifest = match &manifest {
-            ManifestFile::Package(pkg_manifest) => Some(pkg_manifest.clone()),
-            ManifestFile::Workspace(_) => None,
-        };
 
         // create doc path
         let out_path = default_output_directory(manifest.dir());
@@ -181,7 +182,7 @@ impl DocContext {
         let lock_path = manifest.lock_path()?;
 
         // Check for empty workspaces
-        if is_workspace && member_manifests.is_empty() {
+        if matches!(manifest, ManifestFile::Workspace(_)) && member_manifests.is_empty() {
             bail!("Workspace contains no members");
         }
 
@@ -196,23 +197,21 @@ impl DocContext {
 
         Ok(Self {
             manifest,
-            pkg_manifest,
             doc_path,
             engines: Engines::default(),
             build_plan,
-            is_workspace,
             workspace_name,
         })
     }
 }
 
 pub fn compile(ctx: &DocContext, opts: &Command) -> Result<impl Iterator<Item = Option<Programs>>> {
-    if ctx.is_workspace {
+    if ctx.is_workspace() {
         println_action_green(
             "Compiling",
             &format!("workspace ({})", ctx.manifest.dir().to_string_lossy()),
         );
-    } else if let Some(ref pkg_manifest) = ctx.pkg_manifest {
+    } else if let Some(pkg_manifest) = ctx.pkg_manifest() {
         println_action_green(
             "Compiling",
             &format!(
@@ -247,7 +246,7 @@ pub fn compile_html(
     let mut documented_libraries = Vec::new();
 
     let raw_docs = if opts.no_deps {
-        if let Some(ref pkg_manifest) = ctx.pkg_manifest {
+        if let Some(pkg_manifest) = ctx.pkg_manifest() {
             // Single package mode
             let Some(ty_program) = compile_results
                 .pop()
@@ -307,7 +306,7 @@ pub fn compile_html(
                 // Only document libraries that are workspace members
                 if matches!(ty_program.kind, TyProgramKind::Library { .. }) {
                     // Check if this package is a workspace member
-                    let is_workspace_member = if ctx.is_workspace {
+                    let is_workspace_member = if ctx.is_workspace() {
                         ctx.manifest.member_manifests()?.iter().any(|(_, member)| {
                             member.project_name() == pkg_manifest_file.project_name()
                         })
@@ -339,7 +338,7 @@ pub fn compile_html(
     };
 
     // Create workspace index if this is a workspace
-    if ctx.is_workspace && !documented_libraries.is_empty() {
+    if ctx.is_workspace() && !documented_libraries.is_empty() {
         // Sort libraries alphabetically for consistent display
         documented_libraries.sort_by(|a, b| a.name.cmp(&b.name));
         create_workspace_index(
@@ -352,13 +351,13 @@ pub fn compile_html(
 
     search::write_search_index(&ctx.doc_path, &raw_docs)?;
 
-    let result = if ctx.is_workspace {
+    let result = if ctx.is_workspace() {
         DocResult::Workspace {
             name: ctx.workspace_name.clone(),
             libraries: documented_libraries,
         }
-    } else if let Some(ref pkg_manifest) = ctx.pkg_manifest {
-        DocResult::Package(pkg_manifest.clone())
+    } else if let Some(pkg_manifest) = ctx.pkg_manifest() {
+        DocResult::Package(Box::new(pkg_manifest.clone()))
     } else {
         unreachable!("Should have either workspace or package")
     };
