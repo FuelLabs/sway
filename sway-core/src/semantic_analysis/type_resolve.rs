@@ -2,17 +2,12 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    language::{
-        ty::{self, TyTraitItem},
-        CallPath, QualifiedCallPath,
-    },
-    monomorphization::type_decl_opt_to_type_id,
-    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
-    type_system::SubstTypes,
-    EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
+    ast_elements::type_parameter::ConstGenericExpr, decl_engine::DeclEngineGet as _, language::{
+        ty::{self, TyTraitItem}, CallPath, CallPathType, QualifiedCallPath
+    }, monomorphization::type_decl_opt_to_type_id, namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem}, type_system::SubstTypes, EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo
 };
 
 use super::namespace::TraitMap;
@@ -22,6 +17,32 @@ use super::namespace::TraitMap;
 pub enum VisibilityCheck {
     Yes,
     No,
+}
+
+fn resolve_const_generics_ambiguous(
+    expr: &ConstGenericExpr,
+    handler: &Handler,
+    engines: &Engines,
+    namespace: &Namespace,
+    mod_path: &ModulePath,
+    self_type: Option<TypeId>,
+) -> Result<(), ErrorEmitted> {
+    match expr {
+        ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+            let _ = resolve_call_path(
+                handler,
+                engines,
+                namespace,
+                mod_path,
+                &CallPath { prefixes: vec![], suffix: ident.clone(), callpath_type: CallPathType::Ambiguous },
+                self_type,
+                VisibilityCheck::No,
+            )
+            .map(|d| d.expect_typed())?;
+        },
+        _ => {}
+    }
+    Ok(())
 }
 
 /// Resolve the type of the given [TypeId], replacing any instances of
@@ -90,6 +111,7 @@ pub fn resolve_type(
                 check_visibility,
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
+            resolve_const_generics_ambiguous(length.expr(), handler, engines, namespace, mod_path, self_type)?;
 
             engines.te().insert_array(engines, elem_ty, length.clone())
         }
@@ -181,6 +203,10 @@ pub fn resolve_type(
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
             engines.te().insert_ref(engines, *to_mutable_value, ty)
+        }
+        TypeInfo::StringArray(length) => {
+            resolve_const_generics_ambiguous(length.expr(), handler, engines, namespace, mod_path, self_type)?;
+            type_id
         }
         _ => type_id,
     };
