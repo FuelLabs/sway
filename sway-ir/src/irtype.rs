@@ -798,12 +798,10 @@ mod tests {
                 assert_eq!(s_ptr.in_bytes(), s_ptr.in_bytes_aligned());
             }
 
-            assert_eq!(Type::get_ptr(&mut context).size(&context).in_bytes(), 8);
+            assert_eq!(Type::get_ptr(&context).size(&context).in_bytes(), 8);
             assert_eq!(
-                Type::get_ptr(&mut context).size(&context).in_bytes(),
-                Type::get_ptr(&mut context)
-                    .size(&context)
-                    .in_bytes_aligned()
+                Type::get_ptr(&context).size(&context).in_bytes(),
+                Type::get_ptr(&context).size(&context).in_bytes_aligned()
             );
         }
 
