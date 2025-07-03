@@ -314,27 +314,12 @@ fn to_bytecode_mut(
             print!("{}{:#010x} ", " ".repeat(indentation), offset);
 
             match &pair.value {
-                Datum::Byte(w) => println!(".byte i{w}, as hex {w:02X}"),
-                Datum::Word(w) => {
-                    println!(".word i{w}, as hex be bytes ({:02X?})", w.to_be_bytes())
-                }
-                Datum::ByteArray(bs) => {
+                Datum::U8(v) => println!(".byte i{}, as hex {:02X}", v, v),
+                Datum::U16(v) => println!(".quarterword i{}, as hex {:02X?}", v, v.to_be_bytes()),
+                Datum::U32(v) => println!(".halfword i{}, as hex {:02X?}", v, v.to_be_bytes()),
+                Datum::U64(v) => println!(".word i{}, as hex {:02X?}", v, v.to_be_bytes()),
+                Datum::ByRef(bs) => {
                     print!(".bytes as hex ({bs:02X?}), len i{}, as ascii \"", bs.len());
-
-                    for b in bs {
-                        print!(
-                            "{}",
-                            if *b == b' ' || b.is_ascii_graphic() {
-                                *b as char
-                            } else {
-                                '.'
-                            }
-                        );
-                    }
-                    println!("\"");
-                }
-                Datum::Slice(bs) => {
-                    print!(".slice as hex ({bs:02X?}), len i{}, as ascii \"", bs.len());
 
                     for b in bs {
                         print!(

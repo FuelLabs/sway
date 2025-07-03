@@ -607,7 +607,7 @@ pub(crate) fn compile_jump(
     if curr_offset > target_offset {
         let delta = curr_offset - target_offset - 1;
         return if far {
-            let data_id = data_section.insert_data_value(Entry::new_word(
+            let data_id = data_section.insert_data_value(Entry::new_min_int(
                 delta + 1, // +1 since the load instruction must be skipped as well
                 EntryName::NonConfigurable,
                 None,
@@ -662,7 +662,7 @@ pub(crate) fn compile_jump(
     let delta = target_offset - curr_offset - 1;
 
     if far {
-        let data_id = data_section.insert_data_value(Entry::new_word(
+        let data_id = data_section.insert_data_value(Entry::new_min_int(
             delta - 1,
             EntryName::NonConfigurable,
             None,
@@ -779,7 +779,7 @@ pub(crate) fn compile_call_inner(
         }
 
         // if the offset is too large for MOVI, use data section to store the full offset.
-        let data_id = data_section.insert_data_value(Entry::new_word(
+        let data_id = data_section.insert_data_value(Entry::new_min_int(
             delta_instr,
             EntryName::NonConfigurable,
             None,
@@ -886,7 +886,7 @@ pub(crate) fn compile_call_inner(
     }
 
     // And lastly, fall back to the data section backed approach.
-    let data_id = data_section.insert_data_value(Entry::new_word(
+    let data_id = data_section.insert_data_value(Entry::new_min_int(
         delta_instr,
         EntryName::NonConfigurable,
         None,

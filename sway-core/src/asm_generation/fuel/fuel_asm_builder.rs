@@ -1464,6 +1464,28 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     owning_span,
                 });
             }
+            2 => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LQW(
+                        instr_reg.clone(),
+                        src_reg,
+                        VirtualImmediate12::new_unchecked(0, "Zero must fit in 12 bits"),
+                    )),
+                    comment: "load quadword".into(),
+                    owning_span,
+                });
+            }
+            4 => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LHW(
+                        instr_reg.clone(),
+                        src_reg,
+                        VirtualImmediate12::new_unchecked(0, "Zero must fit in 12 bits"),
+                    )),
+                    comment: "load halfword".into(),
+                    owning_span,
+                });
+            }
             8.. => {
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LW(
@@ -2252,7 +2274,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
         } else {
             let comment = comment.into();
-            let data_id = self.data_section.insert_data_value(Entry::new_word(
+            let data_id = self.data_section.insert_data_value(Entry::new_min_int(
                 imm,
                 EntryName::NonConfigurable,
                 None,

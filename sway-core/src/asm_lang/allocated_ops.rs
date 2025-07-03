@@ -11,9 +11,12 @@
 
 use super::*;
 use crate::{
-    asm_generation::fuel::{
-        compiler_constants::DATA_SECTION_REGISTER,
-        data_section::{DataId, DataSection},
+    asm_generation::{
+        fuel::{
+            compiler_constants::DATA_SECTION_REGISTER,
+            data_section::{DataId, DataSection},
+        },
+        Datum,
     },
     fuel_prelude::fuel_asm::{self, op},
 };
@@ -161,6 +164,8 @@ pub(crate) enum AllocatedInstruction {
     CFE(AllocatedRegister),
     CFS(AllocatedRegister),
     LB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    LQW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    LHW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     LW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     MCL(AllocatedRegister, AllocatedRegister),
     MCLI(AllocatedRegister, VirtualImmediate18),
@@ -177,6 +182,8 @@ pub(crate) enum AllocatedInstruction {
     POPH(VirtualImmediate24),
     POPL(VirtualImmediate24),
     SB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    SQW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    SHW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     SW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /* Contract Instructions */
@@ -366,6 +373,8 @@ impl AllocatedInstruction {
             CFE(_r1) => vec![],
             CFS(_r1) => vec![],
             LB(r1, _r2, _i) => vec![r1],
+            LQW(r1, _r2, _i) => vec![r1],
+            LHW(r1, _r2, _i) => vec![r1],
             LW(r1, _r2, _i) => vec![r1],
             MCL(_r1, _r2) => vec![],
             MCLI(_r1, _imm) => vec![],
@@ -376,6 +385,8 @@ impl AllocatedInstruction {
                 panic!("Cannot determine defined registers for register PUSH/POP instructions")
             }
             SB(_r1, _r2, _i) => vec![],
+            SQW(_r1, _r2, _i) => vec![],
+            SHW(_r1, _r2, _i) => vec![],
             SW(_r1, _r2, _i) => vec![],
 
             /* Contract Instructions */
@@ -498,6 +509,8 @@ impl fmt::Display for AllocatedInstruction {
             CFE(a) => write!(fmtr, "cfe {a}"),
             CFS(a) => write!(fmtr, "cfs {a}"),
             LB(a, b, c) => write!(fmtr, "lb   {a} {b} {c}"),
+            LQW(a, b, c) => write!(fmtr, "lqw  {a} {b} {c}"),
+            LHW(a, b, c) => write!(fmtr, "lhw  {a} {b} {c}"),
             LW(a, b, c) => write!(fmtr, "lw   {a} {b} {c}"),
             MCL(a, b) => write!(fmtr, "mcl  {a} {b}"),
             MCLI(a, b) => write!(fmtr, "mcli {a} {b}"),
@@ -509,6 +522,8 @@ impl fmt::Display for AllocatedInstruction {
             POPH(mask) => write!(fmtr, "poph {mask}"),
             POPL(mask) => write!(fmtr, "popl {mask}"),
             SB(a, b, c) => write!(fmtr, "sb   {a} {b} {c}"),
+            SQW(a, b, c) => write!(fmtr, "sqw  {a} {b} {c}"),
+            SHW(a, b, c) => write!(fmtr, "shw  {a} {b} {c}"),
             SW(a, b, c) => write!(fmtr, "sw   {a} {b} {c}"),
 
             /* Contract Instructions */
@@ -704,6 +719,8 @@ impl AllocatedOp {
             CFE(a) => op::CFE::new(a.to_reg_id()).into(),
             CFS(a) => op::CFS::new(a.to_reg_id()).into(),
             LB(a, b, c) => op::LB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            LQW(a, b, c) => op::LQW::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            LHW(a, b, c) => op::LHW::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             LW(a, b, c) => op::LW::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             MCL(a, b) => op::MCL::new(a.to_reg_id(), b.to_reg_id()).into(),
             MCLI(a, b) => op::MCLI::new(a.to_reg_id(), b.value().into()).into(),
@@ -717,6 +734,8 @@ impl AllocatedOp {
             POPH(mask) => op::POPH::new(mask.value().into()).into(),
             POPL(mask) => op::POPL::new(mask.value().into()).into(),
             SB(a, b, c) => op::SB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            SQW(a, b, c) => op::SQW::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            SHW(a, b, c) => op::SHW::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             SW(a, b, c) => op::SW::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
 
             /* Contract Instructions */
@@ -863,81 +882,145 @@ fn realize_load(
     offset_to_data_section: u64,
     offset_from_instr_start: u64,
 ) -> Vec<fuel_asm::Instruction> {
-    // if this data is larger than a word, instead of loading the data directly
-    // into the register, we want to load a pointer to the data into the register
-    // this appends onto the data section and mutates it by adding the pointer as a literal
-    let has_copy_type = data_section.has_copy_type(data_id).expect(
+    let entry = data_section.get(data_id).expect(
         "Internal miscalculation in data section -- data id did not match up to any actual data",
     );
-
-    let is_byte = data_section.is_byte(data_id).expect(
-        "Internal miscalculation in data section -- data id did not match up to any actual data",
-    );
-
-    // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
-    assert!(
-        offset_bytes % 8 == 0,
-        "Internal miscalculation in data section -- data offset is not aligned to a word",
-    );
-    let offset_words = offset_bytes / 8;
 
-    let imm = VirtualImmediate12::new(
-        if is_byte { offset_bytes } else { offset_words },
-        Span::new(" ".into(), 0, 0, None).unwrap(),
-    );
-    let offset = match imm {
-        Ok(value) => value,
-        Err(_) => panic!(
-            "Unable to offset into the data section more than 2^12 bits. \
-                                Unsupported data section length: {} words.",
-            offset_words
-        ),
-    };
-
-    if !has_copy_type {
-        // load the pointer itself into the register. `offset_to_data_section` is in bytes.
-        // The -4 is because $pc is added in the *next* instruction.
-        let pointer_offset_from_current_instr =
-            offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
-
-        // insert the pointer as bytes as a new data section entry at the end of the data
-        let data_id_for_pointer = data_section
-            .data_id_of_pointer(pointer_offset_from_current_instr)
-            .expect("Pointer offset must be in data_section");
-
-        // now load the pointer we just created into the `dest`ination
-        let mut buf = Vec::with_capacity(2);
-        buf.append(&mut realize_load(
-            dest,
-            &data_id_for_pointer,
-            data_section,
-            offset_to_data_section,
-            offset_from_instr_start,
-        ));
-        // add $pc to the pointer since it is relative to the current instruction.
-        buf.push(
-            fuel_asm::op::ADD::new(
+    match entry.value {
+        Datum::U8(_) => {
+            let Ok(imm) = VirtualImmediate12::new(offset_bytes, Span::dummy()) else {
+                panic!(
+                    "Unable to offset into the data section more than 2^12 bits. \
+                                            Unsupported data section length: {} bytes.",
+                    offset_bytes
+                );
+            };
+            vec![fuel_asm::op::LB::new(
                 dest.to_reg_id(),
-                dest.to_reg_id(),
-                ConstantRegister::ProgramCounter.to_reg_id(),
+                fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+                imm.value().into(),
             )
-            .into(),
-        );
-        buf
-    } else if is_byte {
-        vec![fuel_asm::op::LB::new(
-            dest.to_reg_id(),
-            fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            offset.value().into(),
-        )
-        .into()]
-    } else {
-        vec![fuel_asm::op::LW::new(
-            dest.to_reg_id(),
-            fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            offset.value().into(),
-        )
-        .into()]
+            .into()]
+        }
+        Datum::U16(_) => {
+            assert!(
+                offset_bytes % 2 == 0,
+                "Internal miscalculation in data section -- invalid alignment for u16 data",
+            );
+            let Ok(imm) = VirtualImmediate12::new(offset_bytes / 2, Span::dummy()) else {
+                panic!(
+                    "Unable to offset into the data section more than 2^12 bits. \
+                                            Unsupported data section length: {} bytes.",
+                    offset_bytes
+                );
+            };
+            vec![fuel_asm::op::LQW::new(
+                dest.to_reg_id(),
+                fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+                imm.value().into(),
+            )
+            .into()]
+        }
+        Datum::U32(_) => {
+            assert!(
+                offset_bytes % 4 == 0,
+                "Internal miscalculation in data section -- invalid alignment for u16 data",
+            );
+            let Ok(imm) = VirtualImmediate12::new(offset_bytes / 4, Span::dummy()) else {
+                panic!(
+                    "Unable to offset into the data section more than 2^12 bits. \
+                                            Unsupported data section length: {} bytes.",
+                    offset_bytes
+                );
+            };
+            vec![fuel_asm::op::LHW::new(
+                dest.to_reg_id(),
+                fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+                imm.value().into(),
+            )
+            .into()]
+        }
+        Datum::U64(_) => {
+            assert!(
+                offset_bytes % 8 == 0,
+                "Internal miscalculation in data section -- invalid alignment for u16 data",
+            );
+            let Ok(imm) = VirtualImmediate12::new(offset_bytes / 8, Span::dummy()) else {
+                panic!(
+                    "Unable to offset into the data section more than 2^12 bits. \
+                                            Unsupported data section length: {} bytes.",
+                    offset_bytes
+                );
+            };
+            vec![fuel_asm::op::LW::new(
+                dest.to_reg_id(),
+                fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+                imm.value().into(),
+            )
+            .into()]
+        }
+        _ => {
+            // if this data is larger than a word, instead of loading the data directly
+            // into the register, we want to load a pointer to the data into the register
+            // this appends onto the data section and mutates it by adding the pointer as a literal
+
+            // load the pointer itself into the register. `offset_to_data_section` is in bytes.
+            // The -4 is because $pc is added in the *next* instruction.
+            let pointer_offset_from_current_instr =
+                offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
+
+            // insert the pointer as bytes as a new data section entry at the end of the data
+            let data_id_for_pointer = data_section
+                .data_id_of_pointer(pointer_offset_from_current_instr)
+                .expect("Pointer offset must be in data_section");
+
+            // now load the pointer we just created into the `dest`ination
+            let mut buf = Vec::with_capacity(2);
+            buf.append(&mut realize_load(
+                dest,
+                &data_id_for_pointer,
+                data_section,
+                offset_to_data_section,
+                offset_from_instr_start,
+            ));
+            // add $pc to the pointer since it is relative to the current instruction.
+            buf.push(
+                fuel_asm::op::ADD::new(
+                    dest.to_reg_id(),
+                    dest.to_reg_id(),
+                    ConstantRegister::ProgramCounter.to_reg_id(),
+                )
+                .into(),
+            );
+            buf
+        }
     }
+
+    // let is_byte = data_section.is_byte(data_id).expect(
+    //     "Internal miscalculation in data section -- data id did not match up to any actual data",
+    // );
+
+    // let imm = VirtualImmediate12::new(
+    //     if is_byte { offset_bytes } else { offset_words },
+    //     Span::new(" ".into(), 0, 0, None).unwrap(),
+    // );
+    // let offset = match imm {
+    //     Ok(value) => value,
+    //     Err(_) => panic!(
+    //         "Unable to offset into the data section more than 2^12 bits. \
+    //                             Unsupported data section length: {} words.",
+    //         offset_words
+    //     ),
+    // };
+
+    // if is_byte {
+    // } else {
+    //     vec![fuel_asm::op::LW::new(
+    //         dest.to_reg_id(),
+    //         fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+    //         offset.value().into(),
+    //     )
+    //     .into()]
+    // }
 }

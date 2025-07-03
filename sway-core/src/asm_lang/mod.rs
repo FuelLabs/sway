@@ -1194,6 +1194,8 @@ impl fmt::Display for VirtualOp {
             CFE(_sp, a) => write!(fmtr, "cfe {a}"),
             CFS(_sp, a) => write!(fmtr, "cfs {a}"),
             LB(a, b, c) => write!(fmtr, "lb {a} {b} {c}"),
+            LQW(a, b, c) => write!(fmtr, "lqw {a} {b} {c}"),
+            LHW(a, b, c) => write!(fmtr, "lhw {a} {b} {c}"),
             LW(a, b, c) => write!(fmtr, "lw {a} {b} {c}"),
             MCL(a, b) => write!(fmtr, "mcl {a} {b}"),
             MCLI(a, b) => write!(fmtr, "mcli {a} {b}"),
@@ -1201,6 +1203,8 @@ impl fmt::Display for VirtualOp {
             MCPI(a, b, c) => write!(fmtr, "mcpi {a} {b} {c}"),
             MEQ(a, b, c, d) => write!(fmtr, "meq {a} {b} {c} {d}"),
             SB(a, b, c) => write!(fmtr, "sb {a} {b} {c}"),
+            SQW(a, b, c) => write!(fmtr, "sqw {a} {b} {c}"),
+            SHW(a, b, c) => write!(fmtr, "shw {a} {b} {c}"),
             SW(a, b, c) => write!(fmtr, "sw {a} {b} {c}"),
 
             /* Contract Instructions */

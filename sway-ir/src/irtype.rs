@@ -259,6 +259,11 @@ impl Type {
         matches!(*self.get_content(context), TypeContent::Uint(8))
     }
 
+    /// Is u16 type
+    pub fn is_uint16(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::Uint(16))
+    }
+
     /// Is u32 type
     pub fn is_uint32(&self, context: &Context) -> bool {
         matches!(*self.get_content(context), TypeContent::Uint(32))
@@ -663,7 +668,7 @@ impl TypeSize {
 /// the value in aggregates. E.g., in an array of `u8`, each `u8` is "padded"
 /// to its size of one byte while as a struct field, it will be right padded
 /// to 8 bytes.
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Copy, Debug, serde::Serialize)]
 pub enum Padding {
     Left { target_size: usize },
     Right { target_size: usize },
@@ -674,6 +679,18 @@ impl Padding {
     pub fn default_for_u8(_value: u8) -> Self {
         // Dummy _value is used only to ensure correct usage at the call site.
         Self::Right { target_size: 1 }
+    }
+
+    /// Returns the default [Padding] for `u16`.
+    pub fn default_for_u16(_value: u16) -> Self {
+        // Dummy _value is used only to ensure correct usage at the call site.
+        Self::Right { target_size: 2 }
+    }
+
+    /// Returns the default [Padding] for `u32`.
+    pub fn default_for_u32(_value: u32) -> Self {
+        // Dummy _value is used only to ensure correct usage at the call site.
+        Self::Right { target_size: 4 }
     }
 
     /// Returns the default [Padding] for `u64`.
