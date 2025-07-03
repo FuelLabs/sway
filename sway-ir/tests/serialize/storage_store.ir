@@ -7,10 +7,10 @@ contract {
         local u64 value_for_x
 
         entry():
-        v0 = get_local ptr u64, value_for_x
+        v0 = get_local __ptr u64, value_for_x
         v1 = const u64 0
         store v1 to v0
-        v2 = get_local ptr b256, key_for_x
+        v2 = get_local __ptr b256, key_for_x
         v3 = const b256 0x7fbd1192666bfac3767b890bd4d048c940879d316071e20c7c8c81bce2ca41c5
         store v3 to v2
         v4 = const u64 0
@@ -26,13 +26,13 @@ contract {
         local b256 value_for_y
 
         entry():
-        v0 = get_local ptr b256, value_for_y
+        v0 = get_local __ptr b256, value_for_y
         v1 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
         store v1 to v0
-        v2 = get_local ptr b256, key_for_y
+        v2 = get_local __ptr b256, key_for_y
         v3 = const b256 0xa15d6d36b54df993ed1fbe4544a45d4c4f70d81b4229861dfde0e20eb652202c
         store v3 to v2
-        v4 = get_local ptr b256, value_for_y
+        v4 = get_local __ptr b256, value_for_y
         v5 = const u64 1
 // check: state_store_quad_word $VAR, key $VAR, $VAR
         state_store_quad_word v4, key v2, v5

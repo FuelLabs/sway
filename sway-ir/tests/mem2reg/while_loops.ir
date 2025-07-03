@@ -12,8 +12,8 @@ script {
 
         // check: entry()
         entry():
-        // check: $(v0=$VAR) = get_local ptr u64, counter
-        v0 = get_local ptr u64, counter, !2
+        // check: $(v0=$VAR) = get_local __ptr u64, counter
+        v0 = get_local __ptr u64, counter, !2
         v1 = const u64 0, !3
         // not: store $VAR to $v0
         store v1 to v0, !2
@@ -21,8 +21,8 @@ script {
 
         // check: while($(v3=$VAR): u64):
         while():
-        // check: $(v2=$VAR) = get_local ptr u64, counter
-        v2 = get_local ptr u64, counter, !4
+        // check: $(v2=$VAR) = get_local __ptr u64, counter
+        v2 = get_local __ptr u64, counter, !4
         // not: load $v2
         v3 = load v2, !4
         v4 = const u64 10, !5
@@ -32,9 +32,9 @@ script {
 
         // check: while_body():
         while_body():
-        v6 = get_local ptr u64, counter, !7
-        // check: $(v7=$VAR) = get_local ptr u64, counter
-        v7 = get_local ptr u64, counter, !8
+        v6 = get_local __ptr u64, counter, !7
+        // check: $(v7=$VAR) = get_local __ptr u64, counter
+        v7 = get_local __ptr u64, counter, !8
         // not: load $v7
         v8 = load v7, !8
         v9 = const u64 1, !9
@@ -45,8 +45,8 @@ script {
 
         // check: end_while():
         end_while():
-        // check: $(v11=$VAR) = get_local ptr u64, counter
-        v11 = get_local ptr u64, counter, !11
+        // check: $(v11=$VAR) = get_local __ptr u64, counter
+        v11 = get_local __ptr u64, counter, !11
         // not: load $v11
         v12 = load v11, !11
         // check: $(v13=$VAR) = const u64 10
@@ -54,13 +54,13 @@ script {
         // check: call eq_5($v3, $v13)
         v14 = call eq_5(v12, v13), !13
         v15 = call assert_2(v14), !15
-        // check: $(v16=$VAR) = get_local ptr u64, counter_2
-        v16 = get_local ptr u64, counter_2, !16
+        // check: $(v16=$VAR) = get_local __ptr u64, counter_2
+        v16 = get_local __ptr u64, counter_2, !16
         v17 = const u64 0, !17
         // not: store $VAR to $v16
         store v17 to v16, !16
-        // check: $(v18=$VAR) = get_local ptr u64, counter_3
-        v18 = get_local ptr u64, counter_3, !18
+        // check: $(v18=$VAR) = get_local __ptr u64, counter_3
+        v18 = get_local __ptr u64, counter_3, !18
         v19 = const u64 0, !19
         // not: store $VAR to $v18
         store v19 to v18, !18
@@ -68,8 +68,8 @@ script {
 
         // check: while0($(p1=$VAR): u64, $(p2=$VAR): u64):
         while0():
-        // check: $(v20=$VAR) = get_local ptr u64, counter_2
-        v20 = get_local ptr u64, counter_2, !20
+        // check: $(v20=$VAR) = get_local __ptr u64, counter_2
+        v20 = get_local __ptr u64, counter_2, !20
         // not: load $v20
         v21 = load v20, !20
         // check: $(v22=$VAR) = const u64 10
@@ -80,8 +80,8 @@ script {
 
         // check while_body1():
         while_body1():
-        // check: $(v24=$VAR) = get_local ptr u64, counter_2
-        v24 = get_local ptr u64, counter_2, !23
+        // check: $(v24=$VAR) = get_local __ptr u64, counter_2
+        v24 = get_local __ptr u64, counter_2, !23
         // not: load $v24
         v25 = load v24, !23
         // check: $(v26=$VAR) = const u64 3
@@ -92,8 +92,8 @@ script {
 
         // check: end_while2():
         end_while2():
-        // check: $(v28=$VAR) = get_local ptr u64, counter_2
-        v28 = get_local ptr u64, counter_2, !26
+        // check: $(v28=$VAR) = get_local __ptr u64, counter_2
+        v28 = get_local __ptr u64, counter_2, !26
         // not: load $v28
         v29 = load v28, !26
         // check: $(v30=$VAR) = const u64 10
@@ -104,8 +104,8 @@ script {
 
         // check: block3():
         block3():
-        // check: $(v32=$VAR) = get_local ptr u64, counter_2
-        v32 = get_local ptr u64, counter_2, !30
+        // check: $(v32=$VAR) = get_local __ptr u64, counter_2
+        v32 = get_local __ptr u64, counter_2, !30
         v33 = const u64 10, !31
         // not: store $VAR to $v32
         store v33 to v32, !30
@@ -113,14 +113,14 @@ script {
         br block5(v34)
 
         block4():
-        v35 = get_local ptr u64, counter_2, !32
-        v36 = get_local ptr u64, counter_2, !33
+        v35 = get_local __ptr u64, counter_2, !32
+        v36 = get_local __ptr u64, counter_2, !33
         v37 = load v36, !33
         v38 = const u64 1, !34
         v39 = call add_0(v37, v38), !35
         store v39 to v35, !32
-        v40 = get_local ptr u64, counter_3, !36
-        v41 = get_local ptr u64, counter_3, !37
+        v40 = get_local __ptr u64, counter_3, !36
+        v41 = get_local __ptr u64, counter_3, !37
         v42 = load v41, !37
         v43 = const u64 1, !38
         v44 = call add_0(v42, v43), !39
@@ -132,7 +132,7 @@ script {
         br while0()
 
         block6():
-        v47 = get_local ptr u64, counter_3, !40
+        v47 = get_local __ptr u64, counter_3, !40
         v48 = load v47, !40
         v49 = const u64 3, !41
         v50 = call eq_5(v48, v49), !42
@@ -140,16 +140,16 @@ script {
 
         block7(v51: bool):
         v52 = call assert_2(v51), !15
-        v53 = get_local ptr u64, counter_4, !43
+        v53 = get_local __ptr u64, counter_4, !43
         v54 = const u64 0, !44
         store v54 to v53, !43
-        v55 = get_local ptr u64, counter_5, !45
+        v55 = get_local __ptr u64, counter_5, !45
         v56 = const u64 0, !46
         store v56 to v55, !45
         br while8()
 
         while8():
-        v57 = get_local ptr u64, counter_4, !47
+        v57 = get_local __ptr u64, counter_4, !47
         v58 = load v57, !47
         v59 = const u64 7, !48
         v60 = call lt_1(v58, v59), !49
@@ -159,12 +159,12 @@ script {
         br while11()
 
         end_while10():
-        v61 = get_local ptr u64, counter_5, !50
+        v61 = get_local __ptr u64, counter_5, !50
         v62 = load v61, !50
         v63 = const u64 11, !51
         v64 = call eq_5(v62, v63), !52
         v65 = call assert_2(v64), !15
-        v66 = get_local ptr u64, counter_4, !53
+        v66 = get_local __ptr u64, counter_4, !53
         v67 = load v66, !53
         v68 = const u64 7, !54
         v69 = call eq_5(v67, v68), !55
@@ -172,15 +172,15 @@ script {
         br while14()
 
         while11():
-        v71 = get_local ptr u64, counter_5, !56
+        v71 = get_local __ptr u64, counter_5, !56
         v72 = load v71, !56
         v73 = const u64 11, !57
         v74 = call lt_1(v72, v73), !58
         cbr v74, while_body12(), end_while13()
 
         while_body12():
-        v75 = get_local ptr u64, counter_5, !59
-        v76 = get_local ptr u64, counter_5, !60
+        v75 = get_local __ptr u64, counter_5, !59
+        v76 = get_local __ptr u64, counter_5, !60
         v77 = load v76, !60
         v78 = const u64 1, !61
         v79 = call add_0(v77, v78), !62
@@ -188,8 +188,8 @@ script {
         br while11()
 
         end_while13():
-        v80 = get_local ptr u64, counter_4, !63
-        v81 = get_local ptr u64, counter_4, !64
+        v80 = get_local __ptr u64, counter_4, !63
+        v81 = get_local __ptr u64, counter_4, !64
         v82 = load v81, !64
         v83 = const u64 1, !65
         v84 = call add_0(v82, v83), !66
@@ -204,7 +204,7 @@ script {
         br end_while16()
 
         end_while16():
-        v86 = get_local ptr (), result, !68
+        v86 = get_local __ptr (), result, !68
         v87 = const unit (), !69
         store v87 to v86, !68
         v88 = const bool true, !70

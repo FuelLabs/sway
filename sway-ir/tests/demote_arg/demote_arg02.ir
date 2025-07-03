@@ -4,9 +4,9 @@ script {
         local b256 twobee = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
 
         entry():
-        v0 = get_local ptr b256, twobee
+        v0 = get_local __ptr b256, twobee
         v1 = load v0
-        v2 = get_local ptr b256, dada
+        v2 = get_local __ptr b256, dada
         v3 = load v2
         v4 = call bar()
         v5 = const u64 33
@@ -22,9 +22,9 @@ script {
         local b256 feve = const b256 0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e
 
         entry():
-        v0 = get_local ptr b256, feve
+        v0 = get_local __ptr b256, feve
         v1 = load v0
-        v2 = get_local ptr b256, fafa
+        v2 = get_local __ptr b256, fafa
         v3 = load v2
         v4 = const u64 11
         v5 = call foo(v1, v4)
@@ -49,19 +49,19 @@ script {
 // check: local b256 $(tmp_arg0=$ID)
 // check: local b256 $(tmp_arg1=$ID)
 
-// check: $(tmp_arg0_ptr=$ID) = get_local ptr b256, $tmp_arg0
+// check: $(tmp_arg0_ptr=$ID) = get_local __ptr b256, $tmp_arg0
 // check: call foo($tmp_arg0_ptr, $ID)
 
-// check: $(tmp_arg1_ptr=$ID) = get_local ptr b256, $tmp_arg1
+// check: $(tmp_arg1_ptr=$ID) = get_local __ptr b256, $tmp_arg1
 // check: call foo($tmp_arg1_ptr, $ID)
 
 // check: fn bar
 // check: local b256 $(tmp_arg0=$ID)
 // check: local b256 $(tmp_arg1=$ID)
 
-// check: $(tmp_arg0_ptr=$ID) = get_local ptr b256, $tmp_arg0
+// check: $(tmp_arg0_ptr=$ID) = get_local __ptr b256, $tmp_arg0
 // check: call foo($tmp_arg0_ptr, $ID)
 
-// check: $(tmp_arg1_ptr=$ID) = get_local ptr b256, $tmp_arg1
+// check: $(tmp_arg1_ptr=$ID) = get_local __ptr b256, $tmp_arg1
 // check: call foo($tmp_arg1_ptr, $ID)
 

@@ -136,28 +136,28 @@ script {
         br block7(v5)
 
         block3():
-        // check: $(v6=$VAR) = get_local ptr bool, is_not_prime
-        v6 = get_local ptr bool, is_not_prime, !66
+        // check: $(v6=$VAR) = get_local __ptr bool, is_not_prime
+        v6 = get_local __ptr bool, is_not_prime, !66
         v7 = const bool false, !67
         // not: store $VAR to $v6
         store v7 to v6, !66
-        // check: $(v8=$VAR) = get_local ptr u64, i
-        v8 = get_local ptr u64, i, !68
+        // check: $(v8=$VAR) = get_local __ptr u64, i
+        v8 = get_local __ptr u64, i, !68
         v9 = const u64 2, !69
         // not: store $VAR to $v8
         store v9 to v8, !68
         br while()
 
         while():
-        // check: $(v10=$VAR) = get_local ptr u64, i
-        v10 = get_local ptr u64, i, !70
+        // check: $(v10=$VAR) = get_local __ptr u64, i
+        v10 = get_local __ptr u64, i, !70
         // not: load $v10
         v11 = load v10, !70
         v12 = call lt_8(v11, n), !71
         cbr v12, while_body(), end_while()
 
         while_body():
-        v13 = get_local ptr u64, i, !72
+        v13 = get_local __ptr u64, i, !72
         v14 = load v13, !72
         v15 = call modulo_6(n, v14), !73
         v16 = const u64 0, !74
@@ -165,21 +165,21 @@ script {
         cbr v17, block4(), block5(), !75
 
         end_while():
-        // check: $(v18=$VAR) = get_local ptr bool, is_not_prime
-        v18 = get_local ptr bool, is_not_prime, !76
+        // check: $(v18=$VAR) = get_local __ptr bool, is_not_prime
+        v18 = get_local __ptr bool, is_not_prime, !76
         // not: load $v18
         v19 = load v18, !76
         v20 = call not_9(v19), !77
         br block7(v20)
 
         block4():
-        // check: $(v21=$VAR) = get_local ptr bool, is_not_prime
-        v21 = get_local ptr bool, is_not_prime, !78
+        // check: $(v21=$VAR) = get_local __ptr bool, is_not_prime
+        v21 = get_local __ptr bool, is_not_prime, !78
         v22 = const bool true, !79
         // not: store $VAR to $v21
         store v22 to v21, !78
-        // check: $(v23=$VAR) = get_local ptr u64, i
-        v23 = get_local ptr u64, i, !80
+        // check: $(v23=$VAR) = get_local __ptr u64, i
+        v23 = get_local __ptr u64, i, !80
         // not: store $VAR to $v23
         store n to v23, !80
         v24 = const unit ()
@@ -190,10 +190,10 @@ script {
         br block6(v25)
 
         block6(v26: ()):
-        // check: $(v27=$VAR) = get_local ptr u64, i
-        v27 = get_local ptr u64, i, !81
-        // check: $(v28=$VAR) = get_local ptr u64, i
-        v28 = get_local ptr u64, i, !82
+        // check: $(v27=$VAR) = get_local __ptr u64, i
+        v27 = get_local __ptr u64, i, !81
+        // check: $(v28=$VAR) = get_local __ptr u64, i
+        v28 = get_local __ptr u64, i, !82
         // not: load $v28
         v29 = load v28, !82
         v30 = const u64 1, !83

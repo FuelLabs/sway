@@ -14,21 +14,21 @@ script {
 
         entry():
         v0 = const string<3> "str"
-        v_str_loc_ptr = get_local ptr string<3>, __anon_2
+        v_str_loc_ptr = get_local __ptr string<3>, __anon_2
         store v0 to v_str_loc_ptr
         v1 = ptr_to_int v_str_loc_ptr to u64
-        v2 = get_local ptr { u64, u64 }, __anon_0
+        v2 = get_local __ptr { u64, u64 }, __anon_0
         v3 = const u64 0
-        v4 = get_elem_ptr v2, ptr u64, v3
+        v4 = get_elem_ptr v2, __ptr u64, v3
         store v1 to v4
         v5 = const u64 1
-        v6 = get_elem_ptr v2, ptr u64, v5
+        v6 = get_elem_ptr v2, __ptr u64, v5
         v7 = const u64 3
         store v7 to v6
-        v8 = get_local ptr slice, __anon_1
+        v8 = get_local __ptr slice, __anon_1
         mem_copy_bytes v8, v2, 16
         v9 = load v8
-        v10 = get_local ptr slice, x
+        v10 = get_local __ptr slice, x
         store v9 to v10
         v11 = const unit ()
         ret () v11

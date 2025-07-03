@@ -4,8 +4,8 @@ script {
         local u64 y
 
         entry():
-        v0 = get_local ptr u64, x
-        v1 = get_local ptr u64, y
+        v0 = get_local __ptr u64, x
+        v1 = get_local __ptr u64, y
 	
         v2 = load v0
         v3 = call escape(v0) // `v0` escapes here.
@@ -15,8 +15,8 @@ script {
         ret u64 v4
     }
 
-    fn escape(a: ptr u64) -> u64 {
-        entry(a: ptr u64):
+    fn escape(a: __ptr u64) -> u64 {
+        entry(a: __ptr u64):
         z = const u64 0
         store z to a
         ret u64 z
@@ -25,8 +25,8 @@ script {
 
 // The `store` instruction must not be optimized away.
 
-// check: v0 = get_local ptr u64, x
-// check: v1 = get_local ptr u64, y
+// check: v0 = get_local __ptr u64, x
+// check: v1 = get_local __ptr u64, y
 // check: v2 = load v0
 // check: v3 = call escape(v0)
 // check: store v2 to v1

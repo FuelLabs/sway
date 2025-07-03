@@ -30,7 +30,7 @@ impl LocalVar {
         initializer: Option<Constant>,
         mutable: bool,
     ) -> Self {
-        let ptr_ty = Type::new_ptr(context, ty);
+        let ptr_ty = Type::new_typed_pointer(context, ty);
         let content = LocalVarContent {
             ptr_ty,
             initializer,
@@ -46,7 +46,7 @@ impl LocalVar {
 
     /// Return the inner (pointed to) type.
     pub fn get_inner_type(&self, context: &Context) -> Type {
-        let TypeContent::Pointer(inner_ty) = self.get_type(context).get_content(context) else {
+        let TypeContent::TypedPointer(inner_ty) = self.get_type(context).get_content(context) else {
             unreachable!("Local var type is always a pointer.")
         };
         *inner_ty
@@ -91,7 +91,7 @@ impl GlobalVar {
         initializer: Option<Constant>,
         mutable: bool,
     ) -> Self {
-        let ptr_ty = Type::new_ptr(context, ty);
+        let ptr_ty = Type::new_typed_pointer(context, ty);
         let content = GlobalVarContent {
             ptr_ty,
             initializer,
@@ -107,7 +107,7 @@ impl GlobalVar {
 
     /// Return the inner (pointed to) type.
     pub fn get_inner_type(&self, context: &Context) -> Type {
-        let TypeContent::Pointer(inner_ty) = self.get_type(context).get_content(context) else {
+        let TypeContent::TypedPointer(inner_ty) = self.get_type(context).get_content(context) else {
             unreachable!("Global var type is always a pointer.")
         };
         *inner_ty

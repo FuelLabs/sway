@@ -11,27 +11,27 @@ script {
         local b256 y
 
         entry():
-        v0 = get_local ptr b256, key_for_x
+        v0 = get_local __ptr b256, key_for_x
         v1 = const b256 0x7fbd1192666bfac3767b890bd4d048c940879d316071e20c7c8c81bce2ca41c5
         store v1 to v0
-        v2 = get_local ptr u64, value_for_x
+        v2 = get_local __ptr u64, value_for_x
 // check: $VAR = state_load_word key $VAR
         v3 = state_load_word key v0
         store v3 to v2
-        v4 = get_local ptr u64, value_for_x
+        v4 = get_local __ptr u64, value_for_x
         v5 = load v4
-        v6 = get_local ptr u64, x
+        v6 = get_local __ptr u64, x
         store v5 to v6
-        v7 = get_local ptr b256, key_for_y
+        v7 = get_local __ptr b256, key_for_y
         v8 = const b256 0xa15d6d36b54df993ed1fbe4544a45d4c4f70d81b4229861dfde0e20eb652202c
         store v8 to v7
-        v9 = get_local ptr b256, value_for_y
+        v9 = get_local __ptr b256, value_for_y
         v10 = const u64 1
 //check: state_load_quad_word $VAR, key $VAR, $VAR
         state_load_quad_word v9, key v7, v10
-        v11 = get_local ptr b256, value_for_y
+        v11 = get_local __ptr b256, value_for_y
         v12 = load v11
-        v13 = get_local ptr b256, y
+        v13 = get_local __ptr b256, y
         store v12 to v13
         v14 = const unit ()
         ret () v14

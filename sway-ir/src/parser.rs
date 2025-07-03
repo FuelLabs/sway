@@ -585,11 +585,13 @@ mod ir_builder {
                 / "u256" _ { IrAstTy::U256 }
                 / "b256" _ { IrAstTy::B256 }
                 / "slice" _ { IrAstTy::Slice }
+                / "__slice" _ "[" _ ty:ast_ty() "]" _ { IrAstTy::TypedSlice(Box::new(ty)) }
                 / "string" _ "<" _ sz:decimal() ">" _ { IrAstTy::String(sz) }
                 / array_ty()
                 / struct_ty()
                 / union_ty()
-                / "ptr" _ ty:ast_ty() { IrAstTy::Ptr(Box::new(ty)) }
+                / "__ptr" _ ty:ast_ty() _ { IrAstTy::TypedPtr(Box::new(ty)) }
+                / "ptr" _ { IrAstTy::Ptr }
 
             rule array_ty() -> IrAstTy
                 = "[" _ ty:ast_ty() ";" _ c:decimal() "]" _ {
@@ -953,11 +955,13 @@ mod ir_builder {
         U256,
         B256,
         Slice,
+        TypedSlice(Box<IrAstTy>),
         String(u64),
         Array(Box<IrAstTy>, u64),
         Union(Vec<IrAstTy>),
         Struct(Vec<IrAstTy>),
-        Ptr(Box<IrAstTy>),
+        TypedPtr(Box<IrAstTy>),
+        Ptr,
     }
 
     impl IrAstTy {
@@ -970,6 +974,10 @@ mod ir_builder {
                 IrAstTy::U256 => Type::get_uint256(context),
                 IrAstTy::B256 => Type::get_b256(context),
                 IrAstTy::Slice => Type::get_slice(context),
+                IrAstTy::TypedSlice(el_ty) => {
+                    let inner_ty = el_ty.to_ir_type(context);
+                    Type::get_typed_slice(context, inner_ty)
+                }
                 IrAstTy::String(n) => Type::new_string_array(context, *n),
                 IrAstTy::Array(el_ty, count) => {
                     let el_ty = el_ty.to_ir_type(context);
@@ -983,10 +991,11 @@ mod ir_builder {
                     let tys = tys.iter().map(|ty| ty.to_ir_type(context)).collect();
                     Type::new_struct(context, tys)
                 }
-                IrAstTy::Ptr(ty) => {
+                IrAstTy::TypedPtr(ty) => {
                     let inner_ty = ty.to_ir_type(context);
-                    Type::new_ptr(context, inner_ty)
+                    Type::new_typed_pointer(context, inner_ty)
                 }
+                IrAstTy::Ptr => Type::get_ptr(context),
             }
         }
     }
@@ -1607,7 +1616,7 @@ mod ir_builder {
                 let config_val = ConfigContent::V1 {
                     name: config.value_name.clone(),
                     ty,
-                    ptr_ty: Type::new_ptr(context, ty),
+                    ptr_ty: Type::new_typed_pointer(context, ty),
                     encoded_bytes: config.encoded_bytes,
                     // this will point to the correct function after all functions are compiled
                     decode_fn: Cell::new(Function(KeyData::default().into())),
