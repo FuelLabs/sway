@@ -218,7 +218,7 @@ fn rename_const_generics(
     }
 }
 
-fn rename_const_generics_inner(engines: &Engines, m: &mut TyFunctionDecl, type_arguments: &Vec<GenericArgument>, generic_parameters: &[TypeParameter]) {
+fn rename_const_generics_inner(engines: &Engines, m: &mut TyFunctionDecl, type_arguments: &[GenericArgument], generic_parameters: &[TypeParameter]) {
     for a in type_arguments.iter().zip(generic_parameters.iter()) {
         match (a.0, a.1) {
             (GenericArgument::Type(a), TypeParameter::Const(b)) => {
