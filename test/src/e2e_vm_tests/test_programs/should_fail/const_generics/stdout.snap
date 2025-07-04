@@ -1,0 +1,46 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/const_generics --experimental const_generics
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/const_generics
+   Compiling library std (sway-lib-std)
+   Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/const_generics)
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:7:24
+  |
+5 | 
+6 | fn main() {
+7 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
+  |                        ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
+8 |     let _: [u8; UNKNOWN] = [1u8];
+9 |     let _: str[UNKNOWN] = __to_str_array("abc");
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:8:17
+   |
+ 6 | fn main() {
+ 7 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
+ 8 |     let _: [u8; UNKNOWN] = [1u8];
+   |                 ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
+ 9 |     let _: str[UNKNOWN] = __to_str_array("abc");
+10 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:9:16
+   |
+ 7 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
+ 8 |     let _: [u8; UNKNOWN] = [1u8];
+ 9 |     let _: str[UNKNOWN] = __to_str_array("abc");
+   |                ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
+10 | }
+   |
+____
+
+  Aborting due to 3 errors.
+error: Failed to compile const_generics
