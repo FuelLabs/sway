@@ -485,7 +485,9 @@ impl<'a> Unifier<'a> {
                                     span,
                                 );
                             }
-                            (None, None) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                            (None, None) => {
+                                
+                            },
                         }
                     }
                     _ => {
