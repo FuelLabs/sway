@@ -494,7 +494,4 @@ fn assert_migration_steps_consistency(migration_steps: MigrationSteps) {
 
 /// The list of the migration steps, grouped by the Sway feature that causes
 /// the breaking changes behind the migration steps.
-const MIGRATION_STEPS: MigrationSteps = &[(
-    Feature::ErrorType,
-    &[error_type::RENAME_EXISTING_PANIC_IDENTIFIERS_TO_R_PANIC_STEP],
-)];
+const MIGRATION_STEPS: MigrationSteps = &[];

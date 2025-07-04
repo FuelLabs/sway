@@ -3,16 +3,7 @@ resolver = "2"
 members = [
     "forc",
     "forc-pkg",
-    "forc-plugins/forc-client",
-    "forc-plugins/forc-crypto",
-    "forc-plugins/forc-debug",
-    "forc-plugins/forc-doc",
-    "forc-plugins/forc-fmt",
-    "forc-plugins/forc-lsp",
-    "forc-plugins/forc-node",
-    "forc-plugins/forc-migrate",
-    "forc-plugins/forc-publish",
-    "forc-plugins/forc-tx",
+    "forc-plugins/*",
     "forc-test",
     "forc-tracing",
     "forc-util",
@@ -34,7 +25,7 @@ exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
-version = "0.68.8"
+version = "0.69.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
@@ -45,37 +36,37 @@ repository = "https://github.com/FuelLabs/sway"
 # Internal dependencies in order to propagate `workspace.version`
 #
 
-forc = { path = "forc/", version = "0.68.8" }
-forc-pkg = { path = "forc-pkg/", version = "0.68.8" }
-forc-test = { path = "forc-test/", version = "0.68.8" }
-forc-tracing = { path = "forc-tracing/", version = "0.68.8" }
-forc-util = { path = "forc-util/", version = "0.68.8" }
+forc = { path = "forc/", version = "0.69.0" }
+forc-pkg = { path = "forc-pkg/", version = "0.69.0" }
+forc-test = { path = "forc-test/", version = "0.69.0" }
+forc-tracing = { path = "forc-tracing/", version = "0.69.0" }
+forc-util = { path = "forc-util/", version = "0.69.0" }
 
 # Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.68.8" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.68.8" }
-forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.68.8" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.68.8" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.68.8" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.68.8" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.68.8" }
-forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.68.8" }
-forc-publish = { path = "forc-plugins/forc-publish/", version = "0.68.8" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.68.8" }
+forc-plugins = { path = "forc-plugins/", version = "0.69.0" }
+forc-client = { path = "forc-plugins/forc-client/", version = "0.69.0" }
+forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.69.0" }
+forc-debug = { path = "forc-plugins/forc-debug/", version = "0.69.0" }
+forc-doc = { path = "forc-plugins/forc-doc/", version = "0.69.0" }
+forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.69.0" }
+forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.69.0" }
+forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.69.0" }
+forc-publish = { path = "forc-plugins/forc-publish/", version = "0.69.0" }
+forc-tx = { path = "forc-plugins/forc-tx/", version = "0.69.0" }
 
-sway-ast = { path = "sway-ast/", version = "0.68.8" }
-sway-core = { path = "sway-core/", version = "0.68.8" }
-sway-error = { path = "sway-error/", version = "0.68.8" }
-sway-features = { path = "sway-features/", version = "0.68.8" }
-sway-lsp = { path = "sway-lsp/", version = "0.68.8" }
-sway-parse = { path = "sway-parse/", version = "0.68.8" }
-sway-types = { path = "sway-types/", version = "0.68.8" }
-sway-utils = { path = "sway-utils/", version = "0.68.8" }
-swayfmt = { path = "swayfmt/", version = "0.68.8" }
+sway-ast = { path = "sway-ast/", version = "0.69.0" }
+sway-core = { path = "sway-core/", version = "0.69.0" }
+sway-error = { path = "sway-error/", version = "0.69.0" }
+sway-features = { path = "sway-features/", version = "0.69.0" }
+sway-lsp = { path = "sway-lsp/", version = "0.69.0" }
+sway-parse = { path = "sway-parse/", version = "0.69.0" }
+sway-types = { path = "sway-types/", version = "0.69.0" }
+sway-utils = { path = "sway-utils/", version = "0.69.0" }
+swayfmt = { path = "swayfmt/", version = "0.69.0" }
 
 # Sway IR
-sway-ir = { path = "sway-ir/", version = "0.68.8" }
-sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.68.8" }
+sway-ir = { path = "sway-ir/", version = "0.69.0" }
+sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.69.0" }
 
 #
 # External Fuel dependencies
@@ -89,24 +80,25 @@ fuel-abi-types = "0.12"
 # Although ALL versions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball.
-fuel-core-client = { version = "0.43.2", default-features = false }
-fuel-core-types = { version = "0.43", default-features = false }
+fuel-core-client = { version = "0.44.0", default-features = false }
+fuel-core-storage = { version = "0.44", default-features = false }
+fuel-core-types = { version = "0.44", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.73"
-fuels-core = "0.73"
-fuels-accounts = "0.73"
+fuels = "0.74"
+fuels-core = "0.74"
+fuels-accounts = "0.74"
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.60"
-fuel-crypto = "0.60"
-fuel-types = "0.60"
-fuel-tx = "0.60"
-fuel-vm = "0.60"
+fuel-asm = "0.62"
+fuel-crypto = "0.62"
+fuel-types = "0.62"
+fuel-tx = "0.62"
+fuel-vm = "0.62"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.14"
+forc-wallet = "0.15"
 
 #
 # External dependencies

@@ -8,6 +8,9 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = []
+
 [dependencies]
 either.workspace = true
 in_definite.workspace = true
@@ -16,9 +19,6 @@ smallvec.workspace = true
 strsim.workspace = true
 sway-types.workspace = true
 thiserror.workspace = true
-
-[features]
-default = []
 
 [lints.clippy]
 iter_over_hash_type = "deny"

@@ -20,7 +20,7 @@ async fn setup_env() -> Result<(
     Bytes64,
 )> {
     let mut rng = StdRng::seed_from_u64(1000);
-    let msg_bytes: Bytes32 = rng.gen();
+    let msg_bytes: Bytes32 = rng.r#gen();
     let private_key = SecretKey::random(&mut rng);
     let public_key = PublicKey::from(&private_key);
     let msg = Message::from_bytes(*msg_bytes);
@@ -106,5 +106,5 @@ async fn can_recover_address() {
         .await
         .unwrap();
 
-    assert_eq!(Bech32Address::from(response.value), *wallet.address());
+    assert_eq!(Address::from(response.value), wallet.address());
 }

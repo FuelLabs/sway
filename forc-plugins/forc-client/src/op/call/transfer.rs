@@ -1,14 +1,7 @@
 use anyhow::anyhow;
-use fuels::{
-    accounts::{wallet::Wallet, Account},
-    types::{
-        bech32::{Bech32Address, Bech32ContractId},
-        tx_status::TxStatus,
-    },
-};
+use fuels::accounts::{wallet::Wallet, Account};
 use fuels_core::types::{transaction::TxPolicies, Address, AssetId};
 
-#[allow(clippy::too_many_arguments)]
 pub async fn transfer(
     wallet: &Wallet,
     recipient: Address,
@@ -16,7 +9,6 @@ pub async fn transfer(
     asset_id: AssetId,
     tx_policies: TxPolicies,
     node: &crate::NodeTarget,
-    verbosity: u8,
     writer: &mut impl std::io::Write,
 ) -> anyhow::Result<super::CallResponse> {
     let provider = wallet.provider();
@@ -29,7 +21,7 @@ pub async fn transfer(
             amount, asset_id, recipient
         )?;
         wallet
-            .transfer(&recipient.into(), amount, asset_id, tx_policies)
+            .transfer(recipient, amount, asset_id, tx_policies)
             .await
             .map_err(|e| anyhow!("Failed to transfer funds to recipient: {}", e))?
     } else {
@@ -38,26 +30,27 @@ pub async fn transfer(
             "\nTransferring {} 0x{} to contract address 0x{}...\n",
             amount, asset_id, recipient
         )?;
-        let address: Bech32Address = recipient.into();
-        let contract_id = Bech32ContractId {
-            hrp: address.hrp,
-            hash: address.hash,
-        };
+        let contract_id = (*recipient).into();
         wallet
-            .force_transfer_to_contract(&contract_id, amount, asset_id, tx_policies)
+            .force_transfer_to_contract(contract_id, amount, asset_id, tx_policies)
             .await
             .map_err(|e| anyhow!("Failed to transfer funds to contract: {}", e))?
     };
 
-    super::process_transaction_output(
-        TxStatus::Success(tx_response.tx_status),
-        &tx_response.tx_id.to_string(),
+    // display tx info
+    super::display_tx_info(
+        tx_response.tx_id.to_string(),
+        None,
         &crate::cmd::call::ExecutionMode::Live,
         node,
-        verbosity,
-        writer,
-        None,
-    )
+    );
+
+    Ok(super::CallResponse {
+        tx_hash: tx_response.tx_id.to_string(),
+        result: None,
+        receipts: tx_response.tx_status.receipts,
+        script_json: None,
+    })
 }
 
 #[cfg(test)]
@@ -83,22 +76,22 @@ mod tests {
 
         let wallet_sender = wallets.pop().unwrap();
         let wallet_recipient = wallets.pop().unwrap();
-        let recipient_address = wallet_recipient.address().into();
+        let recipient_address = wallet_recipient.address();
 
         let provider = wallet_sender.provider();
         let consensus_parameters = provider.consensus_parameters().await.unwrap();
         let base_asset_id = consensus_parameters.base_asset_id();
 
         // Test helpers to get balances
-        let get_recipient_balance = |addr: Bech32Address| async move {
+        let get_recipient_balance = |addr: Address| async move {
             provider
-                .get_asset_balance(&addr, *base_asset_id)
+                .get_asset_balance(&addr, base_asset_id)
                 .await
                 .unwrap()
         };
 
         // Get initial balance of recipient
-        let initial_balance = get_recipient_balance(wallet_recipient.address().clone()).await;
+        let initial_balance = get_recipient_balance(wallet_recipient.address()).await;
 
         // Test parameters
         let tx_policies = TxPolicies::default();
@@ -116,7 +109,6 @@ mod tests {
             *base_asset_id,
             tx_policies,
             &node,
-            0, // verbosity level
             &mut std::io::stdout(),
         )
         .await
@@ -131,8 +123,8 @@ mod tests {
 
         // Verify balance has increased by the transfer amount
         assert_eq!(
-            get_recipient_balance(wallet_recipient.address().clone()).await,
-            initial_balance + amount,
+            get_recipient_balance(wallet_recipient.address()).await,
+            initial_balance + amount as u128,
             "Balance should increase by transfer amount"
         );
     }
@@ -147,7 +139,7 @@ mod tests {
 
         // Verify initial contract balance
         let balance = provider
-            .get_contract_asset_balance(&Bech32ContractId::from(id), *base_asset_id)
+            .get_contract_asset_balance(&id, base_asset_id)
             .await
             .unwrap();
         assert_eq!(balance, 0, "Balance should be 0");
@@ -168,7 +160,6 @@ mod tests {
             *base_asset_id,
             tx_policies,
             &node,
-            0, // verbosity level
             &mut std::io::stdout(),
         )
         .await
@@ -183,7 +174,7 @@ mod tests {
 
         // Verify balance has increased by the transfer amount
         let balance = provider
-            .get_contract_asset_balance(&Bech32ContractId::from(id), *base_asset_id)
+            .get_contract_asset_balance(&id, base_asset_id)
             .await
             .unwrap();
         assert_eq!(

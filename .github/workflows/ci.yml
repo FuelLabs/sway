@@ -245,7 +245,6 @@ jobs:
           for dir in ./forc-plugins/*/; do
                 cargo install --locked --path "$dir"
           done
-          cargo install --locked forc-explore
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --path ./scripts/mdbook-forc-documenter
 
@@ -478,10 +477,6 @@ jobs:
         run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
-      - name: Build All Tests - Experimental Feature 'error_type'
-        run: cargo run --locked --release -p forc -- build --experimental error_type --release --locked --path ./test/src/sdk-harness
-      - name: Cargo Test sway-lib-std - Experimental Feature 'error_type'
-        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -548,18 +543,10 @@ jobs:
         run: forc test --path sway-lib-std
       - name: Run Std Unit Tests (Release)
         run: forc test --release --path sway-lib-std
-      - name: Run Std Unit Tests - Experimental feature 'error_type' (Debug)
-        run: forc test --experimental error_type --path sway-lib-std
-      - name: Run Std Unit Tests - Experimental feature 'error_type' (Release)
-        run: forc test --release --experimental error_type --path sway-lib-std
       - name: Run In Language Unit Tests (Debug)
         run: forc test --path test/src/in_language_tests
       - name: Run In Language Unit Tests (Release)
         run: forc test --release --path test/src/in_language_tests
-      - name: Run In Language Unit Tests - Experimental feature 'error_type' (Debug)
-        run: forc test --experimental error_type --path test/src/in_language_tests
-      - name: Run In Language Unit Tests - Experimental feature 'error_type' (Release)
-        run: forc test --release --experimental error_type --path test/src/in_language_tests
 
   forc-pkg-fuels-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204

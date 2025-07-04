@@ -23,7 +23,6 @@ You must also install forc plugins that are already documented within the book. 
 ```sh
 cargo install --path ./forc-plugins/forc-client
 cargo install --path ./forc-plugins/forc-doc
-cargo install forc-explore
 cargo install --path ./forc-plugins/forc-fmt
 cargo install --path ./forc-plugins/forc-lsp
 ```

@@ -2,7 +2,7 @@ mod call_function;
 mod list_functions;
 mod missing_contracts;
 mod parser;
-mod transaction_trace;
+mod trace;
 mod transfer;
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
     constants::DEFAULT_PRIVATE_KEY,
     op::call::{
         call_function::call_function, list_functions::list_contract_functions,
-        transaction_trace::format_transaction_trace, transfer::transfer,
+        trace::display_transaction_trace, transfer::transfer,
     },
     util::tx::{prompt_forc_wallet_password, select_local_wallet_account},
 };
@@ -20,13 +20,13 @@ use fuel_abi_types::abi::{
     program::ProgramABI,
     unified_program::{UnifiedProgramABI, UnifiedTypeDeclaration},
 };
+use fuel_core_types::services::executor::TransactionExecutionStatus;
 use fuel_tx::Receipt;
 use fuels::{
     accounts::{
         provider::Provider, signers::private_key::PrivateKeySigner, wallet::Wallet, ViewOnlyAccount,
     },
     crypto::SecretKey,
-    types::tx_status::TxStatus,
 };
 use fuels_core::types::{transaction::TxPolicies, AssetId, ContractId};
 use serde::{Deserialize, Serialize};
@@ -37,9 +37,10 @@ use std::{collections::HashMap, str::FromStr};
 #[serde(rename_all = "snake_case")]
 pub struct CallResponse {
     pub tx_hash: String,
-    pub result: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub receipts: Option<Vec<Receipt>>,
+    pub result: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub receipts: Vec<Receipt>,
     #[serde(rename = "script", skip_serializing_if = "Option::is_none")]
     pub script_json: Option<serde_json::Value>,
 }
@@ -53,16 +54,10 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
                 return Err(anyhow!("JSON output is not supported for list functions"));
             }
 
-            let abi_str = load_abi(&abi).await?;
-            let parsed_abi: ProgramABI = serde_json::from_str(&abi_str)?;
-            let unified_program_abi = UnifiedProgramABI::from_counterpart(&parsed_abi)?;
+            let abi_map = create_abi_map(contract_id, &abi, cmd.contract_abis).await?;
 
-            list_contract_functions(
-                &contract_id,
-                &abi,
-                &unified_program_abi,
-                &mut std::io::stdout(),
-            )?;
+            // Use the simplified list_contract_functions function
+            list_contract_functions(&contract_id, &abi_map, &mut std::io::stdout())?;
 
             CallResponse::default()
         }
@@ -75,7 +70,6 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
                 node,
                 caller,
                 gas,
-                verbosity,
                 mut output,
                 ..
             } = cmd;
@@ -92,7 +86,6 @@ pub async fn call(operation: cmd::call::Operation, cmd: cmd::Call) -> anyhow::Re
                 asset_id,
                 tx_policies,
                 &node,
-                verbosity,
                 &mut output,
             )
             .await?
@@ -165,7 +158,7 @@ async fn get_wallet(
             let wallet = Wallet::new(signer, provider);
             forc_tracing::println_warning(&format!(
                 "No signing key or wallet flag provided. Using default signer: 0x{}",
-                wallet.address().hash()
+                wallet.address()
             ));
             Ok(wallet)
         }
@@ -174,7 +167,7 @@ async fn get_wallet(
             let wallet = Wallet::new(signer, provider);
             forc_tracing::println_warning(&format!(
                 "Using account {} derived from signing key...",
-                wallet.address().hash()
+                wallet.address()
             ));
             Ok(wallet)
         }
@@ -194,6 +187,7 @@ async fn get_wallet(
     }
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct Abi {
     program: ProgramABI,
     unified: UnifiedProgramABI,
@@ -226,73 +220,16 @@ impl FromStr for Abi {
     }
 }
 
-pub(crate) struct CallData {
-    contract_id: ContractId,
-    abis: HashMap<ContractId, Abi>,
-    result: String,
-}
-
-/// Processes transaction receipts, logs, and displays transaction information
-pub(crate) fn process_transaction_output(
-    tx_status: TxStatus,
-    tx_hash: &str,
+/// Displays transaction information
+pub(crate) fn display_tx_info(
+    tx_hash: String,
+    result: Option<String>,
     mode: &cmd::call::ExecutionMode,
     node: &crate::NodeTarget,
-    verbosity: u8,
-    output: &mut impl std::io::Write,
-    call_data: Option<CallData>,
-) -> Result<CallResponse> {
-    let total_gas = tx_status.total_gas();
-    let receipts = tx_status.take_receipts();
-    let abis = match &call_data {
-        Some(CallData { abis, .. }) => abis,
-        None => &HashMap::new(),
-    };
-    print_receipts_and_trace(total_gas, &receipts, verbosity, abis, output)?;
-
-    if verbosity >= 1 {
-        if let Some(CallData {
-            contract_id, abis, ..
-        }) = call_data.as_ref()
-        {
-            let logs = receipts
-                .iter()
-                .filter_map(|receipt| match receipt {
-                    Receipt::LogData {
-                        rb,
-                        data: Some(data),
-                        ..
-                    } => {
-                        let default_program_abi = ProgramABI::default();
-                        let program_abi = abis
-                            .get(contract_id)
-                            .map(|abi| &abi.program)
-                            .unwrap_or(&default_program_abi);
-                        forc_util::tx_utils::decode_fuel_vm_log_data(
-                            &rb.to_string(),
-                            data,
-                            program_abi,
-                        )
-                        .ok()
-                        .map(|decoded| decoded.value)
-                    }
-                    _ => None,
-                })
-                .collect::<Vec<_>>();
-
-            // print logs if there are any
-            if !logs.is_empty() {
-                forc_tracing::println_green_bold("logs:");
-                for log in logs.iter() {
-                    writeln!(output, "  {:#}", log)?;
-                }
-            }
-        }
-    }
-
+) {
     // print tx hash and result
-    forc_tracing::println_label_green("tx hash:", tx_hash);
-    if let Some(CallData { ref result, .. }) = call_data {
+    forc_tracing::println_label_green("tx hash:", &tx_hash);
+    if let Some(ref result) = result {
         forc_tracing::println_label_green("result:", result);
     }
 
@@ -305,36 +242,115 @@ pub(crate) fn process_transaction_output(
             );
         }
     }
-
-    Ok(CallResponse {
-        tx_hash: tx_hash.to_string(),
-        result: call_data.map(|cd| cd.result),
-        receipts: if verbosity >= 2 {
-            Some(receipts.to_vec())
-        } else {
-            None
-        },
-        script_json: None,
-    })
 }
 
-pub(crate) fn print_receipts_and_trace(
-    total_gas: u64,
-    receipts: &[Receipt],
-    verbosity: u8,
+/// Prints receipts and trace to the writer based on verbosity level
+pub(crate) fn display_detailed_call_info(
+    tx: &TransactionExecutionStatus,
+    script_json: &serde_json::Value,
     abis: &HashMap<ContractId, Abi>,
+    verbosity: u8,
     writer: &mut impl std::io::Write,
+    trace_events: &[trace::TraceEvent],
+    labels: &HashMap<ContractId, String>,
 ) -> Result<()> {
-    if verbosity >= 2 {
-        let formatted_receipts = forc_util::tx_utils::format_log_receipts(receipts, true)
-            .map_err(|e| anyhow!("Failed to format receipts: {}", e))?;
+    if verbosity >= 4 {
+        forc_tracing::println_label_green(
+            "transaction script:\n",
+            &serde_json::to_string_pretty(script_json).unwrap(),
+        );
+    }
+    if verbosity >= 3 {
+        let formatted_receipts =
+            forc_util::tx_utils::format_log_receipts(tx.result.receipts(), true)
+                .map_err(|e| anyhow!("Failed to format receipts: {}", e))?;
         forc_tracing::println_label_green("receipts:", &formatted_receipts);
-        if verbosity >= 3 {
-            format_transaction_trace(total_gas, receipts, abis, writer)
-                .map_err(|e| anyhow!("Failed to format transaction trace: {e}"))?;
+    }
+    if verbosity >= 2 {
+        display_transaction_trace(*tx.result.total_gas(), trace_events, labels, writer)
+            .map_err(|e| anyhow!("Failed to display transaction trace: {e}"))?;
+    }
+    if verbosity >= 1 {
+        let logs = tx
+            .result
+            .receipts()
+            .iter()
+            .filter_map(|receipt| match receipt {
+                Receipt::LogData {
+                    id,
+                    rb,
+                    data: Some(data),
+                    ..
+                } => {
+                    let default_program_abi = ProgramABI::default();
+                    let program_abi = abis
+                        .get(id)
+                        .map(|abi| &abi.program)
+                        .unwrap_or(&default_program_abi);
+                    forc_util::tx_utils::decode_fuel_vm_log_data(&rb.to_string(), data, program_abi)
+                        .ok()
+                        .map(|decoded| decoded.value)
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        // print logs if there are any
+        if !logs.is_empty() {
+            forc_tracing::println_green_bold("logs:");
+            for log in logs.iter() {
+                writeln!(writer, "  {:#}", log)?;
+            }
         }
     }
     Ok(())
+}
+
+/// Create a HashMap of contract ABIs from a main ABI and optional additional contract ABIs
+/// This is a reusable function for both call_function and list_functions operations
+pub(crate) async fn create_abi_map(
+    main_contract_id: ContractId,
+    main_abi: &Either<std::path::PathBuf, url::Url>,
+    additional_contract_abis: Option<Vec<(ContractId, Either<std::path::PathBuf, url::Url>)>>,
+) -> anyhow::Result<HashMap<ContractId, Abi>> {
+    // Load main ABI
+    let main_abi_str = load_abi(main_abi).await?;
+    let main_abi =
+        Abi::from_str(&main_abi_str).map_err(|e| anyhow!("Failed to parse main ABI: {}", e))?;
+
+    // Start with main contract ABI
+    let mut abi_map = HashMap::from([(main_contract_id, main_abi)]);
+
+    // Load additional contract ABIs if provided
+    if let Some(contract_abis) = additional_contract_abis {
+        for (contract_id, abi_path) in contract_abis {
+            match load_abi(&abi_path).await {
+                Ok(abi_str) => match Abi::from_str(&abi_str) {
+                    Ok(additional_abi) => {
+                        abi_map.insert(contract_id, additional_abi);
+                        forc_tracing::println_action_green(
+                            "Loaded additional ABI for contract",
+                            &format!("0x{}", contract_id),
+                        );
+                    }
+                    Err(e) => {
+                        forc_tracing::println_warning(&format!(
+                            "Failed to parse ABI for contract 0x{}: {}",
+                            contract_id, e
+                        ));
+                    }
+                },
+                Err(e) => {
+                    forc_tracing::println_warning(&format!(
+                        "Failed to load ABI for contract 0x{}: {}",
+                        contract_id, e
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(abi_map)
 }
 
 #[cfg(test)]
@@ -369,8 +385,8 @@ pub(crate) mod tests {
         .unwrap()
         .contract_id;
 
-        let instance = TestContract::new(id.clone(), wallet.clone());
+        let instance = TestContract::new(id, wallet.clone());
 
-        (instance, id.into(), provider, secret_key)
+        (instance, id, provider, secret_key)
     }
 }

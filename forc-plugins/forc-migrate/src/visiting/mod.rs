@@ -1159,7 +1159,7 @@ impl __ProgramVisitor {
                         //       When visiting the RHS in the lexed tree, we need to skip the
                         //       operator method call in the typed tree, and provide the
                         //       typed arguments instead.
-                        //       To provide visiting without loosing the information about compound
+                        //       To provide visiting without losing the information about compound
                         //       reassignment, we will need to have a dedicated `visit_reassignment`
                         //       method.
                         // TODO: Implement visiting expressions in the reassignment LHS.

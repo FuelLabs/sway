@@ -3,7 +3,7 @@ use fuels::{
     prelude::*,
     tx::UtxoId,
     types::{
-        coin::{Coin, CoinStatus},
+        coin::{Coin},
         coin_type::CoinType,
         input::Input,
         message::{Message, MessageStatus},
@@ -80,10 +80,7 @@ async fn input_message_msg_sender_from_contract() {
     let total_coins = [coins, coins_2].concat();
 
     let msg = setup_single_message(
-        &Bech32Address {
-            hrp: "".to_string(),
-            hash: Default::default(),
-        },
+        Address::default(),
         wallet_signer.address(),
         DEFAULT_COIN_AMOUNT,
         10.into(),
@@ -150,8 +147,8 @@ async fn caller_addresses_from_messages() {
     // Setup message
     let message_amount = 10;
     let message1 = Message {
-        sender: signer_1.address().clone(),
-        recipient: signer_1.address().clone(),
+        sender: signer_1.address(),
+        recipient: signer_1.address(),
         nonce: 0.into(),
         amount: message_amount,
         data: vec![],
@@ -159,8 +156,8 @@ async fn caller_addresses_from_messages() {
         status: MessageStatus::Unspent,
     };
     let message2 = Message {
-        sender: signer_2.address().clone(),
-        recipient: signer_2.address().clone(),
+        sender: signer_2.address(),
+        recipient: signer_2.address(),
         nonce: 1.into(),
         amount: message_amount,
         data: vec![],
@@ -168,8 +165,8 @@ async fn caller_addresses_from_messages() {
         status: MessageStatus::Unspent,
     };
     let message3 = Message {
-        sender: signer_3.address().clone(),
-        recipient: signer_3.address().clone(),
+        sender: signer_3.address(),
+        recipient: signer_3.address(),
         nonce: 2.into(),
         amount: message_amount,
         data: vec![],
@@ -184,12 +181,10 @@ async fn caller_addresses_from_messages() {
     // Setup Coin
     let coin_amount = 10;
     let coin = Coin {
-        owner: signer_4.address().clone(),
+        owner: signer_4.address(),
         utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
         amount: coin_amount,
         asset_id: AssetId::default(),
-        status: CoinStatus::Unspent,
-        block_created: Default::default(),
     };
 
     let mut node_config = NodeConfig::default();
@@ -221,7 +216,7 @@ async fn caller_addresses_from_messages() {
         .await
         .unwrap();
 
-    assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
+    assert_eq!(result.value, vec![Address::from(*wallet4.address())]);
 
     // Start building transactions
     let call_handler = auth_instance.methods().returns_caller_addresses();
@@ -230,8 +225,8 @@ async fn caller_addresses_from_messages() {
     // Inputs
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Message(setup_single_message(
-            &wallet1.address().clone(),
-            &wallet1.address().clone(),
+            wallet1.address(),
+            wallet1.address(),
             message_amount,
             0.into(),
             vec![],
@@ -239,8 +234,8 @@ async fn caller_addresses_from_messages() {
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Message(setup_single_message(
-            &wallet2.address().clone(),
-            &wallet2.address().clone(),
+            wallet2.address(),
+            wallet2.address(),
             message_amount,
             1.into(),
             vec![],
@@ -248,8 +243,8 @@ async fn caller_addresses_from_messages() {
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Message(setup_single_message(
-            &wallet3.address().clone(),
-            &wallet3.address().clone(),
+            wallet3.address(),
+            wallet3.address(),
             message_amount,
             2.into(),
             vec![],
@@ -270,13 +265,13 @@ async fn caller_addresses_from_messages() {
 
     assert!(result
         .value
-        .contains(&Address::from(wallet1.address().clone())));
+        .contains(&Address::from(wallet1.address())));
     assert!(result
         .value
-        .contains(&Address::from(wallet2.address().clone())));
+        .contains(&Address::from(wallet2.address())));
     assert!(result
         .value
-        .contains(&Address::from(wallet3.address().clone())));
+        .contains(&Address::from(wallet3.address())));
 }
 
 #[tokio::test]
@@ -289,36 +284,28 @@ async fn caller_addresses_from_coins() {
     // Setup Coin
     let coin_amount = 10;
     let coin1 = Coin {
-        owner: signer_1.address().clone(),
+        owner: signer_1.address(),
         utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
         amount: coin_amount,
         asset_id: AssetId::default(),
-        status: CoinStatus::Unspent,
-        block_created: Default::default(),
     };
     let coin2 = Coin {
-        owner: signer_2.address().clone(),
+        owner: signer_2.address(),
         utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
         amount: coin_amount,
         asset_id: AssetId::default(),
-        status: CoinStatus::Unspent,
-        block_created: Default::default(),
     };
     let coin3 = Coin {
-        owner: signer_3.address().clone(),
+        owner: signer_3.address(),
         utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
         amount: coin_amount,
         asset_id: AssetId::default(),
-        status: CoinStatus::Unspent,
-        block_created: Default::default(),
     };
     let coin4 = Coin {
-        owner: signer_4.address().clone(),
+        owner: signer_4.address(),
         utxo_id: UtxoId::new(Bytes32::zeroed(), 3),
         amount: coin_amount,
         asset_id: AssetId::default(),
-        status: CoinStatus::Unspent,
-        block_created: Default::default(),
     };
 
     let mut coin_vec: Vec<Coin> = Vec::new();
@@ -356,7 +343,7 @@ async fn caller_addresses_from_coins() {
         .await
         .unwrap();
 
-    assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
+    assert_eq!(result.value, vec![Address::from(*wallet4.address())]);
 
     // Start building transactions
     let call_handler = auth_instance.methods().returns_caller_addresses();
@@ -365,33 +352,27 @@ async fn caller_addresses_from_coins() {
     // Inputs
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Coin(Coin {
-            owner: wallet1.address().clone(),
+            owner: wallet1.address(),
             utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
             amount: coin_amount,
             asset_id: AssetId::default(),
-            status: CoinStatus::Unspent,
-            block_created: Default::default(),
-        }),
+                }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Coin(Coin {
-            owner: wallet2.address().clone(),
+            owner: wallet2.address(),
             utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
             amount: coin_amount,
             asset_id: AssetId::default(),
-            status: CoinStatus::Unspent,
-            block_created: Default::default(),
-        }),
+                }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Coin(Coin {
-            owner: wallet3.address().clone(),
+            owner: wallet3.address(),
             utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
             amount: coin_amount,
             asset_id: AssetId::default(),
-            status: CoinStatus::Unspent,
-            block_created: Default::default(),
-        }),
+                }),
     });
 
     // Build transaction
@@ -408,13 +389,13 @@ async fn caller_addresses_from_coins() {
 
     assert!(result
         .value
-        .contains(&Address::from(wallet1.address().clone())));
+        .contains(&Address::from(wallet1.address())));
     assert!(result
         .value
-        .contains(&Address::from(wallet2.address().clone())));
+        .contains(&Address::from(wallet2.address())));
     assert!(result
         .value
-        .contains(&Address::from(wallet3.address().clone())));
+        .contains(&Address::from(wallet3.address())));
 }
 
 #[tokio::test]
@@ -426,8 +407,8 @@ async fn caller_addresses_from_coins_and_messages() {
 
     let message_amount = 10;
     let message1 = Message {
-        sender: signer_1.address().clone(),
-        recipient: signer_1.address().clone(),
+        sender: signer_1.address(),
+        recipient: signer_1.address(),
         nonce: 0.into(),
         amount: message_amount,
         data: vec![],
@@ -438,28 +419,22 @@ async fn caller_addresses_from_coins_and_messages() {
     // Setup Coin
     let coin_amount = 10;
     let coin2 = Coin {
-        owner: signer_2.address().clone(),
+        owner: signer_2.address(),
         utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
         amount: coin_amount,
         asset_id: AssetId::default(),
-        status: CoinStatus::Unspent,
-        block_created: Default::default(),
     };
     let coin3 = Coin {
-        owner: signer_3.address().clone(),
+        owner: signer_3.address(),
         utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
         amount: coin_amount,
         asset_id: AssetId::default(),
-        status: CoinStatus::Unspent,
-        block_created: Default::default(),
     };
     let coin4 = Coin {
-        owner: signer_4.address().clone(),
+        owner: signer_4.address(),
         utxo_id: UtxoId::new(Bytes32::zeroed(), 3),
         amount: coin_amount,
         asset_id: AssetId::default(),
-        status: CoinStatus::Unspent,
-        block_created: Default::default(),
     };
 
     let mut coin_vec: Vec<Coin> = Vec::new();
@@ -497,7 +472,7 @@ async fn caller_addresses_from_coins_and_messages() {
         .await
         .unwrap();
 
-    assert_eq!(result.value, vec![Address::from(*wallet4.address().hash())]);
+    assert_eq!(result.value, vec![Address::from(*wallet4.address())]);
 
     // Start building transactions
     let call_handler = auth_instance.methods().returns_caller_addresses();
@@ -506,8 +481,8 @@ async fn caller_addresses_from_coins_and_messages() {
     // Inputs
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Message(setup_single_message(
-            &wallet1.address().clone(),
-            &wallet1.address().clone(),
+            wallet1.address(),
+            wallet1.address(),
             message_amount,
             0.into(),
             vec![],
@@ -515,23 +490,19 @@ async fn caller_addresses_from_coins_and_messages() {
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Coin(Coin {
-            owner: wallet2.address().clone(),
+            owner: wallet2.address(),
             utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
             amount: coin_amount,
             asset_id: AssetId::default(),
-            status: CoinStatus::Unspent,
-            block_created: Default::default(),
-        }),
+                }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Coin(Coin {
-            owner: wallet3.address().clone(),
+            owner: wallet3.address(),
             utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
             amount: coin_amount,
             asset_id: AssetId::default(),
-            status: CoinStatus::Unspent,
-            block_created: Default::default(),
-        }),
+                }),
     });
 
     // Build transaction
@@ -548,13 +519,13 @@ async fn caller_addresses_from_coins_and_messages() {
 
     assert!(result
         .value
-        .contains(&Address::from(wallet1.address().clone())));
+        .contains(&Address::from(wallet1.address())));
     assert!(result
         .value
-        .contains(&Address::from(wallet2.address().clone())));
+        .contains(&Address::from(wallet2.address())));
     assert!(result
         .value
-        .contains(&Address::from(wallet3.address().clone())));
+        .contains(&Address::from(wallet3.address())));
 }
 
 async fn get_contracts() -> (
@@ -617,9 +588,8 @@ async fn can_get_predicate_address() {
         "0xa9e0330870e3ed1f537684021c02ad88d8116e91daff9651413169a77b26e509";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
-    let predicate_bech32_address = Bech32Address::from(predicate_address);
     let predicate_data = AuthPredicateEncoder::default()
-        .encode_data(predicate_bech32_address)
+        .encode_data(predicate_address)
         .unwrap();
     let predicate: Predicate =
         Predicate::load_from("test_artifacts/auth_predicate/out/release/auth_predicate.bin")
@@ -629,7 +599,7 @@ async fn can_get_predicate_address() {
 
     // If this test fails, it can be that the predicate address got changed.
     // Uncomment the next line, get the predicate address, and update it above.
-    dbg!(&predicate);
+    // dbg!(&predicate);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
@@ -695,11 +665,11 @@ async fn when_incorrect_predicate_address_passed() {
 
     // Setup predicate with incorrect address.
     let hex_predicate_address: &str =
-        "0xf70528e17820e36c0868d25aac804f3e0750f90f0840d9e1d68a7e4e3c9290a8";
+        "0xeddbd8cc2be5fb1d4ae24a5f789e61308750ff698865f311c9818d7eb76d4777";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_data = AuthPredicateEncoder::default()
-        .encode_data(Bech32Address::from(predicate_address))
+        .encode_data(predicate_address)
         .unwrap();
     let predicate: Predicate =
         Predicate::load_from("test_artifacts/auth_predicate/out/release/auth_predicate.bin")
@@ -743,13 +713,12 @@ async fn can_get_predicate_address_in_message() {
         "0xa9e0330870e3ed1f537684021c02ad88d8116e91daff9651413169a77b26e509";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
-    let predicate_bech32_address = Bech32Address::from(predicate_address);
 
     // Setup message
     let message_amount = 1;
     let message = Message {
-        sender: Bech32Address::default(),
-        recipient: predicate_bech32_address.clone(),
+        sender: Address::default(),
+        recipient: predicate_address,
         nonce: 0.into(),
         amount: message_amount,
         data: vec![],
@@ -762,12 +731,10 @@ async fn can_get_predicate_address_in_message() {
     // Setup Coin
     let coin_amount = 0;
     let coin = Coin {
-        owner: predicate_bech32_address.clone(),
+        owner: predicate_address,
         utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
         amount: coin_amount,
         asset_id: AssetId::default(),
-        status: CoinStatus::Unspent,
-        block_created: Default::default(),
     };
     let mut coin_vec: Vec<Coin> = Vec::new();
     coin_vec.push(coin);
@@ -781,7 +748,7 @@ async fn can_get_predicate_address_in_message() {
 
     // Setup predicate.
     let predicate_data = AuthPredicateEncoder::default()
-        .encode_data(predicate_bech32_address)
+        .encode_data(predicate_address)
         .unwrap();
     let predicate: Predicate =
         Predicate::load_from("test_artifacts/auth_predicate/out/release/auth_predicate.bin")
@@ -798,7 +765,7 @@ async fn can_get_predicate_address_in_message() {
         .get_asset_balance(&AssetId::default())
         .await
         .unwrap();
-    assert_eq!(balance, message_amount);
+    assert_eq!(balance, message_amount as u128);
 
     // Spend the message
     predicate
@@ -820,5 +787,5 @@ async fn can_get_predicate_address_in_message() {
 
     // Funds were transferred
     let wallet_balance = wallet.get_asset_balance(&AssetId::default()).await.unwrap();
-    assert_eq!(wallet_balance, message_amount);
+    assert_eq!(wallet_balance, message_amount as u128);
 }
