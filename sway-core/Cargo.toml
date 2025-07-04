@@ -48,6 +48,7 @@ sway-types.workspace = true
 sway-utils.workspace = true
 swayfmt.workspace = true
 thiserror.workspace = true
+toml = { workspace = true, features = ["parse"] }
 tracing.workspace = true
 uint.workspace = true
 vec1.workspace = true
