@@ -485,9 +485,7 @@ impl<'a> Unifier<'a> {
                                     span,
                                 );
                             }
-                            (None, None) => {
-                                
-                            },
+                            (None, None) => {},
                         }
                     }
                     _ => {
