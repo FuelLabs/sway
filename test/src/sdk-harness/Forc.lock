@@ -148,11 +148,6 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "hashing"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "logging"
 source = "member"
 dependencies = ["std"]

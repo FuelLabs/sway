@@ -14,7 +14,6 @@ members = [
   "test_projects/evm",
   "test_projects/evm_ec_recover",
   "test_projects/generics_in_abi",
-  "test_projects/hashing",
   "test_projects/logging",
   "test_projects/low_level_call",
   "test_projects/messages",

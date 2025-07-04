@@ -73,7 +73,7 @@ fn signature_address() {
     // A recovered Fuel address.
     let result_address_1 = signature_1.address(message_1);
     assert(result_address_1.is_ok());
-    assert(result_address_1.unwrap() == address_1);
+    assert_eq(result_address_1.unwrap(), address_1);
 
     let hi_2 = 0xbd0c9b8792876713afa8bf3383eebf31c43437823ed761cc3600d0016de5110c;
     let lo_2 = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
@@ -85,7 +85,7 @@ fn signature_address() {
     // A recovered Fuel address.
     let result_address_2 = signature_2.address(message_2);
     assert(result_address_2.is_ok());
-    assert(result_address_2.unwrap() == address_2);
+    assert_eq(result_address_2.unwrap(), address_2);
 
     let pub_key_3 = 0x314fa58689bbe1da2430517de2d772b384a1c1d2e9cb87e73c6afcf246045b10;
     let msg_3 = b256::zero();
@@ -112,7 +112,7 @@ fn signature_evm_address() {
 
     let result_1 = signature_1.evm_address(message_1);
     assert(result_1.is_ok());
-    assert(result_1.unwrap() == expected_evm_address_1);
+    assert_eq(result_1.unwrap(), expected_evm_address_1);
 
     let hi_2 = 0x62CDC20C0AB6AA7B91E63DA9917792473F55A6F15006BC99DD4E29420084A3CC;
     let lo_2 = 0xF4D99AF28F9D6BD96BDAAB83BFED99212AC3C7D06810E33FBB14C4F29B635414;
@@ -123,7 +123,7 @@ fn signature_evm_address() {
 
     let result_2 = signature_2.evm_address(message_2);
     assert(result_2.is_ok());
-    assert(result_2.unwrap() == expected_evm_address_2);
+    assert_eq(result_2.unwrap(), expected_evm_address_2);
 
     let pub_key_3 = 0x314fa58689bbe1da2430517de2d772b384a1c1d2e9cb87e73c6afcf246045b10;
     let msg_3 = b256::zero();
@@ -265,7 +265,7 @@ fn signature_as_secp256k1() {
     let signature_2 = Signature::Secp256r1(Secp256r1::from((hi_1, lo_1)));
     let signature_3 = Signature::Ed25519(Ed25519::from((hi_1, lo_1)));
 
-    assert(signature_1.as_secp256k1().unwrap() == Secp256k1::from((hi_1, lo_1)));
+    assert_eq(signature_1.as_secp256k1().unwrap(), Secp256k1::from((hi_1, lo_1)));
     assert(signature_2.as_secp256k1().is_none());
     assert(signature_3.as_secp256k1().is_none());
 }
@@ -279,7 +279,7 @@ fn signature_as_secp256r1() {
     let signature_3 = Signature::Ed25519(Ed25519::from((hi_1, lo_1)));
 
     assert(signature_1.as_secp256r1().is_none());
-    assert(signature_2.as_secp256r1().unwrap() == Secp256r1::from((hi_1, lo_1)));
+    assert_eq(signature_2.as_secp256r1().unwrap(), Secp256r1::from((hi_1, lo_1)));
     assert(signature_3.as_secp256r1().is_none());
 }
 
@@ -293,7 +293,7 @@ fn signature_as_ed25519() {
 
     assert(signature_1.as_ed25519().is_none());
     assert(signature_2.as_ed25519().is_none());
-    assert(signature_3.as_ed25519().unwrap() == Ed25519::from((hi_1, lo_1)));
+    assert_eq(signature_3.as_ed25519().unwrap(), Ed25519::from((hi_1, lo_1)));
 }
 
 #[test]
