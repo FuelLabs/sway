@@ -2,10 +2,10 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Named, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr, decl_engine::DeclEngineGet as _, language::{
+    ast_elements::type_parameter::ConstGenericExpr, language::{
         ty::{self, TyTraitItem}, CallPath, CallPathType, QualifiedCallPath
     }, monomorphization::type_decl_opt_to_type_id, namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem}, type_system::SubstTypes, EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo
 };
@@ -62,6 +62,10 @@ pub fn resolve_type(
     subst_ctx: &SubstTypesContext,
     check_visibility: VisibilityCheck,
 ) -> Result<TypeId, ErrorEmitted> {
+    // if span.as_str().to_lowercase().contains("crazy") {
+    //     eprintln!("{}: {}", span.as_str(), std::backtrace::Backtrace::force_capture());
+    // }
+
     let type_engine = engines.te();
     let module_path = type_info_prefix.unwrap_or(mod_path);
     let type_id = match type_engine.get(type_id).as_ref() {
