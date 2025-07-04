@@ -21,7 +21,7 @@ use std::{
 use sway_core::{language::ty::TyProgramKind, transform::Attributes};
 use sway_types::BaseIdent;
 
-mod index;
+pub mod index;
 pub mod item;
 pub mod link;
 mod search;
@@ -273,7 +273,7 @@ fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
 pub struct HTMLString(pub String);
 impl HTMLString {
     /// Final rendering of a [Document] HTML page to String.
-    fn from_rendered_content(rendered_content: Box<dyn RenderBox>) -> Result<Self> {
+    pub fn from_rendered_content(rendered_content: Box<dyn RenderBox>) -> Result<Self> {
         Ok(Self(
             html! {
                 : doctype::HTML;
@@ -292,6 +292,7 @@ impl HTMLString {
 pub enum DocStyle {
     AllDoc(String),
     ProjectIndex(String),
+    WorkspaceIndex,
     ModuleIndex,
     Item {
         title: Option<BlockTitle>,

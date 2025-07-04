@@ -4,7 +4,7 @@ use crate::{
         missing_contracts::determine_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
         trace::interpret_execution_trace,
-        CallResponse, Either,
+        CallResponse,
     },
 };
 use anyhow::{anyhow, bail, Result};
@@ -32,13 +32,12 @@ use fuels_core::{
         ContractId,
     },
 };
-use std::{collections::HashMap, path::PathBuf};
-use url::Url;
+use std::collections::HashMap;
 
 /// Calls a contract function with the given parameters
 pub async fn call_function(
     contract_id: ContractId,
-    abi: Either<PathBuf, Url>,
+    abi: crate::cmd::call::AbiSource,
     function: FuncType,
     function_args: Vec<String>,
     cmd: cmd::Call,
@@ -397,6 +396,7 @@ pub mod tests {
         op::call::{call, get_wallet, PrivateKeySigner},
     };
     use fuels::{crypto::SecretKey, prelude::*};
+    use std::path::PathBuf;
 
     fn get_contract_call_cmd(
         id: ContractId,
@@ -407,7 +407,7 @@ pub mod tests {
     ) -> cmd::Call {
         cmd::Call {
             address: (*id).into(),
-            abi: Some(Either::Left(std::path::PathBuf::from(
+            abi: Some(cmd::call::AbiSource::File(PathBuf::from(
                 "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json",
             ))),
             function: Some(selector.to_string()),

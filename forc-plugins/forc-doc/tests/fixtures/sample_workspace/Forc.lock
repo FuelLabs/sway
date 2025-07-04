@@ -1,0 +1,16 @@
+[[package]]
+name = "lib_a"
+source = "member"
+
+[[package]]
+name = "lib_b"
+source = "member"
+dependencies = [
+    "lib_a",
+    "std",
+]
+
+[[package]]
+name = "std"
+version = "0.69.0"
+source = "registry+std?0.69.0#QmSeLFUtVXk8i13owCv87Kga1MfsYgfn7sdj6WimxLwq2g!"
