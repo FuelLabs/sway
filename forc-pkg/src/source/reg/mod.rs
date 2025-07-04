@@ -431,7 +431,7 @@ fn resolve_to_cid(index_file: &IndexFile, pinned: &Pinned) -> anyhow::Result<Cid
     })?;
     if package_entry.yanked() {
         bail!(
-            "Version {} of {} is yanked. Other avaiable versions: [{}]",
+            "Version {} of {} is yanked. Other available versions: [{}]",
             pinned.source.version,
             pinned.source.name,
             other_versions
@@ -722,8 +722,8 @@ mod tests {
         let error_msg = result.unwrap_err().to_string();
         assert!(error_msg.contains("Version 0.9.0 of test_package is yanked"));
         assert!(
-            error_msg.contains("Other avaiable versions: [1.1.0,1.0.0]")
-                || error_msg.contains("Other avaiable versions: [1.0.0,1.1.0]")
+            error_msg.contains("Other available versions: [1.1.0,1.0.0]")
+                || error_msg.contains("Other available versions: [1.0.0,1.1.0]")
         );
     }
 }
