@@ -7,7 +7,10 @@ use crate::{
     type_system::*,
 };
 use serde::{Deserialize, Serialize};
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt::Formatter,
+    hash::{Hash, Hasher},
+};
 use sway_types::{Ident, Named, Span, Spanned};
 
 pub type TyImplItem = TyTraitItem;
@@ -134,6 +137,27 @@ impl SubstTypes for TyImplSelfOrTrait {
             self.impl_type_parameters.subst(ctx);
             self.implementing_for.subst_inner(ctx);
             self.items.subst(ctx);
+        }
+    }
+}
+
+impl DebugWithEngines for TyImplSelfOrTrait {
+    fn fmt(&self, f: &mut Formatter<'_>, engines: &Engines) -> std::fmt::Result {
+        if let Some(t) = self.trait_decl_ref.as_ref() {
+            write!(
+                f,
+                "impl<> {:?} for {:?} -> {:?}",
+                t.name().as_str(),
+                engines.help_out(self.implementing_for.initial_type_id()),
+                engines.help_out(self.implementing_for.type_id()),
+            )
+        } else {
+            write!(
+                f,
+                "impl<> {:?} -> {:?}",
+                engines.help_out(self.implementing_for.initial_type_id()),
+                engines.help_out(self.implementing_for.type_id()),
+            )
         }
     }
 }

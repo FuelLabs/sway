@@ -8,9 +8,99 @@ use std::{
     cmp::Ordering,
     fmt,
     hash::{BuildHasher, Hash, Hasher},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 use sway_types::{SourceEngine, Span};
+
+pub trait CallbackHandler {
+    fn on_trace(&self, _msg: &str) {}
+
+    fn on_before_method_resolution(
+        &self,
+        _ctx: &crate::semantic_analysis::TypeCheckContext<'_>,
+        _method_name: &crate::TypeBinding<crate::language::parsed::MethodName>,
+        _args_types: &[crate::TypeId],
+    ) {
+    }
+
+    fn on_after_method_resolution(
+        &self,
+        _ctx: &crate::semantic_analysis::TypeCheckContext<'_>,
+        _method_name: &crate::TypeBinding<crate::language::parsed::MethodName>,
+        _args_types: &[crate::TypeId],
+        _new_ref: crate::decl_engine::DeclRefFunction,
+        _new_type_id: crate::TypeId,
+    ) {
+    }
+}
+
+#[derive(Default)]
+pub struct ObservabilityEngine {
+    callbacks: Mutex<Option<Box<dyn CallbackHandler>>>,
+    trace: Mutex<bool>,
+}
+
+unsafe impl Send for ObservabilityEngine {}
+unsafe impl Sync for ObservabilityEngine {}
+
+impl fmt::Debug for ObservabilityEngine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ObservabilityEngine")
+            .field("trace", &self.trace)
+            .finish()
+    }
+}
+
+impl ObservabilityEngine {
+    pub fn set_callbacks(&self, handler: Box<dyn CallbackHandler>) {
+        let mut callbacks = self.callbacks.lock().unwrap();
+        *callbacks = Some(handler);
+    }
+
+    pub fn raise_on_before_method_resolution(
+        &self,
+        ctx: &crate::semantic_analysis::TypeCheckContext,
+        method_name: &crate::TypeBinding<crate::language::parsed::MethodName>,
+        arguments_types: &[crate::TypeId],
+    ) {
+        if let Some(handler) = self.callbacks.lock().unwrap().as_mut() {
+            handler.on_before_method_resolution(ctx, method_name, arguments_types);
+        }
+    }
+
+    pub fn raise_on_after_method_resolution(
+        &self,
+        ctx: &crate::semantic_analysis::TypeCheckContext,
+        method_name: &crate::TypeBinding<crate::language::parsed::MethodName>,
+        arguments_types: &[crate::TypeId],
+        ref_function: crate::decl_engine::DeclRefFunction,
+        tid: crate::TypeId,
+    ) {
+        if let Some(handler) = self.callbacks.lock().unwrap().as_mut() {
+            handler.on_after_method_resolution(
+                ctx,
+                method_name,
+                arguments_types,
+                ref_function,
+                tid,
+            );
+        }
+    }
+
+    pub(crate) fn trace(&self, get_txt: impl FnOnce() -> String) {
+        let trace = self.trace.lock().unwrap();
+        if *trace {
+            if let Some(handler) = self.callbacks.lock().unwrap().as_mut() {
+                handler.on_trace(&get_txt());
+            }
+        }
+    }
+
+    pub fn enable_trace(&self, enable: bool) {
+        let mut trace = self.trace.lock().unwrap();
+        *trace = enable
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct Engines {
@@ -19,6 +109,7 @@ pub struct Engines {
     parsed_decl_engine: ParsedDeclEngine,
     query_engine: QueryEngine,
     source_engine: SourceEngine,
+    obs_engine: Arc<ObservabilityEngine>,
 }
 
 impl Engines {
@@ -40,6 +131,10 @@ impl Engines {
 
     pub fn se(&self) -> &SourceEngine {
         &self.source_engine
+    }
+
+    pub fn obs(&self) -> &ObservabilityEngine {
+        &self.obs_engine
     }
 
     /// Removes all data associated with `program_id` from the engines.

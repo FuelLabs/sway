@@ -5,7 +5,7 @@ use pkg::MemberFilter;
 
 pub fn build(cmd: BuildCommand) -> ForcResult<pkg::Built> {
     let opts = opts_from_cmd(cmd);
-    let built = pkg::build_with_options(&opts)?;
+    let built = pkg::build_with_options(&opts, None)?;
     Ok(built)
 }
 

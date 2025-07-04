@@ -892,6 +892,10 @@ pub(crate) fn resolve_method_name(
     method_name: &TypeBinding<MethodName>,
     arguments_types: &[TypeId],
 ) -> Result<(DeclRefFunction, TypeId), ErrorEmitted> {
+    ctx.engines
+        .obs()
+        .raise_on_before_method_resolution(&ctx, method_name, arguments_types);
+
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
@@ -1019,6 +1023,14 @@ pub(crate) fn resolve_method_name(
             (decl_ref, type_id)
         }
     };
+
+    ctx.engines.obs().raise_on_after_method_resolution(
+        &ctx,
+        method_name,
+        arguments_types,
+        decl_ref.clone(),
+        type_id,
+    );
 
     Ok((decl_ref, type_id))
 }
