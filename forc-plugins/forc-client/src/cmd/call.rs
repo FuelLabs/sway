@@ -1,6 +1,5 @@
 use crate::NodeTarget;
 use clap::{Parser, ValueEnum};
-use either::Either;
 use fuel_crypto::SecretKey;
 use fuels::programs::calls::CallParameters;
 use fuels_core::types::{Address, AssetId, ContractId};
@@ -138,19 +137,64 @@ impl From<CallParametersOpts> for CallParameters {
 }
 
 /// Operation for the call command
+#[derive(Debug, Clone, PartialEq)]
+pub enum AbiSource {
+    /// ABI from file path
+    File(PathBuf),
+    /// ABI from URL
+    Url(Url),
+    /// ABI as raw string
+    String(String),
+}
+
+impl std::fmt::Display for AbiSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AbiSource::File(path) => write!(f, "{}", path.display()),
+            AbiSource::Url(url) => write!(f, "{}", url),
+            AbiSource::String(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl TryFrom<String> for AbiSource {
+    type Error = String;
+
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        // First try to parse as URL
+        if let Ok(url) = Url::parse(&s) {
+            match url.scheme() {
+                "http" | "https" | "ipfs" => return Ok(AbiSource::Url(url)),
+                _ => {} // Continue to check other options
+            }
+        }
+
+        // Check if it looks like a JSON string (starts with '{' or '[')
+        let trimmed = s.trim();
+        if (trimmed.starts_with('{') && trimmed.ends_with('}'))
+            || (trimmed.starts_with('[') && trimmed.ends_with(']'))
+        {
+            return Ok(AbiSource::String(s));
+        }
+
+        // Default to treating as file path
+        Ok(AbiSource::File(PathBuf::from(s)))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Operation {
     /// Call a specific contract function
     CallFunction {
         contract_id: ContractId,
-        abi: Either<PathBuf, Url>,
+        abi: AbiSource,
         function: FuncType,
         function_args: Vec<String>,
     },
     /// List all functions in the contract
     ListFunctions {
         contract_id: ContractId,
-        abi: Either<PathBuf, Url>,
+        abi: AbiSource,
     },
     /// Direct transfer of assets to a contract
     DirectTransfer {
@@ -269,6 +313,13 @@ forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --list-functions
 ```
 
+### Call a contract with inline ABI JSON string
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+    --abi '{"functions":[{"inputs":[],"name":"get_balance","output":{"name":"","type":"u64","typeArguments":null}}]}' \
+    get_balance
+```
+
 ### Direct transfer of asset to a contract or address
 ```sh
 forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
@@ -281,17 +332,18 @@ pub struct Command {
     #[clap(help_heading = "CONTRACT")]
     pub address: Address,
 
-    /// Path or URI to a JSON ABI file
+    /// Path, URI, or raw JSON string for the ABI
     /// Required when making function calls or listing functions
-    #[clap(long, value_parser = parse_abi_path)]
-    pub abi: Option<Either<PathBuf, Url>>,
+    /// Can be a file path, HTTP/HTTPS URL, or raw JSON string
+    #[clap(long, value_parser = |s: &str| AbiSource::try_from(s.to_string()))]
+    pub abi: Option<AbiSource>,
 
     /// Additional contract IDs and their ABI paths for better tracing and debugging.
     /// Format: contract_id:abi_path (can be used multiple times)
     /// Example: --contract-abi 0x123:./abi1.json --contract-abi 0x456:https://example.com/abi2.json
     /// Contract IDs can be provided with or without 0x prefix
     #[clap(long = "contract-abi", value_parser = parse_contract_abi, action = clap::ArgAction::Append, help_heading = "CONTRACT")]
-    pub contract_abis: Option<Vec<(ContractId, Either<PathBuf, Url>)>>,
+    pub contract_abis: Option<Vec<(ContractId, AbiSource)>>,
 
     /// Label addresses in the trace output for better readability.
     /// Format: address:label (can be used multiple times)
@@ -404,18 +456,7 @@ impl Command {
     }
 }
 
-fn parse_abi_path(s: &str) -> Result<Either<PathBuf, Url>, String> {
-    if let Ok(url) = Url::parse(s) {
-        match url.scheme() {
-            "http" | "https" | "ipfs" => Ok(Either::Right(url)),
-            _ => Err(format!("Unsupported URL scheme: {}", url.scheme())),
-        }
-    } else {
-        Ok(Either::Left(PathBuf::from(s)))
-    }
-}
-
-fn parse_contract_abi(s: &str) -> Result<(ContractId, Either<PathBuf, Url>), String> {
+fn parse_contract_abi(s: &str) -> Result<(ContractId, AbiSource), String> {
     let parts: Vec<&str> = s.trim().split(':').collect();
     let [contract_id_str, abi_path_str] = parts.try_into().map_err(|_| {
         format!(
@@ -428,7 +469,7 @@ fn parse_contract_abi(s: &str) -> Result<(ContractId, Either<PathBuf, Url>), Str
         ContractId::from_str(&format!("0x{}", contract_id_str.trim_start_matches("0x")))
             .map_err(|e| format!("Invalid contract ID '{}': {}", contract_id_str, e))?;
 
-    let abi_path = parse_abi_path(abi_path_str)
+    let abi_path = AbiSource::try_from(abi_path_str.to_string())
         .map_err(|e| format!("Invalid ABI path '{}': {}", abi_path_str, e))?;
 
     Ok((contract_id, abi_path))
@@ -448,4 +489,27 @@ fn parse_label(s: &str) -> Result<(ContractId, String), String> {
             .map_err(|e| format!("Invalid contract ID '{}': {}", contract_id_str, e))?;
 
     Ok((contract_id, label.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_abi_source_try_from() {
+        let url_result = AbiSource::try_from("https://example.com/abi.json".to_string()).unwrap();
+        assert!(matches!(url_result, AbiSource::Url(_)));
+
+        let json_result = AbiSource::try_from(r#"{"functions": []}"#.to_string()).unwrap();
+        assert!(matches!(json_result, AbiSource::String(_)));
+
+        let array_result = AbiSource::try_from("[]".to_string()).unwrap();
+        assert!(matches!(array_result, AbiSource::String(_)));
+
+        let file_result = AbiSource::try_from("./contract-abi.json".to_string()).unwrap();
+        assert!(matches!(file_result, AbiSource::File(_)));
+
+        let file_url_result = AbiSource::try_from("file:///path/to/abi.json".to_string()).unwrap();
+        assert!(matches!(file_url_result, AbiSource::File(_)));
+    }
 }
