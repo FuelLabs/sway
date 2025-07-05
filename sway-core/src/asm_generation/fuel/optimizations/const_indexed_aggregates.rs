@@ -2,7 +2,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     asm_generation::fuel::compiler_constants,
-    asm_lang::{ControlFlowOp, VirtualImmediate12, VirtualOp, VirtualRegister},
+    asm_lang::{VirtualImmediate12, VirtualOp, VirtualRegister},
 };
 
 use super::super::{abstract_instruction_set::AbstractInstructionSet, data_section::DataSection};
@@ -210,7 +210,6 @@ impl AbstractInstructionSet {
                         }
                     }
                 }
-                either::Either::Right(ControlFlowOp::SaveRetAddr(..)) => {}
                 either::Either::Right(_) => {
                     clear_state = true;
                 }

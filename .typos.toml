@@ -6,6 +6,7 @@ extend-ignore-identifiers-re = [
     "TRO",
     "tro",
     "Tro",
+    "NOOP",
     "Nam",
     "typ",
 ]

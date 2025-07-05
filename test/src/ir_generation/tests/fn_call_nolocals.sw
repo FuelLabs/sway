@@ -33,8 +33,5 @@ fn main() -> u64 {
 // check: move $$$$arg0 $REG
 // check: move $$$$arg1 $REG
 // check: move $$$$arg2 $REG
-// check: sub  $$$$reta $$pc $$is
-// check: srli $$$$reta $$$$reta i2
-// check: addi $$$$reta $$$$reta i4
-// check: jmpf $$zero $IMM
+// check: jal  $$$$reta $$pc i2
 // check: ret  $$$$retv
