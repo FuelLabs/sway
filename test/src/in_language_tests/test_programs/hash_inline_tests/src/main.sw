@@ -1097,6 +1097,132 @@ fn hash_str_array_10() {
 
 #[cfg(experimental_new_hashing = false)]
 #[test]
+fn hash_raw_slice() {
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::new();
+    let slice = bytes.as_raw_slice();
+    slice.hash(hasher);
+    assert_eq(hasher.sha256(), 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855);
+    assert_eq(sha256(slice), 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855);
+    assert_eq(hasher.keccak256(), 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470);
+    assert_eq(keccak256(slice), 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470);
+
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::new();
+    bytes.push(0_u8);
+    let slice = bytes.as_raw_slice();
+    slice.hash(hasher);
+    assert_eq(hasher.sha256(), 0x6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d);
+    assert_eq(sha256(slice), 0x6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d);
+    assert_eq(hasher.keccak256(), 0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a);
+    assert_eq(keccak256(slice), 0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a);
+
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::new();
+    bytes.push(1_u8);
+    let slice = bytes.as_raw_slice();
+    slice.hash(hasher);
+    assert_eq(hasher.sha256(), 0x4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a);
+    assert_eq(sha256(slice), 0x4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a);
+    assert_eq(hasher.keccak256(), 0x5fe7f977e71dba2ea1a68e21057beebb9be2ac30c6410aa38d4f3fbe41dcffd2);
+    assert_eq(keccak256(slice), 0x5fe7f977e71dba2ea1a68e21057beebb9be2ac30c6410aa38d4f3fbe41dcffd2);
+
+    let mut bytes = Bytes::new();
+    let mut i = 0;
+    while i < 10 {
+        bytes.push(0_u8);
+        i += 1;
+    }
+
+    let mut hasher = Hasher::new();
+    let slice = bytes.as_raw_slice();
+    slice.hash(hasher);
+    assert_eq(hasher.sha256(), 0x01d448afd928065458cf670b60f5a594d735af0172c8d67f22a81680132681ca);
+    assert_eq(sha256(slice), 0x01d448afd928065458cf670b60f5a594d735af0172c8d67f22a81680132681ca);
+    assert_eq(hasher.keccak256(), 0x6bd2dd6bd408cbee33429358bf24fdc64612fbf8b1b4db604518f40ffd34b607);
+    assert_eq(keccak256(slice), 0x6bd2dd6bd408cbee33429358bf24fdc64612fbf8b1b4db604518f40ffd34b607);
+
+    let mut bytes = Bytes::new();
+    let mut i = 0;
+    while i < 10 {
+        bytes.push(1_u8);
+        i += 1;
+    }
+
+    let mut hasher = Hasher::new();
+    let slice = bytes.as_raw_slice();
+    slice.hash(hasher);
+    assert_eq(hasher.sha256(), 0xffadf8d89d37b3b55fe1847b513cf92e3be87e4c168708c7851845df96fb36be);
+    assert_eq(sha256(slice), 0xffadf8d89d37b3b55fe1847b513cf92e3be87e4c168708c7851845df96fb36be);
+    assert_eq(hasher.keccak256(), 0xe3f42f79c06bc68dee65a965f26b9c1a1d40d3195f24341127150f7242979709);
+    assert_eq(keccak256(slice), 0xe3f42f79c06bc68dee65a965f26b9c1a1d40d3195f24341127150f7242979709);
+}
+
+#[cfg(experimental_new_hashing = true)]
+#[test]
+fn hash_raw_slice() {
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::new();
+    let slice = bytes.as_raw_slice();
+    slice.hash(hasher);
+    assert_eq(hasher.sha256(), 0xaf5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc);
+    assert_eq(sha256(slice), 0xaf5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc);
+    assert_eq(hasher.keccak256(), 0x011b4d03dd8c01f1049143cf9c4c817e4b167f1d1b83e5c6f0f10d89ba1e7bce);
+    assert_eq(keccak256(slice), 0x011b4d03dd8c01f1049143cf9c4c817e4b167f1d1b83e5c6f0f10d89ba1e7bce);
+
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::new();
+    bytes.push(0_u8);
+    let slice = bytes.as_raw_slice();
+    slice.hash(hasher);
+    assert_eq(hasher.sha256(), 0xe64cf59bfbcf3c5743ccd9eda3a811a7966689717a8499e5b1ef0cb1f33bf4b6);
+    assert_eq(sha256(slice), 0xe64cf59bfbcf3c5743ccd9eda3a811a7966689717a8499e5b1ef0cb1f33bf4b6);
+    assert_eq(hasher.keccak256(), 0x4ca50a38e76ab659f435e61e6b5aaf81ce1b52eb5330ec73caddf64f28162253);
+    assert_eq(keccak256(slice), 0x4ca50a38e76ab659f435e61e6b5aaf81ce1b52eb5330ec73caddf64f28162253);
+
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::new();
+    bytes.push(1_u8);
+    let slice = bytes.as_raw_slice();
+    slice.hash(hasher);
+    assert_eq(hasher.sha256(), 0xbd87b2cda99df5b642ac9c0a97d3bc76f9921e2cce16058faa44bc954dbb065f);
+    assert_eq(sha256(slice), 0xbd87b2cda99df5b642ac9c0a97d3bc76f9921e2cce16058faa44bc954dbb065f);
+    assert_eq(hasher.keccak256(), 0x37dc9801eac37f6c32e8f1643e6d8d447bb68412a514dc85c094dbca25026b9f);
+    assert_eq(keccak256(slice), 0x37dc9801eac37f6c32e8f1643e6d8d447bb68412a514dc85c094dbca25026b9f);
+
+    let mut bytes = Bytes::new();
+    let mut i = 0;
+    while i < 10 {
+        bytes.push(0_u8);
+        i += 1;
+    }
+
+    let mut hasher = Hasher::new();
+    let slice = bytes.as_raw_slice();
+    slice.hash(hasher);
+    assert_eq(hasher.sha256(), 0x30b823d93f132f0511517e9797e5608d7a2fedfee3aa352b969d815e6fb97f6a);
+    assert_eq(sha256(slice), 0x30b823d93f132f0511517e9797e5608d7a2fedfee3aa352b969d815e6fb97f6a);
+    assert_eq(hasher.keccak256(), 0x77c5192c37c8baf3f8eba33cc4d48ed38ae27fbe3e90f06c0042ae6078fb5674);
+    assert_eq(keccak256(slice), 0x77c5192c37c8baf3f8eba33cc4d48ed38ae27fbe3e90f06c0042ae6078fb5674);
+
+    let mut bytes = Bytes::new();
+    let mut i = 0;
+    while i < 10 {
+        bytes.push(1_u8);
+        i += 1;
+    }
+
+    let mut hasher = Hasher::new();
+    let slice = bytes.as_raw_slice();
+    slice.hash(hasher);
+    assert_eq(hasher.sha256(), 0x1e0e565120a6ceaf0797ad7e6600ed1edce68aa86ef83e1057e3225edc382957);
+    assert_eq(sha256(slice), 0x1e0e565120a6ceaf0797ad7e6600ed1edce68aa86ef83e1057e3225edc382957);
+    assert_eq(hasher.keccak256(), 0x56dc7330cf2017962f405489806ca1b7fc537f382fbe0ac995d0dd947e80f72a);
+    assert_eq(keccak256(slice), 0x56dc7330cf2017962f405489806ca1b7fc537f382fbe0ac995d0dd947e80f72a);
+}
+
+#[cfg(experimental_new_hashing = false)]
+#[test]
 fn hash_bytes() {
     let mut hasher = Hasher::new();
     let mut bytes = Bytes::new();

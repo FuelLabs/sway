@@ -845,6 +845,21 @@ impl Hash for str[10] {
 
 
 #[cfg(experimental_new_hashing = false)]
+impl Hash for raw_slice {
+    fn hash(self, ref mut state: Hasher) {
+        state.write_raw_slice(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = true)]
+impl Hash for raw_slice {
+    fn hash(self, ref mut state: Hasher) {
+        self.number_of_bytes().hash(state);
+        state.write_raw_slice(self);
+    }
+}
+
+#[cfg(experimental_new_hashing = false)]
 impl<T> Hash for Vec<T>
 where
     T: Hash,
