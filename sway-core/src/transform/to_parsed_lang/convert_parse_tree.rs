@@ -16,6 +16,7 @@ use ast_elements::{
     type_parameter::{ConstGenericExpr, GenericTypeParameter},
 };
 use itertools::Itertools;
+use std::{collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, str::FromStr};
 use sway_ast::{
     assignable::ElementAccess,
     expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
@@ -35,9 +36,6 @@ use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::Compile
 use sway_features::ExperimentalFeatures;
 use sway_types::{integer_bits::IntegerBits, BaseIdent};
 use sway_types::{style::to_upper_camel_case, Ident, Span, Spanned};
-use std::{
-    collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, str::FromStr,
-};
 
 pub fn convert_parse_tree(
     context: &mut Context,

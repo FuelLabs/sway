@@ -72,7 +72,12 @@ fn bind_contract_id_in_root_module(
     let attributes = Default::default();
     // convert to const decl
     let const_decl_id = to_parsed_lang::item_const_to_constant_declaration(
-        &mut to_parsed_lang::Context::new(crate::BuildTarget::EVM, dbg_generation, experimental, package.name().as_str()),
+        &mut to_parsed_lang::Context::new(
+            crate::BuildTarget::EVM,
+            dbg_generation,
+            experimental,
+            package.name().as_str(),
+        ),
         handler,
         engines,
         const_item,

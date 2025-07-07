@@ -98,10 +98,17 @@ pub fn parse(
     engines: &Engines,
     config: Option<&BuildConfig>,
     experimental: ExperimentalFeatures,
-    package_name: &str
+    package_name: &str,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     match config {
-        None => parse_in_memory(handler, engines, src, experimental, DbgGeneration::None, package_name),
+        None => parse_in_memory(
+            handler,
+            engines,
+            src,
+            experimental,
+            DbgGeneration::None,
+            package_name,
+        ),
         // When a `BuildConfig` is given,
         // the module source may declare `mod`s that must be parsed from other files.
         Some(config) => parse_module_tree(
@@ -388,7 +395,12 @@ fn parse_in_memory(
     let attributes_error_emitted = handler.append(attributes_handler);
 
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::new(BuildTarget::EVM, dbg_generation, experimental, package_name),
+        &mut to_parsed_lang::Context::new(
+            BuildTarget::EVM,
+            dbg_generation,
+            experimental,
+            package_name,
+        ),
         handler,
         engines,
         module.value.clone(),
@@ -1013,7 +1025,14 @@ pub fn compile_to_ast(
         package_name,
         "parse the program to a concrete syntax tree (CST)",
         "parse_cst",
-        parse(src, handler, engines, build_config, experimental, package_name),
+        parse(
+            src,
+            handler,
+            engines,
+            build_config,
+            experimental,
+            package_name
+        ),
         build_config,
         metrics
     );
@@ -1528,6 +1547,7 @@ fn test_basic_prog() {
         &engines,
         None,
         ExperimentalFeatures::default(),
+        "test",
     );
     prog.unwrap();
 }
@@ -1548,6 +1568,7 @@ fn test_parenthesized() {
         &engines,
         None,
         ExperimentalFeatures::default(),
+        "test",
     );
     prog.unwrap();
 }
@@ -1570,6 +1591,7 @@ fn test_unary_ordering() {
         &engines,
         None,
         ExperimentalFeatures::default(),
+        "test",
     );
     let (.., prog) = prog.unwrap();
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
@@ -1619,6 +1641,7 @@ fn test_parser_recovery() {
         &engines,
         None,
         ExperimentalFeatures::default(),
+        "test",
     );
     let (_, _) = prog.unwrap();
     assert!(handler.has_errors());
