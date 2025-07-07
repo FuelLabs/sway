@@ -1,6 +1,7 @@
 mod function_parameter;
 
 use ast_elements::type_parameter::GenericTypeParameter;
+use hashbrown::HashMap;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -134,12 +135,16 @@ impl ty::TyFunctionDecl {
                 )?;
 
                 // const generic parameters
+                let mut already_declared = HashMap::new();
                 let const_generic_parameters = type_parameters
                     .iter()
-                    .filter_map(|x| x.as_const_parameter())
-                    .filter_map(|x| x.id.as_ref());
-                for const_generic_decl_id in const_generic_parameters {
-                    let const_generic_decl = ctx.engines.pe().get(const_generic_decl_id);
+                    .filter_map(|x| x.as_const_parameter());
+                for const_generic in const_generic_parameters {
+                    let Some(id) = const_generic.id.as_ref() else {
+                        continue;
+                    };
+                    let const_generic_decl = ctx.engines.pe().get(id);
+
                     let decl_ref = ctx.engines.de().insert(
                         TyConstGenericDecl {
                             call_path: CallPath {
@@ -151,8 +156,15 @@ impl ty::TyFunctionDecl {
                             return_type: const_generic_decl.ty,
                             value: None,
                         },
-                        Some(const_generic_decl_id),
+                        Some(id),
                     );
+
+                    if let Some(_) = already_declared.insert(const_generic_decl.name.clone(), const_generic.span.clone()) {
+                        handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
+                            name: const_generic_decl.name.clone(),
+                            span: const_generic.span.clone(),
+                        });
+                    }
 
                     ctx.insert_symbol(
                         handler,

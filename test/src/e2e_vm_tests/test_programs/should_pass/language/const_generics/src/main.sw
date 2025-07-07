@@ -61,6 +61,12 @@ fn return_n<const NNN: u64>() -> u64 {
     NNN
 }
 
+#[inline(never)]
+fn return_inner_const<const NNN: u64>() -> u64 {
+    const NNN: u64 = 7;
+    NNN
+}
+
 fn main(a: [u64; 2]) {
     let _ = __dbg(a);
 
@@ -89,13 +95,13 @@ fn main(a: [u64; 2]) {
     let _ = __dbg(e);
     let b = e.len_xxx2();
     assert(b == 3);
-    //__dbg(e);
 
     // standalone fns
     assert(return_n::<3>() == 3);
     let _ = __dbg(return_n::<3>());
     assert(return_n::<5>() == 5);
     let _ = __dbg(return_n::<5>());
+    assert(return_inner_const::<5>() == 7);
 
     // string arrays
     let a: str[3] = __to_str_array("ABC");
