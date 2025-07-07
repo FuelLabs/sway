@@ -121,8 +121,6 @@ where
             let args = type_arguments.iter_mut();
 
             for (param, arg) in params.iter().zip(args) {
-                // eprintln!("    {} {}", param.name(), arg.span().as_str());
-
                 match (param, arg) {
                     (TypeParameter::Type(_), GenericArgument::Type(arg)) => {
                         arg.type_id = resolve_type(
@@ -164,11 +162,27 @@ where
                         )
                         .map(|d| d.expect_typed())?;
                     }
-                    (TypeParameter::Type(_), GenericArgument::Const(_)) => todo!(),
-                    (TypeParameter::Const(_), GenericArgument::Const(_)) => todo!(),
-                    // GenericArgument::Const(arg) => {
-
-                    // },
+                    (_, GenericArgument::Const(arg)) => {
+                        match &arg.expr {
+                            crate::ast_elements::type_parameter::ConstGenericExpr::Literal { ..} => {},
+                            crate::ast_elements::type_parameter::ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+                                let _ = crate::semantic_analysis::type_resolve::resolve_call_path(
+                                    handler,
+                                    engines,
+                                    namespace,
+                                    mod_path,
+                                    &CallPath {
+                                        prefixes: vec![],
+                                        suffix: ident.clone(),
+                                        callpath_type: crate::language::CallPathType::Ambiguous,
+                                    },
+                                    self_type,
+                                    VisibilityCheck::No,
+                                )
+                                .map(|d| d.expect_typed())?;
+                            },
+                        }
+                    }
                 }
             }
 
