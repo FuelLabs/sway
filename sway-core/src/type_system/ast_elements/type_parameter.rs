@@ -18,7 +18,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     fmt,
     hash::{Hash, Hasher},
 };
@@ -537,6 +537,7 @@ impl GenericTypeParameter {
         }
 
         handler.scope(|handler| {
+            let mut already_declared = HashMap::new();
             for p in generic_params {
                 let p = match p {
                     TypeParameter::Type(p) => {
@@ -545,7 +546,15 @@ impl GenericTypeParameter {
                             Err(_) => continue,
                         }
                     }
-                    TypeParameter::Const(p) => TypeParameter::Const(p.clone()),
+                    TypeParameter::Const(p) => {
+                        if let Some(_) = already_declared.insert(p.name.clone(), p.span.clone()) {
+                            handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
+                                name: p.name.clone(),
+                                span: p.span.clone(),
+                            });
+                        }
+                        TypeParameter::Const(p.clone())
+                    },
                 };
                 p.insert_into_namespace_self(handler, ctx.by_ref())?;
                 new_generic_params.push(p)
