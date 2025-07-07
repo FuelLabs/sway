@@ -41,14 +41,21 @@ impl Sidebar {
 }
 impl Renderable for Sidebar {
     fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
-        let path_to_logo = self
-            .module_info
-            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/sway-logo.svg"));
+        // For workspace sidebar, use direct path to logo (no path prefix needed)
+        let path_to_logo = if matches!(self.style, DocStyle::WorkspaceIndex) {
+            format!("{ASSETS_DIR_NAME}/sway-logo.svg")
+        } else {
+            self.module_info
+                .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/sway-logo.svg"))
+        };
         let style = self.style.clone();
         let version_opt = self.version_opt.clone();
         let location_with_prefix = match &style {
             DocStyle::AllDoc(project_kind) | DocStyle::ProjectIndex(project_kind) => {
                 format!("{project_kind} {}", self.module_info.location())
+            }
+            DocStyle::WorkspaceIndex => {
+                format!("Workspace {}", self.module_info.location())
             }
             DocStyle::ModuleIndex => format!(
                 "{} {}",
@@ -72,12 +79,36 @@ impl Renderable for Sidebar {
         );
         let logo_path_to_root = match style {
             DocStyle::AllDoc(_) | DocStyle::Item { .. } | DocStyle::ModuleIndex => root_path,
-            DocStyle::ProjectIndex(_) => IDENTITY.to_owned(),
+            DocStyle::ProjectIndex(_) | DocStyle::WorkspaceIndex => IDENTITY.to_owned(),
         };
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
         // and render it from Raw in the final output.
         let styled_content = match &self.style {
+            DocStyle::WorkspaceIndex => {
+                let nav_links = &self.nav.links;
+                box_html! {
+                    div(class="sidebar-elems") {
+                        section {
+                            div(class="block") {
+                                ul {
+                                    @ for (_title, doc_links) in nav_links {
+                                        @ for doc_link in doc_links {
+                                            li {
+                                                a(href=format!("{}", doc_link.html_filename)) {
+                                                    : doc_link.name.clone();
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .into_string()
+                .unwrap()
+            }
             DocStyle::ProjectIndex(_) => {
                 let nav_links = &self.nav.links;
                 let all_items = format!("See all {}'s items", self.module_info.project_name());
