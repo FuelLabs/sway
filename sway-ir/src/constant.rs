@@ -229,8 +229,8 @@ impl ConstantContent {
 
         debug_assert!(tag_and_value_with_paddings.len() == 2, "In case of enums, `elements_of_aggregate_with_padding` must return exactly two elements, the tag and the value.");
 
-        let tag = tag_and_value_with_paddings[0].clone();
-        let value = tag_and_value_with_paddings[1].clone();
+        let tag = tag_and_value_with_paddings[0];
+        let value = tag_and_value_with_paddings[1];
 
         Some((tag, value))
     }
