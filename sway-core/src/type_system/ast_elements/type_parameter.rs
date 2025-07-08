@@ -547,11 +547,13 @@ impl GenericTypeParameter {
                         }
                     }
                     TypeParameter::Const(p) => {
-                        if let Some(_) = already_declared.insert(p.name.clone(), p.span.clone()) {
-                            handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
-                                name: p.name.clone(),
-                                span: p.span.clone(),
-                            });
+                        if let Some(old) = already_declared.insert(p.name.clone(), p.span.clone()) {
+                            let (old, new) = if old < p.span {
+                                (old, p.span.clone())
+                            } else {
+                                (p.span.clone(), old)
+                            };
+                            handler.emit_err(CompileError::MultipleDefinitionsOfConstant { name: p.name.clone(), new, old });
                         }
                         TypeParameter::Const(p.clone())
                     },

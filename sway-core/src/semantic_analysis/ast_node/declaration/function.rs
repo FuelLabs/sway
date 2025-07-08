@@ -159,10 +159,11 @@ impl ty::TyFunctionDecl {
                         Some(id),
                     );
 
-                    if let Some(_) = already_declared.insert(const_generic_decl.name.clone(), const_generic.span.clone()) {
+                    if let Some(old) = already_declared.insert(const_generic_decl.name.clone(), const_generic.span.clone()) {
                         handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
                             name: const_generic_decl.name.clone(),
-                            span: const_generic.span.clone(),
+                            new: const_generic.span.clone(),
+                            old,
                         });
                     }
 

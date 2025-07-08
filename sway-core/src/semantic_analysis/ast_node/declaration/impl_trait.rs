@@ -558,21 +558,20 @@ impl TyImplSelfOrTrait {
                 handler.scope(|handler| {
                     for item in items.iter() {
                         match item {
-                            ImplItem::Fn(fn_decl_id) => {
-                                let fn_decl = engines.pe().get_function(fn_decl_id);
-                                let fn_decl = match ty::TyFunctionDecl::type_check_signature(
+                            ImplItem::Fn(id) => {
+                                let fn_decl = engines.pe().get_function(id);
+                                let Ok(fn_decl) = ty::TyFunctionDecl::type_check_signature(
                                     handler,
                                     ctx.by_ref(),
                                     &fn_decl,
                                     true,
                                     true,
                                     Some(implementing_for.type_id()),
-                                ) {
-                                    Ok(res) => res,
-                                    Err(_) => continue,
+                                ) else {
+                                    continue;
                                 };
                                 new_items.push(TyImplItem::Fn(
-                                    decl_engine.insert(fn_decl, Some(fn_decl_id)),
+                                    decl_engine.insert(fn_decl, Some(id)),
                                 ));
                             }
                             ImplItem::Constant(decl_id) => {
@@ -1586,11 +1585,12 @@ fn type_check_const_decl(
     }
 
     // Ensure that there aren't multiple definitions of this constant
-    if impld_constant_ids.contains_key(&(const_name.clone(), self_type_id)) {
+    if let Some(old) = impld_constant_ids.get(&(const_name.clone(), self_type_id)) {
         return Err(
             handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
                 name: const_name.clone(),
-                span: const_name.span(),
+                new: const_name.span(),
+                old: old.span(),
             }),
         );
     }
