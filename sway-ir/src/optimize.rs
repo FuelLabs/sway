@@ -41,6 +41,8 @@ pub mod sroa;
 pub use sroa::*;
 pub mod fn_dedup;
 pub use fn_dedup::*;
+pub mod branchless;
+pub use branchless::*;
 
 mod target_fuel;
 
