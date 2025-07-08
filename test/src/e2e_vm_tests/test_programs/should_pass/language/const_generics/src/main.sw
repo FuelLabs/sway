@@ -56,15 +56,17 @@ impl<T, const N: u64> TwoVariants<T, N> {
     }
 }
 
+const NNN: u64 = 9;
+
 #[inline(never)]
 fn return_n<const NNN: u64>() -> u64 {
     NNN
 }
 
 #[inline(never)]
-fn return_inner_const<const NNN: u64>() -> u64 {
-    const NNN: u64 = 7;
-    NNN
+fn return_inner_const<const ZZZ: u64>() -> u64 {
+    const ZZZ: u64 = 7;
+    ZZZ
 }
 
 fn main(a: [u64; 2]) {

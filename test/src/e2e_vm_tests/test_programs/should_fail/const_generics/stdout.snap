@@ -7,100 +7,224 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/const_generics
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/const_generics)
-error
- --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:4:63
-  |
-2 | script;
-3 | 
-4 | struct RepeatedConstGenericsNameInStructs<const N: u64, const N: u64> { }
-  |                                                               ^ Constant "N" was already defined in scope.
-5 | 
-6 | impl<const N: u64, const N: u64> RepeatedConstGenericsNameInStructs<N, N> {
-  |
-____
-
-error
- --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:6:26
-  |
-4 | struct RepeatedConstGenericsNameInStructs<const N: u64, const N: u64> { }
-5 | 
-6 | impl<const N: u64, const N: u64> RepeatedConstGenericsNameInStructs<N, N> {
-  |                          ^ Constant "N" was already defined in scope.
-7 |     fn repeated_const_generics_name<const N: u64, const A: u64, const A: u64>() {
-8 |     }
-  |
-____
-
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:11:59
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:24:5
    |
- 9 | }
-10 | 
-11 | enum RepeatedConstGenericsNameInEnums<const N: u64, const N: u64> { }
-   |                                                           ^ Constant "N" was already defined in scope.
-12 | 
-13 | fn repeated_const_generics_name<const N: u64, const N: u64>() {
+22 |   
+23 |   impl<const N: u64> A for CrazyStruct<N> {
+24 |       fn repeated_const_generics_name_2<const N: u64, const A: u64, const A: u64>() {
+   |  _____-
+25 | |     }
+   | |_____- This method is never called.
+26 |   }
+27 |   
    |
 ____
 
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:13:53
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:41:5
    |
-11 | enum RepeatedConstGenericsNameInEnums<const N: u64, const N: u64> { }
-12 | 
-13 | fn repeated_const_generics_name<const N: u64, const N: u64>() {
-   |                                                     ^ Constant "N" was already defined in scope.
-14 | }
-15 | 
+39 |   
+40 |   impl<const N: u64> A for CrazyEnum<N> {
+41 |       fn repeated_const_generics_name_2<const N: u64, const A: u64, const A: u64>() {
+   |  _____-
+42 | |     }
+   | |_____- This method is never called.
+43 |   }
+44 |   
+   |
+____
+
+error: Multiple definitions of constant
+ --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:6:63
+  |
+...
+6 | struct RepeatedConstGenericsNameInStructs<const N: u64, const N: u64> { }
+  |                                                               ^ Constant "N" was already defined
+  |                                                 ^ Its first definition is here.
+  |
+____
+
+error: Multiple definitions of constant
+ --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:7:59
+  |
+...
+7 | enum RepeatedConstGenericsNameInEnums<const N: u64, const N: u64> { }
+  |                                                           ^ Constant "N" was already defined
+  |                                             ^ Its first definition is here.
+  |
+____
+
+error: Multiple definitions of constant
+ --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:8:61
+  |
+...
+8 | trait RepeatedConstGenericsNameInTraits<const N: u64, const N: u64> { }
+  |                                                             ^ Constant "N" was already defined
+  |                                               ^ Its first definition is here.
+  |
+____
+
+error: Multiple definitions of constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:10:53
+   |
+...
+10 | fn repeated_const_generics_name<const N: u64, const N: u64>() {
+   |                                                     ^ Constant "N" was already defined
+   |                                       ^ Its first definition is here.
+   |
+____
+
+error: Multiple definitions of constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:15:26
+   |
+...
+15 | impl<const N: u64, const N: u64> CrazyStruct<N> {
+   |                          ^ Constant "N" was already defined
+   |            ^ Its first definition is here.
+   |
+____
+
+error: Multiple definitions of constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:19:71
+   |
+...
+19 |     fn repeated_const_generics_name<const N: u64, const A: u64, const A: u64>() {
+   |                                                                       ^ Constant "A" was already defined
+   |                                                         ^ Its first definition is here.
+   |
+____
+
+error: Multiple definitions of constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:19:43
+   |
+...
+18 | impl<const N: u64> CrazyStruct<N> {
+   |            ^ Its first definition is here.
+19 |     fn repeated_const_generics_name<const N: u64, const A: u64, const A: u64>() {
+   |                                           ^ Constant "N" was already defined
+   |
+____
+
+error: Multiple definitions of constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:24:73
+   |
+...
+24 |     fn repeated_const_generics_name_2<const N: u64, const A: u64, const A: u64>() {
+   |                                                                         ^ Constant "A" was already defined
+   |                                                           ^ Its first definition is here.
+   |
+____
+
+error: Multiple definitions of constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:24:45
+   |
+...
+23 | impl<const N: u64> A for CrazyStruct<N> {
+   |            ^ Its first definition is here.
+24 |     fn repeated_const_generics_name_2<const N: u64, const A: u64, const A: u64>() {
+   |                                             ^ Constant "N" was already defined
+   |
+____
+
+error: Multiple definitions of constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:32:26
+   |
+...
+32 | impl<const N: u64, const N: u64> CrazyEnum<N> {
+   |                          ^ Constant "N" was already defined
+   |            ^ Its first definition is here.
+   |
+____
+
+error: Multiple definitions of constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:36:71
+   |
+...
+36 |     fn repeated_const_generics_name<const N: u64, const A: u64, const A: u64>() {
+   |                                                                       ^ Constant "A" was already defined
+   |                                                         ^ Its first definition is here.
+   |
+____
+
+error: Multiple definitions of constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:36:43
+   |
+...
+35 | impl<const N: u64> CrazyEnum<N> {
+   |            ^ Its first definition is here.
+36 |     fn repeated_const_generics_name<const N: u64, const A: u64, const A: u64>() {
+   |                                           ^ Constant "N" was already defined
+   |
+____
+
+error: Multiple definitions of constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:41:73
+   |
+...
+41 |     fn repeated_const_generics_name_2<const N: u64, const A: u64, const A: u64>() {
+   |                                                                         ^ Constant "A" was already defined
+   |                                                           ^ Its first definition is here.
+   |
+____
+
+error: Multiple definitions of constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:41:45
+   |
+...
+40 | impl<const N: u64> A for CrazyEnum<N> {
+   |            ^ Its first definition is here.
+41 |     fn repeated_const_generics_name_2<const N: u64, const A: u64, const A: u64>() {
+   |                                             ^ Constant "N" was already defined
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:22:24
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:46:24
    |
-20 | 
-21 | fn main() {
-22 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
+44 | 
+45 | fn main() {
+46 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
    |                        ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
-23 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
-24 |     let _: [u8; UNKNOWN] = [1u8];
+47 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
+48 |     let _: [u8; UNKNOWN] = [1u8];
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:23:22
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:47:22
    |
-21 | fn main() {
-22 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
-23 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
+45 | fn main() {
+46 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
+47 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
    |                      ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
-24 |     let _: [u8; UNKNOWN] = [1u8];
-25 |     let _: str[UNKNOWN] = __to_str_array("abc");
+48 |     let _: [u8; UNKNOWN] = [1u8];
+49 |     let _: str[UNKNOWN] = __to_str_array("abc");
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:24:17
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:48:17
    |
-22 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
-23 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
-24 |     let _: [u8; UNKNOWN] = [1u8];
+46 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
+47 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
+48 |     let _: [u8; UNKNOWN] = [1u8];
    |                 ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
-25 |     let _: str[UNKNOWN] = __to_str_array("abc");
-26 | }
+49 |     let _: str[UNKNOWN] = __to_str_array("abc");
+50 | }
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:25:16
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:49:16
    |
-23 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
-24 |     let _: [u8; UNKNOWN] = [1u8];
-25 |     let _: str[UNKNOWN] = __to_str_array("abc");
+47 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
+48 |     let _: [u8; UNKNOWN] = [1u8];
+49 |     let _: str[UNKNOWN] = __to_str_array("abc");
    |                ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
-26 | }
+50 | }
    |
 ____
 
-  Aborting due to 8 errors.
+  Aborting due to 18 errors.
 error: Failed to compile const_generics
