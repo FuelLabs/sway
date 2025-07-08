@@ -570,9 +570,8 @@ impl TyImplSelfOrTrait {
                                 ) else {
                                     continue;
                                 };
-                                new_items.push(TyImplItem::Fn(
-                                    decl_engine.insert(fn_decl, Some(id)),
-                                ));
+                                new_items
+                                    .push(TyImplItem::Fn(decl_engine.insert(fn_decl, Some(id))));
                             }
                             ImplItem::Constant(decl_id) => {
                                 let const_decl =

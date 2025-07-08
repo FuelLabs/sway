@@ -553,10 +553,14 @@ impl GenericTypeParameter {
                             } else {
                                 (p.span.clone(), old)
                             };
-                            handler.emit_err(CompileError::MultipleDefinitionsOfConstant { name: p.name.clone(), new, old });
+                            handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
+                                name: p.name.clone(),
+                                new,
+                                old,
+                            });
                         }
                         TypeParameter::Const(p.clone())
-                    },
+                    }
                 };
                 p.insert_into_namespace_self(handler, ctx.by_ref())?;
                 new_generic_params.push(p)
