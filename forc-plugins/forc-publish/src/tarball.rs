@@ -1,6 +1,8 @@
 use crate::error::{Error, Result};
+use crate::md_pre_process::flatten_markdown;
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use forc_tracing::println_warning;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use tar::Builder;
@@ -24,6 +26,9 @@ pub fn create_tarball_from_current_dir(temp_tarball_dir: &TempDir) -> Result<Pat
     let temp_project_dir = tempdir()?;
     copy_project_excluding_out(temp_project_dir.path())?;
 
+    // Process README.md if it exists
+    process_readme(temp_project_dir.path())?;
+
     // Pack the temp directory into a tarball
     let tarball_path = temp_tarball_dir.path().join(TARBALL_FILE_NAME);
     let tar_gz = File::create(&tarball_path)?;
@@ -34,6 +39,23 @@ pub fn create_tarball_from_current_dir(temp_tarball_dir: &TempDir) -> Result<Pat
 
     // Return the tarball path
     Ok(tarball_path)
+}
+
+// Process README.md by flattening includes, if it exists
+fn process_readme(temp_project_dir: &Path) -> Result<()> {
+    let readme_path = temp_project_dir.join("README.md");
+    if readme_path.exists() {
+        match flatten_markdown(&readme_path) {
+            Ok(flattened_content) => {
+                fs::write(&readme_path, flattened_content)?;
+            }
+            Err(e) => {
+                // Log warning but don't fail the publish
+                println_warning(&format!("Failed to flatten README.md includes: {}", e));
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Copies the current directory (excluding `/out/`) to a temporary directory.
