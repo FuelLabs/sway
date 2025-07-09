@@ -31,6 +31,9 @@ pub enum Error {
 
     #[error("Server error")]
     ServerError,
+
+    #[error("Readme pre-process error: {0}")]
+    MDPreProcessError(#[from] crate::md_pre_process::error::MDPreProcessError),
 }
 
 #[derive(Deserialize)]
