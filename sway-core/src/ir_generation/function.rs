@@ -1778,7 +1778,7 @@ impl<'a> FnCompiler<'a> {
                     Some(Ident::new_no_span("hp".into())),
                 );
 
-                let ptr_ty = Type::new_typed_pointer(context, Type::get_ptr(context));
+                let ptr_ty = Type::get_ptr(context);
                 let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_ty);
 
                 let len = ConstantContent::new_uint(context, 64, 0);
