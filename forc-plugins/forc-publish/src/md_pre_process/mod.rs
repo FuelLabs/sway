@@ -205,8 +205,7 @@ mod tests {
         write_file(&readme, "# Title\n\nHello world!")?;
 
         let result = flatten_markdown(&readme)?;
-        assert!(result.contains("Hello world!"));
-        assert!(result.contains("# Title"));
+        assert_eq!(result, "# Title\n\nHello world!");
         Ok(())
     }
 
@@ -219,9 +218,7 @@ mod tests {
         write_file(&readme, "# Main\n\n{{#include inc.md}}\n\nEnd.")?;
 
         let result = flatten_markdown(&readme)?;
-        assert!(result.contains("This is included."));
-        assert!(result.contains("# Main"));
-        assert!(result.contains("End."));
+        assert_eq!(result, "# Main\n\nThis is included.\n\nEnd.");
         Ok(())
     }
 
@@ -236,10 +233,7 @@ mod tests {
         write_file(&readme, "# Root\n\n{{#include sub.md}}\n\nEnd.")?;
 
         let result = flatten_markdown(&readme)?;
-        assert!(result.contains("Deep content."));
-        assert!(result.contains("Subhead"));
-        assert!(result.contains("# Root"));
-        assert!(result.contains("End."));
+        assert_eq!(result, "# Root\n\nSubhead\n\nDeep content.\n\nEnd.");
         Ok(())
     }
 
@@ -257,10 +251,7 @@ mod tests {
         )?;
 
         let result = flatten_markdown(&readme)?;
-        assert!(result.contains("Alpha!"));
-        assert!(result.contains("Bravo!"));
-        assert!(result.contains("# Combo"));
-        assert!(result.contains("Done."));
+        assert_eq!(result, "# Combo\n\nAlpha!\n\nBravo!\nDone.");
         Ok(())
     }
 
