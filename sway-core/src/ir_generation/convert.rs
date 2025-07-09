@@ -152,7 +152,7 @@ fn convert_resolved_type_info(
                 create_tuple_aggregate(type_engine, decl_engine, context, &new_fields)?
             }
         }
-        TypeInfo::RawUntypedPtr => Type::get_uint64(context),
+        TypeInfo::RawUntypedPtr => Type::get_ptr(context),
         TypeInfo::RawUntypedSlice => Type::get_slice(context),
         TypeInfo::Ptr(pointee_ty) => {
             let pointee_ty = convert_resolved_type_id(

@@ -237,6 +237,7 @@ impl Type {
             // Never type can coerce into any other type.
             (TypeContent::Never, _) => true,
             (TypeContent::Slice, TypeContent::Slice) => true,
+            (TypeContent::Pointer, TypeContent::Pointer) => true,
             (TypeContent::TypedPointer(l), TypeContent::TypedPointer(r)) => l.eq(context, r),
             _ => false,
         }
@@ -344,7 +345,10 @@ impl Type {
     // TODO: (REFERENCES) Check all the usages of `is_ptr`.
     /// Returns true if `self` is a pointer type.
     pub fn is_ptr(&self, context: &Context) -> bool {
-        matches!(*self.get_content(context), TypeContent::TypedPointer(_))
+        matches!(
+            *self.get_content(context),
+            TypeContent::TypedPointer(_) | TypeContent::Pointer
+        )
     }
 
     /// Get pointed to type iff `self`` is a pointer.

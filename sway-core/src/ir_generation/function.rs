@@ -850,23 +850,22 @@ impl<'a> FnCompiler<'a> {
         len: Value,
     ) -> Result<CompiledValue, CompileError> {
         let uint64 = Type::get_uint64(context);
-
+        let ptr_ty = Type::get_ptr(context);
+        
         assert!(ptr.get_type(context).unwrap().is_ptr(context));
         assert!(cap.get_type(context).unwrap().is_uint64(context));
         assert!(len.get_type(context).unwrap().is_uint64(context));
 
-        let ptr = self.current_block.append(context).ptr_to_int(ptr, uint64);
-
         // asm(buffer: (ptr, size, len)) {
-        //  buffer: (u64, u64, u64)
+        //  buffer: (ptr, u64, u64)
         // }
         let init = self.compile_tuple_from_values(
             context,
             vec![ptr, cap, len],
-            vec![uint64, uint64, uint64],
+            vec![ptr_ty, uint64, uint64],
             None,
         )?;
-        let return_type = Type::new_struct(context, vec![uint64, uint64, uint64]);
+        let return_type = Type::new_struct(context, vec![ptr_ty, uint64, uint64]);
         let buffer = self.current_block.append(context).asm_block(
             vec![AsmArg {
                 name: Ident::new_no_span("buffer".into()),
@@ -881,7 +880,7 @@ impl<'a> FnCompiler<'a> {
         assert!(buffer_type
             .get_field_type(context, 0)
             .unwrap()
-            .is_uint64(context));
+            .is_ptr(context));
         assert!(buffer_type
             .get_field_type(context, 1)
             .unwrap()
@@ -901,12 +900,13 @@ impl<'a> FnCompiler<'a> {
         buffer: Value,
     ) -> Result<(Value, Value, Value), CompileError> {
         let uint64 = Type::get_uint64(context);
+        let ptr_ty = Type::get_ptr(context);
 
         let buffer_type = buffer.get_type(context).unwrap();
         assert!(buffer_type
             .get_field_type(context, 0)
             .unwrap()
-            .is_uint64(context));
+            .is_ptr(context));
         assert!(buffer_type
             .get_field_type(context, 1)
             .unwrap()
@@ -920,7 +920,7 @@ impl<'a> FnCompiler<'a> {
         //let (ptr, cap, len) = asm(buffer: buffer) {
         //  buffer: (u64, u64, u64)
         //};
-        let return_type = Type::new_struct(context, vec![uint64, uint64, uint64]);
+        let return_type = Type::new_struct(context, vec![ptr_ty, uint64, uint64]);
         let buffer = self.current_block.append(context).asm_block(
             vec![AsmArg {
                 name: Ident::new_no_span("buffer".into()),
@@ -944,10 +944,8 @@ impl<'a> FnCompiler<'a> {
         let ptr =
             self.current_block
                 .append(context)
-                .get_elem_ptr_with_idx(buffer_local_value, uint64, 0);
+                .get_elem_ptr_with_idx(buffer_local_value, ptr_ty, 0);
         let ptr = self.current_block.append(context).load(ptr);
-        let ptr_u8 = Type::new_typed_pointer(context, Type::get_uint8(context));
-        let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_u8);
 
         let cap =
             self.current_block
@@ -1229,12 +1227,12 @@ impl<'a> FnCompiler<'a> {
                     self.compile_expression_to_memory(context, md_mgr, exp)?
                 )
                 .expect_memory();
-                let int_ty = Type::new_uint(context, 64);
+                let ptr_ty = Type::get_ptr(context);
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let val = self
                     .current_block
                     .append(context)
-                    .ptr_to_int(value, int_ty)
+                    .cast_ptr(value, ptr_ty)
                     .add_metadatum(context, span_md_idx);
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
@@ -1780,8 +1778,8 @@ impl<'a> FnCompiler<'a> {
                     Some(Ident::new_no_span("hp".into())),
                 );
 
-                let ptr_u8 = Type::new_typed_pointer(context, Type::get_uint8(context));
-                let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_u8);
+                let ptr_ty = Type::new_typed_pointer(context, Type::get_ptr(context));
+                let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_ty);
 
                 let len = ConstantContent::new_uint(context, 64, 0);
                 let len_c = Constant::unique(context, len);
@@ -1937,7 +1935,7 @@ impl<'a> FnCompiler<'a> {
                     assert!(ptr.get_type(context).unwrap().is_ptr(context));
                     assert!(cap.get_type(context).unwrap().is_uint64(context));
 
-                    let ptr_u8 = Type::new_typed_pointer(context, Type::get_uint8(context));
+                    let ptr_ty = Type::new_typed_pointer(context, Type::get_ptr(context));
 
                     // merge block has two arguments: ptr, cap
                     let merge_block = s.function.create_block(context, None);
@@ -1946,7 +1944,7 @@ impl<'a> FnCompiler<'a> {
                         BlockArgument {
                             block: merge_block,
                             idx: 0,
-                            ty: ptr_u8,
+                            ty: ptr_ty,
                         },
                     );
                     merge_block.add_arg(context, merge_block_ptr);

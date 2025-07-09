@@ -633,7 +633,17 @@ impl InstructionVerifier<'_, '_> {
     }
 
     fn verify_cast_ptr(&self, val: &Value, ty: &Type) -> Result<(), IrError> {
-        let _ = self.get_ptr_type(val, IrError::VerifyPtrCastFromNonPointer)?;
+        if !(val
+            .get_type(self.context)
+            .is_some_and(|ty| ty.is_ptr(self.context)))
+        {
+            let ty = val
+                .get_type(self.context)
+                .map(|ty| ty.as_string(self.context))
+                .unwrap_or("Unknown".into());
+            return Err(IrError::VerifyPtrCastFromNonPointer(ty));
+        }
+
         if !ty.is_ptr(self.context) {
             Err(IrError::VerifyPtrCastToNonPointer(
                 ty.as_string(self.context),
@@ -703,12 +713,16 @@ impl InstructionVerifier<'_, '_> {
         lhs_value: &Value,
         rhs_value: &Value,
     ) -> Result<(), IrError> {
-        // Comparisons must be between integers at this stage.
+        // Comparisons must be between integers or equivalent pointers at this stage.
         match (
             lhs_value.get_type(self.context),
             rhs_value.get_type(self.context),
         ) {
             (Some(lhs_ty), Some(rhs_ty)) => {
+                if lhs_ty.is_ptr(self.context) && rhs_ty.is_ptr(self.context) {
+                    // Not sure if it's okay to allow comparing pointers of different types.
+                    return Ok(())
+                }
                 if !lhs_ty.eq(self.context, &rhs_ty) {
                     Err(IrError::VerifyCmpTypeMismatch(
                         lhs_ty.as_string(self.context),
@@ -945,7 +959,16 @@ impl InstructionVerifier<'_, '_> {
         // XXX Casting pointers to integers is a low level operation which needs to be verified in
         // the target specific verifier.  e.g., for Fuel it is assumed that b256s are 'reference
         // types' and you can to a ptr_to_int on them, but for target agnostic IR this isn't true.
-        let _ = self.get_ptr_type(val, IrError::VerifyPtrCastFromNonPointer)?;
+        if !(val
+            .get_type(self.context)
+            .is_some_and(|ty| ty.is_ptr(self.context)))
+        {
+            let ty = val
+                .get_type(self.context)
+                .map(|ty| ty.as_string(self.context))
+                .unwrap_or("Unknown".into());
+            return Err(IrError::VerifyPtrCastFromNonPointer(ty));
+        }        
         if !ty.is_uint(self.context) {
             Err(IrError::VerifyPtrToIntToNonInteger(
                 ty.as_string(self.context),
