@@ -851,7 +851,7 @@ impl<'a> FnCompiler<'a> {
     ) -> Result<CompiledValue, CompileError> {
         let uint64 = Type::get_uint64(context);
         let ptr_ty = Type::get_ptr(context);
-        
+
         assert!(ptr.get_type(context).unwrap().is_ptr(context));
         assert!(cap.get_type(context).unwrap().is_uint64(context));
         assert!(len.get_type(context).unwrap().is_uint64(context));

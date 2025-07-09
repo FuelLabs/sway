@@ -721,7 +721,7 @@ impl InstructionVerifier<'_, '_> {
             (Some(lhs_ty), Some(rhs_ty)) => {
                 if lhs_ty.is_ptr(self.context) && rhs_ty.is_ptr(self.context) {
                     // Not sure if it's okay to allow comparing pointers of different types.
-                    return Ok(())
+                    return Ok(());
                 }
                 if !lhs_ty.eq(self.context, &rhs_ty) {
                     Err(IrError::VerifyCmpTypeMismatch(
@@ -968,7 +968,7 @@ impl InstructionVerifier<'_, '_> {
                 .map(|ty| ty.as_string(self.context))
                 .unwrap_or("Unknown".into());
             return Err(IrError::VerifyPtrCastFromNonPointer(ty));
-        }        
+        }
         if !ty.is_uint(self.context) {
             Err(IrError::VerifyPtrToIntToNonInteger(
                 ty.as_string(self.context),
