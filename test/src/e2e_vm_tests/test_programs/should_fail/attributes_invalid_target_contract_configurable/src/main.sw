@@ -2,6 +2,7 @@ contract;
 
 #[storage(invalid)]
 #[inline(invalid)]
+#[trace(invalid)]
 #[test(invalid)]
 //! Invalid inner comment.
 #[payable(invalid)]
@@ -12,6 +13,7 @@ contract;
 configurable {
     #[storage(invalid)]
     #[inline(invalid)]
+    #[trace(invalid)]
     #[test(invalid)]
     //! Invalid inner comment.
     #[payable(invalid)]

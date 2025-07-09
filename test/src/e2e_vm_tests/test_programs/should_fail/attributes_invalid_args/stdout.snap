@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 125
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args
 exit status: 1
@@ -259,5 +258,37 @@ error: Attribute argument is invalid
    |
 ____
 
-  Aborting due to 18 errors.
+error: Attribute can be applied only once
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/trace_attr.sw:17:7
+   |
+...
+16 |     #[trace(alwys)]
+   |       ----- info: It is already applied here.
+17 |     #[trace(unknown_arg)]
+   |       ^^^^^ "trace" attribute can be applied only once, but is applied two times.
+   |
+____
+
+error: Attribute argument is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/trace_attr.sw:16:13
+   |
+...
+16 |     #[trace(alwys)]
+   |             ^^^^^ "alwys" is an invalid argument for attribute "trace".
+   |             ----- help: Did you mean "always"?
+   |             ----- help: Valid arguments are "always" and "never".
+   |
+____
+
+error: Attribute argument is invalid
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args/src/trace_attr.sw:17:13
+   |
+...
+17 |     #[trace(unknown_arg)]
+   |             ^^^^^^^^^^^ "unknown_arg" is an invalid argument for attribute "trace".
+   |             ----------- help: Valid arguments are "always" and "never".
+   |
+____
+
+  Aborting due to 21 errors.
 error: Failed to compile attributes_invalid_args

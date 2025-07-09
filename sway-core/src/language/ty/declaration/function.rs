@@ -5,7 +5,7 @@ use crate::{
     language::{
         parsed::{self, FunctionDeclaration, FunctionDeclarationKind},
         ty::*,
-        CallPath, Inline, Purity, Visibility,
+        CallPath, Inline, Purity, Trace, Visibility,
     },
     semantic_analysis::TypeCheckContext,
     transform::{self, AttributeKind},
@@ -580,6 +580,10 @@ impl TyFunctionDecl {
 
     pub fn inline(&self) -> Option<Inline> {
         self.attributes.inline()
+    }
+
+    pub fn trace(&self) -> Option<Trace> {
+        self.attributes.trace()
     }
 
     pub fn is_fallback(&self) -> bool {
