@@ -5,11 +5,11 @@
 A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a [transaction](https://fuellabs.github.io/fuel-specs/master/protocol/tx_format). The main features of a smart contract that differentiate it from scripts or predicates are that it is _callable_ and _stateful_. Put another way, a smart contract is analogous to a deployed API with some database state.
 <!-- contract:example:end -->
 
-The interface of a smart contract, also just called a contract, must be defined strictly with an [ABI declaration](#the-abi-declaration). See [this contract](../examples/wallet_smart_contract.md) for an example.
+The interface of a smart contract, also just called a contract, can be explicitly defined with an [ABI declaration](#the-abi-declaration) or implicitly with an [impl Self](#impl-self-contracts) item for the special type "Contract". See [this contract](../examples/wallet_smart_contract.md) for an example on using ABIs.
 
 ## Syntax of a Smart Contract
 
-As with any Sway program, the program starts with a declaration of what [program type](./index.md) it is. A contract must also either define or import an [ABI declaration](#the-abi-declaration) and implement it.
+As with any Sway program, the program starts with a declaration of what [program type](./index.md) it is. When using ABIs, a contract must either define or import an [ABI declaration](#the-abi-declaration) and implement it.
 
 <!-- This section should explain best practices for ABIs -->
 <!-- ABI:example:start -->
@@ -100,3 +100,18 @@ Each special parameter is optional and assumes a default value when skipped:
 1. The default value for `gas` is the context gas (i.e. the content of the special register `$cgas`). Refer to the [FuelVM specifications](https://fuellabs.github.io/fuel-specs/master/vm) for more information about context gas.
 2. The default value for `coins` is 0.
 3. The default value for `asset_id` is `b256::zero()`.
+
+## Impl Self Contracts
+
+In some cases, it may be more convenient to avoid declaring an ABI and implement the contract directly, as shown in the example below. In this case, the compiler will automatically create an ABI
+named as the package containing the `impl Contract` item, and will insert each function inside the ABI.
+
+```sway
+{{#include ../../../../examples/wallet_smart_contract_self_impl/src/main.sw:abi_impl}}
+```
+
+Without an ABI, there is no way for scripts and other contracts to use `abi(...)` and call this contract, but it can still be tested, as any other contract. The ABI name will be the "upper camel case" version of the package name containing the "impl Contract" item. `CONTRACT_ID` is a compiler special constant that references the contract being implemented in this file.
+
+```sway
+{{#include ../../../../examples/wallet_smart_contract_self_impl/src/main.sw:tests}}
+```

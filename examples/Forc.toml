@@ -41,4 +41,5 @@ members = [
   "wallet_abi",
   "wallet_contract_caller_script",
   "wallet_smart_contract",
+  "wallet_smart_contract_self_impl",
 ]
