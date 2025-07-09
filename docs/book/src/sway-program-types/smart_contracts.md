@@ -103,7 +103,7 @@ Each special parameter is optional and assumes a default value when skipped:
 
 ## Impl Self Contracts
 
-In some cases, it may be more convenient to avoid declaring an ABI and implement the contract directly, as shown in the example below. 
+In some cases, it may be more convenient to avoid declaring an ABI and implement the contract directly, as shown in the example below.
 
 Notice how there is no ABI specified in the `impl` item. In this case, the compiler will automatically create an ABI named as the package containing this `impl Contract` item, and will include each function in the ABI.
 
@@ -111,7 +111,7 @@ Notice how there is no ABI specified in the `impl` item. In this case, the compi
 {{#include ../../../../examples/wallet_smart_contract_self_impl/src/main.sw:abi_impl}}
 ```
 
-Without an ABI, there is no way for scripts and other contracts to use `abi(...)` and call this contract, but it can still be tested and called using any of available SDKs, as any other contract. 
+Without an ABI, there is no way for scripts and other contracts to use `abi(...)` and call this contract, but it can still be tested and called using any of available SDKs, as any other contract.
 
 The ABI name will be the "upper camel case" version of the package name containing the "impl Contract" item. `CONTRACT_ID` is a compiler special constant that references the contract being implemented in this file.
 
