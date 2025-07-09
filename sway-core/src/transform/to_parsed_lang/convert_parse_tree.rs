@@ -903,6 +903,17 @@ fn handle_impl_contract(
                 // Convert the methods to ABI interface
                 let mut interface_surface = Vec::new();
                 for item in &item_impl.contents.inner {
+                    let (_, attributes) = attr_decls_to_attributes(
+                        &item.attributes,
+                        |attr| {
+                            attr.can_annotate_impl_item(
+                                &item.value,
+                                sway_ast::ImplItemParent::Contract,
+                            )
+                        },
+                        item.value.friendly_name(sway_ast::ImplItemParent::Contract),
+                    );
+
                     match &item.value {
                         sway_ast::ItemImplItem::Fn(fn_item) => {
                             let fn_decl = fn_signature_to_trait_fn(
@@ -910,7 +921,7 @@ fn handle_impl_contract(
                                 handler,
                                 engines,
                                 fn_item.fn_signature.clone(),
-                                Attributes::default(),
+                                attributes,
                             )?;
 
                             // Validate parameters for mutability
