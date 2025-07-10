@@ -180,12 +180,12 @@ impl MaterializeConstGenerics for TyFunctionDecl {
     }
 }
 
-/// Rename cosnt generics when the name inside the struct/enum does not match
-/// the name in the impl items.
-fn rename_const_generics(
+/// Rename const generics when the name inside the struct/enum does not match
+/// the name in the impl.
+fn rename_const_generics_on_function(
     engines: &Engines,
     impl_self_or_trait: &TyImplSelfOrTrait,
-    m: &mut TyFunctionDecl,
+    function: &mut TyFunctionDecl,
 ) {
     let from = impl_self_or_trait.implementing_for.initial_type_id();
     let to = impl_self_or_trait.implementing_for.type_id();
@@ -202,7 +202,7 @@ fn rename_const_generics(
             TypeInfo::Struct(s),
         ) => {
             let decl = engines.de().get(s);
-            rename_const_generics_inner(engines, m, type_arguments, decl.type_parameters());
+            rename_const_generics_on_function_inner(engines, function, type_arguments, decl.type_parameters());
         }
         (
             TypeInfo::Custom {
@@ -212,22 +212,22 @@ fn rename_const_generics(
             TypeInfo::Enum(s),
         ) => {
             let decl = engines.de().get(s);
-            rename_const_generics_inner(engines, m, type_arguments, decl.type_parameters());
+            rename_const_generics_on_function_inner(engines, function, type_arguments, decl.type_parameters());
         }
         _ => (),
     }
 }
 
-fn rename_const_generics_inner(
+fn rename_const_generics_on_function_inner(
     engines: &Engines,
-    m: &mut TyFunctionDecl,
+    function: &mut TyFunctionDecl,
     type_arguments: &[GenericArgument],
     generic_parameters: &[TypeParameter],
 ) {
     for a in type_arguments.iter().zip(generic_parameters.iter()) {
         match (a.0, a.1) {
             (GenericArgument::Type(a), TypeParameter::Const(b)) => {
-                // replace all references from "p.name.as_str()" to "b.name.as_str()"
+                // replace all references from "a.name.as_str()" to "b.name.as_str()"
                 let mut type_subst_map = TypeSubstMap::default();
                 type_subst_map.const_generics_renaming.insert(
                     a.call_path_tree
@@ -239,7 +239,7 @@ fn rename_const_generics_inner(
                         .clone(),
                     b.name.clone(),
                 );
-                m.subst_inner(&SubstTypesContext {
+                function.subst_inner(&SubstTypesContext {
                     engines,
                     type_subst_map: Some(&type_subst_map),
                     subst_function_body: true,
@@ -279,7 +279,7 @@ impl DeclRefFunction {
 
             if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
                 let impl_self_or_trait = &*engines.de().get(&t.decl_id);
-                rename_const_generics(engines, impl_self_or_trait, &mut method);
+                rename_const_generics_on_function(engines, impl_self_or_trait, &mut method);
 
                 let mut type_id_type_parameters = vec![];
                 let mut const_generic_parameters = BTreeMap::default();

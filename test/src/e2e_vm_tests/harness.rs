@@ -20,7 +20,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
 use std::{fs, io::Read, path::PathBuf, str::FromStr};
-use sway_core::{asm_generation::ProgramABI, engine_threading::CallbackHandler, BuildTarget};
+use sway_core::{asm_generation::ProgramABI, Observer, BuildTarget};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
@@ -295,7 +295,7 @@ pub(crate) async fn compile_to_bytes(
     };
 
     match std::panic::catch_unwind(|| {
-        let callback_handler: Option<Box<dyn CallbackHandler>> = if let Some(script) = logs {
+        let callback_handler: Option<Box<dyn Observer>> = if let Some(script) = logs {
             Some(Box::new(HarnessCallbackHandler::new(&root, script)))
         } else {
             None

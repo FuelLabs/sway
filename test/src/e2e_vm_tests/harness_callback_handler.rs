@@ -5,7 +5,7 @@ use std::{
     str::FromStr as _,
     sync::{Arc, Mutex},
 };
-use sway_core::engine_threading::CallbackHandler;
+use sway_core::Observer;
 
 fn stdout_logs(root: &str, snapshot: &str) {
     let root = PathBuf::from_str(root).unwrap();
@@ -203,7 +203,7 @@ impl HarnessCallbackHandler {
     }
 }
 
-impl CallbackHandler for HarnessCallbackHandler {
+impl Observer for HarnessCallbackHandler {
     fn on_trace(&self, msg: &str) {
         let mut inner = self.inner.lock().unwrap();
         inner.snapshot.push_str(msg);
