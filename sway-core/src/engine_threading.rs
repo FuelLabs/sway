@@ -2,13 +2,14 @@ use crate::{
     decl_engine::{parsed_engine::ParsedDeclEngine, DeclEngine},
     language::CallPath,
     query_engine::QueryEngine,
-    type_system::TypeEngine, ObservabilityEngine,
+    type_system::TypeEngine,
+    ObservabilityEngine,
 };
 use std::{
     cmp::Ordering,
     fmt,
     hash::{BuildHasher, Hash, Hasher},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 use sway_types::{SourceEngine, Span};
 

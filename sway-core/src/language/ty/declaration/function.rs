@@ -202,7 +202,12 @@ fn rename_const_generics_on_function(
             TypeInfo::Struct(s),
         ) => {
             let decl = engines.de().get(s);
-            rename_const_generics_on_function_inner(engines, function, type_arguments, decl.type_parameters());
+            rename_const_generics_on_function_inner(
+                engines,
+                function,
+                type_arguments,
+                decl.type_parameters(),
+            );
         }
         (
             TypeInfo::Custom {
@@ -212,7 +217,12 @@ fn rename_const_generics_on_function(
             TypeInfo::Enum(s),
         ) => {
             let decl = engines.de().get(s);
-            rename_const_generics_on_function_inner(engines, function, type_arguments, decl.type_parameters());
+            rename_const_generics_on_function_inner(
+                engines,
+                function,
+                type_arguments,
+                decl.type_parameters(),
+            );
         }
         _ => (),
     }

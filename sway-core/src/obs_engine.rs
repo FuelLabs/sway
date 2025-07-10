@@ -1,5 +1,5 @@
-use std::sync::Mutex;
 use std::fmt::{Debug, Formatter, Result};
+use std::sync::Mutex;
 
 use crate::decl_engine::DeclRefFunction;
 use crate::language::parsed::MethodName;
@@ -71,13 +71,7 @@ impl ObservabilityEngine {
         tid: TypeId,
     ) {
         if let Some(obs) = self.observer.lock().unwrap().as_mut() {
-            obs.on_after_method_resolution(
-                ctx,
-                method_name,
-                arguments_types,
-                ref_function,
-                tid,
-            );
+            obs.on_after_method_resolution(ctx, method_name, arguments_types, ref_function, tid);
         }
     }
 

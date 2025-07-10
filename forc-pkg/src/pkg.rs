@@ -28,7 +28,6 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
-use sway_core::{namespace::Package, Observer};
 use sway_core::transform::AttributeArg;
 pub use sway_core::Programs;
 use sway_core::{
@@ -47,6 +46,7 @@ use sway_core::{
     source_map::SourceMap,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
+use sway_core::{namespace::Package, Observer};
 use sway_core::{set_bytecode_configurables_offset, DbgGeneration, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
