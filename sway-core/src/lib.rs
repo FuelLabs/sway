@@ -19,12 +19,12 @@ pub mod ir_generation;
 pub mod language;
 pub mod marker_traits;
 mod metadata;
+pub mod obs_engine;
 pub mod query_engine;
 pub mod semantic_analysis;
 pub mod source_map;
 pub mod transform;
 pub mod type_system;
-pub mod obs_engine;
 
 use crate::ir_generation::check_function_purity;
 use crate::query_engine::ModuleCacheEntry;
@@ -81,7 +81,7 @@ pub mod fuel_prelude {
 }
 
 pub use engine_threading::Engines;
-pub use obs_engine::{Observer, ObservabilityEngine};
+pub use obs_engine::{ObservabilityEngine, Observer};
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
 ///

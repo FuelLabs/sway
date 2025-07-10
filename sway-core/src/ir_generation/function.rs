@@ -617,7 +617,10 @@ impl<'a> FnCompiler<'a> {
                 if let Some(value) = decl.value.as_ref() {
                     self.compile_expression(context, md_mgr, value)
                 } else {
-                    Err(CompileError::Internal("Const generic not materialized", span.clone()))
+                    Err(CompileError::Internal(
+                        "Const generic not materialized",
+                        span.clone(),
+                    ))
                 }
             }
             ty::TyExpressionVariant::VariableExpression {
