@@ -247,3 +247,13 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+[patch.crates-io]
+fuel-vm = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "feature/get-next" }
+fuel-tx = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "feature/get-next" }
+fuel-types = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "feature/get-next" }
+fuel-crypto = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "feature/get-next" }
+fuel-asm = { git = "https://github.com/FuelLabs/fuel-vm/", branch = "feature/get-next" }
+fuel-core-storage = { git = "https://github.com/FuelLabs/fuel-core.git", branch = "feature/get-next" }
+fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core.git", branch = "feature/get-next" }
+fuel-core-types = { git = "https://github.com/FuelLabs/fuel-core.git", branch = "feature/get-next" }

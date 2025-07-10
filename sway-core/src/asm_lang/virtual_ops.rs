@@ -206,6 +206,12 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualRegister,
     ),
+    GNSE(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
 
     /* Cryptographic Instructions */
     ECK1(VirtualRegister, VirtualRegister, VirtualRegister),
@@ -350,6 +356,7 @@ impl VirtualOp {
             TIME(r1, r2) => vec![r1, r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            GNSE(r1, r2, r3, _imm) => vec![r1, r2, r3],
 
             /* Cryptographic Instructions */
             ECK1(r1, r2, r3) => vec![r1, r2, r3],
@@ -429,6 +436,7 @@ impl VirtualOp {
             |  GM(_, _)
             | GTF(_, _, _)
             | EPAR(_, _, _, _)
+            | GNSE(_, _, _, _)
             // Virtual OPs
             | LoadDataId(_, _)
             | AddrDataId(_, _)
@@ -530,6 +538,7 @@ impl VirtualOp {
             | SLLI(_, _, _)
             | SRL(_, _, _)
             | SRLI(_, _, _)
+            | GNSE(_, _, _, _)
             | SUB(_, _, _)
             | SUBI(_, _, _)
             | XOR(_, _, _)
@@ -709,6 +718,7 @@ impl VirtualOp {
             TIME(_r1, r2) => vec![r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            GNSE(_r1, r2, _r3, _i0) => vec![r2],
 
             /* Cryptographic Instructions */
             ECK1(r1, r2, r3) => vec![r1, r2, r3],
@@ -836,6 +846,7 @@ impl VirtualOp {
             TIME(_r1, r2) => vec![r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            GNSE(_r1, r2, _r3, _i0) => vec![r2],
 
             /* Cryptographic Instructions */
             ECK1(r1, r2, r3) => vec![r1, r2, r3],
@@ -866,7 +877,7 @@ impl VirtualOp {
     }
 
     /// Returns a list of all registers *written* by instruction `self`. All of our opcodes define
-    /// exactly 0 or 1 register, so the size of this returned vector should always be at most 1.
+    /// exactly 0, 1 or 2 registers, so the size of this returned vector should always be at most 2.
     pub(crate) fn def_registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
@@ -961,6 +972,7 @@ impl VirtualOp {
             TIME(r1, _r2) => vec![r1],
             TR(_r1, _r2, _r3) => vec![],
             TRO(_r1, _r2, _r3, _r4) => vec![],
+            GNSE(r1, _r2, r3, _imm) => vec![r1, r3],
 
             /* Cryptographic Instructions */
             ECK1(_r1, _r2, _r3) => vec![],
@@ -1389,6 +1401,12 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
                 update_reg(reg_to_reg_map, r4),
+            ),
+            GNSE(r1, r2, r3, imm) => Self::GNSE(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                imm.clone()
             ),
 
             /* Cryptographic Instructions */
@@ -1888,6 +1906,12 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
+            ),
+            GNSE(reg1, reg2, reg3, imm0) => AllocatedInstruction::GNSE(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm0.clone(),
             ),
 
             /* Cryptographic Instructions */

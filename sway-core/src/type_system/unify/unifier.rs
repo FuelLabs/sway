@@ -163,10 +163,11 @@ impl<'a> Unifier<'a> {
                     ) => {
                         assert!(r_eval == e_eval);
                     }
-                    (
+                    a @ (
                         ConstGenericExpr::Literal { .. },
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
                     ) => {
+                        dbg!(a);
                         todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                     }
                     (

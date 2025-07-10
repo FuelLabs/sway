@@ -331,6 +331,12 @@ define_op_codes!(
         "tro",
         (addr: reg, output: reg, coins: reg, asset: reg)
     ),
+    (
+        Gnse,
+        GnseOpcode,
+        "gnse",
+        (status: reg, start_key: reg, dst_key_value: reg, direction: imm)
+    ),
     /* Cryptographic Instructions */
     (Eck1, Eck1Opcode, "eck1", (addr: reg, sig: reg, hash: reg)),
     (Ecr1, Ecr1Opcode, "ecr1", (addr: reg, sig: reg, hash: reg)),

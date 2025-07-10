@@ -607,6 +607,7 @@ fn print_instruction(op: &Instruction) {
         Instruction::BLDD(x) => f("BLDD", x.unpack()),
         Instruction::ECOP(x) => f("ECOP", x.unpack()),
         Instruction::EPAR(x) => f("EPAR", x.unpack()),
+        Instruction::GNSE(x) => f("GNSE", x.unpack()),
     }
 }
 

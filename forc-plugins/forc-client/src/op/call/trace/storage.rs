@@ -113,6 +113,15 @@ macro_rules! storage_rw {
                 let head = self.value_of_column(Column::$core_column, $convert_key(key));
                 Ok(head.is_some())
             }
+
+            fn get_next(
+                &self,
+                start_key: &<$vm_type as fuel_vm::fuel_storage::Mappable>::Key,
+                direction: fuel_core_storage::Direction,
+                max_iterations: usize
+            ) -> Result<fuel_core_storage::NextEntry<'_, <$vm_type as fuel_vm::fuel_storage::Mappable>::OwnedKey, <$vm_type as fuel_vm::fuel_storage::Mappable>::OwnedValue>, <Self as fuel_core_storage::StorageInspect<fuel_vm::storage::ContractsRawCode>>::Error> {
+                todo!()
+            }
         }
 
         impl StorageRead<$vm_type> for ShallowStorage {

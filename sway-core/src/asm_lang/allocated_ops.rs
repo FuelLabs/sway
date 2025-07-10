@@ -255,6 +255,12 @@ pub(crate) enum AllocatedInstruction {
         AllocatedRegister,
         AllocatedRegister,
     ),
+    GNSE(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
 
     /* Cryptographic Instructions */
     ECK1(AllocatedRegister, AllocatedRegister, AllocatedRegister),
@@ -403,6 +409,7 @@ impl AllocatedInstruction {
             TIME(r1, _r2) => vec![r1],
             TR(_r1, _r2, _r3) => vec![],
             TRO(_r1, _r2, _r3, _r4) => vec![],
+            GNSE(r1, _r2, r3, _imm) => vec![r1, r3],
 
             /* Cryptographic Instructions */
             ECK1(_r1, _r2, _r3) => vec![],
@@ -535,6 +542,7 @@ impl fmt::Display for AllocatedInstruction {
             TIME(a, b) => write!(fmtr, "time {a} {b}"),
             TR(a, b, c) => write!(fmtr, "tr   {a} {b} {c}"),
             TRO(a, b, c, d) => write!(fmtr, "tro  {a} {b} {c} {d}"),
+            GNSE(a, b, c, d) => write!(fmtr, "gnse {a} {b} {c} {d}"),
 
             /* Cryptographic Instructions */
             ECK1(a, b, c) => write!(fmtr, "eck1  {a} {b} {c}"),
@@ -766,6 +774,13 @@ impl AllocatedOp {
             TRO(a, b, c, d) => {
                 op::TRO::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
+            GNSE(a, b, c, d) => op::GNSE::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
 
             /* Cryptographic Instructions */
             ECK1(a, b, c) => op::ECK1::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),

@@ -668,6 +668,10 @@ impl Op {
                 let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::TRO(r1, r2, r3, r4)
             }
+            "gnse" => {
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::GNSE(r1, r2, r3, imm)
+            }
 
             /* Cryptographic Instructions */
             "eck1" => {
@@ -1256,6 +1260,7 @@ impl fmt::Display for VirtualOp {
             TIME(a, b) => write!(fmtr, "time {a} {b}"),
             TR(a, b, c) => write!(fmtr, "tr {a} {b} {c}"),
             TRO(a, b, c, d) => write!(fmtr, "tro {a} {b} {c} {d}"),
+            GNSE(a, b, c, d) => write!(fmtr, "gnse {a} {b} {c} {d}"),
 
             /* Cryptographic Instructions */
             ECK1(a, b, c) => write!(fmtr, "eck1 {a} {b} {c}"),
