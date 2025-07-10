@@ -180,7 +180,7 @@ impl MaterializeConstGenerics for TyFunctionDecl {
     }
 }
 
-/// Rename const generics when the name inside the struct/enum does not match
+/// Rename const generics when the name inside the struct/enum declaration  does not match
 /// the name in the impl.
 fn rename_const_generics_on_function(
     engines: &Engines,
