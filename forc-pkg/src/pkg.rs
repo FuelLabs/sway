@@ -28,8 +28,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
-use sway_core::engine_threading::CallbackHandler;
-use sway_core::namespace::Package;
+use sway_core::{namespace::Package, Observer};
 use sway_core::transform::AttributeArg;
 pub use sway_core::Programs;
 use sway_core::{
@@ -2180,7 +2179,7 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
 /// Builds a project with given BuildOptions.
 pub fn build_with_options(
     build_options: &BuildOpts,
-    callback_handler: Option<Box<dyn CallbackHandler>>,
+    callback_handler: Option<Box<dyn Observer>>,
 ) -> Result<Built> {
     let BuildOpts {
         hex_outfile,
@@ -2363,7 +2362,7 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     experimental: &[sway_features::Feature],
     no_experimental: &[sway_features::Feature],
-    callback_handler: Option<Box<dyn CallbackHandler>>,
+    callback_handler: Option<Box<dyn Observer>>,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2374,7 +2373,7 @@ pub fn build(
 
     let engines = Engines::default();
     if let Some(callbacks) = callback_handler {
-        engines.obs().set_callbacks(callbacks);
+        engines.obs().set_observer(callbacks);
     }
 
     let include_tests = profile.include_tests;
