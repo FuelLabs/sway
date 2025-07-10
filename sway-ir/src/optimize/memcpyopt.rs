@@ -851,6 +851,7 @@ fn is_copy_type(ty: &Type, context: &Context) -> bool {
     ty.is_unit(context)
         || ty.is_never(context)
         || ty.is_bool(context)
+        || ty.is_ptr(context)
         || ty.get_uint_width(context).map(|x| x < 256).unwrap_or(false)
 }
 

@@ -412,7 +412,7 @@ fn is_processable_aggregate(context: &Context, ty: Type) -> bool {
             }
             crate::TypeContent::Slice => false,
             crate::TypeContent::TypedSlice(..) => false,
-            crate::TypeContent::Pointer => false,
+            crate::TypeContent::Pointer => true,
             crate::TypeContent::TypedPointer(_) => true,
             crate::TypeContent::StringSlice => false,
             crate::TypeContent::StringArray(_) => false,
