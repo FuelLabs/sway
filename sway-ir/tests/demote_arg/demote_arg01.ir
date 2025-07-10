@@ -3,7 +3,7 @@ script {
         local b256 dada = const b256 0xdadadadadadadadadadadadadadadadadadadadadadadadadadadadadadadada
 
         entry():
-        v0 = get_local ptr b256, dada
+        v0 = get_local __ptr b256, dada
         v1 = load v0
         v2 = const u64 22
         v3 = call foo(v1, v2)
@@ -26,6 +26,6 @@ script {
 // check: local b256 $(tmp_arg=$ID)
 
 // check: $(load_val=$ID) = load $ID
-// check: $(get_loc_val=$ID) = get_local ptr b256, $tmp_arg
+// check: $(get_loc_val=$ID) = get_local __ptr b256, $tmp_arg
 // check: store $load_val to $get_loc_val
 // check: call foo($get_loc_val, $ID)

@@ -12,9 +12,9 @@ script {
         local mut b256 b
 
         entry():
-        v0 = get_local ptr b256, a
+        v0 = get_local __ptr b256, a
         v1 = load v0
-        v2 = get_local ptr b256, b
+        v2 = get_local __ptr b256, b
         store v1 to v2
         v3 = load v2
         ret b256 v3
@@ -26,11 +26,11 @@ script {
         local mut b256 c
 
         entry():
-        v0 = get_local ptr b256, a
+        v0 = get_local __ptr b256, a
         v1 = load v0
-        v2 = get_local ptr b256, b
+        v2 = get_local __ptr b256, b
         store v1 to v2
-        v3 = get_local ptr b256, c
+        v3 = get_local __ptr b256, c
         v4 = load v2
         store v4 to v3
         v5 = load v3
@@ -46,9 +46,9 @@ script {
 // check: local mut b256 a = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
 
 // Now dead:
-// check: $VAL = get_local ptr b256, a
+// check: $VAL = get_local __ptr b256, a
 
-// check: $(a_loc=$VAL) = get_local ptr b256, a
+// check: $(a_loc=$VAL) = get_local __ptr b256, a
 // check: $(a_val=$VAL) = load $a_loc
 // check: ret b256 $a_val
 
@@ -58,10 +58,10 @@ script {
 // check: local mut b256 a = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
 
 // Now dead:
-// check: $VAL = get_local ptr b256, a
-// check: $VAL = get_local ptr b256, a
+// check: $VAL = get_local __ptr b256, a
+// check: $VAL = get_local __ptr b256, a
 
-// check: $(a_loc=$VAL) = get_local ptr b256, a
+// check: $(a_loc=$VAL) = get_local __ptr b256, a
 
 // Also dead.
 // check: $VAL = load $VAL

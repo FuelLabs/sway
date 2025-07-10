@@ -257,7 +257,7 @@ pub fn sroa(
                                 Value::new_constant(context, c)
                             })
                             .collect();
-                        let elem_ptr_ty = Type::new_ptr(context, *r#type);
+                        let elem_ptr_ty = Type::new_typed_pointer(context, *r#type);
                         let elm_addr = Value::new_instruction(
                             context,
                             block,
@@ -328,7 +328,7 @@ pub fn sroa(
                                 Value::new_constant(context, c)
                             })
                             .collect();
-                        let elem_ptr_ty = Type::new_ptr(context, r#type);
+                        let elem_ptr_ty = Type::new_typed_pointer(context, r#type);
                         let elm_addr = Value::new_instruction(
                             context,
                             block,
@@ -412,7 +412,8 @@ fn is_processable_aggregate(context: &Context, ty: Type) -> bool {
             }
             crate::TypeContent::Slice => false,
             crate::TypeContent::TypedSlice(..) => false,
-            crate::TypeContent::Pointer(_) => true,
+            crate::TypeContent::Pointer => true,
+            crate::TypeContent::TypedPointer(_) => true,
             crate::TypeContent::StringSlice => false,
             crate::TypeContent::StringArray(_) => false,
             crate::TypeContent::Never => false,

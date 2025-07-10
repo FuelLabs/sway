@@ -24,11 +24,11 @@ script {
         v0 = asm(ptr: ptr, val) -> u64 val, !18 {
             lw     val ptr i0, !19
         }
-        v1 = get_local ptr { u64 }, temp, !20
+        v1 = get_local __ptr { u64 }, temp, !20
         v2 = const u64 0
-        v3 = get_elem_ptr v1, ptr u64, v2
+        v3 = get_elem_ptr v1, __ptr u64, v2
         store v0 to v3
-        v4 = get_local ptr { u64 }, temp, !21
+        v4 = get_local __ptr { u64 }, temp, !21
         v5 = ptr_to_int v4 to u64, !22
         v6 = const u64 8
         v7 = asm(target: target, temp: v5, size: v6) -> (), !23 {
@@ -38,7 +38,7 @@ script {
         ret () v8
     }
 
-    pub entry fn __entry() -> ptr slice, !28 {
+    pub entry fn __entry() -> __ptr slice, !28 {
         local mut { u64, u64, u64 } __aggr_memcpy_0
         local mut { u64, u64, u64 } __aggr_memcpy_00
         local mut { u64, u64, u64 } __aggr_memcpy_01
@@ -57,122 +57,122 @@ script {
         local { { u64, u64, u64 } } self_0
 
         entry():
-        v0 = get_local ptr slice, __ret_value
+        v0 = get_local __ptr slice, __ret_value
         v1 = call main_8(), !31
         v2 = const u64 1024
         v3 = asm(cap: v2) -> u64 hp, !36 {
             aloc   cap
         }
-        v4 = int_to_ptr v3 to ptr u8, !37
+        v4 = int_to_ptr v3 to __ptr u8, !37
         v5 = ptr_to_int v4 to u64, !38
-        v6 = get_local ptr { u64, u64, u64 }, __anon_0, !39
+        v6 = get_local __ptr { u64, u64, u64 }, __anon_0, !39
         v7 = const u64 0
-        v8 = get_elem_ptr v6, ptr u64, v7, !40
+        v8 = get_elem_ptr v6, __ptr u64, v7, !40
         store v5 to v8, !41
         v9 = const u64 1
-        v10 = get_elem_ptr v6, ptr u64, v9, !42
+        v10 = get_elem_ptr v6, __ptr u64, v9, !42
         store v2 to v10, !43
         v11 = const u64 2
-        v12 = get_elem_ptr v6, ptr u64, v11, !44
+        v12 = get_elem_ptr v6, __ptr u64, v11, !44
         v13 = const u64 0
         store v13 to v12, !45
-        v14 = asm(buffer: v6) -> ptr { u64, u64, u64 } buffer {
+        v14 = asm(buffer: v6) -> __ptr { u64, u64, u64 } buffer {
         }
-        v15 = get_local ptr { u64, u64, u64 }, __aggr_memcpy_0
+        v15 = get_local __ptr { u64, u64, u64 }, __aggr_memcpy_0
         mem_copy_val v15, v14
-        v16 = get_local ptr { { u64, u64, u64 } }, __anon_1, !47
+        v16 = get_local __ptr { { u64, u64, u64 } }, __anon_1, !47
         v17 = const u64 0
-        v18 = get_elem_ptr v16, ptr { u64, u64, u64 }, v17, !48
+        v18 = get_elem_ptr v16, __ptr { u64, u64, u64 }, v17, !48
         mem_copy_val v18, v15
-        v19 = get_local ptr { { u64, u64, u64 } }, buffer_, !51
+        v19 = get_local __ptr { { u64, u64, u64 } }, buffer_, !51
         mem_copy_val v19, v16
-        v20 = get_local ptr { { u64, u64, u64 } }, buffer_, !53
+        v20 = get_local __ptr { { u64, u64, u64 } }, buffer_, !53
         v21 = const u64 0
-        v22 = get_elem_ptr v20, ptr { u64, u64, u64 }, v21, !55
-        v23 = asm(buffer: v22) -> ptr { u64, u64, u64 } buffer {
+        v22 = get_elem_ptr v20, __ptr { u64, u64, u64 }, v21, !55
+        v23 = asm(buffer: v22) -> __ptr { u64, u64, u64 } buffer {
         }
-        v24 = get_local ptr { u64, u64, u64 }, __aggr_memcpy_00
+        v24 = get_local __ptr { u64, u64, u64 }, __aggr_memcpy_00
         mem_copy_val v24, v23
-        v25 = get_local ptr { u64, u64, u64 }, __anon_00, !56
+        v25 = get_local __ptr { u64, u64, u64 }, __anon_00, !56
         mem_copy_val v25, v24
         v26 = const u64 0
-        v27 = get_elem_ptr v25, ptr u64, v26, !57
+        v27 = get_elem_ptr v25, __ptr u64, v26, !57
         v28 = load v27, !58
-        v29 = int_to_ptr v28 to ptr u8, !59
+        v29 = int_to_ptr v28 to __ptr u8, !59
         v30 = const u64 1
-        v31 = get_elem_ptr v25, ptr u64, v30, !60
+        v31 = get_elem_ptr v25, __ptr u64, v30, !60
         v32 = load v31, !61
         v33 = const u64 2
-        v34 = get_elem_ptr v25, ptr u64, v33, !62
+        v34 = get_elem_ptr v25, __ptr u64, v33, !62
         v35 = load v34, !63
         v36 = const u64 8
         v37 = add v35, v36, !64
         v38 = cmp gt v37 v32, !65
         cbr v38, encode_10_abi_encode_11_block1(), encode_10_abi_encode_11_block0(v29, v32), !66
 
-        encode_10_abi_encode_11_block0(v39: ptr u8, v40: u64):
+        encode_10_abi_encode_11_block0(v39: __ptr u8, v40: u64):
         v41 = ptr_to_int v39 to u64, !67
         v42 = add v41, v35, !68
-        v43 = int_to_ptr v42 to ptr u64, !69
+        v43 = int_to_ptr v42 to __ptr u64, !69
         store v1 to v43, !70
-        v44 = get_local ptr { u64, u64, u64 }, __anon_10, !71
+        v44 = get_local __ptr { u64, u64, u64 }, __anon_10, !71
         v45 = const u64 0
-        v46 = get_elem_ptr v44, ptr u64, v45, !72
+        v46 = get_elem_ptr v44, __ptr u64, v45, !72
         store v41 to v46, !73
         v47 = const u64 1
-        v48 = get_elem_ptr v44, ptr u64, v47, !74
+        v48 = get_elem_ptr v44, __ptr u64, v47, !74
         store v40 to v48, !75
         v49 = const u64 2
-        v50 = get_elem_ptr v44, ptr u64, v49, !76
+        v50 = get_elem_ptr v44, __ptr u64, v49, !76
         store v37 to v50, !77
-        v51 = asm(buffer: v44) -> ptr { u64, u64, u64 } buffer {
+        v51 = asm(buffer: v44) -> __ptr { u64, u64, u64 } buffer {
         }
-        v52 = get_local ptr { u64, u64, u64 }, __aggr_memcpy_01
+        v52 = get_local __ptr { u64, u64, u64 }, __aggr_memcpy_01
         mem_copy_val v52, v51
-        v53 = get_local ptr { { u64, u64, u64 } }, __anon_2, !79
+        v53 = get_local __ptr { { u64, u64, u64 } }, __anon_2, !79
         v54 = const u64 0
-        v55 = get_elem_ptr v53, ptr { u64, u64, u64 }, v54, !80
+        v55 = get_elem_ptr v53, __ptr { u64, u64, u64 }, v54, !80
         mem_copy_val v55, v52
-        v56 = get_local ptr { { u64, u64, u64 } }, buffer, !82
+        v56 = get_local __ptr { { u64, u64, u64 } }, buffer, !82
         mem_copy_val v56, v53
-        v57 = get_local ptr { { u64, u64, u64 } }, buffer, !84
-        v58 = get_local ptr { { u64, u64, u64 } }, self_0, !87
+        v57 = get_local __ptr { { u64, u64, u64 } }, buffer, !84
+        v58 = get_local __ptr { { u64, u64, u64 } }, self_0, !87
         mem_copy_val v58, v57
-        v59 = get_local ptr { { u64, u64, u64 } }, self_0, !89
+        v59 = get_local __ptr { { u64, u64, u64 } }, self_0, !89
         v60 = const u64 0
-        v61 = get_elem_ptr v59, ptr { u64, u64, u64 }, v60, !90
-        v62 = asm(buffer: v61) -> ptr { u64, u64, u64 } buffer {
+        v61 = get_elem_ptr v59, __ptr { u64, u64, u64 }, v60, !90
+        v62 = asm(buffer: v61) -> __ptr { u64, u64, u64 } buffer {
         }
-        v63 = get_local ptr { u64, u64, u64 }, __aggr_memcpy_02
+        v63 = get_local __ptr { u64, u64, u64 }, __aggr_memcpy_02
         mem_copy_val v63, v62
-        v64 = get_local ptr { u64, u64, u64 }, __anon_01, !91
+        v64 = get_local __ptr { u64, u64, u64 }, __anon_01, !91
         mem_copy_val v64, v63
         v65 = const u64 0
-        v66 = get_elem_ptr v64, ptr u64, v65, !92
+        v66 = get_elem_ptr v64, __ptr u64, v65, !92
         v67 = load v66, !93
-        v68 = int_to_ptr v67 to ptr u8, !94
+        v68 = int_to_ptr v67 to __ptr u8, !94
         v69 = const u64 2
-        v70 = get_elem_ptr v64, ptr u64, v69, !95
+        v70 = get_elem_ptr v64, __ptr u64, v69, !95
         v71 = ptr_to_int v68 to u64, !96
-        v72 = get_local ptr { u64, u64 }, __anon_11, !97
+        v72 = get_local __ptr { u64, u64 }, __anon_11, !97
         v73 = const u64 0
-        v74 = get_elem_ptr v72, ptr u64, v73, !98
+        v74 = get_elem_ptr v72, __ptr u64, v73, !98
         store v71 to v74, !99
         v75 = const u64 1
-        v76 = get_elem_ptr v72, ptr u64, v75, !100
+        v76 = get_elem_ptr v72, __ptr u64, v75, !100
         mem_copy_val v76, v70
-        v77 = asm(s: v72) -> ptr slice s {
+        v77 = asm(s: v72) -> __ptr slice s {
         }
-        v78 = get_local ptr slice, __aggr_memcpy_03
+        v78 = get_local __ptr slice, __aggr_memcpy_03
         mem_copy_val v78, v77
         mem_copy_val v0, v78
-        ret ptr slice v0
+        ret __ptr slice v0
 
         encode_10_abi_encode_11_block1():
         v79 = const u64 2
         v80 = mul v32, v79, !101
         v81 = add v80, v36, !102
-        v82 = asm(new_cap: v81, old_ptr: v29, len: v35) -> ptr u8 hp, !103 {
+        v82 = asm(new_cap: v81, old_ptr: v29, len: v35) -> __ptr u8 hp, !103 {
             aloc   new_cap
             mcp    hp old_ptr len
         }
@@ -181,13 +181,13 @@ script {
 
     entry_orig fn main_8() -> u64, !107 {
         entry():
-        v0 = get_config ptr { u64 }, WRAPPED, !108
+        v0 = get_config __ptr { u64 }, WRAPPED, !108
         v1 = const u64 0
-        v2 = get_elem_ptr v0, ptr u64, v1, !109
+        v2 = get_elem_ptr v0, __ptr u64, v1, !109
         v3 = load v2
-        v4 = get_config ptr { u64 }, TUPLE, !110
+        v4 = get_config __ptr { u64 }, TUPLE, !110
         v5 = const u64 0
-        v6 = get_elem_ptr v4, ptr u64, v5, !111
+        v6 = get_elem_ptr v4, __ptr u64, v5, !111
         v7 = load v6
         v8 = add v3, v7, !114
         ret u64 v8

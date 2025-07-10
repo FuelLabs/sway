@@ -7,12 +7,12 @@ script {
     local u64 S = const u64 3
 
     entry(x: bool):
-    v0 = get_local ptr u64, S
+    v0 = get_local __ptr u64, S
     v1 = load v0
     cbr x, block0(x, v1), block2(x, v1)
 
     block0(x: bool, y: u64):
-    v0 = get_local ptr u64, S
+    v0 = get_local __ptr u64, S
     v1 = const u64 1
     store v1 to v0
     br block1(x)

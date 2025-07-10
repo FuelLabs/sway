@@ -20,8 +20,8 @@ script {
 
 // regex: ID=[[:alpha:]_0-9]+
 
-// check: fn foo($ID: ptr b256) -> bool
-// check: entry($ID: ptr b256):
+// check: fn foo($ID: __ptr b256) -> bool
+// check: entry($ID: __ptr b256):
 
-// check: fn bar($ID: ptr b256, $ID: u64) -> bool
-// check: entry($ID: ptr b256, $ID: u64):
+// check: fn bar($ID: __ptr b256, $ID: u64) -> bool
+// check: entry($ID: __ptr b256, $ID: u64):

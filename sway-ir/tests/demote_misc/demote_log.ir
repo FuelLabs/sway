@@ -14,6 +14,6 @@ script {
 
 // check: local b256 $(loc_name=$ID)
 
-// check: $(arg_ptr=$VAL) = get_local ptr b256, $loc_name
+// check: $(arg_ptr=$VAL) = get_local __ptr b256, $loc_name
 // check: store $VAL to $arg_ptr
-// check: log ptr b256 $arg_ptr, $VAL
+// check: log __ptr b256 $arg_ptr, $VAL

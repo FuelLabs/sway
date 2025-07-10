@@ -17,8 +17,8 @@
 contract {
     CONFIG = config u64, abi_decode_in_place_0, 0x00000000000004d2
 
-    pub fn abi_decode_in_place_0(ptr: u64, len: u64, target: u64) -> () {
-        entry(ptr: u64, len: u64, target: u64):
+    pub fn abi_decode_in_place_0(__ptr: u64, len: u64, target: u64) -> () {
+        entry(__ptr: u64, len: u64, target: u64):
         v0 = const unit ()
         ret () v0
     }
@@ -27,11 +27,11 @@ contract {
         local u64 x
 
         entry():
-        v0 = get_config ptr u64, CONFIG
+        v0 = get_config __ptr u64, CONFIG
         v1 = load v0
-        v2 = get_local ptr u64, x
+        v2 = get_local __ptr u64, x
         store v1 to v2
-        v3 = get_config ptr u64, CONFIG
+        v3 = get_config __ptr u64, CONFIG
         v4 = load v3
         v5 = call poke_0(v4)
         v6 = const unit ()
@@ -47,7 +47,7 @@ contract {
 
 // check: pub entry fn assign_config_call_pass_config
 // nextln: entry():
-// nextln: v0 = get_config ptr u64, CONFIG
+// nextln: v0 = get_config __ptr u64, CONFIG
 // nextln: v1 = load v0
 // nextln: v2 = call poke_0(v1)
 // not: store

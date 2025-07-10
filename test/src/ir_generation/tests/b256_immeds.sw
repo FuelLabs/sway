@@ -16,7 +16,7 @@ fn cmp(a: b256, b: b256) -> bool {
 // ::check-ir::
 
 // check: local b256 a
-// check: $(var=$VAL) = get_local ptr b256, a
+// check: $(var=$VAL) = get_local __ptr b256, a
 // check: $(c1=$VAL) = const b256 0x0202020202020202020202020202020202020202020202020202020202020202
 // check: store $c1 to $var
 
