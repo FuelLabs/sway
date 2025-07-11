@@ -42,12 +42,6 @@ impl Hash for Enum {
     }
 }
 
-impl Hash for str[33] {
-    fn hash(self, ref mut state: Hasher) {
-        state.write_str_array(self);
-    }
-}
-
 storage {
     map1: StorageMap<u64, bool> = StorageMap::<u64, bool> {},
     map2: StorageMap<u64, u8> = StorageMap::<u64, u8> {},
@@ -57,7 +51,7 @@ storage {
     map6: StorageMap<u64, (b256, u8, bool)> = StorageMap::<u64, (b256, u8, bool)> {},
     map7: StorageMap<u64, Struct> = StorageMap::<u64, Struct> {},
     map8: StorageMap<u64, Enum> = StorageMap::<u64, Enum> {},
-    map9: StorageMap<u64, str[33]> = StorageMap::<u64, str[33]> {},
+    map9: StorageMap<u64, str[10]> = StorageMap::<u64, str[10]> {},
     map10: StorageMap<u64, [b256; 3]> = StorageMap::<u64, [b256; 3]> {},
     map11: StorageMap<bool, u64> = StorageMap::<bool, u64> {},
     map12: StorageMap<u8, u64> = StorageMap::<u8, u64> {},
@@ -66,7 +60,7 @@ storage {
     map15: StorageMap<(b256, u8, bool), u64> = StorageMap::<(b256, u8, bool), u64> {},
     map16: StorageMap<Struct, u64> = StorageMap::<Struct, u64> {},
     map17: StorageMap<Enum, u64> = StorageMap::<Enum, u64> {},
-    map18: StorageMap<str[33], u64> = StorageMap::<str[33], u64> {},
+    map18: StorageMap<str[10], u64> = StorageMap::<str[10], u64> {},
     map19: StorageMap<[b256; 3], u64> = StorageMap::<[b256; 3], u64> {},
 }
 
@@ -150,16 +144,16 @@ abi StorageMapTest {
     fn try_insert_into_u64_to_enum_map(key: u64, value: Enum) -> Result<Enum, StorageMapError<Enum>>;
 
     #[storage(read, write)]
-    fn insert_into_u64_to_str_map(key: u64, value: str[33]);
+    fn insert_into_u64_to_str_map(key: u64, value: str[10]);
     #[storage(read)]
-    fn get_from_u64_to_str_map(key: u64) -> Option<str[33]>;
+    fn get_from_u64_to_str_map(key: u64) -> Option<str[10]>;
     #[storage(write)]
     fn remove_from_u64_to_str_map(key: u64) -> bool;
     #[storage(read, write)]
     fn try_insert_into_u64_to_str_map(
         key: u64,
-        value: str[33],
-    ) -> Result<str[33], StorageMapError<str[33]>>;
+        value: str[10],
+    ) -> Result<str[10], StorageMapError<str[10]>>;
 
     #[storage(read, write)]
     fn insert_into_u64_to_array_map(key: u64, value: [b256; 3]);
@@ -240,13 +234,13 @@ abi StorageMapTest {
     fn try_insert_into_enum_to_u64_map(key: Enum, value: u64) -> Result<u64, StorageMapError<u64>>;
 
     #[storage(read, write)]
-    fn insert_into_str_to_u64_map(key: str[33], value: u64);
+    fn insert_into_str_to_u64_map(key: str[10], value: u64);
     #[storage(read)]
-    fn get_from_str_to_u64_map(key: str[33]) -> Option<u64>;
+    fn get_from_str_to_u64_map(key: str[10]) -> Option<u64>;
     #[storage(write)]
-    fn remove_from_str_to_u64_map(key: str[33]) -> bool;
+    fn remove_from_str_to_u64_map(key: str[10]) -> bool;
     #[storage(read, write)]
-    fn try_insert_into_str_to_u64_map(key: str[33], value: u64) -> Result<u64, StorageMapError<u64>>;
+    fn try_insert_into_str_to_u64_map(key: str[10], value: u64) -> Result<u64, StorageMapError<u64>>;
 
     #[storage(read, write)]
     fn insert_into_array_to_u64_map(key: [b256; 3], value: u64);
@@ -429,12 +423,12 @@ impl StorageMapTest for Contract {
     }
 
     #[storage(read, write)]
-    fn insert_into_u64_to_str_map(key: u64, value: str[33]) {
+    fn insert_into_u64_to_str_map(key: u64, value: str[10]) {
         storage.map9.insert(key, value);
     }
 
     #[storage(read)]
-    fn get_from_u64_to_str_map(key: u64) -> Option<str[33]> {
+    fn get_from_u64_to_str_map(key: u64) -> Option<str[10]> {
         storage.map9.get(key).try_read()
     }
 
@@ -446,8 +440,8 @@ impl StorageMapTest for Contract {
     #[storage(read, write)]
     fn try_insert_into_u64_to_str_map(
         key: u64,
-        value: str[33],
-    ) -> Result<str[33], StorageMapError<str[33]>> {
+        value: str[10],
+    ) -> Result<str[10], StorageMapError<str[10]>> {
         storage.map9.try_insert(key, value)
     }
 
@@ -618,22 +612,22 @@ impl StorageMapTest for Contract {
     }
 
     #[storage(read, write)]
-    fn insert_into_str_to_u64_map(key: str[33], value: u64) {
+    fn insert_into_str_to_u64_map(key: str[10], value: u64) {
         storage.map18.insert(key, value);
     }
 
     #[storage(read)]
-    fn get_from_str_to_u64_map(key: str[33]) -> Option<u64> {
+    fn get_from_str_to_u64_map(key: str[10]) -> Option<u64> {
         storage.map18.get(key).try_read()
     }
 
     #[storage(write)]
-    fn remove_from_str_to_u64_map(key: str[33]) -> bool {
+    fn remove_from_str_to_u64_map(key: str[10]) -> bool {
         storage.map18.remove(key)
     }
 
     #[storage(read, write)]
-    fn try_insert_into_str_to_u64_map(key: str[33], value: u64) -> Result<u64, StorageMapError<u64>> {
+    fn try_insert_into_str_to_u64_map(key: str[10], value: u64) -> Result<u64, StorageMapError<u64>> {
         storage.map18.try_insert(key, value)
     }
 

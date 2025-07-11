@@ -46,12 +46,6 @@ abi MyContract {
     fn complex_test(arg1: MegaExample<str[2], b256>);
 }
 
-impl Hash for str[3] {
-    fn hash(self, ref mut state: Hasher) {
-        state.write_str_array(self);
-    }
-}
-
 impl MyContract for Contract {
     fn struct_w_generic(arg1: SimpleGeneric<u64>) -> SimpleGeneric<u64> {
         let expected = SimpleGeneric {
