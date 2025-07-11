@@ -196,6 +196,11 @@ impl Eq for PublicKey {}
 
 impl Hash for PublicKey {
     fn hash(self, ref mut state: Hasher) {
+        // We want to hash just the raw bytes of the public key,
+        // and not the `self.bytes` `Bytes` itself.
+        // The fact that the public key bytes are stored in a `Bytes` type
+        // is just an implementation detail.
+        // The hash is computed only over the raw bytes of the public key.
         state.write(self.bytes);
     }
 }
