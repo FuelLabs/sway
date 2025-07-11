@@ -349,7 +349,7 @@ pub(crate) trait WithName {
 }
 
 /// Returns a predicate that evaluates to true if a [WithName]
-/// implementor has the name equal to `name`.
+/// implementer has the name equal to `name`.
 pub(crate) fn with_name<T, N>(name: &N) -> impl Fn(&&T) -> bool + Clone + '_
 where
     T: WithName,
@@ -359,7 +359,7 @@ where
 }
 
 /// Returns a predicate that evaluates to true if a [WithName]
-/// implementor has the name equal to `name`.
+/// implementer has the name equal to `name`.
 pub(crate) fn with_name_mut<T, N>(name: &N) -> impl Fn(&&mut T) -> bool + Clone + '_
 where
     T: WithName,
