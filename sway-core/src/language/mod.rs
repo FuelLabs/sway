@@ -8,6 +8,7 @@ mod module;
 pub mod parsed;
 pub mod programs;
 mod purity;
+mod trace;
 pub mod ty;
 mod visibility;
 
@@ -19,4 +20,5 @@ pub use literal::*;
 pub use module::*;
 pub use programs::*;
 pub use purity::*;
+pub use trace::*;
 pub use visibility::*;

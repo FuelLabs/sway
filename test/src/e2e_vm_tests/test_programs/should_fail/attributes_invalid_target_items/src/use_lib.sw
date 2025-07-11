@@ -2,6 +2,7 @@ library;
 
 #[storage(invalid)]
 #[inline(invalid)]
+#[trace(invalid)]
 //! Invalid inner comment.
 #[test(invalid)]
 #[payable(invalid)]

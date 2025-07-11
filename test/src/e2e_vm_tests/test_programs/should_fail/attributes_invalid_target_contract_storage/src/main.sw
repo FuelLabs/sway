@@ -2,6 +2,7 @@ contract;
 
 #[storage(invalid)]
 #[inline(invalid)]
+#[trace(invalid)]
 #[test(invalid)]
 //! Invalid inner comment.
 #[payable(invalid)]
@@ -12,6 +13,7 @@ contract;
 storage {
     #[storage(invalid)]
     #[inline(invalid)]
+    #[trace(invalid)]
     #[test(invalid)]
     #[payable(invalid)]
     //! Invalid inner comment.
@@ -25,6 +27,7 @@ storage {
     // treated the same.
     #[storage(invalid)]
     #[inline(invalid)]
+    #[trace(invalid)]
     #[test(invalid)]
     #[payable(invalid)]
     //! Invalid inner comment.
@@ -35,6 +38,7 @@ storage {
     ns_1 {
         #[storage(invalid)]
         #[inline(invalid)]
+        #[trace(invalid)]
         #[test(invalid)]
         //! Invalid inner comment.
         #[payable(invalid)]
@@ -44,6 +48,7 @@ storage {
         x: u8 = 0,
         #[storage(invalid)]
         #[inline(invalid)]
+        #[trace(invalid)]
         #[test(invalid)]
         //! Invalid inner comment.
         #[payable(invalid)]
@@ -54,6 +59,7 @@ storage {
         ns_2 {
             #[storage(invalid)]
             #[inline(invalid)]
+            #[trace(invalid)]
             #[test(invalid)]
             //! Invalid inner comment.
             #[payable(invalid)]

@@ -59,23 +59,29 @@ trait T {
     /// Comment.
     #[storage(read)]
     #[inline(always)]
+    #[trace(always)]
     #[allow(dead_code, deprecated)]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[deprecated(note = "note")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-    fn trait_provided_fn() {}
+    fn trait_provided_fn() {
+        panic "Panics for tracing purposes.";
+    }
     /// Comment.
     /// Comment.
     #[storage(read, write)]
     #[inline(never)]
+    #[trace(never)]
     #[allow(dead_code)]
     #[allow(deprecated)]
     #[deprecated()]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-    fn trait_provided_method() {}
+    fn trait_provided_method() {
+        panic "Panics for tracing purposes.";
+    }
 }
 
 #[deprecated(note = "note")]
@@ -120,24 +126,30 @@ impl S {
     /// Comment.
     #[storage(read)]
     #[inline(never)]
+    #[trace(never)]
     #[allow(dead_code)]
     #[allow(deprecated)]
     #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-    fn assoc_fn() {}
+    fn assoc_fn() {
+        panic "Panics for tracing purposes.";
+    }
     /// Comment.
     /// Comment.
     #[storage(read)]
     #[inline(always)]
+    #[trace(always)]
     #[allow(dead_code)]
     #[allow(deprecated)]
     #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-    fn method(self) {}
+    fn method(self) {
+        panic "Panics for tracing purposes.";
+    }
 }
 
 /// Comment.
@@ -169,24 +181,30 @@ impl T for S {
     /// Comment.
     #[storage(read)]
     #[inline(always)]
+    #[trace(always)]
     #[allow(dead_code)]
     #[allow(deprecated)]
     #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-    fn trait_assoc_fn() {}
+    fn trait_assoc_fn() {
+        panic "Panics for tracing purposes.";
+    }
     /// Comment.
     /// Comment.
     #[storage(read, write)]
     #[inline(never)]
+    #[trace(never)]
     #[allow(dead_code)]
     #[allow(deprecated)]
     #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-    fn trait_method() {}
+    fn trait_method() {
+        panic "Panics for tracing purposes.";
+    }
 }
 
 /// Comment.
@@ -232,24 +250,30 @@ impl E {
     /// Comment.
     #[storage(read)]
     #[inline(never)]
+    #[trace(never)]
     #[allow(dead_code)]
     #[allow(deprecated)]
     #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-    fn assoc_fn() {}
+    fn assoc_fn() {
+        panic "Panics for tracing purposes.";
+    }
     /// Comment.
     /// Comment.
     #[storage(read, write)]
     #[inline(always)]
+    #[trace(always)]
     #[allow(dead_code)]
     #[allow(deprecated)]
     #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-    fn method(self) {}
+    fn method(self) {
+        panic "Panics for tracing purposes.";
+    }
 }
 
 /// Comment.
@@ -281,22 +305,28 @@ impl T for E {
     /// Comment.
     #[storage(read)]
     #[inline(always)]
+    #[trace(always)]
     #[allow(dead_code)]
     #[allow(deprecated)]
     #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-    fn trait_assoc_fn() {}
+    fn trait_assoc_fn() {
+        panic "Panics for tracing purposes.";
+    }
     /// Comment.
     /// Comment.
     #[storage(read, write)]
     #[inline(never)]
+    #[trace(always)]
     #[allow(dead_code)]
     #[allow(deprecated)]
     #[deprecated(note = "note")]
     #[cfg(target = "fuel")]
     #[cfg(program_type = "contract")]
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-    fn trait_method() {}
+    fn trait_method() {
+        panic "Panics for tracing purposes.";
+    }
 }
