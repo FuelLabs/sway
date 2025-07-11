@@ -160,6 +160,7 @@ where
             crate::BuildTarget::Fuel,
             dbg_generation,
             self.ctx.experimental,
+            "", // this is only used for self impl contracts
         );
 
         let handler = Handler::default();
@@ -236,6 +237,7 @@ where
             BuildTarget::Fuel,
             dbg_generation,
             self.ctx.experimental,
+            "", // this is only used for self impl contracts
         );
 
         let handler = Handler::default();
