@@ -194,3 +194,8 @@ dependencies = [
     "std",
     "wallet_abi",
 ]
+
+[[package]]
+name = "wallet_smart_contract_self_impl"
+source = "member"
+dependencies = ["std"]
