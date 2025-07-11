@@ -21,7 +21,7 @@ check_version () {
     local ref=$1
     local toml_path=$2
 
-    # strip preceeding 'v' if it exists on tag
+    # strip preceding 'v' if it exists on tag
     ref=${ref/#v}
 
     local toml_version=$(get_toml_version "$toml_path")
