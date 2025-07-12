@@ -2,6 +2,7 @@ library;
 
 #[storage(invalid)]
 #[inline(invalid)]
+#[trace(invalid)]
 #[test(invalid)]
 //! Invalid inner comment.
 #[payable(invalid)]
@@ -10,6 +11,7 @@ library;
 enum E {
     #[storage(invalid)]
     #[inline(invalid)]
+    #[trace(invalid)]
     #[test(invalid)]
     //! Invalid inner comment.
     #[payable(invalid)]

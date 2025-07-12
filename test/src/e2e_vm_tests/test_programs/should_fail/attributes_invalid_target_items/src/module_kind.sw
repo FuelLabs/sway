@@ -1,5 +1,6 @@
 #[storage(invalid)]
 #[inline(invalid)]
+#[trace(invalid)]
 #[test(invalid)]
 /// Invalid outer comment.
 #[payable(invalid)]

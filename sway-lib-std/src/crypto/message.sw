@@ -95,6 +95,11 @@ impl Eq for Message {}
 
 impl Hash for Message {
     fn hash(self, ref mut state: Hasher) {
-        self.bytes.hash(state);
+        // We want to hash just the raw bytes of the message,
+        // and not the `self.bytes` `Bytes` itself.
+        // The fact that the message bytes are stored in a `Bytes` type
+        // is just an implementation detail.
+        // The hash is computed only over the raw bytes of the message.
+        state.write(self.bytes);
     }
 }

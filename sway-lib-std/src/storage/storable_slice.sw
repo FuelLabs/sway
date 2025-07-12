@@ -42,10 +42,10 @@ pub fn write_slice(key: b256, slice: raw_slice) {
     // make the 'quad' storage instruction store without accessing unallocated heap memory.
     ptr = realloc_bytes(ptr, number_of_bytes, number_of_slots * 32);
 
-    // Store `number_of_slots * 32` bytes starting at storage slot `key`.
+    // Store `number_of_slots * 32` bytes starting at `sha256(key)`.
     let _ = __state_store_quad(sha256(key), ptr, number_of_slots);
 
-    // Store the length of the bytes
+    // Store the length of the bytes at `key`.
     write(key, 0, number_of_bytes);
 }
 

@@ -125,6 +125,7 @@ abi Abi {
     /// Comment.
     #[storage(read, write)]
     #[inline(always)]
+    #[trace(always)]
     #[payable]
     #[allow(deprecated)]
     #[allow(dead_code)]
@@ -135,6 +136,7 @@ abi Abi {
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
     fn abi_provided_function() {
         let _ = 0;
+        panic "Panics for tracing purposes.";
     }
 }
 
@@ -151,6 +153,7 @@ impl Abi for Contract {
     /// Comment.
     #[storage(read)]
     #[inline(always)]
+    #[trace(always)]
     #[payable]
     /// Comment.
     #[allow(deprecated, dead_code)]
@@ -160,6 +163,7 @@ impl Abi for Contract {
     #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
     fn abi_function() {
         let _ = 0;
+        panic "Panics for tracing purposes.";
     }
     /// Comment.
     /// Comment.
@@ -176,6 +180,7 @@ impl Abi for Contract {
 /// Comment.
 #[storage(read)]
 #[inline(always)]
+#[trace(always)]
 #[allow(deprecated, dead_code)]
 #[deprecated(note = "note")]
 /// Comment.
@@ -183,12 +188,15 @@ impl Abi for Contract {
 #[cfg(program_type = "contract")]
 #[fallback]
 #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-fn fallback() {}
+fn fallback() {
+    panic "Panics for tracing purposes.";
+}
 
 /// Comment.
 /// Comment.
 #[storage(read)]
 #[inline(never)]
+#[trace(never)]
 #[allow(deprecated)]
 #[allow(dead_code)]
 #[deprecated(note = "note")]
@@ -196,12 +204,15 @@ fn fallback() {}
 #[cfg(target = "fuel")]
 #[cfg(program_type = "contract")]
 #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-fn module_function() {}
+fn module_function() {
+    panic "Panics for tracing purposes.";
+}
 
 /// Comment.
 /// Comment.
 #[storage(read)]
 #[inline(always)]
+#[trace(always)]
 #[test]
 #[allow(deprecated)]
 #[allow(dead_code)]
@@ -210,12 +221,15 @@ fn module_function() {}
 #[cfg(target = "fuel")]
 #[cfg(program_type = "contract")]
 #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-fn test_function() {}
+fn test_function() {
+    panic "Panics for tracing purposes.";
+}
 
 /// Comment.
 /// Comment.
 #[storage(read)]
 #[inline(always)]
+#[trace(always)]
 #[test(should_revert)]
 #[allow(deprecated)]
 #[allow(dead_code)]
@@ -224,12 +238,15 @@ fn test_function() {}
 #[cfg(target = "fuel")]
 #[cfg(program_type = "contract")]
 #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
-fn test_function_should_revert() {}
+fn test_function_should_revert() {
+    panic "Panics for tracing purposes.";
+}
 
 /// Comment.
 /// Comment.
 #[storage(read)]
 #[inline(always)]
+#[trace(always)]
 #[test(should_revert = "18446744073709486084")]
 /// Comment.
 #[allow(deprecated)]
@@ -239,7 +256,9 @@ fn test_function_should_revert() {}
 #[cfg(program_type = "contract")]
 #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
 /// Comment.
-fn test_function_should_revert_with_code() {}
+fn test_function_should_revert_with_code() {
+    panic "Panics for tracing purposes.";
+}
 
 /// Comment.
 /// Comment.
