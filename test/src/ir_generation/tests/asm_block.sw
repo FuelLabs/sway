@@ -31,13 +31,10 @@ fn main() -> u64 {
 // regex: IMM=i\d+
 
 // Call get_global_gas() and then return the result of the bhei instruction.
-// check: sub  $$$$reta $$pc $$is
-// check: srli $$$$reta $$$$reta $IMM
-// check: addi $$$$reta $$$$reta $IMM
-// check: jmpf $$zero $IMM
+// check: jal  $$$$reta $$pc $IMM
 // check: bhei $(ret_val=$REG)
 // check: ret  $ret_val
 
 // The get_global_gas() function:
 // check: move $$$$retv $$ggas
-// check: jmp $$$$reta
+// check: jal  $$zero $$$$reta i0

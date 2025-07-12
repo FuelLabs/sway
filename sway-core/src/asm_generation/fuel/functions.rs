@@ -179,15 +179,6 @@ impl FuelAsmBuilder<'_, '_> {
             }
         }
 
-        // Set a new return address.
-        let ret_label = self.reg_seqr.get_label();
-        self.cur_bytecode.push(Op::save_ret_addr(
-            VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-            ret_label,
-            "[call]: set new return address",
-            None,
-        ));
-
         // Jump to function and insert return label.
         let (fn_label, _) = self.func_to_labels(function);
         self.cur_bytecode.push(Op {
@@ -198,7 +189,6 @@ impl FuelAsmBuilder<'_, '_> {
             comment: format!("[call]: call {}", function.get_name(self.context)),
             owning_span: None,
         });
-        self.cur_bytecode.push(Op::unowned_jump_label(ret_label));
 
         // Save the return value.
         let ret_reg = self.reg_seqr.next();
@@ -368,11 +358,15 @@ impl FuelAsmBuilder<'_, '_> {
             });
 
             // Jump to the return address.
-            self.cur_bytecode.push(Op::jump_to_register(
-                VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-                "return from call",
-                None,
-            ));
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::JAL(
+                    ConstantRegister::Zero.into(),
+                    ConstantRegister::CallReturnAddress.into(),
+                    VirtualImmediate12::new_unchecked(0, "Zero must fit into 12 bits"),
+                )),
+                comment: "return from call".into(),
+                owning_span: None,
+            });
         }
 
         // Save this function.

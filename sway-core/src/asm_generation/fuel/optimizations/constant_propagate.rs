@@ -222,7 +222,6 @@ impl AbstractInstructionSet {
                         },
                         // These ops mark their outputs properly and cause no control-flow effects
                         ControlFlowOp::Comment
-                        | ControlFlowOp::SaveRetAddr(_, _)
                         | ControlFlowOp::ConfigurablesOffsetPlaceholder
                         | ControlFlowOp::DataSectionOffsetPlaceholder => ResetKnown::Defs,
                         // This changes the stack pointer
