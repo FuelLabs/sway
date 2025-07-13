@@ -873,6 +873,28 @@ pub(crate) fn compile_load_integer_constant(
         };
     }
 
+    // Attempt various tricks for known constants
+    if value == u64::MAX {
+        return RealizedOp {
+            opcode: AllocatedInstruction::NOT(
+                register,
+                AllocatedRegister::Constant(ConstantRegister::Zero),
+            ),
+            owning_span,
+            comment,
+        };
+    }
+    if value == u64::MAX - 1 {
+        return RealizedOp {
+            opcode: AllocatedInstruction::NOT(
+                register,
+                AllocatedRegister::Constant(ConstantRegister::One),
+            ),
+            owning_span,
+            comment,
+        };
+    }
+
     // Fall back to the data section backed approach.
     let data_id =
         data_section.insert_data_value(Entry::new_min_int(value, EntryName::NonConfigurable, None));

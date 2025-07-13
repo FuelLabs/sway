@@ -579,11 +579,9 @@ impl Type {
             TypeContent::Uint(8) | TypeContent::Bool | TypeContent::Unit | TypeContent::Never => {
                 TypeSize::new(1)
             }
-            // All integers larger than a byte are words since FuelVM only has memory operations on those two units.
-            TypeContent::Uint(16)
-            | TypeContent::Uint(32)
-            | TypeContent::Uint(64)
-            | TypeContent::Pointer(_) => TypeSize::new(8),
+            TypeContent::Uint(16) => TypeSize::new(2),
+            TypeContent::Uint(32) => TypeSize::new(4),
+            TypeContent::Uint(64) | TypeContent::Pointer(_) => TypeSize::new(8),
             TypeContent::Uint(256) => TypeSize::new(32),
             TypeContent::Uint(_) => unreachable!(),
             TypeContent::Slice => TypeSize::new(16),

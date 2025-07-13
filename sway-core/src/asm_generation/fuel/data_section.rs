@@ -122,6 +122,7 @@ impl Entry {
 
         // Not an enum, no more special handling required.
         match &constant.value {
+            // TODO: why ZSTs can be allocated?
             ConstantValue::Undef | ConstantValue::Unit => Entry {
                 value: Datum::U8(0),
                 padding: padding.unwrap_or(Padding::default_for_u8(0)),
@@ -132,33 +133,11 @@ impl Entry {
                 padding: padding.unwrap_or(Padding::default_for_u8(0)),
                 name,
             },
-            ConstantValue::Uint(value) => {
-                if constant.ty.is_uint8(context) {
-                    Entry {
-                        value: Datum::U8(*value as u8),
-                        padding: Padding::default_for_u8(0),
-                        name,
-                    }
-                } else if constant.ty.is_uint16(context) {
-                    Entry {
-                        value: Datum::U16(*value as u16),
-                        padding: Padding::default_for_u16(0),
-                        name,
-                    }
-                } else if constant.ty.is_uint32(context) {
-                    Entry {
-                        value: Datum::U32(*value as u32),
-                        padding: Padding::default_for_u32(0),
-                        name,
-                    }
-                } else {
-                    Entry {
-                        value: Datum::U64(*value),
-                        padding: Padding::default_for_u64(0),
-                        name,
-                    }
-                }
-            }
+            ConstantValue::Uint(value) => Entry {
+                value: Datum::U64(*value),
+                padding: padding.unwrap_or(Padding::default_for_u64(0)),
+                name,
+            },
             ConstantValue::U256(value) => {
                 Entry::new_byte_array(value.to_be_bytes().to_vec(), name, padding)
             }
