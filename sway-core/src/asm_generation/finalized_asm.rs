@@ -3,6 +3,7 @@ use super::{
     fuel::{checks, data_section::DataSection},
     ProgramABI, ProgramKind,
 };
+use crate::asm_generation::fuel::compiler_constants::EIGHTEEN_BITS;
 use crate::asm_generation::fuel::data_section::{Datum, Entry, EntryName};
 use crate::asm_lang::allocated_ops::{AllocatedInstruction, AllocatedOp, FuelAsmData};
 use crate::decl_engine::DeclRefFunction;
@@ -180,7 +181,11 @@ fn to_bytecode_mut(
                 // The -4 is because $pc is added in the *next* instruction.
                 let pointer_offset_from_current_instr =
                     offset_to_data_section_in_bytes - offset_from_instr_start + offset_bytes - 4;
-                data_section.append_pointer(pointer_offset_from_current_instr);
+
+                // If the pointer can't be loaded using a simple MOVI op, we need to use the data section
+                if pointer_offset_from_current_instr > EIGHTEEN_BITS {
+                    data_section.append_pointer(pointer_offset_from_current_instr);
+                }
             }
             _ => (),
         }

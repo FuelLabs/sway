@@ -15,7 +15,7 @@ pub(crate) use virtual_ops::*;
 pub(crate) use virtual_register::*;
 
 use crate::{
-    asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool},
+    asm_generation::fuel::register_allocator::RegisterPool,
     asm_lang::allocated_ops::{AllocatedInstruction, AllocatedRegister},
     language::AsmRegister,
     Ident,
@@ -161,18 +161,6 @@ impl Op {
             opcode: Either::Right(OrganizationalOp::Label(label)),
             comment: String::new(),
             owning_span: Some(owning_span),
-        }
-    }
-    /// Loads the data from [DataId] `data` into [VirtualRegister] `reg`.
-    pub(crate) fn unowned_load_data_comment(
-        reg: VirtualRegister,
-        data: DataId,
-        comment: impl Into<String>,
-    ) -> Self {
-        Op {
-            opcode: Either::Left(VirtualOp::LoadDataId(reg, data)),
-            comment: comment.into(),
-            owning_span: None,
         }
     }
 

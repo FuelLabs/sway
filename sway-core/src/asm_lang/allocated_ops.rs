@@ -13,7 +13,7 @@ use super::*;
 use crate::{
     asm_generation::{
         fuel::{
-            compiler_constants::DATA_SECTION_REGISTER,
+            compiler_constants::{DATA_SECTION_REGISTER, EIGHTEEN_BITS},
             data_section::{DataId, DataSection},
         },
         Datum,
@@ -874,7 +874,7 @@ fn addr_of(
 /// Converts a virtual load word instruction which uses data labels into one which uses
 /// actual bytewise offsets for use in bytecode.
 /// Returns one op if the type is less than one word big, but two ops if it has to construct
-/// a pointer and add it to $is.
+/// a pointer and add it to $pc.
 fn realize_load(
     dest: &AllocatedRegister,
     data_id: &DataId,
@@ -891,8 +891,7 @@ fn realize_load(
         Datum::U8(_) => {
             let Ok(imm) = VirtualImmediate12::new(offset_bytes, Span::dummy()) else {
                 panic!(
-                    "Unable to offset into the data section more than 2^12 bits. \
-                                            Unsupported data section length: {} bytes.",
+                    "Data section offset {} too large of 12 bit offset of u8 units.",
                     offset_bytes
                 );
             };
@@ -910,8 +909,7 @@ fn realize_load(
             );
             let Ok(imm) = VirtualImmediate12::new(offset_bytes / 2, Span::dummy()) else {
                 panic!(
-                    "Unable to offset into the data section more than 2^12 bits. \
-                                            Unsupported data section length: {} bytes.",
+                    "Data section offset {} too large of 12 bit offset of u16 units.",
                     offset_bytes
                 );
             };
@@ -929,8 +927,7 @@ fn realize_load(
             );
             let Ok(imm) = VirtualImmediate12::new(offset_bytes / 4, Span::dummy()) else {
                 panic!(
-                    "Unable to offset into the data section more than 2^12 bits. \
-                                            Unsupported data section length: {} bytes.",
+                    "Data section offset {} too large of 12 bit offset of u32 units.",
                     offset_bytes
                 );
             };
@@ -948,8 +945,7 @@ fn realize_load(
             );
             let Ok(imm) = VirtualImmediate12::new(offset_bytes / 8, Span::dummy()) else {
                 panic!(
-                    "Unable to offset into the data section more than 2^12 bits. \
-                                            Unsupported data section length: {} bytes.",
+                    "Data section offset {} too large of 12 bit offset of u64 units.",
                     offset_bytes
                 );
             };
@@ -970,20 +966,31 @@ fn realize_load(
             let pointer_offset_from_current_instr =
                 offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
 
-            // insert the pointer as bytes as a new data section entry at the end of the data
-            let data_id_for_pointer = data_section
-                .data_id_of_pointer(pointer_offset_from_current_instr)
-                .expect("Pointer offset must be in data_section");
-
             // now load the pointer we just created into the `dest`ination
             let mut buf = Vec::with_capacity(2);
-            buf.append(&mut realize_load(
-                dest,
-                &data_id_for_pointer,
-                data_section,
-                offset_to_data_section,
-                offset_from_instr_start,
-            ));
+
+            // load the value of pointer offset
+            if pointer_offset_from_current_instr <= EIGHTEEN_BITS {
+                buf.push(
+                    fuel_asm::op::MOVI::new(
+                        dest.to_reg_id(),
+                        Imm18::new(pointer_offset_from_current_instr as u32),
+                    )
+                    .into(),
+                )
+            } else {
+                let data_id_for_pointer = data_section
+                    .data_id_of_pointer(pointer_offset_from_current_instr)
+                    .expect("Pointer offset must be in data_section");
+                buf.append(&mut realize_load(
+                    dest,
+                    &data_id_for_pointer,
+                    data_section,
+                    offset_to_data_section,
+                    offset_from_instr_start,
+                ));
+            }
+
             // add $pc to the pointer since it is relative to the current instruction.
             buf.push(
                 fuel_asm::op::ADD::new(
@@ -996,31 +1003,4 @@ fn realize_load(
             buf
         }
     }
-
-    // let is_byte = data_section.is_byte(data_id).expect(
-    //     "Internal miscalculation in data section -- data id did not match up to any actual data",
-    // );
-
-    // let imm = VirtualImmediate12::new(
-    //     if is_byte { offset_bytes } else { offset_words },
-    //     Span::new(" ".into(), 0, 0, None).unwrap(),
-    // );
-    // let offset = match imm {
-    //     Ok(value) => value,
-    //     Err(_) => panic!(
-    //         "Unable to offset into the data section more than 2^12 bits. \
-    //                             Unsupported data section length: {} words.",
-    //         offset_words
-    //     ),
-    // };
-
-    // if is_byte {
-    // } else {
-    //     vec![fuel_asm::op::LW::new(
-    //         dest.to_reg_id(),
-    //         fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-    //         offset.value().into(),
-    //     )
-    //     .into()]
-    // }
 }
