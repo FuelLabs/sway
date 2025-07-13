@@ -415,8 +415,8 @@ impl fmt::Display for DataSection {
             match datum {
                 Datum::U8(v) => format!(".byte {v}"),
                 Datum::U16(v) => format!(".quarterword {v}"),
-                Datum::U32(v) => format!(".word {v}"),
-                Datum::U64(v) => format!(".half {v}"),
+                Datum::U32(v) => format!(".halfword {v}"),
+                Datum::U64(v) => format!(".word {v}"),
                 Datum::ByRef(bs) => display_bytes_for_data_section(bs, ".bytes"),
                 Datum::Collection(els) => format!(
                     ".collection {{ {} }}",
