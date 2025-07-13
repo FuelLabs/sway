@@ -5,6 +5,7 @@ mod parser;
 mod trace;
 mod transfer;
 
+use crate::cmd::call::AbiSource;
 use crate::{
     cmd,
     constants::DEFAULT_PRIVATE_KEY,
@@ -15,7 +16,6 @@ use crate::{
     util::tx::{prompt_forc_wallet_password, select_local_wallet_account},
 };
 use anyhow::{anyhow, Result};
-use either::Either;
 use fuel_abi_types::abi::{
     program::ProgramABI,
     unified_program::{UnifiedProgramABI, UnifiedTypeDeclaration},
@@ -126,12 +126,12 @@ async fn setup_connection(
     Ok((wallet, tx_policies, *base_asset_id))
 }
 
-/// Helper function to load ABI from file or URL
-async fn load_abi(abi: &Either<std::path::PathBuf, url::Url>) -> anyhow::Result<String> {
+/// Helper function to load ABI from file, URL, or raw string
+async fn load_abi(abi: &AbiSource) -> anyhow::Result<String> {
     match abi {
-        Either::Left(path) => std::fs::read_to_string(path)
+        AbiSource::File(path) => std::fs::read_to_string(path)
             .map_err(|e| anyhow!("Failed to read ABI file at {:?}: {}", path, e)),
-        Either::Right(url) => {
+        AbiSource::Url(url) => {
             let response = reqwest::get(url.clone())
                 .await
                 .map_err(|e| anyhow!("Failed to fetch ABI from URL {}: {}", url, e))?;
@@ -141,6 +141,12 @@ async fn load_abi(abi: &Either<std::path::PathBuf, url::Url>) -> anyhow::Result<
                 .map_err(|e| anyhow!("Failed to read response body from URL {}: {}", url, e))?;
             String::from_utf8(bytes.to_vec())
                 .map_err(|e| anyhow!("Failed to parse response as UTF-8 from URL {}: {}", url, e))
+        }
+        AbiSource::String(json_str) => {
+            // Validate that it's valid JSON
+            serde_json::from_str::<serde_json::Value>(json_str)
+                .map_err(|e| anyhow!("Invalid JSON in ABI string: {}", e))?;
+            Ok(json_str.to_owned())
         }
     }
 }
@@ -189,6 +195,7 @@ async fn get_wallet(
 
 #[derive(Debug, Clone)]
 pub(crate) struct Abi {
+    source: AbiSource,
     program: ProgramABI,
     unified: UnifiedProgramABI,
     // TODO: required for vm interpreter step through
@@ -213,6 +220,7 @@ impl FromStr for Abi {
             .collect::<HashMap<_, _>>();
 
         Ok(Self {
+            source: AbiSource::String(s.to_string()),
             program,
             unified,
             type_lookup,
@@ -310,8 +318,8 @@ pub(crate) fn display_detailed_call_info(
 /// This is a reusable function for both call_function and list_functions operations
 pub(crate) async fn create_abi_map(
     main_contract_id: ContractId,
-    main_abi: &Either<std::path::PathBuf, url::Url>,
-    additional_contract_abis: Option<Vec<(ContractId, Either<std::path::PathBuf, url::Url>)>>,
+    main_abi: &AbiSource,
+    additional_contract_abis: Option<Vec<(ContractId, AbiSource)>>,
 ) -> anyhow::Result<HashMap<ContractId, Abi>> {
     // Load main ABI
     let main_abi_str = load_abi(main_abi).await?;

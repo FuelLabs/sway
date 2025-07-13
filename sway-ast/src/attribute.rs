@@ -52,6 +52,11 @@ pub const ERROR_TYPE_ATTRIBUTE_NAME: &str = "error_type";
 pub const ERROR_ATTRIBUTE_NAME: &str = "error";
 pub const ERROR_M_ARG_NAME: &str = "m";
 
+// Backtracing.
+pub const TRACE_ATTRIBUTE_NAME: &str = "trace";
+pub const TRACE_NEVER_ARG_NAME: &str = "never";
+pub const TRACE_ALWAYS_ARG_NAME: &str = "always";
+
 pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_ATTRIBUTE_NAME,
     DOC_COMMENT_ATTRIBUTE_NAME,

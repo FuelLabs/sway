@@ -227,6 +227,11 @@ impl Into<Bytes> for B512 {
 
 impl Hash for B512 {
     fn hash(self, ref mut state: Hasher) {
-        self.bits.hash(state);
+        // We want to hash just the raw bytes of the b512,
+        // and not the `self.bits` array itself.
+        // The fact that the signature bits are stored in a fixed-size array
+        // is just an implementation detail.
+        // The hash is computed only over the raw bytes of the b512.
+        state.write_raw_slice(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64));
     }
 }

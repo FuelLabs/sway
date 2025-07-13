@@ -36,6 +36,9 @@ pub struct Context {
 
     /// Keeps track of the implementing type as we convert the tree.
     pub(crate) implementing_type: Option<Declaration>,
+
+    /// Used to name anonymous impl contracts
+    pub package_name: String,
 }
 
 impl Context {
@@ -44,6 +47,7 @@ impl Context {
         build_target: BuildTarget,
         dbg_generation: DbgGeneration,
         experimental: ExperimentalFeatures,
+        package_name: &str,
     ) -> Self {
         Self {
             build_target,
@@ -56,6 +60,7 @@ impl Context {
             for_unique_suffix: std::default::Default::default(),
             program_type: std::default::Default::default(),
             implementing_type: None,
+            package_name: package_name.to_string(),
         }
     }
 
