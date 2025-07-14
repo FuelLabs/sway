@@ -139,5 +139,15 @@ error: Attribute argument must not have a value
   |
 ____
 
-  Aborting due to 11 errors.
+error: Attribute argument must have a value
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_expect_values/src/abi_name_attr.sw:3:12
+  |
+...
+3 | #[abi_name(name)]
+  |            ^^^^ "name" argument of the attribute "abi_name" must have a value.
+  |            ---- help: To set the value, use the `=` operator: `name = <value>`.
+  |
+____
+
+  Aborting due to 12 errors.
 error: Failed to compile attributes_invalid_args_expect_values
