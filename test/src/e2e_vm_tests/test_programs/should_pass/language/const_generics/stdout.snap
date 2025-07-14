@@ -343,6 +343,7 @@ output:
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [7.008 KB] in ???
 =======
 =======
@@ -363,10 +364,14 @@ output:
     Finished debug [unoptimized + fuel] target(s) [8.312 KB] in ???
 >>>>>>> f63d45c7e (update snapshot tests)
 >>>>>>> aefe47720 (update snapshot tests)
+=======
+    Finished debug [unoptimized + fuel] target(s) [7.424 KB] in ???
+>>>>>>> d3c89a496 (rebase issues)
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
       test run_main ... ok (???, 13758 gas)
@@ -389,6 +394,9 @@ tested -- const_generics
       test run_main ... ok (???, 14436 gas)
 >>>>>>> f63d45c7e (update snapshot tests)
 >>>>>>> aefe47720 (update snapshot tests)
+=======
+      test run_main ... ok (???, 14005 gas)
+>>>>>>> d3c89a496 (rebase issues)
            debug output:
 [src/main.sw:88:13] a = [1, 2]
 [src/main.sw:92:13] [C {}].len() = 1
