@@ -69,6 +69,6 @@ impl Test for Contract {
 // check: lw   $REG $$fp i74
 
 // check: .data:
-// check: $get_b256_sel_data .word 1108491158
-// check: $get_s_sel_data .word 4234334249
-// check: $get_u64_sel_data .word 2559618804
+// check: $get_b256_sel_data .halfword 1108491158
+// check: $get_s_sel_data .halfword 4234334249
+// check: $get_u64_sel_data .halfword 2559618804

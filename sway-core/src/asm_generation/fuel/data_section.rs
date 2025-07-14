@@ -31,27 +31,47 @@ pub struct Entry {
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Datum {
-    Byte(u8),
-    Word(u64),
-    ByteArray(Vec<u8>),
-    Slice(Vec<u8>),
+    /// A single byte, loaded into a register.
+    U8(u8),
+    /// A quarterword, loaded into a register.
+    U16(u16),
+    /// A halfword, loaded into a register.
+    U32(u32),
+    /// A word, loaded into a register.
+    U64(u64),
+    /// Data behind a pointer.
+    ByRef(Vec<u8>),
+    /// Collection of entries.
     Collection(Vec<Entry>),
 }
 
 impl Entry {
-    pub(crate) fn new_byte(value: u8, name: EntryName, padding: Option<Padding>) -> Entry {
-        Entry {
-            value: Datum::Byte(value),
-            padding: padding.unwrap_or(Padding::default_for_u8(value)),
-            name,
-        }
-    }
-
-    pub(crate) fn new_word(value: u64, name: EntryName, padding: Option<Padding>) -> Entry {
-        Entry {
-            value: Datum::Word(value),
-            padding: padding.unwrap_or(Padding::default_for_u64(value)),
-            name,
+    /// Creates smallest integer entry that can hold the value.
+    pub(crate) fn new_min_int(value: u64, name: EntryName, padding: Option<Padding>) -> Entry {
+        if value <= u8::MAX as u64 {
+            Self {
+                value: Datum::U8(value as u8),
+                padding: padding.unwrap_or(Padding::default_for_u8(value as u8)),
+                name,
+            }
+        } else if value <= u16::MAX as u64 {
+            Self {
+                value: Datum::U16(value as u16),
+                padding: padding.unwrap_or(Padding::default_for_u16(value as u16)),
+                name,
+            }
+        } else if value <= u32::MAX as u64 {
+            Self {
+                value: Datum::U32(value as u32),
+                padding: padding.unwrap_or(Padding::default_for_u32(value as u32)),
+                name,
+            }
+        } else {
+            Self {
+                value: Datum::U64(value),
+                padding: padding.unwrap_or(Padding::default_for_u64(value)),
+                name,
+            }
         }
     }
 
@@ -62,15 +82,7 @@ impl Entry {
     ) -> Entry {
         Entry {
             padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
-            value: Datum::ByteArray(bytes),
-            name,
-        }
-    }
-
-    pub(crate) fn new_slice(bytes: Vec<u8>, name: EntryName, padding: Option<Padding>) -> Entry {
-        Entry {
-            padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
-            value: Datum::Slice(bytes),
+            value: Datum::ByRef(bytes),
             name,
         }
     }
@@ -110,15 +122,22 @@ impl Entry {
 
         // Not an enum, no more special handling required.
         match &constant.value {
-            ConstantValue::Undef | ConstantValue::Unit => Entry::new_byte(0, name, padding),
-            ConstantValue::Bool(value) => Entry::new_byte(u8::from(*value), name, padding),
-            ConstantValue::Uint(value) => {
-                if constant.ty.is_uint8(context) {
-                    Entry::new_byte(*value as u8, name, padding)
-                } else {
-                    Entry::new_word(*value, name, padding)
-                }
-            }
+            // TODO: why ZSTs can be allocated?
+            ConstantValue::Undef | ConstantValue::Unit => Entry {
+                value: Datum::U8(0),
+                padding: padding.unwrap_or(Padding::default_for_u8(0)),
+                name,
+            },
+            ConstantValue::Bool(value) => Entry {
+                value: Datum::U8(*value as u8),
+                padding: padding.unwrap_or(Padding::default_for_u8(0)),
+                name,
+            },
+            ConstantValue::Uint(value) => Entry {
+                value: Datum::U64(*value),
+                padding: padding.unwrap_or(Padding::default_for_u64(0)),
+                name,
+            },
             ConstantValue::U256(value) => {
                 Entry::new_byte_array(value.to_be_bytes().to_vec(), name, padding)
             }
@@ -126,31 +145,29 @@ impl Entry {
                 Entry::new_byte_array(value.to_be_bytes().to_vec(), name, padding)
             }
             ConstantValue::String(bytes) => Entry::new_byte_array(bytes.clone(), name, padding),
-            ConstantValue::Array(_) => Entry::new_collection(
-                constant
-                    .array_elements_with_padding(context)
-                    .expect("Constant is an array.")
-                    .into_iter()
-                    .map(|(elem, padding)| {
+            ConstantValue::Array(elements) => Entry::new_collection(
+                elements
+                    .iter()
+                    .map(|elem| {
                         Entry::from_constant(context, elem, EntryName::NonConfigurable, padding)
                     })
                     .collect(),
                 name,
                 padding,
             ),
-            ConstantValue::Struct(_) => Entry::new_collection(
-                constant
-                    .struct_fields_with_padding(context)
-                    .expect("Constant is a struct.")
-                    .into_iter()
-                    .map(|(elem, padding)| {
+            ConstantValue::Struct(fields) => Entry::new_collection(
+                fields
+                    .iter()
+                    .map(|elem| {
                         Entry::from_constant(context, elem, EntryName::NonConfigurable, padding)
                     })
                     .collect(),
                 name,
                 padding,
             ),
-            ConstantValue::RawUntypedSlice(bytes) => Entry::new_slice(bytes.clone(), name, padding),
+            ConstantValue::RawUntypedSlice(bytes) => {
+                Entry::new_byte_array(bytes.clone(), name, padding)
+            }
             ConstantValue::Reference(_) => {
                 todo!("Constant references are currently not supported.")
             }
@@ -164,10 +181,12 @@ impl Entry {
     pub(crate) fn to_bytes(&self) -> Vec<u8> {
         // Get the big-endian byte representation of the basic value.
         let bytes = match &self.value {
-            Datum::Byte(value) => vec![*value],
-            Datum::Word(value) => value.to_be_bytes().to_vec(),
-            Datum::ByteArray(bytes) | Datum::Slice(bytes) if bytes.len() % 8 == 0 => bytes.clone(),
-            Datum::ByteArray(bytes) | Datum::Slice(bytes) => bytes
+            Datum::U8(value) => vec![*value],
+            Datum::U16(value) => value.to_be_bytes().to_vec(),
+            Datum::U32(value) => value.to_be_bytes().to_vec(),
+            Datum::U64(value) => value.to_be_bytes().to_vec(),
+            Datum::ByRef(bytes) if bytes.len() % 8 == 0 => bytes.clone(),
+            Datum::ByRef(bytes) => bytes
                 .iter()
                 .chain([0; 8].iter())
                 .copied()
@@ -188,19 +207,20 @@ impl Entry {
     }
 
     pub(crate) fn has_copy_type(&self) -> bool {
-        matches!(self.value, Datum::Word(_) | Datum::Byte(_))
-    }
-
-    pub(crate) fn is_byte(&self) -> bool {
-        matches!(self.value, Datum::Byte(_))
+        matches!(
+            self.value,
+            Datum::U64(_) | Datum::U32(_) | Datum::U16(_) | Datum::U8(_)
+        )
     }
 
     pub(crate) fn equiv(&self, entry: &Entry) -> bool {
         fn equiv_data(lhs: &Datum, rhs: &Datum) -> bool {
             match (lhs, rhs) {
-                (Datum::Byte(l), Datum::Byte(r)) => l == r,
-                (Datum::Word(l), Datum::Word(r)) => l == r,
-                (Datum::ByteArray(l), Datum::ByteArray(r)) => l == r,
+                (Datum::U8(l), Datum::U8(r)) => l == r,
+                (Datum::U16(l), Datum::U16(r)) => l == r,
+                (Datum::U32(l), Datum::U32(r)) => l == r,
+                (Datum::U64(l), Datum::U64(r)) => l == r,
+                (Datum::ByRef(l), Datum::ByRef(r)) => l == r,
                 (Datum::Collection(l), Datum::Collection(r)) => {
                     l.len() == r.len()
                         && l.iter()
@@ -219,7 +239,7 @@ impl Entry {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum DataIdEntryKind {
     NonConfigurable,
     Configurable,
@@ -235,7 +255,7 @@ impl fmt::Display for DataIdEntryKind {
 }
 
 /// An address which refers to a value in the data section of the asm.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct DataId {
     pub(crate) idx: u32,
     pub(crate) kind: DataIdEntryKind,
@@ -278,7 +298,7 @@ impl DataSection {
     }
 
     /// Get entry at id
-    fn get(&self, id: &DataId) -> Option<&Entry> {
+    pub(crate) fn get(&self, id: &DataId) -> Option<&Entry> {
         match id.kind {
             DataIdEntryKind::NonConfigurable => self.non_configurables.get(id.idx as usize),
             DataIdEntryKind::Configurable => self.configurables.get(id.idx as usize),
@@ -319,11 +339,6 @@ impl DataSection {
         self.get(id).map(|entry| entry.has_copy_type())
     }
 
-    /// Returns whether a specific [DataId] value is a byte entry.
-    pub(crate) fn is_byte(&self, id: &DataId) -> Option<bool> {
-        self.get(id).map(|entry| entry.is_byte())
-    }
-
     /// When generating code, sometimes a hard-coded data pointer is needed to reference
     /// static values that have a length longer than one word.
     /// This method appends pointers to the end of the data section (thus, not altering the data
@@ -332,12 +347,12 @@ impl DataSection {
     /// relative to the current (load) instruction.
     pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
         // The 'pointer' is just a literal 64 bit address.
-        let data_id = self.insert_data_value(Entry::new_word(
+        let data_id = self.insert_data_value(Entry::new_min_int(
             pointer_value,
             EntryName::NonConfigurable,
             None,
         ));
-        self.pointer_id.insert(pointer_value, data_id.clone());
+        self.pointer_id.insert(pointer_value, data_id);
         data_id
     }
 
@@ -376,19 +391,21 @@ impl DataSection {
         }
     }
 
-    // If the stored data is Datum::Word, return the inner value.
-    pub(crate) fn get_data_word(&self, data_id: &DataId) -> Option<u64> {
-        let value_pairs = match data_id.kind {
-            DataIdEntryKind::NonConfigurable => &self.non_configurables,
-            DataIdEntryKind::Configurable => &self.configurables,
-        };
-        value_pairs.get(data_id.idx as usize).and_then(|entry| {
-            if let Datum::Word(w) = entry.value {
-                Some(w)
-            } else {
-                None
-            }
-        })
+    /// When a load from data section is realized and targets a (register-placeable) copy type,
+    /// this is the value that will be loaded into the register.
+    /// For non-copy types or configurable values, returns `None` instead.
+    pub(crate) fn get_const_reg_value(&self, data_id: DataId) -> Option<u64> {
+        let entry = self.get(&data_id)?;
+        if matches!(entry.name, EntryName::Configurable(_)) {
+            return None;
+        }
+        match &entry.value {
+            Datum::U8(v) => Some(*v as u64),
+            Datum::U16(v) => Some(*v as u64),
+            Datum::U32(v) => Some(*v as u64),
+            Datum::U64(v) => Some(*v),
+            _ => None,
+        }
     }
 }
 
@@ -396,10 +413,11 @@ impl fmt::Display for DataSection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn display_entry(datum: &Datum) -> String {
             match datum {
-                Datum::Byte(w) => format!(".byte {w}"),
-                Datum::Word(w) => format!(".word {w}"),
-                Datum::ByteArray(bs) => display_bytes_for_data_section(bs, ".bytes"),
-                Datum::Slice(bs) => display_bytes_for_data_section(bs, ".slice"),
+                Datum::U8(v) => format!(".byte {v}"),
+                Datum::U16(v) => format!(".quarterword {v}"),
+                Datum::U32(v) => format!(".halfword {v}"),
+                Datum::U64(v) => format!(".word {v}"),
+                Datum::ByRef(bs) => display_bytes_for_data_section(bs, ".bytes"),
                 Datum::Collection(els) => format!(
                     ".collection {{ {} }}",
                     els.iter()

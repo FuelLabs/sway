@@ -607,21 +607,14 @@ pub(crate) fn compile_jump(
     if curr_offset > target_offset {
         let delta = curr_offset - target_offset - 1;
         return if far {
-            let data_id = data_section.insert_data_value(Entry::new_word(
-                delta + 1, // +1 since the load instruction must be skipped as well
-                EntryName::NonConfigurable,
-                None,
-            ));
-
             vec![
-                RealizedOp {
-                    opcode: AllocatedInstruction::LoadDataId(
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        data_id,
-                    ),
-                    owning_span: owning_span.clone(),
-                    comment: "load far jump target address".into(),
-                },
+                compile_load_integer_constant(
+                    data_section,
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    delta + 1, // +1 since the load instruction must be skipped as well
+                    "load far jump target address".into(),
+                    owning_span.clone(),
+                ),
                 RealizedOp {
                     opcode: if let Some(cond_nz) = condition_nonzero {
                         AllocatedInstruction::JNZB(
@@ -662,21 +655,14 @@ pub(crate) fn compile_jump(
     let delta = target_offset - curr_offset - 1;
 
     if far {
-        let data_id = data_section.insert_data_value(Entry::new_word(
-            delta - 1,
-            EntryName::NonConfigurable,
-            None,
-        ));
-
         vec![
-            RealizedOp {
-                opcode: AllocatedInstruction::LoadDataId(
-                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    data_id,
-                ),
-                owning_span: owning_span.clone(),
-                comment: "load far jump target address".into(),
-            },
+            compile_load_integer_constant(
+                data_section,
+                AllocatedRegister::Constant(ConstantRegister::Scratch),
+                delta - 1,
+                "load far jump target address".into(),
+                owning_span.clone(),
+            ),
             RealizedOp {
                 opcode: if let Some(cond_nz) = condition_nonzero {
                     AllocatedInstruction::JNZF(
@@ -746,54 +732,14 @@ pub(crate) fn compile_call_inner(
         // with the PC register. The overflow cannot occur since programs cannot be 2**60 bytes large.
         let delta_instr = (delta - 1) * (Instruction::SIZE as u64);
 
-        // Attempt MOVI-based approach, that has larger immediate size but doesn't require data section.
-        if let Ok(imm) = VirtualImmediate18::new(delta_instr, Span::dummy()) {
-            return vec![
-                RealizedOp {
-                    opcode: AllocatedInstruction::MOVI(
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        imm,
-                    ),
-                    owning_span: owning_span.clone(),
-                    comment: "load call target address".into(),
-                },
-                RealizedOp {
-                    opcode: AllocatedInstruction::ADD(
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    ),
-                    owning_span: owning_span.clone(),
-                    comment: "load call target address".into(),
-                },
-                RealizedOp {
-                    opcode: AllocatedInstruction::JAL(
-                        AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12::new_unchecked(0, "unreachable()"),
-                    ),
-                    owning_span,
-                    comment,
-                },
-            ];
-        }
-
-        // if the offset is too large for MOVI, use data section to store the full offset.
-        let data_id = data_section.insert_data_value(Entry::new_word(
-            delta_instr,
-            EntryName::NonConfigurable,
-            None,
-        ));
-
         return vec![
-            RealizedOp {
-                opcode: AllocatedInstruction::LoadDataId(
-                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    data_id,
-                ),
-                owning_span: owning_span.clone(),
-                comment: "load call target address".into(),
-            },
+            compile_load_integer_constant(
+                data_section,
+                AllocatedRegister::Constant(ConstantRegister::Scratch),
+                delta_instr,
+                "load call target address".into(),
+                owning_span.clone(),
+            ),
             RealizedOp {
                 opcode: AllocatedInstruction::ADD(
                     AllocatedRegister::Constant(ConstantRegister::Scratch),
@@ -853,54 +799,14 @@ pub(crate) fn compile_call_inner(
     // with the PC register. The overflow cannot occur since programs cannot be 2**60 bytes large.
     let delta_instr = (delta + 1) * (Instruction::SIZE as u64);
 
-    // Attempt MOVI-based approach.
-    if let Ok(imm) = VirtualImmediate18::new(delta_instr, Span::dummy()) {
-        return vec![
-            RealizedOp {
-                opcode: AllocatedInstruction::MOVI(
-                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    imm,
-                ),
-                owning_span: owning_span.clone(),
-                comment: "load call target address".into(),
-            },
-            RealizedOp {
-                opcode: AllocatedInstruction::SUB(
-                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
-                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                ),
-                owning_span: owning_span.clone(),
-                comment: "load call target address".into(),
-            },
-            RealizedOp {
-                opcode: AllocatedInstruction::JAL(
-                    AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
-                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    VirtualImmediate12::new_unchecked(0, "unreachable()"),
-                ),
-                owning_span,
-                comment,
-            },
-        ];
-    }
-
-    // And lastly, fall back to the data section backed approach.
-    let data_id = data_section.insert_data_value(Entry::new_word(
-        delta_instr,
-        EntryName::NonConfigurable,
-        None,
-    ));
-
     vec![
-        RealizedOp {
-            opcode: AllocatedInstruction::LoadDataId(
-                AllocatedRegister::Constant(ConstantRegister::Scratch),
-                data_id,
-            ),
-            owning_span: owning_span.clone(),
-            comment: "load call target address".into(),
-        },
+        compile_load_integer_constant(
+            data_section,
+            AllocatedRegister::Constant(ConstantRegister::Scratch),
+            delta_instr,
+            "load call target address".into(),
+            owning_span.clone(),
+        ),
         RealizedOp {
             opcode: AllocatedInstruction::SUB(
                 AllocatedRegister::Constant(ConstantRegister::Scratch),
@@ -947,4 +853,55 @@ pub(crate) fn compile_call(
         });
     }
     res
+}
+
+/// Compiles loading of an integer constant into a register,
+/// possibly using the data section if that's more efficient.
+pub(crate) fn compile_load_integer_constant(
+    data_section: &mut DataSection,
+    register: AllocatedRegister,
+    value: u64,
+    comment: String,
+    owning_span: Option<Span>,
+) -> RealizedOp {
+    // Attempt MOVI
+    if let Ok(imm) = VirtualImmediate18::new(value, Span::dummy()) {
+        return RealizedOp {
+            opcode: AllocatedInstruction::MOVI(register, imm),
+            owning_span,
+            comment,
+        };
+    }
+
+    // Attempt various tricks for known constants
+    if value == u64::MAX {
+        return RealizedOp {
+            opcode: AllocatedInstruction::NOT(
+                register,
+                AllocatedRegister::Constant(ConstantRegister::Zero),
+            ),
+            owning_span,
+            comment,
+        };
+    }
+    if value == u64::MAX - 1 {
+        return RealizedOp {
+            opcode: AllocatedInstruction::NOT(
+                register,
+                AllocatedRegister::Constant(ConstantRegister::One),
+            ),
+            owning_span,
+            comment,
+        };
+    }
+
+    // Fall back to the data section backed approach.
+    let data_id =
+        data_section.insert_data_value(Entry::new_min_int(value, EntryName::NonConfigurable, None));
+
+    RealizedOp {
+        opcode: AllocatedInstruction::LoadDataId(register, data_id),
+        owning_span,
+        comment,
+    }
 }

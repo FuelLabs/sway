@@ -1276,7 +1276,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // Allocate a register for it, and an address_of instruction.
         let reg = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::AddrDataId(reg.clone(), data_id.clone())),
+            opcode: either::Either::Left(VirtualOp::AddrDataId(reg.clone(), data_id)),
             comment: "get constant's address in data section".into(),
             owning_span: Some(span),
         });
@@ -1351,7 +1351,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             Some(Storage::Data(data_id)) => {
                 let instr_reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LoadDataId(instr_reg.clone(), data_id.clone())),
+                    opcode: Either::Left(VirtualOp::LoadDataId(instr_reg.clone(), *data_id)),
                     comment: "get local constant".into(),
                     owning_span,
                 });
@@ -1401,10 +1401,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             // Otherwise it is a configurable with encoding v0 and must be at configurable_v0_data_id
             let dataid = self.configurable_v0_data_id.get(name).unwrap();
             self.cur_bytecode.push(Op {
-                opcode: either::Either::Left(VirtualOp::AddrDataId(
-                    addr_reg.clone(),
-                    dataid.clone(),
-                )),
+                opcode: either::Either::Left(VirtualOp::AddrDataId(addr_reg.clone(), *dataid)),
                 comment: format!("get address of configurable {}", name),
                 owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
             });
@@ -1461,6 +1458,28 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         VirtualImmediate12::new_unchecked(0, "Zero must fit in 12 bits"),
                     )),
                     comment: "load byte".into(),
+                    owning_span,
+                });
+            }
+            2 => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LQW(
+                        instr_reg.clone(),
+                        src_reg,
+                        VirtualImmediate12::new_unchecked(0, "Zero must fit in 12 bits"),
+                    )),
+                    comment: "load quadword".into(),
+                    owning_span,
+                });
+            }
+            4 => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LHW(
+                        instr_reg.clone(),
+                        src_reg,
+                        VirtualImmediate12::new_unchecked(0, "Zero must fit in 12 bits"),
+                    )),
+                    comment: "load halfword".into(),
                     owning_span,
                 });
             }
@@ -2138,10 +2157,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 // Allocate a register for it, and a load instruction.
                 let reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::LoadDataId(
-                        reg.clone(),
-                        data_id.clone(),
-                    )),
+                    opcode: either::Either::Left(VirtualOp::LoadDataId(reg.clone(), data_id)),
                     comment: "load constant from data section".into(),
                     owning_span: span,
                 });
@@ -2252,7 +2268,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
         } else {
             let comment = comment.into();
-            let data_id = self.data_section.insert_data_value(Entry::new_word(
+            let data_id = self.data_section.insert_data_value(Entry::new_min_int(
                 imm,
                 EntryName::NonConfigurable,
                 None,

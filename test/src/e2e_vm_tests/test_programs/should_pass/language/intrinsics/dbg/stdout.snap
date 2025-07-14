@@ -71,7 +71,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg
    Compiling library std (sway-lib-std)
    Compiling script dbg (test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg)
-    Finished debug [unoptimized + fuel] target(s) [41.536 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [39.824 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- dbg

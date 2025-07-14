@@ -15,7 +15,7 @@ pub(crate) use virtual_ops::*;
 pub(crate) use virtual_register::*;
 
 use crate::{
-    asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool},
+    asm_generation::fuel::register_allocator::RegisterPool,
     asm_lang::allocated_ops::{AllocatedInstruction, AllocatedRegister},
     language::AsmRegister,
     Ident,
@@ -161,18 +161,6 @@ impl Op {
             opcode: Either::Right(OrganizationalOp::Label(label)),
             comment: String::new(),
             owning_span: Some(owning_span),
-        }
-    }
-    /// Loads the data from [DataId] `data` into [VirtualRegister] `reg`.
-    pub(crate) fn unowned_load_data_comment(
-        reg: VirtualRegister,
-        data: DataId,
-        comment: impl Into<String>,
-    ) -> Self {
-        Op {
-            opcode: Either::Left(VirtualOp::LoadDataId(reg, data)),
-            comment: comment.into(),
-            owning_span: None,
         }
     }
 
@@ -1194,6 +1182,8 @@ impl fmt::Display for VirtualOp {
             CFE(_sp, a) => write!(fmtr, "cfe {a}"),
             CFS(_sp, a) => write!(fmtr, "cfs {a}"),
             LB(a, b, c) => write!(fmtr, "lb {a} {b} {c}"),
+            LQW(a, b, c) => write!(fmtr, "lqw {a} {b} {c}"),
+            LHW(a, b, c) => write!(fmtr, "lhw {a} {b} {c}"),
             LW(a, b, c) => write!(fmtr, "lw {a} {b} {c}"),
             MCL(a, b) => write!(fmtr, "mcl {a} {b}"),
             MCLI(a, b) => write!(fmtr, "mcli {a} {b}"),
@@ -1201,6 +1191,8 @@ impl fmt::Display for VirtualOp {
             MCPI(a, b, c) => write!(fmtr, "mcpi {a} {b} {c}"),
             MEQ(a, b, c, d) => write!(fmtr, "meq {a} {b} {c} {d}"),
             SB(a, b, c) => write!(fmtr, "sb {a} {b} {c}"),
+            SQW(a, b, c) => write!(fmtr, "sqw {a} {b} {c}"),
+            SHW(a, b, c) => write!(fmtr, "shw {a} {b} {c}"),
             SW(a, b, c) => write!(fmtr, "sw {a} {b} {c}"),
 
             /* Contract Instructions */

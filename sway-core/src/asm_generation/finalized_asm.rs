@@ -3,6 +3,7 @@ use super::{
     fuel::{checks, data_section::DataSection},
     ProgramABI, ProgramKind,
 };
+use crate::asm_generation::fuel::compiler_constants::EIGHTEEN_BITS;
 use crate::asm_generation::fuel::data_section::{Datum, Entry, EntryName};
 use crate::asm_lang::allocated_ops::{AllocatedInstruction, AllocatedOp, FuelAsmData};
 use crate::decl_engine::DeclRefFunction;
@@ -180,7 +181,11 @@ fn to_bytecode_mut(
                 // The -4 is because $pc is added in the *next* instruction.
                 let pointer_offset_from_current_instr =
                     offset_to_data_section_in_bytes - offset_from_instr_start + offset_bytes - 4;
-                data_section.append_pointer(pointer_offset_from_current_instr);
+
+                // If the pointer can't be loaded using a simple MOVI op, we need to use the data section
+                if pointer_offset_from_current_instr > EIGHTEEN_BITS {
+                    data_section.append_pointer(pointer_offset_from_current_instr);
+                }
             }
             _ => (),
         }
@@ -314,27 +319,12 @@ fn to_bytecode_mut(
             print!("{}{:#010x} ", " ".repeat(indentation), offset);
 
             match &pair.value {
-                Datum::Byte(w) => println!(".byte i{w}, as hex {w:02X}"),
-                Datum::Word(w) => {
-                    println!(".word i{w}, as hex be bytes ({:02X?})", w.to_be_bytes())
-                }
-                Datum::ByteArray(bs) => {
+                Datum::U8(v) => println!(".byte i{}, as hex {:02X}", v, v),
+                Datum::U16(v) => println!(".quarterword i{}, as hex {:02X?}", v, v.to_be_bytes()),
+                Datum::U32(v) => println!(".halfword i{}, as hex {:02X?}", v, v.to_be_bytes()),
+                Datum::U64(v) => println!(".word i{}, as hex {:02X?}", v, v.to_be_bytes()),
+                Datum::ByRef(bs) => {
                     print!(".bytes as hex ({bs:02X?}), len i{}, as ascii \"", bs.len());
-
-                    for b in bs {
-                        print!(
-                            "{}",
-                            if *b == b' ' || b.is_ascii_graphic() {
-                                *b as char
-                            } else {
-                                '.'
-                            }
-                        );
-                    }
-                    println!("\"");
-                }
-                Datum::Slice(bs) => {
-                    print!(".slice as hex ({bs:02X?}), len i{}, as ascii \"", bs.len());
 
                     for b in bs {
                         print!(

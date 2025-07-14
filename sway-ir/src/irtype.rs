@@ -259,6 +259,11 @@ impl Type {
         matches!(*self.get_content(context), TypeContent::Uint(8))
     }
 
+    /// Is u16 type
+    pub fn is_uint16(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::Uint(16))
+    }
+
     /// Is u32 type
     pub fn is_uint32(&self, context: &Context) -> bool {
         matches!(*self.get_content(context), TypeContent::Uint(32))
@@ -574,11 +579,9 @@ impl Type {
             TypeContent::Uint(8) | TypeContent::Bool | TypeContent::Unit | TypeContent::Never => {
                 TypeSize::new(1)
             }
-            // All integers larger than a byte are words since FuelVM only has memory operations on those two units.
-            TypeContent::Uint(16)
-            | TypeContent::Uint(32)
-            | TypeContent::Uint(64)
-            | TypeContent::Pointer(_) => TypeSize::new(8),
+            TypeContent::Uint(16) => TypeSize::new(2),
+            TypeContent::Uint(32) => TypeSize::new(4),
+            TypeContent::Uint(64) | TypeContent::Pointer(_) => TypeSize::new(8),
             TypeContent::Uint(256) => TypeSize::new(32),
             TypeContent::Uint(_) => unreachable!(),
             TypeContent::Slice => TypeSize::new(16),
@@ -663,7 +666,7 @@ impl TypeSize {
 /// the value in aggregates. E.g., in an array of `u8`, each `u8` is "padded"
 /// to its size of one byte while as a struct field, it will be right padded
 /// to 8 bytes.
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Copy, Debug, serde::Serialize)]
 pub enum Padding {
     Left { target_size: usize },
     Right { target_size: usize },
@@ -674,6 +677,18 @@ impl Padding {
     pub fn default_for_u8(_value: u8) -> Self {
         // Dummy _value is used only to ensure correct usage at the call site.
         Self::Right { target_size: 1 }
+    }
+
+    /// Returns the default [Padding] for `u16`.
+    pub fn default_for_u16(_value: u16) -> Self {
+        // Dummy _value is used only to ensure correct usage at the call site.
+        Self::Right { target_size: 2 }
+    }
+
+    /// Returns the default [Padding] for `u32`.
+    pub fn default_for_u32(_value: u32) -> Self {
+        // Dummy _value is used only to ensure correct usage at the call site.
+        Self::Right { target_size: 4 }
     }
 
     /// Returns the default [Padding] for `u64`.
@@ -738,32 +753,26 @@ mod tests {
         }
 
         #[test]
-        /// `u8`, when not embedded in aggregates, has a size of 1 byte.
-        fn unsigned_u8() {
+        /// Aligned size is always 8 bytes, while unaligned is the size of the type.
+        fn unsigned_u8_u16_u32_u64() {
             let context = create_context();
 
             let s_u8 = Type::get_uint8(&context).size(&context);
-
-            assert_eq!(s_u8.in_bytes(), 1);
-        }
-
-        #[test]
-        /// `u16`, `u32`, and `u64,`, when not embedded in aggregates, have a size of 8 bytes/1 word.
-        fn unsigned_u16_u32_u64() {
-            let context = create_context();
-
             let s_u16 = Type::get_uint16(&context).size(&context);
             let s_u32 = Type::get_uint32(&context).size(&context);
             let s_u64 = Type::get_uint64(&context).size(&context);
 
-            assert_eq!(s_u16.in_bytes(), 8);
-            assert_eq!(s_u16.in_bytes(), s_u16.in_bytes_aligned());
+            assert_eq!(s_u8.in_bytes(), 1);
+            assert_eq!(s_u8.in_bytes_aligned(), 8);
 
-            assert_eq!(s_u32.in_bytes(), 8);
-            assert_eq!(s_u32.in_bytes(), s_u32.in_bytes_aligned());
+            assert_eq!(s_u16.in_bytes(), 2);
+            assert_eq!(s_u16.in_bytes_aligned(), 8);
+
+            assert_eq!(s_u32.in_bytes(), 4);
+            assert_eq!(s_u32.in_bytes_aligned(), 8);
 
             assert_eq!(s_u64.in_bytes(), 8);
-            assert_eq!(s_u64.in_bytes(), s_u64.in_bytes_aligned());
+            assert_eq!(s_u64.in_bytes_aligned(), 8);
         }
 
         #[test]

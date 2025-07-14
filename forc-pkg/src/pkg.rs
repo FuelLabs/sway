@@ -1947,12 +1947,12 @@ fn report_assembly_information(
     // https://github.com/FuelLabs/sway/blob/afd6a6709e7cb11c676059a5004012cc466e653b/sway-core/src/asm_generation/fuel/data_section.rs#L147
     fn calculate_entry_size(entry: &sway_core::asm_generation::Entry) -> u64 {
         match &entry.value {
-            sway_core::asm_generation::Datum::Byte(value) => std::mem::size_of_val(value) as u64,
+            sway_core::asm_generation::Datum::U8(value) => std::mem::size_of_val(value) as u64,
+            sway_core::asm_generation::Datum::U16(value) => std::mem::size_of_val(value) as u64,
+            sway_core::asm_generation::Datum::U32(value) => std::mem::size_of_val(value) as u64,
+            sway_core::asm_generation::Datum::U64(value) => std::mem::size_of_val(value) as u64,
 
-            sway_core::asm_generation::Datum::Word(value) => std::mem::size_of_val(value) as u64,
-
-            sway_core::asm_generation::Datum::ByteArray(bytes)
-            | sway_core::asm_generation::Datum::Slice(bytes) => {
+            sway_core::asm_generation::Datum::ByRef(bytes) => {
                 if bytes.len() % 8 == 0 {
                     bytes.len() as u64
                 } else {
