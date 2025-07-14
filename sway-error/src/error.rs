@@ -3123,7 +3123,7 @@ impl ToDiagnostic for CompileError {
                 },
             },
             ABIDuplicateName { span, other_span: other, is_attribute } => Diagnostic {
-                reason: Some(Reason::new(code(1), "Duplicated name found for renamed ABI type.".into())),
+                reason: Some(Reason::new(code(1), "Duplicated name found for renamed ABI type".into())),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
@@ -3133,7 +3133,7 @@ impl ToDiagnostic for CompileError {
                     Hint::help(
                         source_engine,
                         other.clone(),
-                        format!("This is the existing {} with conflicting name", if *is_attribute { "attribute" } else { "type" }),
+                        format!("This is the existing {} with conflicting name.", if *is_attribute { "attribute" } else { "type" }),
                     )
                 ],
                 help: vec![],
@@ -3146,7 +3146,7 @@ impl ToDiagnostic for CompileError {
                     String::new()
                 ),
                 hints: vec![],
-                help: vec![format!("The name must be a valid Sway identifier{}", if name.is_empty() { " and cannot be empty" } else { "" })],
+                help: vec![format!("The name must be a valid Sway identifier{}.", if name.is_empty() { " and cannot be empty" } else { "" })],
             },
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.

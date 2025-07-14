@@ -25,7 +25,7 @@ compatibility at the contract ABI level.
 
 > **Note**: At the moment, only enum and struct types support the attribute.
 
-In the example that follows, we originally had `MyStruct` and `MyEnum` types, which we, later on, renamed to `MyStruct` and `MyEnum` in code. To keep the backward compatibility of the ABI, we annotate the types with the `#[abi_name]` attribute and give them the original names:
+In the example that follows, we originally had `MyStruct` and `MyEnum` types, which we, later on, renamed to `RenamedMyStruct` and `RenamedMyEnum` in code. To keep the backward compatibility of the ABI, we annotate the types with the `#[abi_name]` attribute and give them the original names:
 
 ```sway
 contract;

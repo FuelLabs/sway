@@ -29,8 +29,7 @@ pub enum AbiNameDiagnosticSpan {
 impl AbiNameDiagnosticSpan {
     pub fn span(self) -> Span {
         match self {
-            Self::Attribute(span) => span,
-            Self::Type(span) => span,
+            Self::Attribute(span) | Self::Type(span) => span,
         }
     }
 }
@@ -56,7 +55,7 @@ impl AbiContext<'_> {
 
 pub fn extract_abi_name_inner(span: &Span) -> Option<Span> {
     let text = &span.src().text;
-    let full_attr: &str = &text[span.start()..span.end()];
+    let full_attr = span.as_str();
 
     // Find the "name" key.
     let name_key_pos = full_attr.find("name")?;
@@ -155,14 +154,10 @@ impl TypeId {
         );
 
         if should_check_name {
-            let mut has_abi_name_attribute = false;
-            let (name, attribute_span) =
+            let (has_abi_name_attribute, name, attribute_span) =
                 match Self::get_abi_name_and_span_from_type_id(engines, resolved_type_id)? {
-                    Some(res) => {
-                        has_abi_name_attribute = true;
-                        res
-                    }
-                    None => (String::new(), Span::dummy()),
+                    Some(res) => (true, res.0, res.1),
+                    None => (false, String::new(), Span::dummy()),
                 };
 
             let attribute_name_span =
