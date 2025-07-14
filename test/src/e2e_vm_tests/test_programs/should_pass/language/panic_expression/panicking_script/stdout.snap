@@ -8,7 +8,7 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling script panicking_script (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script)
-    Finished release [optimized + fuel] target(s) [3.712 KB] in ???
+    Finished release [optimized + fuel] target(s) [3.68 KB] in ???
      Running 11 tests, filtered 0 tests
 
 tested -- panicking_script

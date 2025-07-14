@@ -753,32 +753,26 @@ mod tests {
         }
 
         #[test]
-        /// `u8`, when not embedded in aggregates, has a size of 1 byte.
-        fn unsigned_u8() {
+        /// Aligned size is always 8 bytes, while unaligned is the size of the type.
+        fn unsigned_u8_u16_u32_u64() {
             let context = create_context();
 
             let s_u8 = Type::get_uint8(&context).size(&context);
-
-            assert_eq!(s_u8.in_bytes(), 1);
-        }
-
-        #[test]
-        /// `u16`, `u32`, and `u64,`, when not embedded in aggregates, have a size of 8 bytes/1 word.
-        fn unsigned_u16_u32_u64() {
-            let context = create_context();
-
             let s_u16 = Type::get_uint16(&context).size(&context);
             let s_u32 = Type::get_uint32(&context).size(&context);
             let s_u64 = Type::get_uint64(&context).size(&context);
 
-            assert_eq!(s_u16.in_bytes(), 8);
-            assert_eq!(s_u16.in_bytes(), s_u16.in_bytes_aligned());
+            assert_eq!(s_u8.in_bytes(), 1);
+            assert_eq!(s_u8.in_bytes_aligned(), 8);
 
-            assert_eq!(s_u32.in_bytes(), 8);
-            assert_eq!(s_u32.in_bytes(), s_u32.in_bytes_aligned());
+            assert_eq!(s_u16.in_bytes(), 2);
+            assert_eq!(s_u16.in_bytes_aligned(), 8);
+
+            assert_eq!(s_u32.in_bytes(), 4);
+            assert_eq!(s_u32.in_bytes_aligned(), 8);
 
             assert_eq!(s_u64.in_bytes(), 8);
-            assert_eq!(s_u64.in_bytes(), s_u64.in_bytes_aligned());
+            assert_eq!(s_u64.in_bytes_aligned(), 8);
         }
 
         #[test]
