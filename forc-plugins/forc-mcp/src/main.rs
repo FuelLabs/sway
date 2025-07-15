@@ -9,16 +9,15 @@ use forc_mcp::{
 #[command(name = "forc-mcp")]
 #[command(about = "MCP server plugin for Forc")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
-#[command(subcommand_required = true)]
-#[command(arg_required_else_help = true)]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Default)]
 enum Commands {
     /// Run MCP server in STDIO mode
+    #[default]
     Stdio,
     /// Run MCP server in SSE mode
     Sse {
@@ -47,7 +46,7 @@ async fn main() -> Result<()> {
     let mcp_server = ForcMcpServer::new().register_module(ForcCallTools::new());
 
     let cli = Cli::parse();
-    match cli.command {
+    match cli.command.unwrap_or_default() {
         Commands::Stdio => run_stdio_server(mcp_server).await,
         Commands::Sse { port } => run_sse_server(mcp_server, Some(port)).await,
         Commands::Http { port } => run_http_server(mcp_server, Some(port)).await,
