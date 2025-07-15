@@ -55,12 +55,7 @@ pub trait McpToolModule: Send + Sync + 'static {
         _request: ReadResourceRequestParam,
         _ctx: RequestContext<RoleServer>,
     ) -> Pin<Box<dyn Future<Output = Result<ReadResourceResult, McpError>> + Send>> {
-        Box::pin(async move {
-            Err(McpError::resource_not_found(
-                "Resource not found",
-                None,
-            ))
-        })
+        Box::pin(async move { Err(McpError::resource_not_found("Resource not found", None)) })
     }
 
     /// Get server info for this module
@@ -187,10 +182,7 @@ impl rmcp::ServerHandler for ForcMcpServer {
                 }
             }
         }
-        Err(McpError::resource_not_found(
-            "Resource not found",
-            None,
-        ))
+        Err(McpError::resource_not_found("Resource not found", None))
     }
 }
 
