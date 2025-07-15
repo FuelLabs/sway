@@ -115,15 +115,15 @@ The forc-call module provides comprehensive documentation resources accessible t
 
 - **Type Encoding Reference** (`forc-call://type-encoding-reference`)
   - Complete guide for encoding Sway types for function arguments
-  - See: [type_encoding_reference.md](../forc_call/type_encoding_reference.md)
+  - See: [type_encoding_reference.md](./type_encoding_reference.md)
   
 - **Common Commands** (`forc-call://examples/common-commands`)
   - Examples of typical usage patterns and tool invocations
-  - See: [common_commands.md](../forc_call/common_commands.md)
+  - See: [common_commands.md](./common_commands.md)
   
 - **Contract Samples** (`forc-call://examples/contract-samples`)
   - Real contract examples with MCP tool commands
-  - See: [contract_samples.md](../forc_call/contract_samples.md)
+  - See: [contract_samples.md](./contract_samples.md)
 
 ### Accessing resources
 

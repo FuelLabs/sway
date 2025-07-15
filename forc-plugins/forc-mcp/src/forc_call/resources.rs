@@ -7,20 +7,20 @@ pub const CONTRACT_SAMPLES_URI: &str = "forc-call://examples/contract-samples";
 
 /// Get the type encoding reference content
 pub fn get_type_encoding_reference() -> &'static str {
-    include_str!("../../../../docs/book/src/forc/plugins/forc_mcp/tools/forc_call/type_encoding_reference.md")
+    include_str!("../../../../docs/book/src/forc/plugins/forc_mcp/forc_call_tool/type_encoding_reference.md")
 }
 
 /// Get the common commands content
 pub fn get_common_commands() -> &'static str {
     include_str!(
-        "../../../../docs/book/src/forc/plugins/forc_mcp/tools/forc_call/common_commands.md"
+        "../../../../docs/book/src/forc/plugins/forc_mcp/forc_call_tool/common_commands.md"
     )
 }
 
 /// Get the contract samples content
 pub fn get_contract_samples() -> &'static str {
     include_str!(
-        "../../../../docs/book/src/forc/plugins/forc_mcp/tools/forc_call/contract_samples.md"
+        "../../../../docs/book/src/forc/plugins/forc_mcp/forc_call_tool/contract_samples.md"
     )
 }
 
