@@ -255,3 +255,12 @@ impl
 Impl
 mcp
 MCP
+extensibility
+Extensibility
+integrations
+streamable
+Streamable
+schemas
+CallResponse
+md
+URIs
