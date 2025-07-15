@@ -49,6 +49,7 @@ jobs:
       - cargo-run-e2e-test-release
       - cargo-test-forc-debug
       - cargo-test-forc-client
+      - cargo-test-forc-mcp
       - cargo-test-forc-node
       - notify-slack-on-failure
     runs-on: ubuntu-latest
@@ -667,6 +668,27 @@ jobs:
           mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Run tests
         run: cargo test --locked --release -p forc-client -- --test-threads 1
+  cargo-test-forc-mcp:
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    needs: get-fuel-core-version
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-provider: "buildjet"
+      - name: Install fuel-core for tests
+        run: |
+          curl -sSLf https://github.com/FuelLabs/fuel-core/releases/download/v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}/fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu.tar.gz -L -o fuel-core.tar.gz
+          tar -xvf fuel-core.tar.gz
+          chmod +x fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core
+          mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
+      - name: Run tests
+        run: cargo test --locked --release -p forc-mcp -- --test-threads 1
   cargo-test-forc-node:
     runs-on: buildjet-4vcpu-ubuntu-2204
     needs: get-fuel-core-version
@@ -729,7 +751,7 @@ jobs:
         with:
           cache-provider: "buildjet"
       - name: Run tests
-        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-client --exclude forc --exclude forc-node
+        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-client --exclude forc-mcp --exclude forc --exclude forc-node
   cargo-unused-deps-check:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
