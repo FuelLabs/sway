@@ -12,12 +12,16 @@ pub fn get_type_encoding_reference() -> &'static str {
 
 /// Get the common commands content
 pub fn get_common_commands() -> &'static str {
-    include_str!("../../../../docs/book/src/forc/plugins/forc_mcp/tools/forc_call/common_commands.md")
+    include_str!(
+        "../../../../docs/book/src/forc/plugins/forc_mcp/tools/forc_call/common_commands.md"
+    )
 }
 
 /// Get the contract samples content
 pub fn get_contract_samples() -> &'static str {
-    include_str!("../../../../docs/book/src/forc/plugins/forc_mcp/tools/forc_call/contract_samples.md")
+    include_str!(
+        "../../../../docs/book/src/forc/plugins/forc_mcp/tools/forc_call/contract_samples.md"
+    )
 }
 
 /// Handle resource read requests
