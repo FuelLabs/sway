@@ -37,10 +37,13 @@ use std::{collections::HashMap, str::FromStr};
 #[serde(rename_all = "snake_case")]
 pub struct CallResponse {
     pub tx_hash: String,
+    pub total_gas: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub receipts: Vec<Receipt>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub trace_events: Vec<trace::TraceEvent>,
     #[serde(rename = "script", skip_serializing_if = "Option::is_none")]
     pub script_json: Option<serde_json::Value>,
 }

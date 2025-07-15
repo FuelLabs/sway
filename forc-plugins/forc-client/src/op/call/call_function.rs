@@ -285,21 +285,21 @@ pub async fn call_function(
         }
     };
 
+    // Generate execution trace events by stepping through VM interpreter
+    let trace_events = interpret_execution_trace(
+        wallet.provider(),
+        &mode,
+        &consensus_params,
+        &script,
+        tx_execution.result.receipts(),
+        storage_reads,
+        &abi_map,
+    )
+    .await
+    .map_err(|e| anyhow!("Failed to generate execution trace: {e}"))?;
+
     // display detailed call info if verbosity is set
     if cmd.verbosity > 0 {
-        // Generate execution trace events by stepping through VM interpreter
-        let trace_events = interpret_execution_trace(
-            wallet.provider(),
-            &mode,
-            &consensus_params,
-            &script,
-            tx_execution.result.receipts(),
-            storage_reads,
-            &abi_map,
-        )
-        .await
-        .map_err(|e| anyhow!("Failed to generate execution trace: {e}"))?;
-
         // Convert labels from Vec to HashMap
         let labels: HashMap<ContractId, String> = cmd
             .label
@@ -329,8 +329,10 @@ pub async fn call_function(
     Ok(CallResponse {
         tx_hash: tx_execution.id.to_string(),
         result: Some(result),
+        total_gas: *tx_execution.result.total_gas(),
         receipts: tx_execution.result.receipts().to_vec(),
         script_json: Some(script_json),
+        trace_events,
     })
 }
 
