@@ -1,6 +1,7 @@
 # forc mcp
 
-`forc-mcp` is a modular Model Context Protocol (MCP) server that provides AI assistants and tools with programmatic access to the Sway/Fuel ecosystem. It exposes functionality from various Forc tools through a standardized MCP interface, enabling seamless integration with AI agents like Claude.
+`forc-mcp` is a modular Model Context Protocol (MCP) server that provides AI assistants and tools with programmatic access to the Sway/Fuel ecosystem.  
+It exposes functionality from various Forc tools through a standardized MCP interface, enabling seamless integration with AI agents like Claude.
 
 ## Overview
 
@@ -128,119 +129,6 @@ For Cursor IDE integration, add the following configuration to your MCP settings
   }
 }
 ```
-
-## Available Tools
-
-### forc-call Module Tools
-
-The forc-call module exposes four main tools for blockchain interaction:
-
-#### call_contract
-
-Call functions on deployed Fuel contracts with full support for complex types and execution modes.
-
-**Parameters:**
-- `contract_id` (string) - Contract address to call
-- `abi` (string) - Contract ABI (JSON string or URL)
-- `function` (string) - Function name to call
-- `function_args` (array) - Function arguments as encoded strings
-- `mode` (string) - Execution mode: `dry-run` (default), `simulate`, or `live`
-- `node_url` (string, optional) - Custom node URL
-- `signing_key` (string, optional) - Private key for live transactions
-- `amount` (number, optional) - Asset amount for payable functions
-- `asset_id` (string, optional) - Asset ID for transfers (default: native asset)
-- `gas_price` (number, optional) - Gas price setting
-- `verbosity` (number, optional) - Output verbosity level (0-3)
-
-**Example:**
-```json
-{
-  "tool": "call_contract",
-  "parameters": {
-    "contract_id": "0x1234567890abcdef...",
-    "abi": "{\"functions\":[{\"name\":\"get_balance\",\"outputs\":[{\"type\":\"u64\"}]}]}",
-    "function": "get_balance",
-    "mode": "dry-run"
-  }
-}
-```
-
-#### list_contract_functions
-
-List all callable functions in a contract's ABI with example usage commands.
-
-**Parameters:**
-- `contract_id` (string) - Contract address
-- `abi` (string) - Contract ABI (JSON string or URL)
-
-**Example:**
-```json
-{
-  "tool": "list_contract_functions", 
-  "parameters": {
-    "contract_id": "0x1234567890abcdef...",
-    "abi": "https://api.fuel.network/contract-abi.json"
-  }
-}
-```
-
-#### transfer_assets
-
-Transfer assets directly to addresses or contracts (live mode only).
-
-**Parameters:**
-- `signing_key` (string) - Private key for transaction signing
-- `recipient` (string) - Recipient address or contract ID
-- `amount` (number) - Transfer amount
-- `asset_id` (string, optional) - Asset ID (default: native asset)
-- `node_url` (string, optional) - Custom node URL
-- `verbosity` (number, optional) - Output verbosity level
-
-**Example:**
-```json
-{
-  "tool": "transfer_assets",
-  "parameters": {
-    "recipient": "0x5678901234abcdef...",
-    "amount": 1000,
-    "signing_key": "your-private-key"
-  }
-}
-```
-
-#### get_execution_trace
-
-Generate human-readable execution traces from contract call results.
-
-**Parameters:**
-- `trace_events` (array) - Trace events from CallResponse
-- `total_gas` (number) - Total gas used
-- `labels` (object, optional) - Contract address to name mappings
-
-**Example:**
-```json
-{
-  "tool": "get_execution_trace",
-  "parameters": {
-    "trace_events": [/* events from call result */],
-    "total_gas": 50000,
-    "labels": {
-      "0x1234...": "MainContract",
-      "0x5678...": "TokenContract"
-    }
-  }
-}
-```
-
-#### forc-call Module Resources
-
-The forc-call module provides comprehensive documentation resources:
-
-- **Type Encoding Reference** - Complete guide for encoding Sway types
-- **Common Commands** - Examples of typical usage patterns
-- **Contract Samples** - Real contract examples with MCP tool commands
-
-Access these resources through the MCP resources API or the `list_resources` and `read_resource` tools.
 
 ## Extensibility
 
