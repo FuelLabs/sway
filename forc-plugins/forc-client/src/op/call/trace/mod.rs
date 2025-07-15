@@ -97,7 +97,10 @@ pub async fn interpret_execution_trace(
     );
     vm.set_single_stepping(true);
 
-    let mut t = *vm.transact(script_tx).expect("panicked").state();
+    let mut t = *vm
+        .transact(script_tx)
+        .map_err(|e| anyhow!("Failed to transact in trace interpreter: {e:?}"))?
+        .state();
     loop {
         tracer.process_vm_state(&vm)?;
         match t {
@@ -105,7 +108,9 @@ pub async fn interpret_execution_trace(
                 break
             }
             ProgramState::RunProgram(_) | ProgramState::VerifyPredicate(_) => {
-                t = vm.resume().expect("panicked");
+                t = vm
+                    .resume()
+                    .map_err(|e| anyhow!("Failed to resume VM in trace interpreter: {e:?}"))?;
             }
         }
     }

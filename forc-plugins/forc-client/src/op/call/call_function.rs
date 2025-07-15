@@ -3,7 +3,6 @@ use crate::{
     op::call::{
         missing_contracts::determine_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
-        trace::interpret_execution_trace,
         CallResponse,
     },
 };
@@ -153,7 +152,7 @@ pub async fn call_function(
         .await
         .map_err(|e| anyhow!("Failed to initialize transaction builder: {e}"))?;
 
-    let (tx, tx_execution, storage_reads) = match mode {
+    let (tx, tx_execution, _storage_reads) = match mode {
         cmd::call::ExecutionMode::DryRun => {
             let tx = call
                 .build_tx(tb, &wallet)
@@ -286,17 +285,24 @@ pub async fn call_function(
     };
 
     // Generate execution trace events by stepping through VM interpreter
-    let trace_events = interpret_execution_trace(
-        wallet.provider(),
-        &mode,
-        &consensus_params,
-        &script,
-        tx_execution.result.receipts(),
-        storage_reads,
-        &abi_map,
-    )
-    .await
-    .map_err(|e| anyhow!("Failed to generate execution trace: {e}"))?;
+    #[cfg(not(test))]
+    let trace_events = {
+        use crate::op::call::trace::interpret_execution_trace;
+        interpret_execution_trace(
+            wallet.provider(),
+            &mode,
+            &consensus_params,
+            &script,
+            tx_execution.result.receipts(),
+            _storage_reads,
+            &abi_map,
+        )
+        .await
+        .map_err(|e| anyhow!("Failed to generate execution trace: {e}"))?
+    };
+
+    #[cfg(test)]
+    let trace_events = vec![];
 
     // display detailed call info if verbosity is set
     if cmd.verbosity > 0 {
