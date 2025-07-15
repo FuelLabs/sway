@@ -68,6 +68,67 @@ Endpoints:
 
 Most suitable for distributed systems and web applications.
 
+## IDE and CLI Integration
+
+### Claude Code CLI
+
+To integrate `forc-mcp` with Claude Code CLI, add the MCP server using one of these transport methods:
+
+```bash
+# STDIO transport (requires building forc-mcp first)
+claude mcp add --transport stdio forc-mcp-stdio ./target/debug/forc-mcp stdio
+
+# HTTP transport
+claude mcp add --transport http forc-mcp-http http://localhost:3001/mcp
+
+# Server-Sent Events transport
+claude mcp add --transport sse forc-mcp-sse http://localhost:3001/sse
+```
+
+### Cursor IDE
+
+For Cursor IDE integration, add the following configuration to your MCP settings file:
+
+#### STDIO Transport
+
+```json
+{
+  "mcpServers": {
+    "forc-mcp": {
+      "command": "./target/debug/forc-mcp",
+      "args": ["stdio"],
+      "transport": "stdio"
+    }
+  }
+}
+```
+
+#### HTTP Transport (streamable HTTP)
+
+```json
+{
+  "mcpServers": {
+    "forc-mcp-http": {
+      "url": "http://localhost:3001/mcp",
+      "transport": "http"
+    }
+  }
+}
+```
+
+#### SSE Transport
+
+```json
+{
+  "mcpServers": {
+    "forc-mcp-sse": {
+      "url": "http://localhost:3001/sse",
+      "transport": "sse"
+    }
+  }
+}
+```
+
 ## Available Tools
 
 ### forc-call Module Tools
