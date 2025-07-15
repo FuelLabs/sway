@@ -341,10 +341,7 @@ impl BuildConfig {
     }
 
     pub fn with_backtrace(self, backtrace: Backtrace) -> Self {
-        Self {
-            backtrace,
-            ..self
-        }
+        Self { backtrace, ..self }
     }
 
     /// Whether or not to include test functions in parsing, type-checking and codegen.
