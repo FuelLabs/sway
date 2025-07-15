@@ -844,3 +844,59 @@ pub async fn read_resource(
         )),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{COMMON_COMMANDS_URI, CONTRACT_SAMPLES_URI, TYPE_ENCODING_REFERENCE_URI};
+    use crate::tests::ForcMcpClient;
+    use anyhow::Result;
+
+    #[tokio::test]
+    async fn test_forc_call_resources() -> Result<()> {
+        let mut client = ForcMcpClient::http_stream_client().await?;
+
+        // List resources
+        let resources = client.list_resources().await?;
+        assert_eq!(resources.len(), 3);
+        assert!(resources.contains(&TYPE_ENCODING_REFERENCE_URI.to_string()));
+        assert!(resources.contains(&COMMON_COMMANDS_URI.to_string()));
+        assert!(resources.contains(&CONTRACT_SAMPLES_URI.to_string()));
+
+        // Read type encoding reference
+        let type_ref = client.read_resource(TYPE_ENCODING_REFERENCE_URI).await?;
+        assert!(type_ref.contains("MCP Tool Type Encoding Reference"));
+        assert!(type_ref.contains("bool"));
+        assert!(type_ref.contains("`u8`, `u16`, `u32`, `u64`"));
+        assert!(type_ref.contains("Structs are encoded as tuples"));
+        assert!(type_ref.contains("call_contract"));
+
+        // Read common commands
+        let commands = client.read_resource(COMMON_COMMANDS_URI).await?;
+        assert!(commands.contains("Common MCP Tool Usage"));
+        assert!(commands.contains("\"mode\": \"dry-run\""));
+        assert!(commands.contains("\"mode\": \"simulate\""));
+        assert!(commands.contains("\"mode\": \"live\""));
+        assert!(commands.contains("\"tool\": \"call_contract\""));
+
+        // Read contract samples
+        let samples = client.read_resource(CONTRACT_SAMPLES_URI).await?;
+        assert!(samples.contains("Contract Examples with MCP Tool Usage"));
+        assert!(samples.contains("Simple Counter Contract"));
+        assert!(samples.contains("Token Contract"));
+        assert!(samples.contains("Complex Types Contract"));
+        assert!(samples.contains("MCP Tool Commands"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_resource_not_found() -> Result<()> {
+        let mut client = ForcMcpClient::http_stream_client().await?;
+
+        // Try to read non-existent resource
+        let result = client.read_resource("forc-call://non-existent").await;
+        assert!(result.is_err());
+
+        Ok(())
+    }
+}
