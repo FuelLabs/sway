@@ -51,6 +51,7 @@ forc-mcp sse --port 3001
 ```
 
 Endpoints:
+
 - `/sse` - Event stream endpoint
 - `/message` - Message sending endpoint
 
@@ -65,6 +66,7 @@ forc-mcp http --port 3001
 ```
 
 Endpoints:
+
 - `/mcp` - Main MCP protocol endpoint
 
 Most suitable for distributed systems and web applications.

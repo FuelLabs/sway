@@ -19,6 +19,7 @@ When calling contract functions through the MCP `call_contract` tool, function a
 ## Detailed Type Examples
 
 ### Basic Types
+
 ```json
 // Boolean
 "function_args": ["true"]
@@ -35,6 +36,7 @@ When calling contract functions through the MCP `call_contract` tool, function a
 ```
 
 ### String Types
+
 ```json
 // Variable-length strings
 "function_args": ["\"hello world\""]
@@ -44,6 +46,7 @@ When calling contract functions through the MCP `call_contract` tool, function a
 ```
 
 ### Collection Types
+
 ```json
 // Fixed-size arrays
 "function_args": ["[1, 2, 3, 4, 5]"]
@@ -58,7 +61,9 @@ When calling contract functions through the MCP `call_contract` tool, function a
 ### Complex Types
 
 #### Structs
+
 Structs are encoded as tuples of their fields in declaration order:
+
 ```sway
 struct Point { x: u64, y: u64 }
 struct User { name: str[32], age: u64, active: bool }
@@ -73,7 +78,9 @@ struct User { name: str[32], age: u64, active: bool }
 ```
 
 #### Enums
+
 Enums use variant name (case-sensitive) or index with value:
+
 ```sway
 enum Status { 
     Inactive,
@@ -95,6 +102,7 @@ enum Status {
 ```
 
 #### Option Type
+
 ```json
 // None variant
 "function_args": ["(None: ())"]
@@ -104,6 +112,7 @@ enum Status {
 ```
 
 ### Advanced Types
+
 ```json
 // Bytes (hex-encoded)
 "function_args": ["0x48656c6c6f"]
@@ -142,6 +151,7 @@ When using the `call_contract` MCP tool, provide these encoded values in the `fu
 ```
 
 ### Complex Example
+
 ```json
 {
   "tool": "call_contract", 
@@ -161,7 +171,7 @@ When using the `call_contract` MCP tool, provide these encoded values in the `fu
 ## Important Notes
 
 - **Strings must be quoted**: Always use double quotes around string values: `"text"`
-- **Hex values flexible**: The `0x` prefix is optional for most hex values 
+- **Hex values flexible**: The `0x` prefix is optional for most hex values
 - **Nested structures**: Follow the same encoding rules recursively for nested types
 - **Struct encoding**: Use braces `{}` or parentheses `()` for structs - fields are encoded in declaration order without names
 - **Enum encoding**: Use variant name (case-sensitive) or index with value: `(VariantName: value)`

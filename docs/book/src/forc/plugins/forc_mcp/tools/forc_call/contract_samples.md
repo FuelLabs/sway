@@ -3,6 +3,7 @@
 ## 1. Simple Counter Contract
 
 ### Contract Code
+
 ```sway
 contract;
 
@@ -40,6 +41,7 @@ impl Counter for Contract {
 ```
 
 ### MCP Tool Commands
+
 ```json
 // Increment the counter
 {
@@ -79,7 +81,8 @@ impl Counter for Contract {
 
 ## 2. Token Contract
 
-### Contract Code
+### Token Contract Code
+
 ```sway
 contract;
 
@@ -127,7 +130,8 @@ impl Token for Contract {
 }
 ```
 
-### MCP Tool Commands
+### Token MCP Tool Commands
+
 ```json
 // Mint tokens (Identity can be Address or ContractId)
 {
@@ -169,7 +173,8 @@ impl Token for Contract {
 
 ## 3. Complex Types Contract
 
-### Contract Code
+### Complex Types Contract Code
+
 ```sway
 contract;
 
@@ -206,7 +211,8 @@ impl ComplexTypes for Contract {
 }
 ```
 
-### MCP Tool Commands
+### Complex Types MCP Tool Commands
+
 ```json
 // Create user (struct as tuple)
 {
@@ -264,7 +270,8 @@ impl ComplexTypes for Contract {
 
 ## 4. Multi-Contract Interaction
 
-### Contract Code
+### Exchange Contract Code
+
 ```sway
 contract;
 
@@ -292,6 +299,7 @@ impl Exchange for Contract {
 ```
 
 ### MCP Tool Commands with Tracing
+
 ```json
 // Swap tokens and get detailed trace
 {
@@ -329,7 +337,8 @@ impl Exchange for Contract {
 
 ## 5. Payable Functions
 
-### Contract Code
+### Vault Contract Code
+
 ```sway
 contract;
 
@@ -370,7 +379,8 @@ impl Vault for Contract {
 }
 ```
 
-### MCP Tool Commands
+### Vault MCP Tool Commands
+
 ```json
 // Deposit native asset
 {

@@ -3,6 +3,7 @@
 ## Basic Function Calls
 
 ### Call a simple function
+
 ```json
 {
   "tool": "call_contract",
@@ -15,6 +16,7 @@
 ```
 
 ### Call with parameters
+
 ```json
 {
   "tool": "call_contract", 
@@ -28,6 +30,7 @@
 ```
 
 ### Call with complex types
+
 ```json
 // Tuple parameter (inline ABI)
 {
@@ -77,6 +80,7 @@
 ## Execution Modes
 
 ### Dry-run (default)
+
 ```json
 {
   "tool": "call_contract",
@@ -90,6 +94,7 @@
 ```
 
 ### Simulate (estimates gas)
+
 ```json
 {
   "tool": "call_contract", 
@@ -103,6 +108,7 @@
 ```
 
 ### Live (state changes)
+
 ```json
 {
   "tool": "call_contract",
@@ -119,6 +125,7 @@
 ## Payable Functions
 
 ### Transfer native asset
+
 ```json
 {
   "tool": "call_contract",
@@ -133,6 +140,7 @@
 ```
 
 ### Transfer custom asset
+
 ```json
 {
   "tool": "call_contract",
@@ -150,6 +158,7 @@
 ## Direct Transfers
 
 ### Transfer to address/contract
+
 ```json
 {
   "tool": "transfer_assets",
@@ -164,6 +173,7 @@
 ## Network Selection
 
 ### Local node
+
 ```json
 {
   "tool": "call_contract",
@@ -177,6 +187,7 @@
 ```
 
 ### Custom node URL
+
 ```json
 {
   "tool": "call_contract", 
@@ -192,6 +203,7 @@
 ## List Functions
 
 ### Show all callable functions
+
 ```json
 {
   "tool": "list_contract_functions",
@@ -205,6 +217,7 @@
 ## Using Different ABI Sources
 
 ### Remote URL
+
 ```json
 {
   "tool": "call_contract",
@@ -217,6 +230,7 @@
 ```
 
 ### Inline JSON (recommended for MCP)
+
 ```json
 {
   "tool": "call_contract",
@@ -229,6 +243,7 @@
 ```
 
 ### GitHub raw URL
+
 ```json
 {
   "tool": "call_contract",
@@ -243,6 +258,7 @@
 ## Execution Trace
 
 ### Get formatted execution trace
+
 ```json
 {
   "tool": "get_execution_trace",
