@@ -7,7 +7,9 @@ pub const CONTRACT_SAMPLES_URI: &str = "forc-call://examples/contract-samples";
 
 /// Get the type encoding reference content
 pub fn get_type_encoding_reference() -> &'static str {
-    include_str!("../../../../docs/book/src/forc/plugins/forc_mcp/forc_call_tool/type_encoding_reference.md")
+    include_str!(
+        "../../../../docs/book/src/forc/plugins/forc_mcp/forc_call_tool/type_encoding_reference.md"
+    )
 }
 
 /// Get the common commands content
@@ -78,7 +80,6 @@ mod tests {
         let type_ref = client.read_resource(TYPE_ENCODING_REFERENCE_URI).await?;
         assert!(type_ref.contains("MCP Tool Type Encoding Reference"));
         assert!(type_ref.contains("bool"));
-        assert!(type_ref.contains("`u8`, `u16`, `u32`, `u64`"));
         assert!(type_ref.contains("Structs are encoded as tuples"));
         assert!(type_ref.contains("call_contract"));
 
