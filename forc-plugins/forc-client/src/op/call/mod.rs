@@ -1,8 +1,8 @@
 mod call_function;
-mod list_functions;
+pub mod list_functions;
 mod missing_contracts;
 mod parser;
-mod trace;
+pub mod trace;
 mod transfer;
 
 use crate::cmd::call::AbiSource;
@@ -197,7 +197,7 @@ async fn get_wallet(
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Abi {
+pub struct Abi {
     source: AbiSource,
     program: ProgramABI,
     unified: UnifiedProgramABI,
@@ -319,7 +319,7 @@ pub(crate) fn display_detailed_call_info(
 
 /// Create a HashMap of contract ABIs from a main ABI and optional additional contract ABIs
 /// This is a reusable function for both call_function and list_functions operations
-pub(crate) async fn create_abi_map(
+pub async fn create_abi_map(
     main_contract_id: ContractId,
     main_abi: &AbiSource,
     additional_contract_abis: Option<Vec<(ContractId, AbiSource)>>,

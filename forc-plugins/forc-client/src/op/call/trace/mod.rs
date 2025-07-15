@@ -123,7 +123,7 @@ pub async fn interpret_execution_trace(
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum TraceEvent {
     Call {
         /// Which receipt this call corresponds to.
@@ -244,7 +244,7 @@ pub enum TraceEvent {
 /// Format transaction trace events into a hierarchical trace visualization.
 /// This function processes trace events sequentially and displays them with proper indentation
 /// based on call depth, similar to the original format_transaction_trace function.
-pub(crate) fn display_transaction_trace<W: std::io::Write>(
+pub fn display_transaction_trace<W: std::io::Write>(
     total_gas: u64,
     trace_events: &[TraceEvent],
     labels: &HashMap<ContractId, String>,
