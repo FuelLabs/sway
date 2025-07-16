@@ -13,7 +13,7 @@ use super::{
     data_section::{DataSection, Entry},
 };
 
-use fuel_vm::{fuel_asm::Imm12, prelude::Instruction};
+use fuel_vm::prelude::Instruction;
 use indexmap::{IndexMap, IndexSet};
 use rustc_hash::FxHashMap;
 use sway_types::span::Span;
