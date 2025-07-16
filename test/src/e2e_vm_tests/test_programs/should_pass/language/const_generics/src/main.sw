@@ -79,6 +79,16 @@ impl<T, const N1: u64, const N2: u64> TwoConstGenerics<T, N1, N2> {
     }
 }
 
+impl<T, const N2: u64, const N1: u64> TwoConstGenerics<T, N2, N1> {
+    fn return_n1_2(self) -> u64 {
+        N1
+    }
+
+    fn return_n2_2(self) -> u64 {
+        N2
+    }
+}
+
 #[inline(never)]
 fn return_n<const NNN: u64>() -> u64 {
     NNN
@@ -117,7 +127,9 @@ fn main(a: [u64; 2]) {
     //Check enum with more than one const generics
     let e: TwoConstGenerics<u8, 1, 2> = TwoConstGenerics::<u8, 1, 2>::A([1u8]);
     assert(e.return_n1() == 1);
+    assert(e.return_n1_2() == 2);
     assert(e.return_n2() == 2);
+    // TODO This should work: assert(e.return_n2_2() == 1)
     assert(e.return_len() == 1);
     let e: TwoConstGenerics<u8, 1, 2> = TwoConstGenerics::<u8, 1, 2>::B([1u8, 2]);
     assert(e.return_n1() == 1);
