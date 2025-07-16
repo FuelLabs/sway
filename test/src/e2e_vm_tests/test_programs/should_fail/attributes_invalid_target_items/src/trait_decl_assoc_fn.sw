@@ -2,6 +2,7 @@ library;
 
 trait T {
     #[inline(invalid)]
+    #[trace(invalid)]
     #[test(invalid)]
     #[payable(invalid)]
     //! Invalid inner comment.

@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::DeclId,
-    language::{ty::TyFunctionDecl, CallPath, Inline, Purity},
+    language::{ty::TyFunctionDecl, CallPath, Inline, Purity, Trace},
 };
 
 use sway_ir::{Context, MetadataIndex, Metadatum, Value};
@@ -21,7 +21,7 @@ pub(crate) struct MetadataManager {
     // We want to be able to store more then one `Span` per `MetadataIndex`.
     // E.g., storing the span of the function name, and the whole function declaration.
     // The spans differ then by the tag property of their `Metadatum::Struct`.
-    // We could cache all such spans in a single `HashMap` where the key would be (Span, tag).
+    // We could cache all such spans in a single `HashMap` where the key would be `(Span, tag)`.
     // But since the vast majority of stored spans will be tagged with the generic "span" tag,
     // and only a few elements will have additional spans in their `MetadataIndex`, it is
     // more efficient to provide two separate caches, one for the spans tagged with "span",
@@ -33,6 +33,7 @@ pub(crate) struct MetadataManager {
     md_file_loc_cache: HashMap<MetadataIndex, (Arc<PathBuf>, Source)>,
     md_purity_cache: HashMap<MetadataIndex, Purity>,
     md_inline_cache: HashMap<MetadataIndex, Inline>,
+    md_trace_cache: HashMap<MetadataIndex, Trace>,
     md_test_decl_index_cache: HashMap<MetadataIndex, DeclId<TyFunctionDecl>>,
 
     span_md_cache: HashMap<Span, MetadataIndex>,
@@ -40,6 +41,7 @@ pub(crate) struct MetadataManager {
     file_loc_md_cache: HashMap<SourceId, MetadataIndex>,
     purity_md_cache: HashMap<Purity, MetadataIndex>,
     inline_md_cache: HashMap<Inline, MetadataIndex>,
+    trace_md_cache: HashMap<Trace, MetadataIndex>,
     test_decl_index_md_cache: HashMap<DeclId<TyFunctionDecl>, MetadataIndex>,
 }
 
@@ -206,6 +208,36 @@ impl MetadataManager {
         })
     }
 
+    // TODO: (BACKTRACING) Remove `#[allow(dead_code)]` once the backtracing is
+    //       implemented in the IR compilation.
+    #[allow(dead_code)]
+    pub(crate) fn md_to_trace(
+        &mut self,
+        context: &Context,
+        md_idx: Option<MetadataIndex>,
+    ) -> Option<Trace> {
+        Self::for_each_md_idx(context, md_idx, |md_idx| {
+            self.md_trace_cache.get(&md_idx).copied().or_else(|| {
+                // Create a new trace and save it in the cache.
+                md_idx
+                    .get_content(context)
+                    .unwrap_struct("trace", 1)
+                    .and_then(|fields| fields[0].unwrap_string())
+                    .and_then(|trace_str| {
+                        let trace = match trace_str {
+                            "always" => Some(Trace::Always),
+                            "never" => Some(Trace::Never),
+                            _otherwise => None,
+                        }?;
+
+                        self.md_trace_cache.insert(md_idx, trace);
+
+                        Some(trace)
+                    })
+            })
+        })
+    }
+
     fn md_to_file_location(
         &mut self,
         context: &Context,
@@ -356,7 +388,6 @@ impl MetadataManager {
         })
     }
 
-    /// Inserts Inline information into metadata.
     pub(crate) fn inline_to_md(
         &mut self,
         context: &mut Context,
@@ -383,6 +414,29 @@ impl MetadataManager {
                     md_idx
                 }),
         )
+    }
+
+    pub(crate) fn trace_to_md(
+        &mut self,
+        context: &mut Context,
+        trace: Trace,
+    ) -> Option<MetadataIndex> {
+        Some(self.trace_md_cache.get(&trace).copied().unwrap_or_else(|| {
+            // Create new metadatum.
+            let field = match trace {
+                Trace::Always => "always",
+                Trace::Never => "never",
+            };
+            let md_idx = MetadataIndex::new_struct(
+                context,
+                "trace",
+                vec![Metadatum::String(field.to_owned())],
+            );
+
+            self.trace_md_cache.insert(trace, md_idx);
+
+            md_idx
+        }))
     }
 
     fn file_location_to_md(

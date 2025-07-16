@@ -151,6 +151,7 @@ pub(crate) enum AllocatedInstruction {
     JMPF(AllocatedRegister, VirtualImmediate18),
     JNZB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     JNZF(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    JAL(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     RET(AllocatedRegister),
 
     /* Memory Instructions */
@@ -355,6 +356,7 @@ impl AllocatedInstruction {
             JMPF(_r1, _i) => vec![],
             JNZB(_r1, _r2, _i) => vec![],
             JNZF(_r1, _r2, _i) => vec![],
+            JAL(r1, _r2, _i) => vec![r1],
             RET(_r1) => vec![],
 
             /* Memory Instructions */
@@ -477,7 +479,7 @@ impl fmt::Display for AllocatedInstruction {
             WQMM(a, b, c, d) => write!(fmtr, "wqmm {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
-            JMP(a) => write!(fmtr, "jmp {a}"),
+            JMP(a) => write!(fmtr, "jmp  {a}"),
             JI(a) => write!(fmtr, "ji   {a}"),
             JNE(a, b, c) => write!(fmtr, "jne  {a} {b} {c}"),
             JNEI(a, b, c) => write!(fmtr, "jnei {a} {b} {c}"),
@@ -486,6 +488,7 @@ impl fmt::Display for AllocatedInstruction {
             JMPF(a, b) => write!(fmtr, "jmpf {a} {b}"),
             JNZB(a, b, c) => write!(fmtr, "jnzb {a} {b} {c}"),
             JNZF(a, b, c) => write!(fmtr, "jnzf {a} {b} {c}"),
+            JAL(a, b, c) => write!(fmtr, "jal  {a} {b} {c}"),
             RET(a) => write!(fmtr, "ret  {a}"),
 
             /* Memory Instructions */
@@ -689,6 +692,7 @@ impl AllocatedOp {
             JMPF(a, b) => op::JMPF::new(a.to_reg_id(), b.value().into()).into(),
             JNZB(a, b, c) => op::JNZB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             JNZF(a, b, c) => op::JNZF::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            JAL(a, b, c) => op::JAL::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             RET(a) => op::RET::new(a.to_reg_id()).into(),
 
             /* Memory Instructions */

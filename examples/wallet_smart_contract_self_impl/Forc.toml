@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "wallet_smart_contract_self_impl"
+
+[dependencies]
+std = { path = "../../sway-lib-std" }

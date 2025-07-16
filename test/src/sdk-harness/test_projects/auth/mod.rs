@@ -585,7 +585,7 @@ async fn can_get_predicate_address() {
 
     // Setup predicate.
     let hex_predicate_address: &str =
-        "0xa9e0330870e3ed1f537684021c02ad88d8116e91daff9651413169a77b26e509";
+        "0xdb6749fef741db73ad960d0eb2c601601d8794aeaf3e356be78650b756d7c5ed";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_data = AuthPredicateEncoder::default()
@@ -665,7 +665,7 @@ async fn when_incorrect_predicate_address_passed() {
 
     // Setup predicate with incorrect address.
     let hex_predicate_address: &str =
-        "0xeddbd8cc2be5fb1d4ae24a5f789e61308750ff698865f311c9818d7eb76d4777";
+        "0xdb6749fef741db73ad960d0eb2c601601d8794aeaf3e356be78650b756d7c5ed";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_data = AuthPredicateEncoder::default()
@@ -710,7 +710,7 @@ async fn when_incorrect_predicate_address_passed() {
 async fn can_get_predicate_address_in_message() {
     // Setup predicate address.
     let hex_predicate_address: &str =
-        "0xa9e0330870e3ed1f537684021c02ad88d8116e91daff9651413169a77b26e509";
+        "0xdb6749fef741db73ad960d0eb2c601601d8794aeaf3e356be78650b756d7c5ed";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
 

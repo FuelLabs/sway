@@ -16,6 +16,7 @@ mod deprecated_attr;
 mod fallback_attr;
 mod error_type_attr;
 mod error_attr;
+mod trace_attr;
 
 /// Outer doc comment supports multiple.
 /// Outer doc comment supports multiple.
