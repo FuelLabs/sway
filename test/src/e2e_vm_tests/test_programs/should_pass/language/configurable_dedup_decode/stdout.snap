@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 162
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
 exit status: 0
@@ -324,7 +325,7 @@ cfei i16                      ; allocate stack space for globals
 addr $$arg0 data_Configurable_0; get pointer to configurable TUPLE default value
 addi $$arg1 $zero i8          ; get length of configurable TUPLE default value
 addi $$arg2 $ssp i0           ; get pointer to configurable TUPLE stack address
-jal  $$reta $pc i74           ; decode configurable TUPLE
+jal  $$reta $pc i75           ; decode configurable TUPLE
 addr $$arg0 data_Configurable_1; get pointer to configurable WRAPPED default value
 addi $$arg1 $zero i8          ; get length of configurable WRAPPED default value
 addi $$arg2 $ssp i8           ; get pointer to configurable WRAPPED stack address
@@ -429,4 +430,4 @@ data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
 data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
-    Finished release [optimized + fuel] target(s) [464 B] in ???
+    Finished release [optimized + fuel] target(s) [472 B] in ???
