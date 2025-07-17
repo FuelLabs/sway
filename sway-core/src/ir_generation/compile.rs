@@ -580,7 +580,8 @@ fn compile_fn(
     let type_engine = engines.te();
     let decl_engine = engines.de();
 
-    let inline_opt = ast_fn_decl.inline();
+    let inline = ast_fn_decl.inline();
+    let trace = ast_fn_decl.trace();
     let ty::TyFunctionDecl {
         name,
         body,
@@ -661,9 +662,13 @@ fn compile_fn(
         let test_decl_index_md_idx = md_mgr.test_decl_index_to_md(context, decl_index);
         metadata = md_combine(context, &metadata, &test_decl_index_md_idx);
     }
-    if let Some(inline) = inline_opt {
+    if let Some(inline) = inline {
         let inline_md_idx = md_mgr.inline_to_md(context, inline);
         metadata = md_combine(context, &metadata, &inline_md_idx);
+    }
+    if let Some(trace) = trace {
+        let trace_md_idx = md_mgr.trace_to_md(context, trace);
+        metadata = md_combine(context, &metadata, &trace_md_idx);
     }
 
     let func = Function::new(

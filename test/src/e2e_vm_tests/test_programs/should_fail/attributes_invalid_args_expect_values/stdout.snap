@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 125
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_expect_values
 exit status: 1
@@ -130,5 +129,15 @@ error: Attribute argument must have a value
   |
 ____
 
-  Aborting due to 10 errors.
+error: Attribute argument must not have a value
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_expect_values/src/trace_attr.sw:6:13
+  |
+...
+6 |     #[trace(always = false)]
+  |             ^^^^^^ "always" argument of the attribute "trace" must not have a value.
+  |                      ----- help: Remove the value: `= false`.
+  |
+____
+
+  Aborting due to 11 errors.
 error: Failed to compile attributes_invalid_args_expect_values

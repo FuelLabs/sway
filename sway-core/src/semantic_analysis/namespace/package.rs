@@ -37,9 +37,9 @@ impl Package {
         is_contract_package: bool,
     ) -> Self {
         // The root module must be public
-        let module = Module::new(package_name, Visibility::Public, span, &vec![]);
+        let root_module = Module::new(package_name, Visibility::Public, span, &vec![]);
         Self {
-            root_module: module,
+            root_module,
             program_id,
             is_contract_package,
             external_packages: Default::default(),

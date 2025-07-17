@@ -13,9 +13,9 @@ use super::{
     data_section::{DataSection, Entry},
 };
 
-use fuel_vm::fuel_asm::Imm12;
+use fuel_vm::prelude::Instruction;
 use indexmap::{IndexMap, IndexSet};
-use rustc_hash::FxHashSet;
+use rustc_hash::FxHashMap;
 use sway_types::span::Span;
 
 use std::collections::{BTreeSet, HashMap};
@@ -198,20 +198,17 @@ impl AllocatedAbstractInstructionSet {
     pub(crate) fn realize_labels(
         mut self,
         data_section: &mut DataSection,
-        far_jump_indices: &FxHashSet<usize>,
+        far_jump_sizes: &FxHashMap<usize, u64>,
     ) -> Result<(RealizedAbstractInstructionSet, LabeledBlocks), crate::CompileError> {
         let label_offsets = self.resolve_labels(data_section);
         let mut curr_offset = 0;
 
         let mut realized_ops = vec![];
         for (op_idx, op) in self.ops.iter().enumerate() {
-            let op_size = if far_jump_indices.contains(&op_idx) {
-                2
-            } else {
-                Self::instruction_size_not_far_jump(op, data_section)
-            };
-            let rel_offset =
-                |curr_offset, lab| label_offsets.get(lab).unwrap().offs.abs_diff(curr_offset);
+            let op_size = far_jump_sizes
+                .get(&op_idx)
+                .copied()
+                .unwrap_or_else(|| Self::instruction_size_not_far_jump(op, data_section));
             let AllocatedAbstractOp {
                 opcode,
                 comment,
@@ -226,51 +223,31 @@ impl AllocatedAbstractInstructionSet {
                 Either::Right(org_op) => match org_op {
                     ControlFlowOp::Jump { to, type_ } => {
                         let target_offset = label_offsets.get(&to).unwrap().offs;
-                        let ops = compile_jump(
-                            data_section,
-                            curr_offset,
-                            target_offset,
-                            match type_ {
-                                JumpType::NotZero(cond) => Some(cond),
-                                _ => None,
-                            },
-                            far_jump_indices.contains(&op_idx),
-                            comment,
-                            owning_span,
-                        );
+                        let ops = if matches!(type_, JumpType::Call) {
+                            compile_call(
+                                data_section,
+                                curr_offset,
+                                target_offset,
+                                far_jump_sizes.get(&op_idx).copied(),
+                                comment,
+                                owning_span,
+                            )
+                        } else {
+                            compile_jump(
+                                data_section,
+                                curr_offset,
+                                target_offset,
+                                match type_ {
+                                    JumpType::NotZero(cond) => Some(cond),
+                                    _ => None,
+                                },
+                                far_jump_sizes.contains_key(&op_idx),
+                                comment,
+                                owning_span,
+                            )
+                        };
                         debug_assert_eq!(ops.len() as u64, op_size);
                         realized_ops.extend(ops);
-                    }
-                    ControlFlowOp::SaveRetAddr(r1, ref to) => {
-                        let imm = VirtualImmediate12::new_unchecked(
-                            rel_offset(curr_offset, to),
-                            "Programs with more than 2^12 relative offset are unsupported right now",
-                        );
-                        assert!(curr_offset < label_offsets.get(to).unwrap().offs);
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::SUB(
-                                r1.clone(),
-                                AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
-                                AllocatedRegister::Constant(ConstantRegister::InstructionStart),
-                            ),
-                            owning_span: owning_span.clone(),
-                            comment: "get current instruction offset from instructions start ($is)"
-                                .into(),
-                        });
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::SRLI(
-                                r1.clone(),
-                                r1.clone(),
-                                VirtualImmediate12::new_unchecked(2, "two must fit in 12 bits"),
-                            ),
-                            owning_span: owning_span.clone(),
-                            comment: "get current instruction offset in 32-bit words".into(),
-                        });
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::ADDI(r1.clone(), r1, imm),
-                            owning_span,
-                            comment,
-                        });
                     }
                     ControlFlowOp::DataSectionOffsetPlaceholder => {
                         realized_ops.push(RealizedOp {
@@ -348,14 +325,12 @@ impl AllocatedAbstractInstructionSet {
             // This is a concrete op, size is fixed
             Either::Left(_) => 1,
 
-            // Worst case for jump is 2 opcodes
-            Either::Right(Jump { .. }) => 2,
-
-            // We use three instructions to save the absolute address for return.
-            // SUB r1 $pc $is
-            // SRLI r1 r1 2 / DIVI r1 r1 4
-            // ADDI $r1 $r1 offset
-            Either::Right(SaveRetAddr(..)) => 3,
+            // Worst case for jump is 2 opcodes, and 3 for calls
+            Either::Right(Jump { ref type_, .. }) => match type_ {
+                JumpType::Unconditional => 2,
+                JumpType::NotZero(_) => 2,
+                JumpType::Call => 3,
+            },
 
             Either::Right(Comment) => 0,
 
@@ -395,13 +370,7 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
-            Either::Left(AllocatedInstruction::AddrDataId(_, ref id)) => {
-                if data_section.data_id_to_offset(id) > usize::from(Imm12::MAX.to_u16()) {
-                    2
-                } else {
-                    1
-                }
-            }
+            Either::Left(AllocatedInstruction::AddrDataId(_, ref _data_id)) => 2,
 
             // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
             Either::Left(AllocatedInstruction::CFEI(ref op))
@@ -419,12 +388,6 @@ impl AllocatedAbstractInstructionSet {
 
             // Far jumps must be handled separately, as they require two instructions.
             Either::Right(Jump { .. }) => 1,
-
-            // We use three instructions to save the absolute address for return.
-            // SUB r1 $pc $is
-            // SRLI r1 r1 2 / DIVI r1 r1 4
-            // ADDI $r1 $r1 offset
-            Either::Right(SaveRetAddr(..)) => 3,
 
             Either::Right(Comment) => 0,
 
@@ -445,19 +408,19 @@ impl AllocatedAbstractInstructionSet {
 
     /// Go through all jumps and check if they could require a far jump in the worst case.
     /// For far jumps we have to reserve space for an extra opcode to load target address.
+    /// For far calls, we need to reserve two extra opcodes.
     /// Also, this will be mark self-jumps, as they require a noop to be inserted before them.
-    pub(crate) fn collect_far_jumps(&self) -> FxHashSet<usize> {
+    pub(crate) fn collect_far_jumps(&self) -> FxHashMap<usize, u64> {
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
         let mut cur_basic_block = None;
 
-        let mut far_jump_indices = FxHashSet::default();
+        let mut far_jump_sizes = FxHashMap::default();
 
         struct JumpInfo {
             to: Label,
             offset: u64,
             op_idx: usize,
-            limit: u64,
         }
 
         let mut jumps = Vec::new();
@@ -475,16 +438,11 @@ impl AllocatedAbstractInstructionSet {
                 cur_basic_block = Some((cur_lab, op_idx, cur_offset));
             }
 
-            if let Either::Right(ControlFlowOp::Jump { to, type_, .. }) = &op.opcode {
+            if let Either::Right(ControlFlowOp::Jump { to, .. }) = &op.opcode {
                 jumps.push(JumpInfo {
                     to: *to,
                     offset: cur_offset,
                     op_idx,
-                    limit: if matches!(type_, JumpType::NotZero(_)) {
-                        consts::TWELVE_BITS
-                    } else {
-                        consts::EIGHTEEN_BITS
-                    },
                 });
             }
 
@@ -498,30 +456,53 @@ impl AllocatedAbstractInstructionSet {
         }
 
         for jump in jumps {
-            let rel_offset = labelled_blocks
-                .get(&jump.to)
-                .unwrap()
-                .offs
-                .abs_diff(jump.offset);
-            // Self jumps need a NOOP inserted before it so that we can jump to the NOOP.
-            // This is handled by the force_far machinery as well.
-            if rel_offset == 0 || rel_offset > jump.limit {
-                debug_assert!(matches!(
-                    self.ops[jump.op_idx].opcode,
-                    Either::Right(ControlFlowOp::Jump { .. })
-                ));
-                far_jump_indices.insert(jump.op_idx);
-            }
+            let offs = labelled_blocks.get(&jump.to).unwrap().offs;
+            let rel_offset = offs.abs_diff(jump.offset);
+            let Either::Right(ControlFlowOp::Jump { ref type_, .. }) = self.ops[jump.op_idx].opcode
+            else {
+                unreachable!("Jump info should only be collected for jumps");
+            };
+            // Relative self jumps need a NOOP inserted before it so that we can jump to the NOOP.
+            let is_self_jump = rel_offset == 0;
+            match type_ {
+                JumpType::Unconditional => {
+                    // Unconditional jumps have 18-bit immidate offset
+                    if is_self_jump || rel_offset > consts::EIGHTEEN_BITS {
+                        far_jump_sizes.insert(jump.op_idx, 2);
+                    }
+                }
+                JumpType::NotZero(_) => {
+                    // Conditional jumps have 12-bit immidate offset
+                    if is_self_jump || rel_offset > consts::TWELVE_BITS {
+                        far_jump_sizes.insert(jump.op_idx, 2);
+                    }
+                }
+                JumpType::Call => {
+                    // Use the actual codegen to estimate the size of the call.
+                    // This can never generate a number that's too small, but in some
+                    // corner cases it leads to reserving an extra opcode.
+                    // See `compile_call` that inserts NOOPs to pad the call in these cases.
+                    let len = compile_call_inner(
+                        &mut DataSection::default(),
+                        jump.offset,
+                        offs,
+                        String::new(),
+                        None,
+                    )
+                    .len();
+                    far_jump_sizes.insert(jump.op_idx, len as u64);
+                }
+            };
         }
 
-        far_jump_indices
+        far_jump_sizes
     }
 
     /// Map the labels to their offsets in the program.
     fn map_label_offsets(
         &self,
         data_section: &DataSection,
-        far_jump_indices: &FxHashSet<usize>,
+        far_jump_sizes: &FxHashMap<usize, u64>,
     ) -> LabeledBlocks {
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
@@ -541,11 +522,10 @@ impl AllocatedAbstractInstructionSet {
             }
 
             // Update the offset.
-            let op_size = if far_jump_indices.contains(&op_idx) {
-                2
-            } else {
-                Self::instruction_size_not_far_jump(op, data_section)
-            };
+            let op_size = far_jump_sizes
+                .get(&op_idx)
+                .copied()
+                .unwrap_or_else(|| Self::instruction_size_not_far_jump(op, data_section));
             cur_offset += op_size;
         }
 
@@ -726,4 +706,239 @@ pub(crate) fn compile_jump(
             comment,
         }]
     }
+}
+
+/// Compiles a function call into the appropriate operations.
+/// Generates 1 to 3 instruction depending on the distance to target.
+pub(crate) fn compile_call_inner(
+    data_section: &mut DataSection,
+    curr_offset: u64,
+    target_offset: u64,
+    comment: String,
+    owning_span: Option<Span>,
+) -> Vec<RealizedOp> {
+    // Handle forwards and backwards jumps separately
+    if curr_offset <= target_offset {
+        let delta = target_offset - curr_offset;
+
+        // If the offset is small enough for a single instruction, do it directly
+        if let Ok(imm) = VirtualImmediate12::new(delta, Span::dummy()) {
+            return vec![RealizedOp {
+                opcode: AllocatedInstruction::JAL(
+                    AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                    imm,
+                ),
+                owning_span,
+                comment,
+            }];
+        }
+
+        // The next approaches require an extra instruction before the PC is used, so we
+        // subtract 1 from the delta to account for that. It cannot underflow as otherwise the first
+        // approach would have been used. Then we multiply by instruction size for doing arithmetic
+        // with the PC register. The overflow cannot occur since programs cannot be 2**60 bytes large.
+        let delta_instr = (delta - 1) * (Instruction::SIZE as u64);
+
+        // Attempt MOVI-based approach, that has larger immediate size but doesn't require data section.
+        if let Ok(imm) = VirtualImmediate18::new(delta_instr, Span::dummy()) {
+            return vec![
+                RealizedOp {
+                    opcode: AllocatedInstruction::MOVI(
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        imm,
+                    ),
+                    owning_span: owning_span.clone(),
+                    comment: "load call target address".into(),
+                },
+                RealizedOp {
+                    opcode: AllocatedInstruction::ADD(
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    ),
+                    owning_span: owning_span.clone(),
+                    comment: "load call target address".into(),
+                },
+                RealizedOp {
+                    opcode: AllocatedInstruction::JAL(
+                        AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                    ),
+                    owning_span,
+                    comment,
+                },
+            ];
+        }
+
+        // if the offset is too large for MOVI, use data section to store the full offset.
+        let data_id = data_section.insert_data_value(Entry::new_word(
+            delta_instr,
+            EntryName::NonConfigurable,
+            None,
+        ));
+
+        return vec![
+            RealizedOp {
+                opcode: AllocatedInstruction::LoadDataId(
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    data_id,
+                ),
+                owning_span: owning_span.clone(),
+                comment: "load call target address".into(),
+            },
+            RealizedOp {
+                opcode: AllocatedInstruction::ADD(
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                ),
+                owning_span: owning_span.clone(),
+                comment: "load call target address".into(),
+            },
+            RealizedOp {
+                opcode: AllocatedInstruction::JAL(
+                    AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                ),
+                owning_span,
+                comment,
+            },
+        ];
+    }
+
+    // This is a jump backwards. The approaches are same as forward jumping, but
+    // the version with only a single instruction is not possible, and we have to replace
+    // ADD with SUB instructions. A SUBI-based approach can be used, for a cheap 2-instruction case.
+    let delta = curr_offset - target_offset;
+
+    // Attempt SUBI-based approach
+    if let Ok(imm) = VirtualImmediate12::new(
+        delta.saturating_mul(Instruction::SIZE as u64),
+        Span::dummy(),
+    ) {
+        return vec![
+            RealizedOp {
+                opcode: AllocatedInstruction::SUBI(
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                    imm,
+                ),
+                owning_span: owning_span.clone(),
+                comment: "load far jump target address".into(),
+            },
+            RealizedOp {
+                opcode: AllocatedInstruction::JAL(
+                    AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                ),
+                owning_span,
+                comment,
+            },
+        ];
+    }
+
+    // Since the rest of the approaches require an extra instruction before the PC is used, we
+    // add 1 to the delta to account for that. It cannot underflow as otherwise the first
+    // approach would have been used. Then we multiply by instruction size for doing arithmetic
+    // with the PC register. The overflow cannot occur since programs cannot be 2**60 bytes large.
+    let delta_instr = (delta + 1) * (Instruction::SIZE as u64);
+
+    // Attempt MOVI-based approach.
+    if let Ok(imm) = VirtualImmediate18::new(delta_instr, Span::dummy()) {
+        return vec![
+            RealizedOp {
+                opcode: AllocatedInstruction::MOVI(
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    imm,
+                ),
+                owning_span: owning_span.clone(),
+                comment: "load call target address".into(),
+            },
+            RealizedOp {
+                opcode: AllocatedInstruction::SUB(
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                ),
+                owning_span: owning_span.clone(),
+                comment: "load call target address".into(),
+            },
+            RealizedOp {
+                opcode: AllocatedInstruction::JAL(
+                    AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                ),
+                owning_span,
+                comment,
+            },
+        ];
+    }
+
+    // And lastly, fall back to the data section backed approach.
+    let data_id = data_section.insert_data_value(Entry::new_word(
+        delta_instr,
+        EntryName::NonConfigurable,
+        None,
+    ));
+
+    vec![
+        RealizedOp {
+            opcode: AllocatedInstruction::LoadDataId(
+                AllocatedRegister::Constant(ConstantRegister::Scratch),
+                data_id,
+            ),
+            owning_span: owning_span.clone(),
+            comment: "load call target address".into(),
+        },
+        RealizedOp {
+            opcode: AllocatedInstruction::SUB(
+                AllocatedRegister::Constant(ConstantRegister::Scratch),
+                AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                AllocatedRegister::Constant(ConstantRegister::Scratch),
+            ),
+            owning_span: owning_span.clone(),
+            comment: "load call target address".into(),
+        },
+        RealizedOp {
+            opcode: AllocatedInstruction::JAL(
+                AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
+                AllocatedRegister::Constant(ConstantRegister::Scratch),
+                VirtualImmediate12::new_unchecked(0, "unreachable()"),
+            ),
+            owning_span,
+            comment,
+        },
+    ]
+}
+
+/// Compiles a function call into the appropriate operations.
+/// Pads the call to the size reserved for it.
+pub(crate) fn compile_call(
+    data_section: &mut DataSection,
+    curr_offset: u64,
+    target_offset: u64,
+    far_size: Option<u64>,
+    comment: String,
+    owning_span: Option<Span>,
+) -> Vec<RealizedOp> {
+    let mut res = compile_call_inner(
+        data_section,
+        curr_offset,
+        target_offset,
+        comment.clone(),
+        owning_span.clone(),
+    );
+    while res.len() < far_size.unwrap_or(1) as usize {
+        res.push(RealizedOp {
+            opcode: AllocatedInstruction::NOOP,
+            owning_span: owning_span.clone(),
+            comment: comment.clone(),
+        });
+    }
+    res
 }

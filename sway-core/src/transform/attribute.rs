@@ -59,7 +59,7 @@ use sway_error::{
 use sway_features::Feature;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::language::{Inline, Purity};
+use crate::language::{Inline, Purity, Trace};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AttributeArg {
@@ -354,6 +354,7 @@ pub enum AttributeKind {
     Fallback,
     ErrorType,
     Error,
+    Trace,
 }
 
 /// Denotes if an [ItemTraitItem] belongs to an ABI or to a trait.
@@ -384,6 +385,7 @@ impl AttributeKind {
             FALLBACK_ATTRIBUTE_NAME => AttributeKind::Fallback,
             ERROR_TYPE_ATTRIBUTE_NAME => AttributeKind::ErrorType,
             ERROR_ATTRIBUTE_NAME => AttributeKind::Error,
+            TRACE_ATTRIBUTE_NAME => AttributeKind::Trace,
             _ => AttributeKind::Unknown,
         }
     }
@@ -412,6 +414,7 @@ impl AttributeKind {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            Trace => false,
         }
     }
 }
@@ -440,7 +443,7 @@ impl Attribute {
             DocComment => Multiplicity::exactly(1),
             // `storage(read, write)`.
             Storage => Multiplicity::between(1, 2),
-            // `inline(always)`.
+            // `inline(never)` or `inline(always)`.
             Inline => Multiplicity::exactly(1),
             // `test`, `test(should_revert)`.
             Test => Multiplicity::at_most(1),
@@ -452,6 +455,8 @@ impl Attribute {
             Fallback => Multiplicity::zero(),
             ErrorType => Multiplicity::zero(),
             Error => Multiplicity::exactly(1),
+            // `trace(never)` or `trace(always)`.
+            Trace => Multiplicity::exactly(1),
         }
     }
 
@@ -507,6 +512,7 @@ impl Attribute {
             Fallback => None,
             ErrorType => None,
             Error => MustBeIn(vec![ERROR_M_ARG_NAME]),
+            Trace => MustBeIn(vec![TRACE_ALWAYS_ARG_NAME, TRACE_NEVER_ARG_NAME]),
         }
     }
 
@@ -530,6 +536,7 @@ impl Attribute {
             ErrorType => No,
             // `error(msg = "msg")`.
             Error => Yes,
+            Trace => No,
         }
     }
 
@@ -550,6 +557,7 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            Trace => false,
         }
     }
 
@@ -603,6 +611,7 @@ impl Attribute {
             Fallback => matches!(item_kind, ItemKind::Fn(_)),
             ErrorType => matches!(item_kind, ItemKind::Enum(_)),
             Error => false,
+            Trace => matches!(item_kind, ItemKind::Fn(_)),
         }
     }
 
@@ -628,6 +637,7 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => struct_or_enum_field == StructOrEnumField::EnumField,
+            Trace => false,
         }
     }
 
@@ -653,6 +663,9 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            // Functions in the trait or ABI interface surface cannot be marked as traced
+            // because they don't have implementation.
+            Trace => false,
         }
     }
 
@@ -675,6 +688,7 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            Trace => matches!(item, ItemImplItem::Fn(..)),
         }
     }
 
@@ -696,6 +710,7 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            Trace => true,
         }
     }
 
@@ -715,6 +730,7 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            Trace => false,
         }
     }
 
@@ -733,6 +749,7 @@ impl Attribute {
             Fallback => false,
             ErrorType => false,
             Error => false,
+            Trace => false,
         }
     }
 
@@ -784,6 +801,7 @@ impl Attribute {
             Fallback => vec!["\"fallback\" attribute can only annotate module functions in a contract module."],
             ErrorType => vec!["\"error_type\" attribute can only annotate enums."],
             Error => vec!["\"error\" attribute can only annotate enum variants of enums annotated with the \"error_type\" attribute."],
+            Trace => vec!["\"trace\" attribute can only annotate functions that can panic."],
         };
 
         if help.is_empty() && target_friendly_name.starts_with("module kind") {
@@ -951,6 +969,26 @@ impl Attributes {
         {
             INLINE_NEVER_ARG_NAME => Some(Inline::Never),
             INLINE_ALWAYS_ARG_NAME => Some(Inline::Always),
+            _ => None,
+        }
+    }
+
+    /// Returns the value of the `#[trace]` [Attribute], or `None` if the
+    /// [Attributes] does not contain any `#[trace]` attributes.
+    pub fn trace(&self) -> Option<Trace> {
+        // `trace` attribute can be applied only once (`AttributeMultiplicity::Single`),
+        // and can have exactly one argument, otherwise an error is emitted.
+        // Last-wins approach.
+        match self
+            .of_kind(AttributeKind::Trace)
+            .last()?
+            .args
+            .last()?
+            .name
+            .as_str()
+        {
+            TRACE_NEVER_ARG_NAME => Some(Trace::Never),
+            TRACE_ALWAYS_ARG_NAME => Some(Trace::Always),
             _ => None,
         }
     }

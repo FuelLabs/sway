@@ -2,6 +2,7 @@ library;
 
 #[storage(invalid)]
 #[inline(invalid)]
+#[trace(invalid)]
 #[test(invalid)]
 //! Invalid inner comment.
 #[payable(invalid)]
@@ -12,6 +13,7 @@ library;
 trait T {
     #[storage(invalid)]
     #[inline(invalid)]
+    #[trace(invalid)]
     #[test(invalid)]
     //! Invalid inner comment.
     #[payable(invalid)]

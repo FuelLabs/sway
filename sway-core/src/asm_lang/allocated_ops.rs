@@ -18,8 +18,8 @@ use crate::{
     fuel_prelude::fuel_asm::{self, op},
 };
 use fuel_vm::fuel_asm::{
-    op::{ADD, ADDI, MOVI},
-    Imm12, Imm18,
+    op::{ADD, MOVI},
+    Imm18,
 };
 use std::fmt::{self, Write};
 use sway_types::span::Span;
@@ -151,6 +151,7 @@ pub(crate) enum AllocatedInstruction {
     JMPF(AllocatedRegister, VirtualImmediate18),
     JNZB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     JNZF(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    JAL(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     RET(AllocatedRegister),
 
     /* Memory Instructions */
@@ -355,6 +356,7 @@ impl AllocatedInstruction {
             JMPF(_r1, _i) => vec![],
             JNZB(_r1, _r2, _i) => vec![],
             JNZF(_r1, _r2, _i) => vec![],
+            JAL(r1, _r2, _i) => vec![r1],
             RET(_r1) => vec![],
 
             /* Memory Instructions */
@@ -477,7 +479,7 @@ impl fmt::Display for AllocatedInstruction {
             WQMM(a, b, c, d) => write!(fmtr, "wqmm {a} {b} {c} {d}"),
 
             /* Control Flow Instructions */
-            JMP(a) => write!(fmtr, "jmp {a}"),
+            JMP(a) => write!(fmtr, "jmp  {a}"),
             JI(a) => write!(fmtr, "ji   {a}"),
             JNE(a, b, c) => write!(fmtr, "jne  {a} {b} {c}"),
             JNEI(a, b, c) => write!(fmtr, "jnei {a} {b} {c}"),
@@ -486,6 +488,7 @@ impl fmt::Display for AllocatedInstruction {
             JMPF(a, b) => write!(fmtr, "jmpf {a} {b}"),
             JNZB(a, b, c) => write!(fmtr, "jnzb {a} {b} {c}"),
             JNZF(a, b, c) => write!(fmtr, "jnzf {a} {b} {c}"),
+            JAL(a, b, c) => write!(fmtr, "jal  {a} {b} {c}"),
             RET(a) => write!(fmtr, "ret  {a}"),
 
             /* Memory Instructions */
@@ -689,6 +692,7 @@ impl AllocatedOp {
             JMPF(a, b) => op::JMPF::new(a.to_reg_id(), b.value().into()).into(),
             JNZB(a, b, c) => op::JNZB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             JNZF(a, b, c) => op::JNZF::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            JAL(a, b, c) => op::JAL::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             RET(a) => op::RET::new(a.to_reg_id()).into(),
 
             /* Memory Instructions */
@@ -824,28 +828,17 @@ fn addr_of(
     data_section: &DataSection,
 ) -> Vec<fuel_asm::Instruction> {
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
-
-    if offset_bytes <= u64::from(Imm12::MAX.to_u16()) {
-        // Small enough to fit into an ADDI instruction immediate
-        vec![fuel_asm::Instruction::ADDI(ADDI::new(
+    vec![
+        fuel_asm::Instruction::MOVI(MOVI::new(
+            dest.to_reg_id(),
+            Imm18::new(offset_bytes.try_into().unwrap()),
+        )),
+        fuel_asm::Instruction::ADD(ADD::new(
+            dest.to_reg_id(),
             dest.to_reg_id(),
             fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            Imm12::new(offset_bytes.try_into().unwrap()),
-        ))]
-    } else {
-        // Offset too large to fit into ADDI immediate, so we need to use MOVI first
-        vec![
-            fuel_asm::Instruction::MOVI(MOVI::new(
-                dest.to_reg_id(),
-                Imm18::new(offset_bytes.try_into().unwrap()),
-            )),
-            fuel_asm::Instruction::ADD(ADD::new(
-                dest.to_reg_id(),
-                dest.to_reg_id(),
-                fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            )),
-        ]
-    }
+        )),
+    ]
 }
 
 /// Converts a virtual load word instruction which uses data labels into one which uses
