@@ -1935,7 +1935,7 @@ impl<'a> FnCompiler<'a> {
                     assert!(ptr.get_type(context).unwrap().is_ptr(context));
                     assert!(cap.get_type(context).unwrap().is_uint64(context));
 
-                    let ptr_ty = Type::new_typed_pointer(context, Type::get_ptr(context));
+                    let ptr_ty = Type::get_ptr(context);
 
                     // merge block has two arguments: ptr, cap
                     let merge_block = s.function.create_block(context, None);
