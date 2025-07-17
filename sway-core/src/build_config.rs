@@ -182,6 +182,16 @@ impl From<&PrintIr> for PrintPassesOpts {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Backtrace {
+    All,
+    #[default]
+    AllExceptNever,
+    OnlyAlways,
+    None,
+}
+
 /// Configuration for the overall build and compilation process.
 #[derive(Clone)]
 pub struct BuildConfig {
@@ -199,6 +209,10 @@ pub struct BuildConfig {
     pub(crate) print_ir: PrintIr,
     pub(crate) include_tests: bool,
     pub(crate) optimization_level: OptLevel,
+    // TODO: (ABI-BACKTRACING) Remove `#[allow(dead_code)]` once the `backtrace`
+    //       option is used in IR compilation.
+    #[allow(dead_code)]
+    pub(crate) backtrace: Backtrace,
     pub time_phases: bool,
     pub profile: bool,
     pub metrics_outfile: Option<String>,
@@ -251,13 +265,14 @@ impl BuildConfig {
             time_phases: false,
             profile: false,
             metrics_outfile: None,
-            optimization_level: OptLevel::Opt0,
+            optimization_level: OptLevel::default(),
+            backtrace: Backtrace::default(),
             lsp_mode: None,
         }
     }
 
     /// Dummy build config that can be used for testing.
-    /// This is not not valid generally, but asm generation will accept it.
+    /// This is not valid generally, but asm generation will accept it.
     pub fn dummy_for_asm_generation() -> Self {
         Self::root_from_file_name_and_manifest_path(
             PathBuf::from("/"),
@@ -323,6 +338,10 @@ impl BuildConfig {
             optimization_level,
             ..self
         }
+    }
+
+    pub fn with_backtrace(self, backtrace: Backtrace) -> Self {
+        Self { backtrace, ..self }
     }
 
     /// Whether or not to include test functions in parsing, type-checking and codegen.
