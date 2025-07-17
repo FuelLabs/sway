@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sway_core::{OptLevel, PrintAsm, PrintIr};
+use sway_core::{Backtrace, OptLevel, PrintAsm, PrintIr};
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -35,6 +35,8 @@ pub struct BuildProfile {
     pub reverse_results: bool,
     #[serde(default)]
     pub optimization_level: OptLevel,
+    #[serde(default)]
+    pub backtrace: Backtrace,
 }
 
 impl BuildProfile {
@@ -60,6 +62,7 @@ impl BuildProfile {
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt0,
+            backtrace: Backtrace::AllExceptNever,
         }
     }
 
@@ -81,6 +84,7 @@ impl BuildProfile {
             error_on_warnings: false,
             reverse_results: false,
             optimization_level: OptLevel::Opt1,
+            backtrace: Backtrace::OnlyAlways,
         }
     }
 
@@ -98,13 +102,13 @@ impl Default for BuildProfile {
 #[cfg(test)]
 mod tests {
     use crate::{BuildProfile, PackageManifest};
-    use sway_core::{OptLevel, PrintAsm, PrintIr};
+    use sway_core::{Backtrace, OptLevel, PrintAsm, PrintIr};
 
     #[test]
     fn test_build_profiles() {
         let manifest = PackageManifest::from_dir("./tests/sections").expect("manifest");
         let build_profiles = manifest.build_profile.expect("build profile");
-        assert_eq!(build_profiles.len(), 4);
+        assert_eq!(build_profiles.len(), 5);
 
         // Standard debug profile without adaptations.
         let expected = BuildProfile::debug();
@@ -136,6 +140,17 @@ mod tests {
             .expect("custom profile for IR");
         assert_eq!(*profile, expected);
 
+        // Profile based on debug profile with adjusted backtrace option.
+        let expected = BuildProfile {
+            name: "".into(),
+            backtrace: Backtrace::OnlyAlways,
+            ..BuildProfile::debug()
+        };
+        let profile = build_profiles
+            .get("custom_backtrace")
+            .expect("custom profile for backtrace");
+        assert_eq!(*profile, expected);
+
         // Adapted release profile.
         let expected = BuildProfile {
             name: "".into(),
@@ -154,6 +169,7 @@ mod tests {
             error_on_warnings: true,
             reverse_results: true,
             optimization_level: OptLevel::Opt0,
+            backtrace: Backtrace::None,
         };
         let profile = build_profiles.get("release").expect("release profile");
         assert_eq!(*profile, expected);

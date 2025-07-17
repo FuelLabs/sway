@@ -20,7 +20,7 @@ include-tests = true
 error-on-warnings = true
 reverse-results = true
 optimization-level = 0
-experimental = { encoding-v1 = true }
+backtrace = "none"
 
 [build-profile.custom_asm]
 print-asm = { virtual = false, allocated = false, final = true }
@@ -30,3 +30,6 @@ print-ir = { initial = true, final = false, modified = true, passes = [
     "dce",
     "sroa",
 ] }
+
+[build-profile.custom_backtrace]
+backtrace = "only_always"
