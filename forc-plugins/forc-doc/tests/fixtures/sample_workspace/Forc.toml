@@ -1,0 +1,2 @@
+[workspace]
+members = ["lib_a", "lib_b"]

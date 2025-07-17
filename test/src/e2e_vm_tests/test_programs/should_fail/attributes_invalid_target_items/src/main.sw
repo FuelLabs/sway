@@ -1,5 +1,6 @@
 #[storage(invalid)]
 #[inline(invalid)]
+#[trace(invalid)]
 #[test(invalid)]
 /// Invalid outer comment.
 #[payable(invalid)]
@@ -22,6 +23,7 @@ library;
 /// Invalid outer comment.
 #[storage(invalid)]
 #[inline(invalid)]
+#[trace(invalid)]
 //! Invalid inner comment.
 #[test(invalid)]
 #[payable(invalid)]

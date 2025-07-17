@@ -2,6 +2,7 @@ library;
 
 #[storage(invalid)]
 #[inline(invalid)]
+#[trace(invalid)]
 //! Invalid inner comment.
 #[test(invalid)]
 #[payable(invalid)]
@@ -11,6 +12,7 @@ library;
 struct S {
     #[storage(invalid)]
     #[inline(invalid)]
+    #[trace(invalid)]
     //! Invalid inner comment.
     #[test(invalid)]
     #[payable(invalid)]

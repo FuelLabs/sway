@@ -129,11 +129,7 @@ fn to_bytecode_mut(
             {
                 8
             }
-            AllocatedInstruction::AddrDataId(_, id)
-                if data_section.data_id_to_offset(id) > usize::from(Imm12::MAX.to_u16()) =>
-            {
-                8
-            }
+            AllocatedInstruction::AddrDataId(_, _data_id) => 8,
             AllocatedInstruction::ConfigurablesOffsetPlaceholder => 8,
             AllocatedInstruction::DataSectionOffsetPlaceholder => 8,
             AllocatedInstruction::BLOB(count) => count.value() as u64 * 4,

@@ -10,6 +10,7 @@ struct S {
 
 #[storage(invalid)]
 #[inline(invalid)]
+#[trace(invalid)]
 #[test(invalid)]
 //! Invalid inner comment.
 #[payable(invalid)]
@@ -20,6 +21,7 @@ struct S {
 impl T for S {
     #[storage(invalid)]
     #[inline(invalid)]
+    #[trace(invalid)]
     #[test(invalid)]
     //! Invalid inner comment.
     #[payable(invalid)]

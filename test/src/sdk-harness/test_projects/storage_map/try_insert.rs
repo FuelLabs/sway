@@ -72,8 +72,8 @@ generate_try_insert_tests!(u64_to_enum, 1, Enum::V1(Bits256([1; 32])), Enum::V2(
 generate_try_insert_tests!(
     u64_to_str,
     1,
-    SizedAsciiString::try_from("fastest_modular_execution_layer_A").unwrap(),
-    SizedAsciiString::try_from("fastest_modular_execution_layer_B").unwrap()
+    SizedAsciiString::try_from("aaaaaaaaaA").unwrap(),
+    SizedAsciiString::try_from("bbbbbbbbbB").unwrap()
 );
 generate_try_insert_tests!(
     u64_to_array,
@@ -99,7 +99,7 @@ generate_try_insert_tests!(
 generate_try_insert_tests!(enum_to_u64, Enum::V1(Bits256([1; 32])), 1, 2);
 generate_try_insert_tests!(
     str_to_u64,
-    SizedAsciiString::try_from("fastest_modular_execution_layer_A").unwrap(),
+    SizedAsciiString::try_from("aaaaaaaaaA").unwrap(),
     1,
     2
 );
