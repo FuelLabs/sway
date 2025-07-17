@@ -13,7 +13,7 @@ use super::{
     data_section::{DataSection, Entry},
 };
 
-use fuel_vm::{fuel_asm::Imm12, prelude::Instruction};
+use fuel_vm::prelude::Instruction;
 use indexmap::{IndexMap, IndexSet};
 use rustc_hash::FxHashMap;
 use sway_types::span::Span;
@@ -370,13 +370,7 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
-            Either::Left(AllocatedInstruction::AddrDataId(_, ref id)) => {
-                if data_section.data_id_to_offset(id) > usize::from(Imm12::MAX.to_u16()) {
-                    2
-                } else {
-                    1
-                }
-            }
+            Either::Left(AllocatedInstruction::AddrDataId(_, ref _data_id)) => 2,
 
             // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
             Either::Left(AllocatedInstruction::CFEI(ref op))
