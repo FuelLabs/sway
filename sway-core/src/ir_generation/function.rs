@@ -1349,7 +1349,7 @@ impl<'a> FnCompiler<'a> {
                 let val_ptr = self
                     .current_block
                     .append(context)
-                    .int_to_ptr(val_ptr, b256_ptr_ty)
+                    .cast_ptr(val_ptr, b256_ptr_ty)
                     .add_metadatum(context, span_md_idx);
                 match kind {
                     Intrinsic::StateLoadQuad => {
