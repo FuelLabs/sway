@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 162
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --release
 exit status: 1
@@ -380,34 +379,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [7.008 KB] in ???
-=======
-=======
->>>>>>> aefe47720 (update snapshot tests)
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [6.952 KB] in ???
-=======
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [7.736 KB] in ???
-=======
-    Finished debug [unoptimized + fuel] target(s) [8.08 KB] in ???
->>>>>>> 5dd869289 (update snapshot tests)
->>>>>>> c6c149462 (update snapshot tests)
-<<<<<<< HEAD
->>>>>>> ae09d9087 (update snapshot tests)
-=======
-=======
-    Finished debug [unoptimized + fuel] target(s) [8.312 KB] in ???
->>>>>>> f63d45c7e (update snapshot tests)
->>>>>>> aefe47720 (update snapshot tests)
-=======
-    Finished debug [unoptimized + fuel] target(s) [7.424 KB] in ???
->>>>>>> d3c89a496 (rebase issues)
-=======
 warning
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:87:5
    |
@@ -424,42 +395,12 @@ warning
 ____
 
   Compiled script "const_generics" with 1 warning.
-    Finished debug [unoptimized + fuel] target(s) [7.472 KB] in ???
->>>>>>> 53492e2b0 (assert with renaming issue)
+    Finished debug [unoptimized + fuel] target(s) [7.528 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-      test run_main ... ok (???, 13758 gas)
-=======
-=======
->>>>>>> aefe47720 (update snapshot tests)
-<<<<<<< HEAD
-      test run_main ... ok (???, 13705 gas)
-=======
-<<<<<<< HEAD
-      test run_main ... ok (???, 14112 gas)
-=======
-      test run_main ... ok (???, 14310 gas)
->>>>>>> 5dd869289 (update snapshot tests)
->>>>>>> c6c149462 (update snapshot tests)
-<<<<<<< HEAD
->>>>>>> ae09d9087 (update snapshot tests)
-=======
-=======
-      test run_main ... ok (???, 14436 gas)
->>>>>>> f63d45c7e (update snapshot tests)
->>>>>>> aefe47720 (update snapshot tests)
-=======
-      test run_main ... ok (???, 14005 gas)
->>>>>>> d3c89a496 (rebase issues)
-=======
-      test run_main ... ok (???, 14042 gas)
->>>>>>> 53492e2b0 (assert with renaming issue)
+      test run_main ... ok (???, 14095 gas)
            debug output:
 [src/main.sw:98:13] a = [1, 2]
 [src/main.sw:102:13] [C {}].len() = 1
