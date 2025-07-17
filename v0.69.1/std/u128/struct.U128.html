@@ -1,0 +1,322 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `U128` struct in `u128`."><meta name="keywords" content="sway, swaylang, sway-lang, U128"><link rel="icon" href="../../static.files/sway-logo.svg"><title>U128 in u128 - Sway</title><link rel="stylesheet" type="text/css" href="../../static.files/normalize.css"><link rel="stylesheet" type="text/css" href="../../static.files/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../static.files/ayu.css"><link rel="stylesheet" href="../../static.files/ayu.min.css"></head><body class="swaydoc struct"><nav class="sidebar"><a class="sidebar-logo" href="../../std/index.html"><div class="logo-container"><img class="sway-logo" src="../../static.files/sway-logo.svg" alt="logo"></div></a><h2 class="location">Struct U128</h2><div class="sidebar-elems"><section><h3><a href="#fields">Fields</a></h3><ul class="block method"><li><a href="#structfield.upper">upper</a></li><li><a href="#structfield.lower">lower</a></li></ul></section><section><h3><a href="#methods">Methods</a></h3><ul class="block method"><li><a href="#method.new">new</a></li><li><a href="#method.as_u64">as_u64</a></li><li><a href="#method.as_u256">as_u256</a></li><li><a href="#method.min">min</a></li><li><a href="#method.max">max</a></li><li><a href="#method.bits">bits</a></li><li><a href="#method.upper">upper</a></li><li><a href="#method.lower">lower</a></li><li><a href="#method.zero">zero</a></li><li><a href="#method.is_zero">is_zero</a></li></ul></section><section><h3><a href="#trait-implementations">Trait Implementations</a></h3><ul class="block method"><li><a href="#impl-AbiEncode">AbiEncode</a></li><li><a href="#impl-AbiDecode">AbiDecode</a></li><li><a href="#impl-Debug">Debug</a></li><li><a href="#impl-From&lt;u8&gt;">From&lt;u8&gt;</a></li><li><a href="#impl-From&lt;u16&gt;">From&lt;u16&gt;</a></li><li><a href="#impl-From&lt;u32&gt;">From&lt;u32&gt;</a></li><li><a href="#impl-From&lt;u64&gt;">From&lt;u64&gt;</a></li><li><a href="#impl-From&lt;(u64, u64)&gt;">From&lt;(u64, u64)&gt;</a></li><li><a href="#impl-PartialEq">PartialEq</a></li><li><a href="#impl-Eq">Eq</a></li><li><a href="#impl-Ord">Ord</a></li><li><a href="#impl-OrdEq">OrdEq</a></li><li><a href="#impl-Hash">Hash</a></li><li><a href="#impl-BitwiseAnd">BitwiseAnd</a></li><li><a href="#impl-BitwiseOr">BitwiseOr</a></li><li><a href="#impl-Shift">Shift</a></li><li><a href="#impl-Not">Not</a></li><li><a href="#impl-Add">Add</a></li><li><a href="#impl-Subtract">Subtract</a></li><li><a href="#impl-Multiply">Multiply</a></li><li><a href="#impl-Divide">Divide</a></li><li><a href="#impl-Mod">Mod</a></li><li><a href="#impl-Power">Power</a></li><li><a href="#impl-Root">Root</a></li><li><a href="#impl-BinaryLogarithm">BinaryLogarithm</a></li><li><a href="#impl-Logarithm">Logarithm</a></li><li><a href="#impl-TotalOrd">TotalOrd</a></li></ul></section></div></nav><main><div class="width-limiter"><script src="../../search.js" type="text/javascript"></script><script>function onSearchFormSubmit(event){event.preventDefault();const searchQuery=document.getElementById("search-input").value;const url=new URL(window.location.href);if(searchQuery){url.searchParams.set('search',searchQuery)}else{url.searchParams.delete('search')}history.pushState({search:searchQuery},"",url);window.dispatchEvent(new HashChangeEvent("hashchange"))}document.addEventListener('DOMContentLoaded',()=>{const searchbar=document.getElementById("search-input");const searchForm=document.getElementById("search-form");searchbar.addEventListener("keyup",function(event){onSearchFormSubmit(event)});searchbar.addEventListener("search",function(event){onSearchFormSubmit(event)});function onQueryParamsChange(){const searchParams=new URLSearchParams(window.location.search);const query=searchParams.get("search");const searchSection=document.getElementById('search');const mainSection=document.getElementById('main-content');const searchInput=document.getElementById('search-input');if(query){searchInput.value=query;const results=Object.values(SEARCH_INDEX).flat().filter(item=>{const lowerQuery=query.toLowerCase();return item.name.toLowerCase().includes(lowerQuery)});const header=`<h1>Results for ${query}</h1>`;if(results.length>0){const resultList=results.map(item=>{const formattedName=`<span class="type ${item.type_name}">${item.name}</span>`;const name=item.type_name==="module"?[...item.module_info.slice(0,-1),formattedName].join("::"):[...item.module_info,formattedName].join("::");const path=["../..",...item.module_info,item.html_filename].join("/");const left=`<td><span>${name}</span></td>`;const right=`<td><p>${item.preview}</p></td>`;return`<tr onclick="window.location='${path}';">${left}${right}</tr>`}).join('');searchSection.innerHTML=`${header}<table>${resultList}</table>`}else{searchSection.innerHTML=`${header}<p>No results found.</p>`}searchSection.setAttribute("class","search-results");mainSection.setAttribute("class","content hidden")}else{searchSection.setAttribute("class","search-results hidden");mainSection.setAttribute("class","content")}}window.addEventListener('hashchange',onQueryParamsChange);onQueryParamsChange()})</script><nav class="sub"><form id="search-form" class="search-form" onsubmit="onSearchFormSubmit(event)"><div class="search-container"><input id="search-input" class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Search the docs..." type="search"></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Struct <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="index.html">u128</a><span>::</span><a class="struct" href="#">U128</a></span></h1></div><div class="docblock item-decl"><pre class="sway struct"><code>pub struct U128 {
+    /// The most significant 64 bits of the `U128`.
+    upper: u64,
+    /// The least significant 64 bits of the `U128`.
+    lower: u64,
+}</code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The 128-bit unsigned integer type.</p>
+<h1>Additional Information</h1>
+<p>Represented as two 64-bit components: <code>(upper, lower)</code>, where <code>value = (upper &lt;&lt; 64) + lower</code>.</p>
+</div></details><h2 id="fields" class="fields small-section-header">Fields<a class="anchor" href="#fields"></a></h2><span id="structfield.upper" class="structfield small-section-header"><a class="anchor field" href="#structfield.upper"></a><code>upper: u64</code></span><div class="docblock"><p>The most significant 64 bits of the <code>U128</code>.</p>
+</div><span id="structfield.lower" class="structfield small-section-header"><a class="anchor field" href="#structfield.lower"></a><code>lower: u64</code></span><div class="docblock"><p>The least significant 64 bits of the <code>U128</code>.</p>
+</div><h2 id="methods" class="small-section-header">Implementations<a href="#methods" class="anchor"></a></h2><div id="methods-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-U128" class="impl has-srclink"><a href="#impl-U128" class="anchor"></a><h3 class="code-header in-band">impl U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.new" class="method trait-impl"><a href="#method.new" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.new">new</a>() -&gt; Self</h4></div></summary><div class="docblock"><p>Initializes a new, zeroed <code>U128</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] - A new, zero value <code>U128</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let new_u128 = U128::new();
+    let zero_u128 = U128::from(0, 0);
+
+    assert(new_u128 == zero_u128);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_u64" class="method trait-impl"><a href="#method.as_u64" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_u64">as_u64</a>(self) -&gt; Result&lt;u64, U128Error&gt;</h4></div></summary><div class="docblock"><p>Safely downcast to <code>u64</code> without loss of precision.</p>
+<h1>Additional Information</h1>
+<p>If the <code>U128</code> is larger than <code>u64::max()</code>, an error is returned.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Result&lt;u64, U128Error&gt;] - The result of the downcast.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::{U128, U128Error};
+
+fn foo() {
+    let zero_u128 = U128::from(0, 0);
+    let zero_u64 = zero_u128.as_u64().unwrap();
+
+    assert(zero_u64 == 0);
+
+    let max_u128 = U128::max();
+    let result = max_u128.as_u64();
+
+    assert(result.is_err()));
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_u256" class="method trait-impl"><a href="#method.as_u256" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_u256">as_u256</a>(self) -&gt; u256</h4></div></summary><div class="docblock"><p>Upcasts a <code>U128</code> to a <code>u256</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u256] - The <code>u256</code> representation of the <code>U128</code> value.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let u128_value = U128::from(0u64);
+    let u256_value = u128_value.as_u256();
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.min" class="method trait-impl"><a href="#method.min" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.min">min</a>() -&gt; Self</h4></div></summary><div class="docblock"><p>The smallest value that can be represented by this integer type.</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] - The smallest value that can be represented by this integer type, <code>0</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let min_u128 = U128::min();
+    let zero_u128 = U128::from(0, 0);
+
+    assert(min_u128 == zero_u128);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.max" class="method trait-impl"><a href="#method.max" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.max">max</a>() -&gt; Self</h4></div></summary><div class="docblock"><p>The largest value that can be represented by this type,</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] - The largest value that can be represented by this type, <code>2&lt;sup&gt;128&lt;/sup&gt; - 1</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let max_u128 = U128::max();
+    let maxed_u128 = U128::from(u64::max(), u64::max());
+
+    assert(max_u128 == maxed_u128);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.bits" class="method trait-impl"><a href="#method.bits" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.bits">bits</a>() -&gt; u32</h4></div></summary><div class="docblock"><p>The size of this type in bits.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u32] - The size of this type in bits, <code>128</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let bits = U128::bits();
+
+    assert(bits == 128);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.upper" class="method trait-impl"><a href="#method.upper" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.upper">upper</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the underlying upper u64 representing the most significant 64 bits of the <code>U128</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The most significant 64 bits of the <code>U128</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let maxed_u128 = U128::from(u64::max(), u64::min());
+
+    assert(maxed_u128.upper() == u64::max());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.lower" class="method trait-impl"><a href="#method.lower" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.lower">lower</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the underlying lower u64 representing the least significant 64 bits of the <code>U128</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The least significant 64 bits of the <code>U128</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let maxed_u128 = U128::from(u64::max(), u64::min());
+
+    assert(maxed_u128.lower() == u64::min());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.zero" class="method trait-impl"><a href="#method.zero" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.zero">zero</a>() -&gt; Self</h4></div></summary><div class="docblock"><p>Returns the zero value for the <code>U128</code> type.</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] -&gt; The zero value for the <code>U128</code> type.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let zero_u128 = U128::zero();
+    assert(zero_u128 == U128::from((0, 0)));
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.is_zero" class="method trait-impl"><a href="#method.is_zero" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.is_zero">is_zero</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Returns whether a <code>U128</code> is set to zero.</p>
+<h1>Returns</h1>
+<ul>
+<li>[bool] -&gt; True if the <code>U128</code> is zero, otherwise false.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let zero_u128 = u128::zero();
+    assert(zero_u128.is_zero());
+}
+</code></pre>
+</div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiEncode" class="impl has-srclink"><a href="#impl-AbiEncode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../codec/trait.AbiEncode.html">AbiEncode</a> for U128&lt;&gt;</h3></div></summary><div class="impl-items"><div id="method.abi_encode" class="method trait-impl"><a href="#method.abi_encode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_encode">abi_encode</a>(self, buffer: Buffer) -&gt; Buffer</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiDecode" class="impl has-srclink"><a href="#impl-AbiDecode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../codec/trait.AbiDecode.html">AbiDecode</a> for U128&lt;&gt;</h3></div></summary><div class="impl-items"><div id="method.abi_decode" class="method trait-impl"><a href="#method.abi_decode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_decode">abi_decode</a>(refmut buffer: BufferReader) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Debug" class="impl has-srclink"><a href="#impl-Debug" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../debug/trait.Debug.html">Debug</a> for U128&lt;&gt;</h3></div></summary><div class="impl-items"><div id="method.fmt" class="method trait-impl"><a href="#method.fmt" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.fmt">fmt</a>(<br>    self,<br>    refmut _f: Formatter,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;u8&gt;" class="impl has-srclink"><a href="#impl-From&lt;u8&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;u8&gt; for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(val: u8) -&gt; Self</h4></div></summary><div class="docblock"><p>Converts a <code>u8</code> to a <code>U128</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] - The <code>U128</code> representation of the <code>u8</code> value.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let u128_value = U128::from(0u8);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;u16&gt;" class="impl has-srclink"><a href="#impl-From&lt;u16&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;u16&gt; for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(val: u16) -&gt; Self</h4></div></summary><div class="docblock"><p>Converts a <code>u16</code> to a <code>U128</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] - The <code>U128</code> representation of the <code>u16</code> value.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let u128_value = U128::from(0u16);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;u32&gt;" class="impl has-srclink"><a href="#impl-From&lt;u32&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;u32&gt; for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(val: u32) -&gt; Self</h4></div></summary><div class="docblock"><p>Converts a <code>u32</code> to a <code>U128</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] - The <code>U128</code> representation of the <code>u32</code> value.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let u128_value = U128::from(0u32);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;u64&gt;" class="impl has-srclink"><a href="#impl-From&lt;u64&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;u64&gt; for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(val: u64) -&gt; Self</h4></div></summary><div class="docblock"><p>Converts a <code>u64</code> to a <code>U128</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] - The <code>U128</code> representation of the <code>u64</code> value.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let u128_value = U128::from(0u64);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;(u64, u64)&gt;" class="impl has-srclink"><a href="#impl-From&lt;(u64, u64)&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;(u64, u64)&gt; for U128</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(components: (u64, u64)) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-PartialEq" class="impl has-srclink"><a href="#impl-PartialEq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.PartialEq.html">PartialEq</a> for U128</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if two values of the same type are not equal.</p>
+<h1>Additional Information</h1>
+<p>This function is inherited when <code>eq()</code> is implemented.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>other</code>: [Self] - The value of the same type.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if the two values are not equal, otherwise <code>false</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">struct MyStruct {
+    val: u64,
+}
+
+impl PartialEq for MyStruct {
+    fn eq(self, other: Self) -&gt; bool {
+         self.val == other.val
+    }
+}
+
+fn foo() {
+    let struct1 = MyStruct { val: 10 };
+    let struct2 = MyStruct { val: 2 };
+    let result = struct1 != struct2;
+    assert(result);
+}
+</code></pre>
+</div></details></div></details><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Eq.html">Eq</a> for U128</h3></div><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Ord" class="impl has-srclink"><a href="#impl-Ord" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Ord.html">Ord</a> for U128</h3></div></summary><div class="impl-items"><div id="method.gt" class="method trait-impl"><a href="#method.gt" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.gt">gt</a>(self, other: Self) -&gt; bool</h4></div><div id="method.lt" class="method trait-impl"><a href="#method.lt" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.lt">lt</a>(self, other: Self) -&gt; bool</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-OrdEq" class="impl has-srclink"><a href="#impl-OrdEq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.OrdEq.html">OrdEq</a> for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.ge" class="method trait-impl"><a href="#method.ge" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.ge">ge</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if one value of the same type is greater or equal to than another.</p>
+<h1>Additional Information</h1>
+<p>This trait requires that the <code>Ord</code> and <code>Eq</code> traits are implemented.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>other</code>: [Self] - The value of the same type.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if <code>self</code> is greater than or equal to <code>other</code>, otherwise <code>false</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">struct MyStruct {
+    val: u64,
+}
+
+impl Eq for MyStruct {
+    fn eq(self, other: Self) -&gt; bool {
+        self.val == other.val
+    }
+}
+
+impl Ord for MyStruct {
+    fn gt(self, other: Self) -&gt; bool {
+        self.val &gt; other.val
+    }
+}
+
+impl OrdEq for MyStruct {}
+
+fn foo() {
+    let struct1 = MyStruct { val: 10 };
+    let struct2 = MyStruct { val: 10 };
+    let result = struct1 &gt;= struct2;
+    assert(result);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.le" class="method trait-impl"><a href="#method.le" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.le">le</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if one value of the same type is less or equal to than another.</p>
+<h1>Additional Information</h1>
+<p>This trait requires that the <code>Ord</code> and <code>Eq</code> traits are implemented.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>other</code>: [Self] - The value of the same type.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if <code>self</code> is less than or equal to <code>other</code>, otherwise <code>false</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">struct MyStruct {
+    val: u64,
+}
+
+impl Eq for MyStruct {
+    fn eq(self, other: Self) -&gt; bool {
+        self.val == other.val
+    }
+}
+
+impl Ord for MyStruct {
+    fn lt(self, other: Self) -&gt; bool {
+        self.val &lt; other.val
+    }
+}
+
+impl OrdEq for MyStruct {}
+
+fn foo() {
+    let struct1 = MyStruct { val: 10 };
+    let struct2 = MyStruct { val: 10 };
+    let result = struct1 &lt;= struct2;
+    assert(result);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Hash" class="impl has-srclink"><a href="#impl-Hash" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../hash/trait.Hash.html">Hash</a> for U128</h3></div></summary><div class="impl-items"><div id="method.hash" class="method trait-impl"><a href="#method.hash" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-BitwiseAnd" class="impl has-srclink"><a href="#impl-BitwiseAnd" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.BitwiseAnd.html">BitwiseAnd</a> for U128</h3></div></summary><div class="impl-items"><div id="method.binary_and" class="method trait-impl"><a href="#method.binary_and" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.binary_and">binary_and</a>(self, other: Self) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-BitwiseOr" class="impl has-srclink"><a href="#impl-BitwiseOr" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.BitwiseOr.html">BitwiseOr</a> for U128</h3></div></summary><div class="impl-items"><div id="method.binary_or" class="method trait-impl"><a href="#method.binary_or" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.binary_or">binary_or</a>(self, other: Self) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Shift" class="impl has-srclink"><a href="#impl-Shift" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Shift.html">Shift</a> for U128</h3></div></summary><div class="impl-items"><div id="method.lsh" class="method trait-impl"><a href="#method.lsh" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.lsh">lsh</a>(self, rhs: u64) -&gt; Self</h4></div><div id="method.rsh" class="method trait-impl"><a href="#method.rsh" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.rsh">rsh</a>(self, rhs: u64) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Not" class="impl has-srclink"><a href="#impl-Not" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Not.html">Not</a> for U128</h3></div></summary><div class="impl-items"><div id="method.not" class="method trait-impl"><a href="#method.not" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.not">not</a>(self) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Add" class="impl has-srclink"><a href="#impl-Add" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Add.html">Add</a> for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.add" class="method trait-impl"><a href="#method.add" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.add">add</a>(self, other: Self) -&gt; Self</h4></div></summary><div class="docblock"><p>Add a <code>U128</code> to a <code>U128</code>. Reverts on overflow.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Subtract" class="impl has-srclink"><a href="#impl-Subtract" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Subtract.html">Subtract</a> for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.subtract" class="method trait-impl"><a href="#method.subtract" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.subtract">subtract</a>(self, other: Self) -&gt; Self</h4></div></summary><div class="docblock"><p>Subtract a <code>U128</code> from a <code>U128</code>. Reverts on underflow.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Multiply" class="impl has-srclink"><a href="#impl-Multiply" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Multiply.html">Multiply</a> for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.multiply" class="method trait-impl"><a href="#method.multiply" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.multiply">multiply</a>(self, other: Self) -&gt; Self</h4></div></summary><div class="docblock"><p>Multiply a <code>U128</code> with a <code>U128</code>. Reverts of overflow.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Divide" class="impl has-srclink"><a href="#impl-Divide" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Divide.html">Divide</a> for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.divide" class="method trait-impl"><a href="#method.divide" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.divide">divide</a>(self, divisor: Self) -&gt; Self</h4></div></summary><div class="docblock"><p>Divide a <code>U128</code> by a <code>U128</code>. Reverts if divisor is zero.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Mod" class="impl has-srclink"><a href="#impl-Mod" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Mod.html">Mod</a> for U128</h3></div></summary><div class="impl-items"><div id="method.modulo" class="method trait-impl"><a href="#method.modulo" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.modulo">modulo</a>(self, other: Self) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Power" class="impl has-srclink"><a href="#impl-Power" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../math/trait.Power.html">Power</a> for U128</h3></div></summary><div class="impl-items"><div id="method.pow" class="method trait-impl"><a href="#method.pow" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.pow">pow</a>(self, exponent: u32) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Root" class="impl has-srclink"><a href="#impl-Root" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../math/trait.Root.html">Root</a> for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.sqrt" class="method trait-impl"><a href="#method.sqrt" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.sqrt">sqrt</a>(self) -&gt; Self</h4></div></summary><div class="docblock"><p>Integer square root using <a href="https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton&#x27;s_method">Newton’s Method</a>.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-BinaryLogarithm" class="impl has-srclink"><a href="#impl-BinaryLogarithm" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../math/trait.BinaryLogarithm.html">BinaryLogarithm</a> for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.log2" class="method trait-impl"><a href="#method.log2" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.log2">log2</a>(self) -&gt; Self</h4></div></summary><div class="docblock"><p><code>log2</code> of <code>x</code> is the largest <code>n</code> such that <code>2^n &lt;= x &lt; 2^(n+1)</code>.</p>
+<ul>
+<li>If <code>x</code> is smaller than <code>2^64</code>, we could just rely on the <code>log</code> method by setting<br />
+the base to 2.</li>
+<li>Otherwise, we can find the highest non-zero bit by taking the regular log of the upper<br />
+part of the <code>U128</code>, and then add 64.</li>
+</ul>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Logarithm" class="impl has-srclink"><a href="#impl-Logarithm" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../math/trait.Logarithm.html">Logarithm</a> for U128</h3></div></summary><div class="impl-items"><div id="method.log" class="method trait-impl"><a href="#method.log" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.log">log</a>(self, base: Self) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-TotalOrd" class="impl has-srclink"><a href="#impl-TotalOrd" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.TotalOrd.html">TotalOrd</a> for U128</h3></div></summary><div class="impl-items"><div id="method.max" class="method trait-impl"><a href="#method.max" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.max">max</a>(self, other: Self) -&gt; Self</h4></div><div id="method.min" class="method trait-impl"><a href="#method.min" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.min">min</a>(self, other: Self) -&gt; Self</h4></div></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
