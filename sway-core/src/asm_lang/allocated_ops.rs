@@ -18,8 +18,8 @@ use crate::{
     fuel_prelude::fuel_asm::{self, op},
 };
 use fuel_vm::fuel_asm::{
-    op::{ADD, ADDI, MOVI},
-    Imm12, Imm18,
+    op::{ADD, MOVI},
+    Imm18,
 };
 use std::fmt::{self, Write};
 use sway_types::span::Span;
@@ -828,28 +828,17 @@ fn addr_of(
     data_section: &DataSection,
 ) -> Vec<fuel_asm::Instruction> {
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
-
-    if offset_bytes <= u64::from(Imm12::MAX.to_u16()) {
-        // Small enough to fit into an ADDI instruction immediate
-        vec![fuel_asm::Instruction::ADDI(ADDI::new(
+    vec![
+        fuel_asm::Instruction::MOVI(MOVI::new(
+            dest.to_reg_id(),
+            Imm18::new(offset_bytes.try_into().unwrap()),
+        )),
+        fuel_asm::Instruction::ADD(ADD::new(
+            dest.to_reg_id(),
             dest.to_reg_id(),
             fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            Imm12::new(offset_bytes.try_into().unwrap()),
-        ))]
-    } else {
-        // Offset too large to fit into ADDI immediate, so we need to use MOVI first
-        vec![
-            fuel_asm::Instruction::MOVI(MOVI::new(
-                dest.to_reg_id(),
-                Imm18::new(offset_bytes.try_into().unwrap()),
-            )),
-            fuel_asm::Instruction::ADD(ADD::new(
-                dest.to_reg_id(),
-                dest.to_reg_id(),
-                fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            )),
-        ]
-    }
+        )),
+    ]
 }
 
 /// Converts a virtual load word instruction which uses data labels into one which uses
