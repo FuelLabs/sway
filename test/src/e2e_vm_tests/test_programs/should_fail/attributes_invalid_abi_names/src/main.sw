@@ -28,6 +28,9 @@ struct MyStruct5 {}
 #[abi_name(name = "OtherStruct")]
 struct MyStruct6 {}
 
+#[abi_name(name = "::some_module::in_the_same::package")]
+struct MyStruct7 {}
+
 // OK because enums are on a different namespace
 #[abi_name(name = "SameName")]
 enum MyEnum {
@@ -49,6 +52,7 @@ abi MyAbi {
     fn my_struct4() -> MyStruct4;
     fn my_struct5() -> MyStruct5;
     fn my_struct6() -> MyStruct6;
+    fn my_struct7() -> MyStruct7;
     fn other_enum() -> OtherEnum;
     fn my_enum() -> MyEnum;
     fn my_enum1() -> MyEnum1;
@@ -64,6 +68,7 @@ impl MyAbi for Contract {
   fn my_struct4() -> MyStruct4 { MyStruct4{} }
   fn my_struct5() -> MyStruct5 { MyStruct5{} }
   fn my_struct6() -> MyStruct6 { MyStruct6{} }
+  fn my_struct7() -> MyStruct7 { MyStruct7{} }
   fn other_enum() -> OtherEnum { OtherEnum::A }
   fn my_enum() -> MyEnum { MyEnum::A }
   fn my_enum1() -> MyEnum1 { MyEnum1::A }

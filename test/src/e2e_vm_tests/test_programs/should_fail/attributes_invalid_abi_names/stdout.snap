@@ -8,10 +8,10 @@ output:
    Compiling library std (sway-lib-std)
    Compiling contract attributes_invalid_abi_names (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names)
 error: Duplicated name found for renamed ABI type
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/main.sw:37:19
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/main.sw:40:19
    |
 ...
-37 | #[abi_name(name = "OtherEnum")]
+40 | #[abi_name(name = "OtherEnum")]
    |                   ^^^^^^^^^^^
    |
   ::: test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/other.sw:7:10
@@ -98,5 +98,15 @@ error: Duplicated name found for renamed ABI type
    |
 ____
 
-  Aborting due to 7 errors.
+error: Invalid name found for renamed ABI type.
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/main.sw:31:19
+   |
+...
+31 | #[abi_name(name = "::some_module::in_the_same::package")]
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: The name must be a valid Sway identifier.
+____
+
+  Aborting due to 8 errors.
 error: Failed to compile attributes_invalid_abi_names

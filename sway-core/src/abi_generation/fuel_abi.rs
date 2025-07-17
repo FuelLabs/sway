@@ -182,7 +182,10 @@ impl TypeId {
             };
 
             if has_abi_name_attribute {
-                if name.is_empty() || !is_valid_identifier_or_path(name.as_str()) {
+                if name.is_empty()
+                    || !is_valid_identifier_or_path(name.as_str())
+                    || name.starts_with("::")
+                {
                     err = Some(handler.emit_err(CompileError::ABIInvalidName {
                         span: attribute_name_span.clone(),
                         name,
