@@ -10,7 +10,7 @@ use crate::{
         ty_storage_field::{with_in_keyword, without_in_keyword},
         TyLocate,
     },
-    migrations::{InteractionResponse, ProgramInfo},
+    migrations::{InteractionResponse, Occurrence, ProgramInfo},
     modifying::*,
     print_single_choice_menu,
 };
@@ -23,7 +23,7 @@ use sway_core::language::{
     CallPath, Literal,
 };
 use sway_error::formatting::{self, sequence_to_list};
-use sway_types::{Span, Spanned};
+use sway_types::Spanned;
 
 pub(super) const REVIEW_STORAGE_SLOT_KEYS_STEP: MigrationStep = MigrationStep {
     title: "Review explicitly defined slot keys in storage declarations (`in` keywords)",
@@ -65,7 +65,7 @@ pub(super) const DEFINE_BACKWARD_COMPATIBLE_STORAGE_SLOT_KEYS_STEP: MigrationSte
     ],
 };
 
-fn review_storage_slot_keys_step(program_info: &ProgramInfo) -> Result<Vec<Span>> {
+fn review_storage_slot_keys_step(program_info: &ProgramInfo) -> Result<Vec<Occurrence>> {
     let mut res = vec![];
 
     let Some(storage_decl_id) = ty_match::storage_decl(program_info.ty_program.as_ref()) else {
@@ -121,7 +121,7 @@ fn review_storage_slot_keys_step(program_info: &ProgramInfo) -> Result<Vec<Span>
             continue;
         }
 
-        res.push(key_expression.span.clone());
+        res.push(key_expression.span.clone().into());
     }
 
     Ok(res)
@@ -129,7 +129,7 @@ fn review_storage_slot_keys_step(program_info: &ProgramInfo) -> Result<Vec<Span>
 
 fn define_backward_compatible_storage_slot_keys_step_instruction(
     program_info: &ProgramInfo,
-) -> Result<Vec<Span>> {
+) -> Result<Vec<Occurrence>> {
     let mut res = vec![];
 
     let Some(storage_decl_id) = ty_match::storage_decl(program_info.ty_program.as_ref()) else {
@@ -145,7 +145,7 @@ fn define_backward_compatible_storage_slot_keys_step_instruction(
     // to avoid cluttering. The interaction part of the step will then provide
     // more detailed information and guide the developers.
     if !ty_match::storage_fields_deep(storage_decl, without_in_keyword).is_empty() {
-        res.push(storage_decl.span.clone());
+        res.push(storage_decl.span.clone().into());
     }
 
     Ok(res)
@@ -153,7 +153,7 @@ fn define_backward_compatible_storage_slot_keys_step_instruction(
 
 fn define_backward_compatible_storage_slot_keys_step_interaction(
     program_info: &mut MutProgramInfo,
-) -> Result<(InteractionResponse, Vec<Span>)> {
+) -> Result<(InteractionResponse, Vec<Occurrence>)> {
     let Some(storage_decl_id) = ty_match::storage_decl(program_info.ty_program) else {
         return Ok((InteractionResponse::None, vec![]));
     };
@@ -213,7 +213,7 @@ fn define_backward_compatible_storage_slot_keys_step_interaction(
             )));
         };
 
-        res.push(ty_storage_field.name.span());
+        res.push(ty_storage_field.name.span().into());
 
         modify(lexed_storage_field).set_in_key(BigUint::from_bytes_be(
             get_previous_slot_key(ty_storage_field).as_slice(),

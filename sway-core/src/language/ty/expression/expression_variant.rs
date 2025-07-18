@@ -27,9 +27,9 @@ pub enum TyExpressionVariant {
         arguments: Vec<(Ident, TyExpression)>,
         fn_ref: DeclRefFunction,
         selector: Option<ContractCallParams>,
-        /// optional binding information for the LSP
+        /// Optional binding information for the LSP.
         type_binding: Option<TypeBinding<()>>,
-        /// In case it is a method should contain a TypeId to either an enum, struct or a type alias.
+        /// In case of a method call, it will contain a [TypeId] of either an enum, struct or a type alias.
         call_path_typeid: Option<TypeId>,
         contract_call_params: IndexMap<String, TyExpression>,
         contract_caller: Option<Box<TyExpression>>,

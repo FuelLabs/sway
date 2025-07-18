@@ -2,7 +2,12 @@
 
 use std::{sync::Arc, vec};
 
-use crate::{internal_error, migrations::MutProgramInfo, modifying::*, visiting::*};
+use crate::{
+    internal_error,
+    migrations::{MutProgramInfo, Occurrence},
+    modifying::*,
+    visiting::*,
+};
 use anyhow::{bail, Ok, Result};
 use sway_ast::{
     assignable::ElementAccess, expr, Assignable, Expr, ItemFn, ItemStruct, StatementLet,
@@ -14,7 +19,7 @@ use sway_core::language::{
     },
     CallPathType,
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Spanned};
 
 use super::{ContinueMigrationProcess, DryRun, MigrationStep, MigrationStepKind};
 
@@ -52,15 +57,15 @@ pub(super) const RENAME_EXISTING_PANIC_IDENTIFIERS_TO_R_PANIC_STEP: MigrationSte
 fn rename_existing_panic_identifiers_to_r_panic_step(
     program_info: &mut MutProgramInfo,
     dry_run: DryRun,
-) -> Result<Vec<Span>> {
+) -> Result<Vec<Occurrence>> {
     struct Visitor;
-    impl TreesVisitorMut<Span> for Visitor {
+    impl TreesVisitorMut<Occurrence> for Visitor {
         fn visit_fn_decl(
             &mut self,
             ctx: &VisitingContext,
             lexed_fn: &mut ItemFn,
             _ty_fn: Option<Arc<TyFunctionDecl>>,
-            output: &mut Vec<Span>,
+            output: &mut Vec<Occurrence>,
         ) -> Result<InvalidateTypedElement> {
             // First, let's check the arguments.
             for lexed_arg in lexed_fn.fn_signature.arguments.inner.args_mut() {
@@ -76,7 +81,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
                     continue;
                 }
 
-                output.push(arg_name.span());
+                output.push(arg_name.span().into());
 
                 if ctx.dry_run == DryRun::Yes {
                     continue;
@@ -90,7 +95,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
                 return Ok(InvalidateTypedElement::No);
             }
 
-            output.push(lexed_fn.fn_signature.name.span());
+            output.push(lexed_fn.fn_signature.name.span().into());
 
             if ctx.dry_run == DryRun::Yes {
                 return Ok(InvalidateTypedElement::No);
@@ -106,7 +111,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
             ctx: &VisitingContext,
             lexed_struct: &mut ItemStruct,
             _ty_struct: Option<Arc<TyStructDecl>>,
-            output: &mut Vec<Span>,
+            output: &mut Vec<Occurrence>,
         ) -> Result<InvalidateTypedElement> {
             for lexed_field in lexed_struct.fields.inner.iter_mut() {
                 let field_name = &mut lexed_field.value.name;
@@ -115,7 +120,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
                     continue;
                 }
 
-                output.push(field_name.span());
+                output.push(field_name.span().into());
 
                 if ctx.dry_run == DryRun::Yes {
                     continue;
@@ -132,7 +137,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
             ctx: &VisitingContext,
             lexed_fn_call: &mut Expr,
             ty_fn_call: Option<&TyExpression>,
-            output: &mut Vec<Span>,
+            output: &mut Vec<Occurrence>,
         ) -> Result<InvalidateTypedElement> {
             // We report the occurrences only if it is not a dry-run.
             if ctx.dry_run == DryRun::Yes {
@@ -183,7 +188,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
                 return Ok(InvalidateTypedElement::No);
             }
 
-            output.push(last_segment.span());
+            output.push(last_segment.span().into());
 
             modify(last_segment).set_name("r#panic");
 
@@ -195,42 +200,29 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
             ctx: &VisitingContext,
             lexed_method_call: &mut Expr,
             ty_method_call: Option<&TyExpression>,
-            output: &mut Vec<Span>,
+            output: &mut Vec<Occurrence>,
         ) -> Result<InvalidateTypedElement> {
             // We report the occurrences only if it is not a dry-run.
             if ctx.dry_run == DryRun::Yes {
                 return Ok(InvalidateTypedElement::No);
             }
 
-            let Some(ty_method_call) = ty_method_call else {
+            let lexed_method_call_info = LexedMethodCallInfoMut::new(lexed_method_call)?;
+            let ty_method_call_info = ty_method_call
+                .map(|ty_method_call| TyMethodCallInfo::new(ctx.engines.de(), ty_method_call))
+                .transpose()?;
+
+            let Some(ty_method_call_info) = ty_method_call_info else {
                 // Without the typed method call, we cannot proceed
                 // because we cannot check if the method is actually defined in the current package.
                 return Ok(InvalidateTypedElement::No);
             };
 
-            let Expr::MethodCall {
-                path_seg, args: _, ..
-            } = lexed_method_call
-            else {
-                bail!(internal_error(
-                    "`lexed_method_call` is not an `Expr::MethodCall`."
-                ));
-            };
-
-            if path_seg.name.as_raw_ident_str() != "panic" {
+            if lexed_method_call_info.path_seg.name.as_raw_ident_str() != "panic" {
                 return Ok(InvalidateTypedElement::No);
             }
 
-            // Check if the method is actually defined in the current package.
-            let TyExpressionVariant::FunctionApplication { fn_ref, .. } =
-                &ty_method_call.expression
-            else {
-                bail!(internal_error(
-                    "`ty_method_call` is not a `TyExpressionVariant::FunctionApplication`."
-                ));
-            };
-
-            let ty_method = ctx.engines.de().get_function(fn_ref.id());
+            let ty_method = ty_method_call_info.fn_decl;
             // We need the full path to the function to ensure it is defined in the current package.
             if ty_method.call_path.callpath_type != CallPathType::Full {
                 return Ok(InvalidateTypedElement::No);
@@ -244,9 +236,9 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
                 return Ok(InvalidateTypedElement::No);
             }
 
-            output.push(path_seg.span());
+            output.push(lexed_method_call_info.path_seg.span().into());
 
-            modify(path_seg).set_name("r#panic");
+            modify(lexed_method_call_info.path_seg).set_name("r#panic");
 
             Ok(InvalidateTypedElement::No)
         }
@@ -256,7 +248,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
             ctx: &VisitingContext,
             lexed_let: &mut StatementLet,
             _ty_var_decl: Option<&TyVariableDecl>,
-            output: &mut Vec<Span>,
+            output: &mut Vec<Occurrence>,
         ) -> Result<InvalidateTypedElement> {
             let var_name = match &mut lexed_let.pattern {
                 sway_ast::Pattern::Var { name, .. } => name,
@@ -274,7 +266,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
                 return Ok(InvalidateTypedElement::No);
             }
 
-            output.push(var_name.span());
+            output.push(var_name.span().into());
 
             if ctx.dry_run == DryRun::Yes {
                 return Ok(InvalidateTypedElement::No);
@@ -290,7 +282,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
             ctx: &VisitingContext,
             lexed_expr: &mut Expr,
             _ty_expr: Option<&TyExpression>,
-            output: &mut Vec<Span>,
+            output: &mut Vec<Occurrence>,
         ) -> Result<InvalidateTypedElement> {
             // We report the occurrences only if it is not a dry-run.
             if ctx.dry_run == DryRun::Yes {
@@ -312,7 +304,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
                 .into_iter()
                 .filter(|n| n.as_raw_ident_str() == "panic")
             {
-                output.push(var_name.span());
+                output.push(var_name.span().into());
 
                 *var_name = Ident::new_with_raw(var_name.span(), true);
             }
@@ -328,7 +320,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
             _ty_lhs: Option<&TyReassignmentTarget>,
             _lexed_rhs: &mut Expr,
             _ty_rhs: Option<&TyExpression>,
-            output: &mut Vec<Span>,
+            output: &mut Vec<Occurrence>,
         ) -> Result<InvalidateTypedElement> {
             // On the LHS, we support renaming `panic` only in these cases:
             // - Variable names, e.g., `let panic = 42;`
@@ -376,7 +368,7 @@ fn rename_existing_panic_identifiers_to_r_panic_step(
                 .into_iter()
                 .filter(|n| n.as_raw_ident_str() == "panic")
             {
-                output.push(var_name.span());
+                output.push(var_name.span().into());
 
                 *var_name = Ident::new_with_raw(var_name.span(), true);
             }
