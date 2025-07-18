@@ -24,7 +24,7 @@ pub use crate::{
     keywords::RESERVED_KEYWORDS,
     parse::Parse,
     parser::Parser,
-    token::{lex, lex_commented, parse_int_suffix},
+    token::{is_valid_identifier_or_path, lex, lex_commented, parse_int_suffix},
 };
 
 use sway_ast::{

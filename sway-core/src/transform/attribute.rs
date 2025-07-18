@@ -321,7 +321,7 @@ pub enum ArgsExpectValues {
     ///
     /// E.g.: `#[cfg(target = "fuel", experimental_new_encoding = false)]`.
     Yes,
-    /// None of the arguments can never have values specified, or the
+    /// None of the arguments can have values specified, or the
     /// [Attribute] does not expect any arguments.
     ///
     /// E.g.: `#[storage(read, write)]`, `#[fallback]`.
@@ -355,6 +355,7 @@ pub enum AttributeKind {
     ErrorType,
     Error,
     Trace,
+    AbiName,
 }
 
 /// Denotes if an [ItemTraitItem] belongs to an ABI or to a trait.
@@ -386,6 +387,7 @@ impl AttributeKind {
             ERROR_TYPE_ATTRIBUTE_NAME => AttributeKind::ErrorType,
             ERROR_ATTRIBUTE_NAME => AttributeKind::Error,
             TRACE_ATTRIBUTE_NAME => AttributeKind::Trace,
+            ABI_NAME_ATTRIBUTE_NAME => AttributeKind::AbiName,
             _ => AttributeKind::Unknown,
         }
     }
@@ -415,6 +417,7 @@ impl AttributeKind {
             ErrorType => false,
             Error => false,
             Trace => false,
+            AbiName => false,
         }
     }
 }
@@ -457,6 +460,7 @@ impl Attribute {
             Error => Multiplicity::exactly(1),
             // `trace(never)` or `trace(always)`.
             Trace => Multiplicity::exactly(1),
+            AbiName => Multiplicity::exactly(1),
         }
     }
 
@@ -513,6 +517,7 @@ impl Attribute {
             ErrorType => None,
             Error => MustBeIn(vec![ERROR_M_ARG_NAME]),
             Trace => MustBeIn(vec![TRACE_ALWAYS_ARG_NAME, TRACE_NEVER_ARG_NAME]),
+            AbiName => MustBeIn(vec![ABI_NAME_NAME_ARG_NAME]),
         }
     }
 
@@ -537,6 +542,7 @@ impl Attribute {
             // `error(msg = "msg")`.
             Error => Yes,
             Trace => No,
+            AbiName => Yes,
         }
     }
 
@@ -558,6 +564,7 @@ impl Attribute {
             ErrorType => false,
             Error => false,
             Trace => false,
+            AbiName => false,
         }
     }
 
@@ -612,6 +619,7 @@ impl Attribute {
             ErrorType => matches!(item_kind, ItemKind::Enum(_)),
             Error => false,
             Trace => matches!(item_kind, ItemKind::Fn(_)),
+            AbiName => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
         }
     }
 
@@ -638,6 +646,7 @@ impl Attribute {
             ErrorType => false,
             Error => struct_or_enum_field == StructOrEnumField::EnumField,
             Trace => false,
+            AbiName => false,
         }
     }
 
@@ -666,6 +675,7 @@ impl Attribute {
             // Functions in the trait or ABI interface surface cannot be marked as traced
             // because they don't have implementation.
             Trace => false,
+            AbiName => false,
         }
     }
 
@@ -689,6 +699,7 @@ impl Attribute {
             ErrorType => false,
             Error => false,
             Trace => matches!(item, ItemImplItem::Fn(..)),
+            AbiName => false,
         }
     }
 
@@ -711,6 +722,7 @@ impl Attribute {
             ErrorType => false,
             Error => false,
             Trace => true,
+            AbiName => false,
         }
     }
 
@@ -731,6 +743,7 @@ impl Attribute {
             ErrorType => false,
             Error => false,
             Trace => false,
+            AbiName => false,
         }
     }
 
@@ -750,6 +763,7 @@ impl Attribute {
             ErrorType => false,
             Error => false,
             Trace => false,
+            AbiName => false,
         }
     }
 
@@ -802,6 +816,9 @@ impl Attribute {
             ErrorType => vec!["\"error_type\" attribute can only annotate enums."],
             Error => vec!["\"error\" attribute can only annotate enum variants of enums annotated with the \"error_type\" attribute."],
             Trace => vec!["\"trace\" attribute can only annotate functions that can panic."],
+            AbiName => vec![
+                "\"abi_name\" attribute can only annotate structs and enums.",
+            ],
         };
 
         if help.is_empty() && target_friendly_name.starts_with("module kind") {
@@ -1028,6 +1045,12 @@ impl Attributes {
     pub fn deprecated(&self) -> Option<&Attribute> {
         self.deprecated_attr_index
             .map(|index| &self.attributes[index])
+    }
+
+    /// Returns the `#[abi_name]` [Attribute], or `None` if the
+    /// [Attributes] does not contain any `#[abi_name]` attributes.
+    pub fn abi_name(&self) -> Option<&Attribute> {
+        self.of_kind(AttributeKind::AbiName).last()
     }
 
     /// Returns the `#[test]` [Attribute], or `None` if the

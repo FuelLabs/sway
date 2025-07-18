@@ -1044,6 +1044,14 @@ pub enum CompileError {
     EncodingUnsupportedType { span: Span },
     #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
     ConfigurableMissingAbiDecodeInPlace { span: Span },
+    #[error("Invalid name found for renamed ABI type.\n")]
+    ABIInvalidName { span: Span, name: String },
+    #[error("Duplicated name found for renamed ABI type.\n")]
+    ABIDuplicateName {
+        span: Span,
+        other_span: Span,
+        is_attribute: bool,
+    },
     #[error("Collision detected between two different types.\n  Shared hash:{hash}\n  First type:{first_type}\n  Second type:{second_type}")]
     ABIHashCollision {
         span: Span,
@@ -1304,6 +1312,8 @@ impl Spanned for CompileError {
             CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
             EncodingUnsupportedType { span } => span.clone(),
             ConfigurableMissingAbiDecodeInPlace { span } => span.clone(),
+            ABIInvalidName { span, .. } => span.clone(),
+            ABIDuplicateName { span, .. } => span.clone(),
             ABIHashCollision { span, .. } => span.clone(),
             InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
             TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
@@ -3111,6 +3121,32 @@ impl ToDiagnostic for CompileError {
                     ];
                     help
                 },
+            },
+            ABIDuplicateName { span, other_span: other, is_attribute } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Duplicated name found for renamed ABI type".into())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    String::new()
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        other.clone(),
+                        format!("This is the existing {} with conflicting name.", if *is_attribute { "attribute" } else { "type" }),
+                    )
+                ],
+                help: vec![],
+            },
+            ABIInvalidName { span, name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Invalid name found for renamed ABI type.".into())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    String::new()
+                ),
+                hints: vec![],
+                help: vec![format!("The name must be a valid Sway identifier{}.", if name.is_empty() { " and cannot be empty" } else { "" })],
             },
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.

@@ -105,6 +105,65 @@ pub fn lex(
     lex_commented(handler, src, start, end, &source_id).map(|stream| stream.strip_comments())
 }
 
+/// Identifier & path validation.
+///
+/// A *path* may optionally start with `::` and is otherwise a `::`‑separated
+/// list of identifiers.  Identifiers follow these rules:
+///
+/// * Must not be empty.
+/// * Must not be just `_`.
+/// * Must not start with two underscores (`__`).
+/// * First char: Unicode XID_Start or `_`.
+/// * Remaining chars: Unicode XID_Continue.
+///
+/// Any colon that is *not* part of a `::` token is rejected, and empty path
+/// segments such as `foo::` or `foo:::bar` are invalid.
+pub fn is_valid_identifier_or_path(s: &str) -> bool {
+    // Reject empty string early.
+    if s.is_empty() {
+        return false;
+    }
+
+    // Handle an optional leading `::`.
+    let mut input = s;
+    if let Some(rest) = input.strip_prefix("::") {
+        input = rest;
+        // Bare `::` is invalid.
+        if input.is_empty() {
+            return false;
+        }
+    }
+
+    // Split on *exactly* two consecutive colons.  Any single `:` or triple
+    // `:::` will leave stray `:` characters inside a segment and fail below.
+    for segment in input.split("::") {
+        if !is_valid_identifier(segment) {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Check a single identifier segment.
+fn is_valid_identifier(ident: &str) -> bool {
+    // Reject empty, bare underscore, or double‑underscore prefix.
+    if ident.is_empty() || ident == "_" || ident.starts_with("__") {
+        return false;
+    }
+
+    let mut chars = ident.chars();
+    let first = chars.next().unwrap();
+
+    // First char: Unicode XID_Start or underscore.
+    if !(first.is_xid_start() || first == '_') {
+        return false;
+    }
+
+    // Remaining chars: Unicode XID_Continue.
+    chars.all(|c| c.is_xid_continue())
+}
+
 pub fn lex_commented(
     handler: &Handler,
     src: Source,
@@ -1056,5 +1115,43 @@ mod tests {
             })))
         );
         assert_eq!(tts.next(), None);
+    }
+
+    use super::is_valid_identifier_or_path as valid;
+
+    #[test]
+    fn accepts_simple_identifiers() {
+        assert!(valid("foo"));
+        assert!(valid("Foo"));
+        assert!(valid("_foo"));
+        assert!(valid("foo123"));
+        assert!(valid("føø"));
+    }
+
+    #[test]
+    fn rejects_invalid_identifiers() {
+        assert!(!valid(""));
+        assert!(!valid("_"));
+        assert!(!valid("__"));
+        assert!(!valid("__invalid"));
+        assert!(!valid(":foo"));
+        assert!(!valid("foo:bar"));
+    }
+
+    #[test]
+    fn accepts_paths() {
+        assert!(valid("foo::bar"));
+        assert!(valid("_foo::_bar"));
+        assert!(valid("foo_bar::baz123"));
+        assert!(valid("::some_module::in_the_same::package"));
+    }
+
+    #[test]
+    fn rejects_malformed_paths() {
+        assert!(!valid("foo:bar:baz"));
+        assert!(!valid("foo::"));
+        assert!(!valid("::"));
+        assert!(!valid("foo:::bar"));
+        assert!(!valid("foo::__bad"));
     }
 }

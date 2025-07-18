@@ -113,18 +113,24 @@ error: Attribute can be applied only once
 ____
 
 error: Attribute can be applied only once
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/trace_attr.sw:13:22
-   |
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/abi_name_attr.sw:4:3
+  |
 ...
-11 |     #[trace(never)]
-   |       ----- info: It is already applied here.
-12 |     #[trace(always)]
-   |       ----- info: And here.
-13 |     #[trace(always), trace(never)]
-   |                      ^^^^^ "trace" attribute can be applied only once, but is applied four times.
-   |       ----- info: And here.
-   |
+3 | #[abi_name]
+  |   -------- info: It is already applied here.
+4 | #[abi_name(name = "name")]
+  |   ^^^^^^^^ "abi_name" attribute can be applied only once, but is applied two times.
+  |
 ____
 
-  Aborting due to 9 errors.
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/abi_name_attr.sw:3:3
+  |
+...
+3 | #[abi_name]
+  |   ^^^^^^^^ "abi_name" attribute must have exactly one argument, but has none.
+  |
+____
+
+  Aborting due to 10 errors.
 error: Failed to compile attributes_invalid_multiplicity
