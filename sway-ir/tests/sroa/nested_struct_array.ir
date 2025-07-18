@@ -11,71 +11,71 @@ script {
         local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
 
         entry():
-        v0 = get_local ptr [u64; 4], __anon_0, !2
+        v0 = get_local __ptr [u64; 4], __anon_0, !2
         v1 = const u64 0
-        v2 = get_elem_ptr v0, ptr u64, v1
+        v2 = get_elem_ptr v0, __ptr u64, v1
         v3 = const u64 0, !3
         store v3 to v2, !2
         v4 = const u64 1
-        v5 = get_elem_ptr v0, ptr u64, v4
+        v5 = get_elem_ptr v0, __ptr u64, v4
         v6 = const u64 1, !4
         store v6 to v5, !2
         v7 = const u64 2
-        v8 = get_elem_ptr v0, ptr u64, v7
+        v8 = get_elem_ptr v0, __ptr u64, v7
         v9 = const u64 2, !5
         store v9 to v8, !2
         v10 = const u64 3
-        v11 = get_elem_ptr v0, ptr u64, v10
+        v11 = get_elem_ptr v0, __ptr u64, v10
         v12 = const u64 3, !6
         store v12 to v11, !2
-        v13 = get_local ptr { u64, u64 }, __anon_1, !7
+        v13 = get_local __ptr { u64, u64 }, __anon_1, !7
         v14 = const u64 0
-        v15 = get_elem_ptr v13, ptr u64, v14
+        v15 = get_elem_ptr v13, __ptr u64, v14
         v16 = const u64 199, !8
         store v16 to v15, !7
         v17 = const u64 1
-        v18 = get_elem_ptr v13, ptr u64, v17
+        v18 = get_elem_ptr v13, __ptr u64, v17
         v19 = const u64 200, !9
         store v19 to v18, !7
-        v20 = get_local ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !10
+        v20 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !10
         v21 = const u64 0
-        v22 = get_elem_ptr v20, ptr u64, v21
+        v22 = get_elem_ptr v20, __ptr u64, v21
         v23 = const u64 2, !11
         store v23 to v22, !10
         v24 = const u64 1
-        v25 = get_elem_ptr v20, ptr u64, v24
+        v25 = get_elem_ptr v20, __ptr u64, v24
         v26 = const u64 3, !12
         store v26 to v25, !10
         v27 = const u64 2
-        v28 = get_elem_ptr v20, ptr [u64; 4], v27
+        v28 = get_elem_ptr v20, __ptr [u64; 4], v27
         // not: mem_copy_val
         mem_copy_val v28, v0
         v29 = const u64 3
-        v30 = get_elem_ptr v20, ptr { u64, u64 }, v29
+        v30 = get_elem_ptr v20, __ptr { u64, u64 }, v29
         mem_copy_val v30, v13
-        v31 = get_local ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !13
+        v31 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !13
         v32 = const u64 0
-        v33 = get_elem_ptr v31, ptr u64, v32, !14
+        v33 = get_elem_ptr v31, __ptr u64, v32, !14
         v34 = load v33
-        v35 = get_local ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !15
+        v35 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !15
         v36 = const u64 3
-        v37 = get_elem_ptr v35, ptr { u64, u64 }, v36, !16
+        v37 = get_elem_ptr v35, __ptr { u64, u64 }, v36, !16
         v38 = const u64 0
-        v39 = get_elem_ptr v37, ptr u64, v38, !17
+        v39 = get_elem_ptr v37, __ptr u64, v38, !17
         v40 = load v39
         v41 = add v34, v40, !18
-        v42 = get_local ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !19
+        v42 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !19
         v43 = const u64 3
-        v44 = get_elem_ptr v42, ptr { u64, u64 }, v43, !16
+        v44 = get_elem_ptr v42, __ptr { u64, u64 }, v43, !16
         v45 = const u64 1
-        v46 = get_elem_ptr v44, ptr u64, v45, !20
+        v46 = get_elem_ptr v44, __ptr u64, v45, !20
         v47 = load v46
         v48 = add v41, v47, !21
-        v49 = get_local ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !22
+        v49 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !22
         v50 = const u64 2
-        v51 = get_elem_ptr v49, ptr [u64; 4], v50, !23
+        v51 = get_elem_ptr v49, __ptr [u64; 4], v50, !23
         v52 = const u64 1, !24
-        v53 = get_elem_ptr v51, ptr u64, v52, !25
+        v53 = get_elem_ptr v51, __ptr u64, v52, !25
         v54 = load v53
         v55 = add v48, v54, !26
         ret u64 v55

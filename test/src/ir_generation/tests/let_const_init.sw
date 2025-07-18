@@ -13,7 +13,7 @@ fn main() -> u64 {
 // check: $(v4=$VAL) = call add_0($v2, $v3)
 // check: $(v5=$VAL) = const u64 4
 // check: $(v6=$VAL) = call add_0($v4, $v5)
-// check: $(a_addr=$VAL) = get_local ptr u64, a
+// check: $(a_addr=$VAL) = get_local __ptr u64, a
 // check: store $v6 to $a_addr
 
 // ::check-ir-optimized::

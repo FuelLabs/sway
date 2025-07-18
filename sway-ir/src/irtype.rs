@@ -38,7 +38,8 @@ pub enum TypeContent {
     Union(Vec<Type>),
     Struct(Vec<Type>),
     Slice,
-    Pointer(Type),
+    Pointer,
+    TypedPointer(Type),
     TypedSlice(Type),
 }
 
@@ -71,6 +72,7 @@ impl Type {
         Self::get_or_create_unique_type(context, TypeContent::Uint(256));
         Self::get_or_create_unique_type(context, TypeContent::B256);
         Self::get_or_create_unique_type(context, TypeContent::Slice);
+        Self::get_or_create_unique_type(context, TypeContent::Pointer);
     }
 
     /// Get the content for this [Type].
@@ -133,6 +135,11 @@ impl Type {
         Self::get_type(context, &TypeContent::B256).expect("create_basic_types not called")
     }
 
+    /// Get untyped pointer type
+    pub fn get_ptr(context: &Context) -> Type {
+        Self::get_type(context, &TypeContent::Pointer).expect("create_basic_types not called")
+    }
+
     /// Get string type
     pub fn new_string_array(context: &mut Context, len: u64) -> Type {
         Self::get_or_create_unique_type(context, TypeContent::StringArray(len))
@@ -154,8 +161,8 @@ impl Type {
     }
 
     /// New pointer type
-    pub fn new_ptr(context: &mut Context, to_ty: Type) -> Type {
-        Self::get_or_create_unique_type(context, TypeContent::Pointer(to_ty))
+    pub fn new_typed_pointer(context: &mut Context, to_ty: Type) -> Type {
+        Self::get_or_create_unique_type(context, TypeContent::TypedPointer(to_ty))
     }
 
     /// Get slice type
@@ -196,8 +203,9 @@ impl Type {
                 format!("{{ {} }}", sep_types_str(agg, ", "))
             }
             TypeContent::Slice => "slice".into(),
+            TypeContent::Pointer => "ptr".into(),
             TypeContent::TypedSlice(ty) => format!("__slice[{}]", ty.as_string(context)),
-            TypeContent::Pointer(ty) => format!("ptr {}", ty.as_string(context)),
+            TypeContent::TypedPointer(ty) => format!("__ptr {}", ty.as_string(context)),
         }
     }
 
@@ -229,7 +237,8 @@ impl Type {
             // Never type can coerce into any other type.
             (TypeContent::Never, _) => true,
             (TypeContent::Slice, TypeContent::Slice) => true,
-            (TypeContent::Pointer(l), TypeContent::Pointer(r)) => l.eq(context, r),
+            (TypeContent::Pointer, TypeContent::Pointer) => true,
+            (TypeContent::TypedPointer(l), TypeContent::TypedPointer(r)) => l.eq(context, r),
             _ => false,
         }
     }
@@ -336,12 +345,15 @@ impl Type {
     // TODO: (REFERENCES) Check all the usages of `is_ptr`.
     /// Returns true if `self` is a pointer type.
     pub fn is_ptr(&self, context: &Context) -> bool {
-        matches!(*self.get_content(context), TypeContent::Pointer(_))
+        matches!(
+            *self.get_content(context),
+            TypeContent::TypedPointer(_) | TypeContent::Pointer
+        )
     }
 
     /// Get pointed to type iff `self`` is a pointer.
     pub fn get_pointee_type(&self, context: &Context) -> Option<Type> {
-        if let TypeContent::Pointer(to_ty) = self.get_content(context) {
+        if let TypeContent::TypedPointer(to_ty) = self.get_content(context) {
             Some(*to_ty)
         } else {
             None
@@ -578,7 +590,8 @@ impl Type {
             TypeContent::Uint(16)
             | TypeContent::Uint(32)
             | TypeContent::Uint(64)
-            | TypeContent::Pointer(_) => TypeSize::new(8),
+            | TypeContent::TypedPointer(_)
+            | TypeContent::Pointer => TypeSize::new(8),
             TypeContent::Uint(256) => TypeSize::new(32),
             TypeContent::Uint(_) => unreachable!(),
             TypeContent::Slice => TypeSize::new(16),
@@ -783,11 +796,17 @@ mod tests {
             let mut context = create_context();
 
             for ty in all_sample_types(&mut context) {
-                let s_ptr = Type::new_ptr(&mut context, ty).size(&context);
+                let s_ptr = Type::new_typed_pointer(&mut context, ty).size(&context);
 
                 assert_eq!(s_ptr.in_bytes(), 8);
                 assert_eq!(s_ptr.in_bytes(), s_ptr.in_bytes_aligned());
             }
+
+            assert_eq!(Type::get_ptr(&context).size(&context).in_bytes(), 8);
+            assert_eq!(
+                Type::get_ptr(&context).size(&context).in_bytes(),
+                Type::get_ptr(&context).size(&context).in_bytes_aligned()
+            );
         }
 
         #[test]

@@ -96,7 +96,7 @@ fn demote_fn_signature(context: &mut Context, function: &Function, arg_idcs: &[(
     let old_arg_vals = arg_idcs
         .iter()
         .map(|(arg_idx, arg_ty)| {
-            let ptr_ty = Type::new_ptr(context, *arg_ty);
+            let ptr_ty = Type::new_typed_pointer(context, *arg_ty);
 
             // Create a new block arg, same as the old one but with a different type.
             let blk_arg_val = entry_block
@@ -231,7 +231,7 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
     let mut new_inserts = Vec::new();
     // Update the block signature for each candidate arg.  Create a replacement load for each one.
     for (_arg_idx, arg_val, arg_ty) in &candidate_args {
-        let ptr_ty = Type::new_ptr(context, *arg_ty);
+        let ptr_ty = Type::new_typed_pointer(context, *arg_ty);
 
         // Create a new block arg, same as the old one but with a different type.
         let ValueDatum::Argument(block_arg) = context.values[arg_val.0].value else {

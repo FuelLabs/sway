@@ -35,7 +35,7 @@ fn main() -> u64 {
 // check: $(d_var=$VAL) = const u64 18446744073709551615
 // check: $(e_var=$VAL) = const bool false
 
-// check: $(x_var=$VAL) = get_local ptr { u64 }, X
+// check: $(x_var=$VAL) = get_local __ptr { u64 }, X
 // check: $(one=$VAL) = const { u64 } { u64 1 }
 // not: call
 // check: store $one to $x_var

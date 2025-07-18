@@ -371,7 +371,7 @@ pub(crate) fn compile_configurables(
                 &decl.type_ascription.span(),
             )
             .unwrap();
-            let ptr_ty = Type::new_ptr(context, ty);
+            let ptr_ty = Type::new_typed_pointer(context, ty);
 
             let constant = super::const_eval::compile_constant_expression_to_constant(
                 engines,
@@ -630,7 +630,7 @@ fn compile_fn(
                     param.name.as_str().into(),
                     // Convert the type further to a pointer if it's a reference.
                     if param.is_reference {
-                        Type::new_ptr(context, ty)
+                        Type::new_typed_pointer(context, ty)
                     } else {
                         ty
                     },

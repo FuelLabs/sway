@@ -282,7 +282,7 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                             if !is_copy_type(&arg_ty, ctx) {
                                 instrs_to_fix.push(TypeCorrection {
                                     actual_ty: arg_ty,
-                                    expected_ty: Type::new_ptr(ctx, arg_ty),
+                                    expected_ty: Type::new_typed_pointer(ctx, arg_ty),
                                     use_instr: instr,
                                     use_idx: arg_idx,
                                 });
@@ -319,7 +319,7 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                             // The base is not a pointer type. If a pointer to base_ty works for us, do that.
                             let elem_ptr_ty = *elem_ptr_ty;
                             let indices = indices.clone(); // Cloning needed because of mutable and immutable borrow of `ctx`.
-                            let pointer_to_base = Type::new_ptr(ctx, base_ty);
+                            let pointer_to_base = Type::new_typed_pointer(ctx, base_ty);
                             if pointer_to_base.get_value_indexed_type(ctx, &indices)
                                 == Some(elem_ptr_ty)
                             {
@@ -367,7 +367,7 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                             }
                         } else {
                             // The destination is not a pointer type, but should've been.
-                            let pointer_to_dst = Type::new_ptr(ctx, dst_ty);
+                            let pointer_to_dst = Type::new_typed_pointer(ctx, dst_ty);
                             if pointer_to_dst == stored_ty {
                                 instrs_to_fix.push(TypeCorrection {
                                     actual_ty: dst_ty,

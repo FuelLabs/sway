@@ -4,12 +4,12 @@ script {
         local [u64; 8] __anon_0
 
         entry(v101: u64):
-        v13 = get_local ptr [u64; 8], __anon_0
-        v25 = get_local ptr [u64; 8], __anon_468
+        v13 = get_local __ptr [u64; 8], __anon_0
+        v25 = get_local __ptr [u64; 8], __anon_468
         mem_copy_val v25, v13
         v26 = const u64 1
         vidx = add v101, v26
-        v27 = get_elem_ptr v25, ptr u64, vidx
+        v27 = get_elem_ptr v25, __ptr u64, vidx
         v0 = load v27
         ret u64 v0
     }
@@ -20,6 +20,6 @@ script {
 // check: mem_copy_val $VAL, $VAL
 // The optimization should introduce a GEP into __anon_0
 // check: $(idx=$VAL) = add $VAL, $VAL
-// check: $(local=$VAL) = get_local ptr [u64; 8], __anon_0
-// check: $(gep=$VAL) = get_elem_ptr $local, ptr u64, $idx
+// check: $(local=$VAL) = get_local __ptr [u64; 8], __anon_0
+// check: $(gep=$VAL) = get_elem_ptr $local, __ptr u64, $idx
 // check: $VAL = load $gep

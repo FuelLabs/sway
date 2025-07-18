@@ -23,10 +23,10 @@ fn main() {
 // check: local bool a__
 // check: local bool b__
 
-// check: $(loc_a_var0=$VAL) = get_local ptr bool, a__
+// check: $(loc_a_var0=$VAL) = get_local __ptr bool, a__
 // check: store $VAL to $loc_a_var0
 
-// check: $(loc_a_var1=$VAL) = get_local ptr bool, a__
-// not: $VAL = get_local ptr bool, a
+// check: $(loc_a_var1=$VAL) = get_local __ptr bool, a__
+// not: $VAL = get_local __ptr bool, a
 
 // check: $VAL = load $loc_a_var1
