@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    migrations::MutProgramInfo,
+    migrations::{MutProgramInfo, Occurrence},
     modifying::*,
     visiting::{
         InvalidateTypedElement, LexedFnCallInfoMut, LexedMethodCallInfoMut, ProgramVisitorMut,
@@ -65,15 +65,15 @@ pub(super) const REPLACE_BYTES_INTO_B256_WITH_TRY_INTO_B256_STEP: MigrationStep 
 fn replace_b256_from_bytes_with_try_from_bytes_step(
     program_info: &mut MutProgramInfo,
     dry_run: DryRun,
-) -> Result<Vec<Span>> {
+) -> Result<Vec<Occurrence>> {
     struct Visitor;
-    impl TreesVisitorMut<Span> for Visitor {
+    impl TreesVisitorMut<Occurrence> for Visitor {
         fn visit_fn_call(
             &mut self,
             ctx: &VisitingContext,
             lexed_fn_call: &mut Expr,
             ty_fn_call: Option<&TyExpression>,
-            output: &mut Vec<Span>,
+            output: &mut Vec<Occurrence>,
         ) -> Result<InvalidateTypedElement> {
             let lexed_fn_call_info = LexedFnCallInfoMut::new(lexed_fn_call)?;
             let ty_fn_call_info = ty_fn_call
@@ -106,7 +106,7 @@ fn replace_b256_from_bytes_with_try_from_bytes_step(
             }
 
             // We have found a `b256::from(Bytes)` call.
-            output.push(lexed_fn_call_info.func.span());
+            output.push(lexed_fn_call_info.func.span().into());
 
             if ctx.dry_run == DryRun::Yes {
                 return Ok(InvalidateTypedElement::No);
@@ -141,24 +141,24 @@ fn replace_b256_from_bytes_with_try_from_bytes_step(
 fn replace_bytes_into_b256_with_try_into_b256_step(
     program_info: &mut MutProgramInfo,
     dry_run: DryRun,
-) -> Result<Vec<Span>> {
+) -> Result<Vec<Occurrence>> {
     struct Visitor;
-    impl TreesVisitorMut<Span> for Visitor {
+    impl TreesVisitorMut<Occurrence> for Visitor {
         fn visit_method_call(
             &mut self,
             ctx: &VisitingContext,
             lexed_method_call: &mut Expr,
             ty_method_call: Option<&TyExpression>,
-            output: &mut Vec<Span>,
+            output: &mut Vec<Occurrence>,
         ) -> Result<InvalidateTypedElement> {
             let lexed_method_call_info = LexedMethodCallInfoMut::new(lexed_method_call)?;
             let ty_method_call_info = ty_method_call
                 .map(|ty_method_call| TyMethodCallInfo::new(ctx.engines.de(), ty_method_call))
                 .transpose()?;
 
-            // We need the typed info in order to ensure that the `into` function
-            // is really the `Bytes::into(self) -> b256` function.
             let Some(ty_method_call_info) = ty_method_call_info else {
+                // We need the typed info in order to ensure that the `into` function
+                // is really the `Bytes::into(self) -> b256` function.
                 return Ok(InvalidateTypedElement::No);
             };
 
@@ -187,19 +187,14 @@ fn replace_bytes_into_b256_with_try_into_b256_step(
             }
 
             // We have found a `Bytes::into(self) -> b256` call.
-            output.push(lexed_method_call_info.path_seg.span());
+            output.push(lexed_method_call_info.path_seg.span().into());
 
             if ctx.dry_run == DryRun::Yes {
                 return Ok(InvalidateTypedElement::No);
             }
 
-            let lexed_into_path = match lexed_method_call {
-                Expr::MethodCall { path_seg, .. } => path_seg,
-                _ => bail!("`lexed_method_call` must be of the variant `Expr::MethodCall`."),
-            };
-
             // Rename the call to `into` to `try_into`.
-            modify(lexed_into_path).set_name("try_into");
+            modify(lexed_method_call_info.path_seg).set_name("try_into");
 
             // The call to `try_into` becomes the target of the `unwrap` method call.
             let target = lexed_method_call.clone();
