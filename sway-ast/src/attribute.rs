@@ -57,6 +57,10 @@ pub const TRACE_ATTRIBUTE_NAME: &str = "trace";
 pub const TRACE_NEVER_ARG_NAME: &str = "never";
 pub const TRACE_ALWAYS_ARG_NAME: &str = "always";
 
+// Abi names.
+pub const ABI_NAME_ATTRIBUTE_NAME: &str = "abi_name";
+pub const ABI_NAME_NAME_ARG_NAME: &str = "name";
+
 pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_ATTRIBUTE_NAME,
     DOC_COMMENT_ATTRIBUTE_NAME,
@@ -67,6 +71,7 @@ pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     CFG_ATTRIBUTE_NAME,
     DEPRECATED_ATTRIBUTE_NAME,
     FALLBACK_ATTRIBUTE_NAME,
+    ABI_NAME_ATTRIBUTE_NAME,
 ];
 
 /// An attribute declaration. Attribute declaration

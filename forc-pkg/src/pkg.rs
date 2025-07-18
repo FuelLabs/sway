@@ -1579,7 +1579,8 @@ pub fn sway_build_config(
     .with_time_phases(build_profile.time_phases)
     .with_profile(build_profile.profile)
     .with_metrics(build_profile.metrics_outfile.clone())
-    .with_optimization_level(build_profile.optimization_level);
+    .with_optimization_level(build_profile.optimization_level)
+    .with_backtrace(build_profile.backtrace);
     Ok(build_config)
 }
 
@@ -1790,6 +1791,7 @@ pub fn compile(
                         panic_occurrences: &asm.panic_occurrences,
                         abi_with_callpaths: true,
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
+                        unique_names: HashMap::new(),
                     },
                     engines,
                     if experimental.new_encoding {
@@ -2147,7 +2149,6 @@ fn build_profile_from_opts(
     }
     profile.include_tests |= tests;
     profile.error_on_warnings |= error_on_warnings;
-    // profile.experimental = *experimental;
 
     Ok(profile)
 }
