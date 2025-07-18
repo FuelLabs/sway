@@ -1,4 +1,4 @@
-mod call;
+pub mod call;
 mod deploy;
 mod run;
 mod submit;

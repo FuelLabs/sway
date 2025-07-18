@@ -47,9 +47,11 @@ pub async fn transfer(
 
     Ok(super::CallResponse {
         tx_hash: tx_response.tx_id.to_string(),
+        total_gas: tx_response.tx_status.total_gas,
         result: None,
         receipts: tx_response.tx_status.receipts,
         script_json: None,
+        trace_events: vec![],
     })
 }
 

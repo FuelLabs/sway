@@ -109,6 +109,8 @@
     - [forc doc](./forc/plugins/forc_doc.md)
     - [forc fmt](./forc/plugins/forc_fmt.md)
     - [forc lsp](./forc/plugins/forc_lsp.md)
+    - [forc mcp](./forc/plugins/forc_mcp/index.md)
+      - [forc-call tool](./forc/plugins/forc_mcp/forc_call_tool/index.md)
     - [forc migrate](./forc/plugins/forc_migrate.md)
     - [forc node](./forc/plugins/forc_node.md)
     - [forc publish](./forc/plugins/forc_publish.md)

@@ -50,6 +50,7 @@ forc-debug = { path = "forc-plugins/forc-debug/", version = "0.69.1" }
 forc-doc = { path = "forc-plugins/forc-doc/", version = "0.69.1" }
 forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.69.1" }
 forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.69.1" }
+forc-mcp = { path = "forc-plugins/forc-mcp/", version = "0.69.1" }
 forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.69.1" }
 forc-publish = { path = "forc-plugins/forc-publish/", version = "0.69.1" }
 forc-tx = { path = "forc-plugins/forc-tx/", version = "0.69.1" }
@@ -112,6 +113,7 @@ assert_matches = "1.5"
 async-trait = "0.1"
 aws-config = "1.5"
 aws-sdk-kms = "1.44"
+axum = "0.8"
 byte-unit = "5.1"
 bytes = "1.7"
 chrono = { version = "0.4", default-features = false }
@@ -197,6 +199,7 @@ regex = "1.10"
 reqwest = "0.12"
 rexpect = "0.6"
 revm = "14.0"
+rmcp = "0.2"
 ropey = "1.5"
 rpassword = "7.2"
 rustc-hash = "1.1"
