@@ -48,7 +48,7 @@ pub struct TypeCheckContext<'a> {
     ///   updated upon entering/exiting submodules via the `enter_submodule` method.
     pub(crate) namespace: &'a mut Namespace,
 
-    pub(crate) engines: &'a Engines,
+    pub engines: &'a Engines,
 
     /// Set of experimental flags.
     pub(crate) experimental: ExperimentalFeatures,

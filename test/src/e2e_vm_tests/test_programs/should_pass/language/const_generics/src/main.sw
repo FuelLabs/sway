@@ -27,9 +27,9 @@ impl<T, const N: u64> A for [T; N] {
 struct S<T, const N: u64> {
 }
 
-impl<T, const N: u64> S<T, N> {
+impl<T, const Z: u64> S<T, Z> {
     pub fn len_xxx(self) -> u64 {
-        N
+        Z
     }
 }
 
@@ -38,9 +38,9 @@ enum OneVariant<const N: u64> {
     A: [u64; N],
 }
 
-impl<const N: u64> OneVariant<N> {
+impl<const Z: u64> OneVariant<Z> {
     pub fn return_n(self) -> u64 {
-        N
+        Z
     }
 }
 
@@ -53,6 +53,39 @@ enum TwoVariants<T, const N: u64> {
 impl<T, const N: u64> TwoVariants<T, N> {
     pub fn len_xxx2(self) -> u64 {
         N
+    }
+}
+
+// Enum with more than one const generics
+enum TwoConstGenerics<T, const N1: u64, const N2: u64> {
+    A: [T; N1],
+    B: [T; N2],
+}
+
+impl<T, const N1: u64, const N2: u64> TwoConstGenerics<T, N1, N2> {
+    fn return_n1(self) -> u64 {
+        N1
+    }
+
+    fn return_n2(self) -> u64 {
+        N2
+    }
+
+    fn return_len(self) -> u64 {
+        match self {
+            TwoConstGenerics::A(_) => N1,
+            TwoConstGenerics::B(_) => N2,
+        }
+    }
+}
+
+impl<T, const N2: u64, const N1: u64> TwoConstGenerics<T, N2, N1> {
+    fn return_n1_2(self) -> u64 {
+        N1
+    }
+
+    fn return_n2_2(self) -> u64 {
+        N2
     }
 }
 
@@ -90,6 +123,18 @@ fn main(a: [u64; 2]) {
     let b = e.len_xxx2();
     assert(b == 3);
     //__dbg(e);
+
+    //Check enum with more than one const generics
+    let e: TwoConstGenerics<u8, 1, 2> = TwoConstGenerics::<u8, 1, 2>::A([1u8]);
+    assert(e.return_n1() == 1);
+    assert(e.return_n1_2() == 2);
+    assert(e.return_n2() == 2);
+    // TODO This should work: assert(e.return_n2_2() == 1)
+    assert(e.return_len() == 1);
+    let e: TwoConstGenerics<u8, 1, 2> = TwoConstGenerics::<u8, 1, 2>::B([1u8, 2]);
+    assert(e.return_n1() == 1);
+    assert(e.return_n2() == 2);
+    assert(e.return_len() == 2);
 
     // standalone fns
     assert(return_n::<3>() == 3);

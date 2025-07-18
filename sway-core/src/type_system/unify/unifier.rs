@@ -167,7 +167,7 @@ impl<'a> Unifier<'a> {
                         ConstGenericExpr::Literal { .. },
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
                     ) => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                        self.replace_expected_with_received(expected, &r_type_source_info, span);
                     }
                     (
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
@@ -643,10 +643,10 @@ impl<'a> Unifier<'a> {
 
     fn assign_args<T>(&self, r: T, e: T) -> (String, String)
     where
-        WithEngines<'a, T>: fmt::Debug,
+        WithEngines<'a, T>: fmt::Display,
     {
-        let r = format!("{:?}", self.engines.help_out(r));
-        let e = format!("{:?}", self.engines.help_out(e));
+        let r = format!("{}", self.engines.help_out(r));
+        let e = format!("{}", self.engines.help_out(e));
         (r, e)
     }
 }

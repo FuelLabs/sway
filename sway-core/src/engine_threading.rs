@@ -3,6 +3,7 @@ use crate::{
     language::CallPath,
     query_engine::QueryEngine,
     type_system::TypeEngine,
+    ObservabilityEngine,
 };
 use std::{
     cmp::Ordering,
@@ -19,6 +20,7 @@ pub struct Engines {
     parsed_decl_engine: ParsedDeclEngine,
     query_engine: QueryEngine,
     source_engine: SourceEngine,
+    obs_engine: Arc<ObservabilityEngine>,
 }
 
 impl Engines {
@@ -40,6 +42,10 @@ impl Engines {
 
     pub fn se(&self) -> &SourceEngine {
         &self.source_engine
+    }
+
+    pub fn obs(&self) -> &ObservabilityEngine {
+        &self.obs_engine
     }
 
     /// Removes all data associated with `program_id` from the engines.

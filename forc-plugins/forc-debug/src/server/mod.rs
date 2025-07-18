@@ -320,6 +320,7 @@ impl DapServer {
             &outputs,
             &[],
             &[],
+            None,
         )
         .map_err(|err| AdapterError::BuildFailed {
             reason: format!("build packages: {err:?}"),
