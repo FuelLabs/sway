@@ -250,9 +250,18 @@ impl TypeParameter {
         }
     }
 
-    pub fn abi_str(&self, engines: &Engines, ctx: &AbiStrContext, is_root: bool) -> String {
+    pub fn abi_str(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &AbiStrContext,
+        is_root: bool,
+    ) -> Result<String, ErrorEmitted> {
         match self {
-            TypeParameter::Type(p) => engines.te().get(p.type_id).abi_str(ctx, engines, is_root),
+            TypeParameter::Type(p) => engines
+                .te()
+                .get(p.type_id)
+                .abi_str(handler, ctx, engines, is_root),
             TypeParameter::Const(_) => {
                 todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }

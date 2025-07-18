@@ -1,0 +1,112 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names
+   Compiling library std (sway-lib-std)
+   Compiling contract attributes_invalid_abi_names (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names)
+error: Duplicated name found for renamed ABI type
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/main.sw:40:19
+   |
+...
+40 | #[abi_name(name = "OtherEnum")]
+   |                   ^^^^^^^^^^^
+   |
+  ::: test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/other.sw:7:10
+   |
+...
+ 7 | pub enum OtherEnum {
+   |          --------- help: This is the existing type with conflicting name.
+   |
+____
+
+error: Duplicated name found for renamed ABI type
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/main.sw:10:19
+   |
+...
+ 8 | struct MyStruct {}
+   |        -------- help: This is the existing type with conflicting name.
+ 9 | 
+10 | #[abi_name(name = "MyStruct")]
+   |                   ^^^^^^^^^^
+   |
+____
+
+error: Duplicated name found for renamed ABI type
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/main.sw:13:19
+   |
+...
+ 7 | #[abi_name(name = "SameName")]
+   | ------------------------------ help: This is the existing attribute with conflicting name.
+...
+13 | #[abi_name(name = "SameName")]
+   |                   ^^^^^^^^^^
+   |
+____
+
+error: Duplicated name found for renamed ABI type
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/main.sw:16:19
+   |
+...
+ 7 | #[abi_name(name = "SameName")]
+   | ------------------------------ help: This is the existing attribute with conflicting name.
+ 8 | struct MyStruct {}
+ 9 | 
+10 | #[abi_name(name = "MyStruct")]
+11 | struct MyStruct0 {}
+...
+15 | 
+16 | #[abi_name(name = "SameName")]
+   |                   ^^^^^^^^^^
+   |
+____
+
+error: Invalid name found for renamed ABI type.
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/main.sw:19:19
+   |
+...
+19 | #[abi_name(name = "")]
+   |                   ^^
+   |
+   = help: The name must be a valid Sway identifier and cannot be empty.
+____
+
+error: Invalid name found for renamed ABI type.
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/main.sw:22:19
+   |
+...
+22 | #[abi_name(name = "this !s n0t an identif1er")]
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: The name must be a valid Sway identifier.
+____
+
+error: Duplicated name found for renamed ABI type
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/main.sw:28:19
+   |
+...
+28 | #[abi_name(name = "OtherStruct")]
+   |                   ^^^^^^^^^^^^^
+   |
+  ::: test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/other.sw:3:12
+   |
+...
+ 3 | pub struct OtherStruct {
+   |            ----------- help: This is the existing type with conflicting name.
+   |
+____
+
+error: Invalid name found for renamed ABI type.
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_abi_names/src/main.sw:31:19
+   |
+...
+31 | #[abi_name(name = "::some_module::in_the_same::package")]
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: The name must be a valid Sway identifier.
+____
+
+  Aborting due to 8 errors.
+error: Failed to compile attributes_invalid_abi_names

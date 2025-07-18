@@ -4,8 +4,12 @@ use fuel_abi_types::abi::program::{
 };
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::Span;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_parse::is_valid_identifier_or_path;
+use sway_types::{Named, Span, Spanned};
 
 use crate::{
     ast_elements::type_parameter::GenericTypeParameter,
@@ -16,11 +20,26 @@ use crate::{
 
 use super::abi_str::AbiStrContext;
 
+#[derive(Clone, Debug)]
+pub enum AbiNameDiagnosticSpan {
+    Attribute(Span),
+    Type(Span),
+}
+
+impl AbiNameDiagnosticSpan {
+    pub fn span(self) -> Span {
+        match self {
+            Self::Attribute(span) | Self::Type(span) => span,
+        }
+    }
+}
+
 pub struct AbiContext<'a> {
     pub program: &'a TyProgram,
     pub panic_occurrences: &'a PanicOccurrences,
     pub abi_with_callpaths: bool,
     pub type_ids_to_full_type_str: HashMap<String, String>,
+    pub unique_names: HashMap<String, AbiNameDiagnosticSpan>,
 }
 
 impl AbiContext<'_> {
@@ -34,7 +53,79 @@ impl AbiContext<'_> {
     }
 }
 
+pub fn extract_abi_name_inner(span: &Span) -> Option<Span> {
+    let text = &span.src().text;
+    let full_attr = span.as_str();
+
+    // Find the "name" key.
+    let name_key_pos = full_attr.find("name")?;
+    let after_name = &full_attr[name_key_pos..];
+
+    // Find the '=' after "name".
+    let eq_offset_rel = after_name.find('=')?;
+    let after_eq = &after_name[eq_offset_rel + 1..];
+
+    // Find the opening quote of the literal.
+    let first_quote_rel = after_eq.find('"')?;
+    let ident_abs_start = span.start()
+        + name_key_pos
+        + eq_offset_rel
+        + 1        // move past '='
+        + first_quote_rel
+        + 1; // move past the opening '"'
+
+    // Starting at ident_abs_start, locate the closing quote.
+    let rest_after_ident = &text[ident_abs_start..span.end()];
+    let second_quote_rel = rest_after_ident.find('"')?;
+    let ident_abs_end = ident_abs_start + second_quote_rel;
+
+    Span::new(
+        span.src().clone(),
+        ident_abs_start - 1,
+        ident_abs_end + 1,
+        span.source_id().cloned(),
+    )
+}
+
 impl TypeId {
+    fn get_abi_name_and_span_from_type_id(
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Result<Option<(String, Span)>, ErrorEmitted> {
+        let handler = Handler::default();
+        match *engines.te().get(type_id) {
+            TypeInfo::Enum(decl_id) => {
+                let enum_decl = engines.de().get_enum(&decl_id);
+                match enum_decl.attributes.abi_name() {
+                    Some(abi_name_attr) => {
+                        let name = abi_name_attr
+                            .args
+                            .first()
+                            .unwrap()
+                            .get_string(&handler, abi_name_attr)?;
+                        Ok(Some((name.clone(), abi_name_attr.span.clone())))
+                    }
+                    None => Ok(None),
+                }
+            }
+            TypeInfo::Struct(decl_id) => {
+                let struct_decl = engines.de().get_struct(&decl_id);
+                match struct_decl.attributes.abi_name() {
+                    Some(abi_name_attr) => {
+                        let name = abi_name_attr
+                            .args
+                            .first()
+                            .unwrap()
+                            .get_string(&handler, abi_name_attr)?;
+                        Ok(Some((name.clone(), abi_name_attr.span.clone())))
+                    }
+                    None => Ok(None),
+                }
+            }
+            _ => Ok(None),
+        }
+    }
+
     fn get_abi_type_field_and_concrete_id(
         &self,
         handler: &Handler,
@@ -43,6 +134,7 @@ impl TypeId {
         resolved_type_id: TypeId,
     ) -> Result<(String, ConcreteTypeId), ErrorEmitted> {
         let type_str = self.get_abi_type_str(
+            handler,
             &AbiStrContext {
                 program_name: ctx.program.namespace.current_package_name().to_string(),
                 abi_with_callpaths: true,
@@ -51,7 +143,66 @@ impl TypeId {
             },
             engines,
             resolved_type_id,
+        )?;
+
+        let mut err: Option<ErrorEmitted> = None;
+
+        // Right now ABI renaming is only supported for enum and struct types.
+        let should_check_name = matches!(
+            *engines.te().get(resolved_type_id),
+            TypeInfo::Enum(_) | TypeInfo::Struct(_)
         );
+
+        if should_check_name {
+            let (has_abi_name_attribute, name, attribute_span) =
+                match Self::get_abi_name_and_span_from_type_id(engines, resolved_type_id)? {
+                    Some(res) => (true, res.0, res.1),
+                    None => (false, String::new(), Span::dummy()),
+                };
+
+            let attribute_name_span =
+                extract_abi_name_inner(&attribute_span).unwrap_or(attribute_span.clone());
+
+            let type_span = match *engines.te().get(resolved_type_id) {
+                TypeInfo::Enum(decl_id) => engines.de().get_enum(&decl_id).name().span(),
+                TypeInfo::Struct(decl_id) => engines.de().get_struct(&decl_id).name().span(),
+                _ => unreachable!(),
+            };
+
+            let insert_span = if has_abi_name_attribute {
+                AbiNameDiagnosticSpan::Attribute(attribute_span.clone())
+            } else {
+                AbiNameDiagnosticSpan::Type(type_span.clone())
+            };
+
+            let prev_span_opt = if ctx.unique_names.contains_key(&type_str) {
+                ctx.unique_names.get(&type_str).cloned()
+            } else {
+                ctx.unique_names.insert(type_str.clone(), insert_span)
+            };
+
+            if has_abi_name_attribute {
+                if name.is_empty()
+                    || !is_valid_identifier_or_path(name.as_str())
+                    || name.starts_with("::")
+                {
+                    err = Some(handler.emit_err(CompileError::ABIInvalidName {
+                        span: attribute_name_span.clone(),
+                        name,
+                    }));
+                }
+
+                if let Some(prev_span) = prev_span_opt {
+                    let is_attribute = matches!(prev_span, AbiNameDiagnosticSpan::Attribute(_));
+                    err = Some(handler.emit_err(CompileError::ABIDuplicateName {
+                        span: attribute_name_span.clone(),
+                        other_span: prev_span.span(),
+                        is_attribute,
+                    }));
+                }
+            }
+        }
+
         let mut hasher = Sha256::new();
         hasher.update(type_str.clone());
         let result = hasher.finalize();
@@ -62,18 +213,62 @@ impl TypeId {
             .insert(type_id.clone(), type_str.clone())
         {
             if old_type_str != type_str {
-                return Err(
+                err = Some(
                     handler.emit_err(sway_error::error::CompileError::ABIHashCollision {
                         span: Span::dummy(),
-                        hash: type_id,
+                        hash: type_id.clone(),
                         first_type: old_type_str,
-                        second_type: type_str,
+                        second_type: type_str.clone(),
                     }),
                 );
             }
         }
 
-        Ok((type_str, ConcreteTypeId(type_id)))
+        match err {
+            Some(err) => Err(err),
+            None => Ok((type_str, ConcreteTypeId(type_id))),
+        }
+    }
+}
+
+fn insert_unique_type(ctx: &mut AbiContext, name: String, span: Span) {
+    let _ = ctx
+        .unique_names
+        .insert(name, AbiNameDiagnosticSpan::Type(span));
+}
+
+fn process_type_name(ctx: &mut AbiContext, engines: &Engines, type_id: TypeId) {
+    match &*engines.te().get(type_id) {
+        TypeInfo::Enum(decl_id) => {
+            let enum_decl = engines.de().get_enum(decl_id);
+            insert_unique_type(
+                ctx,
+                format!("enum {}", enum_decl.name()),
+                enum_decl.name().span(),
+            );
+        }
+        TypeInfo::Struct(decl_id) => {
+            let struct_decl = engines.de().get_struct(decl_id);
+            insert_unique_type(
+                ctx,
+                format!("struct {}", struct_decl.name()),
+                struct_decl.name().span(),
+            );
+        }
+        TypeInfo::Alias { name: _, ty } => process_type_name(ctx, engines, ty.type_id()),
+        _ => {}
+    }
+}
+
+fn process_type_names_from_function(
+    ctx: &mut AbiContext,
+    engines: &Engines,
+    function: &TyFunctionDecl,
+) {
+    process_type_name(ctx, engines, function.return_type.type_id());
+
+    for param in &function.parameters {
+        process_type_name(ctx, engines, param.type_argument.type_id());
     }
 }
 
@@ -87,7 +282,26 @@ pub fn generate_program_abi(
     let decl_engine = engines.de();
     let metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration> = &mut vec![];
     let concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration> = &mut vec![];
-    let mut program_abi = match &ctx.program.kind {
+
+    match &ctx.program.kind {
+        TyProgramKind::Contract { abi_entries, .. } => {
+            abi_entries.iter().for_each(|x| {
+                let fn_decl = decl_engine.get_function(x);
+                process_type_names_from_function(ctx, engines, &fn_decl);
+            });
+        }
+        TyProgramKind::Script { main_function, .. } => {
+            let main_function = decl_engine.get_function(main_function);
+            process_type_names_from_function(ctx, engines, &main_function);
+        }
+        TyProgramKind::Predicate { main_function, .. } => {
+            let main_function = decl_engine.get_function(main_function);
+            process_type_names_from_function(ctx, engines, &main_function);
+        }
+        TyProgramKind::Library { .. } => {}
+    };
+
+    let mut program_abi = handler.scope(|handler| match &ctx.program.kind {
         TyProgramKind::Contract { abi_entries, .. } => {
             let functions = abi_entries
                 .iter()
@@ -101,7 +315,7 @@ pub fn generate_program_abi(
                         concrete_types,
                     )
                 })
-                .collect::<Result<Vec<_>, _>>()?;
+                .collect::<Vec<_>>();
             let logged_types =
                 generate_logged_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let messages_types =
@@ -109,18 +323,18 @@ pub fn generate_program_abi(
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
-            program_abi::ProgramABI {
+            Ok(program_abi::ProgramABI {
                 program_type: "contract".to_string(),
                 spec_version,
                 encoding_version,
                 metadata_types: metadata_types.to_vec(),
                 concrete_types: concrete_types.to_vec(),
-                functions,
+                functions: functions.into_iter().collect::<Result<Vec<_>, _>>()?,
                 logged_types: Some(logged_types),
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
-            }
+            })
         }
         TyProgramKind::Script { main_function, .. } => {
             let main_function = decl_engine.get_function(main_function);
@@ -138,7 +352,7 @@ pub fn generate_program_abi(
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
-            program_abi::ProgramABI {
+            Ok(program_abi::ProgramABI {
                 program_type: "script".to_string(),
                 spec_version,
                 encoding_version,
@@ -149,7 +363,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
-            }
+            })
         }
         TyProgramKind::Predicate { main_function, .. } => {
             let main_function = decl_engine.get_function(main_function);
@@ -167,7 +381,7 @@ pub fn generate_program_abi(
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
-            program_abi::ProgramABI {
+            Ok(program_abi::ProgramABI {
                 program_type: "predicate".to_string(),
                 spec_version,
                 encoding_version,
@@ -178,7 +392,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
-            }
+            })
         }
         TyProgramKind::Library { .. } => {
             let logged_types =
@@ -186,7 +400,7 @@ pub fn generate_program_abi(
             let messages_types =
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
-            program_abi::ProgramABI {
+            Ok(program_abi::ProgramABI {
                 program_type: "library".to_string(),
                 spec_version,
                 encoding_version,
@@ -197,9 +411,9 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: None,
                 error_codes: Some(error_codes),
-            }
+            })
         }
-    };
+    })?;
 
     standardize_json_abi_types(&mut program_abi);
 
@@ -354,7 +568,7 @@ fn update_json_type_metadata_declaration(
     }
 }
 
-/// RUpdates the metadata type IDs used in a `program_abi::TypeConcreteDeclaration` given a HashMap from
+/// Updates the metadata type IDs used in a `program_abi::TypeConcreteDeclaration` given a HashMap from
 /// old to new IDs
 fn update_json_type_concrete_declaration(
     type_declaration: &mut program_abi::TypeConcreteDeclaration,
@@ -381,7 +595,12 @@ fn generate_concrete_type_declaration(
     let mut new_metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
-        type_field: type_id.get_abi_type_str(&ctx.to_str_context(), engines, resolved_type_id),
+        type_field: type_id.get_abi_type_str(
+            handler,
+            &ctx.to_str_context(),
+            engines,
+            resolved_type_id,
+        )?,
         components: type_id.get_abi_type_components(
             handler,
             ctx,
@@ -409,18 +628,21 @@ fn generate_concrete_type_declaration(
     } else {
         None
     };
-    let type_arguments = if type_metadata_decl.type_parameters.is_some() {
-        type_id.get_abi_type_arguments_as_concrete_type_ids(
-            handler,
-            ctx,
-            engines,
-            metadata_types,
-            concrete_types,
-            resolved_type_id,
-        )?
-    } else {
-        None
-    };
+    let type_arguments = handler.scope(|handler| {
+        let type_arguments = if type_metadata_decl.type_parameters.is_some() {
+            type_id.get_abi_type_arguments_as_concrete_type_ids(
+                handler,
+                ctx,
+                engines,
+                metadata_types,
+                concrete_types,
+                resolved_type_id,
+            )?
+        } else {
+            None
+        };
+        Ok(type_arguments)
+    })?;
 
     metadata_types.push(type_metadata_decl);
     metadata_types.extend(new_metadata_types_to_add);
@@ -471,7 +693,12 @@ fn generate_type_metadata_declaration(
     )?;
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
-        type_field: type_id.get_abi_type_str(&ctx.to_str_context(), engines, resolved_type_id),
+        type_field: type_id.get_abi_type_str(
+            handler,
+            &ctx.to_str_context(),
+            engines,
+            resolved_type_id,
+        )?,
         components,
         type_parameters,
     };
@@ -976,165 +1203,166 @@ impl TypeId {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let resolved_params = resolved_type_id.get_type_parameters(engines);
-        Ok(match &*type_engine.get(*self) {
-            TypeInfo::Custom {
-                type_arguments: Some(type_arguments),
-                ..
-            } => (!type_arguments.is_empty()).then_some({
-                let resolved_params = resolved_params.unwrap_or_default();
-
-                for (v, p) in type_arguments.iter().zip(resolved_params.iter()) {
-                    let p = p
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
-                    generate_type_metadata_declaration(
-                        handler,
-                        ctx,
-                        engines,
-                        metadata_types,
-                        concrete_types,
-                        v.type_id(),
-                        p.type_id,
-                        metadata_types_to_add,
-                    )?;
-                }
-
-                type_arguments
-                    .iter()
-                    .zip(resolved_params.iter())
-                    .map(|(arg, p)| {
+        handler.scope(|handler| {
+            Ok(match &*type_engine.get(*self) {
+                TypeInfo::Custom {
+                    type_arguments: Some(type_arguments),
+                    ..
+                } => (!type_arguments.is_empty()).then_some({
+                    let resolved_params = resolved_params.unwrap_or_default();
+                    for (v, p) in type_arguments.iter().zip(resolved_params.iter()) {
                         let p = p
                             .as_type_parameter()
                             .expect("only works with type parameters");
-                        Ok(program_abi::TypeApplication {
-                            name: "".to_string(),
-                            type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                arg.initial_type_id().index(),
-                            )),
-                            error_message: None,
-                            type_arguments: arg.initial_type_id().get_abi_type_arguments(
-                                handler,
-                                ctx,
-                                engines,
-                                metadata_types,
-                                concrete_types,
-                                p.type_id,
-                                metadata_types_to_add,
-                            )?,
+                        let _ = generate_type_metadata_declaration(
+                            handler,
+                            ctx,
+                            engines,
+                            metadata_types,
+                            concrete_types,
+                            v.type_id(),
+                            p.type_id,
+                            metadata_types_to_add,
+                        );
+                    }
+
+                    type_arguments
+                        .iter()
+                        .zip(resolved_params.iter())
+                        .map(|(arg, p)| {
+                            let p = p
+                                .as_type_parameter()
+                                .expect("only works with type parameters");
+                            Ok(program_abi::TypeApplication {
+                                name: "".to_string(),
+                                type_id: program_abi::TypeId::Metadata(MetadataTypeId(
+                                    arg.initial_type_id().index(),
+                                )),
+                                error_message: None,
+                                type_arguments: arg.initial_type_id().get_abi_type_arguments(
+                                    handler,
+                                    ctx,
+                                    engines,
+                                    metadata_types,
+                                    concrete_types,
+                                    p.type_id,
+                                    metadata_types_to_add,
+                                )?,
+                            })
                         })
-                    })
-                    .collect::<Result<Vec<_>, _>>()?
-            }),
-            TypeInfo::Enum(decl_ref) => {
-                let decl = decl_engine.get_enum(decl_ref);
+                        .collect::<Result<Vec<_>, _>>()?
+                }),
+                TypeInfo::Enum(decl_ref) => {
+                    let decl = decl_engine.get_enum(decl_ref);
 
-                let mut new_metadata_types_to_add =
-                    Vec::<program_abi::TypeMetadataDeclaration>::new();
-                for p in decl.generic_parameters.iter() {
-                    let p = p
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
-                    generate_type_metadata_declaration(
-                        handler,
-                        ctx,
-                        engines,
-                        metadata_types,
-                        concrete_types,
-                        p.type_id,
-                        p.type_id,
-                        &mut new_metadata_types_to_add,
-                    )?;
-                }
-
-                let type_arguments = decl
-                    .generic_parameters
-                    .iter()
-                    .map(|p| {
+                    let mut new_metadata_types_to_add =
+                        Vec::<program_abi::TypeMetadataDeclaration>::new();
+                    for p in decl.generic_parameters.iter() {
                         let p = p
                             .as_type_parameter()
                             .expect("only works with type parameters");
-                        Ok(program_abi::TypeApplication {
-                            name: "".to_string(),
-                            type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                p.type_id.index(),
-                            )),
-                            error_message: None,
-                            type_arguments: p.type_id.get_abi_type_arguments(
-                                handler,
-                                ctx,
-                                engines,
-                                metadata_types,
-                                concrete_types,
-                                p.type_id,
-                                &mut new_metadata_types_to_add,
-                            )?,
+                        generate_type_metadata_declaration(
+                            handler,
+                            ctx,
+                            engines,
+                            metadata_types,
+                            concrete_types,
+                            p.type_id,
+                            p.type_id,
+                            &mut new_metadata_types_to_add,
+                        )?;
+                    }
+
+                    let type_arguments = decl
+                        .generic_parameters
+                        .iter()
+                        .map(|p| {
+                            let p = p
+                                .as_type_parameter()
+                                .expect("only works with type parameters");
+                            Ok(program_abi::TypeApplication {
+                                name: "".to_string(),
+                                type_id: program_abi::TypeId::Metadata(MetadataTypeId(
+                                    p.type_id.index(),
+                                )),
+                                error_message: None,
+                                type_arguments: p.type_id.get_abi_type_arguments(
+                                    handler,
+                                    ctx,
+                                    engines,
+                                    metadata_types,
+                                    concrete_types,
+                                    p.type_id,
+                                    &mut new_metadata_types_to_add,
+                                )?,
+                            })
                         })
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
+                        .collect::<Result<Vec<_>, _>>()?;
 
-                if type_arguments.is_empty() {
-                    None
-                } else {
-                    metadata_types_to_add.extend(new_metadata_types_to_add);
-                    Some(type_arguments)
-                }
-            }
-
-            TypeInfo::Struct(decl_ref) => {
-                let decl = decl_engine.get_struct(decl_ref);
-
-                let mut new_metadata_types_to_add =
-                    Vec::<program_abi::TypeMetadataDeclaration>::new();
-                for p in decl.generic_parameters.iter() {
-                    let p = p
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
-                    generate_type_metadata_declaration(
-                        handler,
-                        ctx,
-                        engines,
-                        metadata_types,
-                        concrete_types,
-                        p.type_id,
-                        p.type_id,
-                        &mut new_metadata_types_to_add,
-                    )?;
+                    if type_arguments.is_empty() {
+                        None
+                    } else {
+                        metadata_types_to_add.extend(new_metadata_types_to_add);
+                        Some(type_arguments)
+                    }
                 }
 
-                let type_arguments = decl
-                    .generic_parameters
-                    .iter()
-                    .map(|p| {
+                TypeInfo::Struct(decl_ref) => {
+                    let decl = decl_engine.get_struct(decl_ref);
+
+                    let mut new_metadata_types_to_add =
+                        Vec::<program_abi::TypeMetadataDeclaration>::new();
+                    for p in decl.generic_parameters.iter() {
                         let p = p
                             .as_type_parameter()
                             .expect("only works with type parameters");
-                        Ok(program_abi::TypeApplication {
-                            name: "".to_string(),
-                            type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                p.type_id.index(),
-                            )),
-                            error_message: None,
-                            type_arguments: p.type_id.get_abi_type_arguments(
-                                handler,
-                                ctx,
-                                engines,
-                                metadata_types,
-                                concrete_types,
-                                p.type_id,
-                                &mut new_metadata_types_to_add,
-                            )?,
-                        })
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
+                        generate_type_metadata_declaration(
+                            handler,
+                            ctx,
+                            engines,
+                            metadata_types,
+                            concrete_types,
+                            p.type_id,
+                            p.type_id,
+                            &mut new_metadata_types_to_add,
+                        )?;
+                    }
 
-                if type_arguments.is_empty() {
-                    None
-                } else {
-                    metadata_types_to_add.extend(new_metadata_types_to_add);
-                    Some(type_arguments)
+                    let type_arguments = decl
+                        .generic_parameters
+                        .iter()
+                        .map(|p| {
+                            let p = p
+                                .as_type_parameter()
+                                .expect("only works with type parameters");
+                            Ok(program_abi::TypeApplication {
+                                name: "".to_string(),
+                                type_id: program_abi::TypeId::Metadata(MetadataTypeId(
+                                    p.type_id.index(),
+                                )),
+                                error_message: None,
+                                type_arguments: p.type_id.get_abi_type_arguments(
+                                    handler,
+                                    ctx,
+                                    engines,
+                                    metadata_types,
+                                    concrete_types,
+                                    p.type_id,
+                                    &mut new_metadata_types_to_add,
+                                )?,
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    if type_arguments.is_empty() {
+                        None
+                    } else {
+                        metadata_types_to_add.extend(new_metadata_types_to_add);
+                        Some(type_arguments)
+                    }
                 }
-            }
-            _ => None,
+                _ => None,
+            })
         })
     }
 
@@ -1237,27 +1465,33 @@ impl TyFunctionDecl {
         metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
     ) -> Result<program_abi::ABIFunction, ErrorEmitted> {
+        let inputs = handler.scope(|handler| {
+            self.parameters
+                .iter()
+                .map(|param| {
+                    generate_concrete_type_declaration(
+                        handler,
+                        ctx,
+                        engines,
+                        metadata_types,
+                        concrete_types,
+                        param.type_argument.initial_type_id(),
+                        param.type_argument.type_id(),
+                    )
+                    .map(|concrete_type_id| {
+                        program_abi::TypeConcreteParameter {
+                            name: param.name.to_string(),
+                            concrete_type_id,
+                        }
+                    })
+                })
+                .collect::<Result<Vec<_>, ErrorEmitted>>()
+        })?;
+
         // Generate the JSON data for the function
         Ok(program_abi::ABIFunction {
             name: self.name.as_str().to_string(),
-            inputs: self
-                .parameters
-                .iter()
-                .map(|x| {
-                    Ok(program_abi::TypeConcreteParameter {
-                        name: x.name.to_string(),
-                        concrete_type_id: generate_concrete_type_declaration(
-                            handler,
-                            ctx,
-                            engines,
-                            metadata_types,
-                            concrete_types,
-                            x.type_argument.initial_type_id(),
-                            x.type_argument.type_id(),
-                        )?,
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()?,
+            inputs,
             output: generate_concrete_type_declaration(
                 handler,
                 ctx,
@@ -1304,10 +1538,11 @@ impl GenericTypeParameter {
         let type_parameter = program_abi::TypeMetadataDeclaration {
             metadata_type_id: type_id.clone(),
             type_field: self.initial_type_id.get_abi_type_str(
+                handler,
                 &ctx.to_str_context(),
                 engines,
                 self.type_id,
-            ),
+            )?,
             components: self.initial_type_id.get_abi_type_components(
                 handler,
                 ctx,
