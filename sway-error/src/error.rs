@@ -124,7 +124,7 @@ pub enum CompileError {
     #[error("Name \"{name}\" is defined multiple times.")]
     MultipleDefinitionsOfName { name: Ident, span: Span },
     #[error("Constant \"{name}\" was already defined in scope.")]
-    MultipleDefinitionsOfConstant { name: Ident, span: Span },
+    MultipleDefinitionsOfConstant { name: Ident, new: Span, old: Span },
     #[error("Type \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfType { name: Ident, span: Span },
     #[error("Variable \"{}\" is already defined in match arm.", first_definition.as_str())]
@@ -1120,7 +1120,7 @@ impl Spanned for CompileError {
             NoScriptMainFunction(span) => span.clone(),
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
             MultipleDefinitionsOfName { span, .. } => span.clone(),
-            MultipleDefinitionsOfConstant { span, .. } => span.clone(),
+            MultipleDefinitionsOfConstant { new: span, .. } => span.clone(),
             MultipleDefinitionsOfType { span, .. } => span.clone(),
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
             MultipleDefinitionsOfFallbackFunction { span, .. } => span.clone(),
@@ -3148,6 +3148,24 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![format!("The name must be a valid Sway identifier{}.", if name.is_empty() { " and cannot be empty" } else { "" })],
             },
+            MultipleDefinitionsOfConstant { name, old, new } => {
+                Diagnostic {
+                    reason: Some(Reason::new(code(1), "Multiple definitions of constant".into())),
+                    issue: Issue::error(
+                        source_engine,
+                        new.clone(),
+                        format!("Constant \"{name}\" was already defined"),
+                    ),
+                    hints:vec![
+                        Hint::error(
+                            source_engine,
+                            old.clone(),
+                            "Its first definition is here.".into(),
+                        ),
+                    ],
+                    help:vec![],
+                }
+            }
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting

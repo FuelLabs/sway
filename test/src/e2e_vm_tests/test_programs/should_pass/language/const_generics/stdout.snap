@@ -30,31 +30,43 @@ warning
 89 | |     }
    | |_____- This method is never called.
 90 |   }
-91 |   
+91 |   const NNN: u64 = 9;
    |
 ____
 
 warning
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:146:9
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:91:7
+   |
+89 |     }
+90 | }
+91 | const NNN: u64 = 9;
+   |       --- This declaration is never used.
+92 | 
+93 | #[inline(never)]
+   |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:153:9
     |
-144 | 
-145 |     // string arrays
-146 |     let a: str[3] = __to_str_array("ABC");
+151 | 
+152 |     // string arrays
+153 |     let a: str[3] = __to_str_array("ABC");
     |         - This declaration is never used.
-147 |     assert(a.len() == 3);
-148 |     let _ = __dbg(a.len());
+154 |     assert(a.len() == 3);
+155 |     let _ = __dbg(a.len());
     |
 ____
 
 warning
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:150:9
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:157:9
     |
-148 |     let _ = __dbg(a.len());
-149 | 
-150 |     let a: str[5] = __to_str_array("ABCDE");
+155 |     let _ = __dbg(a.len());
+156 | 
+157 |     let a: str[5] = __to_str_array("ABCDE");
     |         - This declaration is never used.
-151 |     assert(a.len() == 5);
-152 |     let _ = __dbg(a.len());
+158 |     assert(a.len() == 5);
+159 |     let _ = __dbg(a.len());
     |
 ____
 
@@ -215,162 +227,174 @@ error
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:93:19
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:94:19
    |
-91 | 
-92 | #[inline(never)]
-93 | fn return_n<const NNN: u64>() -> u64 {
+92 | 
+93 | #[inline(never)]
+94 | fn return_n<const NNN: u64>() -> u64 {
    |                   ^^^ This needs "const_generics" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6860.
-94 |     NNN
-95 | }
+95 |     NNN
+96 | }
    |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:102:26
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:99:29
     |
-100 |     let a = [C {}].my_len();
-101 |     assert(a == 1);
-102 |     let _ = __dbg([C {}].len());
+ 97 | 
+ 98 | #[inline(never)]
+ 99 | fn return_inner_const<const ZZZ: u64>() -> u64 {
+    |                             ^^^ This needs "const_generics" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6860.
+100 |     const ZZZ: u64 = 7;
+101 |     ZZZ
+    |
+____
+
+error
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:109:26
+    |
+107 |     let a = [C {}].my_len();
+108 |     assert(a == 1);
+109 |     let _ = __dbg([C {}].len());
     |                          ^^^ No method "len([C; 1])" found for type "[C; 1]".
-103 |     assert([C {}].len() == 1);
-104 | 
+110 |     assert([C {}].len() == 1);
+111 | 
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:103:19
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:110:19
     |
-101 |     assert(a == 1);
-102 |     let _ = __dbg([C {}].len());
-103 |     assert([C {}].len() == 1);
+108 |     assert(a == 1);
+109 |     let _ = __dbg([C {}].len());
+110 |     assert([C {}].len() == 1);
     |                   ^^^ No method "len([C; 1])" found for type "[C; 1]".
-104 | 
-105 |     let b = [C {}, C{}].my_len();
+111 | 
+112 |     let b = [C {}, C{}].my_len();
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:103:25
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:110:25
     |
-101 |     assert(a == 1);
-102 |     let _ = __dbg([C {}].len());
-103 |     assert([C {}].len() == 1);
+108 |     assert(a == 1);
+109 |     let _ = __dbg([C {}].len());
+110 |     assert([C {}].len() == 1);
     |                         ^^ No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
-104 | 
-105 |     let b = [C {}, C{}].my_len();
+111 | 
+112 |     let b = [C {}, C{}].my_len();
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:107:31
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:114:31
     |
-105 |     let b = [C {}, C{}].my_len();
-106 |     assert(b == 2);
-107 |     let _ = __dbg([C {}, C{}].len());
+112 |     let b = [C {}, C{}].my_len();
+113 |     assert(b == 2);
+114 |     let _ = __dbg([C {}, C{}].len());
     |                               ^^^ No method "len([C; 2])" found for type "[C; 2]".
-108 |     assert([C {}, C{}].len() == 2);
-109 | 
+115 |     assert([C {}, C{}].len() == 2);
+116 | 
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:108:24
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:115:24
     |
-106 |     assert(b == 2);
-107 |     let _ = __dbg([C {}, C{}].len());
-108 |     assert([C {}, C{}].len() == 2);
+113 |     assert(b == 2);
+114 |     let _ = __dbg([C {}, C{}].len());
+115 |     assert([C {}, C{}].len() == 2);
     |                        ^^^ No method "len([C; 2])" found for type "[C; 2]".
-109 | 
-110 |     let s: S<u64, 3> = S { };
+116 | 
+117 |     let s: S<u64, 3> = S { };
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:108:30
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:115:30
     |
-106 |     assert(b == 2);
-107 |     let _ = __dbg([C {}, C{}].len());
-108 |     assert([C {}, C{}].len() == 2);
+113 |     assert(b == 2);
+114 |     let _ = __dbg([C {}, C{}].len());
+115 |     assert([C {}, C{}].len() == 2);
     |                              ^^ No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
-109 | 
-110 |     let s: S<u64, 3> = S { };
+116 | 
+117 |     let s: S<u64, 3> = S { };
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:147:14
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:154:14
     |
-145 |     // string arrays
-146 |     let a: str[3] = __to_str_array("ABC");
-147 |     assert(a.len() == 3);
+152 |     // string arrays
+153 |     let a: str[3] = __to_str_array("ABC");
+154 |     assert(a.len() == 3);
     |              ^^^ No method "len(str[3])" found for type "str[3]".
-148 |     let _ = __dbg(a.len());
-149 | 
+155 |     let _ = __dbg(a.len());
+156 | 
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:147:20
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:154:20
     |
-145 |     // string arrays
-146 |     let a: str[3] = __to_str_array("ABC");
-147 |     assert(a.len() == 3);
+152 |     // string arrays
+153 |     let a: str[3] = __to_str_array("ABC");
+154 |     assert(a.len() == 3);
     |                    ^^ No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
-148 |     let _ = __dbg(a.len());
-149 | 
+155 |     let _ = __dbg(a.len());
+156 | 
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:148:21
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:155:21
     |
-146 |     let a: str[3] = __to_str_array("ABC");
-147 |     assert(a.len() == 3);
-148 |     let _ = __dbg(a.len());
+153 |     let a: str[3] = __to_str_array("ABC");
+154 |     assert(a.len() == 3);
+155 |     let _ = __dbg(a.len());
     |                     ^^^ No method "len(str[3])" found for type "str[3]".
-149 | 
-150 |     let a: str[5] = __to_str_array("ABCDE");
+156 | 
+157 |     let a: str[5] = __to_str_array("ABCDE");
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:151:14
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:158:14
     |
-149 | 
-150 |     let a: str[5] = __to_str_array("ABCDE");
-151 |     assert(a.len() == 5);
+156 | 
+157 |     let a: str[5] = __to_str_array("ABCDE");
+158 |     assert(a.len() == 5);
     |              ^^^ No method "len(str[5])" found for type "str[5]".
-152 |     let _ = __dbg(a.len());
-153 | }
+159 |     let _ = __dbg(a.len());
+160 | }
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:151:20
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:158:20
     |
-149 | 
-150 |     let a: str[5] = __to_str_array("ABCDE");
-151 |     assert(a.len() == 5);
+156 | 
+157 |     let a: str[5] = __to_str_array("ABCDE");
+158 |     assert(a.len() == 5);
     |                    ^^ No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
-152 |     let _ = __dbg(a.len());
-153 | }
+159 |     let _ = __dbg(a.len());
+160 | }
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:152:21
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:159:21
     |
-150 |     let a: str[5] = __to_str_array("ABCDE");
-151 |     assert(a.len() == 5);
-152 |     let _ = __dbg(a.len());
+157 |     let a: str[5] = __to_str_array("ABCDE");
+158 |     assert(a.len() == 5);
+159 |     let _ = __dbg(a.len());
     |                     ^^^ No method "len(str[5])" found for type "str[5]".
-153 | }
-154 | 
+160 | }
+161 | 
     |
 ____
 
-  Aborting due to 26 errors.
+  Aborting due to 27 errors.
 error: Failed to compile const_generics
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --experimental const_generics --test-threads 1 --dbgs --reverts
@@ -390,28 +414,40 @@ warning
 89 | |     }
    | |_____- This method is never called.
 90 |   }
-91 |   
+91 |   const NNN: u64 = 9;
    |
 ____
 
-  Compiled script "const_generics" with 1 warning.
-    Finished debug [unoptimized + fuel] target(s) [7.528 KB] in ???
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:91:7
+   |
+89 |     }
+90 | }
+91 | const NNN: u64 = 9;
+   |       --- This declaration is never used.
+92 | 
+93 | #[inline(never)]
+   |
+____
+
+  Compiled script "const_generics" with 2 warnings.
+    Finished debug [unoptimized + fuel] target(s) [7.624 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-      test run_main ... ok (???, 14095 gas)
+      test run_main ... ok (???, 14146 gas)
            debug output:
-[src/main.sw:98:13] a = [1, 2]
-[src/main.sw:102:13] [C {}].len() = 1
-[src/main.sw:107:13] [C {}, C {}].len() = 2
-[src/main.sw:111:13] s.len_xxx() = 3
-[src/main.sw:117:13] e = OneVariant([1, 2, 3])
-[src/main.sw:122:13] e = Nothing
-[src/main.sw:141:13] return_n::<3>() = 3
-[src/main.sw:143:13] return_n::<5>() = 5
-[src/main.sw:148:13] a.len() = 3
-[src/main.sw:152:13] a.len() = 5
+[src/main.sw:105:13] a = [1, 2]
+[src/main.sw:109:13] [C {}].len() = 1
+[src/main.sw:114:13] [C {}, C {}].len() = 2
+[src/main.sw:118:13] s.len_xxx() = 3
+[src/main.sw:124:13] e = OneVariant([1, 2, 3])
+[src/main.sw:129:13] e = Nothing
+[src/main.sw:147:13] return_n::<3>() = 3
+[src/main.sw:149:13] return_n::<5>() = 5
+[src/main.sw:155:13] a.len() = 3
+[src/main.sw:159:13] a.len() = 5
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
