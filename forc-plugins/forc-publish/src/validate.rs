@@ -58,7 +58,7 @@ mod test {
 
         assert!(res.is_err());
         assert!(res.err().is_some_and(|err| {
-            err.to_string() == "Project is missing a version field, add one under [project]"
+            err.to_string() == "missing version field in [project] section of Forc.toml"
         }));
     }
 
