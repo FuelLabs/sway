@@ -5,6 +5,17 @@ use sway_types::{Span, Spanned};
 
 use super::type_parameter::ConstGenericExpr;
 
+/// [GenericTypeArgument] can be seen as an "annotated reference" to a [TypeInfo].
+/// It holds the [GenericTypeArgument::type_id] which is the actual "reference"
+/// to the type, as well as an additional information about that type,
+/// called the annotation.
+///
+/// If a [GenericTypeArgument] only references a [TypeInfo] and is considered as
+/// not being annotated, its `initial_type_id` must be the same as `type_id`,
+/// its `span` must be [Span::dummy] and its `call_path_tree` must be `None`.
+///
+/// The annotations are ignored when calculating the [GenericTypeArgument]'s hash
+/// (with engines) and equality (with engines).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenericTypeArgument {
     /// The [TypeId] of the "referenced" [TypeInfo].
@@ -38,17 +49,6 @@ pub struct GenericConstArgument {
     pub expr: ConstGenericExpr,
 }
 
-/// [TypeArgument] can be seen as an "annotated reference" to a [TypeInfo].
-/// It holds the [TypeArgument::type_id] which is the actual "reference"
-/// to the type, as well as an additional information about that type,
-/// called the annotation.
-///
-/// If a [TypeArgument] only references a [TypeInfo] and is considered as
-/// not being annotated, its `initial_type_id` must be the same as `type_id`,
-/// its `span` must be [Span::dummy] and its `call_path_tree` must be `None`.
-///
-/// The annotations are ignored when calculating the [TypeArgument]'s hash
-/// (with engines) and equality (with engines).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GenericArgument {
     Type(GenericTypeArgument),

@@ -11,7 +11,7 @@ use crate::{
     },
     migrations::{
         visit_all_modules, visit_all_modules_mut, visit_modules, InteractionResponse,
-        MutProgramInfo,
+        MutProgramInfo, Occurrence,
     },
     modifying::*,
     print_single_choice_menu,
@@ -97,13 +97,13 @@ const EXPERIMENTAL_PARTIAL_EQ_ATTRIBUTE: &str = "experimental_partial_eq";
 
 fn remove_deprecated_eq_trait_implementations_instruction(
     program_info: &ProgramInfo,
-) -> Result<Vec<Span>> {
+) -> Result<Vec<Occurrence>> {
     fn remove_deprecated_eq_trait_implementations_instruction_impl(
         _engines: &Engines,
         module: &Module,
         _ty_module: &TyModule,
         _dry_run: DryRun,
-    ) -> Result<Vec<Span>> {
+    ) -> Result<Vec<Occurrence>> {
         let mut result = vec![];
         // Note that the typed program, depending if the `forc migrate` was run with or
         // without the `partial_eq` flag, might or might not have the deprecated implementations
@@ -115,35 +115,44 @@ fn remove_deprecated_eq_trait_implementations_instruction(
         // The deprecated `Eq` implementation:
         // - has the `eq` method in the body, so it must not be empty,
         // - is annotated with `#[cfg(experimental_partial_eq = false)]`.
-        result.append(&mut find_trait_impl(
-            module,
-            "Eq",
-            false,
-            false,
-            ResultSpanSource::ImplTraitDefinition,
-        ));
+        result.append(
+            &mut find_trait_impl(
+                module,
+                "Eq",
+                false,
+                false,
+                ResultSpanSource::ImplTraitDefinition,
+            )
+            .iter()
+            .map(|span| span.clone().into())
+            .collect(),
+        );
 
         // The new `Eq` implementation:
         // - has an empty impl.
         // - is annotated with `#[cfg(experimental_partial_eq = true)]`.
-        result.append(&mut find_trait_impl(
-            module,
-            "Eq",
-            true,
-            true,
-            ResultSpanSource::CfgAttribute,
-        ));
+        result.append(
+            &mut find_trait_impl(module, "Eq", true, true, ResultSpanSource::CfgAttribute)
+                .iter()
+                .map(|span| span.clone().into())
+                .collect(),
+        );
 
         // The new `PartialEq` implementation:
         // - has the `eq` method in the body, so it must not be empty,
         // - is annotated with `#[cfg(experimental_partial_eq = true)]`.
-        result.append(&mut find_trait_impl(
-            module,
-            "PartialEq",
-            false,
-            true,
-            ResultSpanSource::CfgAttribute,
-        ));
+        result.append(
+            &mut find_trait_impl(
+                module,
+                "PartialEq",
+                false,
+                true,
+                ResultSpanSource::CfgAttribute,
+            )
+            .iter()
+            .map(|span| span.clone().into())
+            .collect(),
+        );
 
         Ok(result)
     }
@@ -159,7 +168,7 @@ fn remove_deprecated_eq_trait_implementations_instruction(
 
 fn remove_deprecated_eq_trait_implementations_interaction(
     program_info: &mut MutProgramInfo,
-) -> Result<(InteractionResponse, Vec<Span>)> {
+) -> Result<(InteractionResponse, Vec<Occurrence>)> {
     /// Calculates and returns:
     /// - number of deprecated `Eq` impls to remove,
     /// - number of `#[cfg(experimental_partial_eq = true)]` to remove from new `Eq` impls,
@@ -260,8 +269,8 @@ fn remove_deprecated_eq_trait_implementations_interaction(
         module: &mut Module,
         _ty_module: &TyModule,
         _dry_run: DryRun,
-    ) -> Result<Vec<Span>> {
-        let mut spans_of_annotated_eq_impls_to_remove = vec![];
+    ) -> Result<Vec<Occurrence>> {
+        let mut occurrences_of_annotated_eq_impls_to_remove: Vec<Occurrence> = vec![];
 
         // Deprecated `Eq` impls must not be empty, they have the `eq` method.
         let annotated_eq_impls =
@@ -287,14 +296,14 @@ fn remove_deprecated_eq_trait_implementations_interaction(
             };
 
             // The trait impl passes all conditions, mark it for removal.
-            spans_of_annotated_eq_impls_to_remove.push(annotated_eq_impl.span());
+            occurrences_of_annotated_eq_impls_to_remove.push(annotated_eq_impl.span().into());
         }
 
-        for annotated_eq_impl_span in spans_of_annotated_eq_impls_to_remove.iter() {
-            modify(module).remove_annotated_item(annotated_eq_impl_span);
+        for annotated_eq_impl_occurrence in occurrences_of_annotated_eq_impls_to_remove.iter() {
+            modify(module).remove_annotated_item(&annotated_eq_impl_occurrence.span);
         }
 
-        Ok(spans_of_annotated_eq_impls_to_remove)
+        Ok(occurrences_of_annotated_eq_impls_to_remove)
     }
 
     let res = visit_all_modules_mut(program_info, DryRun::No, remove_deprecated_eq_impls)?;
@@ -306,8 +315,8 @@ fn remove_deprecated_eq_trait_implementations_interaction(
         module: &mut Module,
         _ty_module: &TyModule,
         _dry_run: DryRun,
-    ) -> Result<Vec<Span>> {
-        let mut spans_of_cfg_attributes_to_remove = vec![];
+    ) -> Result<Vec<Occurrence>> {
+        let mut occurrences_of_cfg_attributes_to_remove: Vec<Occurrence> = vec![];
 
         // Find new `Eq` and `PartialEq` impls.
         let annotated_trait_impls = lexed_match_mut::impl_self_or_trait_decls_annotated(module)
@@ -339,17 +348,18 @@ fn remove_deprecated_eq_trait_implementations_interaction(
             };
 
             // The trait passes all the conditions, mark the `cfg` attribute for removal.
-            spans_of_cfg_attributes_to_remove.push(cfg_experimental_partial_eq_attr.span());
+            occurrences_of_cfg_attributes_to_remove
+                .push(cfg_experimental_partial_eq_attr.span().into());
         }
 
         for annotated_trait_impl in annotated_trait_impls {
-            for cfg_attribute_span in spans_of_cfg_attributes_to_remove.iter() {
+            for cfg_attribute_occurrence in occurrences_of_cfg_attributes_to_remove.iter() {
                 modify(annotated_trait_impl)
-                    .remove_attribute_decl_containing_attribute(cfg_attribute_span);
+                    .remove_attribute_decl_containing_attribute(&cfg_attribute_occurrence.span);
             }
         }
 
-        Ok(spans_of_cfg_attributes_to_remove)
+        Ok(occurrences_of_cfg_attributes_to_remove)
     }
 
     let res = visit_all_modules_mut(
@@ -431,13 +441,13 @@ fn find_trait_impl(
 fn implement_experimental_partial_eq_and_eq_traits(
     program_info: &mut MutProgramInfo,
     dry_run: DryRun,
-) -> Result<Vec<Span>> {
+) -> Result<Vec<Occurrence>> {
     fn implement_experimental_partial_eq_and_eq_traits_impl(
         engines: &Engines,
         lexed_module: &mut Module,
         ty_module: &TyModule,
         dry_run: DryRun,
-    ) -> Result<Vec<Span>> {
+    ) -> Result<Vec<Occurrence>> {
         let mut result = vec![];
 
         let std_ops_eq_call_path = CallPath::fullpath(&["std", "ops", "Eq"]);
@@ -486,10 +496,13 @@ fn implement_experimental_partial_eq_and_eq_traits(
                 continue;
             }
 
-            result.push(Span::join(
-                lexed_impl_eq_trait.impl_token.span(),
-                &lexed_impl_eq_trait.ty.span(),
-            ));
+            result.push(
+                Span::join(
+                    lexed_impl_eq_trait.impl_token.span(),
+                    &lexed_impl_eq_trait.ty.span(),
+                )
+                .into(),
+            );
 
             if dry_run == DryRun::Yes {
                 continue;
