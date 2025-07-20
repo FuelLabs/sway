@@ -805,6 +805,20 @@ where
     T: Eq,
 {}
 
+#[cfg(experimental_const_generics = true)]
+impl<const N: u64> PartialEq for str[N]
+{
+    fn eq(self, other: Self) -> bool {
+        asm(result, left: self, right: other, len: N) {
+            meq result left right len;
+            result: bool
+        }
+    }
+}
+
+#[cfg(experimental_const_generics = true)]
+impl<const N: u64> Eq for str[N] {}
+
 /// Trait to evaluate if one value is greater or less than another of the same type.
 pub trait Ord {
     /// Evaluates if one value of the same type is greater than another.

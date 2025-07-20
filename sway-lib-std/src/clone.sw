@@ -59,14 +59,46 @@ where
 }
 
 #[cfg(experimental_const_generics = true)]
+impl<const N: u64> Clone for str[N]
+{
+    fn clone(self) -> Self {
+        let new = [0u8; N];
+        asm(dest: new, len: N, src: self) {
+            mcp dest src len;
+            dest: str[N]
+        }
+    }
+}
+
+#[cfg(experimental_const_generics = true)]
+#[test]
+fn ok_string_array_clone() {
+    use ::assert::*;
+    use ::debug::*;
+
+    let a = __to_str_array("abc");
+    let b = a.clone();
+
+    __dbg(a); // TODO __dbg((a, b)) is not working
+    __dbg(b);
+
+    assert(a == __to_str_array("abc"));
+    assert(b == __to_str_array("abc"));
+    assert(a == b);
+}
+
+#[cfg(experimental_const_generics = true)]
 #[test]
 fn ok_array_clone() {
-    use ::ops::*;
+    use ::assert::*;
+    use ::debug::*;
 
     let a = [1, 2, 3];
     let b = a.clone();
 
-    if !a.eq(b) {
-        __revert(5);
-    }
+    __dbg((a, b));
+
+    assert(a ==  [1, 2, 3]);
+    assert(b ==  [1, 2, 3]);
+    assert(a == b);
 }

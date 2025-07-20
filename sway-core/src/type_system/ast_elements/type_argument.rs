@@ -1,4 +1,4 @@
-use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
+use crate::{decl_engine::MaterializeConstGenerics, engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
@@ -278,5 +278,36 @@ impl SubstTypes for GenericArgument {
             GenericArgument::Type(a) => a.type_id.subst(ctx),
             GenericArgument::Const(_) => HasChanges::No,
         }
+    }
+}
+
+impl MaterializeConstGenerics for GenericArgument {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &sway_error::handler::Handler,
+        name: &str,
+        value: &crate::language::ty::TyExpression,
+    ) -> Result<(), sway_error::handler::ErrorEmitted> {
+        match self {
+            GenericArgument::Type(arg) => {
+                arg.type_id.materialize_const_generics(engines, handler, name, value)?;
+            },
+            GenericArgument::Const(arg) => {
+                let new_expr = match &arg.expr {
+                    ConstGenericExpr::AmbiguousVariableExpression { ident } if ident.as_str() == name => {
+                        Some(ConstGenericExpr::Literal {
+                            val: value.extract_literal_value().unwrap().cast_value_to_u64().unwrap() as usize,
+                            span: value.span.clone(),
+                        })
+                    }
+                    _ => None
+                };
+                if let Some(new_expr) = new_expr {
+                    arg.expr = new_expr;
+                }
+            },
+        }
+        Ok(())
     }
 }
