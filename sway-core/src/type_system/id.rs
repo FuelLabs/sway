@@ -154,9 +154,9 @@ impl MaterializeConstGenerics for TypeId {
 
                 *self = engines.te().insert_enum(engines, *decl_ref.id());
             }
-            TypeInfo::StringArray(
-                 Length(ConstGenericExpr::AmbiguousVariableExpression { ident })
-            ) if ident.as_str() == name => {
+            TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
+                ident,
+            })) if ident.as_str() == name => {
                 let val = match &value.expression {
                     crate::language::ty::TyExpressionVariant::Literal(literal) => {
                         literal.cast_value_to_u64().unwrap()
