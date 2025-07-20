@@ -2,4 +2,6 @@ category = "fail"
 
 # check: $()The generic type parameter "T" is unconstrained.
 
-# check: $()No method "f(S, bool)" found for type "S".
+# check: $()Associated function or method is not found
+# check: $()(S{}).f(true);
+# nextln: $()"f(impl_with_bad_generic::S, bool)" is not found for type "impl_with_bad_generic::S".

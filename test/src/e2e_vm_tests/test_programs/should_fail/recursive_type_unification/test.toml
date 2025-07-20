@@ -4,14 +4,14 @@ category = "fail"
 # check: $()MyOption::Some::<V>(foo::<V>(value))
 # nextln: $()Mismatched types.
 # nextln: $()expected: V
-# nextln: $()found:    MyOption<V>.
+# nextln: $()found:    recursive_type_unification::MyOption<V>.
 # nextln: $()Function return type does not match up with local type annotation.
 
 # check: $()error
 # check: $()MyOption::Some::<V>(foo::<V>(value))
 # nextln: $()Mismatched types.
 # nextln: $()expected: V
-# nextln: $()found:    MyOption<V>.
+# nextln: $()found:    recursive_type_unification::MyOption<V>.
 # nextln: $()Implicit return must match up with block's type.
 
 # check: $()2 errors.

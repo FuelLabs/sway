@@ -254,19 +254,51 @@ where
     T: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for prefix in self.prefixes.iter() {
-            write!(f, "{}::", prefix.as_str())?;
+        // TODO: Remove this workaround once https://github.com/FuelLabs/sway/issues/7304 is fixed
+        //       and uncomment the original code below.
+
+        if let Some((first_prefix, rest_prefixes)) = self.prefixes.split_first() {
+            let first_prefix = if !first_prefix.as_str().contains('-') {
+                first_prefix.as_str()
+            } else {
+                &first_prefix.as_str().replace('-', "_")
+            };
+            write!(f, "{first_prefix}::")?;
+            for prefix in rest_prefixes {
+                write!(f, "{}::", prefix.as_str())?;
+            }
         }
         write!(f, "{}", &self.suffix)
+
+        // for prefix in self.prefixes.iter() {
+        //     write!(f, "{}::", prefix.as_str())?;
+        // }
+        // write!(f, "{}", &self.suffix)
     }
 }
 
 impl<T: DisplayWithEngines> DisplayWithEngines for CallPath<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        for prefix in self.prefixes.iter() {
-            write!(f, "{}::", prefix.as_str())?;
+        // TODO: Remove this workaround once https://github.com/FuelLabs/sway/issues/7304 is fixed
+        //       and uncomment the original code below.
+
+        if let Some((first_prefix, rest_prefixes)) = self.prefixes.split_first() {
+            let first_prefix = if !first_prefix.as_str().contains('-') {
+                first_prefix.as_str()
+            } else {
+                &first_prefix.as_str().replace('-', "_")
+            };
+            write!(f, "{first_prefix}::")?;
+            for prefix in rest_prefixes {
+                write!(f, "{}::", prefix.as_str())?;
+            }
         }
         write!(f, "{}", engines.help_out(&self.suffix))
+
+        // for prefix in self.prefixes.iter() {
+        //     write!(f, "{}::", prefix.as_str())?;
+        // }
+        // write!(f, "{}", engines.help_out(&self.suffix))
     }
 }
 

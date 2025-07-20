@@ -1,0 +1,450 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "_arg1",
+          "type": 22,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 4,
+              "typeArguments": null
+            },
+            {
+              "name": "",
+              "type": 28,
+              "typeArguments": null
+            }
+          ]
+        },
+        {
+          "name": "_arg2",
+          "type": 6,
+          "typeArguments": null
+        },
+        {
+          "name": "_arg3",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "_arg4",
+          "type": 21,
+          "typeArguments": null
+        }
+      ],
+      "name": "complex_function",
+      "output": {
+        "name": "",
+        "type": 19,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "_arg",
+          "type": 20,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 28,
+              "typeArguments": null
+            },
+            {
+              "name": "",
+              "type": 25,
+              "typeArguments": null
+            }
+          ]
+        }
+      ],
+      "name": "take_generic_array",
+      "output": {
+        "name": "",
+        "type": 27,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "_arg",
+          "type": 23,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 24,
+              "typeArguments": [
+                {
+                  "name": "",
+                  "type": 27,
+                  "typeArguments": null
+                }
+              ]
+            },
+            {
+              "name": "",
+              "type": 25,
+              "typeArguments": null
+            },
+            {
+              "name": "",
+              "type": 26,
+              "typeArguments": null
+            }
+          ]
+        }
+      ],
+      "name": "take_generic_struct_containing_tuple",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 18,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 9,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 17,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 15,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 15,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 16,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 17,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _, _)",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 8,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 3]",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 13,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 3]",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 22,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 27,
+              "typeArguments": null
+            },
+            {
+              "name": "",
+              "type": 9,
+              "typeArguments": null
+            }
+          ]
+        }
+      ],
+      "type": "[_; 4]",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 22,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 13,
+              "typeArguments": null
+            },
+            {
+              "name": "",
+              "type": 14,
+              "typeArguments": null
+            }
+          ]
+        }
+      ],
+      "type": "[_; 5]",
+      "typeId": 7,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 8,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 9,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "Foo",
+          "type": 27,
+          "typeArguments": null
+        },
+        {
+          "name": "Bar",
+          "type": 9,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum MyEnum",
+      "typeId": 10,
+      "typeParameters": [
+        13
+      ]
+    },
+    {
+      "components": null,
+      "type": "generic T",
+      "typeId": 11,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "generic U",
+      "typeId": 12,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "generic V",
+      "typeId": 13,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "generic W",
+      "typeId": 14,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "generic X",
+      "typeId": 15,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "generic Y",
+      "typeId": 16,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "generic Z",
+      "typeId": 17,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str[5]",
+      "typeId": 18,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str[6]",
+      "typeId": 19,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "tim",
+          "type": 5,
+          "typeArguments": null
+        },
+        {
+          "name": "tam",
+          "type": 7,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct MyArrayStruct",
+      "typeId": 20,
+      "typeParameters": [
+        13,
+        14
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "bom",
+          "type": 27,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct MyOtherStruct",
+      "typeId": 21,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "bim",
+          "type": 11,
+          "typeArguments": null
+        },
+        {
+          "name": "bam",
+          "type": 10,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 27,
+              "typeArguments": null
+            }
+          ]
+        }
+      ],
+      "type": "struct MyStruct",
+      "typeId": 22,
+      "typeParameters": [
+        11,
+        12
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "tuple1",
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "tuple2",
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct MyStructWithTuple",
+      "typeId": 23,
+      "typeParameters": [
+        15,
+        16,
+        17
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "b",
+          "type": 17,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct SomeGenericStruct",
+      "typeId": 24,
+      "typeParameters": [
+        17
+      ]
+    },
+    {
+      "components": null,
+      "type": "u16",
+      "typeId": 25,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u32",
+      "typeId": 26,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 27,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u8",
+      "typeId": 28,
+      "typeParameters": null
+    }
+  ]
+}

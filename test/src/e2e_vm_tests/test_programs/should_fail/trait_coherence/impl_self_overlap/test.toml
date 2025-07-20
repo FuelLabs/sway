@@ -1,4 +1,4 @@
 category = "fail"
 
 #check: $()Type contains duplicate declarations
-#check: $()Method "do_something" already declared in type "MyType".
+#check: $()Method "do_something" already declared in type "impl_self_overlap_lib::MyType".

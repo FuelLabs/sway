@@ -1,0 +1,105 @@
+{
+  "configurables": [],
+  "encoding": "1",
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "ops",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 5,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [
+    {
+      "logId": "3647243719605075626",
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    }
+  ],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 4,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 2]",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "Positive",
+          "type": 5,
+          "typeArguments": null
+        },
+        {
+          "name": "Negative",
+          "type": 5,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum SignedNum",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str[3]",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "val",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct OpName",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 5,
+      "typeParameters": null
+    }
+  ]
+}

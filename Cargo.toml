@@ -74,18 +74,18 @@ sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.69.1" }
 #
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.12"
+fuel-abi-types = "0.15.1"
 
 # Dependencies from the `fuel-core` repository:
 #
 # Although ALL versions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball.
-fuel-core = { version = "0.44", default-features = false }
-fuel-core-chain-config = { version = "0.44", default-features = false }
-fuel-core-client = { version = "0.44.0", default-features = false }
-fuel-core-storage = { version = "0.44", default-features = false }
-fuel-core-types = { version = "0.44", default-features = false }
+fuel-core = { version = "0.46.0", default-features = false }
+fuel-core-chain-config = { version = "0.46.0", default-features = false }
+fuel-core-client = { version = "0.46.0", default-features = false }
+fuel-core-storage = { version = "0.46.0", default-features = false }
+fuel-core-types = { version = "0.46.0", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
@@ -249,7 +249,13 @@ url = "2.2"
 urlencoding = "2.1"
 uuid = "1.13"
 vec1 = "1.8"
-vte = "0.13"
+vte = "0.15"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+[patch.crates-io]
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-backtracing" }
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-backtracing" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-backtracing" }
+fuels-code-gen = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-backtracing" }

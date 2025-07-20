@@ -3,8 +3,8 @@ category = "fail"
 # check: return 42;
 # nextln: $()Mismatched types.
 # nextln: $()expected: ()
-# nextln: $()found:    numeric.
-# nextln: $()help: Return statement must return the declared function return type.
+# nextln: $()found:    {numeric}.
+# nextln: $()help: Return expression must return the declared function return type.
 
 # This 'return true' line appears in both error messages..
 # check: return true;
@@ -13,4 +13,4 @@ category = "fail"
 # nextln: $()Mismatched types.
 # nextln: $()expected: ()
 # nextln: $()found:    bool.
-# nextln: $()help: Return statement must return the declared function return type.
+# nextln: $()help: Return expression must return the declared function return type.

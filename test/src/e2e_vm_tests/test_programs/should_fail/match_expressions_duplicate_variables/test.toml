@@ -3,7 +3,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match s1 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Struct".
 # nextln: $()Struct { x: 0, y: a_s1, z: a_s1 } => a_s1,
 # nextln: $()Variable "a_s1" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "a_s1".
@@ -13,7 +13,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match s2 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Struct".
 # nextln: $()Struct { x, y: x, z: x } => x,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()This struct field "x" is the first definition of the variable "x".
@@ -24,7 +24,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match s2 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Struct".
 # nextln: $()Struct { x, y: x, z: x } => x,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()This struct field "x" is the first definition of the variable "x".
@@ -35,7 +35,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match s3 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Struct".
 # nextln: $()Struct { x, y: x, .. } => x,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()This struct field "x" is the first definition of the variable "x".
@@ -46,7 +46,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match s4 {
-# nextln: $()The expression to match on is of type "(Struct, Struct)".
+# nextln: $()The expression to match on is of type "(match_expressions_duplicate_variables::Struct, match_expressions_duplicate_variables::Struct)".
 # nextln: $()(Struct { y, .. }, Struct { y, .. }) => y,
 # nextln: $()Variable "y" is already defined in this match arm.
 # nextln: $()Struct field "y" is just a shorthand notation for `y: y`. It defines a variable "y".
@@ -57,7 +57,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match t1 {
-# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+# nextln: $()The expression to match on is of type "(bool, match_expressions_duplicate_variables::Enum, match_expressions_duplicate_variables::Struct, u64)".
 # nextln: $()(true, a_t1, a_t1, a_t1) => a_t1,
 # nextln: $()Variable "a_t1" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "a_t1".
@@ -67,7 +67,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match t1 {
-# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+# nextln: $()The expression to match on is of type "(bool, match_expressions_duplicate_variables::Enum, match_expressions_duplicate_variables::Struct, u64)".
 # nextln: $()(true, a_t1, a_t1, a_t1) => a_t1,
 # nextln: $()Variable "a_t1" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "a_t1".
@@ -77,7 +77,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match t1 {
-# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+# nextln: $()The expression to match on is of type "(bool, match_expressions_duplicate_variables::Enum, match_expressions_duplicate_variables::Struct, u64)".
 # check: $()(a_t1, a_t1, a_t1, a_t1) => a_t1,
 # nextln: $()Variable "a_t1" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "a_t1".
@@ -87,7 +87,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match t1 {
-# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+# nextln: $()The expression to match on is of type "(bool, match_expressions_duplicate_variables::Enum, match_expressions_duplicate_variables::Struct, u64)".
 # check: $()(a_t1, a_t1, a_t1, a_t1) => a_t1,
 # nextln: $()Variable "a_t1" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "a_t1".
@@ -97,7 +97,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match t1 {
-# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+# nextln: $()The expression to match on is of type "(bool, match_expressions_duplicate_variables::Enum, match_expressions_duplicate_variables::Struct, u64)".
 # check: $()(a_t1, a_t1, a_t1, a_t1) => a_t1,
 # nextln: $()Variable "a_t1" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "a_t1".
@@ -107,7 +107,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match t2 {
-# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64, u64)".
+# nextln: $()The expression to match on is of type "(bool, match_expressions_duplicate_variables::Enum, match_expressions_duplicate_variables::Struct, u64, u64)".
 # nextln: $()(true, a_t2, Struct { x, .. }, a_t2, x) => a_t2,
 # nextln: $()Variable "a_t2" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "a_t2".
@@ -117,7 +117,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match t2 {
-# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64, u64)".
+# nextln: $()The expression to match on is of type "(bool, match_expressions_duplicate_variables::Enum, match_expressions_duplicate_variables::Struct, u64, u64)".
 # nextln: $()(true, a_t2, Struct { x, .. }, a_t2, x) => a_t2,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()This struct field "x" is the first definition of the variable "x".
@@ -128,7 +128,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match t3 {
-# nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64, u64)".
+# nextln: $()The expression to match on is of type "(bool, match_expressions_duplicate_variables::Enum, match_expressions_duplicate_variables::Struct, u64, u64)".
 # nextln: $()(x, a_t3, Struct { .. }, a_t2, x) => a_t2,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()This is the first definition of the variable "x".
@@ -138,7 +138,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or1 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Struct".
 # nextln: $()Struct { x, y: x, z: x } | Struct { x, y: x, z: x } => x,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()This struct field "x" is the first definition of the variable "x".
@@ -149,7 +149,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or1 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Struct".
 # nextln: $()Struct { x, y: x, z: x } | Struct { x, y: x, z: x } => x,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()This struct field "x" is the first definition of the variable "x".
@@ -160,7 +160,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or1 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Struct".
 # nextln: $()Struct { x, y: x, z: x } | Struct { x, y: x, z: x } => x,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()This struct field "x" is the first definition of the variable "x".
@@ -171,7 +171,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or1 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Struct".
 # nextln: $()Struct { x, y: x, z: x } | Struct { x, y: x, z: x } => x,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()This struct field "x" is the first definition of the variable "x".
@@ -182,7 +182,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or2 {
-# nextln: $()The expression to match on is of type "(Struct, Struct)".
+# nextln: $()The expression to match on is of type "(match_expressions_duplicate_variables::Struct, match_expressions_duplicate_variables::Struct)".
 # nextln: $()(Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x == 0 { 0 } else { 1 },
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
@@ -191,7 +191,7 @@ category = "fail"
 # check: $()Consider declaring a variable with different name for either of the fields. E.g., `x: var_x`.
 
 # check: $()let _x = match or2 {
-# nextln: $()The expression to match on is of type "(Struct, Struct)".
+# nextln: $()The expression to match on is of type "(match_expressions_duplicate_variables::Struct, match_expressions_duplicate_variables::Struct)".
 # nextln: $()(Struct { x, .. } | Struct { x, .. }, Struct { x, .. } | Struct { x, .. }) => if x == 0 { 0 } else { 1 },
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
@@ -202,7 +202,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or3 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Struct".
 # nextln: $()Struct { x: y | y | y, y, .. } | Struct { x: y | y | y, y, .. } => y,
 # nextln: $()Variable "y" is already defined in this match arm.
 # nextln: $()Struct field "y" is just a shorthand notation for `y: y`. It defines a variable "y".
@@ -213,7 +213,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or3 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Struct".
 # nextln: $()Struct { x: y | y | y, y, .. } | Struct { x: y | y | y, y, .. } => y,
 # nextln: $()Variable "y" is already defined in this match arm.
 # nextln: $()Struct field "y" is just a shorthand notation for `y: y`. It defines a variable "y".
@@ -224,7 +224,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or4 {
-# nextln: $()The expression to match on is of type "Enum".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Enum".
 # nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: 1 | 2, ..})) => 0,
 # nextln: $()Enum::E((y, Struct { x: y | y | y, .. })) => 0,
 # nextln: $()Variable "y" is already defined in this match arm.
@@ -235,7 +235,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or4 {
-# nextln: $()The expression to match on is of type "Enum".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Enum".
 # nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: 1 | 2, ..})) => 0,
 # nextln: $()Enum::E((y, Struct { x: y | y | y, .. })) => 0,
 # nextln: $()Variable "y" is already defined in this match arm.
@@ -246,7 +246,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or4 {
-# nextln: $()The expression to match on is of type "Enum".
+# nextln: $()The expression to match on is of type "match_expressions_duplicate_variables::Enum".
 # nextln: $()Enum::E((1u64 | 2u64 | 3u64, Struct { x: 1 | 2, ..})) => 0,
 # nextln: $()Enum::E((y, Struct { x: y | y | y, .. })) => 0,
 # nextln: $()Variable "y" is already defined in this match arm.
@@ -257,7 +257,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or5 {
-# nextln: $()The expression to match on is of type "(numeric, Struct, numeric)".
+# nextln: $()The expression to match on is of type "({numeric}, match_expressions_duplicate_variables::Struct, {numeric})".
 # nextln: $()(x, Struct { x, .. } | Struct { x, .. }, y) => y,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".
@@ -268,7 +268,7 @@ category = "fail"
 # check: $()Match pattern variable is already defined
 
 # check: $()let _x = match or5 {
-# nextln: $()The expression to match on is of type "(numeric, Struct, numeric)".
+# nextln: $()The expression to match on is of type "({numeric}, match_expressions_duplicate_variables::Struct, {numeric})".
 # nextln: $()(x, Struct { x, .. } | Struct { x, .. }, y) => y,
 # nextln: $()Variable "x" is already defined in this match arm.
 # nextln: $()Struct field "x" is just a shorthand notation for `x: x`. It defines a variable "x".

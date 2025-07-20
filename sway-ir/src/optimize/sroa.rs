@@ -4,9 +4,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     combine_indices, compute_escaped_symbols, get_gep_referred_symbols, get_loaded_ptr_values,
-    get_stored_ptr_values, pointee_size, AnalysisResults, Constant, ConstantContent, ConstantValue,
-    Context, EscapedSymbols, Function, InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass,
-    Symbol, Type, Value,
+    get_stored_ptr_values, pointee_size, AnalysisResults, Constant, ConstantValue, Context,
+    EscapedSymbols, Function, InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol,
+    Type, Value,
 };
 
 pub const SROA_NAME: &str = "sroa";
@@ -251,11 +251,7 @@ pub fn sroa(
                     {
                         let elm_index_values = indices
                             .iter()
-                            .map(|&index| {
-                                let c = ConstantContent::new_uint(context, 64, index.into());
-                                let c = Constant::unique(context, c);
-                                Value::new_constant(context, c)
-                            })
+                            .map(|&index| Value::new_u64_constant(context, index.into()))
                             .collect();
                         let elem_ptr_ty = Type::new_typed_pointer(context, *r#type);
                         let elm_addr = Value::new_instruction(
@@ -322,11 +318,7 @@ pub fn sroa(
                     {
                         let elm_index_values = indices
                             .iter()
-                            .map(|&index| {
-                                let c = ConstantContent::new_uint(context, 64, index.into());
-                                let c = Constant::unique(context, c);
-                                Value::new_constant(context, c)
-                            })
+                            .map(|&index| Value::new_u64_constant(context, index.into()))
                             .collect();
                         let elem_ptr_ty = Type::new_typed_pointer(context, r#type);
                         let elm_addr = Value::new_instruction(

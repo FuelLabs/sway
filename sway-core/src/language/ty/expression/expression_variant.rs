@@ -29,8 +29,9 @@ pub enum TyExpressionVariant {
         selector: Option<ContractCallParams>,
         /// Optional binding information for the LSP.
         type_binding: Option<TypeBinding<()>>,
-        /// In case of a method call, it will contain a [TypeId] of either an enum, struct or a type alias.
-        call_path_typeid: Option<TypeId>,
+        /// In case of a method call, a [TypeId] of the method target (self).
+        /// E.g., `method_target.some_method()`.
+        method_target: Option<TypeId>,
         contract_call_params: IndexMap<String, TyExpression>,
         contract_caller: Option<Box<TyExpression>>,
     },
@@ -462,7 +463,7 @@ impl HashWithEngines for TyExpressionVariant {
                 contract_call_params: _,
                 selector: _,
                 type_binding: _,
-                call_path_typeid: _,
+                method_target: _,
                 ..
             } => {
                 call_path.hash(state);
@@ -683,7 +684,7 @@ impl SubstTypes for TyExpressionVariant {
             FunctionApplication {
                 arguments,
                 ref mut fn_ref,
-                ref mut call_path_typeid,
+                ref mut method_target,
                 ..
             } => has_changes! {
                 arguments.subst(ctx);
@@ -696,7 +697,7 @@ impl SubstTypes for TyExpressionVariant {
                 } else {
                     HasChanges::No
                 };
-                call_path_typeid.subst(ctx);
+                method_target.subst(ctx);
             },
             LazyOperator { lhs, rhs, .. } => has_changes! {
                 lhs.subst(ctx);
@@ -860,14 +861,14 @@ impl ReplaceDecls for TyExpressionVariant {
                     // Thus we use the implemented method that already contains all the required type parameters,
                     // including those from the impl trait.
                     if method.is_trait_method_dummy {
-                        if let Some(implementing_for_typeid) = method.implementing_for_typeid {
+                        if let Some(implementing_for) = method.implementing_for {
                             let arguments_types = arguments
                                 .iter()
                                 .map(|a| a.1.return_type)
                                 .collect::<Vec<_>>();
                             let implementing_type_method_ref = ctx.find_method_for_type(
                                 handler,
-                                implementing_for_typeid,
+                                implementing_for,
                                 &[ctx.namespace().current_package_name().clone()],
                                 &call_path.suffix,
                                 method.return_type.type_id(),

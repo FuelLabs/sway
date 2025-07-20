@@ -1,0 +1,109 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "burn_amount",
+          "type": 4,
+          "typeArguments": null
+        }
+      ],
+      "name": "burn",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "coins",
+          "type": 4,
+          "typeArguments": null
+        },
+        {
+          "name": "asset_id",
+          "type": 2,
+          "typeArguments": null
+        },
+        {
+          "name": "c_id",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "name": "force_transfer",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "mint_amount",
+          "type": 4,
+          "typeArguments": null
+        }
+      ],
+      "name": "mint",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "bits",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct std::asset_id::AssetId",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "bits",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct std::contract_id::ContractId",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 4,
+      "typeParameters": null
+    }
+  ]
+}

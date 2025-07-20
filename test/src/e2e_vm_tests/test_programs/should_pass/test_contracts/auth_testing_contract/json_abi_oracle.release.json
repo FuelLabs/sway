@@ -1,0 +1,25 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "returns_gm_one",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

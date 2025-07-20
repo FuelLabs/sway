@@ -48,14 +48,14 @@ category = "fail"
 #check: $()array[S { x: 0 }] = 0;
 #nextln: $()Mismatched types.
 #nextln: $()expected: u64
-#nextln: $()found:    S.
+#nextln: $()found:    array_bad_index::S.
 #nextln: $()help: Array index must be of type "u64".
 
 #check: $()error
 #check: $()array[E::X(0)] = 0;
 #nextln: $()Mismatched types.
 #nextln: $()expected: u64
-#nextln: $()found:    E.
+#nextln: $()found:    array_bad_index::E.
 #nextln: $()help: Array index must be of type "u64".
 
 #---------------------------------------------------
@@ -108,12 +108,12 @@ category = "fail"
 #check: $()poke(array[S { x: 0 }]);
 #nextln: $()Mismatched types.
 #nextln: $()expected: u64
-#nextln: $()found:    S.
+#nextln: $()found:    array_bad_index::S.
 #nextln: $()help: Array index must be of type "u64".
 
 #check: $()error
 #check: $()poke(array[E::X(0)]);
 #nextln: $()Mismatched types.
 #nextln: $()expected: u64
-#nextln: $()found:    E.
+#nextln: $()found:    array_bad_index::E.
 #nextln: $()help: Array index must be of type "u64".

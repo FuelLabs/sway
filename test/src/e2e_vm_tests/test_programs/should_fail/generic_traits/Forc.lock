@@ -1,8 +1,3 @@
 [[package]]
 name = "generic_traits"
 source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-76AB13CEA923F433"

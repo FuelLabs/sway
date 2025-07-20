@@ -1,4 +1,4 @@
-script;
+library;
 
 mod helpers;
 
@@ -141,7 +141,7 @@ impl<T, U> MyTrait2<T> for U {
     }
 }
 
-fn main() -> u64 {
+pub fn main() -> u64 {
     let a = FooBarData {
         value: 1u8
     };

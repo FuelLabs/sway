@@ -3,12 +3,28 @@ category = "fail"
 # check: $()error
 # nextln: generics_in_contract/src/main.sw:19:22
 # check: $()vec.push(item);
-# check: $()This parameter was declared as type V, but argument of type K was provided.
+# nextln: $()Mismatched types.
+# nextln: $()expected: V
+# nextln: $()found:    K.
+# nextln: $()unction application argument type must match function parameter type.
+
+# check: $()error
+# nextln: generics_in_contract/src/main.sw:19:22
+# check: $()vec.push(item);
+# nextln: $()This parameter was declared as type V, but argument of type K was provided.
 
 # check: $()error
 # nextln: generics_in_contract/src/main.sw:39:9
 # check: $()vec
 # nextln: $()Mismatched types.
-# nextln: $()expected: Vec<V>
-# nextln: $()found:    Vec<K>
+# nextln: $()expected: std::vec::Vec<V>
+# nextln: $()found:    std::vec::Vec<K>
 # nextln: $()Implicit return must match up with block's type.
+
+# check: $()Associated function or method is not found
+# check: $()let _ = storage.map1.to_vec1(1u64);
+# nextln: $()"to_vec1(std::storage::storage_key::StorageKey<generics_in_contract::MyStorageMap<u64, bool>>, u64)" is not found for type "std::storage::storage_key::StorageKey<generics_in_contract::MyStorageMap<u64, bool>>".
+
+# check: $()Associated function or method is not found
+# check: $()let _ = storage.map2.to_vec2(1u64);
+# nextln: $()to_vec2(std::storage::storage_key::StorageKey<generics_in_contract::MyStorageMap<u64, str[4]>>, u64)" is not found for type "std::storage::storage_key::StorageKey<generics_in_contract::MyStorageMap<u64, str[4]>>".

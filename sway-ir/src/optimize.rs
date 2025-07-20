@@ -46,7 +46,7 @@ mod target_fuel;
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{PassGroup, PassManager};
+    use crate::{Backtrace, PassGroup, PassManager};
     use sway_features::ExperimentalFeatures;
     use sway_types::SourceEngine;
 
@@ -87,6 +87,7 @@ pub mod tests {
             ),
             &source_engine,
             ExperimentalFeatures::default(),
+            Backtrace::default(),
         )
         .unwrap();
 

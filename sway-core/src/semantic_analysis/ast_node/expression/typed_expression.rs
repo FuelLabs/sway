@@ -137,7 +137,7 @@ impl ty::TyExpression {
                 fn_ref: decl_ref,
                 selector: None,
                 type_binding: None,
-                call_path_typeid: None,
+                method_target: None,
                 contract_call_params: IndexMap::new(),
                 contract_caller: None,
             },
@@ -562,7 +562,7 @@ impl ty::TyExpression {
                     .by_ref()
                     .with_type_annotation(function_type_annotation)
                     .with_help_text(
-                        "Return statement must return the declared function return type.",
+                        "Return expression must return the declared function return type.",
                     );
                 let expr_span = expr.span();
                 let expr = ty::TyExpression::type_check(handler, ctx, expr)
