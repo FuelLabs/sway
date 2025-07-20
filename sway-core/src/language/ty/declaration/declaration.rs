@@ -405,7 +405,58 @@ impl DisplayWithEngines for TyDecl {
 
 impl DebugWithEngines for TyDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
-        DisplayWithEngines::fmt(&self, f, engines)
+        let type_engine = engines.te();
+        write!(
+            f,
+            "{} declaration ({})",
+            self.friendly_type_name(),
+            match self {
+                TyDecl::VariableDecl(decl) => {
+                    let TyVariableDecl {
+                        mutability,
+                        name,
+                        type_ascription,
+                        body,
+                        ..
+                    } = &**decl;
+                    let mut builder = String::new();
+                    match mutability {
+                        VariableMutability::Mutable => builder.push_str("mut"),
+                        VariableMutability::RefMutable => builder.push_str("ref mut"),
+                        VariableMutability::Immutable => {}
+                    }
+                    builder.push_str(name.as_str());
+                    builder.push_str(": ");
+                    builder.push_str(
+                        &engines
+                            .help_out(&*type_engine.get(type_ascription.type_id()))
+                            .to_string(),
+                    );
+                    builder.push_str(" = ");
+                    builder.push_str(&engines.help_out(body).to_string());
+                    builder
+                }
+                TyDecl::FunctionDecl(FunctionDecl { decl_id }) => {
+                    engines.de().get(decl_id).name.as_str().into()
+                }
+                TyDecl::TraitDecl(TraitDecl { decl_id }) => {
+                    engines.de().get(decl_id).name.as_str().into()
+                }
+                TyDecl::StructDecl(StructDecl { decl_id }) => {
+                    engines.de().get(decl_id).name().as_str().into()
+                }
+                TyDecl::EnumDecl(EnumDecl { decl_id }) => {
+                    engines.de().get(decl_id).name().as_str().into()
+                }
+                TyDecl::ImplSelfOrTrait(ImplSelfOrTrait { decl_id }) => {
+                    let decl = engines.de().get(decl_id);
+                    return DebugWithEngines::fmt(&*decl, f, engines);
+                }
+                TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id }) =>
+                    engines.de().get(decl_id).name().as_str().into(),
+                _ => String::new(),
+            }
+        )
     }
 }
 

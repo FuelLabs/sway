@@ -613,9 +613,15 @@ impl<'a> FnCompiler<'a> {
             ty::TyExpressionVariant::ConfigurableExpression {
                 decl: const_decl, ..
             } => self.compile_config_expr(context, const_decl, span_md_idx),
-            ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
-                let value = decl.value.as_ref().unwrap();
-                self.compile_expression(context, md_mgr, value)
+            ty::TyExpressionVariant::ConstGenericExpression { decl, span, .. } => {
+                if let Some(value) = decl.value.as_ref() {
+                    self.compile_expression(context, md_mgr, value)
+                } else {
+                    Err(CompileError::Internal(
+                        "Const generic not materialized",
+                        span.clone(),
+                    ))
+                }
             }
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..

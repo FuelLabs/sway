@@ -30,6 +30,7 @@ prettydiff.workspace = true
 rand.workspace = true
 regex.workspace = true
 revm.workspace = true
+rhai = "1.22.2"
 serde_json.workspace = true
 sway-core.workspace = true
 sway-error.workspace = true

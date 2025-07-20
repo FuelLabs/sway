@@ -946,8 +946,8 @@ impl TyExpression {
                 // we want to report the element type instead
                 if h.has_errors() {
                     handler.emit_err(CompileError::TypeError(TypeError::MismatchedType {
-                        expected: format!("{:?}", engines.help_out(&array_elem_type)),
-                        received: format!("{:?}", engines.help_out(element_type)),
+                        expected: engines.help_out(&*array_elem_type).to_string(),
+                        received: engines.help_out(&*element_type).to_string(),
                         help_text: String::new(),
                         span: element.span.clone(),
                     }));
