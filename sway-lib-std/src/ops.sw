@@ -806,8 +806,7 @@ where
 {}
 
 #[cfg(experimental_const_generics = true)]
-impl<const N: u64> PartialEq for str[N]
-{
+impl<const N: u64> PartialEq for str[N] {
     fn eq(self, other: Self) -> bool {
         asm(result, left: self, right: other, len: N) {
             meq result left right len;

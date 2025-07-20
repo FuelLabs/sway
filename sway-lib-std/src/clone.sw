@@ -59,8 +59,7 @@ where
 }
 
 #[cfg(experimental_const_generics = true)]
-impl<const N: u64> Clone for str[N]
-{
+impl<const N: u64> Clone for str[N] {
     fn clone(self) -> Self {
         let new = [0u8; N];
         asm(dest: new, len: N, src: self) {
@@ -98,7 +97,7 @@ fn ok_array_clone() {
 
     __dbg((a, b));
 
-    assert(a ==  [1, 2, 3]);
-    assert(b ==  [1, 2, 3]);
+    assert(a == [1, 2, 3]);
+    assert(b == [1, 2, 3]);
     assert(a == b);
 }
