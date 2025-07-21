@@ -98,3 +98,18 @@ impl<T: MaterializeConstGenerics + Clone> MaterializeConstGenerics for std::sync
         }
     }
 }
+
+impl<T: MaterializeConstGenerics> MaterializeConstGenerics for Vec<T> {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        for item in self.iter_mut() {
+            item.materialize_const_generics(engines, handler, name, value)?;
+        }
+        Ok(())
+    }
+}

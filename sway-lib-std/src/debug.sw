@@ -2758,7 +2758,25 @@ where
 #[cfg(experimental_const_generics = true)]
 impl<const N: u64> Debug for str[N] {
     fn fmt(self, ref mut f: Formatter) {
-        use ::str::*;
-        from_str_array(self).fmt(f);
+        // TODO return the comment code below
+        // use ::str::*;
+        // from_str_array(self).fmt(f);
+
+        __assert_is_str_array::<str[N]>();
+
+        let str_size = __size_of_str_array::<str[N]>();
+        let src = __addr_of(self);
+
+        let ptr = asm(size: __size_of::<str[N]>(), dest, src: src) {
+            aloc size;
+            move dest hp;
+            mcp dest src size;
+            dest: raw_ptr
+        };
+
+        let s = asm(s: (ptr, str_size)) {
+            s: str
+        };
+        s.fmt(f);
     }
 }
