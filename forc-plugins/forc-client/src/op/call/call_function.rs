@@ -152,7 +152,8 @@ pub async fn call_function(
         .await
         .map_err(|e| anyhow!("Failed to initialize transaction builder: {e}"))?;
 
-    let (tx, tx_execution, _storage_reads) = match mode {
+    #[cfg_attr(test, allow(unused_variables))]
+    let (tx, tx_execution, storage_reads) = match mode {
         cmd::call::ExecutionMode::DryRun => {
             let tx = call
                 .build_tx(tb, &wallet)
@@ -200,7 +201,7 @@ pub async fn call_function(
                 .map_err(|e| anyhow!("Failed to build transaction: {e}"))?;
             let tx_status = client.submit_and_await_commit(&tx.clone().into()).await?;
 
-            #[allow(unused_variables)]
+            #[cfg_attr(test, allow(unused_variables))]
             let (block_height, tx_exec) = match tx_status {
                 TransactionStatus::Success {
                     block_height,
@@ -294,7 +295,7 @@ pub async fn call_function(
             &consensus_params,
             &script,
             tx_execution.result.receipts(),
-            _storage_reads,
+            storage_reads,
             &abi_map,
         )
         .await
