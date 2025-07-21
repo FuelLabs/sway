@@ -892,11 +892,13 @@ impl TyFunctionSig {
             && self
                 .type_parameters
                 .iter()
-                .filter_map(|x| match x {
-                    TyFunctionSigTypeParameter::Type(type_id) => Some(type_id),
-                    TyFunctionSigTypeParameter::Const(_) => None,
+                .all(|x| match x {
+                    TyFunctionSigTypeParameter::Type(type_id) =>  type_id.is_concrete(engines, TreatNumericAs::Concrete),
+                    TyFunctionSigTypeParameter::Const(expr) => match expr {
+                        ConstGenericExpr::Literal { .. } => true,
+                        ConstGenericExpr::AmbiguousVariableExpression { .. } => false,
+                    },
                 })
-                .all(|type_id| type_id.is_concrete(engines, TreatNumericAs::Concrete))
     }
 
     /// Returns a String representing the function.
