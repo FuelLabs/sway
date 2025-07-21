@@ -617,7 +617,7 @@ impl BuiltTests {
 pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
     let build_opts: BuildOpts = opts.into();
     let build_plan = pkg::BuildPlan::from_pkg_opts(&build_opts.pkg)?;
-    let built = pkg::build_with_options(&build_opts)?;
+    let built = pkg::build_with_options(&build_opts, None)?;
     BuiltTests::from_built(built, &build_plan)
 }
 

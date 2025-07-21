@@ -1,4 +1,4 @@
-pub(crate) mod binding;
+pub mod binding;
 pub(crate) mod create_type_id;
 pub(crate) mod length;
 pub(crate) mod trait_constraint;
