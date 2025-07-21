@@ -726,8 +726,8 @@ impl InstructionVerifier<'_, '_> {
                     ))
                 } else if lhs_ty.is_bool(self.context)
                     || lhs_ty.is_uint(self.context)
-                    || lhs_ty.is_b256(self.context)
                     || lhs_ty.is_ptr(self.context)
+                    || lhs_ty.is_b256(self.context)
                 {
                     Ok(())
                 } else {
