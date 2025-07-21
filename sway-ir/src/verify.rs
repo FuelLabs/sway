@@ -719,10 +719,6 @@ impl InstructionVerifier<'_, '_> {
             rhs_value.get_type(self.context),
         ) {
             (Some(lhs_ty), Some(rhs_ty)) => {
-                if lhs_ty.is_ptr(self.context) && rhs_ty.is_ptr(self.context) {
-                    // Not sure if it's okay to allow comparing pointers of different types.
-                    return Ok(());
-                }
                 if !lhs_ty.eq(self.context, &rhs_ty) {
                     Err(IrError::VerifyCmpTypeMismatch(
                         lhs_ty.as_string(self.context),
@@ -731,6 +727,7 @@ impl InstructionVerifier<'_, '_> {
                 } else if lhs_ty.is_bool(self.context)
                     || lhs_ty.is_uint(self.context)
                     || lhs_ty.is_b256(self.context)
+                    || lhs_ty.is_ptr(self.context)
                 {
                     Ok(())
                 } else {
