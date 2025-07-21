@@ -1,11 +1,3 @@
-use std::collections::BTreeMap;
-
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-};
-use sway_types::{Ident, Span, Spanned};
-
 use crate::{
     decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, MaterializeConstGenerics},
     language::{
@@ -18,6 +10,12 @@ use crate::{
     EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes, SubstTypesContext,
     TypeId, TypeParameter, TypeSubstMap,
 };
+use std::collections::BTreeMap;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
+use sway_types::{Ident, Span, Spanned};
 
 pub(crate) trait MonomorphizeHelper {
     fn name(&self) -> &Ident;
@@ -119,24 +117,73 @@ where
                 )));
             }
 
-            let args = type_arguments
-                .iter_mut()
-                .filter_map(|x| x.as_type_argument_mut());
-            for type_argument in args {
-                type_argument.type_id = resolve_type(
-                    handler,
-                    engines,
-                    namespace,
-                    mod_path,
-                    type_argument.type_id,
-                    &type_argument.span,
-                    enforce_type_arguments,
-                    None,
-                    self_type,
-                    subst_ctx,
-                    VisibilityCheck::Yes,
-                )
-                .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
+            let params = value.type_parameters();
+            let args = type_arguments.iter_mut();
+
+            for (param, arg) in params.iter().zip(args) {
+                match (param, arg) {
+                    (TypeParameter::Type(_), GenericArgument::Type(arg)) => {
+                        arg.type_id = resolve_type(
+                            handler,
+                            engines,
+                            namespace,
+                            mod_path,
+                            arg.type_id,
+                            &arg.span,
+                            enforce_type_arguments,
+                            None,
+                            self_type,
+                            subst_ctx,
+                            VisibilityCheck::Yes,
+                        )
+                        .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
+                    }
+                    (TypeParameter::Const(_), GenericArgument::Type(arg)) => {
+                        let suffix = arg
+                            .call_path_tree
+                            .as_ref()
+                            .unwrap()
+                            .qualified_call_path
+                            .call_path
+                            .suffix
+                            .clone();
+                        let _ = crate::semantic_analysis::type_resolve::resolve_call_path(
+                            handler,
+                            engines,
+                            namespace,
+                            mod_path,
+                            &CallPath {
+                                prefixes: vec![],
+                                suffix,
+                                callpath_type: crate::language::CallPathType::Ambiguous,
+                            },
+                            self_type,
+                            VisibilityCheck::No,
+                        )
+                        .map(|d| d.expect_typed())?;
+                    }
+                    (_, GenericArgument::Const(arg)) => {
+                        match &arg.expr {
+                            crate::ast_elements::type_parameter::ConstGenericExpr::Literal { ..} => {},
+                            crate::ast_elements::type_parameter::ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+                                let _ = crate::semantic_analysis::type_resolve::resolve_call_path(
+                                    handler,
+                                    engines,
+                                    namespace,
+                                    mod_path,
+                                    &CallPath {
+                                        prefixes: vec![],
+                                        suffix: ident.clone(),
+                                        callpath_type: crate::language::CallPathType::Ambiguous,
+                                    },
+                                    self_type,
+                                    VisibilityCheck::No,
+                                )
+                                .map(|d| d.expect_typed())?;
+                            },
+                        }
+                    }
+                }
             }
 
             let mut params = vec![];
