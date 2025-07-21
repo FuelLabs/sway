@@ -445,11 +445,17 @@ impl MaterializeConstGenerics for TyExpression {
                 let new_decl = engines.de().get(fn_ref.id());
                 if new_decl.implementing_for_typeid.is_none() {
                     let mut type_subst_map = TypeSubstMap::new();
-                    type_subst_map.const_generics_materialization.insert(name.to_string(), value.clone());
-                    
+                    type_subst_map
+                        .const_generics_materialization
+                        .insert(name.to_string(), value.clone());
+
                     let mut new_decl = TyFunctionDecl::clone(&*new_decl);
-                    let r = new_decl.subst_inner(&SubstTypesContext { engines, type_subst_map: Some(&type_subst_map), subst_function_body: true });
-                    
+                    let r = new_decl.subst_inner(&SubstTypesContext {
+                        engines,
+                        type_subst_map: Some(&type_subst_map),
+                        subst_function_body: true,
+                    });
+
                     if matches!(r, HasChanges::Yes) {
                         *fn_ref = engines.de().insert(new_decl, None);
                     }
