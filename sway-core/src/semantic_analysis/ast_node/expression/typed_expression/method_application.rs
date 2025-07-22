@@ -144,12 +144,6 @@ pub(crate) fn type_check_method_application(
                 );
             }
             (
-                TypeInfo::StringArray(Length(ConstGenericExpr::Literal { .. })),
-                TypeInfo::StringArray(Length(ConstGenericExpr::Literal { .. })),
-            ) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860");
-            }
-            (
                 TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
                     ident,
                 })),
