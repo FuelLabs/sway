@@ -1,35 +1,35 @@
 script {
-    entry fn main(__ret_value: ptr { u64, u64 }) -> ptr { u64, u64 } {
+    entry fn main(__ret_value: __ptr { u64, u64 }) -> __ptr { u64, u64 } {
         local { u64, u64 } __anon_0
 
-        entry(__ret_value: ptr { u64, u64 }):
-        v0 = get_local ptr { u64, u64 }, __anon_0
+        entry(__ret_value: __ptr { u64, u64 }):
+        v0 = get_local __ptr { u64, u64 }, __anon_0
         v1 = const u64 0
-        v2 = get_elem_ptr v0, ptr u64, v1
+        v2 = get_elem_ptr v0, __ptr u64, v1
         v3 = const u64 11
         store v3 to v2
         v4 = const u64 1
-        v5 = get_elem_ptr v0, ptr u64, v4
+        v5 = get_elem_ptr v0, __ptr u64, v4
         v6 = const u64 22
         store v6 to v5
         v7 = load v0
         store v7 to __ret_value
-        ret ptr { u64, u64 } __ret_value
+        ret __ptr { u64, u64 } __ret_value
     }
 }
 
 // regex: VAL=v\d+
 // regex: ID=[[:alpha:]0-9_]+
 
-// check: fn main($(ret_value=$ID): ptr { u64, u64 }) -> ptr { u64, u64 }
+// check: fn main($(ret_value=$ID): __ptr { u64, u64 }) -> __ptr { u64, u64 }
 
-// check: $(temp_ptr=$VAL) = get_local ptr { u64, u64 }, __anon_0
+// check: $(temp_ptr=$VAL) = get_local __ptr { u64, u64 }, __anon_0
 
-// check: $(field_0_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $VAL
+// check: $(field_0_ptr=$VAL) = get_elem_ptr $temp_ptr, __ptr u64, $VAL
 // check: $(elev=$VAL) = const u64 11
 // check: store $elev to $field_0_ptr
 
-// check: $(field_1_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $VAL
+// check: $(field_1_ptr=$VAL) = get_elem_ptr $temp_ptr, __ptr u64, $VAL
 // check: $(ttwo=$VAL) = const u64 22
 // check: store $ttwo to $field_1_ptr
 

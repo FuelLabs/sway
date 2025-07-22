@@ -5,8 +5,8 @@ script {
         local b256 addr_b
 
         entry():
-        v0 = get_local ptr b256, addr_a
-        v1 = get_local ptr b256, addr_b
+        v0 = get_local __ptr b256, addr_a
+        v1 = get_local __ptr b256, addr_b
         mem_copy_val v1, v0
         v0 = const unit ()
         ret () v0

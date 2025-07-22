@@ -28,8 +28,8 @@ fn main() -> D {
 
 // ::check-ir::
 
-// check: fn main() -> ptr { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }
-// check: ret ptr { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }
+// check: fn main() -> __ptr { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }
+// check: ret __ptr { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }
 
 // ::check-asm::
 

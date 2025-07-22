@@ -8,7 +8,7 @@ script {
         call foo()
         call bar()
         call baz()
-        v0 = get_local ptr u64, x
+        v0 = get_local __ptr u64, x
 // check: const u64 11
         v1 = const u64 11
         store v1 to v0

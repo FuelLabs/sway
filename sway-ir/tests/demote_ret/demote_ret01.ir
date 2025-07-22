@@ -8,12 +8,12 @@ script {
         v0 = const bool false
         v1 = const bool true
         v2 = call c(v0, v1)
-        v3 = get_local ptr b256, tmp
+        v3 = get_local __ptr b256, tmp
         store v2 to v3
 
 // check: $(call_val=$ID) = call c($ID, $ID, $ID)
 // check: $(load_val=$ID) = load $call_val
-// check: $(tmp_val=$ID) = get_local ptr b256, tmp
+// check: $(tmp_val=$ID) = get_local __ptr b256, tmp
 // check: store $load_val to $tmp_val
 
         v4 = const unit ()
@@ -32,7 +32,7 @@ script {
         v0 = call a()
         br block5(v0)
 
-// check: $(ptr_arg_val=$ID) = get_local ptr b256, $ret_val0
+// check: $(ptr_arg_val=$ID) = get_local __ptr b256, $ret_val0
 // check: $(ret_val=$ID) = call a($ptr_arg_val)
 // check: $(load_val=$ID) = load $ret_val
 // check: br block5($load_val)
@@ -43,7 +43,7 @@ script {
         block2():
         v1 = call a()
         br block5(v1)
-// check: $(ptr_arg_val=$ID) = get_local ptr b256, $ret_val1
+// check: $(ptr_arg_val=$ID) = get_local __ptr b256, $ret_val1
 // check: $(ret_val=$ID) = call a($ptr_arg_val)
 // check: $(load_val=$ID) = load $ret_val
 // check: br block5($load_val)
@@ -51,7 +51,7 @@ script {
         block3():
         v2 = call b()
         br block5(v2)
-// check: $(ptr_arg_val=$ID) = get_local ptr b256, $ret_val2
+// check: $(ptr_arg_val=$ID) = get_local __ptr b256, $ret_val2
 // check: $(ret_val=$ID) = call b($ptr_arg_val)
 // check: $(load_val=$ID) = load $ret_val
 // check: br block5($load_val)
@@ -64,7 +64,7 @@ script {
         local b256 twobee = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
 
         entry():
-        v0 = get_local ptr b256, twobee
+        v0 = get_local __ptr b256, twobee
         v1 = load v0
         ret b256 v1
     }
@@ -73,7 +73,7 @@ script {
         local b256 dada = const b256 0xdadadadadadadadadadadadadadadadadadadadadadadadadadadadadadadada
 
         entry():
-        v0 = get_local ptr b256, dada
+        v0 = get_local __ptr b256, dada
         v1 = load v0
         ret b256 v1
     }

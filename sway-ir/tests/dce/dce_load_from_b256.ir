@@ -12,13 +12,13 @@ script {
         local b256 local
 
         entry():
-        v0 = get_local ptr b256, local
+        v0 = get_local __ptr b256, local
         v1 = const b256 0x1f212e1f2e7b5a8cff18d994b7b7faa61db1a89cbf697facc518f6b6c8430196
         store v1 to v0
-        v2 = get_local ptr b256, local
+        v2 = get_local __ptr b256, local
         v3 = load v2
         v4 = call take_b256_2(v3)
-        v5 = get_local ptr b256, x
+        v5 = get_local __ptr b256, x
         store v4 to v5
         v6 = const unit ()
         ret () v6
@@ -34,5 +34,5 @@ script {
 // check: entry fn main() -> () {
 // not: local b256 x
 // check: entry():
-// not: get_local ptr b256, x
+// not: get_local __ptr b256, x
 // check: ret ()
