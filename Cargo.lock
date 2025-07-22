@@ -3202,8 +3202,10 @@ dependencies = [
 name = "forc-publish"
 version = "0.69.1"
 dependencies = [
+ "anyhow",
  "clap",
  "flate2",
+ "forc-pkg",
  "forc-tracing 0.69.1",
  "forc-util",
  "futures-util",
