@@ -435,19 +435,30 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::ImplicitReturn(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
             }
-            TyExpressionVariant::FunctionApplication { arguments, .. } => {
+            TyExpressionVariant::FunctionApplication {
+                arguments,
+                type_binding,
+                ..
+            } => {
+                if let Some(type_binding) = type_binding.as_mut() {
+                    type_binding
+                        .type_arguments
+                        .to_vec_mut()
+                        .materialize_const_generics(engines, handler, name, value)?;
+                }
+
                 for (_, expr) in arguments {
                     expr.materialize_const_generics(engines, handler, name, value)?;
                 }
                 Ok(())
             }
             TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
-                arguments, ..
+                arguments,
+                type_arguments,
+                ..
             }) => {
-                for expr in arguments {
-                    expr.materialize_const_generics(engines, handler, name, value)?;
-                }
-                Ok(())
+                type_arguments.materialize_const_generics(engines, handler, name, value)?;
+                arguments.materialize_const_generics(engines, handler, name, value)
             }
             TyExpressionVariant::Return(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
