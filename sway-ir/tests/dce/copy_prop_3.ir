@@ -4,14 +4,14 @@ script {
         local [u64; 8] __anon_468
 
         entry(v101: u64):
-        v0 = get_local ptr [u64; 8], __anon_0
-        v1 = get_local ptr [u64; 8], __anon_468
+        v0 = get_local __ptr [u64; 8], __anon_0
+        v1 = get_local __ptr [u64; 8], __anon_468
         mem_copy_val v1, v0
         v2 = const u64 1
         v3 = add v101, v2
-        v4 = get_elem_ptr v1, ptr u64, v3
-        v5 = get_local ptr [u64; 8], __anon_0
-        v6 = get_elem_ptr v5, ptr u64, v3
+        v4 = get_elem_ptr v1, __ptr u64, v3
+        v5 = get_local __ptr [u64; 8], __anon_0
+        v6 = get_elem_ptr v5, __ptr u64, v3
         v7 = load v6
         ret u64 v7
     }

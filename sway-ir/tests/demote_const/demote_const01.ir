@@ -8,7 +8,7 @@ script {
         v0 = const { u64, bool } { u64 42, bool false }
 
 // not: const { u64, bool } { u64 42, bool false }
-// check: $(loc_var=$ID) = get_local ptr { u64, bool }, $loc
+// check: $(loc_var=$ID) = get_local __ptr { u64, bool }, $loc
 // check: $(loc_val=$ID) = load $loc_var
 
         ret { u64, bool } v0

@@ -1530,7 +1530,7 @@ fn const_eval_intrinsic(
                     ConstantValue::Slice(elements) => {
                         let v = elements[idx].clone();
                         let c = ConstantContent {
-                            ty: Type::new_ptr(lookup.context, v.ty),
+                            ty: Type::new_typed_pointer(lookup.context, v.ty),
                             value: ConstantValue::Reference(Box::new(v)),
                         };
                         Ok(Some(Constant::unique(lookup.context, c)))

@@ -5,9 +5,9 @@ script {
         local u256 z
 
         entry():
-        v0 = get_local ptr u256, x
-        v1 = get_local ptr u256, y
-        v2 = get_local ptr u256, z
+        v0 = get_local __ptr u256, x
+        v1 = get_local __ptr u256, y
+        v2 = get_local __ptr u256, z
 
         mem_copy_val v2, v0
         wide add v0, v1 to v2

@@ -34,7 +34,7 @@ pub fn ret_val_demotion(
     }
 
     // Change the function signature.  It now returns a pointer.
-    let ptr_ret_type = Type::new_ptr(context, ret_type);
+    let ptr_ret_type = Type::new_typed_pointer(context, ret_type);
     function.set_return_type(context, ptr_ret_type);
 
     // The storage for the return value must be determined.  For entry-point functions it's a new

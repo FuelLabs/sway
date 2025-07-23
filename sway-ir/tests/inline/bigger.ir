@@ -27,13 +27,13 @@ script {
         local u64 x
 
         entry(b: bool):
-        v0 = get_local ptr u64, x
+        v0 = get_local __ptr u64, x
         v1 = const u64 10
         store v1 to v0
         cbr b, block0(), block1()
 
         block0():
-        v2 = get_local ptr u64, x
+        v2 = get_local __ptr u64, x
         v3 = load v2
         br block2(v3)
 
@@ -54,7 +54,7 @@ script {
         local u64 x
 
         entry():
-        v0 = get_local ptr u64, x
+        v0 = get_local __ptr u64, x
         v1 = const u64 0
         store v1 to v0
 
@@ -68,10 +68,10 @@ script {
 // check: $t():
 // check: $f():
 
-// check: get_local ptr u64, x
-        v4 = get_local ptr u64, x
+// check: get_local __ptr u64, x
+        v4 = get_local __ptr u64, x
         store v3 to v4
-        v5 = get_local ptr u64, x
+        v5 = get_local __ptr u64, x
         v6 = load v5
         ret u64 v6
     }
