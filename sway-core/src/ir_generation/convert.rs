@@ -152,7 +152,7 @@ fn convert_resolved_type_info(
                 create_tuple_aggregate(type_engine, decl_engine, context, &new_fields)?
             }
         }
-        TypeInfo::RawUntypedPtr => Type::get_uint64(context),
+        TypeInfo::RawUntypedPtr => Type::get_ptr(context),
         TypeInfo::RawUntypedSlice => Type::get_slice(context),
         TypeInfo::Ptr(pointee_ty) => {
             let pointee_ty = convert_resolved_type_id(
@@ -162,7 +162,7 @@ fn convert_resolved_type_info(
                 pointee_ty.type_id(),
                 span,
             )?;
-            Type::new_ptr(context, pointee_ty)
+            Type::new_typed_pointer(context, pointee_ty)
         }
         TypeInfo::Alias { ty, .. } => {
             convert_resolved_type_id(type_engine, decl_engine, context, ty.type_id(), span)?
@@ -189,7 +189,7 @@ fn convert_resolved_type_info(
                     referenced_type.type_id(),
                     span,
                 )?;
-                Type::new_ptr(context, referenced_ir_type)
+                Type::new_typed_pointer(context, referenced_ir_type)
             }
         }
         TypeInfo::Never => Type::get_never(context),

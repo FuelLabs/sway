@@ -20,13 +20,13 @@ fn main() -> (u64, b256) {
 // check: $(gtf1_index=$VAL) = const u64 1
 // check: $(gtf1=$VAL) = gtf $gtf1_index, 66
 // check: $(gtf2=$VAL) = bitcast $gtf1 to u64
-// check: $(field1_var=$VAL) = get_local ptr u64, field1
+// check: $(field1_var=$VAL) = get_local __ptr u64, field1
 // check:  store $gtf2 to $field1_var
 
 // check: $(gtf2_index=$VAL) = const u64 2
 // check: $(gtf2=$VAL) = gtf $gtf2_index, 119
-// check: $(gtf2_int_to_ptr_ptr=$VAL) = int_to_ptr $gtf2 to ptr b256
-// check: $(field2_var=$VAL) = get_local ptr b256, field2
+// check: $(gtf2_int_to_ptr_ptr=$VAL) = int_to_ptr $gtf2 to __ptr b256
+// check: $(field2_var=$VAL) = get_local __ptr b256, field2
 // check: mem_copy_val $field2_var, $gtf2_int_to_ptr_ptr
 
 // ::check-asm::

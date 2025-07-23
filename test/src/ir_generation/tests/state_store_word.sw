@@ -6,6 +6,6 @@ fn main() {
       1,
     );
 }
-// check: $(key=$VAL) = get_local ptr b256, key_for_storage, $(meta=$MD)
+// check: $(key=$VAL) = get_local __ptr b256, key_for_storage, $(meta=$MD)
 // check: $(count=$VAL) = const u64 1, $MD
 // check: $VAL = state_store_word $count, key $key, $meta

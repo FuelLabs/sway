@@ -9,8 +9,10 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 flate2.workspace = true
+forc-pkg.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
 futures-util.workspace = true

@@ -8,7 +8,7 @@ script {
         v0 = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
 
 // not:   const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
-// check: $(loc_var=$ID) = get_local ptr b256, $loc
+// check: $(loc_var=$ID) = get_local __ptr b256, $loc
 // check: $(loc_val=$ID) = load $loc_var
 
         ret b256 v0

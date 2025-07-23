@@ -15,10 +15,10 @@ script {
     fn foo() -> u64 {
         entry():
             v0 = const u64 0
-            v1 = int_to_ptr v0 to ptr b256
+            v1 = int_to_ptr v0 to __ptr b256
 
             v2 = const u64 0
-            v3 = int_to_ptr v0 to ptr b256
+            v3 = int_to_ptr v0 to __ptr b256
 
             v4 = const u64 1
 
@@ -30,10 +30,10 @@ script {
     fn foo_dup() -> u64 {
         entry():
             v0 = const u64 0
-            v1 = int_to_ptr v0 to ptr b256
+            v1 = int_to_ptr v0 to __ptr b256
 
             v2 = const u64 0
-            v3 = int_to_ptr v0 to ptr b256
+            v3 = int_to_ptr v0 to __ptr b256
 
             v4 = const u64 1
 
@@ -45,10 +45,10 @@ script {
     fn bar() -> u64 {
         entry():
             v0 = const u64 0
-            v1 = int_to_ptr v0 to ptr b256
+            v1 = int_to_ptr v0 to __ptr b256
 
             v2 = const u64 0
-            v3 = int_to_ptr v0 to ptr b256
+            v3 = int_to_ptr v0 to __ptr b256
 
             v4 = const u64 1
 

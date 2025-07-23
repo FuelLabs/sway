@@ -33,8 +33,8 @@ impl Test for Contract {
 // ::check-ir::
 
 // check: contract {
-// check: fn get_b256<42123b96>($ID: ptr b256) -> ptr b256,
-// check: fn get_s<fc62d029>($ID $MD: u64, $ID: ptr b256) -> ptr { u64, b256 }
+// check: fn get_b256<42123b96>($ID: __ptr b256) -> __ptr b256,
+// check: fn get_s<fc62d029>($ID $MD: u64, $ID: __ptr b256) -> __ptr { u64, b256 }
 // check: fn get_u64<9890aef4>($ID $MD: u64) -> u64
 
 // ::check-asm::

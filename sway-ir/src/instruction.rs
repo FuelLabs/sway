@@ -1400,7 +1400,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     // get_elem_ptr() and get_elem_ptr_*() all take the element type and will store the pointer to
     // that type in the instruction, which is later returned by Instruction::get_type().
     pub fn get_elem_ptr(self, base: Value, elem_ty: Type, indices: Vec<Value>) -> Value {
-        let elem_ptr_ty = Type::new_ptr(self.context, elem_ty);
+        let elem_ptr_ty = Type::new_typed_pointer(self.context, elem_ty);
         insert_instruction!(
             self,
             InstOp::GetElemPtr {
