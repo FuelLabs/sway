@@ -51,9 +51,12 @@ pub struct TransferAssetsArgs {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetExecutionTraceArgs {
-    pub trace_events: Vec<HashMap<String, Value>>, // JSON objects representing TraceEvent
+    /// JSON objects representing TraceEvent
+    pub trace_events: Vec<HashMap<String, Value>>,
+    /// Total gas used in the execution trace
     pub total_gas: u64,
-    pub labels: Option<HashMap<String, String>>, // JSON string representation of HashMap<ContractId, String>
+    /// JSON string representation of HashMap<ContractId, String>
+    pub labels: Option<HashMap<String, String>>,
 }
 
 fn default_mode() -> String {
