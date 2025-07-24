@@ -277,7 +277,7 @@ impl TypeSubstMap {
                         .collect::<Vec<_>>(),
                 )
             }
-        |   (TypeInfo::StringArray(l), TypeInfo::StringArray(r)) => {
+            (TypeInfo::StringArray(l), TypeInfo::StringArray(r)) => {
                 let map = TypeSubstMap::new();
                 map_from_length(type_engine, l, r, map)
             }
@@ -609,7 +609,12 @@ impl TypeSubstMap {
     }
 }
 
-fn map_from_length(type_engine: &TypeEngine, l: &Length, r: &Length, mut map: TypeSubstMap) -> TypeSubstMap {
+fn map_from_length(
+    type_engine: &TypeEngine,
+    l: &Length,
+    r: &Length,
+    mut map: TypeSubstMap,
+) -> TypeSubstMap {
     match (&l.expr(), &r.expr()) {
         (
             ConstGenericExpr::AmbiguousVariableExpression { ident },
