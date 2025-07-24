@@ -44,11 +44,21 @@ impl MaterializeConstGenerics for TyConstGenericDecl {
         if self.call_path.suffix.as_str() == name {
             match self.value.as_ref() {
                 Some(v) => {
-                    assert!(v.extract_literal_value().unwrap().cast_value_to_u64().unwrap() == value.extract_literal_value().unwrap().cast_value_to_u64().unwrap());
-                },
+                    assert!(
+                        v.extract_literal_value()
+                            .unwrap()
+                            .cast_value_to_u64()
+                            .unwrap()
+                            == value
+                                .extract_literal_value()
+                                .unwrap()
+                                .cast_value_to_u64()
+                                .unwrap()
+                    );
+                }
                 None => {
                     self.value = Some(value.clone());
-                },
+                }
             }
         }
         Ok(())
