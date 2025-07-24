@@ -341,7 +341,7 @@ impl TyTraitDecl {
         ctx: &TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
-        type_arguments: &[GenericArgument],
+        generic_args: &[GenericArgument],
     ) -> (InterfaceItemMap, ItemMap, ItemMap) {
         let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
         let mut item_refs: ItemMap = BTreeMap::new();
@@ -401,14 +401,14 @@ impl TyTraitDecl {
                     t.type_id
                 })
                 .collect(),
-            type_arguments.iter().map(|t| t.type_id()).collect(),
+            generic_args.iter().map(|t| t.type_id()).collect(),
         );
 
         for item in ctx
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
                 type_id,
                 call_path,
-                type_arguments,
+                generic_args,
             )
             .into_iter()
         {

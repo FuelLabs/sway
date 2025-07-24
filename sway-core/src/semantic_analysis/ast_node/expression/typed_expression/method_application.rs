@@ -112,55 +112,19 @@ pub(crate) fn type_check_method_application(
         method_result.unwrap()
     };
 
-    // Prepare const generics materialization
-    let mut const_generics = BTreeMap::new();
-
     let original_decl = engines.de().get(original_decl_ref.id());
-    let has_const_generic_parameters = original_decl
-        .type_parameters
-        .iter()
-        .any(|x| matches!(x, TypeParameter::Const(_)));
-    if has_const_generic_parameters {
-        let a = engines.te().get(
-            engines.de().get(original_decl_ref.id()).parameters[0]
-                .type_argument
-                .type_id(),
-        );
-        let b = engines
-            .te()
-            .get(args_opt_buf[0].0.as_ref().unwrap().return_type);
-        match (&*a, &*b) {
-            (
-                TypeInfo::Array(_, Length(ConstGenericExpr::AmbiguousVariableExpression { ident })),
-                TypeInfo::Array(_, Length(ConstGenericExpr::Literal { val, .. })),
-            ) => {
-                const_generics.insert(
-                    ident.as_str().to_string(),
-                    TyExpression {
-                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
-                        return_type: engines.te().id_of_u64(),
-                        span: Span::dummy(),
-                    },
-                );
-            }
-            (
-                TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
-                    ident,
-                })),
-                TypeInfo::StringArray(Length(ConstGenericExpr::Literal { val, .. })),
-            ) => {
-                const_generics.insert(
-                    ident.as_str().to_string(),
-                    TyExpression {
-                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
-                        return_type: engines.te().id_of_u64(),
-                        span: Span::dummy(),
-                    },
-                );
-            }
-            _ => {}
-        }
-    }
+
+    let const_generics = prepare_const_generics_materialization(
+        engines,
+        args_opt_buf
+            .iter()
+            .map(|x| x.0.as_ref().unwrap().return_type),
+        original_decl
+            .parameters
+            .iter()
+            .map(|x| x.type_argument.type_id()),
+        original_decl.type_parameters.iter(),
+    );
 
     let mut fn_ref = monomorphize_method(
         handler,
@@ -835,6 +799,56 @@ pub(crate) fn type_check_method_application(
     };
 
     Ok(exp)
+}
+
+pub(crate) fn prepare_const_generics_materialization<'a>(
+    engines: &crate::Engines,
+    mut args_types: impl Iterator<Item = TypeId>,
+    mut param_types: impl Iterator<Item = TypeId>,
+    mut type_parameters: impl Iterator<Item = &'a TypeParameter>,
+) -> BTreeMap<String, TyExpression>
+{
+    let mut const_generics = BTreeMap::new();
+
+    let has_const_generic_parameters =
+        type_parameters.any(|x| matches!(x, TypeParameter::Const(_)));
+
+    if has_const_generic_parameters {
+        let a = engines.te().get(param_types.next().unwrap());
+        let b = engines.te().get(args_types.next().unwrap());
+        match (&*a, &*b) {
+            (
+                TypeInfo::Array(_, Length(ConstGenericExpr::AmbiguousVariableExpression { ident })),
+                TypeInfo::Array(_, Length(ConstGenericExpr::Literal { val, .. })),
+            ) => {
+                const_generics.insert(
+                    ident.as_str().to_string(),
+                    TyExpression {
+                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                        return_type: engines.te().id_of_u64(),
+                        span: Span::dummy(),
+                    },
+                );
+            }
+            (
+                TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
+                    ident,
+                })),
+                TypeInfo::StringArray(Length(ConstGenericExpr::Literal { val, .. })),
+            ) => {
+                const_generics.insert(
+                    ident.as_str().to_string(),
+                    TyExpression {
+                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                        return_type: engines.te().id_of_u64(),
+                        span: Span::dummy(),
+                    },
+                );
+            }
+            _ => {}
+        }
+    }
+    const_generics
 }
 
 /// Unifies the types of the arguments with the types of the parameters. Returns

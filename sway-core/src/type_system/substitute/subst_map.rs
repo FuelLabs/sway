@@ -277,31 +277,17 @@ impl TypeSubstMap {
                         .collect::<Vec<_>>(),
                 )
             }
+        |   (TypeInfo::StringArray(l), TypeInfo::StringArray(r)) => {
+                let map = TypeSubstMap::new();
+                map_from_length(type_engine, l, r, map)
+            }
             (TypeInfo::Array(type_parameter, l), TypeInfo::Array(type_argument, r)) => {
-                let mut map = TypeSubstMap::from_superset_and_subset_helper(
+                let map = TypeSubstMap::from_superset_and_subset_helper(
                     engines,
                     vec![type_parameter.type_id()],
                     vec![type_argument.type_id()],
                 );
-                match (&l.expr(), &r.expr()) {
-                    (
-                        ConstGenericExpr::AmbiguousVariableExpression { ident },
-                        ConstGenericExpr::Literal { val, .. },
-                    ) => {
-                        map.const_generics_materialization.insert(
-                            ident.as_str().into(),
-                            crate::language::ty::TyExpression {
-                                expression: crate::language::ty::TyExpressionVariant::Literal(
-                                    crate::language::Literal::U64(*val as u64),
-                                ),
-                                return_type: type_engine.id_of_u64(),
-                                span: sway_types::Span::dummy(),
-                            },
-                        );
-                        map
-                    }
-                    _ => map,
-                }
+                map_from_length(type_engine, l, r, map)
             }
             (TypeInfo::Slice(type_parameter), TypeInfo::Slice(type_argument)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
@@ -317,7 +303,6 @@ impl TypeSubstMap {
             | (TypeInfo::Contract, TypeInfo::Contract)
             | (TypeInfo::ErrorRecovery(_), TypeInfo::ErrorRecovery(_))
             | (TypeInfo::StringSlice, TypeInfo::StringSlice)
-            | (TypeInfo::StringArray(_), TypeInfo::StringArray(_))
             | (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_))
             | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
                 mapping: BTreeMap::new(),
@@ -621,6 +606,28 @@ impl TypeSubstMap {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(..) => None,
         }
+    }
+}
+
+fn map_from_length(type_engine: &TypeEngine, l: &Length, r: &Length, mut map: TypeSubstMap) -> TypeSubstMap {
+    match (&l.expr(), &r.expr()) {
+        (
+            ConstGenericExpr::AmbiguousVariableExpression { ident },
+            ConstGenericExpr::Literal { val, .. },
+        ) => {
+            map.const_generics_materialization.insert(
+                ident.as_str().into(),
+                crate::language::ty::TyExpression {
+                    expression: crate::language::ty::TyExpressionVariant::Literal(
+                        crate::language::Literal::U64(*val as u64),
+                    ),
+                    return_type: type_engine.id_of_u64(),
+                    span: sway_types::Span::dummy(),
+                },
+            );
+            map
+        }
+        _ => map,
     }
 }
 
