@@ -822,27 +822,21 @@ impl GenericTypeParameter {
                         type_arguments: trait_type_arguments,
                     } = trait_constraint;
 
-                    let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) =
-                        match handle_trait(
-                            handler,
-                            &ctx,
-                            *type_id,
-                            trait_name,
-                            trait_type_arguments,
-                            function_name,
-                            access_span.clone(),
-                        ) {
-                            Ok(res) => {
-                                res
-                            },
-                            Err(_) => {
-                                continue
-                            },
-                        };
+                    let Ok((mut trait_interface_item_refs, mut trait_item_refs, mut trait_impld_item_refs)) = handle_trait(
+                        handler,
+                        &ctx,
+                        *type_id,
+                        trait_name,
+                        trait_type_arguments,
+                        function_name,
+                        access_span.clone(),
+                    ) else {
+                        continue;
+                    };
 
-                    interface_item_refs.extend(trait_interface_item_refs);
-                    item_refs.extend(trait_item_refs);
-                    impld_item_refs.extend(trait_impld_item_refs);
+                    interface_item_refs.append(&mut trait_interface_item_refs);
+                    item_refs.append(&mut trait_item_refs);
+                    impld_item_refs.append(&mut trait_impld_item_refs);
                 }
             }
 
