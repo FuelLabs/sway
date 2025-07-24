@@ -887,8 +887,7 @@ impl Hash for str[10] {
 
 #[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = true)]
-impl<const N: u64> Hash for str[N]
-{
+impl<const N: u64> Hash for str[N] {
     fn hash(self, ref mut state: Hasher) {
         state.write_str_array(self);
     }
@@ -896,14 +895,12 @@ impl<const N: u64> Hash for str[N]
 
 #[cfg(experimental_new_hashing = true)]
 #[cfg(experimental_const_generics = true)]
-impl<const N: u64> Hash for str[N]
-{
+impl<const N: u64> Hash for str[N] {
     fn hash(self, ref mut state: Hasher) {
         N.hash(state);
         state.write_str_array(self);
     }
 }
-
 
 #[cfg(experimental_new_hashing = false)]
 impl Hash for raw_slice {
@@ -1145,7 +1142,7 @@ fn ok_array_hash() {
     assert(a == b);
 
     // string slices
-    let a = sha256(("abc","def"));
+    let a = sha256(("abc", "def"));
     let b = sha256(("ab", "cd", "ef"));
     assert(a == b);
 
@@ -1154,8 +1151,6 @@ fn ok_array_hash() {
     let b = sha256((__to_str_array("ab"), __to_str_array("cd"), __to_str_array("ef")));
     assert(a == b);
 }
-
-
 
 #[cfg(experimental_new_hashing = true)]
 #[cfg(experimental_const_generics = true)]
@@ -1172,7 +1167,7 @@ fn ok_array_hash() {
     assert(a == b);
 
     // string slices
-    let a = sha256(("abc","def"));
+    let a = sha256(("abc", "def"));
     let b = sha256(("ab", "cd", "ef"));
     assert(a != b);
     let b = sha256((3u64, 97u8, 98u8, 99u8, 3u64, 100u8, 101u8, 102u8));
