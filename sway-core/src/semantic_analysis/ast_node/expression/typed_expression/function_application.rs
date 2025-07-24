@@ -60,11 +60,11 @@ pub(crate) fn instantiate_function_application(
         function_decl
             .parameters
             .iter()
-            .map(|x| x.type_argument.type_id().clone())
+            .map(|x| x.type_argument.type_id())
             .collect::<Vec<_>>(),
         typed_arguments
             .iter()
-            .map(|x| x.return_type.clone())
+            .map(|x| x.return_type)
             .collect::<Vec<_>>(),
     );
     function_decl.subst(&SubstTypesContext::new(

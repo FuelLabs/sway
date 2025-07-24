@@ -806,8 +806,7 @@ pub(crate) fn prepare_const_generics_materialization<'a>(
     mut args_types: impl Iterator<Item = TypeId>,
     mut param_types: impl Iterator<Item = TypeId>,
     mut type_parameters: impl Iterator<Item = &'a TypeParameter>,
-) -> BTreeMap<String, TyExpression>
-{
+) -> BTreeMap<String, TyExpression> {
     let mut const_generics = BTreeMap::new();
 
     let has_const_generic_parameters =
