@@ -265,6 +265,69 @@ where
     }
 }
 
+impl<A, B, C, D, E, F> Hash for (A, B, C, D, E, F)
+where
+    A: Hash,
+    B: Hash,
+    C: Hash,
+    D: Hash,
+    E: Hash,
+    F: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+        self.2.hash(state);
+        self.3.hash(state);
+        self.4.hash(state);
+        self.5.hash(state);
+    }
+}
+
+impl<A, B, C, D, E, F, G> Hash for (A, B, C, D, E, F, G)
+where
+    A: Hash,
+    B: Hash,
+    C: Hash,
+    D: Hash,
+    E: Hash,
+    F: Hash,
+    G: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+        self.2.hash(state);
+        self.3.hash(state);
+        self.4.hash(state);
+        self.5.hash(state);
+        self.6.hash(state);
+    }
+}
+
+impl<A, B, C, D, E, F, G, H> Hash for (A, B, C, D, E, F, G, H)
+where
+    A: Hash,
+    B: Hash,
+    C: Hash,
+    D: Hash,
+    E: Hash,
+    F: Hash,
+    G: Hash,
+    H: Hash,
+{
+    fn hash(self, ref mut state: Hasher) {
+        self.0.hash(state);
+        self.1.hash(state);
+        self.2.hash(state);
+        self.3.hash(state);
+        self.4.hash(state);
+        self.5.hash(state);
+        self.6.hash(state);
+        self.7.hash(state);
+    }
+}
+
 #[cfg(experimental_new_hashing = false)]
 #[cfg(experimental_const_generics = false)]
 impl<T> Hash for [T; 0]
@@ -638,15 +701,14 @@ where
     }
 }
 
-// TODO: Enable `#[cfg(experimental_const_generics = false)]` once const generics are supported for string arrays.
 #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[0] {
     fn hash(self, ref mut _state: Hasher) {}
 }
 
 #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[0] {
     fn hash(self, ref mut state: Hasher) {
         0_u64.hash(state);
@@ -654,7 +716,7 @@ impl Hash for str[0] {
 }
 
 #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[1] {
     fn hash(self, ref mut state: Hasher) {
         state.write_str_array(self);
@@ -662,7 +724,7 @@ impl Hash for str[1] {
 }
 
 #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[1] {
     fn hash(self, ref mut state: Hasher) {
         1_u64.hash(state);
@@ -671,7 +733,7 @@ impl Hash for str[1] {
 }
 
 #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[2] {
     fn hash(self, ref mut state: Hasher) {
         state.write_str_array(self);
@@ -679,7 +741,7 @@ impl Hash for str[2] {
 }
 
 #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[2] {
     fn hash(self, ref mut state: Hasher) {
         2_u64.hash(state);
@@ -688,7 +750,7 @@ impl Hash for str[2] {
 }
 
 #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[3] {
     fn hash(self, ref mut state: Hasher) {
         state.write_str_array(self);
@@ -696,7 +758,7 @@ impl Hash for str[3] {
 }
 
 #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[3] {
     fn hash(self, ref mut state: Hasher) {
         3_u64.hash(state);
@@ -705,7 +767,7 @@ impl Hash for str[3] {
 }
 
 #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[4] {
     fn hash(self, ref mut state: Hasher) {
         state.write_str_array(self);
@@ -713,7 +775,7 @@ impl Hash for str[4] {
 }
 
 #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[4] {
     fn hash(self, ref mut state: Hasher) {
         4_u64.hash(state);
@@ -722,7 +784,7 @@ impl Hash for str[4] {
 }
 
 #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[5] {
     fn hash(self, ref mut state: Hasher) {
         state.write_str_array(self);
@@ -730,7 +792,7 @@ impl Hash for str[5] {
 }
 
 #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[5] {
     fn hash(self, ref mut state: Hasher) {
         5_u64.hash(state);
@@ -739,7 +801,7 @@ impl Hash for str[5] {
 }
 
 #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[6] {
     fn hash(self, ref mut state: Hasher) {
         state.write_str_array(self);
@@ -747,7 +809,7 @@ impl Hash for str[6] {
 }
 
 #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[6] {
     fn hash(self, ref mut state: Hasher) {
         6_u64.hash(state);
@@ -756,7 +818,7 @@ impl Hash for str[6] {
 }
 
 #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[7] {
     fn hash(self, ref mut state: Hasher) {
         state.write_str_array(self);
@@ -764,7 +826,7 @@ impl Hash for str[7] {
 }
 
 #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[7] {
     fn hash(self, ref mut state: Hasher) {
         7_u64.hash(state);
@@ -773,7 +835,7 @@ impl Hash for str[7] {
 }
 
 #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[8] {
     fn hash(self, ref mut state: Hasher) {
         state.write_str_array(self);
@@ -781,7 +843,7 @@ impl Hash for str[8] {
 }
 
 #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[8] {
     fn hash(self, ref mut state: Hasher) {
         8_u64.hash(state);
@@ -790,7 +852,7 @@ impl Hash for str[8] {
 }
 
 #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[9] {
     fn hash(self, ref mut state: Hasher) {
         state.write_str_array(self);
@@ -798,7 +860,7 @@ impl Hash for str[9] {
 }
 
 #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[9] {
     fn hash(self, ref mut state: Hasher) {
         9_u64.hash(state);
@@ -807,7 +869,7 @@ impl Hash for str[9] {
 }
 
 #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[10] {
     fn hash(self, ref mut state: Hasher) {
         state.write_str_array(self);
@@ -815,7 +877,7 @@ impl Hash for str[10] {
 }
 
 #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = false)]
+#[cfg(experimental_const_generics = false)]
 impl Hash for str[10] {
     fn hash(self, ref mut state: Hasher) {
         10_u64.hash(state);
@@ -823,26 +885,22 @@ impl Hash for str[10] {
     }
 }
 
-// TODO: Enable this once const generics are supported for string arrays.
-// #[cfg(experimental_new_hashing = false)]
-// #[cfg(experimental_const_generics = true)]
-// impl<const N: u64> Hash for str[N]
-// {
-//     fn hash(self, ref mut state: Hasher) {
-//         state.write_str_array(self);
-//     }
-// }
+#[cfg(experimental_new_hashing = false)]
+#[cfg(experimental_const_generics = true)]
+impl<const N: u64> Hash for str[N] {
+    fn hash(self, ref mut state: Hasher) {
+        state.write_str_array(self);
+    }
+}
 
-// #[cfg(experimental_new_hashing = true)]
-// #[cfg(experimental_const_generics = true)]
-// impl<const N: u64> Hash for str[N]
-// {
-//     fn hash(self, ref mut state: Hasher) {
-//         N.hash(state);
-//         state.write_str_array(self);
-//     }
-// }
-
+#[cfg(experimental_new_hashing = true)]
+#[cfg(experimental_const_generics = true)]
+impl<const N: u64> Hash for str[N] {
+    fn hash(self, ref mut state: Hasher) {
+        N.hash(state);
+        state.write_str_array(self);
+    }
+}
 
 #[cfg(experimental_new_hashing = false)]
 impl Hash for raw_slice {
@@ -1060,13 +1118,22 @@ where
 #[test]
 fn ok_array_hash() {
     use ::ops::*;
+    use ::assert::*;
 
+    // Arrays and tuples
     let a = sha256([1, 2, 3]);
     let b = sha256((1, 2, 3));
+    assert(a == b);
 
-    if a != b {
-        __revert(0);
-    }
+    // string slices
+    let a = sha256(("abc", "def"));
+    let b = sha256(("ab", "cd", "ef"));
+    assert(a == b);
+
+    // string arrays
+    let a = sha256((__to_str_array("abc"), __to_str_array("def")));
+    let b = sha256((__to_str_array("ab"), __to_str_array("cd"), __to_str_array("ef")));
+    assert(a == b);
 }
 
 #[cfg(experimental_new_hashing = true)]
@@ -1074,11 +1141,26 @@ fn ok_array_hash() {
 #[test]
 fn ok_array_hash() {
     use ::ops::*;
+    use ::assert::*;
 
+    // Arrays and tuples
     let a = sha256([1, 2, 3]);
+    let b = sha256((1, 2, 3));
+    assert(a != b);
     let b = sha256((3_u64, 1, 2, 3));
+    assert(a == b);
 
-    if a != b {
-        __revert(0);
-    }
+    // string slices
+    let a = sha256(("abc", "def"));
+    let b = sha256(("ab", "cd", "ef"));
+    assert(a != b);
+    let b = sha256((3u64, 97u8, 98u8, 99u8, 3u64, 100u8, 101u8, 102u8));
+    assert(a == b);
+
+    // string arrays
+    let a = sha256((__to_str_array("abc"), __to_str_array("def")));
+    let b = sha256((__to_str_array("ab"), __to_str_array("cd"), __to_str_array("ef")));
+    assert(a != b);
+    let b = sha256((3u64, 97u8, 98u8, 99u8, 3u64, 100u8, 101u8, 102u8));
+    assert(a == b);
 }

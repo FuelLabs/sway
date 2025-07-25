@@ -3,7 +3,7 @@ use crate::{
         engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
     },
     language::{
-        ty::{self, TyFunctionSig},
+        ty::{self, TyFunctionDecl, TyFunctionSig},
         *,
     },
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -30,8 +30,6 @@ pub(crate) fn instantiate_function_application(
     let engines = ctx.engines();
     let decl_engine = engines.de();
 
-    let mut function_decl = (*decl_engine.get_function(&function_decl_ref)).clone();
-
     if arguments.is_none() {
         return Err(
             handler.emit_err(CompileError::MissingParenthesesForFunction {
@@ -41,6 +39,7 @@ pub(crate) fn instantiate_function_application(
         );
     }
 
+    let function_decl = decl_engine.get_function(&function_decl_ref);
     let arguments = arguments.unwrap_or_default();
 
     // check that the number of parameters and the number of the arguments is the same
@@ -54,7 +53,6 @@ pub(crate) fn instantiate_function_application(
 
     let typed_arguments =
         type_check_arguments(handler, ctx.by_ref(), arguments, &function_decl.parameters)?;
-
     let typed_arguments_with_names = unify_arguments_and_parameters(
         handler,
         ctx.by_ref(),
@@ -85,6 +83,8 @@ pub(crate) fn instantiate_function_application(
     {
         cached_fn_ref
     } else {
+        let mut function_decl = TyFunctionDecl::clone(&*function_decl);
+
         if !ctx.code_block_first_pass() {
             // Handle the trait constraints. This includes checking to see if the trait
             // constraints are satisfied and replacing old decl ids based on the
