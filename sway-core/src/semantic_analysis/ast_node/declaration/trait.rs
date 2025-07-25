@@ -392,16 +392,13 @@ impl TyTraitDecl {
 
         // Retrieve the implemented items for this type.
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-            type_parameters
-                .iter()
-                .map(|t| {
-                    let t = t
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
-                    t.type_id
-                })
-                .collect(),
-            generic_args.iter().map(|t| t.type_id()).collect(),
+            type_parameters.iter().map(|t| {
+                let t = t
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
+                t.type_id
+            }),
+            generic_args.iter().map(|t| t.type_id()),
         );
 
         for item in ctx
@@ -504,16 +501,13 @@ impl TyTraitDecl {
         // correct typing for this impl block by using the type parameters from
         // the original trait declaration and the given type arguments.
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-            type_parameters
-                .iter()
-                .map(|t| {
-                    let t = t
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
-                    t.type_id
-                })
-                .collect(),
-            type_arguments.iter().map(|t| t.type_id()).collect(),
+            type_parameters.iter().map(|t| {
+                let t = t
+                    .as_type_parameter()
+                    .expect("only works with type parameters");
+                t.type_id
+            }),
+            type_arguments.iter().map(|t| t.type_id()),
         );
 
         let mut const_symbols = HashMap::<Ident, ty::TyDecl>::new();
