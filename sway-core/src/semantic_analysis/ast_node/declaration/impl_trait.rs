@@ -950,7 +950,7 @@ fn type_check_trait_implementation(
     }
 
     let mut trait_type_mapping =
-        TypeSubstMap::from_type_parameters_and_type_arguments(vec![], vec![]);
+        TypeSubstMap::from_type_parameters_and_type_arguments([].into_iter(), [].into_iter());
 
     for item in impl_items {
         match item {
@@ -995,22 +995,24 @@ fn type_check_trait_implementation(
                 if let Some(type_arg) = type_decl.ty.clone() {
                     trait_type_mapping.extend(
                         &TypeSubstMap::from_type_parameters_and_type_arguments(
-                            vec![type_engine.insert_trait_type(
+                            [type_engine.insert_trait_type(
                                 engines,
                                 type_decl.name.clone(),
                                 implementing_for,
-                            )],
-                            vec![type_arg.type_id()],
+                            )]
+                            .into_iter(),
+                            [type_arg.type_id()].into_iter(),
                         ),
                     );
                     trait_type_mapping.extend(
                         &TypeSubstMap::from_type_parameters_and_type_arguments(
-                            vec![type_engine.insert_trait_type(
+                            [type_engine.insert_trait_type(
                                 engines,
                                 type_decl.name.clone(),
                                 self_type_id,
-                            )],
-                            vec![type_arg.type_id()],
+                            )]
+                            .into_iter(),
+                            [type_arg.type_id()].into_iter(),
                         ),
                     );
                 }
@@ -1111,19 +1113,15 @@ fn type_check_trait_implementation(
     // using the stub decl ids from the interface surface and the new
     // decl ids from the newly implemented methods.
     let mut type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-        trait_type_parameters
-            .iter()
-            .map(|p| {
-                let p = p
-                    .as_type_parameter()
-                    .expect("only works with type parameters");
-                p.type_id
-            })
-            .collect(),
+        trait_type_parameters.iter().map(|p| {
+            let p = p
+                .as_type_parameter()
+                .expect("only works with type parameters");
+            p.type_id
+        }),
         trait_type_arguments
             .iter()
-            .map(|type_arg| type_arg.type_id())
-            .collect(),
+            .map(|type_arg| type_arg.type_id()),
     );
     type_mapping.extend(&trait_type_mapping);
 

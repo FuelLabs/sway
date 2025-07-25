@@ -1036,16 +1036,16 @@ fn get_initial_capacity<T>() -> u64 {
 /// }
 /// ```
 #[inline(never)]
-pub fn sha256<TTTTT>(s: TTTTT) -> b256
+pub fn sha256<T>(s: T) -> b256
 where
-    TTTTT: Hash,
+    T: Hash,
 {
     // TODO: Replace `capacity` with a compile-time constant once
     //       `const fn` is implemented and const evaluation is
     //       deferred for generic functions:
     //
     //       const CAPACITY: u64 = get_initial_capacity::<T>();
-    let capacity = get_initial_capacity::<TTTTT>();
+    let capacity = get_initial_capacity::<T>();
     let mut hasher = Hasher::with_capacity(capacity);
     s.hash(hasher);
     hasher.sha256()
@@ -1111,22 +1111,6 @@ where
     let mut hasher = Hasher::with_capacity(capacity);
     s.hash(hasher);
     hasher.keccak256()
-}
-
-#[inline(never)]
-pub fn sha256222<TTTTT>(s: TTTTT) -> b256
-where
-    TTTTT: Hash,
-{
-    // TODO: Replace `capacity` with a compile-time constant once
-    //       `const fn` is implemented and const evaluation is
-    //       deferred for generic functions:
-    //
-    //       const CAPACITY: u64 = get_initial_capacity::<T>();
-    let capacity = get_initial_capacity::<TTTTT>();
-    let mut hasher = Hasher::with_capacity(capacity);
-    s.hash(hasher);
-    hasher.sha256()
 }
 
 #[cfg(experimental_new_hashing = false)]

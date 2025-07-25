@@ -735,8 +735,8 @@ pub(crate) fn type_check_method_application(
                 }
 
                 let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
-                    subst_type_parameters,
-                    subst_type_arguments,
+                    subst_type_parameters.into_iter(),
+                    subst_type_arguments.into_iter(),
                 );
 
                 method.subst(&SubstTypesContext::new(

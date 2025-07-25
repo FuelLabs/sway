@@ -3,7 +3,7 @@ use crate::{
         engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
     },
     language::{
-        ty::{self, TyFunctionSig},
+        ty::{self, TyFunctionDecl, TyFunctionSig},
         *,
     },
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -53,26 +53,6 @@ pub(crate) fn instantiate_function_application(
 
     let typed_arguments =
         type_check_arguments(handler, ctx.by_ref(), arguments, &function_decl.parameters)?;
-
-    let mut function_decl = (*decl_engine.get_function(&function_decl_ref)).clone();
-
-    let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
-        function_decl
-            .parameters
-            .iter()
-            .map(|x| x.type_argument.type_id())
-            .collect::<Vec<_>>(),
-        typed_arguments
-            .iter()
-            .map(|x| x.return_type)
-            .collect::<Vec<_>>(),
-    );
-    function_decl.subst(&SubstTypesContext::new(
-        engines,
-        &type_subst,
-        !ctx.code_block_first_pass(),
-    ));
-
     let typed_arguments_with_names = unify_arguments_and_parameters(
         handler,
         ctx.by_ref(),
@@ -103,6 +83,8 @@ pub(crate) fn instantiate_function_application(
     {
         cached_fn_ref
     } else {
+        let mut function_decl = TyFunctionDecl::clone(&*function_decl);
+
         if !ctx.code_block_first_pass() {
             // Handle the trait constraints. This includes checking to see if the trait
             // constraints are satisfied and replacing old decl ids based on the

@@ -441,7 +441,7 @@ impl MaterializeConstGenerics for TyExpression {
                 fn_ref,
                 ..
             } => {
-                // Check if the referenced standalone function needs to be materialized
+                // Materialize non dummy fns
                 let new_decl = engines.de().get(fn_ref.id());
                 if !new_decl.is_trait_method_dummy {
                     let mut type_subst_map = TypeSubstMap::new();
