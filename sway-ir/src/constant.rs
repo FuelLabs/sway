@@ -332,6 +332,27 @@ impl ConstantContent {
         }
     }
 
+    pub fn as_bool(&self) -> Option<bool> {
+        match &self.value {
+            ConstantValue::Bool(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn as_u256(&self) -> Option<U256> {
+        match &self.value {
+            ConstantValue::U256(v) => Some(v.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn as_b256(&self) -> Option<B256> {
+        match &self.value {
+            ConstantValue::B256(v) => Some(v.clone()),
+            _ => None,
+        }
+    }
+
     pub fn as_string(&self) -> Option<String> {
         match &self.value {
             ConstantValue::String(v) => Some(
