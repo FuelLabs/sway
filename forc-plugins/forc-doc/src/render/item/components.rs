@@ -40,11 +40,16 @@ impl Renderable for ItemHeader {
             item_name,
         } = self;
 
-        let favicon = module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{SWAY_LOGO_FILE}"));
-        let normalize = module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{NORMALIZE_CSS_FILE}"));
-        let swaydoc = module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{SWAYDOC_CSS_FILE}"));
-        let ayu = module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{AYU_CSS_FILE}"));
-        let ayu_hjs = module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{AYU_MIN_CSS_FILE}"));
+        let favicon = module_info
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{SWAY_LOGO_FILE}"));
+        let normalize = module_info
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{NORMALIZE_CSS_FILE}"));
+        let swaydoc = module_info
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{SWAYDOC_CSS_FILE}"));
+        let ayu =
+            module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{AYU_CSS_FILE}"));
+        let ayu_hjs = module_info
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{AYU_MIN_CSS_FILE}"));
 
         Ok(box_html! {
             head {

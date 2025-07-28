@@ -94,7 +94,7 @@ impl Documentation {
                 }
             })
             .collect();
-        
+
         // Add unique primitive docs
         for doc in primitive_docs {
             if !docs.contains(&doc) {
@@ -168,7 +168,8 @@ impl Documentation {
         document_private_items: bool,
         experimental: ExperimentalFeatures,
     ) -> Result<()> {
-        let results: Result<Vec<_>, anyhow::Error> = ty_module.all_nodes
+        let results: Result<Vec<_>, anyhow::Error> = ty_module
+            .all_nodes
             .par_iter()
             .filter_map(|ast_node| {
                 if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {

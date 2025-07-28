@@ -96,7 +96,8 @@ impl RenderedDocumentation {
             links: BTreeMap::default(),
         };
         // Parallel document rendering
-        let rendered_results: Result<Vec<RenderResult>, anyhow::Error> = raw_docs.0
+        let rendered_results: Result<Vec<RenderResult>, anyhow::Error> = raw_docs
+            .0
             .par_iter()
             .map(|doc| {
                 let rendered_doc = RenderedDocument::from_doc(doc, render_plan.clone())?;
@@ -105,24 +106,24 @@ impl RenderedDocumentation {
                     style: DocStyle::AllDoc(program_kind.as_title_str().to_string()),
                     links: BTreeMap::default(),
                 };
-                
+
                 populate_decls(doc, &mut local_module_map);
                 populate_modules(doc, &mut local_module_map);
                 populate_doc_links(doc, &mut local_all_docs.links);
-                
+
                 Ok((rendered_doc, local_module_map, local_all_docs))
             })
             .collect();
-                
+
         // Merge results sequentially
         let mut module_map = ModuleMap::new();
         for (rendered_doc, local_module_map, local_all_docs) in rendered_results? {
             rendered_docs.0.push(rendered_doc);
-            
+
             for (key, value) in local_module_map {
                 module_map.entry(key).or_default().extend(value);
             }
-            
+
             all_docs.links.extend(local_all_docs.links);
         }
 
