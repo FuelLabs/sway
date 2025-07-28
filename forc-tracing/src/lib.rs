@@ -1,5 +1,8 @@
 //! Utility items shared between forc crates.
 
+#[cfg(feature = "telemetry")]
+pub mod telemetry;
+
 use ansiterm::Colour;
 use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
