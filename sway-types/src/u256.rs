@@ -55,6 +55,10 @@ impl U256 {
             Some(U256(&self.0 % &other.0))
         }
     }
+
+    pub fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
 }
 
 impl std::fmt::Display for U256 {
