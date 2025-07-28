@@ -321,8 +321,8 @@ script {
 !8 = span !0 98 99
 !9 = span !0 101 102
 !10 = "test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw"
-!11 = span !10 1679 2352
-!12 = fn_name_span !10 1682 1686
+!11 = span !10 1689 2362
+!12 = fn_name_span !10 1692 1696
 !13 = (!11 !12)
 !14 = span !10 58 117
 !15 = fn_name_span !10 61 87
@@ -381,16 +381,16 @@ script {
 !68 = fn_name_span !10 1413 1439
 !69 = (!67 !68 !16)
 !70 = span !10 1462 1473
-!71 = span !10 1524 1578
-!72 = fn_name_span !10 1527 1545
+!71 = span !10 1536 1590
+!72 = fn_name_span !10 1539 1557
 !73 = (!71 !72 !16)
-!74 = span !10 1567 1576
-!75 = span !10 1568 1572
-!76 = span !10 1623 1677
-!77 = fn_name_span !10 1626 1642
+!74 = span !10 1579 1588
+!75 = span !10 1580 1584
+!76 = span !10 1633 1687
+!77 = fn_name_span !10 1636 1652
 !78 = (!76 !77 !16)
-!79 = span !10 1665 1675
-!80 = span !10 1666 1670
+!79 = span !10 1675 1685
+!80 = span !10 1676 1680
 
 ;; ASM: Final program
 ;; Program kind: Script

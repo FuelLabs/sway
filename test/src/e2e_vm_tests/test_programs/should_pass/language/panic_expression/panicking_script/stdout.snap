@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 162
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script --release --test-threads 1 --logs --reverts
 exit status: 0
@@ -9,7 +8,11 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling script panicking_script (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script)
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [3.688 KB] in ???
+=======
+    Finished release [optimized + fuel] target(s) [3.672 KB] in ???
+>>>>>>> 725d7268c (update tests)
      Running 11 tests, filtered 0 tests
 
 tested -- panicking_script
