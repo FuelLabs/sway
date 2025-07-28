@@ -14,6 +14,7 @@ use crate::{
     },
 };
 use anyhow::Result;
+use rayon::prelude::*;
 use std::{
     collections::HashMap,
     ops::{Deref, DerefMut},
@@ -80,14 +81,24 @@ impl Documentation {
             .collect::<HashMap<BaseIdent, ModuleInfo>>();
 
         // Add one documentation page for each primitive type that has an implementation.
-        for (impl_trait, module_info) in impl_traits.iter() {
-            let impl_for_type = engines.te().get(impl_trait.implementing_for.type_id());
-            if let Ok(Descriptor::Documentable(doc)) =
-                Descriptor::from_type_info(impl_for_type.as_ref(), engines, module_info.clone())
-            {
-                if !docs.contains(&doc) {
-                    docs.push(doc);
+        let primitive_docs: Vec<_> = impl_traits
+            .par_iter()
+            .filter_map(|(impl_trait, module_info)| {
+                let impl_for_type = engines.te().get(impl_trait.implementing_for.type_id());
+                if let Ok(Descriptor::Documentable(doc)) =
+                    Descriptor::from_type_info(impl_for_type.as_ref(), engines, module_info.clone())
+                {
+                    Some(doc)
+                } else {
+                    None
                 }
+            })
+            .collect();
+        
+        // Add unique primitive docs
+        for doc in primitive_docs {
+            if !docs.contains(&doc) {
+                docs.push(doc);
             }
         }
 
@@ -103,7 +114,7 @@ impl Documentation {
                 DocumentableType::Declared(TyDecl::StructDecl(_))
                 | DocumentableType::Declared(TyDecl::EnumDecl(_))
                 | DocumentableType::Primitive(_) => {
-                    let item_name = doc.item_header.item_name.clone();
+                    let item_name = &doc.item_header.item_name;
                     for (impl_trait, _) in impl_traits.iter_mut() {
                         // Check if this implementation is for this struct/enum.
                         if item_name.as_str()
@@ -157,13 +168,22 @@ impl Documentation {
         document_private_items: bool,
         experimental: ExperimentalFeatures,
     ) -> Result<()> {
-        for ast_node in &ty_module.all_nodes {
-            if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
+        let results: Result<Vec<_>, anyhow::Error> = ty_module.all_nodes
+            .par_iter()
+            .filter_map(|ast_node| {
+                if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
+                    Some(decl)
+                } else {
+                    None
+                }
+            })
+            .map(|decl| {
                 if let TyDecl::ImplSelfOrTrait(impl_trait) = decl {
-                    impl_traits.push((
+                    let impl_data = (
                         (*decl_engine.get_impl_self_or_trait(&impl_trait.decl_id)).clone(),
                         module_info.clone(),
-                    ));
+                    );
+                    Ok((Some(impl_data), None))
                 } else {
                     let desc = Descriptor::from_typed_decl(
                         decl_engine,
@@ -173,10 +193,21 @@ impl Documentation {
                         experimental,
                     )?;
 
-                    if let Descriptor::Documentable(doc) = desc {
-                        docs.push(doc);
-                    }
+                    let doc = match desc {
+                        Descriptor::Documentable(doc) => Some(doc),
+                        Descriptor::NonDocumentable => None,
+                    };
+                    Ok((None, doc))
                 }
+            })
+            .collect();
+
+        for (impl_trait_opt, doc_opt) in results? {
+            if let Some(impl_trait) = impl_trait_opt {
+                impl_traits.push(impl_trait);
+            }
+            if let Some(doc) = doc_opt {
+                docs.push(doc);
             }
         }
 

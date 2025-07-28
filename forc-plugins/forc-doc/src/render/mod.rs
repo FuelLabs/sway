@@ -14,6 +14,7 @@ use crate::{
 };
 use anyhow::Result;
 use horrorshow::{box_html, helper::doctype, html, prelude::*};
+use rayon::prelude::*;
 use std::{
     collections::BTreeMap,
     ops::{Deref, DerefMut},
@@ -32,6 +33,10 @@ pub mod util;
 pub const ALL_DOC_FILENAME: &str = "all.html";
 pub const INDEX_FILENAME: &str = "index.html";
 pub const IDENTITY: &str = "#";
+
+type DocLinkMap = BTreeMap<BlockTitle, Vec<DocLink>>;
+type ModuleMap = BTreeMap<ModulePrefixes, DocLinkMap>;
+type RenderResult = (RenderedDocument, ModuleMap, DocLinks);
 
 /// Something that can be rendered to HTML.
 pub(crate) trait Renderable {
@@ -90,19 +95,35 @@ impl RenderedDocumentation {
             style: DocStyle::AllDoc(program_kind.as_title_str().to_string()),
             links: BTreeMap::default(),
         };
-        let mut module_map: BTreeMap<ModulePrefixes, BTreeMap<BlockTitle, Vec<DocLink>>> =
-            BTreeMap::new();
-        for doc in raw_docs.0 {
-            rendered_docs
-                .0
-                .push(RenderedDocument::from_doc(&doc, render_plan.clone())?);
-
-            // Here we gather all of the `doc_links` based on which module they belong to.
-            populate_decls(&doc, &mut module_map);
-            // Create links to child modules.
-            populate_modules(&doc, &mut module_map);
-            // Above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow.
-            populate_all_doc(&doc, &mut all_docs);
+        // Parallel document rendering
+        let rendered_results: Result<Vec<RenderResult>, anyhow::Error> = raw_docs.0
+            .par_iter()
+            .map(|doc| {
+                let rendered_doc = RenderedDocument::from_doc(doc, render_plan.clone())?;
+                let mut local_module_map = ModuleMap::new();
+                let mut local_all_docs = DocLinks {
+                    style: DocStyle::AllDoc(program_kind.as_title_str().to_string()),
+                    links: BTreeMap::default(),
+                };
+                
+                populate_decls(doc, &mut local_module_map);
+                populate_modules(doc, &mut local_module_map);
+                populate_doc_links(doc, &mut local_all_docs.links);
+                
+                Ok((rendered_doc, local_module_map, local_all_docs))
+            })
+            .collect();
+                
+        // Merge results sequentially
+        let mut module_map = ModuleMap::new();
+        for (rendered_doc, local_module_map, local_all_docs) in rendered_results? {
+            rendered_docs.0.push(rendered_doc);
+            
+            for (key, value) in local_module_map {
+                module_map.entry(key).or_default().extend(value);
+            }
+            
+            all_docs.links.extend(local_all_docs.links);
         }
 
         // ProjectIndex
@@ -199,7 +220,8 @@ impl DerefMut for RenderedDocumentation {
     }
 }
 
-fn populate_doc_links(doc: &Document, doc_links: &mut BTreeMap<BlockTitle, Vec<DocLink>>) {
+/// Adds a document's link to the appropriate category in the doc links map.
+fn populate_doc_links(doc: &Document, doc_links: &mut DocLinkMap) {
     let key = doc.item_body.ty.as_block_title();
     match doc_links.get_mut(&key) {
         Some(links) => links.push(doc.link()),
@@ -208,23 +230,19 @@ fn populate_doc_links(doc: &Document, doc_links: &mut BTreeMap<BlockTitle, Vec<D
         }
     }
 }
-fn populate_decls(
-    doc: &Document,
-    module_map: &mut BTreeMap<ModulePrefixes, BTreeMap<BlockTitle, Vec<DocLink>>>,
-) {
+/// Organizes document links by module prefix for navigation.
+fn populate_decls(doc: &Document, module_map: &mut ModuleMap) {
     let module_prefixes = &doc.module_info.module_prefixes;
     if let Some(doc_links) = module_map.get_mut(module_prefixes) {
         populate_doc_links(doc, doc_links)
     } else {
-        let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
+        let mut doc_links = DocLinkMap::new();
         populate_doc_links(doc, &mut doc_links);
         module_map.insert(module_prefixes.clone(), doc_links);
     }
 }
-fn populate_modules(
-    doc: &Document,
-    module_map: &mut BTreeMap<ModulePrefixes, BTreeMap<BlockTitle, Vec<DocLink>>>,
-) {
+/// Creates links to parent modules for hierarchical navigation.
+fn populate_modules(doc: &Document, module_map: &mut ModuleMap) {
     let mut module_clone = doc.module_info.clone();
     while module_clone.parent().is_some() {
         let html_filename = if module_clone.depth() > 2 {
@@ -257,15 +275,12 @@ fn populate_modules(
                 }
             }
         } else {
-            let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
+            let mut doc_links = DocLinkMap::new();
             doc_links.insert(BlockTitle::Modules, vec![module_link]);
             module_map.insert(module_prefixes.clone(), doc_links);
         }
         module_clone.module_prefixes.pop();
     }
-}
-fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
-    populate_doc_links(doc, &mut all_docs.links);
 }
 
 /// The finalized HTML file contents.
