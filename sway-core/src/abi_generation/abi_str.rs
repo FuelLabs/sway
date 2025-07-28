@@ -58,7 +58,7 @@ impl TypeId {
                 (TypeInfo::Array(_, length), TypeInfo::Array(type_arg, resolved_length)) => {
                     assert_eq!(
                         length.expr().as_literal_val(),
-                        resolved_length.expr().as_literal_val(), 
+                        resolved_length.expr().as_literal_val(),
                         "{:?} {:?}",
                         length.expr().as_literal_val(),
                         resolved_length.expr().as_literal_val()
