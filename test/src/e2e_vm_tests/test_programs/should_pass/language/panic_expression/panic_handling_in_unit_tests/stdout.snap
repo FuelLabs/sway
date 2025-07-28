@@ -24,7 +24,23 @@ ____
 
 tested -- panic_handling_in_unit_tests
 
+<<<<<<< HEAD
       test passing_dbgs_and_logs ... ok (???, 2150 gas)
+=======
+<<<<<<< HEAD
+      test passing_dbgs_and_logs ... ok (???, 2175 gas)
+=======
+<<<<<<< HEAD
+      test passing_dbgs_and_logs ... ok (???, 2219 gas)
+=======
+<<<<<<< HEAD
+      test passing_dbgs_and_logs ... ok (???, 2221 gas)
+=======
+      test passing_dbgs_and_logs ... ok (???, 2217 gas)
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
            debug output:
 [src/main.sw:23:13] "This is a passing test containing `__dbg` outputs." = "This is a passing test containing `__dbg` outputs."
 [src/main.sw:25:13] x = 42
@@ -32,7 +48,23 @@ tested -- panic_handling_in_unit_tests
 AsciiString { data: "This is a log from the passing test." }, log rb: 10098701174489624218
 42, log rb: 1515152261580153489
            raw logs:
+<<<<<<< HEAD
 [{"LogData":{"data":"0000000000000024546869732069732061206c6f672066726f6d207468652070617373696e6720746573742e","digest":"29d742ad9093cdf81404ff756467a44448729b85ab3c0d65197829fb61d2dd29","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":44,"pc":15396,"ptr":67107840,"ra":0,"rb":10098701174489624218}},{"LogData":{"data":"000000000000002a","digest":"a6bb133cb1e3638ad7b8a3ff0539668e9e56f9b850ef1b2a810f5422eaa6c323","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":16028,"ptr":67106816,"ra":0,"rb":1515152261580153489}}]
+=======
+<<<<<<< HEAD
+[{"LogData":{"data":"0000000000000024546869732069732061206c6f672066726f6d207468652070617373696e6720746573742e","digest":"29d742ad9093cdf81404ff756467a44448729b85ab3c0d65197829fb61d2dd29","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":44,"pc":15664,"ptr":67107840,"ra":0,"rb":10098701174489624218}},{"LogData":{"data":"000000000000002a","digest":"a6bb133cb1e3638ad7b8a3ff0539668e9e56f9b850ef1b2a810f5422eaa6c323","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":16296,"ptr":67106816,"ra":0,"rb":1515152261580153489}}]
+=======
+<<<<<<< HEAD
+[{"LogData":{"data":"0000000000000024546869732069732061206c6f672066726f6d207468652070617373696e6720746573742e","digest":"29d742ad9093cdf81404ff756467a44448729b85ab3c0d65197829fb61d2dd29","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":44,"pc":15824,"ptr":67107840,"ra":0,"rb":10098701174489624218}},{"LogData":{"data":"000000000000002a","digest":"a6bb133cb1e3638ad7b8a3ff0539668e9e56f9b850ef1b2a810f5422eaa6c323","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":16456,"ptr":67106816,"ra":0,"rb":1515152261580153489}}]
+=======
+<<<<<<< HEAD
+[{"LogData":{"data":"0000000000000024546869732069732061206c6f672066726f6d207468652070617373696e6720746573742e","digest":"29d742ad9093cdf81404ff756467a44448729b85ab3c0d65197829fb61d2dd29","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":44,"pc":16212,"ptr":67107840,"ra":0,"rb":10098701174489624218}},{"LogData":{"data":"000000000000002a","digest":"a6bb133cb1e3638ad7b8a3ff0539668e9e56f9b850ef1b2a810f5422eaa6c323","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":16648,"ptr":67106816,"ra":0,"rb":1515152261580153489}}]
+=======
+[{"LogData":{"data":"0000000000000024546869732069732061206c6f672066726f6d207468652070617373696e6720746573742e","digest":"29d742ad9093cdf81404ff756467a44448729b85ab3c0d65197829fb61d2dd29","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":44,"pc":15824,"ptr":67107840,"ra":0,"rb":10098701174489624218}},{"LogData":{"data":"000000000000002a","digest":"a6bb133cb1e3638ad7b8a3ff0539668e9e56f9b850ef1b2a810f5422eaa6c323","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":16460,"ptr":67106816,"ra":0,"rb":1515152261580153489}}]
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       test passing_no_dbgs_or_logs ... ok (???, 18 gas)
 
 test result: OK. 2 passed; 0 failed; finished in ???
@@ -56,12 +88,29 @@ warning: Error message is empty
 ____
 
   Compiled script "panic_handling_in_unit_tests" with 1 warning.
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [8.808 KB] in ???
+=======
+<<<<<<< HEAD
+    Finished debug [unoptimized + fuel] target(s) [9.392 KB] in ???
+=======
+<<<<<<< HEAD
+    Finished debug [unoptimized + fuel] target(s) [9.552 KB] in ???
+=======
+    Finished debug [unoptimized + fuel] target(s) [9.56 KB] in ???
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
      Running 20 tests, filtered 0 tests
 
 tested -- panic_handling_in_unit_tests
 
+<<<<<<< HEAD
       test passing_dbgs_and_logs ... ok (???, 2150 gas)
+=======
+<<<<<<< HEAD
+      test passing_dbgs_and_logs ... ok (???, 2175 gas)
+>>>>>>> 6735b0f5b (update tests)
       test passing_no_dbgs_or_logs ... ok (???, 18 gas)
       test failing_revert_intrinsic ... FAILED (???, 19 gas)
       test failing_revert_function_with_dbgs_and_logs ... FAILED (???, 2272 gas)
@@ -70,8 +119,42 @@ tested -- panic_handling_in_unit_tests
       test failing_error_signal_assert_ne ... FAILED (???, 1350 gas)
       test failing_error_signal_require_str_error ... FAILED (???, 316 gas)
       test failing_error_signal_require_enum_error ... FAILED (???, 416 gas)
+=======
+<<<<<<< HEAD
+      test passing_dbgs_and_logs ... ok (???, 2219 gas)
+=======
+<<<<<<< HEAD
+      test passing_dbgs_and_logs ... ok (???, 2221 gas)
+>>>>>>> 5622aa817 (update tests)
+      test passing_no_dbgs_or_logs ... ok (???, 18 gas)
+      test failing_revert_intrinsic ... FAILED (???, 19 gas)
+      test failing_revert_function_with_dbgs_and_logs ... FAILED (???, 2346 gas)
+      test failing_error_signal_assert ... FAILED (???, 497 gas)
+      test failing_error_signal_assert_eq ... FAILED (???, 1394 gas)
+      test failing_error_signal_assert_ne ... FAILED (???, 1389 gas)
+      test failing_error_signal_require_str_error ... FAILED (???, 318 gas)
+      test failing_error_signal_require_enum_error ... FAILED (???, 414 gas)
+<<<<<<< HEAD
+>>>>>>> 32bafbbe1 (update tests)
       test failing_panic_no_arg ... FAILED (???, 197 gas)
       test failing_panic_unit_arg ... FAILED (???, 197 gas)
+=======
+      test failing_panic_no_arg ... FAILED (???, 195 gas)
+      test failing_panic_unit_arg ... FAILED (???, 195 gas)
+=======
+      test passing_dbgs_and_logs ... ok (???, 2217 gas)
+      test passing_no_dbgs_or_logs ... ok (???, 18 gas)
+      test failing_revert_intrinsic ... FAILED (???, 19 gas)
+      test failing_revert_function_with_dbgs_and_logs ... FAILED (???, 2345 gas)
+      test failing_error_signal_assert ... FAILED (???, 497 gas)
+      test failing_error_signal_assert_eq ... FAILED (???, 1391 gas)
+      test failing_error_signal_assert_ne ... FAILED (???, 1386 gas)
+      test failing_error_signal_require_str_error ... FAILED (???, 317 gas)
+      test failing_error_signal_require_enum_error ... FAILED (???, 413 gas)
+      test failing_panic_no_arg ... FAILED (???, 196 gas)
+      test failing_panic_unit_arg ... FAILED (???, 196 gas)
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
       test failing_panic_const_eval_str_arg ... FAILED (???, 19 gas)
       test failing_panic_const_eval_empty_str_arg ... FAILED (???, 19 gas)
       test failing_panic_const_eval_whitespace_str_arg ... FAILED (???, 19 gas)
@@ -103,7 +186,23 @@ AsciiString { data: "This is a log from the reverting test." }, log rb: 10098701
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 46,
+<<<<<<< HEAD
       "pc": 15396,
+=======
+<<<<<<< HEAD
+      "pc": 15664,
+=======
+<<<<<<< HEAD
+      "pc": 15824,
+=======
+<<<<<<< HEAD
+      "pc": 16212,
+=======
+      "pc": 15824,
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -137,7 +236,23 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 64,
+<<<<<<< HEAD
       "pc": 15396,
+=======
+<<<<<<< HEAD
+      "pc": 15664,
+=======
+<<<<<<< HEAD
+      "pc": 15824,
+=======
+<<<<<<< HEAD
+      "pc": 16212,
+=======
+      "pc": 15824,
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -150,7 +265,23 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
+<<<<<<< HEAD
       "pc": 16028,
+=======
+<<<<<<< HEAD
+      "pc": 16296,
+=======
+<<<<<<< HEAD
+      "pc": 16456,
+=======
+<<<<<<< HEAD
+      "pc": 16648,
+=======
+      "pc": 16460,
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       "ptr": 67106816,
       "ra": 0,
       "rb": 1515152261580153489
@@ -163,7 +294,23 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
+<<<<<<< HEAD
       "pc": 16028,
+=======
+<<<<<<< HEAD
+      "pc": 16296,
+=======
+<<<<<<< HEAD
+      "pc": 16456,
+=======
+<<<<<<< HEAD
+      "pc": 16648,
+=======
+      "pc": 16460,
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       "ptr": 67105792,
       "ra": 0,
       "rb": 1515152261580153489
@@ -190,7 +337,23 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 64,
+<<<<<<< HEAD
       "pc": 15396,
+=======
+<<<<<<< HEAD
+      "pc": 15664,
+=======
+<<<<<<< HEAD
+      "pc": 15824,
+=======
+<<<<<<< HEAD
+      "pc": 16212,
+=======
+      "pc": 15824,
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -203,7 +366,23 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
+<<<<<<< HEAD
       "pc": 16028,
+=======
+<<<<<<< HEAD
+      "pc": 16296,
+=======
+<<<<<<< HEAD
+      "pc": 16456,
+=======
+<<<<<<< HEAD
+      "pc": 16648,
+=======
+      "pc": 16460,
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       "ptr": 67106816,
       "ra": 0,
       "rb": 1515152261580153489
@@ -216,7 +395,23 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
+<<<<<<< HEAD
       "pc": 16028,
+=======
+<<<<<<< HEAD
+      "pc": 16296,
+=======
+<<<<<<< HEAD
+      "pc": 16456,
+=======
+<<<<<<< HEAD
+      "pc": 16648,
+=======
+      "pc": 16460,
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       "ptr": 67105792,
       "ra": 0,
       "rb": 1515152261580153489
@@ -239,7 +434,23 @@ AsciiString { data: "This is an error message in a `require` call." }, log rb: 1
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 53,
+<<<<<<< HEAD
       "pc": 15396,
+=======
+<<<<<<< HEAD
+      "pc": 15664,
+=======
+<<<<<<< HEAD
+      "pc": 15824,
+=======
+<<<<<<< HEAD
+      "pc": 16212,
+=======
+      "pc": 15824,
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -352,7 +563,23 @@ AsciiString { data: "Panicked with a non-const evaluated string argument." }, lo
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 60,
+<<<<<<< HEAD
       "pc": 17984,
+=======
+<<<<<<< HEAD
+      "pc": 18276,
+=======
+<<<<<<< HEAD
+      "pc": 18436,
+=======
+<<<<<<< HEAD
+      "pc": 18496,
+=======
+      "pc": 18440,
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -376,7 +603,23 @@ AsciiString { data: "" }, log rb: 10098701174489624218
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
+<<<<<<< HEAD
       "pc": 17984,
+=======
+<<<<<<< HEAD
+      "pc": 18276,
+=======
+<<<<<<< HEAD
+      "pc": 18436,
+=======
+<<<<<<< HEAD
+      "pc": 18496,
+=======
+      "pc": 18440,
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -400,7 +643,23 @@ AsciiString { data: "    " }, log rb: 10098701174489624218
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 12,
+<<<<<<< HEAD
       "pc": 17984,
+=======
+<<<<<<< HEAD
+      "pc": 18276,
+=======
+<<<<<<< HEAD
+      "pc": 18436,
+=======
+<<<<<<< HEAD
+      "pc": 18496,
+=======
+      "pc": 18440,
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 32bafbbe1 (update tests)
+>>>>>>> 6735b0f5b (update tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218

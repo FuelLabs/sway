@@ -9,7 +9,19 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling script panicking_script (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script)
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [3.544 KB] in ???
+=======
+<<<<<<< HEAD
+    Finished release [optimized + fuel] target(s) [3.64 KB] in ???
+=======
+<<<<<<< HEAD
+    Finished release [optimized + fuel] target(s) [3.688 KB] in ???
+=======
+    Finished release [optimized + fuel] target(s) [3.672 KB] in ???
+>>>>>>> 725d7268c (update tests)
+>>>>>>> 5622aa817 (update tests)
+>>>>>>> 6735b0f5b (update tests)
      Running 11 tests, filtered 0 tests
 
 tested -- panicking_script
