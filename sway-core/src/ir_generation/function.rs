@@ -192,6 +192,7 @@ fn calc_addr_as_ptr(
         .binary_op(BinaryOpKind::Add, ptr, len);
 
     // cast the addr to ptr_to
+    let ptr_to = Type::new_typed_pointer(context, ptr_to);
     current_block
         .append(context)
         .cast_ptr(addr, ptr_to)
