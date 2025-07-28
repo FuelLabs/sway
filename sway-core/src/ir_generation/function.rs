@@ -32,7 +32,12 @@ use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
 use sway_types::{
-    constants, ident::Ident, integer_bits::IntegerBits, span::{Span, Spanned}, u256::U256, BaseIdent, Named
+    constants,
+    ident::Ident,
+    integer_bits::IntegerBits,
+    span::{Span, Spanned},
+    u256::U256,
+    BaseIdent, Named,
 };
 
 use std::collections::HashMap;
