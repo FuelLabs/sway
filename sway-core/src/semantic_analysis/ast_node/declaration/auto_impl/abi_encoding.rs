@@ -616,7 +616,7 @@ where
         };
 
         let return_encode = if return_type == "()" {
-            "asm(s: (0, 0)) {{ s: raw_slice }}".to_string()
+            "asm(s: (0, 0)) { s: raw_slice }".to_string()
         } else {
             format!("encode::<{return_type}>(_result)")
         };
