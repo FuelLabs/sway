@@ -3,7 +3,6 @@ use crate::{
     op::call::{
         missing_contracts::determine_missing_contracts,
         parser::{param_type_val_to_token, token_to_string},
-        trace::interpret_execution_trace,
         CallResponse,
     },
 };
@@ -153,6 +152,7 @@ pub async fn call_function(
         .await
         .map_err(|e| anyhow!("Failed to initialize transaction builder: {e}"))?;
 
+    #[cfg_attr(test, allow(unused_variables))]
     let (tx, tx_execution, storage_reads) = match mode {
         cmd::call::ExecutionMode::DryRun => {
             let tx = call
@@ -201,7 +201,7 @@ pub async fn call_function(
                 .map_err(|e| anyhow!("Failed to build transaction: {e}"))?;
             let tx_status = client.submit_and_await_commit(&tx.clone().into()).await?;
 
-            #[allow(unused_variables)]
+            #[cfg_attr(test, allow(unused_variables))]
             let (block_height, tx_exec) = match tx_status {
                 TransactionStatus::Success {
                     block_height,
@@ -285,10 +285,11 @@ pub async fn call_function(
         }
     };
 
-    // display detailed call info if verbosity is set
-    if cmd.verbosity > 0 {
-        // Generate execution trace events by stepping through VM interpreter
-        let trace_events = interpret_execution_trace(
+    // Generate execution trace events by stepping through VM interpreter
+    #[cfg(not(test))]
+    let trace_events = {
+        use crate::op::call::trace::interpret_execution_trace;
+        interpret_execution_trace(
             wallet.provider(),
             &mode,
             &consensus_params,
@@ -298,8 +299,14 @@ pub async fn call_function(
             &abi_map,
         )
         .await
-        .map_err(|e| anyhow!("Failed to generate execution trace: {e}"))?;
+        .map_err(|e| anyhow!("Failed to generate execution trace: {e}"))?
+    };
 
+    #[cfg(test)]
+    let trace_events = vec![];
+
+    // display detailed call info if verbosity is set
+    if cmd.verbosity > 0 {
         // Convert labels from Vec to HashMap
         let labels: HashMap<ContractId, String> = cmd
             .label
@@ -329,8 +336,10 @@ pub async fn call_function(
     Ok(CallResponse {
         tx_hash: tx_execution.id.to_string(),
         result: Some(result),
+        total_gas: *tx_execution.result.total_gas(),
         receipts: tx_execution.result.receipts().to_vec(),
         script_json: Some(script_json),
+        trace_events,
     })
 }
 
