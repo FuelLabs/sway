@@ -616,7 +616,7 @@ where
         };
 
         let return_encode = if return_type == "()" {
-            format!("asm(s: (0, 0)) {{ s: raw_slice }}")
+            "asm(s: (0, 0)) {{ s: raw_slice }}".to_string()
         } else {
             format!("encode::<{return_type}>(_result)")
         };
@@ -626,7 +626,8 @@ where
                 "pub fn __entry() -> raw_slice {{
                 let _result: {return_type} = main();
                 {return_encode}
-            }}")
+            }}"
+            )
         } else {
             format!(
                 "pub fn __entry() -> raw_slice {{

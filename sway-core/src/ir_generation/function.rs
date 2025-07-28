@@ -32,7 +32,12 @@ use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
 use sway_types::{
-    constants, ident::Ident, integer_bits::IntegerBits, span::{Span, Spanned}, u256::U256, BaseIdent, Named
+    constants,
+    ident::Ident,
+    integer_bits::IntegerBits,
+    span::{Span, Spanned},
+    u256::U256,
+    BaseIdent, Named,
 };
 
 use std::collections::HashMap;
@@ -4122,24 +4127,22 @@ impl<'a> FnCompiler<'a> {
         )
         .expect_register();
 
-        if let Some(array_size_in_bytes) = array_size_if_mcli_possible(context, elem_type, length_as_u64, value_value) {
+        if let Some(array_size_in_bytes) =
+            array_size_if_mcli_possible(context, elem_type, length_as_u64, value_value)
+        {
             let ptr_arg = BaseIdent::new_no_span("ptr".to_string());
-            let args = vec![
-                AsmArg { name: ptr_arg.clone(), initializer: Some(array_value) }
-            ];
-            let body = vec![
-                AsmInstruction { 
-                    op_name: BaseIdent::new_no_span("mcli".to_string()), 
-                    args: vec![
-                        BaseIdent::new_no_span("ptr".to_string()),
-                    ], 
-                    immediate: Some(BaseIdent::new_no_span(format!("i{array_size_in_bytes}"))), 
-                    metadata: span_md_idx,
-                }
-            ];
+            let args = vec![AsmArg {
+                name: ptr_arg.clone(),
+                initializer: Some(array_value),
+            }];
+            let body = vec![AsmInstruction {
+                op_name: BaseIdent::new_no_span("mcli".to_string()),
+                args: vec![BaseIdent::new_no_span("ptr".to_string())],
+                immediate: Some(BaseIdent::new_no_span(format!("i{array_size_in_bytes}"))),
+                metadata: span_md_idx,
+            }];
             let return_type = array_type;
-            self
-                .current_block
+            self.current_block
                 .append(context)
                 .asm_block(args, body, return_type, Some(ptr_arg));
         } else if length_as_u64 > 5 {
@@ -5007,23 +5010,38 @@ impl<'a> FnCompiler<'a> {
     }
 }
 
-fn array_size_if_mcli_possible(ctx: &mut Context<'_>, elem_type: Type, len: u64, value: Value) -> Option<u64> {
+fn array_size_if_mcli_possible(
+    ctx: &mut Context<'_>,
+    elem_type: Type,
+    len: u64,
+    value: Value,
+) -> Option<u64> {
     match elem_type.get_content(ctx) {
-        TypeContent::Bool if value.get_constant(ctx)?.get_content(ctx).as_bool()? == false => {
+        TypeContent::Bool if !(value.get_constant(ctx)?.get_content(ctx).as_bool()?) => Some(len),
+        TypeContent::Uint(8) if value.get_constant(ctx)?.get_content(ctx).as_uint()? == 0 => {
             Some(len)
         }
-        TypeContent::Uint(8) if value.get_constant(ctx)?.get_content(ctx).as_uint()? == 0 => {
-            Some(len) 
-        },
-        TypeContent::Uint(256) if value.get_constant(ctx)?.get_content(ctx).as_u256()?.is_zero() => {
-            Some(elem_type.size(ctx).in_bytes_aligned() * len) 
-        },
+        TypeContent::Uint(256)
+            if value
+                .get_constant(ctx)?
+                .get_content(ctx)
+                .as_u256()?
+                .is_zero() =>
+        {
+            Some(elem_type.size(ctx).in_bytes_aligned() * len)
+        }
         TypeContent::Uint(_) if value.get_constant(ctx)?.get_content(ctx).as_uint()? == 0 => {
-            Some(elem_type.size(ctx).in_bytes_aligned() * len) 
-        },
-        TypeContent::B256 if value.get_constant(ctx)?.get_content(ctx).as_b256()?.is_zero() => {
-            Some(elem_type.size(ctx).in_bytes_aligned() * len) 
-        },
+            Some(elem_type.size(ctx).in_bytes_aligned() * len)
+        }
+        TypeContent::B256
+            if value
+                .get_constant(ctx)?
+                .get_content(ctx)
+                .as_b256()?
+                .is_zero() =>
+        {
+            Some(elem_type.size(ctx).in_bytes_aligned() * len)
+        }
         _ => None,
     }
 }
