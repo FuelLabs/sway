@@ -187,14 +187,15 @@ fn calc_addr_as_ptr(
     assert!(ptr.get_type(context).unwrap().is_ptr(context));
     assert!(len.get_type(context).unwrap().is_uint64(context));
 
-    let uint64 = Type::get_uint64(context);
-    let ptr = current_block.append(context).ptr_to_int(ptr, uint64);
     let addr = current_block
         .append(context)
         .binary_op(BinaryOpKind::Add, ptr, len);
 
-    let ptr_to = Type::new_typed_pointer(context, ptr_to);
-    current_block.append(context).int_to_ptr(addr, ptr_to)
+    // cast the addr to ptr_to
+    current_block
+        .append(context)
+        .cast_ptr(addr, ptr_to)
+        .add_metadatum(context, None)
 }
 
 impl<'a> FnCompiler<'a> {
