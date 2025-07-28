@@ -3126,6 +3126,7 @@ dependencies = [
  "include_dir",
  "minifier",
  "opener",
+ "rayon",
  "serde",
  "serde_json",
  "sway-ast",
