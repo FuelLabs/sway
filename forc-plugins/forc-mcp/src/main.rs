@@ -30,6 +30,38 @@ enum Commands {
         /// Port to bind the HTTP server to
         #[arg(short, long, default_value = "3001")]
         port: u16,
+
+        /// Enable authentication mode with API keys
+        #[arg(long)]
+        auth: bool,
+
+        /// Require API key for all requests (no public access)
+        #[arg(long, requires = "auth")]
+        api_keys_only: bool,
+
+        /// Path to persist API keys (default: in-memory only)
+        #[arg(long, value_name = "FILE")]
+        api_keys_file: Option<String>,
+
+        /// Pre-configured admin API key (if not provided, one will be generated)
+        #[arg(long, value_name = "KEY", requires = "auth")]
+        admin_api_key: Option<String>,
+
+        /// Public rate limit per minute (unauthenticated requests)
+        #[arg(long, default_value = "10")]
+        public_rate_limit_per_minute: u32,
+
+        /// Public rate limit per day (unauthenticated requests)
+        #[arg(long, default_value = "1000")]
+        public_rate_limit_per_day: u32,
+
+        /// API key rate limit per minute
+        #[arg(long, default_value = "120")]
+        api_key_rate_limit_per_minute: u32,
+
+        /// API key rate limit per day
+        #[arg(long, default_value = "10000")]
+        api_key_rate_limit_per_day: u32,
     },
 }
 
