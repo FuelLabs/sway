@@ -1,5 +1,14 @@
+pub mod auth;
 pub mod forc_call;
+pub mod rate_limit;
 
+use axum::{
+    extract::State,
+    response::IntoResponse,
+    routing::{get, post},
+    Router,
+};
+use rate_limit::{rate_limit_middleware, RateLimitConfig, RateLimiter};
 use rmcp::{
     model::*,
     service::RequestContext,
@@ -11,7 +20,6 @@ use rmcp::{
     Error as McpError, RoleServer, ServiceExt,
 };
 use std::{future::Future, pin::Pin, sync::Arc};
-use tracing::info;
 
 /// Trait that all MCP tool modules must implement to be registered with ForcMcpServer
 ///
@@ -188,11 +196,11 @@ impl rmcp::ServerHandler for ForcMcpServer {
 
 // Server runner functions
 pub async fn run_stdio_server(server: ForcMcpServer) -> anyhow::Result<()> {
-    info!("Starting MCP server in STDIO mode");
+    tracing::info!("Starting MCP server in STDIO mode");
 
     let server_handler = server.serve(stdio()).await?;
 
-    info!("MCP server started successfully in STDIO mode");
+    tracing::info!("MCP server started successfully in STDIO mode");
     server_handler.waiting().await?;
     Ok(())
 }
@@ -203,31 +211,41 @@ pub async fn run_sse_server(server: ForcMcpServer, port: Option<u16>) -> anyhow:
         None => find_available_port().await?,
     };
 
-    info!("Starting MCP SSE server on port {port}");
+    tracing::info!("Starting MCP SSE server on port {port}");
     let bind_addr = format!("0.0.0.0:{port}").parse()?;
     let ct = SseServer::serve(bind_addr)
         .await?
         .with_service(move || server.clone());
 
-    info!("MCP SSE server started successfully on port: {port}");
-    info!("SSE endpoint: /sse");
-    info!("Messages endpoint: /message");
+    tracing::info!("MCP SSE server started successfully on port: {port}");
+    tracing::info!("SSE endpoint: /sse");
+    tracing::info!("Messages endpoint: /message");
 
     tokio::signal::ctrl_c().await?;
     ct.cancel();
 
-    info!("MCP SSE server shut down successfully");
+    tracing::info!("MCP SSE server shut down successfully");
     Ok(())
 }
 
-pub async fn run_http_server(server: ForcMcpServer, port: Option<u16>) -> anyhow::Result<()> {
+pub async fn run_http_server(
+    server: ForcMcpServer,
+    port: Option<u16>,
+    auth_config: auth::AuthConfig,
+) -> anyhow::Result<()> {
     let port = match port {
         Some(p) => p,
         None => find_available_port().await?,
     };
 
-    info!("Starting MCP HTTP streamable server on port {port}");
+    tracing::info!("Starting MCP HTTP streamable server on port {port}");
     let bind_addr = format!("0.0.0.0:{port}");
+
+    let auth_manager = if auth_config.enabled {
+        Some(Arc::new(auth::AuthManager::new(auth_config.clone()).await?))
+    } else {
+        None
+    };
 
     let service = StreamableHttpService::new(
         move || Ok(server.clone()),
@@ -235,24 +253,215 @@ pub async fn run_http_server(server: ForcMcpServer, port: Option<u16>) -> anyhow
         Default::default(),
     );
 
-    let router = axum::Router::new().nest_service("/mcp", service);
+    // Create separate rate limiters for public and authenticated requests
+    let public_rate_limiter = Arc::new(RateLimiter::new(RateLimitConfig {
+        requests_per_minute: auth_config.public_rate_limit_per_minute,
+        requests_per_day: auth_config.public_rate_limit_per_day,
+    }));
+    let api_key_rate_limiter = Arc::new(RateLimiter::new(RateLimitConfig {
+        requests_per_minute: auth_config.api_key_rate_limit_per_minute,
+        requests_per_day: auth_config.api_key_rate_limit_per_day,
+    }));
+
+    // Spawn cleanup task for rate limiters
+    let public_limiter_cleanup = public_rate_limiter.clone();
+    let api_key_limiter_cleanup = api_key_rate_limiter.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300)); // 5 minutes
+        loop {
+            interval.tick().await;
+            public_limiter_cleanup.cleanup_expired_trackers().await;
+            api_key_limiter_cleanup.cleanup_expired_trackers().await;
+        }
+    });
+
+    let mut router = Router::new().route("/health", get(|| async { "OK" }));
+
+    tracing::info!("MCP endpoint: /mcp");
+    if let Some(auth_mgr) = &auth_manager {
+        tracing::info!("Authentication enabled");
+
+        // Single /mcp endpoint with unified auth and rate limiting
+        router = router
+            .nest_service("/mcp", service.clone())
+            .layer(axum::middleware::from_fn_with_state(
+                auth_mgr.clone(),
+                unified_api_key_auth_middleware,
+            ))
+            .layer(axum::Extension(public_rate_limiter.clone()))
+            .layer(axum::Extension(api_key_rate_limiter.clone()));
+
+        if !auth_config.api_keys_only {
+            tracing::info!(
+                "Public rate limits: {}/min, {}/day",
+                auth_config.public_rate_limit_per_minute,
+                auth_config.public_rate_limit_per_day
+            );
+        }
+        tracing::info!(
+            "API key rate limits: {}/min, {}/day",
+            auth_config.api_key_rate_limit_per_minute,
+            auth_config.api_key_rate_limit_per_day
+        );
+
+        // Admin routes with authentication
+        let admin_routes = Router::new()
+            .route(
+                "/api-keys",
+                post(auth::create_api_key).get(auth::list_api_keys),
+            )
+            .route(
+                "/api-keys/{key_id}",
+                get(auth::get_api_key).delete(auth::delete_api_key),
+            )
+            .route("/import", post(auth::import_api_keys))
+            .layer(axum::middleware::from_fn_with_state(
+                auth_mgr.clone(),
+                admin_auth_middleware,
+            ))
+            .with_state(auth_mgr.clone());
+        router = router.nest("/admin", admin_routes);
+        tracing::info!("Admin endpoint: /admin/* (requires X-API-Key: <admin-api-key> header)");
+    } else {
+        // No auth, just basic service with public rate limiting
+        router = router
+            .nest_service("/mcp", service)
+            .layer(axum::middleware::from_fn(rate_limit_middleware))
+            .layer(axum::Extension(public_rate_limiter.clone()));
+        tracing::info!("Authentication disabled - public endpoint only");
+        tracing::info!(
+            "Public rate limits: {}/min, {}/day",
+            auth_config.public_rate_limit_per_minute,
+            auth_config.public_rate_limit_per_day
+        );
+    }
+
     let tcp_listener = tokio::net::TcpListener::bind(bind_addr).await?;
 
-    info!("MCP HTTP streamable server started successfully on port: {port}");
-    info!("HTTP endpoint: /mcp");
+    tracing::info!("MCP HTTP streamable server started successfully on port: {port}");
 
-    // Run the server
-    axum::serve(tcp_listener, router)
-        .with_graceful_shutdown(async {
-            tokio::signal::ctrl_c()
-                .await
-                .expect("Failed to install CTRL+C signal handler");
-            info!("MCP HTTP streamable server shutting down...");
-        })
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to serve HTTP streamable server: {}", e))?;
+    // Run the server with proper connection info for IP extraction
+    axum::serve(
+        tcp_listener,
+        router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to install CTRL+C signal handler");
+        tracing::info!("MCP HTTP streamable server shutting down...");
+    })
+    .await
+    .map_err(|e| anyhow::anyhow!("Failed to serve HTTP streamable server: {}", e))?;
 
     Ok(())
+}
+
+/// Unified authentication middleware for /mcp endpoint
+/// Handles both public and authenticated requests based on auth_only setting
+async fn unified_api_key_auth_middleware(
+    State(auth_manager): axum::extract::State<Arc<auth::AuthManager>>,
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Result<axum::response::Response, axum::response::Response> {
+    let headers = req.headers();
+    let api_key = auth::extract_api_key(headers);
+
+    // Check if api_keys_only mode is enabled (get from config through auth_manager)
+    let api_keys_only = auth_manager.config.api_keys_only;
+    match (api_key, api_keys_only) {
+        // API key provided - validate and track usage
+        (Some(key), _) => {
+            match auth_manager.check_and_track_usage(&key).await {
+                Ok(Some(_)) => {
+                    // Valid API key with rate limit check passed
+                    Ok(next.run(req).await)
+                }
+                Ok(None) => Err((
+                    axum::http::StatusCode::UNAUTHORIZED,
+                    axum::Json(auth::ErrorResponse {
+                        error: "Invalid API key".to_string(),
+                    }),
+                )
+                    .into_response()),
+                Err(e) => {
+                    // Check if it's a rate limit error
+                    let error_msg = e.to_string();
+                    if error_msg.contains("Rate limit exceeded") {
+                        Err((
+                            axum::http::StatusCode::TOO_MANY_REQUESTS,
+                            axum::Json(auth::ErrorResponse { error: error_msg }),
+                        )
+                            .into_response())
+                    } else {
+                        Err((
+                            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                            axum::Json(auth::ErrorResponse {
+                                error: "Internal server error".to_string(),
+                            }),
+                        )
+                            .into_response())
+                    }
+                }
+            }
+        }
+        // No API key, but api_keys_only mode - reject
+        (None, true) => Err((
+            axum::http::StatusCode::UNAUTHORIZED,
+            axum::Json(auth::ErrorResponse {
+                error: "X-API-Key header required".to_string(),
+            }),
+        )
+            .into_response()),
+        // No API key, public access allowed - proceed with public rate limits
+        (None, false) => Ok(next.run(req).await),
+    }
+}
+
+/// Admin authentication middleware
+async fn admin_auth_middleware(
+    State(auth_manager): axum::extract::State<Arc<auth::AuthManager>>,
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Result<axum::response::Response, axum::response::Response> {
+    // Extract API key from X-API-Key header
+    let headers = req.headers();
+    let api_key = auth::extract_api_key(headers);
+
+    if let Some(key) = api_key {
+        match auth_manager.check_and_track_usage(&key).await {
+            Ok(Some(api_key)) if api_key.role == auth::Role::Admin => Ok(next.run(req).await),
+            Ok(Some(_)) => Err((
+                axum::http::StatusCode::FORBIDDEN,
+                axum::Json(auth::ErrorResponse {
+                    error: "Admin access required".to_string(),
+                }),
+            )
+                .into_response()),
+            Ok(None) => Err((
+                axum::http::StatusCode::UNAUTHORIZED,
+                axum::Json(auth::ErrorResponse {
+                    error: "Invalid API key".to_string(),
+                }),
+            )
+                .into_response()),
+            Err(e) => Err((
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                axum::Json(auth::ErrorResponse {
+                    error: format!("Internal server error: {}", e),
+                }),
+            )
+                .into_response()),
+        }
+    } else {
+        Err((
+            axum::http::StatusCode::UNAUTHORIZED,
+            axum::Json(auth::ErrorResponse {
+                error: "X-API-Key header required".to_string(),
+            }),
+        )
+            .into_response())
+    }
 }
 
 async fn find_available_port() -> anyhow::Result<u16> {
@@ -323,8 +532,9 @@ pub mod tests {
 
             // Start the HTTP server in a background task with the specific port
             let server = ForcMcpServer::new().register_module(ForcCallTools::new());
-            let server_handle =
-                tokio::spawn(async move { run_http_server(server, Some(port)).await });
+            let server_handle = tokio::spawn(async move {
+                run_http_server(server, Some(port), auth::AuthConfig::default()).await
+            });
 
             // Wait a bit for the server to start
             sleep(Duration::from_millis(100)).await;

@@ -1,7 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use forc_mcp::{
-    forc_call::ForcCallTools, run_http_server, run_sse_server, run_stdio_server, ForcMcpServer,
+    auth::AuthConfig, forc_call::ForcCallTools, run_http_server, run_sse_server, run_stdio_server,
+    ForcMcpServer,
 };
 
 /// Model Context Protocol (MCP) server for Forc
@@ -81,6 +82,28 @@ async fn main() -> Result<()> {
     match cli.command.unwrap_or_default() {
         Commands::Stdio => run_stdio_server(mcp_server).await,
         Commands::Sse { port } => run_sse_server(mcp_server, Some(port)).await,
-        Commands::Http { port } => run_http_server(mcp_server, Some(port)).await,
+        Commands::Http {
+            port,
+            auth,
+            api_keys_only,
+            api_keys_file,
+            admin_api_key,
+            public_rate_limit_per_minute,
+            public_rate_limit_per_day,
+            api_key_rate_limit_per_minute,
+            api_key_rate_limit_per_day,
+        } => {
+            let auth_config = AuthConfig {
+                enabled: auth,
+                api_keys_only,
+                api_keys_file,
+                admin_api_key,
+                public_rate_limit_per_minute,
+                public_rate_limit_per_day,
+                api_key_rate_limit_per_minute,
+                api_key_rate_limit_per_day,
+            };
+            run_http_server(mcp_server, Some(port), auth_config).await
+        }
     }
 }
