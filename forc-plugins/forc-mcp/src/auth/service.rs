@@ -195,7 +195,9 @@ pub async fn list_api_keys(
     State(auth_manager): State<Arc<AuthManager>>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    let include_admin = params.get("include_admin").is_some_and(|v| v.to_lowercase() == "true");
+    let include_admin = params
+        .get("include_admin")
+        .is_some_and(|v| v.to_lowercase() == "true");
     match auth_manager.storage.list().await {
         Ok(keys) => {
             // Return full ApiKey objects

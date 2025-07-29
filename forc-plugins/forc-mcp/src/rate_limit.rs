@@ -232,7 +232,10 @@ pub fn extract_client_ip(headers: &HeaderMap, remote_addr: Option<SocketAddr>) -
 }
 
 /// Rate limiting middleware that handles both API key authenticated and public requests
-pub async fn public_rate_limit_middleware(request: Request, next: Next) -> Result<Response, Response> {
+pub async fn public_rate_limit_middleware(
+    request: Request,
+    next: Next,
+) -> Result<Response, Response> {
     let remote_addr = request.extensions().get::<SocketAddr>().copied();
     let headers = request.headers().clone();
 
