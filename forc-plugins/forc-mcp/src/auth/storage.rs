@@ -48,7 +48,7 @@ impl ApiKeyStorage for InMemoryStorage {
 
     async fn get(&self, hash: &str) -> Result<Option<ApiKey>> {
         let keys = self.keys.read().await;
-        Ok(keys.values().find(|k| k.id == hash).cloned())
+        Ok(keys.get(hash).cloned())
     }
 
     async fn update(&self, hash: &str, key: ApiKey) -> Result<()> {

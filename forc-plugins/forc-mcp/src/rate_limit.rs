@@ -232,43 +232,16 @@ pub fn extract_client_ip(headers: &HeaderMap, remote_addr: Option<SocketAddr>) -
 }
 
 /// Rate limiting middleware that handles both API key authenticated and public requests
-pub async fn rate_limit_middleware(request: Request, next: Next) -> Result<Response, Response> {
+pub async fn public_rate_limit_middleware(request: Request, next: Next) -> Result<Response, Response> {
     let remote_addr = request.extensions().get::<SocketAddr>().copied();
     let headers = request.headers().clone();
 
     // Extract IP for rate limiting
     let client_ip = extract_client_ip(&headers, remote_addr);
 
-    // Check if request has API key
-    let has_api_key = headers
-        .get("X-API-Key")
-        .and_then(|h| h.to_str().ok())
-        .is_some();
-
-    // Use appropriate rate limiter based on authentication status
-    let (rate_limiter, rate_limit_key) = if has_api_key {
-        // Extract API key suffix for unique rate limiting
-        let api_key_suffix = if let Some(api_key_header) = headers.get("X-API-Key") {
-            if let Ok(api_key_str) = api_key_header.to_str() {
-                format!(":{}", &api_key_str[..8.min(api_key_str.len())])
-            } else {
-                String::new()
-            }
-        } else {
-            String::new()
-        };
-
-        let key = format!("auth:{}{}", client_ip, api_key_suffix);
-        // Use public limiter for now - we'll add proper auth limiter support later
-        (request.extensions().get::<Arc<RateLimiter>>().cloned(), key)
-    } else {
-        let key = format!("public:{}", client_ip);
-        (request.extensions().get::<Arc<RateLimiter>>().cloned(), key)
-    };
-
     // Apply rate limiting if rate limiter is available
-    if let Some(limiter) = rate_limiter {
-        if let Err(rate_limit_error) = limiter.check_request(&rate_limit_key).await {
+    if let Some(limiter) = request.extensions().get::<Arc<RateLimiter>>().cloned() {
+        if let Err(rate_limit_error) = limiter.check_request(&client_ip.to_string()).await {
             return Err(rate_limit_error.into_response());
         }
     }

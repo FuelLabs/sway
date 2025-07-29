@@ -8,7 +8,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use rate_limit::{rate_limit_middleware, RateLimitConfig, RateLimiter};
+use rate_limit::{public_rate_limit_middleware, RateLimitConfig, RateLimiter};
 use rmcp::{
     model::*,
     service::RequestContext,
@@ -326,7 +326,7 @@ pub async fn run_http_server(
         // No auth, just basic service with public rate limiting
         router = router
             .nest_service("/mcp", service)
-            .layer(axum::middleware::from_fn(rate_limit_middleware))
+            .layer(axum::middleware::from_fn(public_rate_limit_middleware))
             .layer(axum::Extension(public_rate_limiter.clone()));
         tracing::info!("Authentication disabled - public endpoint only");
         tracing::info!(
