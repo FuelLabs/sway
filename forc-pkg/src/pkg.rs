@@ -48,6 +48,7 @@ use sway_core::{
 };
 use sway_core::{namespace::Package, Observer};
 use sway_core::{set_bytecode_configurables_offset, DbgGeneration, PrintAsm, PrintIr};
+use std::sync::Mutex;
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
 use sway_types::{Ident, ProgramId, Span, Spanned};
@@ -98,6 +99,91 @@ pub type ManifestMap = HashMap<PinnedId, PackageManifestFile>;
 /// The internal value is produced by hashing the package's name and `source::Pinned`.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct PinnedId(u64);
+
+/// Persistent compilation cache that holds engines and compilation state
+/// across multiple compilation sessions at the forc-pkg level.
+#[derive(Debug)]
+pub struct CompilationCache {
+    engines: Arc<Mutex<Engines>>,
+}
+
+impl Default for CompilationCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CompilationCache {
+    pub fn new() -> Self {
+        Self {
+            engines: Arc::new(Mutex::new(Engines::default())),
+        }
+    }
+
+    pub fn with_engines(engines: Engines) -> Self {
+        Self {
+            engines: Arc::new(Mutex::new(engines)),
+        }
+    }
+
+    pub fn engines(&self) -> Arc<Mutex<Engines>> {
+        Arc::clone(&self.engines)
+    }
+
+    pub fn clear_program(&self, program_id: &sway_types::ProgramId) {
+        if let Ok(mut engines) = self.engines.lock() {
+            engines.clear_program(program_id);
+        }
+    }
+
+    pub fn clear_module(&self, source_id: &sway_types::SourceId) {
+        if let Ok(mut engines) = self.engines.lock() {
+            engines.clear_module(source_id);
+        }
+    }
+
+    pub fn set_observer(&self, observer: Box<dyn Observer>) {
+        if let Ok(engines) = self.engines.lock() {
+            engines.obs().set_observer(observer);
+        }
+    }
+
+    /// Executes a function with access to the locked engines
+    pub fn with_engines_fn<T>(&self, f: impl FnOnce(&Engines) -> T) -> Option<T> {
+        self.engines.lock().ok().map(|engines| f(&engines))
+    }
+
+    /// Tries to execute a function with access to the locked engines, returns Result
+    pub fn try_with_engines<T, E>(&self, f: impl FnOnce(&Engines) -> Result<T, E>) -> Result<T, E>
+    where
+        E: From<anyhow::Error>,
+    {
+        let engines = self.engines.lock().map_err(|_| anyhow!("Failed to lock engines"))?;
+        f(&engines)
+    }
+
+    /// Get a clone of the engines (expensive operation)
+    pub fn clone_engines(&self) -> Option<Engines> {
+        self.engines.lock().ok().map(|engines| engines.clone())
+    }
+
+    /// Check if the cache can be locked (useful for debugging)
+    pub fn is_accessible(&self) -> bool {
+        self.engines.try_lock().is_ok()
+    }
+}
+
+impl Clone for CompilationCache {
+    fn clone(&self) -> Self {
+        if let Ok(engines) = self.engines.lock() {
+            Self {
+                engines: Arc::new(Mutex::new(engines.clone())),
+            }
+        } else {
+            Self::new()
+        }
+    }
+}
 
 /// The result of successfully compiling a package.
 #[derive(Debug, Clone)]
@@ -2365,6 +2451,32 @@ pub fn build(
     no_experimental: &[sway_features::Feature],
     callback_handler: Option<Box<dyn Observer>>,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
+    build_with_cache(
+        plan,
+        target,
+        profile,
+        outputs,
+        experimental,
+        no_experimental,
+        callback_handler,
+        &CompilationCache::new(),
+    )
+}
+
+/// Build an entire forc package with a persistent compilation cache.
+///
+/// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
+/// Uses the provided cache to persist compilation state across builds.
+pub fn build_with_cache(
+    plan: &BuildPlan,
+    target: BuildTarget,
+    profile: &BuildProfile,
+    outputs: &HashSet<NodeIx>,
+    experimental: &[sway_features::Feature],
+    no_experimental: &[sway_features::Feature],
+    callback_handler: Option<Box<dyn Observer>>,
+    cache: &CompilationCache,
+) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
     let required: HashSet<NodeIx> = outputs
@@ -2372,10 +2484,11 @@ pub fn build(
         .flat_map(|output_node| plan.node_deps(*output_node))
         .collect();
 
-    let engines = Engines::default();
     if let Some(callbacks) = callback_handler {
-        engines.obs().set_observer(callbacks);
+        cache.set_observer(callbacks);
     }
+    let engines_arc = cache.engines();
+
 
     let include_tests = profile.include_tests;
 
@@ -2421,6 +2534,7 @@ pub fn build(
         };
 
         let fail = |warnings, errors| {
+            let engines = engines_arc.lock().unwrap();
             print_on_failure(
                 engines.se(),
                 profile.terse,
@@ -2449,36 +2563,45 @@ pub fn build(
                 ..profile.clone()
             };
 
-            let program_id = engines
-                .se()
-                .get_or_create_program_id_from_manifest_path(&manifest.entry_path());
+            let program_id = {
+                let engines = engines_arc.lock().map_err(|_| anyhow!("Failed to lock engines"))?;
+                engines
+                    .se()
+                    .get_or_create_program_id_from_manifest_path(&manifest.entry_path())
+            };
 
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
-            let dep_namespace = match dependency_namespace(
-                &lib_namespace_map,
-                &compiled_contract_deps,
-                plan.graph(),
-                node,
-                &engines,
-                None,
-                program_id,
-                experimental,
-                dbg_generation,
-            ) {
-                Ok(o) => o,
-                Err(errs) => return fail(&[], &errs),
+            let dep_namespace = {
+                let engines = engines_arc.lock().map_err(|_| anyhow!("Failed to lock engines"))?;
+                match dependency_namespace(
+                    &lib_namespace_map,
+                    &compiled_contract_deps,
+                    plan.graph(),
+                    node,
+                    &engines,
+                    None,
+                    program_id,
+                    experimental,
+                    dbg_generation,
+                ) {
+                    Ok(o) => o,
+                    Err(errs) => return fail(&[], &errs),
+                }
             };
 
-            let compiled_without_tests = compile(
-                &descriptor,
-                &profile,
-                &engines,
-                dep_namespace,
-                &mut source_map,
-                experimental,
-                dbg_generation,
-            )?;
+            let compiled_without_tests = {
+                let engines = engines_arc.lock().map_err(|_| anyhow!("Failed to lock engines"))?;
+                compile(
+                    &descriptor,
+                    &profile,
+                    &engines,
+                    dep_namespace,
+                    &mut source_map,
+                    experimental,
+                    dbg_generation,
+                )?
+            };
 
             if let Some(outfile) = profile.metrics_outfile {
                 let path = Path::new(&outfile);
@@ -2522,44 +2645,53 @@ pub fn build(
             profile.clone()
         };
 
-        let program_id = engines
-            .se()
-            .get_or_create_program_id_from_manifest_path(&manifest.entry_path());
+        let program_id = {
+            let engines = engines_arc.lock().map_err(|_| anyhow!("Failed to lock engines"))?;
+            engines
+                .se()
+                .get_or_create_program_id_from_manifest_path(&manifest.entry_path())
+        };
 
         // Note that the contract ID value here is only Some if tests are enabled.
-        let dep_namespace = match dependency_namespace(
-            &lib_namespace_map,
-            &compiled_contract_deps,
-            plan.graph(),
-            node,
-            &engines,
-            contract_id_value.clone(),
-            program_id,
-            experimental,
-            dbg_generation,
-        ) {
-            Ok(o) => o,
-            Err(errs) => {
-                print_on_failure(
-                    engines.se(),
-                    profile.terse,
-                    &[],
-                    &errs,
-                    profile.reverse_results,
-                );
-                bail!("Failed to compile {}", pkg.name);
+        let dep_namespace = {
+            let engines = engines_arc.lock().map_err(|_| anyhow!("Failed to lock engines"))?;
+            match dependency_namespace(
+                &lib_namespace_map,
+                &compiled_contract_deps,
+                plan.graph(),
+                node,
+                &engines,
+                contract_id_value.clone(),
+                program_id,
+                experimental,
+                dbg_generation,
+            ) {
+                Ok(o) => o,
+                Err(errs) => {
+                    print_on_failure(
+                        engines.se(),
+                        profile.terse,
+                        &[],
+                        &errs,
+                        profile.reverse_results,
+                    );
+                    bail!("Failed to compile {}", pkg.name);
+                }
             }
         };
 
-        let compiled = compile(
-            &descriptor,
-            &profile,
-            &engines,
-            dep_namespace,
-            &mut source_map,
-            experimental,
-            dbg_generation,
-        )?;
+        let compiled = {
+            let engines = engines_arc.lock().map_err(|_| anyhow!("Failed to lock engines"))?;
+            compile(
+                &descriptor,
+                &profile,
+                &engines,
+                dep_namespace,
+                &mut source_map,
+                experimental,
+                dbg_generation,
+            )?
+        };
 
         if let Some(outfile) = profile.metrics_outfile {
             let path = Path::new(&outfile);
@@ -2608,6 +2740,36 @@ pub fn check(
     no_experimental: &[sway_features::Feature],
     dbg_generation: sway_core::DbgGeneration,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
+    let cache = CompilationCache::with_engines(engines.clone());
+    check_with_cache(
+        plan,
+        build_target,
+        terse_mode,
+        lsp_mode,
+        include_tests,
+        &cache,
+        retrigger_compilation,
+        experimental,
+        no_experimental,
+        dbg_generation,
+    )
+}
+
+pub fn check_with_cache(
+    plan: &BuildPlan,
+    build_target: BuildTarget,
+    terse_mode: bool,
+    lsp_mode: Option<LspConfig>,
+    include_tests: bool,
+    cache: &CompilationCache,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
+    experimental: &[sway_features::Feature],
+    no_experimental: &[sway_features::Feature],
+    dbg_generation: sway_core::DbgGeneration,
+) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
+    let engines_arc = cache.engines();
+    
+
     let mut lib_namespace_map = HashMap::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
@@ -2642,22 +2804,28 @@ pub fn check(
             None
         };
 
-        let program_id = engines
-            .se()
-            .get_or_create_program_id_from_manifest_path(&manifest.entry_path());
+        let program_id = {
+            let engines = engines_arc.lock().map_err(|_| anyhow!("Failed to lock engines"))?;
+            engines
+                .se()
+                .get_or_create_program_id_from_manifest_path(&manifest.entry_path())
+        };
 
-        let dep_namespace = dependency_namespace(
-            &lib_namespace_map,
-            &compiled_contract_deps,
-            &plan.graph,
-            node,
-            engines,
-            contract_id_value,
-            program_id,
-            experimental,
-            dbg_generation,
-        )
-        .expect("failed to create dependency namespace");
+        let dep_namespace = {
+            let engines = engines_arc.lock().map_err(|_| anyhow!("Failed to lock engines"))?;
+            dependency_namespace(
+                &lib_namespace_map,
+                &compiled_contract_deps,
+                &plan.graph,
+                node,
+                &engines,
+                contract_id_value,
+                program_id,
+                experimental,
+                dbg_generation,
+            )
+            .expect("failed to create dependency namespace")
+        };
 
         let profile = BuildProfile {
             terse: terse_mode,
@@ -2676,16 +2844,19 @@ pub fn check(
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();
-        let programs_res = sway_core::compile_to_ast(
-            &handler,
-            engines,
-            input,
-            dep_namespace,
-            Some(&build_config),
-            &pkg.name,
-            retrigger_compilation.clone(),
-            experimental,
-        );
+        let programs_res = {
+            let engines = engines_arc.lock().map_err(|_| anyhow!("Failed to lock engines"))?;
+            sway_core::compile_to_ast(
+                &handler,
+                &engines,
+                input,
+                dep_namespace,
+                Some(&build_config),
+                &pkg.name,
+                retrigger_compilation.clone(),
+                experimental,
+            )
+        };
 
         if retrigger_compilation
             .as_ref()
@@ -2705,12 +2876,16 @@ pub fn check(
         if let Ok(typed_program) = programs.typed.as_ref() {
             if let TreeType::Library = typed_program.kind.tree_type() {
                 let mut lib_namespace = typed_program.namespace.current_package_ref().clone();
+                let source_id = {
+                    let engines = engines_arc.lock().map_err(|_| anyhow!("Failed to lock engines"))?;
+                    engines.se().get_source_id(&manifest.entry_path())
+                };
                 lib_namespace.root_module_mut().set_span(
                     Span::new(
                         manifest.entry_string()?,
                         0,
                         0,
-                        Some(engines.se().get_source_id(&manifest.entry_path())),
+                        Some(source_id),
                     )
                     .unwrap(),
                 );
