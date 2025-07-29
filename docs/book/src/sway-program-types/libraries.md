@@ -192,11 +192,11 @@ Some Sway Libraries to try out:
 
 - [Binary Merkle Proof](https://docs.fuel.network/docs/sway-libs/merkle/)
 - [Signed Integers](https://github.com/FuelLabs/sway-libs/tree/master/libs/src/signed_integers)
-- [Ownership](https://github.com/FuelLabs/sway-libs/tree/master/libs/src/ownership)
+- [Ownership](https://fuellabs.github.io/sway-libs/book/ownership/index.html)
 
 ### Example
 
-You can import and use a Sway Library such as the [Ownership](https://github.com/FuelLabs/sway-libs/tree/master/libs/src/ownership) library just like any other external library.
+You can import and use a Sway Library such as the [Ownership](https://fuellabs.github.io/sway-libs/book/ownership/index.html) library just like any other external library.
 
 ```sway
 use ownership::Ownership;
