@@ -452,17 +452,18 @@ impl<'a> FnCompiler<'a> {
         string_len: u64,
     ) -> Result<TerminatorValue, CompileError> {
         let int_ty = Type::get_uint64(context);
+        let ptr_ty = Type::get_ptr(context);
 
         // build field values of the slice
         let ptr_val = self
             .current_block
             .append(context)
-            .ptr_to_int(string_data, int_ty)
+            .cast_ptr(string_data, ptr_ty)
             .add_metadatum(context, span_md_idx);
         let len_val = ConstantContent::get_uint(context, 64, string_len);
 
         // a slice is a pointer and a length
-        let field_types = vec![int_ty, int_ty];
+        let field_types = vec![ptr_ty, int_ty];
 
         // build a struct variable to store the values
         let struct_type = Type::new_struct(context, field_types.clone());
@@ -1779,15 +1780,14 @@ impl<'a> FnCompiler<'a> {
                     immediate: None,
                     metadata: None,
                 }];
+
+                let ptr_ty = Type::get_ptr(context);
                 let ptr = self.current_block.append(context).asm_block(
                     args,
                     body,
-                    uint64,
+                    ptr_ty,
                     Some(Ident::new_no_span("hp".into())),
                 );
-
-                let ptr_ty = Type::get_ptr(context);
-                let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_ty);
 
                 let len = ConstantContent::new_uint(context, 64, 0);
                 let len_c = Constant::unique(context, len);
@@ -2355,13 +2355,13 @@ impl<'a> FnCompiler<'a> {
                 )
                 .expect_register();
 
-                let uint64 = Type::get_uint64(context);
+                let uint64_ty = Type::get_uint64(context);
+                let ptr_ty = Type::get_ptr(context);
                 let (ptr, _, len) = self.compile_buffer_into_parts(context, buffer)?;
-                let ptr = self.current_block.append(context).ptr_to_int(ptr, uint64);
                 let slice_as_tuple = self.compile_tuple_from_values(
                     context,
                     vec![ptr, len],
-                    vec![uint64, uint64],
+                    vec![ptr_ty, uint64_ty],
                     None,
                 )?;
 
