@@ -37,7 +37,7 @@ use sway_types::{
     integer_bits::IntegerBits,
     span::{Span, Spanned},
     u256::U256,
-    BaseIdent, Named,
+    Named,
 };
 
 use std::collections::HashMap;
@@ -4111,10 +4111,32 @@ impl<'a> FnCompiler<'a> {
         let length_as_u64 = length_as_u64.get_content(context).as_uint().unwrap();
         let array_type = Type::new_array(context, elem_type, length_as_u64);
 
+        let initial_value_value = return_on_termination_or_extract!(
+            self.compile_expression_to_register(context, md_mgr, value_expr)?
+        )
+        .expect_register();
+
+        let initializer =
+            if array_size_if_mcli_possible(context, elem_type, length_as_u64, initial_value_value)
+                .is_some()
+            {
+                let initial = initial_value_value
+                    .get_constant(context)
+                    .unwrap()
+                    .get_content(context);
+                let elems = (0..length_as_u64)
+                    .map(|_| initial.clone())
+                    .collect::<Vec<_>>();
+                let constant = ConstantContent::new_array(context, elem_type, elems);
+                Some(Constant::unique(context, constant))
+            } else {
+                None
+            };
+
         let temp_name = self.lexical_map.insert_anon();
         let array_local_var = self
             .function
-            .new_local_var(context, temp_name, array_type, None, false)
+            .new_local_var(context, temp_name, array_type, initializer, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let array_value = self
             .current_block
@@ -4122,35 +4144,15 @@ impl<'a> FnCompiler<'a> {
             .get_local(array_local_var)
             .add_metadatum(context, span_md_idx);
 
-        let value_value = return_on_termination_or_extract!(
-            self.compile_expression_to_register(context, md_mgr, value_expr)?
-        )
-        .expect_register();
-
-        if let Some(array_size_in_bytes) =
-            array_size_if_mcli_possible(context, elem_type, length_as_u64, value_value)
+        if array_size_if_mcli_possible(context, elem_type, length_as_u64, initial_value_value)
+            .is_some()
         {
-            let ptr_arg = BaseIdent::new_no_span("ptr".to_string());
-            let args = vec![AsmArg {
-                name: ptr_arg.clone(),
-                initializer: Some(array_value),
-            }];
-            let body = vec![AsmInstruction {
-                op_name: BaseIdent::new_no_span("mcli".to_string()),
-                args: vec![BaseIdent::new_no_span("ptr".to_string())],
-                immediate: Some(BaseIdent::new_no_span(format!("i{array_size_in_bytes}"))),
-                metadata: span_md_idx,
-            }];
-            let return_type = array_type;
-            self.current_block
-                .append(context)
-                .asm_block(args, body, return_type, Some(ptr_arg));
         } else if length_as_u64 > 5 {
             self.compile_array_init_loop(
                 context,
                 array_value,
                 elem_type,
-                value_value,
+                initial_value_value,
                 length_as_u64,
                 span_md_idx,
             );
@@ -4163,7 +4165,7 @@ impl<'a> FnCompiler<'a> {
                 );
                 self.current_block
                     .append(context)
-                    .store(gep_val, value_value)
+                    .store(gep_val, initial_value_value)
                     .add_metadatum(context, span_md_idx);
             }
         }
