@@ -19,6 +19,7 @@ horrorshow.workspace = true
 include_dir.workspace = true
 minifier.workspace = true
 opener.workspace = true
+rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sway-ast.workspace = true
