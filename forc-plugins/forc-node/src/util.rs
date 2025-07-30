@@ -208,7 +208,8 @@ pub fn check_open_fds_limit(max_files: u64) -> Result<(), Box<dyn std::error::Er
             "the maximum number of open file descriptors is too \
              small, got {}, expect greater or equal to {}",
             prev_limit, max_files
-        ).into())
+        )
+        .into())
     }
 }
 

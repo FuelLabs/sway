@@ -3125,7 +3125,7 @@ dependencies = [
  "horrorshow",
  "include_dir",
  "minifier",
- "opener",
+ "opener 0.7.2",
  "rayon",
  "serde",
  "serde_json",
