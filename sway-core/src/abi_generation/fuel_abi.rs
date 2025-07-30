@@ -334,6 +334,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
+                panicking_calls: None,
             })
         }
         TyProgramKind::Script { main_function, .. } => {
@@ -363,6 +364,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
+                panicking_calls: None,
             })
         }
         TyProgramKind::Predicate { main_function, .. } => {
@@ -392,6 +394,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
+                panicking_calls: None,
             })
         }
         TyProgramKind::Library { .. } => {
@@ -411,6 +414,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: None,
                 error_codes: Some(error_codes),
+                panicking_calls: None,
             })
         }
     })?;
@@ -834,6 +838,7 @@ fn generate_error_codes(panic_occurrences: &PanicOccurrences) -> BTreeMap<u64, E
                 *revert_code,
                 ErrorDetails {
                     pos: ErrorPosition {
+                        function: String::default(),
                         pkg: panic_occurrence.loc.pkg.clone(),
                         file: panic_occurrence.loc.file.clone(),
                         line: panic_occurrence.loc.loc.line as u64,
