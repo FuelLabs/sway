@@ -83,7 +83,7 @@ impl From<IgnitionOpts> for RunOpts {
             service_name: Some(MAINNET_SERVICE_NAME.to_string()),
             db_type: DbType::RocksDb,
             debug: false,
-            snapshot: ChainConfig::Testnet.into(),
+            snapshot: ChainConfig::Ignition.into(),
             keypair: Some(value.keypair.secret),
             relayer: Some(value.relayer),
             ip: Some(value.ip),
