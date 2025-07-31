@@ -106,7 +106,7 @@ impl SyncWorkspace {
             .insert(Directory::Temp, canonical_temp_path.clone());
 
         // Consume the guard to disable auto-cleanup.
-        let _ = temp_dir_guard.into_path();
+        let _ = temp_dir_guard.keep();
 
         tracing::debug!(
             "SyncWorkspace: Manifest dir set to {:?}, Temp dir set to {:?}",
