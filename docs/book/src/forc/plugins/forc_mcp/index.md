@@ -84,6 +84,9 @@ claude mcp add --transport stdio forc-mcp-stdio ./target/debug/forc-mcp stdio
 # HTTP transport
 claude mcp add --transport http forc-mcp-http http://localhost:3001/mcp
 
+# HTTP transport with API key authentication
+claude mcp add --transport http forc-mcp-http http://localhost:3001/mcp -H "X-Api-Key: mcp_XXXXXX..."
+
 # Server-Sent Events transport
 claude mcp add --transport sse forc-mcp-sse http://localhost:3001/sse
 ```
@@ -114,6 +117,22 @@ For Cursor IDE integration, add the following configuration to your MCP settings
     "forc-mcp-http": {
       "url": "http://localhost:3001/mcp",
       "transport": "http"
+    }
+  }
+}
+```
+
+#### HTTP Transport with API key authentication
+
+```json
+{
+  "mcpServers": {
+    "forc-mcp-http": {
+      "url": "http://localhost:3001/mcp",
+      "transport": "http",
+      "headers": {
+        "X-Api-Key": "mcp_XXXXXX..."
+      }
     }
   }
 }
