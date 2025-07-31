@@ -1,0 +1,1177 @@
+
+running 32 tests
+test args::cli_parsing::hashes_a_file_path_with_sha256_example ... ok
+test address::cli_parsing::convert_an_address_to_another_format_example ... ok
+test args::cli_parsing::hashes_a_file_path_with_keccak256_example ... ok
+test args::cli_parsing::hashes_an_argument_with_keccak256_example ... ok
+test args::cli_parsing::hashes_an_argument_with_sha256_example ... ok
+test args::test::test_checked_read_file ... ok
+test args::test::test_read_binary ... ok
+test args::test::test_checked_stdin ... ok
+test keys::get_public_key::cli_parsing::get_the_public_key_from_a_message_and_its_signature_example ... ok
+test keys::new_key::cli_parsing::creates_a_new_key_default_for_block_production_example ... ok
+test keys::new_key::cli_parsing::creates_a_new_key_for_block_production_example ... ok
+test keys::get_public_key::test::expect_output ... ok
+test keys::new_key::cli_parsing::creates_a_new_key_for_peering_example ... ok
+test keys::parse_secret::cli_parsing::parses_the_secret_of_a_block_production_example ... ok
+test keys::parse_secret::cli_parsing::parses_the_secret_of_a_peering_example ... ok
+test keys::vanity::cli_parsing::generate_a_checksummed_vanity_address_with_a_given_prefix_and_suffix_example ... ok
+test keys::vanity::cli_parsing::generate_a_checksummed_vanity_address_with_a_given_prefix_example ... ok
+test keys::vanity::cli_parsing::generate_a_checksummed_vanity_address_with_a_given_suffix_example ... ok
+test keys::vanity::tests::test_conflicting_args ... ok
+test keys::vanity::tests::test_invalid_hex_characters ... ok
+test keys::vanity::tests::test_invalid_regex_syntax ... ok
+test keys::vanity::cli_parsing::generate_a_checksummed_vanity_address_with_a_given_regex_pattern_example ... ok
+test keys::vanity::tests::test_pattern_too_long ... ok
+test keys::vanity::tests::test_regex_too_long ... ok
+test keys::vanity::tests::test_valid_short_prefix ... ok
+test keys::vanity::tests::test_valid_short_suffix ... ok
+test keys::vanity::tests::test_save_path ... ok
+test keys::vanity::tests::test_both_prefix_and_suffix ... ok
+test keys::vanity::tests::test_mnemonic_generation ... ok
+test keys::vanity::tests::test_simple_regex ... ok
+test keys::vanity::tests::test_simple_regex_uppercase ... ok
+test keys::vanity::tests::test_timeout_respected ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.11s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test cli_parsing::build_the_docs_for_a_project_or_workspace_in_the_current_path_and_open_it_in_the_browser_example ... ok
+test cli_parsing::build_the_docs_for_a_project_located_in_another_path_example ... ok
+test cli_parsing::build_the_docs_for_a_project_or_workspace_in_the_current_path_example ... ok
+test cli_parsing::build_the_docs_for_the_current_project_exporting_private_types_example ... ok
+test cli_parsing::build_the_docs_offline_without_downloading_any_dependencies_example ... ok
+test doc::module::tests::test_parent ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test test_impl_traits_no_deps ... ok
+test test_impl_traits_default ... ok
+test test_workspace_docs ... ok
+test builds_lib_std_docs ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.58s
+
+
+running 8 tests
+test cli_parsing::run_formatter_against_a_given_dir_example ... ok
+test cli_parsing::run_formatter_against_a_given_dir_with_short_format_example ... ok
+test cli_parsing::run_formatter_against_a_given_file_with_short_format_example ... ok
+test cli_parsing::run_the_formatter_in_check_mode_on_the_current_directory_example ... ok
+test cli_parsing::run_formatter_against_a_given_file_example ... ok
+test tests::test_forc_alphabetization ... ok
+test cli_parsing::run_the_formatter_in_check_mode_on_the_current_directory_with_short_format_example ... ok
+test tests::test_forc_indentation ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test cli::commands::check::cli_parsing::check_the_project_in_the_current_path_example ... ok
+test cli::commands::check::cli_parsing::check_the_project_located_in_another_path_example ... ok
+test cli::commands::run::cli_parsing::migrate_the_project_in_the_current_path_example ... ok
+test cli::commands::run::cli_parsing::migrate_the_project_located_in_another_path_example ... ok
+test cli::commands::run::cli_parsing::migrate_the_project_offline_without_downloading_any_dependencies_example ... ok
+test cli::commands::show::cli_parsing::show_the_upcoming_breaking_change_features_and_their_migration_steps_example ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 78 tests
+test lock::tests::test_parse_pkg_line_with_salt_with_dep_name ... ok
+test lock::tests::test_parse_pkg_line_with_salt_without_dep_name ... ok
+test lock::tests::test_parse_pkg_line_without_salt_with_dep_name ... ok
+test lock::tests::test_parse_pkg_line_without_salt_without_dep_name ... ok
+test lock::tests::test_parse_pkg_line_invalid_salt - should panic ... ok
+test manifest::dep_modifier::tests::test_dep_from_str_invalid ... ok
+test manifest::dep_modifier::tests::test_dep_from_str_name_and_version ... ok
+test manifest::dep_modifier::tests::test_dep_from_str_name_only ... ok
+test manifest::dep_modifier::tests::test_dep_section_add_contract_dependency_with_default_salt ... ok
+test manifest::dep_modifier::tests::test_dep_section_add_contract_dependency_with_invalid_salt ... ok
+test manifest::dep_modifier::tests::test_dep_section_add_contract_dependency_with_salt ... ok
+test manifest::dep_modifier::tests::test_dep_section_add_to_toml_regular_dependency_success ... ok
+test manifest::dep_modifier::tests::test_dep_section_add_to_toml_regular_detailed_dependency_success ... ok
+test manifest::dep_modifier::tests::test_dep_section_remove_contract_dependency_not_found ... ok
+test manifest::dep_modifier::tests::test_dep_section_remove_contract_dependency_success ... ok
+test manifest::build_profile::tests::test_build_profiles ... ok
+test manifest::dep_modifier::tests::test_dep_section_remove_from_missing_section ... ok
+test manifest::dep_modifier::tests::test_dep_section_remove_regular_dependency_not_found ... ok
+test manifest::dep_modifier::tests::test_dep_section_remove_regular_dependency_success ... ok
+test manifest::dep_modifier::tests::test_dep_spec_invalid_version_req ... ok
+test manifest::dep_modifier::tests::test_generate_table_basic_fields ... ok
+test manifest::dep_modifier::tests::test_resolve_dependency_invalid_string ... ok
+test manifest::tests::deserialize_contract_dependency ... ok
+test manifest::tests::test_error_duplicate_deps_definition - should panic ... ok
+test manifest::tests::test_dependency_alias_project_name_collision ... ok
+test manifest::dep_modifier::tests::test_resolve_dependency_detailed_variants ... ok
+test manifest::dep_modifier::tests::test_resolve_dependency_detailed_variant_failure ... ok
+test manifest::tests::test_dependency_name_project_name_collision ... ok
+test manifest::dep_modifier::tests::test_resolve_dependency_simple_version ... ok
+test manifest::tests::test_project_metadata_from_toml ... ok
+test manifest::dep_modifier::tests::test_resolve_package_path_single_package_mode ... ok
+test manifest::tests::test_error_version_with_git_for_same_dep - should panic ... ok
+test manifest::tests::test_project_with_invalid_metadata ... ok
+test manifest::tests::test_metadata_roundtrip ... ok
+test manifest::tests::test_error_namespace_without_version - should panic ... ok
+test manifest::tests::test_invalid_dependency_details_mixed_together ... ok
+test manifest::tests::test_valid_dependency_details ... ok
+test manifest::tests::test_error_version_with_ipfs_for_same_dep - should panic ... ok
+test manifest::tests::test_project_with_null_metadata ... ok
+test manifest::tests::test_project_without_metadata ... ok
+test manifest::tests::test_workspace_metadata_roundtrip ... ok
+test manifest::tests::test_workspace_empty_metadata ... ok
+test manifest::tests::test_workspace_with_metadata ... ok
+test manifest::tests::test_workspace_without_metadata ... ok
+test manifest::tests::test_workspace_complex_metadata ... ok
+test source::git::test_source_git_pinned_parsing ... ok
+test source::ipfs::tests::test_invalid_tar ... ok
+test source::ipfs::tests::test_source_ipfs_pinned_parsing ... ok
+test source::ipfs::tests::test_basic_extraction ... ok
+test source::reg::file_location::tests::test_chunking_size_larger_than_name ... ok
+test pkg::test::test_write_hexcode ... ok
+test source::ipfs::tests::test_nested_files ... ok
+test source::reg::file_location::tests::test_domain_namespace ... ok
+test manifest::dep_modifier::tests::test_resolve_dependency_self_dependency_error ... ok
+test source::ipfs::tests::test_path_traversal_prevention ... ok
+test source::reg::file_location::tests::test_flat_namespace_with_regular_package ... ok
+test source::reg::file_location::tests::test_empty_package_name ... ok
+test source::reg::file_location::tests::test_flat_namespace_with_small_package ... ok
+test source::reg::file_location::tests::test_chunking_size_zero ... ok
+test source::reg::file_location::tests::test_unicode_package_name ... ok
+test source::reg::file_location::tests::test_larger_chunking_size ... ok
+test source::reg::file_location::tests::test_odd_length_package_name ... ok
+test source::reg::index_file::tests::test_json_format ... ok
+test manifest::tests::test_error_duplicate_deps_definition_in_workspace ... ok
+test manifest::dep_modifier::tests::test_resolve_package_path_workspace_with_package_found ... ok
+test source::reg::index_file::tests::test_json_with_dependencies ... ok
+test source::reg::index_file::tests::test_json_with_missing_optional_fields ... ok
+test manifest::dep_modifier::tests::test_resolve_package_path_workspace_package_not_set ... ok
+test source::reg::tests::parse_pinned_entry_without_namespace ... ok
+test source::reg::index_file::tests::test_add_new_package_entry_and_parse_back ... ok
+test source::reg::tests::test_resolve_to_cid ... ok
+test manifest::dep_modifier::tests::test_resolve_dependency_from_workspace_sibling ... ok
+test manifest::dep_modifier::tests::test_resolve_package_path_workspace_package_not_found ... ok
+test source::reg::index_file::tests::test_serialize_deserialize_empty_index ... ok
+test source::reg::tests::parse_pinned_entry_with_namespace ... ok
+test pkg::test::test_visualize_without_prefix ... ok
+test pkg::test::test_root_pkg_order ... ok
+test pkg::test::test_visualize_with_url_prefix ... ok
+
+test result: ok. 78 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 24 tests
+test credentials::test::test_get_auth_token_from_cli_arg ... ok
+test credentials::test::test_get_auth_token_from_env ... ok
+test credentials::test::test_get_auth_token_from_file ... ok
+test credentials::test::test_get_auth_token_from_user_input ... ok
+test md_pre_process::tests::test_cycle_detection ... ok
+test validate::test::without_version_should_fail ... ok
+test md_pre_process::tests::test_flatten_single_file_no_includes ... ok
+test md_pre_process::tests::test_flatten_missing_include ... ok
+test md_pre_process::tests::test_flatten_simple_include ... ok
+test md_pre_process::tests::test_flatten_multiple_includes ... ok
+test validate::test::success_with_deps ... ok
+test md_pre_process::tests::test_flatten_nested_includes ... ok
+test validate::test::deps_without_version_should_fail ... ok
+test validate::test::success_without_deps ... ok
+test tarball::test::test_create_tarball_excludes_out_dir ... ok
+test tarball::test::test_create_tarball_success ... ok
+test tarball::test::test_create_tarball_fails_without_forc_toml ... ok
+test forc_pub_client::test::test_publish_success ... ok
+test forc_pub_client::test::test_upload_server_error ... ok
+test error::test::test_error_from_response_with_valid_json ... ok
+test error::test::test_error_from_response_with_invalid_json ... ok
+test forc_pub_client::test::test_publish_unauthorized ... ok
+test forc_pub_client::test::test_publish_server_error ... ok
+test forc_pub_client::test::test_upload_success ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test ecal::ok_capture_ecals ... ok
+test tests::test_filter_exact_match_all_ignored ... ok
+test tests::test_filter_all_match ... ok
+test tests::test_filter_one_match ... ok
+test tests::test_filter_match_all_ignored ... ok
+test tests::test_no_filter ... ok
+test tests::test_filter_exact_match ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.59s
+
+
+running 6 tests
+test tests::test_println_action_green ... ok
+test tests::test_println_label_red ... ok
+test tests::test_println_action_green_long ... ok
+test tests::test_println_action_red ... ok
+test tests::test_println_label_green ... ok
+test tests::test_json_mode_println_functions ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test cli_parsing::script_example_example ... ok
+test test_parse_create ... ok
+test test_parse_script ... ok
+test cli_parsing::multiple_inputs_example ... ok
+test cli_parsing::an_example_constructing_a_create_transaction_example ... ok
+test test_parse_create_inputs_outputs ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 11 tests
+test bytecode::test::test_get_bytecode_id_bad_path ... ok
+test bytecode::test::test_get_bytecode_id_missing_configurable_offset ... ok
+test bytecode::test::test_get_bytecode_id_happy ... ok
+test ok_construct_window ... ok
+test restricted::test_invalid_char ... ok
+test restricted::test_is_valid_project_name_format ... ok
+test fs_locking::test::test_fs_locking_stale ... ok
+test fs_locking::test::test_remove ... ok
+test fs_locking::test::test_legacy ... ok
+test fs_locking::test::test_fs_locking_same_process ... ok
+test fs_locking::test::test_cleanup_stale_files ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 10 tests
+test commands::tests::test_get_forc_command_from_file_name ... ok
+test formatter::tests::test_format_arg_line ... ok
+test formatter::tests::test_format_header_line ... ok
+test formatter::tests::test_format_index_entry ... ok
+test formatter::tests::test_format_option_line ... ok
+test formatter::tests::test_format_subcommand_line ... ok
+test formatter::tests::test_format_subheader_line ... ok
+test formatter::tests::test_is_options_line ... ok
+test tests::test_dangling_chapters_msg ... ok
+test tests::test_missing_entries_msg ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 17 tests
+test build_config::test::test_root_from_file_name_and_manifest_path ... ok
+test build_config::test::test_root_from_file_name_and_manifest_path_contains_dot ... ok
+test semantic_analysis::ast_node::declaration::function::test_function_selector_behavior ... ok
+test semantic_analysis::ast_node::expression::typed_expression::tests::test_array_type_check_empty ... ok
+test semantic_analysis::ast_node::expression::typed_expression::tests::test_array_type_check_non_homogeneous_0 ... ok
+test semantic_analysis::ast_node::expression::typed_expression::tests::test_array_type_check_bad_count ... ok
+test semantic_analysis::ast_node::expression::typed_expression::tests::test_array_type_check_non_homogeneous_1 ... ok
+test type_system::basic_numeric_unknown ... ok
+test type_system::generic_enum_resolution ... ok
+test test_unary_ordering ... ok
+test test_parser_recovery ... ok
+test type_system::unify::unify_check::array_constraint_subset ... ok
+test test_parenthesized ... ok
+test type_system::unify_numerics ... ok
+test type_system::unify_numerics_2 ... ok
+test test_basic_prog ... ok
+test ir_generation::const_eval::tests::const_eval_test ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 4 tests
+test warning::test::convert_to_screaming_snake_case ... ok
+test warning::test::convert_to_snake_case ... ok
+test warning::test::detect_styles ... ok
+test warning::test::convert_to_upper_camel_case ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test tests::ok_parse_experimental_features ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 18 tests
+test irtype::tests::memory_layout::b256 ... ok
+test irtype::tests::memory_layout::boolean ... ok
+test irtype::tests::memory_layout::slice ... ok
+test irtype::tests::memory_layout::string_array ... ok
+test irtype::tests::memory_layout::string_slice ... ok
+test irtype::tests::memory_layout::unit ... ok
+test irtype::tests::memory_layout::unsigned_u16_u32_u64 ... ok
+test irtype::tests::memory_layout::unsigned_u256 ... ok
+test irtype::tests::memory_layout::unsigned_u8 ... ok
+test irtype::tests::memory_layout::array ... ok
+test optimize::constants::tests::unary_op_are_optimized ... ok
+test optimize::constants::tests::ok_chain_optimization ... ok
+test optimize::constants::tests::ok_remove_useless_mul ... ok
+test optimize::constants::tests::binary_op_are_not_optimized ... ok
+test irtype::tests::memory_layout::pointer ... ok
+test optimize::constants::tests::binary_op_are_optimized ... ok
+test irtype::tests::memory_layout::r#struct ... ok
+test irtype::tests::memory_layout::union ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 18 tests
+test globals_dce ... ok
+test verify ... ok
+test fndedup_release ... ok
+test ccp ... ok
+test fndedup_debug ... ok
+test constants ... ok
+test demote_const ... ok
+test cse ... ok
+test demote_ret ... ok
+test sroa ... FAILED
+test simplify_cfg ... ok
+test demote_arg ... ok
+test serialize ... ok
+test memcpyopt ... ok
+test dce ... ok
+test mem2reg ... ok
+test inline ... ok
+test demote_misc ... ok
+
+failures:
+
+---- sroa stdout ----
+sroa
+------
+script {
+    entry fn main() -> u64, !1 {
+        local [u64; 4] __anon_0
+        local { u64, u64 } __anon_1
+        local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
+
+        entry():
+        v0 = get_local __ptr [u64; 4], __anon_0, !2
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, __ptr u64, v1
+        v3 = const u64 0, !3
+        store v3 to v2, !2
+        
+        v4 = const u64 1
+        v5 = get_elem_ptr v0, __ptr u64, v4
+        v6 = const u64 1, !4
+        store v6 to v5, !2
+        v7 = const u64 2
+        v8 = get_elem_ptr v0, __ptr u64, v7
+        v9 = const u64 2, !5
+        store v9 to v8, !2
+        v10 = const u64 3
+        v11 = get_elem_ptr v0, __ptr u64, v10
+        v12 = const u64 3, !6
+        store v12 to v11, !2
+        v13 = get_local __ptr { u64, u64 }, __anon_1, !7
+        v14 = const u64 0
+        v15 = get_elem_ptr v13, __ptr u64, v14
+        v16 = const u64 199, !8
+        store v16 to v15, !7
+        v17 = const u64 1
+        v18 = get_elem_ptr v13, __ptr u64, v17
+        v19 = const u64 200, !9
+        store v19 to v18, !7
+        v20 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !10
+        v21 = const u64 0
+        v22 = get_elem_ptr v20, __ptr u64, v21
+        v23 = const u64 2, !11
+        store v23 to v22, !10
+        v24 = const u64 1
+        v25 = get_elem_ptr v20, __ptr u64, v24
+        v26 = const u64 3, !12
+        store v26 to v25, !10
+        v27 = const u64 2
+        v28 = get_elem_ptr v20, __ptr [u64; 4], v27
+        mem_copy_val v28, v0
+        v29 = const u64 3
+        v30 = get_elem_ptr v20, __ptr { u64, u64 }, v29
+        mem_copy_val v30, v13
+        v31 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !13
+        v32 = const u64 0
+        v33 = get_elem_ptr v31, __ptr u64, v32, !14
+        v34 = load v33
+        v35 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !15
+        v36 = const u64 3
+        v37 = get_elem_ptr v35, __ptr { u64, u64 }, v36, !16
+        v38 = const u64 0
+        v39 = get_elem_ptr v37, __ptr u64, v38, !17
+        v40 = load v39
+        v41 = add v34, v40, !18
+        v42 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !19
+        v43 = const u64 3
+        v44 = get_elem_ptr v42, __ptr { u64, u64 }, v43, !16
+        v45 = const u64 1
+        v46 = get_elem_ptr v44, __ptr u64, v45, !20
+        v47 = load v46
+        v48 = add v41, v47, !21
+        v49 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !22
+        v50 = const u64 2
+        v51 = get_elem_ptr v49, __ptr [u64; 4], v50, !23
+        v52 = const u64 1, !24
+        v53 = get_elem_ptr v51, __ptr u64, v52, !25
+        v54 = load v53
+        v55 = add v48, v54, !26
+        ret u64 v55
+    }
+}
+
+!0 = "src/main.sw"
+!1 = span !0 100 262
+!2 = span !0 174 186
+!3 = span !0 175 176
+!4 = span !0 178 179
+!5 = span !0 181 182
+!6 = span !0 184 185
+!7 = span !0 199 220
+!8 = span !0 206 209
+!9 = span !0 215 218
+!10 = span !0 130 226
+!11 = span !0 146 147
+!12 = span !0 160 161
+!13 = span !0 232 233
+!14 = span !0 56 62
+!15 = span !0 238 239
+!16 = span !0 91 95
+!17 = span !0 22 28
+!18 = span !0 232 243
+!19 = span !0 246 247
+!20 = span !0 32 38
+!21 = span !0 232 251
+!22 = span !0 254 255
+!23 = span !0 76 87
+!24 = span !0 258 259
+!25 = span !0 254 260
+!26 = span !0 232 260
+
+script {
+    entry fn main() -> u64, !1 {
+        local [u64; 4] __anon_0
+        local { u64, u64 } __anon_1
+        local u64 __anon_10
+        local u64 __anon_18
+        local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
+
+        entry():
+        v0 = get_local __ptr [u64; 4], __anon_0, !2
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, __ptr u64, v1
+        v3 = const u64 0, !3
+        store v3 to v2, !2
+        v4 = const u64 1
+        v5 = get_elem_ptr v0, __ptr u64, v4
+        v6 = const u64 1, !4
+        store v6 to v5, !2
+        v7 = const u64 2
+        v8 = get_elem_ptr v0, __ptr u64, v7
+        v9 = const u64 2, !5
+        store v9 to v8, !2
+        v10 = const u64 3
+        v11 = get_elem_ptr v0, __ptr u64, v10
+        v12 = const u64 3, !6
+        store v12 to v11, !2
+        v13 = get_local __ptr { u64, u64 }, __anon_1, !7
+        v14 = const u64 0
+        v15 = get_elem_ptr v13, __ptr u64, v14
+        v16 = get_local __ptr u64, __anon_10
+        v17 = const u64 199, !8
+        store v17 to v16, !7
+        v18 = const u64 1
+        v19 = get_elem_ptr v13, __ptr u64, v18
+        v20 = get_local __ptr u64, __anon_18
+        v21 = const u64 200, !9
+        store v21 to v20, !7
+        v22 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !10
+        v23 = const u64 0
+        v24 = get_elem_ptr v22, __ptr u64, v23
+        v25 = const u64 2, !11
+        store v25 to v24, !10
+        v26 = const u64 1
+        v27 = get_elem_ptr v22, __ptr u64, v26
+        v28 = const u64 3, !12
+        store v28 to v27, !10
+        v29 = const u64 2
+        v30 = get_elem_ptr v22, __ptr [u64; 4], v29
+        mem_copy_val v30, v0
+        v31 = const u64 3
+        v32 = get_elem_ptr v22, __ptr { u64, u64 }, v31
+        v33 = get_local __ptr u64, __anon_10
+        v34 = load v33
+        v35 = get_local __ptr u64, __anon_18
+        v36 = load v35
+        v37 = const u64 0
+        v38 = get_elem_ptr v32, __ptr u64, v37
+        store v34 to v38
+        v39 = const u64 1
+        v40 = get_elem_ptr v32, __ptr u64, v39
+        store v36 to v40
+        v41 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !13
+        v42 = const u64 0
+        v43 = get_elem_ptr v41, __ptr u64, v42, !14
+        v44 = load v43
+        v45 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !15
+        v46 = const u64 3
+        v47 = get_elem_ptr v45, __ptr { u64, u64 }, v46, !16
+        v48 = const u64 0
+        v49 = get_elem_ptr v47, __ptr u64, v48, !17
+        v50 = load v49
+        v51 = add v44, v50, !18
+        v52 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !19
+        v53 = const u64 3
+        v54 = get_elem_ptr v52, __ptr { u64, u64 }, v53, !16
+        v55 = const u64 1
+        v56 = get_elem_ptr v54, __ptr u64, v55, !20
+        v57 = load v56
+        v58 = add v51, v57, !21
+        v59 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !22
+        v60 = const u64 2
+        v61 = get_elem_ptr v59, __ptr [u64; 4], v60, !23
+        v62 = const u64 1, !24
+        v63 = get_elem_ptr v61, __ptr u64, v62, !25
+        v64 = load v63
+        v65 = add v58, v64, !26
+        ret u64 v65
+    }
+}
+
+!0 = "src/main.sw"
+!1 = span !0 100 262
+!2 = span !0 174 186
+!3 = span !0 175 176
+!4 = span !0 178 179
+!5 = span !0 181 182
+!6 = span !0 184 185
+!7 = span !0 199 220
+!8 = span !0 206 209
+!9 = span !0 215 218
+!10 = span !0 130 226
+!11 = span !0 146 147
+!12 = span !0 160 161
+!13 = span !0 232 233
+!14 = span !0 56 62
+!15 = span !0 238 239
+!16 = span !0 91 95
+!17 = span !0 22 28
+!18 = span !0 232 243
+!19 = span !0 246 247
+!20 = span !0 32 38
+!21 = span !0 232 251
+!22 = span !0 254 255
+!23 = span !0 76 87
+!24 = span !0 258 259
+!25 = span !0 254 260
+!26 = span !0 232 260
+
+mem2reg
+------
+script {
+    entry fn main() -> u64, !1 {
+        local [u64; 4] __anon_0
+        local { u64, u64 } __anon_1
+        local u64 __anon_10
+        local u64 __anon_18
+        local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
+
+        entry():
+        v0 = get_local __ptr [u64; 4], __anon_0, !2
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, __ptr u64, v1
+        v3 = const u64 0, !3
+        store v3 to v2, !2
+        v4 = const u64 1
+        v5 = get_elem_ptr v0, __ptr u64, v4
+        v6 = const u64 1, !4
+        store v6 to v5, !2
+        v7 = const u64 2
+        v8 = get_elem_ptr v0, __ptr u64, v7
+        v9 = const u64 2, !5
+        store v9 to v8, !2
+        v10 = const u64 3
+        v11 = get_elem_ptr v0, __ptr u64, v10
+        v12 = const u64 3, !6
+        store v12 to v11, !2
+        v13 = get_local __ptr { u64, u64 }, __anon_1, !7
+        v14 = const u64 0
+        v15 = get_elem_ptr v13, __ptr u64, v14
+        v16 = get_local __ptr u64, __anon_10
+        v17 = const u64 199, !8
+        store v17 to v16, !7
+        v18 = const u64 1
+        v19 = get_elem_ptr v13, __ptr u64, v18
+        v20 = get_local __ptr u64, __anon_18
+        v21 = const u64 200, !9
+        store v21 to v20, !7
+        v22 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !10
+        v23 = const u64 0
+        v24 = get_elem_ptr v22, __ptr u64, v23
+        v25 = const u64 2, !11
+        store v25 to v24, !10
+        v26 = const u64 1
+        v27 = get_elem_ptr v22, __ptr u64, v26
+        v28 = const u64 3, !12
+        store v28 to v27, !10
+        v29 = const u64 2
+        v30 = get_elem_ptr v22, __ptr [u64; 4], v29
+        mem_copy_val v30, v0
+        v31 = const u64 3
+        v32 = get_elem_ptr v22, __ptr { u64, u64 }, v31
+        v33 = get_local __ptr u64, __anon_10
+        v34 = load v33
+        v35 = get_local __ptr u64, __anon_18
+        v36 = load v35
+        v37 = const u64 0
+        v38 = get_elem_ptr v32, __ptr u64, v37
+        store v34 to v38
+        v39 = const u64 1
+        v40 = get_elem_ptr v32, __ptr u64, v39
+        store v36 to v40
+        v41 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !13
+        v42 = const u64 0
+        v43 = get_elem_ptr v41, __ptr u64, v42, !14
+        v44 = load v43
+        v45 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !15
+        v46 = const u64 3
+        v47 = get_elem_ptr v45, __ptr { u64, u64 }, v46, !16
+        v48 = const u64 0
+        v49 = get_elem_ptr v47, __ptr u64, v48, !17
+        v50 = load v49
+        v51 = add v44, v50, !18
+        v52 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !19
+        v53 = const u64 3
+        v54 = get_elem_ptr v52, __ptr { u64, u64 }, v53, !16
+        v55 = const u64 1
+        v56 = get_elem_ptr v54, __ptr u64, v55, !20
+        v57 = load v56
+        v58 = add v51, v57, !21
+        v59 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !22
+        v60 = const u64 2
+        v61 = get_elem_ptr v59, __ptr [u64; 4], v60, !23
+        v62 = const u64 1, !24
+        v63 = get_elem_ptr v61, __ptr u64, v62, !25
+        v64 = load v63
+        v65 = add v58, v64, !26
+        ret u64 v65
+    }
+}
+
+!0 = "src/main.sw"
+!1 = span !0 100 262
+!2 = span !0 174 186
+!3 = span !0 175 176
+!4 = span !0 178 179
+!5 = span !0 181 182
+!6 = span !0 184 185
+!7 = span !0 199 220
+!8 = span !0 206 209
+!9 = span !0 215 218
+!10 = span !0 130 226
+!11 = span !0 146 147
+!12 = span !0 160 161
+!13 = span !0 232 233
+!14 = span !0 56 62
+!15 = span !0 238 239
+!16 = span !0 91 95
+!17 = span !0 22 28
+!18 = span !0 232 243
+!19 = span !0 246 247
+!20 = span !0 32 38
+!21 = span !0 232 251
+!22 = span !0 254 255
+!23 = span !0 76 87
+!24 = span !0 258 259
+!25 = span !0 254 260
+!26 = span !0 232 260
+
+script {
+    entry fn main() -> u64, !1 {
+        local [u64; 4] __anon_0
+        local { u64, u64 } __anon_1
+        local u64 __anon_10
+        local u64 __anon_18
+        local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
+
+        entry():
+        v0 = get_local __ptr [u64; 4], __anon_0, !2
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, __ptr u64, v1
+        v3 = const u64 0, !3
+        store v3 to v2, !2
+        v4 = const u64 1
+        v5 = get_elem_ptr v0, __ptr u64, v4
+        v6 = const u64 1, !4
+        store v6 to v5, !2
+        v7 = const u64 2
+        v8 = get_elem_ptr v0, __ptr u64, v7
+        v9 = const u64 2, !5
+        store v9 to v8, !2
+        v10 = const u64 3
+        v11 = get_elem_ptr v0, __ptr u64, v10
+        v12 = const u64 3, !6
+        store v12 to v11, !2
+        v13 = get_local __ptr { u64, u64 }, __anon_1, !7
+        v14 = const u64 0
+        v15 = get_elem_ptr v13, __ptr u64, v14
+        v16 = get_local __ptr u64, __anon_10
+        v17 = const u64 1
+        v18 = get_elem_ptr v13, __ptr u64, v17
+        v19 = get_local __ptr u64, __anon_18
+        v20 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !8
+        v21 = const u64 0
+        v22 = get_elem_ptr v20, __ptr u64, v21
+        v23 = const u64 2, !9
+        store v23 to v22, !8
+        v24 = const u64 1
+        v25 = get_elem_ptr v20, __ptr u64, v24
+        v26 = const u64 3, !10
+        store v26 to v25, !8
+        v27 = const u64 2
+        v28 = get_elem_ptr v20, __ptr [u64; 4], v27
+        mem_copy_val v28, v0
+        v29 = const u64 3
+        v30 = get_elem_ptr v20, __ptr { u64, u64 }, v29
+        v31 = get_local __ptr u64, __anon_10
+        v32 = get_local __ptr u64, __anon_18
+        v33 = const u64 0
+        v34 = get_elem_ptr v30, __ptr u64, v33
+        v35 = const u64 199, !11
+        store v35 to v34
+        v36 = const u64 1
+        v37 = get_elem_ptr v30, __ptr u64, v36
+        v38 = const u64 200, !12
+        store v38 to v37
+        v39 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !13
+        v40 = const u64 0
+        v41 = get_elem_ptr v39, __ptr u64, v40, !14
+        v42 = load v41
+        v43 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !15
+        v44 = const u64 3
+        v45 = get_elem_ptr v43, __ptr { u64, u64 }, v44, !16
+        v46 = const u64 0
+        v47 = get_elem_ptr v45, __ptr u64, v46, !17
+        v48 = load v47
+        v49 = add v42, v48, !18
+        v50 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !19
+        v51 = const u64 3
+        v52 = get_elem_ptr v50, __ptr { u64, u64 }, v51, !16
+        v53 = const u64 1
+        v54 = get_elem_ptr v52, __ptr u64, v53, !20
+        v55 = load v54
+        v56 = add v49, v55, !21
+        v57 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !22
+        v58 = const u64 2
+        v59 = get_elem_ptr v57, __ptr [u64; 4], v58, !23
+        v60 = const u64 1, !24
+        v61 = get_elem_ptr v59, __ptr u64, v60, !25
+        v62 = load v61
+        v63 = add v56, v62, !26
+        ret u64 v63
+    }
+}
+
+!0 = "src/main.sw"
+!1 = span !0 100 262
+!2 = span !0 174 186
+!3 = span !0 175 176
+!4 = span !0 178 179
+!5 = span !0 181 182
+!6 = span !0 184 185
+!7 = span !0 199 220
+!8 = span !0 130 226
+!9 = span !0 146 147
+!10 = span !0 160 161
+!11 = span !0 206 209
+!12 = span !0 215 218
+!13 = span !0 232 233
+!14 = span !0 56 62
+!15 = span !0 238 239
+!16 = span !0 91 95
+!17 = span !0 22 28
+!18 = span !0 232 243
+!19 = span !0 246 247
+!20 = span !0 32 38
+!21 = span !0 232 251
+!22 = span !0 254 255
+!23 = span !0 76 87
+!24 = span !0 258 259
+!25 = span !0 254 260
+!26 = span !0 232 260
+
+dce
+------
+script {
+    entry fn main() -> u64, !1 {
+        local [u64; 4] __anon_0
+        local { u64, u64 } __anon_1
+        local u64 __anon_10
+        local u64 __anon_18
+        local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
+
+        entry():
+        v0 = get_local __ptr [u64; 4], __anon_0, !2
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, __ptr u64, v1
+        v3 = const u64 0, !3
+        store v3 to v2, !2
+        v4 = const u64 1
+        v5 = get_elem_ptr v0, __ptr u64, v4
+        v6 = const u64 1, !4
+        store v6 to v5, !2
+        v7 = const u64 2
+        v8 = get_elem_ptr v0, __ptr u64, v7
+        v9 = const u64 2, !5
+        store v9 to v8, !2
+        v10 = const u64 3
+        v11 = get_elem_ptr v0, __ptr u64, v10
+        v12 = const u64 3, !6
+        store v12 to v11, !2
+        v13 = get_local __ptr { u64, u64 }, __anon_1, !7
+        v14 = const u64 0
+        v15 = get_elem_ptr v13, __ptr u64, v14
+        v16 = get_local __ptr u64, __anon_10
+        v17 = const u64 1
+        v18 = get_elem_ptr v13, __ptr u64, v17
+        v19 = get_local __ptr u64, __anon_18
+        v20 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !8
+        v21 = const u64 0
+        v22 = get_elem_ptr v20, __ptr u64, v21
+        v23 = const u64 2, !9
+        store v23 to v22, !8
+        v24 = const u64 1
+        v25 = get_elem_ptr v20, __ptr u64, v24
+        v26 = const u64 3, !10
+        store v26 to v25, !8
+        v27 = const u64 2
+        v28 = get_elem_ptr v20, __ptr [u64; 4], v27
+        mem_copy_val v28, v0
+        v29 = const u64 3
+        v30 = get_elem_ptr v20, __ptr { u64, u64 }, v29
+        v31 = get_local __ptr u64, __anon_10
+        v32 = get_local __ptr u64, __anon_18
+        v33 = const u64 0
+        v34 = get_elem_ptr v30, __ptr u64, v33
+        v35 = const u64 199, !11
+        store v35 to v34
+        v36 = const u64 1
+        v37 = get_elem_ptr v30, __ptr u64, v36
+        v38 = const u64 200, !12
+        store v38 to v37
+        v39 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !13
+        v40 = const u64 0
+        v41 = get_elem_ptr v39, __ptr u64, v40, !14
+        v42 = load v41
+        v43 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !15
+        v44 = const u64 3
+        v45 = get_elem_ptr v43, __ptr { u64, u64 }, v44, !16
+        v46 = const u64 0
+        v47 = get_elem_ptr v45, __ptr u64, v46, !17
+        v48 = load v47
+        v49 = add v42, v48, !18
+        v50 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !19
+        v51 = const u64 3
+        v52 = get_elem_ptr v50, __ptr { u64, u64 }, v51, !16
+        v53 = const u64 1
+        v54 = get_elem_ptr v52, __ptr u64, v53, !20
+        v55 = load v54
+        v56 = add v49, v55, !21
+        v57 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !22
+        v58 = const u64 2
+        v59 = get_elem_ptr v57, __ptr [u64; 4], v58, !23
+        v60 = const u64 1, !24
+        v61 = get_elem_ptr v59, __ptr u64, v60, !25
+        v62 = load v61
+        v63 = add v56, v62, !26
+        ret u64 v63
+    }
+}
+
+!0 = "src/main.sw"
+!1 = span !0 100 262
+!2 = span !0 174 186
+!3 = span !0 175 176
+!4 = span !0 178 179
+!5 = span !0 181 182
+!6 = span !0 184 185
+!7 = span !0 199 220
+!8 = span !0 130 226
+!9 = span !0 146 147
+!10 = span !0 160 161
+!11 = span !0 206 209
+!12 = span !0 215 218
+!13 = span !0 232 233
+!14 = span !0 56 62
+!15 = span !0 238 239
+!16 = span !0 91 95
+!17 = span !0 22 28
+!18 = span !0 232 243
+!19 = span !0 246 247
+!20 = span !0 32 38
+!21 = span !0 232 251
+!22 = span !0 254 255
+!23 = span !0 76 87
+!24 = span !0 258 259
+!25 = span !0 254 260
+!26 = span !0 232 260
+
+script {
+    entry fn main() -> u64, !1 {
+        local [u64; 4] __anon_0
+        local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
+
+        entry():
+        v0 = get_local __ptr [u64; 4], __anon_0, !2
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, __ptr u64, v1
+        v3 = const u64 0, !3
+        store v3 to v2, !2
+        v4 = const u64 1
+        v5 = get_elem_ptr v0, __ptr u64, v4
+        v6 = const u64 1, !4
+        store v6 to v5, !2
+        v7 = const u64 2
+        v8 = get_elem_ptr v0, __ptr u64, v7
+        v9 = const u64 2, !5
+        store v9 to v8, !2
+        v10 = const u64 3
+        v11 = get_elem_ptr v0, __ptr u64, v10
+        v12 = const u64 3, !6
+        store v12 to v11, !2
+        v13 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !7
+        v14 = const u64 0
+        v15 = get_elem_ptr v13, __ptr u64, v14
+        v16 = const u64 2, !8
+        store v16 to v15, !7
+        v17 = const u64 1
+        v18 = get_elem_ptr v13, __ptr u64, v17
+        v19 = const u64 3, !9
+        store v19 to v18, !7
+        v20 = const u64 2
+        v21 = get_elem_ptr v13, __ptr [u64; 4], v20
+        mem_copy_val v21, v0
+        v22 = const u64 3
+        v23 = get_elem_ptr v13, __ptr { u64, u64 }, v22
+        v24 = const u64 0
+        v25 = get_elem_ptr v23, __ptr u64, v24
+        v26 = const u64 199, !10
+        store v26 to v25
+        v27 = const u64 1
+        v28 = get_elem_ptr v23, __ptr u64, v27
+        v29 = const u64 200, !11
+        store v29 to v28
+        v30 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !12
+        v31 = const u64 0
+        v32 = get_elem_ptr v30, __ptr u64, v31, !13
+        v33 = load v32
+        v34 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !14
+        v35 = const u64 3
+        v36 = get_elem_ptr v34, __ptr { u64, u64 }, v35, !15
+        v37 = const u64 0
+        v38 = get_elem_ptr v36, __ptr u64, v37, !16
+        v39 = load v38
+        v40 = add v33, v39, !17
+        v41 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !18
+        v42 = const u64 3
+        v43 = get_elem_ptr v41, __ptr { u64, u64 }, v42, !15
+        v44 = const u64 1
+        v45 = get_elem_ptr v43, __ptr u64, v44, !19
+        v46 = load v45
+        v47 = add v40, v46, !20
+        v48 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !21
+        v49 = const u64 2
+        v50 = get_elem_ptr v48, __ptr [u64; 4], v49, !22
+        v51 = const u64 1, !23
+        v52 = get_elem_ptr v50, __ptr u64, v51, !24
+        v53 = load v52
+        v54 = add v47, v53, !25
+        ret u64 v54
+    }
+}
+
+!0 = "src/main.sw"
+!1 = span !0 100 262
+!2 = span !0 174 186
+!3 = span !0 175 176
+!4 = span !0 178 179
+!5 = span !0 181 182
+!6 = span !0 184 185
+!7 = span !0 130 226
+!8 = span !0 146 147
+!9 = span !0 160 161
+!10 = span !0 206 209
+!11 = span !0 215 218
+!12 = span !0 232 233
+!13 = span !0 56 62
+!14 = span !0 238 239
+!15 = span !0 91 95
+!16 = span !0 22 28
+!17 = span !0 232 243
+!18 = span !0 246 247
+!19 = span !0 32 38
+!20 = span !0 232 251
+!21 = span !0 254 255
+!22 = span !0 76 87
+!23 = span !0 258 259
+!24 = span !0 254 260
+!25 = span !0 232 260
+
+--- FILECHECK FAILED FOR /home/xunilrj/github/sway/sway-ir/tests/sroa/nested_struct_array.ir
+> script {
+>     entry fn main() -> u64, !1 {
+>         local [u64; 4] __anon_0
+>         local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
+> 
+>         entry():
+>         v0 = get_local __ptr [u64; 4], __anon_0, !2
+>         v1 = const u64 0
+>         v2 = get_elem_ptr v0, __ptr u64, v1
+>         v3 = const u64 0, !3
+>         store v3 to v2, !2
+>         v4 = const u64 1
+>         v5 = get_elem_ptr v0, __ptr u64, v4
+>         v6 = const u64 1, !4
+>         store v6 to v5, !2
+>         v7 = const u64 2
+>         v8 = get_elem_ptr v0, __ptr u64, v7
+>         v9 = const u64 2, !5
+>         store v9 to v8, !2
+>         v10 = const u64 3
+>         v11 = get_elem_ptr v0, __ptr u64, v10
+>         v12 = const u64 3, !6
+>         store v12 to v11, !2
+>         v13 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !7
+>         v14 = const u64 0
+>         v15 = get_elem_ptr v13, __ptr u64, v14
+>         v16 = const u64 2, !8
+>         store v16 to v15, !7
+>         v17 = const u64 1
+>         v18 = get_elem_ptr v13, __ptr u64, v17
+>         v19 = const u64 3, !9
+>         store v19 to v18, !7
+>         v20 = const u64 2
+>         v21 = get_elem_ptr v13, __ptr [u64; 4], v20
+>         mem_copy_val v21, v0
+>         v22 = const u64 3
+>         v23 = get_elem_ptr v13, __ptr { u64, u64 }, v22
+>         v24 = const u64 0
+>         v25 = get_elem_ptr v23, __ptr u64, v24
+>         v26 = const u64 199, !10
+>         store v26 to v25
+>         v27 = const u64 1
+>         v28 = get_elem_ptr v23, __ptr u64, v27
+>         v29 = const u64 200, !11
+>         store v29 to v28
+>         v30 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !12
+>         v31 = const u64 0
+>         v32 = get_elem_ptr v30, __ptr u64, v31, !13
+>         v33 = load v32
+>         v34 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !14
+>         v35 = const u64 3
+>         v36 = get_elem_ptr v34, __ptr { u64, u64 }, v35, !15
+>         v37 = const u64 0
+>         v38 = get_elem_ptr v36, __ptr u64, v37, !16
+>         v39 = load v38
+>         v40 = add v33, v39, !17
+>         v41 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !18
+>         v42 = const u64 3
+>         v43 = get_elem_ptr v41, __ptr { u64, u64 }, v42, !15
+>         v44 = const u64 1
+>         v45 = get_elem_ptr v43, __ptr u64, v44, !19
+>         v46 = load v45
+>         v47 = add v40, v46, !20
+>         v48 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !21
+>         v49 = const u64 2
+>         v50 = get_elem_ptr v48, __ptr [u64; 4], v49, !22
+>         v51 = const u64 1, !23
+>         v52 = get_elem_ptr v50, __ptr u64, v51, !24
+>         v53 = load v52
+>         v54 = add v47, v53, !25
+>         ret u64 v54
+>     }
+> }
+> 
+> !0 = "src/main.sw"
+> !1 = span !0 100 262
+> !2 = span !0 174 186
+> !3 = span !0 175 176
+> !4 = span !0 178 179
+> !5 = span !0 181 182
+> !6 = span !0 184 185
+> !7 = span !0 130 226
+> !8 = span !0 146 147
+> !9 = span !0 160 161
+> !10 = span !0 206 209
+> !11 = span !0 215 218
+> !12 = span !0 232 233
+> !13 = span !0 56 62
+> !14 = span !0 238 239
+> !15 = span !0 91 95
+> !16 = span !0 22 28
+> !17 = span !0 232 243
+> !18 = span !0 246 247
+> !19 = span !0 32 38
+> !20 = span !0 232 251
+> !21 = span !0 254 255
+> !22 = span !0 76 87
+> !23 = span !0 258 259
+> !24 = span !0 254 260
+> !25 = span !0 232 260
+
+
+thread 'sroa' panicked at sway-ir/tests/tests.rs:71:17:
+explicit panic
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    sroa
+
+test result: FAILED. 17 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
