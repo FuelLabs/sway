@@ -22,6 +22,8 @@ use std::{
     thread,
     time::Duration,
 };
+use flate2::read::GzDecoder;
+use tar::Archive;
 
 /// Name of the folder containing fetched registry sources.
 pub const REG_DIR_NAME: &str = "registry";
@@ -45,6 +47,14 @@ pub struct Pinned {
     pub source: Source,
     /// The corresponding CID for this registry entry.
     pub cid: Cid,
+}
+
+/// Response structure for the S3 download links endpoint
+#[derive(Debug, Deserialize)]
+pub(crate) struct DownloadLinksResponse {
+    package_name: String,
+    version: String,
+    source_code_s3_url: String,
 }
 
 /// A resolver for registry index hosted as a github repo.
@@ -458,18 +468,30 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
 
             let cid = resolve_to_cid(&index_file, pinned)?;
 
-            match ipfs_node {
+            // Try IPFS first, fallback to S3 if it fails
+            let ipfs_result = match ipfs_node {
                 IPFSNode::Local => {
                     println_action_green("Fetching", "with local IPFS node");
-                    cid.fetch_with_client(&ipfs_client(), &path).await?;
+                    cid.fetch_with_client(&ipfs_client(), &path).await
                 }
                 IPFSNode::WithUrl(gateway_url) => {
                     println_action_green(
                         "Fetching",
                         &format!("from {}. Note: This can take several minutes.", gateway_url),
                     );
-                    cid.fetch_with_gateway_url(gateway_url, &path).await?;
+                    cid.fetch_with_gateway_url(gateway_url, &path).await
                 }
+            };
+
+            // If IPFS fails, try S3 fallback
+            if let Err(ipfs_error) = ipfs_result {
+                println_action_green("Warning", &format!("IPFS fetch failed: {}", ipfs_error));
+                fetch_from_s3(pinned, &path).await.with_context(|| {
+                    format!(
+                        "Both IPFS and S3 fallback failed. IPFS error: {}",
+                        ipfs_error
+                    )
+                })?;
             }
 
             Ok(path)
@@ -477,6 +499,101 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
     )
     .await?;
     Ok(path)
+}
+
+/// Fetches package from S3 as a fallback when IPFS fails
+async fn fetch_from_s3(pinned: &Pinned, path: &Path) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    let download_url = format!(
+        "https://forc.pub/package/download?name={}&version={}",
+        pinned.source.name, pinned.source.version
+    );
+    
+    println_action_green("Fetching", "from S3 (IPFS fallback)");
+    
+    // Get download links from forc.pub
+    let response = client
+        .get(&download_url)
+        .send()
+        .await
+        .context("Failed to get download links from forc.pub")?;
+    
+    if !response.status().is_success() {
+        bail!(
+            "Failed to get download links for {}@{}: HTTP {}",
+            pinned.source.name,
+            pinned.source.version,
+            response.status()
+        );
+    }
+    
+    let response_text = response
+        .text()
+        .await
+        .context("Failed to read download links response")?;
+    
+    let download_links: DownloadLinksResponse = serde_json::from_str(&response_text)
+        .context("Failed to parse download links response")?;
+    
+    // Validate we got the correct package
+    if download_links.package_name != pinned.source.name {
+        bail!(
+            "Package name mismatch: expected {}, got {}",
+            pinned.source.name,
+            download_links.package_name
+        );
+    }
+    
+    if download_links.version != pinned.source.version.to_string() {
+        bail!(
+            "Version mismatch: expected {}, got {}",
+            pinned.source.version,
+            download_links.version
+        );
+    }
+    
+    // Download the source code from S3
+    let source_response = client
+        .get(&download_links.source_code_s3_url)
+        .send()
+        .await
+        .context("Failed to download source code from S3")?;
+    
+    if !source_response.status().is_success() {
+        bail!(
+            "Failed to download source from S3: HTTP {}",
+            source_response.status()
+        );
+    }
+    
+    let bytes = source_response
+        .bytes()
+        .await
+        .context("Failed to read source code bytes")?;
+    
+    // Extract the tarball to the destination path
+    extract_s3_archive(&bytes, path, &pinned.cid)?;
+    
+    Ok(())
+}
+
+/// Extracts S3 archive to destination path
+fn extract_s3_archive(bytes: &[u8], dst: &Path, cid: &Cid) -> anyhow::Result<()> {
+    // Create the destination directory with CID name (to match IPFS behavior)
+    let dst_dir = dst.join(cid.0.to_string());
+    fs::create_dir_all(&dst_dir)?;
+    
+    // Decompress and extract the tar.gz archive
+    let tar = GzDecoder::new(bytes);
+    let mut archive = Archive::new(tar);
+    
+    // Extract all entries
+    for entry in archive.entries()? {
+        let mut entry = entry?;
+        entry.unpack_in(&dst_dir)?;
+    }
+    
+    Ok(())
 }
 
 async fn with_tmp_fetch_index<F, O, Fut>(
@@ -571,7 +688,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{file_location::Namespace, resolve_to_cid, Pinned, Source};
+    use super::{file_location::Namespace, resolve_to_cid, Pinned, Source, DownloadLinksResponse};
     use crate::source::{
         ipfs::Cid,
         reg::index_file::{IndexFile, PackageEntry},
@@ -725,5 +842,35 @@ mod tests {
             error_msg.contains("Other available versions: [1.1.0,1.0.0]")
                 || error_msg.contains("Other available versions: [1.0.0,1.1.0]")
         );
+    }
+
+    #[test]
+    fn test_s3_download_links_deserialization() {
+        let json_response = r#"{
+            "package_name": "test_package",
+            "version": "1.0.0",
+            "source_code_s3_url": "https://s3.amazonaws.com/bucket/source.tar.gz",
+            "abi_s3_url": "https://s3.amazonaws.com/bucket/abi.json"
+        }"#;
+        
+        let links: DownloadLinksResponse = serde_json::from_str(json_response).unwrap();
+        assert_eq!(links.package_name, "test_package");
+        assert_eq!(links.version, "1.0.0");
+        assert_eq!(links.source_code_s3_url, "https://s3.amazonaws.com/bucket/source.tar.gz");
+    }
+
+    #[test]
+    fn test_s3_download_links_deserialization_no_abi() {
+        let json_response = r#"{
+            "package_name": "test_package",
+            "version": "1.0.0",
+            "source_code_s3_url": "https://s3.amazonaws.com/bucket/source.tar.gz",
+            "abi_s3_url": null
+        }"#;
+        
+        let links: DownloadLinksResponse = serde_json::from_str(json_response).unwrap();
+        assert_eq!(links.package_name, "test_package");
+        assert_eq!(links.version, "1.0.0");
+        assert_eq!(links.source_code_s3_url, "https://s3.amazonaws.com/bucket/source.tar.gz");
     }
 }
