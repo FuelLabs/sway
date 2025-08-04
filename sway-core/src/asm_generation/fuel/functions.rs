@@ -992,7 +992,7 @@ impl FuelAsmBuilder<'_, '_> {
                         opcode: Either::Left(VirtualOp::ADDI(
                             VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualRegister::Constant(ConstantRegister::LocalsBase),
-                            VirtualImmediate12::new(stack_base_words, Span::dummy())
+                            VirtualImmediate12::new(stack_base_words * 8, Span::dummy())
                                 .expect("variable in stack offset does not fit in 18 bits"),
                         )),
                         comment: "array initialization - array ptr".into(),

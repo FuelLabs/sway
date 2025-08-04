@@ -84,6 +84,15 @@ fn big_array_repeat() -> [bool; 25] {
     [true; 25]
 }
 
+// Check if offsets are correct
+#[inline(never)]
+fn multiple_locals() -> ([u64; 10], u64, [u64; 20]) {
+    let a = [0u64; 10];
+    let b = 1u64;
+    let c = [0u64; 20];
+    (a, b, c)
+}
+
 fn main() {
     let _ = array_repeat_zero_small_u8();
     let _ = array_repeat_zero_small_u16();
@@ -103,6 +112,8 @@ fn main() {
 
     let _ = small_array_repeat();
     let _ = big_array_repeat();
+
+    let _ = multiple_locals();
 }
 
 trait IsZero { fn is_zero(self) -> bool; }
