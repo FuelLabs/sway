@@ -11,6 +11,7 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context};
 use file_location::{location_from_root, Namespace};
+use flate2::read::GzDecoder;
 use forc_tracing::println_action_green;
 use index_file::IndexFile;
 use serde::{Deserialize, Serialize};
@@ -22,7 +23,6 @@ use std::{
     thread,
     time::Duration,
 };
-use flate2::read::GzDecoder;
 use tar::Archive;
 
 /// Name of the folder containing fetched registry sources.
@@ -508,16 +508,16 @@ async fn fetch_from_s3(pinned: &Pinned, path: &Path) -> anyhow::Result<()> {
         "https://forc.pub/package/download?name={}&version={}",
         pinned.source.name, pinned.source.version
     );
-    
+
     println_action_green("Fetching", "from S3 (IPFS fallback)");
-    
+
     // Get download links from forc.pub
     let response = client
         .get(&download_url)
         .send()
         .await
         .context("Failed to get download links from forc.pub")?;
-    
+
     if !response.status().is_success() {
         bail!(
             "Failed to get download links for {}@{}: HTTP {}",
@@ -526,15 +526,15 @@ async fn fetch_from_s3(pinned: &Pinned, path: &Path) -> anyhow::Result<()> {
             response.status()
         );
     }
-    
+
     let response_text = response
         .text()
         .await
         .context("Failed to read download links response")?;
-    
-    let download_links: DownloadLinksResponse = serde_json::from_str(&response_text)
-        .context("Failed to parse download links response")?;
-    
+
+    let download_links: DownloadLinksResponse =
+        serde_json::from_str(&response_text).context("Failed to parse download links response")?;
+
     // Validate we got the correct package
     if download_links.package_name != pinned.source.name {
         bail!(
@@ -543,7 +543,7 @@ async fn fetch_from_s3(pinned: &Pinned, path: &Path) -> anyhow::Result<()> {
             download_links.package_name
         );
     }
-    
+
     if download_links.version != pinned.source.version.to_string() {
         bail!(
             "Version mismatch: expected {}, got {}",
@@ -551,29 +551,29 @@ async fn fetch_from_s3(pinned: &Pinned, path: &Path) -> anyhow::Result<()> {
             download_links.version
         );
     }
-    
+
     // Download the source code from S3
     let source_response = client
         .get(&download_links.source_code_s3_url)
         .send()
         .await
         .context("Failed to download source code from S3")?;
-    
+
     if !source_response.status().is_success() {
         bail!(
             "Failed to download source from S3: HTTP {}",
             source_response.status()
         );
     }
-    
+
     let bytes = source_response
         .bytes()
         .await
         .context("Failed to read source code bytes")?;
-    
+
     // Extract the tarball to the destination path
     extract_s3_archive(&bytes, path, &pinned.cid)?;
-    
+
     Ok(())
 }
 
@@ -582,17 +582,17 @@ fn extract_s3_archive(bytes: &[u8], dst: &Path, cid: &Cid) -> anyhow::Result<()>
     // Create the destination directory with CID name (to match IPFS behavior)
     let dst_dir = dst.join(cid.0.to_string());
     fs::create_dir_all(&dst_dir)?;
-    
+
     // Decompress and extract the tar.gz archive
     let tar = GzDecoder::new(bytes);
     let mut archive = Archive::new(tar);
-    
+
     // Extract all entries
     for entry in archive.entries()? {
         let mut entry = entry?;
         entry.unpack_in(&dst_dir)?;
     }
-    
+
     Ok(())
 }
 
@@ -688,7 +688,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{file_location::Namespace, resolve_to_cid, Pinned, Source, DownloadLinksResponse};
+    use super::{file_location::Namespace, resolve_to_cid, DownloadLinksResponse, Pinned, Source};
     use crate::source::{
         ipfs::Cid,
         reg::index_file::{IndexFile, PackageEntry},
@@ -852,11 +852,14 @@ mod tests {
             "source_code_s3_url": "https://s3.amazonaws.com/bucket/source.tar.gz",
             "abi_s3_url": "https://s3.amazonaws.com/bucket/abi.json"
         }"#;
-        
+
         let links: DownloadLinksResponse = serde_json::from_str(json_response).unwrap();
         assert_eq!(links.package_name, "test_package");
         assert_eq!(links.version, "1.0.0");
-        assert_eq!(links.source_code_s3_url, "https://s3.amazonaws.com/bucket/source.tar.gz");
+        assert_eq!(
+            links.source_code_s3_url,
+            "https://s3.amazonaws.com/bucket/source.tar.gz"
+        );
     }
 
     #[test]
@@ -867,10 +870,13 @@ mod tests {
             "source_code_s3_url": "https://s3.amazonaws.com/bucket/source.tar.gz",
             "abi_s3_url": null
         }"#;
-        
+
         let links: DownloadLinksResponse = serde_json::from_str(json_response).unwrap();
         assert_eq!(links.package_name, "test_package");
         assert_eq!(links.version, "1.0.0");
-        assert_eq!(links.source_code_s3_url, "https://s3.amazonaws.com/bucket/source.tar.gz");
+        assert_eq!(
+            links.source_code_s3_url,
+            "https://s3.amazonaws.com/bucket/source.tar.gz"
+        );
     }
 }
