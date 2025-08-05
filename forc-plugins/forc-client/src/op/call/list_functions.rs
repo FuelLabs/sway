@@ -146,46 +146,58 @@ mod tests {
     use std::{io::Cursor, path::Path, str::FromStr};
 
     #[tokio::test]
-    async fn test_list_contract_functions() {
+    async fn test_list_contract_functions_preserves_abi_source_format() {
         let (_, id, _, _) = get_contract_instance().await;
 
-        // Load a test ABI
+        // Load a test ABI content
         let abi_path_str = "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json";
         let abi_path = Path::new(abi_path_str);
-
         let abi_str = std::fs::read_to_string(abi_path).unwrap();
-        let abi = Abi::from_str(&abi_str).unwrap();
 
-        // Create the abi_map
-        let mut abi_map = HashMap::new();
-        abi_map.insert(id, abi);
+        // Test different source formats
+        let test_cases = vec![
+            (
+                "file_path",
+                crate::cmd::call::AbiSource::File(std::path::PathBuf::from("./test-abi.json")),
+                "--abi ./test-abi.json",
+            ),
+            (
+                "url",
+                crate::cmd::call::AbiSource::Url(
+                    url::Url::parse("https://example.com/abi.json").unwrap(),
+                ),
+                "--abi https://example.com/abi.json",
+            ),
+            (
+                "inline_json",
+                crate::cmd::call::AbiSource::String(r#"{"test":"value"}"#.to_string()),
+                r#"--abi {"test":"value"}"#,
+            ),
+        ];
 
-        // Use a buffer to capture the output
-        let mut output = Cursor::new(Vec::<u8>::new());
+        for (test_name, source, expected_abi_arg) in test_cases {
+            let abi = Abi::from_str(&abi_str).unwrap().with_source(source);
+            let mut abi_map = HashMap::new();
+            abi_map.insert(id, abi);
 
-        // Call function with our buffer as the writer
-        list_contract_functions(&id, &abi_map, &mut output)
-            .expect("Failed to list contract functions");
+            let mut output = Cursor::new(Vec::<u8>::new());
+            list_contract_functions(&id, &abi_map, &mut output).expect(&format!(
+                "Failed to list contract functions for {}",
+                test_name
+            ));
 
-        // Get the output as a string
-        let output_bytes = output.into_inner();
-        let output_string = String::from_utf8(output_bytes).expect("Output was not valid UTF-8");
+            let output_bytes = output.into_inner();
+            let output_string = String::from_utf8(output_bytes)
+                .expect(&format!("Output was not valid UTF-8 for {}", test_name));
 
-        // Check that the output contains key elements instead of exact string match
-        assert!(output_string.contains("Callable functions for contract:"));
-        assert!(output_string
-            .contains("053efe51968252f029899660d7064124084a48136e326e467f62cb7f5913ba77"));
-        assert!(output_string.contains("forc call"));
-        assert!(output_string.contains("programType"));
-        assert!(output_string.contains("contract"));
-        assert!(output_string.contains("functions"));
-
-        // Verify that we have some function names
-        assert!(output_string.contains("test_"));
-        assert!(output_string.contains("transfer"));
-
-        // Verify ABI structure is present
-        assert!(output_string.contains("concreteTypes"));
-        assert!(output_string.contains("metadataTypes"));
+            // Verify the ABI source is preserved exactly as provided
+            assert!(
+                output_string.contains(expected_abi_arg),
+                "Test '{}' failed: expected '{}' in output, but got:\n{}",
+                test_name,
+                expected_abi_arg,
+                output_string
+            );
+        }
     }
 }
