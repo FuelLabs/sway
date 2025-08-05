@@ -181,14 +181,10 @@ mod tests {
             abi_map.insert(id, abi);
 
             let mut output = Cursor::new(Vec::<u8>::new());
-            list_contract_functions(&id, &abi_map, &mut output).expect(&format!(
-                "Failed to list contract functions for {}",
-                test_name
-            ));
+            list_contract_functions(&id, &abi_map, &mut output).unwrap();
 
             let output_bytes = output.into_inner();
-            let output_string = String::from_utf8(output_bytes)
-                .expect(&format!("Output was not valid UTF-8 for {}", test_name));
+            let output_string = String::from_utf8(output_bytes).unwrap();
 
             // Verify the ABI source is preserved exactly as provided
             assert!(
