@@ -191,7 +191,7 @@ The repository [`sway-libs`](https://github.com/FuelLabs/sway-libs/) is a collec
 Some Sway Libraries to try out:
 
 - [Binary Merkle Proof](https://docs.fuel.network/docs/sway-libs/merkle/)
-- [Signed Integers](https://github.com/FuelLabs/sway-libs/tree/master/libs/src/signed_integers)
+- [Signed Integers](https://docs.fuel.network/docs/sway-libs/signed_integers/)
 - [Ownership](https://fuellabs.github.io/sway-libs/book/ownership/index.html)
 
 ### Example
