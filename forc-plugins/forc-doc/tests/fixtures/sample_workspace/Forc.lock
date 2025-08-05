@@ -12,5 +12,4 @@ dependencies = [
 
 [[package]]
 name = "std"
-version = "0.69.0"
-source = "registry+std?0.69.0#QmSeLFUtVXk8i13owCv87Kga1MfsYgfn7sdj6WimxLwq2g!"
+source = "path+from-root-0CDB23161116D3A1"

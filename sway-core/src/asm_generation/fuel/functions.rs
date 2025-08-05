@@ -819,27 +819,64 @@ impl FuelAsmBuilder<'_, '_> {
             }
         }
 
-        // If they're immutable and have a constant initialiser then they go in the data section.
+        // If they're immutable and have a constant initialiser then they go in the data section. TODO update this
         //
         // Otherwise they go in runtime allocated space, either a register or on the stack.
         //
         // Stack offsets are in words to both enforce alignment and simplify use with LW/SW.
         let (stack_base_words, init_mut_vars) = function.locals_iter(self.context).fold(
             (0, Vec::new()),
-            |(stack_base_words, mut init_mut_vars), (_name, ptr)| {
-                if let (false, Some(constant)) = (
-                    ptr.is_mutable(self.context),
-                    ptr.get_initializer(self.context),
-                ) {
-                    match constant.get_content(self.context).value {
-                        ConstantValue::Uint(c) if c <= compiler_constants::EIGHTEEN_BITS => {
+            |(mut stack_base_words, mut init_mut_vars), (_name, local_var)| match (
+                local_var.is_mutable(self.context),
+                local_var.get_initializer(self.context),
+            ) {
+                (false, Some(constant)) => {
+                    match &constant.get_content(self.context).value {
+                        ConstantValue::Uint(c) if *c <= compiler_constants::EIGHTEEN_BITS => {
                             self.ptr_map.insert(
-                                *ptr,
+                                *local_var,
                                 Storage::Const(VirtualImmediate18::new_unchecked(
-                                    c,
+                                    *c,
                                     "Cannot happen, we just checked",
                                 )),
                             );
+                        }
+                        // if all items of the array are zero, we don't store its data anywhere,
+                        // and initialize in one instruction with mcli
+                        ConstantValue::Array(a) => {
+                            let all_zero = a.iter().all(|x| match &x.value {
+                                ConstantValue::Bool(v) if !v => true,
+                                ConstantValue::Uint(v) if *v == 0 => true,
+                                ConstantValue::U256(v) if v.is_zero() => true,
+                                ConstantValue::B256(v) if v.is_zero() => true,
+                                _ => false,
+                            });
+                            if all_zero {
+                                let array_ty = local_var
+                                    .get_type(self.context)
+                                    .get_pointee_type(self.context)
+                                    .unwrap();
+                                let array_size = array_ty.size(self.context);
+
+                                self.ptr_map
+                                    .insert(*local_var, Storage::Stack(stack_base_words));
+                                init_mut_vars.push(InitMutVars {
+                                    stack_base_words,
+                                    var_size: array_size.clone(),
+                                    data: Storage::Stack(stack_base_words),
+                                });
+
+                                stack_base_words += array_size.in_words();
+                            } else {
+                                let data_id =
+                                    self.data_section.insert_data_value(Entry::from_constant(
+                                        self.context,
+                                        constant.get_content(self.context),
+                                        EntryName::NonConfigurable,
+                                        None,
+                                    ));
+                                self.ptr_map.insert(*local_var, Storage::Data(data_id));
+                            }
                         }
                         _ => {
                             let data_id =
@@ -849,17 +886,19 @@ impl FuelAsmBuilder<'_, '_> {
                                     EntryName::NonConfigurable,
                                     None,
                                 ));
-                            self.ptr_map.insert(*ptr, Storage::Data(data_id));
+                            self.ptr_map.insert(*local_var, Storage::Data(data_id));
                         }
                     }
                     (stack_base_words, init_mut_vars)
-                } else {
-                    self.ptr_map.insert(*ptr, Storage::Stack(stack_base_words));
+                }
+                _ => {
+                    self.ptr_map
+                        .insert(*local_var, Storage::Stack(stack_base_words));
 
-                    let ptr_ty = ptr.get_inner_type(self.context);
+                    let ptr_ty = local_var.get_inner_type(self.context);
                     let var_size = ptr_ty.size(self.context);
 
-                    if let Some(constant) = ptr.get_initializer(self.context) {
+                    if let Some(constant) = local_var.get_initializer(self.context) {
                         match constant.get_content(self.context).value {
                             ConstantValue::Uint(c) if c <= compiler_constants::EIGHTEEN_BITS => {
                                 let imm = VirtualImmediate18::new_unchecked(
@@ -939,122 +978,154 @@ impl FuelAsmBuilder<'_, '_> {
         ),
     ) {
         // Initialise that stack variables which requires it.
-        for InitMutVars {
-            stack_base_words,
-            var_size,
-            data,
-        } in init_mut_vars
-        {
-            if var_size.in_bytes() == 0 {
+        for var in init_mut_vars {
+            let InitMutVars {
+                stack_base_words,
+                var_size,
+                data,
+            } = var;
+            match (var_size.in_bytes(), &data) {
                 // Don't bother initializing zero-sized types.
-                continue;
-            }
-            // Load our initialiser from the data section.
-            match data {
-                Storage::Data(data_id) => {
+                (0, _) => {}
+                (_, Storage::Stack(_)) => {
                     self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::LoadDataId(
+                        opcode: Either::Left(VirtualOp::ADDI(
                             VirtualRegister::Constant(ConstantRegister::Scratch),
-                            data_id,
+                            VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                            VirtualImmediate12::new(stack_base_words * 8, Span::dummy())
+                                .expect("variable in stack offset does not fit in 18 bits"),
                         )),
-                        comment: "load local variable initializer from data section".to_owned(),
+                        comment: "array initialization - array ptr".into(),
+                        owning_span: None,
+                    });
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MCLI(
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualImmediate18::new(var_size.in_bytes(), Span::dummy())
+                                .expect("array length does not fit in 18 bits"),
+                        )),
+                        comment: "array initialization - clear".into(),
                         owning_span: None,
                     });
                 }
-                Storage::Stack(_) => panic!("Initializer cannot be on the stack"),
-                Storage::Const(c) => {
-                    self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::MOVI(
-                            VirtualRegister::Constant(ConstantRegister::Scratch),
-                            c.clone(),
-                        )),
-                        comment: "load local variable initializer from register".into(),
-                        owning_span: None,
-                    });
-                }
-            }
+                _ => {
+                    // Get the stack offset in bytes rather than words.
+                    let var_stack_off_bytes = stack_base_words * 8;
+                    let dst_reg = self.reg_seqr.next();
 
-            // Get the stack offset in bytes rather than words.
-            let var_stack_off_bytes = stack_base_words * 8;
-            let dst_reg = self.reg_seqr.next();
-            // Check if we can use the `ADDi` opcode.
-            if var_stack_off_bytes <= compiler_constants::TWELVE_BITS {
-                // Get the destination on the stack.
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::ADDI(
-                        dst_reg.clone(),
-                        locals_base_reg.clone(),
-                        VirtualImmediate12::new_unchecked(
-                            var_stack_off_bytes,
-                            "Stack offset too high",
-                        ),
-                    )),
-                    comment: "get local variable address".to_owned(),
-                    owning_span: None,
-                });
-            } else {
-                assert!(var_stack_off_bytes <= compiler_constants::EIGHTEEN_BITS);
-                // We can't, so load the immediate into a register and then add.
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MOVI(
-                        dst_reg.clone(),
-                        VirtualImmediate18::new_unchecked(
-                            var_stack_off_bytes,
-                            "Stack offset too high",
-                        ),
-                    )),
-                    comment: "move stack offset of local variable into register".to_owned(),
-                    owning_span: None,
-                });
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::ADD(
-                        dst_reg.clone(),
-                        locals_base_reg.clone(),
-                        dst_reg.clone(),
-                    )),
-                    comment: "get local variable address".to_owned(),
-                    owning_span: None,
-                });
-            }
+                    // Load our initialiser from the data section.
+                    match data {
+                        Storage::Stack(_) => panic!("Initializer cannot be on the stack"),
+                        Storage::Data(data_id) => {
+                            self.cur_bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::LoadDataId(
+                                    VirtualRegister::Constant(ConstantRegister::Scratch),
+                                    data_id,
+                                )),
+                                comment: "load local variable initializer from data section"
+                                    .to_owned(),
+                                owning_span: None,
+                            });
+                        }
+                        Storage::Const(c) => {
+                            self.cur_bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::MOVI(
+                                    VirtualRegister::Constant(ConstantRegister::Scratch),
+                                    c.clone(),
+                                )),
+                                comment: "load local variable initializer from register".into(),
+                                owning_span: None,
+                            });
+                        }
+                    }
 
-            if var_size.in_words() == 1 {
-                // Initialise by value.
-                if var_size.in_bytes() == 1 {
-                    self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::SB(
-                            dst_reg,
-                            VirtualRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
-                        )),
-                        comment: "store byte initializer to local variable".to_owned(),
-                        owning_span: None,
-                    });
-                } else {
-                    self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::SW(
-                            dst_reg,
-                            VirtualRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
-                        )),
-                        comment: "store word initializer to local variable".to_owned(),
-                        owning_span: None,
-                    });
+                    // Check if we can use the `ADDi` opcode.
+                    if var_stack_off_bytes <= compiler_constants::TWELVE_BITS {
+                        // Get the destination on the stack.
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::ADDI(
+                                dst_reg.clone(),
+                                locals_base_reg.clone(),
+                                VirtualImmediate12::new_unchecked(
+                                    var_stack_off_bytes,
+                                    "Stack offset too high",
+                                ),
+                            )),
+                            comment: "get local variable address".to_owned(),
+                            owning_span: None,
+                        });
+                    } else {
+                        assert!(var_stack_off_bytes <= compiler_constants::EIGHTEEN_BITS);
+                        // We can't, so load the immediate into a register and then add.
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::MOVI(
+                                dst_reg.clone(),
+                                VirtualImmediate18::new_unchecked(
+                                    var_stack_off_bytes,
+                                    "Stack offset too high",
+                                ),
+                            )),
+                            comment: "move stack offset of local variable into register".to_owned(),
+                            owning_span: None,
+                        });
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::ADD(
+                                dst_reg.clone(),
+                                locals_base_reg.clone(),
+                                dst_reg.clone(),
+                            )),
+                            comment: "get local variable address".to_owned(),
+                            owning_span: None,
+                        });
+                    }
+
+                    if var_size.in_words() == 1 {
+                        // Initialise by value.
+                        if var_size.in_bytes() == 1 {
+                            self.cur_bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::SB(
+                                    dst_reg,
+                                    VirtualRegister::Constant(ConstantRegister::Scratch),
+                                    VirtualImmediate12::new_unchecked(
+                                        0,
+                                        "zero must fit in 12 bits",
+                                    ),
+                                )),
+                                comment: "store byte initializer to local variable".to_owned(),
+                                owning_span: None,
+                            });
+                        } else {
+                            self.cur_bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::SW(
+                                    dst_reg,
+                                    VirtualRegister::Constant(ConstantRegister::Scratch),
+                                    VirtualImmediate12::new_unchecked(
+                                        0,
+                                        "zero must fit in 12 bits",
+                                    ),
+                                )),
+                                comment: "store word initializer to local variable".to_owned(),
+                                owning_span: None,
+                            });
+                        }
+                    } else {
+                        // Initialise by reference.
+                        assert!(var_size.in_bytes_aligned() <= compiler_constants::TWELVE_BITS);
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::MCPI(
+                                dst_reg,
+                                VirtualRegister::Constant(ConstantRegister::Scratch),
+                                VirtualImmediate12::new_unchecked(
+                                    var_size.in_bytes_aligned(),
+                                    "Size too high",
+                                ),
+                            )),
+                            comment: "copy initializer from data section to local variable"
+                                .to_owned(),
+                            owning_span: None,
+                        });
+                    }
                 }
-            } else {
-                // Initialise by reference.
-                assert!(var_size.in_bytes_aligned() <= compiler_constants::TWELVE_BITS);
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MCPI(
-                        dst_reg,
-                        VirtualRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12::new_unchecked(
-                            var_size.in_bytes_aligned(),
-                            "Size too high",
-                        ),
-                    )),
-                    comment: "copy initializer from data section to local variable".to_owned(),
-                    owning_span: None,
-                });
             }
         }
 

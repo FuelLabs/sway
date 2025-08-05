@@ -440,6 +440,19 @@ fn profitability(context: &Context, function: Function, candidates: &mut FxHashS
                     candidates.remove(sym);
                 }
             }
+
+            // if the memcopy is copying the whole array don't try to optimize it
+            if let Some(true) = dst_val_ptr
+                .get_type(context)
+                .and_then(|x| x.get_pointee_type(context))
+                .map(|x| x.is_array(context))
+            {
+                for sym in get_gep_referred_symbols(context, dst_val_ptr)
+                    .union(&get_gep_referred_symbols(context, src_val_ptr))
+                {
+                    candidates.remove(sym);
+                }
+            }
         }
     }
 }
