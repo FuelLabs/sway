@@ -44,7 +44,7 @@ pub struct CallResponse {
     pub receipts: Vec<Receipt>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trace_events: Vec<trace::TraceEvent>,
-    #[serde(rename = "script", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "Script", skip_serializing_if = "Option::is_none")]
     pub script_json: Option<serde_json::Value>,
 }
 
