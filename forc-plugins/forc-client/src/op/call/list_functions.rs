@@ -1,11 +1,6 @@
-use crate::{
-    cmd::call::AbiSource,
-    op::call::{
-        parser::{
-            get_default_value, param_to_function_arg, param_type_val_to_token, token_to_string,
-        },
-        Abi,
-    },
+use crate::op::call::{
+    parser::{get_default_value, param_to_function_arg, param_type_val_to_token, token_to_string},
+    Abi,
 };
 use anyhow::{anyhow, Result};
 use fuels_core::types::{param_types::ParamType, ContractId};
@@ -134,23 +129,11 @@ fn list_functions_for_single_contract<W: Write>(
             "{}({}) -> {}",
             painted_name, func_args_types, return_type
         )?;
-        match &abi.source {
-            AbiSource::String(s) => {
-                // json string in quotes for shell
-                writeln!(
-                    writer,
-                    "  forc call \\\n      --abi \"{}\" \\\n      {} \\\n      {} {}\n",
-                    s, contract_id, func.name, func_args_inputs,
-                )?;
-            }
-            _ => {
-                writeln!(
-                    writer,
-                    "  forc call \\\n      --abi {} \\\n      {} \\\n      {} {}\n",
-                    abi.source, contract_id, func.name, func_args_inputs,
-                )?;
-            }
-        }
+        writeln!(
+            writer,
+            "  forc call \\\n      --abi {} \\\n      {} \\\n      {} {}\n",
+            abi.source, contract_id, func.name, func_args_inputs,
+        )?;
     }
 
     Ok(())
