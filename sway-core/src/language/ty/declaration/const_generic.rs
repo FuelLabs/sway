@@ -42,8 +42,24 @@ impl MaterializeConstGenerics for TyConstGenericDecl {
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
         if self.call_path.suffix.as_str() == name {
-            assert!(self.value.is_none());
-            self.value = Some(value.clone());
+            match self.value.as_ref() {
+                Some(v) => {
+                    assert!(
+                        v.extract_literal_value()
+                            .unwrap()
+                            .cast_value_to_u64()
+                            .unwrap()
+                            == value
+                                .extract_literal_value()
+                                .unwrap()
+                                .cast_value_to_u64()
+                                .unwrap()
+                    );
+                }
+                None => {
+                    self.value = Some(value.clone());
+                }
+            }
         }
         Ok(())
     }
