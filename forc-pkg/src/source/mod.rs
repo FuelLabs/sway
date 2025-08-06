@@ -156,7 +156,7 @@ pub struct DisplayCompiling<'a, T> {
     manifest_dir: &'a Path,
 }
 
-/// Error returned upon failed parsing of `SourcePinned::from_str`.
+/// Error returned upon failed parsing of `Pinned::from_str`.
 #[derive(Clone, Debug)]
 pub struct PinnedParseError;
 
