@@ -232,6 +232,16 @@ impl AbiEncode for str {
     }
 }
 
+#[cfg(experimental_const_generics = true)]
+impl<const N: u64> AbiEncode for str[N] {
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        Buffer {
+            buffer: __encode_buffer_append(buffer.buffer, self),
+        }
+    }
+}
+
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[0] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         buffer
@@ -239,6 +249,7 @@ impl AbiEncode for str[0] {
 }
 
 // BEGIN STRARRAY_ENCODE
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[1] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -246,6 +257,7 @@ impl AbiEncode for str[1] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[2] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -253,6 +265,7 @@ impl AbiEncode for str[2] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[3] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -260,6 +273,7 @@ impl AbiEncode for str[3] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[4] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -267,6 +281,7 @@ impl AbiEncode for str[4] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[5] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -274,6 +289,7 @@ impl AbiEncode for str[5] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[6] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -281,6 +297,7 @@ impl AbiEncode for str[6] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[7] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -288,6 +305,7 @@ impl AbiEncode for str[7] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[8] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -295,6 +313,7 @@ impl AbiEncode for str[8] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[9] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -302,6 +321,7 @@ impl AbiEncode for str[9] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[10] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -309,6 +329,7 @@ impl AbiEncode for str[10] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[11] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -316,6 +337,7 @@ impl AbiEncode for str[11] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[12] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -323,6 +345,7 @@ impl AbiEncode for str[12] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[13] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -330,6 +353,7 @@ impl AbiEncode for str[13] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[14] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -337,6 +361,7 @@ impl AbiEncode for str[14] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[15] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -344,6 +369,7 @@ impl AbiEncode for str[15] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[16] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -351,6 +377,7 @@ impl AbiEncode for str[16] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[17] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -358,6 +385,7 @@ impl AbiEncode for str[17] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[18] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -365,6 +393,7 @@ impl AbiEncode for str[18] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[19] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -372,6 +401,7 @@ impl AbiEncode for str[19] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[20] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -379,6 +409,7 @@ impl AbiEncode for str[20] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[21] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -386,6 +417,7 @@ impl AbiEncode for str[21] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[22] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -393,6 +425,7 @@ impl AbiEncode for str[22] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[23] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -400,6 +433,7 @@ impl AbiEncode for str[23] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[24] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -407,6 +441,7 @@ impl AbiEncode for str[24] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[25] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -414,6 +449,7 @@ impl AbiEncode for str[25] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[26] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -421,6 +457,7 @@ impl AbiEncode for str[26] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[27] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -428,6 +465,7 @@ impl AbiEncode for str[27] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[28] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -435,6 +473,7 @@ impl AbiEncode for str[28] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[29] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -442,6 +481,7 @@ impl AbiEncode for str[29] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[30] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -449,6 +489,7 @@ impl AbiEncode for str[30] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[31] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -456,6 +497,7 @@ impl AbiEncode for str[31] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[32] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -463,6 +505,7 @@ impl AbiEncode for str[32] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[33] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -470,6 +513,7 @@ impl AbiEncode for str[33] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[34] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -477,6 +521,7 @@ impl AbiEncode for str[34] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[35] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -484,6 +529,7 @@ impl AbiEncode for str[35] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[36] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -491,6 +537,7 @@ impl AbiEncode for str[36] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[37] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -498,6 +545,7 @@ impl AbiEncode for str[37] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[38] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -505,6 +553,7 @@ impl AbiEncode for str[38] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[39] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -512,6 +561,7 @@ impl AbiEncode for str[39] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[40] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -519,6 +569,7 @@ impl AbiEncode for str[40] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[41] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -526,6 +577,7 @@ impl AbiEncode for str[41] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[42] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -533,6 +585,7 @@ impl AbiEncode for str[42] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[43] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -540,6 +593,7 @@ impl AbiEncode for str[43] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[44] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -547,6 +601,7 @@ impl AbiEncode for str[44] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[45] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -554,6 +609,7 @@ impl AbiEncode for str[45] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[46] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -561,6 +617,7 @@ impl AbiEncode for str[46] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[47] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -568,6 +625,7 @@ impl AbiEncode for str[47] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[48] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -575,6 +633,7 @@ impl AbiEncode for str[48] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[49] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -582,6 +641,7 @@ impl AbiEncode for str[49] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[50] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -589,6 +649,7 @@ impl AbiEncode for str[50] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[51] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -596,6 +657,7 @@ impl AbiEncode for str[51] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[52] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -603,6 +665,7 @@ impl AbiEncode for str[52] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[53] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -610,6 +673,7 @@ impl AbiEncode for str[53] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[54] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -617,6 +681,7 @@ impl AbiEncode for str[54] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[55] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -624,6 +689,7 @@ impl AbiEncode for str[55] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[56] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -631,6 +697,7 @@ impl AbiEncode for str[56] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[57] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -638,6 +705,7 @@ impl AbiEncode for str[57] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[58] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -645,6 +713,7 @@ impl AbiEncode for str[58] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[59] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -652,6 +721,7 @@ impl AbiEncode for str[59] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[60] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -659,6 +729,7 @@ impl AbiEncode for str[60] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[61] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -666,6 +737,7 @@ impl AbiEncode for str[61] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[62] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -673,6 +745,7 @@ impl AbiEncode for str[62] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[63] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -680,6 +753,7 @@ impl AbiEncode for str[63] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[64] {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -2705,7 +2779,18 @@ impl AbiDecode for str {
     }
 }
 
+#[cfg(experimental_const_generics = true)]
+impl<const N: u64> AbiDecode for str[N] {
+    fn abi_decode(ref mut buffer: BufferReader) -> str[N] {
+        let data = buffer.read_bytes(N);
+        asm(s: data.ptr()) {
+            s: str[N]
+        }
+    }
+}
+
 // BEGIN STRARRAY_DECODE
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[1] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[1] {
         let data = buffer.read_bytes(1);
@@ -2714,6 +2799,7 @@ impl AbiDecode for str[1] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[2] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[2] {
         let data = buffer.read_bytes(2);
@@ -2722,6 +2808,7 @@ impl AbiDecode for str[2] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[3] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[3] {
         let data = buffer.read_bytes(3);
@@ -2730,6 +2817,7 @@ impl AbiDecode for str[3] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[4] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[4] {
         let data = buffer.read_bytes(4);
@@ -2738,6 +2826,7 @@ impl AbiDecode for str[4] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[5] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[5] {
         let data = buffer.read_bytes(5);
@@ -2746,6 +2835,7 @@ impl AbiDecode for str[5] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[6] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[6] {
         let data = buffer.read_bytes(6);
@@ -2754,6 +2844,7 @@ impl AbiDecode for str[6] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[7] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[7] {
         let data = buffer.read_bytes(7);
@@ -2762,6 +2853,7 @@ impl AbiDecode for str[7] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[8] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[8] {
         let data = buffer.read_bytes(8);
@@ -2770,6 +2862,7 @@ impl AbiDecode for str[8] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[9] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[9] {
         let data = buffer.read_bytes(9);
@@ -2778,6 +2871,7 @@ impl AbiDecode for str[9] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[10] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[10] {
         let data = buffer.read_bytes(10);
@@ -2786,6 +2880,7 @@ impl AbiDecode for str[10] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[11] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[11] {
         let data = buffer.read_bytes(11);
@@ -2794,6 +2889,7 @@ impl AbiDecode for str[11] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[12] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[12] {
         let data = buffer.read_bytes(12);
@@ -2802,6 +2898,7 @@ impl AbiDecode for str[12] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[13] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[13] {
         let data = buffer.read_bytes(13);
@@ -2810,6 +2907,7 @@ impl AbiDecode for str[13] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[14] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[14] {
         let data = buffer.read_bytes(14);
@@ -2818,6 +2916,7 @@ impl AbiDecode for str[14] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[15] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[15] {
         let data = buffer.read_bytes(15);
@@ -2826,6 +2925,7 @@ impl AbiDecode for str[15] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[16] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[16] {
         let data = buffer.read_bytes(16);
@@ -2834,6 +2934,7 @@ impl AbiDecode for str[16] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[17] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[17] {
         let data = buffer.read_bytes(17);
@@ -2842,6 +2943,7 @@ impl AbiDecode for str[17] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[18] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[18] {
         let data = buffer.read_bytes(18);
@@ -2850,6 +2952,7 @@ impl AbiDecode for str[18] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[19] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[19] {
         let data = buffer.read_bytes(19);
@@ -2858,6 +2961,7 @@ impl AbiDecode for str[19] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[20] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[20] {
         let data = buffer.read_bytes(20);
@@ -2866,6 +2970,7 @@ impl AbiDecode for str[20] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[21] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[21] {
         let data = buffer.read_bytes(21);
@@ -2874,6 +2979,7 @@ impl AbiDecode for str[21] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[22] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[22] {
         let data = buffer.read_bytes(22);
@@ -2882,6 +2988,7 @@ impl AbiDecode for str[22] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[23] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[23] {
         let data = buffer.read_bytes(23);
@@ -2890,6 +2997,7 @@ impl AbiDecode for str[23] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[24] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[24] {
         let data = buffer.read_bytes(24);
@@ -2898,6 +3006,7 @@ impl AbiDecode for str[24] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[25] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[25] {
         let data = buffer.read_bytes(25);
@@ -2906,6 +3015,7 @@ impl AbiDecode for str[25] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[26] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[26] {
         let data = buffer.read_bytes(26);
@@ -2914,6 +3024,7 @@ impl AbiDecode for str[26] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[27] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[27] {
         let data = buffer.read_bytes(27);
@@ -2922,6 +3033,7 @@ impl AbiDecode for str[27] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[28] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[28] {
         let data = buffer.read_bytes(28);
@@ -2930,6 +3042,7 @@ impl AbiDecode for str[28] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[29] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[29] {
         let data = buffer.read_bytes(29);
@@ -2938,6 +3051,7 @@ impl AbiDecode for str[29] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[30] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[30] {
         let data = buffer.read_bytes(30);
@@ -2946,6 +3060,7 @@ impl AbiDecode for str[30] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[31] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[31] {
         let data = buffer.read_bytes(31);
@@ -2954,6 +3069,7 @@ impl AbiDecode for str[31] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[32] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[32] {
         let data = buffer.read_bytes(32);
@@ -2962,6 +3078,7 @@ impl AbiDecode for str[32] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[33] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[33] {
         let data = buffer.read_bytes(33);
@@ -2970,6 +3087,7 @@ impl AbiDecode for str[33] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[34] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[34] {
         let data = buffer.read_bytes(34);
@@ -2978,6 +3096,7 @@ impl AbiDecode for str[34] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[35] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[35] {
         let data = buffer.read_bytes(35);
@@ -2986,6 +3105,7 @@ impl AbiDecode for str[35] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[36] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[36] {
         let data = buffer.read_bytes(36);
@@ -2994,6 +3114,7 @@ impl AbiDecode for str[36] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[37] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[37] {
         let data = buffer.read_bytes(37);
@@ -3002,6 +3123,7 @@ impl AbiDecode for str[37] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[38] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[38] {
         let data = buffer.read_bytes(38);
@@ -3010,6 +3132,7 @@ impl AbiDecode for str[38] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[39] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[39] {
         let data = buffer.read_bytes(39);
@@ -3018,6 +3141,7 @@ impl AbiDecode for str[39] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[40] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[40] {
         let data = buffer.read_bytes(40);
@@ -3026,6 +3150,7 @@ impl AbiDecode for str[40] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[41] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[41] {
         let data = buffer.read_bytes(41);
@@ -3034,6 +3159,7 @@ impl AbiDecode for str[41] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[42] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[42] {
         let data = buffer.read_bytes(42);
@@ -3042,6 +3168,7 @@ impl AbiDecode for str[42] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[43] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[43] {
         let data = buffer.read_bytes(43);
@@ -3050,6 +3177,7 @@ impl AbiDecode for str[43] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[44] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[44] {
         let data = buffer.read_bytes(44);
@@ -3058,6 +3186,7 @@ impl AbiDecode for str[44] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[45] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[45] {
         let data = buffer.read_bytes(45);
@@ -3066,6 +3195,7 @@ impl AbiDecode for str[45] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[46] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[46] {
         let data = buffer.read_bytes(46);
@@ -3074,6 +3204,7 @@ impl AbiDecode for str[46] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[47] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[47] {
         let data = buffer.read_bytes(47);
@@ -3082,6 +3213,7 @@ impl AbiDecode for str[47] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[48] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[48] {
         let data = buffer.read_bytes(48);
@@ -3090,6 +3222,7 @@ impl AbiDecode for str[48] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[49] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[49] {
         let data = buffer.read_bytes(49);
@@ -3098,6 +3231,7 @@ impl AbiDecode for str[49] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[50] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[50] {
         let data = buffer.read_bytes(50);
@@ -3106,6 +3240,7 @@ impl AbiDecode for str[50] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[51] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[51] {
         let data = buffer.read_bytes(51);
@@ -3114,6 +3249,7 @@ impl AbiDecode for str[51] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[52] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[52] {
         let data = buffer.read_bytes(52);
@@ -3122,6 +3258,7 @@ impl AbiDecode for str[52] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[53] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[53] {
         let data = buffer.read_bytes(53);
@@ -3130,6 +3267,7 @@ impl AbiDecode for str[53] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[54] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[54] {
         let data = buffer.read_bytes(54);
@@ -3138,6 +3276,7 @@ impl AbiDecode for str[54] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[55] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[55] {
         let data = buffer.read_bytes(55);
@@ -3146,6 +3285,7 @@ impl AbiDecode for str[55] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[56] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[56] {
         let data = buffer.read_bytes(56);
@@ -3154,6 +3294,7 @@ impl AbiDecode for str[56] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[57] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[57] {
         let data = buffer.read_bytes(57);
@@ -3162,6 +3303,7 @@ impl AbiDecode for str[57] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[58] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[58] {
         let data = buffer.read_bytes(58);
@@ -3170,6 +3312,7 @@ impl AbiDecode for str[58] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[59] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[59] {
         let data = buffer.read_bytes(59);
@@ -3178,6 +3321,7 @@ impl AbiDecode for str[59] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[60] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[60] {
         let data = buffer.read_bytes(60);
@@ -3186,6 +3330,7 @@ impl AbiDecode for str[60] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[61] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[61] {
         let data = buffer.read_bytes(61);
@@ -3194,6 +3339,7 @@ impl AbiDecode for str[61] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[62] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[62] {
         let data = buffer.read_bytes(62);
@@ -3202,6 +3348,7 @@ impl AbiDecode for str[62] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[63] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[63] {
         let data = buffer.read_bytes(63);
@@ -3210,6 +3357,7 @@ impl AbiDecode for str[63] {
         }
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[64] {
     fn abi_decode(ref mut buffer: BufferReader) -> str[64] {
         let data = buffer.read_bytes(64);
