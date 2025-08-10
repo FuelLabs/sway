@@ -6,10 +6,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    get_gep_symbol, get_referred_symbol, get_referred_symbols, get_stored_symbols, memory_utils,
-    AnalysisResults, Block, Context, EscapedSymbols, FuelVmInstruction, Function, InstOp,
-    Instruction, InstructionInserter, IrError, LocalVar, Pass, PassMutability, ReferredSymbols,
-    ScopedPass, Symbol, Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
+    get_gep_symbol, get_referred_symbol, get_referred_symbols, get_stored_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols, FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass, PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum, ARG_POINTEE_MUTABILITY_NAME, ESCAPED_SYMBOLS_NAME
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -18,7 +15,7 @@ pub fn create_memcpyopt_pass() -> Pass {
     Pass {
         name: MEMCPYOPT_NAME,
         descr: "Optimizations related to MemCopy instructions",
-        deps: vec![ESCAPED_SYMBOLS_NAME],
+        deps: vec![ESCAPED_SYMBOLS_NAME, ARG_POINTEE_MUTABILITY_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(mem_copy_opt)),
     }
 }
