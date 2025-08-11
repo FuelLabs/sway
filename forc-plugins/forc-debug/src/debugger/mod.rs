@@ -139,31 +139,27 @@ impl Debugger {
         tx_path: String,
         abi_mappings: Vec<AbiMapping>,
     ) -> Result<DebugResponse> {
+        let load_and_parse_abi = |abi_path: &str| -> Result<ProgramABI> {
+            let abi_content = std::fs::read_to_string(abi_path)?;
+            let fuel_abi =
+                serde_json::from_str::<fuel_abi_types::abi::program::ProgramABI>(&abi_content)
+                    .map_err(Error::JsonError)?;
+            Ok(ProgramABI::Fuel(fuel_abi))
+        };
+
         // Process ABI mappings
         for mapping in abi_mappings {
             match mapping {
                 AbiMapping::Local { abi_path } => {
-                    let abi_content = std::fs::read_to_string(&abi_path)?;
-                    let fuel_abi =
-                        serde_json::from_str::<fuel_abi_types::abi::program::ProgramABI>(
-                            &abi_content,
-                        )
-                        .map_err(Error::JsonError)?;
-                    self.contract_abis
-                        .register_abi(ContractId::zeroed(), ProgramABI::Fuel(fuel_abi));
+                    let abi = load_and_parse_abi(&abi_path)?;
+                    self.contract_abis.register_abi(ContractId::zeroed(), abi);
                 }
                 AbiMapping::Contract {
                     contract_id,
                     abi_path,
                 } => {
-                    let abi_content = std::fs::read_to_string(&abi_path)?;
-                    let fuel_abi =
-                        serde_json::from_str::<fuel_abi_types::abi::program::ProgramABI>(
-                            &abi_content,
-                        )
-                        .map_err(Error::JsonError)?;
-                    self.contract_abis
-                        .register_abi(contract_id, ProgramABI::Fuel(fuel_abi));
+                    let abi = load_and_parse_abi(&abi_path)?;
+                    self.contract_abis.register_abi(contract_id, abi);
                 }
             }
         }
