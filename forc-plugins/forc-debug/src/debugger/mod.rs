@@ -9,7 +9,7 @@ use crate::{
     ContractId, FuelClient, RunResult, Transaction,
 };
 use fuel_tx::Receipt;
-use fuel_vm::consts::VM_REGISTER_COUNT;
+use fuel_vm::consts::{VM_REGISTER_COUNT, WORD_SIZE};
 use sway_core::asm_generation::ProgramABI;
 
 pub struct Debugger {
@@ -37,6 +37,81 @@ impl Debugger {
             session_id,
             contract_abis: AbiMap::default(),
         })
+    }
+
+    /// Execute a debugger command from CLI arguments
+    pub async fn execute_from_args<W: std::io::Write>(
+        &mut self,
+        args: Vec<String>,
+        writer: &mut W,
+    ) -> Result<()> {
+        let command = DebugCommand::from_cli_args(&args)?;
+        let response = self.execute(command).await?;
+        match response {
+            DebugResponse::RunResult {
+                receipts,
+                breakpoint,
+            } => {
+                // Process receipts with ABI decoding
+                let decoded_receipts = self.process_receipts(&receipts);
+                for decoded in decoded_receipts {
+                    match decoded {
+                        DecodedReceipt::Regular(receipt) => {
+                            writeln!(writer, "Receipt: {:?}", receipt)?;
+                        }
+                        DecodedReceipt::LogData {
+                            receipt,
+                            decoded_value,
+                            contract_id,
+                        } => {
+                            writeln!(writer, "Receipt: {:?}", receipt)?;
+                            if let Some(value) = decoded_value {
+                                writeln!(
+                                    writer,
+                                    "Decoded log value: {}, from contract: {}",
+                                    value, contract_id
+                                )?;
+                            }
+                        }
+                    }
+                }
+                // Print breakpoint info
+                if let Some(bp) = breakpoint {
+                    writeln!(
+                        writer,
+                        "Stopped on breakpoint at address {} of contract {}",
+                        bp.pc, bp.contract
+                    )?;
+                } else {
+                    writeln!(writer, "Terminated")?;
+                }
+            }
+            DebugResponse::Success => {
+                // Command completed successfully, no output needed
+            }
+            DebugResponse::Registers(registers) => {
+                for reg in registers {
+                    writeln!(
+                        writer,
+                        "reg[{:#02x}] = {:<8} # {}",
+                        reg.index, reg.value, reg.name
+                    )?;
+                }
+            }
+            DebugResponse::Memory(mem) => {
+                for (i, chunk) in mem.chunks(WORD_SIZE).enumerate() {
+                    write!(writer, " {:06x}:", i * WORD_SIZE)?;
+                    for byte in chunk {
+                        write!(writer, " {byte:02x}")?;
+                    }
+                    writeln!(writer)?;
+                }
+            }
+            DebugResponse::Error(err) => {
+                writeln!(writer, "Error: {}", err)?;
+            }
+        }
+        Ok(())
     }
 
     pub async fn execute(&mut self, command: DebugCommand) -> Result<DebugResponse> {
@@ -68,7 +143,7 @@ impl Debugger {
         for mapping in abi_mappings {
             match mapping {
                 AbiMapping::Local { abi_path } => {
-                    let abi_content = std::fs::read_to_string(&abi_path).map_err(Error::IoError)?;
+                    let abi_content = std::fs::read_to_string(&abi_path)?;
                     let fuel_abi =
                         serde_json::from_str::<fuel_abi_types::abi::program::ProgramABI>(
                             &abi_content,
@@ -81,7 +156,7 @@ impl Debugger {
                     contract_id,
                     abi_path,
                 } => {
-                    let abi_content = std::fs::read_to_string(&abi_path).map_err(Error::IoError)?;
+                    let abi_content = std::fs::read_to_string(&abi_path)?;
                     let fuel_abi =
                         serde_json::from_str::<fuel_abi_types::abi::program::ProgramABI>(
                             &abi_content,
@@ -94,7 +169,7 @@ impl Debugger {
         }
 
         // Load and start transaction
-        let tx_json = std::fs::read(&tx_path).map_err(Error::IoError)?;
+        let tx_json = std::fs::read(&tx_path)?;
         let tx: Transaction = serde_json::from_slice(&tx_json).map_err(Error::JsonError)?;
 
         let status = self
