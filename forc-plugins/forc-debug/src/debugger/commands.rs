@@ -245,3 +245,175 @@ impl DebugCommand {
         Ok(DebugCommand::GetMemory { offset, limit })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_start_tx_command() {
+        let args = vec!["start_tx".to_string(), "test.json".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+
+        assert!(matches!(
+            result,
+            DebugCommand::StartTransaction { ref tx_path, ref abi_mappings }
+            if tx_path == "test.json" && abi_mappings.is_empty()
+        ));
+
+        // Test alias
+        let args = vec!["n".to_string(), "test.json".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(result, DebugCommand::StartTransaction { .. }));
+    }
+
+    #[test]
+    fn test_reset_command() {
+        let args = vec!["reset".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(result, DebugCommand::Reset));
+    }
+
+    #[test]
+    fn test_continue_command() {
+        let args = vec!["continue".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(result, DebugCommand::Continue));
+
+        // Test alias
+        let args = vec!["c".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(result, DebugCommand::Continue));
+    }
+
+    #[test]
+    fn test_step_command() {
+        let args = vec!["step".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(
+            result,
+            DebugCommand::SetSingleStepping { enable: true }
+        ));
+
+        let args = vec!["step".to_string(), "off".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(
+            result,
+            DebugCommand::SetSingleStepping { enable: false }
+        ));
+
+        // Test alias
+        let args = vec!["s".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(
+            result,
+            DebugCommand::SetSingleStepping { enable: true }
+        ));
+    }
+
+    #[test]
+    fn test_breakpoint_command() {
+        let args = vec!["breakpoint".to_string(), "100".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(
+            result,
+            DebugCommand::SetBreakpoint { contract_id, offset: 100 }
+            if contract_id == ContractId::zeroed()
+        ));
+
+        // Test alias
+        let args = vec!["bp".to_string(), "50".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(
+            result,
+            DebugCommand::SetBreakpoint { offset: 50, .. }
+        ));
+    }
+
+    #[test]
+    fn test_register_command() {
+        let args = vec!["register".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(
+            result,
+            DebugCommand::GetRegisters { ref indices }
+            if indices.is_empty()
+        ));
+
+        let args = vec!["reg".to_string(), "0".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(
+            result,
+            DebugCommand::GetRegisters { ref indices }
+            if indices == &vec![0]
+        ));
+    }
+
+    #[test]
+    fn test_memory_command() {
+        let args = vec!["memory".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(
+            result,
+            DebugCommand::GetMemory {
+                offset: 0,
+                limit: _
+            }
+        ));
+
+        let args = vec!["memory".to_string(), "100".to_string(), "200".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(
+            result,
+            DebugCommand::GetMemory {
+                offset: 100,
+                limit: 200
+            }
+        ));
+
+        // Test alias
+        let args = vec!["m".to_string(), "50".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(result, DebugCommand::GetMemory { offset: 50, .. }));
+    }
+
+    #[test]
+    fn test_quit_command() {
+        let args = vec!["quit".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(result, DebugCommand::Quit));
+
+        // Test aliases
+        let args = vec!["q".to_string()];
+        let result = DebugCommand::from_cli_args(&args).unwrap();
+        assert!(matches!(result, DebugCommand::Quit));
+    }
+
+    #[test]
+    fn test_error_cases() {
+        // Empty args
+        let args = vec![];
+        let result = DebugCommand::from_cli_args(&args);
+        assert!(matches!(
+            result,
+            Err(ArgumentError::NotEnough {
+                expected: 1,
+                got: 0
+            })
+        ));
+
+        // Unknown command
+        let args = vec!["unknown".to_string()];
+        let result = DebugCommand::from_cli_args(&args);
+        assert!(matches!(result, Err(ArgumentError::UnknownCommand(_))));
+
+        // Missing arguments
+        let args = vec!["start_tx".to_string()];
+        let result = DebugCommand::from_cli_args(&args);
+        assert!(result.is_err());
+
+        let args = vec!["breakpoint".to_string()];
+        let result = DebugCommand::from_cli_args(&args);
+        assert!(result.is_err());
+    }
+}
