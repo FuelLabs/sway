@@ -443,11 +443,7 @@ warning
 ____
 
   Compiled script "const_generics" with 2 warnings.
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [9.712 KB] in ???
-=======
-    Finished debug [unoptimized + fuel] target(s) [7.512 KB] in ???
->>>>>>> 3494eda35 (update tests)
+    Finished debug [unoptimized + fuel] target(s) [9.552 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
