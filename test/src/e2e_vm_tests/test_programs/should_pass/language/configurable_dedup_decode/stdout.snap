@@ -258,6 +258,7 @@ script {
 !50 = fn_call_path_span !45 67 71
 !51 = (!49 !50)
 <<<<<<< HEAD
+<<<<<<< HEAD
 !52 = span !45 91 113
 !53 = fn_call_path_span !45 91 97
 =======
@@ -268,11 +269,12 @@ script {
 !54 = span !3 70868 70881
 !55 = fn_call_path_span !3 70868 70879
 =======
+=======
+>>>>>>> 56393cb86 (update tests)
 !52 = span !45 91 113
 !53 = fn_call_path_span !45 91 97
-!54 = span !3 67770 67783
-!55 = fn_call_path_span !3 67770 67781
->>>>>>> 3494eda35 (update tests)
+!54 = span !3 70868 70881
+!55 = fn_call_path_span !3 70868 70879
 !56 = (!52 !53 !54 !55)
 !57 = (!52 !53 !54 !55)
 !58 = (!52 !53 !54 !55)
