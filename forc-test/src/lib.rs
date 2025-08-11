@@ -7,7 +7,7 @@ use crate::setup::{
     ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
 };
 use ecal::EcalSyscallHandler;
-use forc_pkg::{self as pkg, BuildOpts};
+use forc_pkg::{self as pkg, BuildOpts, DumpOpts};
 use forc_util::tx_utils::RevertInfo;
 use fuel_abi_types::abi::program::ProgramABI;
 use fuel_tx as tx;
@@ -452,6 +452,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             pkg: val.pkg,
             print: val.print,
             minify: val.minify,
+            dump: DumpOpts::default(),
             binary_outfile: val.binary_outfile,
             debug_outfile: val.debug_outfile,
             hex_outfile: val.hex_outfile,
@@ -477,6 +478,7 @@ impl TestOpts {
             pkg: self.pkg,
             print: self.print,
             minify: self.minify,
+            dump: DumpOpts::default(),
             binary_outfile: self.binary_outfile,
             debug_outfile: self.debug_outfile,
             hex_outfile: self.hex_outfile,

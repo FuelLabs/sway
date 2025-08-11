@@ -174,7 +174,11 @@ impl Namespace {
     }
 
     pub fn module_from_absolute_path(&self, path: &[Ident]) -> Option<&Module> {
-        self.current_package.module_from_absolute_path(path)
+        if path.is_empty() {
+            None
+        } else {
+            self.current_package.module_from_absolute_path(path)
+        }
     }
 
     // Like module_from_absolute_path, but throws an error if the module is not found
