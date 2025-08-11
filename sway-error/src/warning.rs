@@ -613,12 +613,23 @@ pub struct CollectedTraitImpl {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Info {
+    ImplTraitsForType { impls: Vec<CollectedTraitImpl> },
 }
 
 impl fmt::Display for Info {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use Info::*;
         match self {
+            ImplTraitsForType { impls } => {
+                write!(
+                    f,
+                    "Implemented traits: \"{:?}\"",
+                    impls
+                        .iter()
+                        .map(|i| i.impl_span.as_str())
+                        .collect::<Vec<_>>()
+                )
+            }
         }
     }
 }
@@ -650,6 +661,28 @@ impl ToDiagnostic for CompileInfo {
         let code = Code::warnings;
         use Info::*;
         match &self.content {
+            ImplTraitsForType { impls } => Diagnostic {
+                reason: Some(Reason::new(
+                    code(1),
+                    "Trait impls dump was requested.".to_string(),
+                )),
+                issue: Issue::info(
+                    source_engine,
+                    self.span(),
+                    "Matching implemented traits for this type.".to_string(),
+                ),
+                hints: impls
+                    .iter()
+                    .map(|i| {
+                        Hint::help(
+                            source_engine,
+                            i.impl_span.clone(),
+                            format!("trait is {}", i.trait_name.clone()),
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+                help: vec![],
+            },
         }
     }
 }

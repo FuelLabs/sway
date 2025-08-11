@@ -29,6 +29,9 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
+        dump: pkg::DumpOpts {
+            dump_impls: cmd.build.dump.dump_impls,
+        },
         time_phases: cmd.build.print.time_phases,
         profile: cmd.build.print.profile,
         metrics_outfile: cmd.build.print.metrics_outfile,
