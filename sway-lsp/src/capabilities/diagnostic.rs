@@ -111,6 +111,7 @@ fn get_warning_diagnostic_tags(warning: &Warning) -> Option<Vec<DiagnosticTag>> 
 
 fn get_info_diagnostic_tags(info: &Info) -> Option<Vec<DiagnosticTag>> {
     match info {
+        Info::ImplTraitsForType { .. } => Some(vec![DiagnosticTag::UNNECESSARY]),
     }
 }
 
