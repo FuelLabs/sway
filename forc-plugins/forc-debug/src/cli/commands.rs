@@ -94,8 +94,33 @@ impl Commands {
         self.registers.name == cmd || self.registers.aliases.contains(&cmd)
     }
 
+    #[allow(unused)]
+    pub fn is_memory_command(&self, cmd: &str) -> bool {
+        self.memory.name == cmd || self.memory.aliases.contains(&cmd)
+    }
+
+    #[allow(unused)]
+    pub fn is_breakpoint_command(&self, cmd: &str) -> bool {
+        self.breakpoint.name == cmd || self.breakpoint.aliases.contains(&cmd)
+    }
+
     pub fn is_quit_command(&self, cmd: &str) -> bool {
         self.quit.name == cmd || self.quit.aliases.contains(&cmd)
+    }
+
+    #[allow(unused)]
+    pub fn is_reset_command(&self, cmd: &str) -> bool {
+        self.reset.name == cmd || self.reset.aliases.contains(&cmd)
+    }
+
+    #[allow(unused)]
+    pub fn is_continue_command(&self, cmd: &str) -> bool {
+        self.continue_.name == cmd || self.continue_.aliases.contains(&cmd)
+    }
+
+    #[allow(unused)]
+    pub fn is_step_command(&self, cmd: &str) -> bool {
+        self.step.name == cmd || self.step.aliases.contains(&cmd)
     }
 
     pub fn is_help_command(&self, cmd: &str) -> bool {
