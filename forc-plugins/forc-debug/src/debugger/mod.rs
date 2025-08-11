@@ -79,7 +79,7 @@ impl Debugger {
                 if let Some(bp) = breakpoint {
                     writeln!(
                         writer,
-                        "Stopped on breakpoint at address {} of contract {}",
+                        "Stopped on breakpoint at address {} of contract 0x{}",
                         bp.pc, bp.contract
                     )?;
                 } else {
