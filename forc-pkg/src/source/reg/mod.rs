@@ -500,7 +500,10 @@ async fn fetch_from_s3(pinned: &Pinned, path: &Path) -> anyhow::Result<()> {
     // Construct CDN URL directly from IPFS hash
     let cdn_url = format!("http://cdn.forc.pub/{}", pinned.cid.0);
 
-    println_action_green("Fetching", "from http://cdn.forc.pub. Note: This can take several minutes.");
+    println_action_green(
+        "Fetching",
+        "from http://cdn.forc.pub. Note: This can take several minutes.",
+    );
 
     // Download directly from CDN
     let source_response = client
