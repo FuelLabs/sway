@@ -136,6 +136,11 @@ impl DebugCommand {
         }
     }
 
+    /// Parse a start_tx command from CLI arguments
+    ///
+    /// Handles two distinct modes of operation:
+    /// 1. Local Development: `tx transaction.json abi.json`
+    /// 2. Contract-specific: `tx transaction.json --abi <contract_id>:<abi_file.json>`
     fn parse_start_tx(args: &[String]) -> Result<Self, String> {
         if args.is_empty() {
             return Err("Transaction file path required".to_string());
