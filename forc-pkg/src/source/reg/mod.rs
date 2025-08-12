@@ -49,7 +49,6 @@ pub struct Pinned {
     pub cid: Cid,
 }
 
-
 /// A resolver for registry index hosted as a github repo.
 ///
 /// Given a package name and a version, a `GithubRegistryResolver` will be able
@@ -497,7 +496,7 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
 /// Fetches package from CDN as a fallback when IPFS fails
 async fn fetch_from_s3(pinned: &Pinned, path: &Path) -> anyhow::Result<()> {
     let client = reqwest::Client::new();
-    
+
     // Construct CDN URL directly from IPFS hash
     let cdn_url = format!("http://cdn.forc.pub/{}", pinned.cid.0);
 
@@ -793,5 +792,4 @@ mod tests {
                 || error_msg.contains("Other available versions: [1.0.0,1.1.0]")
         );
     }
-
 }
