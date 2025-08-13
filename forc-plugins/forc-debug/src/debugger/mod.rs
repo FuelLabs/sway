@@ -276,9 +276,15 @@ impl Debugger {
                     ..
                 } = receipt
                 {
-                    self.contract_abis
-                        .get_or_fetch_abi(id)
-                        .and_then(|abi| {
+                    // Try to get ABI for this specific contract ID first
+                    let abi = if let Some(abi) = self.contract_abis.get_or_fetch_abi(id) {
+                        Some(abi)
+                    } else {
+                        // If not found, try the local ABI registered with ContractId::zeroed()
+                        self.contract_abis.get(&ContractId::zeroed())
+                    };
+                    
+                    abi.and_then(|abi| {
                             forc_util::tx_utils::decode_log_data(&rb.to_string(), data, abi).ok()
                         })
                         .map(|decoded_log| DecodedReceipt::LogData {
