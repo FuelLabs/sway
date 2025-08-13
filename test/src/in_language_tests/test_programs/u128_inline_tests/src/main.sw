@@ -1427,11 +1427,9 @@ fn u128_as_u256() {
         let u256_val = u128_val.as_u256();
         assert(u256_val == u256::from(val));
 
-        // Ensure parity with asm u256 conversion
-        let asm_val = asm(nums: (0, 0, 0, val)) {
-            nums: u256
-        };
-        assert(u256_val == asm_val);
+        // Ensure parity with transmute u256 conversion
+        let trm_val = __transmute::<(u64, u64, u64, u64), u256>((0, 0, 0, val));
+        assert(u256_val == trm_val);
 
         for val2 in vals.iter() {
             // Ensure parity with u256::from(0, 0, val, val2)
@@ -1439,11 +1437,9 @@ fn u128_as_u256() {
             let u256_val = u128_val.as_u256();
             assert(u256_val == u256::from((0, 0, val, val2)));
 
-            // Ensure parity with asm u256 conversion
-            let asm_val = asm(nums: (0, 0, val, val2)) {
-                nums: u256
-            };
-            assert(u256_val == asm_val);
+            // Ensure parity with transmute u256 conversion
+            let trm_val = __transmute::<(u64, u64, u64, u64)>((0, 0, val, val2));
+            assert(u256_val == trm_val);
         }
     }
 }

@@ -1,7 +1,7 @@
 script;
 
 fn main() {
-    let null = asm(output) { zero: raw_ptr };
+    let null = __transmute::<u64, raw_ptr>(0);
     let _ = __ptr_add::<u64>(null, 1);
 }
 // check: $VAL = get_local __ptr ptr, null, $MD

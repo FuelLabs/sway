@@ -1067,7 +1067,7 @@ fn bytes_b256_into() {
 #[test()]
 fn bytes_from_raw_slice() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice = asm(ptr: (__addr_of(val), 32)) {
+    let slice = __transmute::<(raw_ptr, u64), raw_slice>(ptr: (__addr_of(val), 32)) {
         ptr: raw_slice
     };
 
@@ -1099,9 +1099,7 @@ fn bytes_raw_slice_from() {
 #[test()]
 fn bytes_raw_slice_into() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice = asm(ptr: (__addr_of(val), 32)) {
-        ptr: raw_slice
-    };
+    let slice = __transmute::<(raw_ptr, u64), raw_slice>((__addr_of(val), 32));
 
     let bytes: Bytes = slice.into();
 

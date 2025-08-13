@@ -290,9 +290,7 @@ impl TestInstance for b256 {
 
 impl AbiEncode for raw_ptr {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let ptr_as_u64 = asm(p: self) {
-            p: u64
-        };
+        let ptr_as_u64 = __transmute::<raw_ptr, u64>(self);
         ptr_as_u64.abi_encode(buffer)
     }
 }
@@ -303,9 +301,7 @@ impl TestInstance for raw_ptr {
         let mut res = Vec::new();
         let mut i = 0;
         while i < len {
-            let null_ptr = asm() {
-                zero: raw_ptr
-            };
+            let null_ptr = __transmute::<u64, raw_ptr>(0);
             res.push(null_ptr.add::<u64>(values.get(i).unwrap().as_u64()));
             i += 1;
         }

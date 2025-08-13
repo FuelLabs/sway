@@ -636,9 +636,7 @@ fn vec_as_raw_slice() {
 #[test()]
 fn vec_from_raw_slice() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice = asm(ptr: (__addr_of(val), 32)) {
-        ptr: raw_slice
-    };
+    let slice = __transmute::<(raw_ptr, u64), raw_slice>((__addr_of(val), 32));
 
     let mut vec: Vec<u64> = Vec::from(slice);
     assert(vec.ptr() != slice.ptr()); // Vec should own its buffer
@@ -677,9 +675,7 @@ fn vec_from_raw_slice() {
 #[test()]
 fn vec_raw_slice_into() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice = asm(ptr: (__addr_of(val), 32)) {
-        ptr: raw_slice
-    };
+    let slice = __transmute::<(raw_ptr, u64), raw_slice>((__addr_of(val), 32));
 
     let vec: Vec<u64> = slice.into();
 

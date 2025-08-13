@@ -102,9 +102,9 @@ impl Add for u16 {
 
 impl Add for u8 {
     fn add(self, other: Self) -> Self {
-        let res_u64 = __add(u8_as_u64(self), u8_as_u64(other));
+        let res_u64 = __add(__transmute::<u8, u64>(self), __transmute::<u8, u64>(other));
 
-        let max_u8_u64 = u8_as_u64(Self::max());
+        let max_u8_u64 = __transmute::<u8, u64>(Self::max());
 
         if __gt(res_u64, max_u8_u64) {
             if panic_on_overflow_enabled() {
@@ -112,10 +112,10 @@ impl Add for u8 {
             } else {
                 // overflow enabled
                 // res % (Self::max() + 1)
-                u64_as_u8(__mod(res_u64, __add(max_u8_u64, 1)))
+                __transmute::<u64, u8>(__mod(res_u64, __add(max_u8_u64, 1)))
             }
         } else {
-            u64_as_u8(res_u64)
+            __transmute::<u64, u8>(res_u64)
         }
     }
 }
@@ -214,9 +214,9 @@ impl Subtract for u16 {
 
 impl Subtract for u8 {
     fn subtract(self, other: Self) -> Self {
-        let res_u64 = __sub(u8_as_u64(self), u8_as_u64(other));
+        let res_u64 = __sub(__transmute::<u8, u64>(self), __transmute::<u8, u64>(other));
 
-        let max_u8_u64 = u8_as_u64(Self::max());
+        let max_u8_u64 = __transmute::<u8, u64>(Self::max());
 
         if __gt(res_u64, max_u8_u64) {
             if panic_on_overflow_enabled() {
@@ -224,10 +224,10 @@ impl Subtract for u8 {
             } else {
                 // overflow enabled
                 // res % (Self::max() + 1)
-                u64_as_u8(__mod(res_u64, __add(max_u8_u64, 1)))
+                __transmute::<u64, u8>(__mod(res_u64, __add(max_u8_u64, 1)))
             }
         } else {
-            u64_as_u8(res_u64)
+            __transmute::<u64, u8>(res_u64)
         }
     }
 }
@@ -327,9 +327,9 @@ impl Multiply for u16 {
 
 impl Multiply for u8 {
     fn multiply(self, other: Self) -> Self {
-        let res_u64 = __mul(u8_as_u64(self), u8_as_u64(other));
+        let res_u64 = __mul(__transmute::<u8, u64>(self), __transmute::<u8, u64>(other));
 
-        let max_u8_u64 = u8_as_u64(Self::max());
+        let max_u8_u64 = __transmute::<u8, u64>(Self::max());
 
         if __gt(res_u64, max_u8_u64) {
             if panic_on_overflow_enabled() {
@@ -337,10 +337,10 @@ impl Multiply for u8 {
             } else {
                 // overflow enabled
                 // res % (Self::max() + 1)
-                u64_as_u8(__mod(res_u64, __add(max_u8_u64, 1)))
+                __transmute::<u64, u8>(__mod(res_u64, __add(max_u8_u64, 1)))
             }
         } else {
-            u64_as_u8(res_u64)
+            __transmute::<u64, u8>(res_u64)
         }
     }
 }
@@ -1686,18 +1686,6 @@ impl b256 {
     /// ```
     pub fn is_zero(self) -> bool {
         self == 0x0000000000000000000000000000000000000000000000000000000000000000
-    }
-}
-
-fn u8_as_u64(val: u8) -> u64 {
-    asm(input: val) {
-        input: u64
-    }
-}
-
-fn u64_as_u8(val: u64) -> u8 {
-    asm(input: val) {
-        input: u8
     }
 }
 

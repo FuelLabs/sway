@@ -1,7 +1,7 @@
 script;
 
 fn main() {
-    let null = asm(output) { zero: raw_ptr };
+    let null = __transmute::<u64, raw_ptr>(0);
     let _ = __state_store_quad(
       0x0000000000000000000000000000000000000000000000000000000000000001,
       null,
