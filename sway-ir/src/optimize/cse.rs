@@ -123,6 +123,7 @@ fn instr_to_expr(context: &Context, vntable: &VNTable, instr: Value) -> Option<E
         InstOp::Load(_) => None,
         InstOp::MemCopyBytes { .. } => None,
         InstOp::MemCopyVal { .. } => None,
+        InstOp::MemClearVal { dst_val_ptr } => todo!(),
         InstOp::Nop => None,
         InstOp::PtrToInt(val, ty) => Some(Expr::PtrToInt(
             vntable.value_map.get(val).cloned().unwrap(),

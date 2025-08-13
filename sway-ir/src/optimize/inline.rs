@@ -627,6 +627,7 @@ fn inline_instruction(
             } => new_block
                 .append(context)
                 .mem_copy_val(map_value(dst_val_ptr), map_value(src_val_ptr)),
+            InstOp::MemClearVal { dst_val_ptr } => todo!(),
             InstOp::Nop => new_block.append(context).nop(),
             InstOp::PtrToInt(value, ty) => {
                 new_block.append(context).ptr_to_int(map_value(value), ty)

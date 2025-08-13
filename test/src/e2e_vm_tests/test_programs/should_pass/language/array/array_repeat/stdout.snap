@@ -98,9 +98,7 @@ script {
 
         entry(__ret_value: __ptr [u8; 5]):
         v0 = get_local __ptr [u8; 5], __anon_0, !18
-        v1 = asm(ptr: v0) -> __ptr [u8; 5] ptr {
-            mcli   ptr i5, !18
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [u8; 5] __ret_value
     }
@@ -110,9 +108,7 @@ script {
 
         entry(__ret_value: __ptr [u64; 5]):
         v0 = get_local __ptr [u64; 5], __anon_0, !22
-        v1 = asm(ptr: v0) -> __ptr [u64; 5] ptr {
-            mcli   ptr i40, !22
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [u64; 5] __ret_value
     }
@@ -122,9 +118,7 @@ script {
 
         entry(__ret_value: __ptr [u64; 5]):
         v0 = get_local __ptr [u64; 5], __anon_0, !26
-        v1 = asm(ptr: v0) -> __ptr [u64; 5] ptr {
-            mcli   ptr i40, !26
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [u64; 5] __ret_value
     }
@@ -134,9 +128,7 @@ script {
 
         entry(__ret_value: __ptr [u64; 5]):
         v0 = get_local __ptr [u64; 5], __anon_0, !30
-        v1 = asm(ptr: v0) -> __ptr [u64; 5] ptr {
-            mcli   ptr i40, !30
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [u64; 5] __ret_value
     }
@@ -146,9 +138,7 @@ script {
 
         entry(__ret_value: __ptr [u256; 5]):
         v0 = get_local __ptr [u256; 5], __anon_0, !34
-        v1 = asm(ptr: v0) -> __ptr [u256; 5] ptr {
-            mcli   ptr i160, !34
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [u256; 5] __ret_value
     }
@@ -158,9 +148,7 @@ script {
 
         entry(__ret_value: __ptr [b256; 5]):
         v0 = get_local __ptr [b256; 5], __anon_0, !38
-        v1 = asm(ptr: v0) -> __ptr [b256; 5] ptr {
-            mcli   ptr i160, !38
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [b256; 5] __ret_value
     }
@@ -170,9 +158,7 @@ script {
 
         entry(__ret_value: __ptr [bool; 5]):
         v0 = get_local __ptr [bool; 5], __anon_0, !42
-        v1 = asm(ptr: v0) -> __ptr [bool; 5] ptr {
-            mcli   ptr i5, !42
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [bool; 5] __ret_value
     }
@@ -182,9 +168,7 @@ script {
 
         entry(__ret_value: __ptr [u8; 25]):
         v0 = get_local __ptr [u8; 25], __anon_0, !46
-        v1 = asm(ptr: v0) -> __ptr [u8; 25] ptr {
-            mcli   ptr i25, !46
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [u8; 25] __ret_value
     }
@@ -194,9 +178,7 @@ script {
 
         entry(__ret_value: __ptr [u64; 25]):
         v0 = get_local __ptr [u64; 25], __anon_0, !50
-        v1 = asm(ptr: v0) -> __ptr [u64; 25] ptr {
-            mcli   ptr i200, !50
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [u64; 25] __ret_value
     }
@@ -206,9 +188,7 @@ script {
 
         entry(__ret_value: __ptr [u64; 25]):
         v0 = get_local __ptr [u64; 25], __anon_0, !54
-        v1 = asm(ptr: v0) -> __ptr [u64; 25] ptr {
-            mcli   ptr i200, !54
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [u64; 25] __ret_value
     }
@@ -218,9 +198,7 @@ script {
 
         entry(__ret_value: __ptr [u64; 25]):
         v0 = get_local __ptr [u64; 25], __anon_0, !58
-        v1 = asm(ptr: v0) -> __ptr [u64; 25] ptr {
-            mcli   ptr i200, !58
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [u64; 25] __ret_value
     }
@@ -230,9 +208,7 @@ script {
 
         entry(__ret_value: __ptr [u256; 25]):
         v0 = get_local __ptr [u256; 25], __anon_0, !62
-        v1 = asm(ptr: v0) -> __ptr [u256; 25] ptr {
-            mcli   ptr i800, !62
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [u256; 25] __ret_value
     }
@@ -242,9 +218,7 @@ script {
 
         entry(__ret_value: __ptr [b256; 25]):
         v0 = get_local __ptr [b256; 25], __anon_0, !66
-        v1 = asm(ptr: v0) -> __ptr [b256; 25] ptr {
-            mcli   ptr i800, !66
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [b256; 25] __ret_value
     }
@@ -254,9 +228,7 @@ script {
 
         entry(__ret_value: __ptr [bool; 25]):
         v0 = get_local __ptr [bool; 25], __anon_0, !70
-        v1 = asm(ptr: v0) -> __ptr [bool; 25] ptr {
-            mcli   ptr i25, !70
-        }
+        mem_clear_val v0
         mem_copy_val __ret_value, v0
         ret __ptr [bool; 25] __ret_value
     }
@@ -480,7 +452,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i5             ; [0u8; 5]
+mcli $$locbase i5             ; clear memory [u8; 5], 5 bytes
 mcpi $r0 $$locbase i5         ; copy memory
 move $$retv $r0               ; set return value
 cfsi i8                       ; free 8 bytes for locals and 0 slots for extra call arguments
@@ -494,7 +466,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i40            ; [0u16; 5]
+mcli $$locbase i40            ; clear memory [u64; 5], 40 bytes
 mcpi $r0 $$locbase i40        ; copy memory
 move $$retv $r0               ; set return value
 cfsi i40                      ; free 40 bytes for locals and 0 slots for extra call arguments
@@ -508,7 +480,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i40            ; [0u32; 5]
+mcli $$locbase i40            ; clear memory [u64; 5], 40 bytes
 mcpi $r0 $$locbase i40        ; copy memory
 move $$retv $r0               ; set return value
 cfsi i40                      ; free 40 bytes for locals and 0 slots for extra call arguments
@@ -522,7 +494,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i40            ; [0u64; 5]
+mcli $$locbase i40            ; clear memory [u64; 5], 40 bytes
 mcpi $r0 $$locbase i40        ; copy memory
 move $$retv $r0               ; set return value
 cfsi i40                      ; free 40 bytes for locals and 0 slots for extra call arguments
@@ -536,7 +508,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i160                     ; allocate 160 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i160           ; [0x0000000000000000000000000000000000000000000000000000000000000000u256; 5]
+mcli $$locbase i160           ; clear memory [u256; 5], 160 bytes
 mcpi $r0 $$locbase i160       ; copy memory
 move $$retv $r0               ; set return value
 cfsi i160                     ; free 160 bytes for locals and 0 slots for extra call arguments
@@ -550,7 +522,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i160                     ; allocate 160 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i160           ; [0x0000000000000000000000000000000000000000000000000000000000000000; 5]
+mcli $$locbase i160           ; clear memory [b256; 5], 160 bytes
 mcpi $r0 $$locbase i160       ; copy memory
 move $$retv $r0               ; set return value
 cfsi i160                     ; free 160 bytes for locals and 0 slots for extra call arguments
@@ -564,7 +536,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i5             ; [false; 5]
+mcli $$locbase i5             ; clear memory [bool; 5], 5 bytes
 mcpi $r0 $$locbase i5         ; copy memory
 move $$retv $r0               ; set return value
 cfsi i8                       ; free 8 bytes for locals and 0 slots for extra call arguments
@@ -578,7 +550,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i32                      ; allocate 32 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i25            ; [0u8; 25]
+mcli $$locbase i25            ; clear memory [u8; 25], 25 bytes
 mcpi $r0 $$locbase i25        ; copy memory
 move $$retv $r0               ; set return value
 cfsi i32                      ; free 32 bytes for locals and 0 slots for extra call arguments
@@ -592,7 +564,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i200                     ; allocate 200 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i200           ; [0u16; 25]
+mcli $$locbase i200           ; clear memory [u64; 25], 200 bytes
 mcpi $r0 $$locbase i200       ; copy memory
 move $$retv $r0               ; set return value
 cfsi i200                     ; free 200 bytes for locals and 0 slots for extra call arguments
@@ -606,7 +578,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i200                     ; allocate 200 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i200           ; [0u32; 25]
+mcli $$locbase i200           ; clear memory [u64; 25], 200 bytes
 mcpi $r0 $$locbase i200       ; copy memory
 move $$retv $r0               ; set return value
 cfsi i200                     ; free 200 bytes for locals and 0 slots for extra call arguments
@@ -620,7 +592,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i200                     ; allocate 200 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i200           ; [0u64; 25]
+mcli $$locbase i200           ; clear memory [u64; 25], 200 bytes
 mcpi $r0 $$locbase i200       ; copy memory
 move $$retv $r0               ; set return value
 cfsi i200                     ; free 200 bytes for locals and 0 slots for extra call arguments
@@ -634,7 +606,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i800                     ; allocate 800 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i800           ; [0x0000000000000000000000000000000000000000000000000000000000000000u256; 25]
+mcli $$locbase i800           ; clear memory [u256; 25], 800 bytes
 mcpi $r0 $$locbase i800       ; copy memory
 move $$retv $r0               ; set return value
 cfsi i800                     ; free 800 bytes for locals and 0 slots for extra call arguments
@@ -648,7 +620,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i800                     ; allocate 800 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i800           ; [0x0000000000000000000000000000000000000000000000000000000000000000; 25]
+mcli $$locbase i800           ; clear memory [b256; 25], 800 bytes
 mcpi $r0 $$locbase i800       ; copy memory
 move $$retv $r0               ; set return value
 cfsi i800                     ; free 800 bytes for locals and 0 slots for extra call arguments
@@ -662,7 +634,7 @@ move $$locbase $sp            ; save locals base register for function array_rep
 cfei i32                      ; allocate 32 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i25            ; [false; 25]
+mcli $$locbase i25            ; clear memory [bool; 25], 25 bytes
 mcpi $r0 $$locbase i25        ; copy memory
 move $$retv $r0               ; set return value
 cfsi i32                      ; free 32 bytes for locals and 0 slots for extra call arguments
@@ -705,20 +677,20 @@ pshl i15                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function big_array_repeat_16
 cfei i32                      ; allocate 32 bytes for locals and 0 slots for call arguments
-move $r0 $$arg0               ; save argument 0 (__ret_value)
-move $r1 $$reta               ; save return address
-move $r3 $zero                ; move parameter from branch to block argument
-mul  $r2 $r3 $one             ; get offset to array element
-add  $r2 $$locbase $r2        ; add array element offset to array base
-sb   $r2 $one i0              ; store byte
-add  $r3 $r3 $one
-movi $r2 i25                  ; initialize constant into register
-lt   $r2 $r3 $r2
-jnzb $r2 $zero i5
-mcpi $r0 $$locbase i25        ; copy memory
-move $$retv $r0               ; set return value
+move $r2 $$arg0               ; save argument 0 (__ret_value)
+move $r3 $$reta               ; save return address
+move $r1 $zero                ; move parameter from branch to block argument
+mul  $r0 $r1 $one             ; get offset to array element
+add  $r0 $$locbase $r0        ; add array element offset to array base
+sb   $r0 $one i0              ; store byte
+add  $r1 $r1 $one
+movi $r0 i25                  ; initialize constant into register
+lt   $r0 $r1 $r0
+jnzb $r0 $zero i5
+mcpi $r2 $$locbase i25        ; copy memory
+move $$retv $r2               ; set return value
 cfsi i32                      ; free 32 bytes for locals and 0 slots for extra call arguments
-move $$reta $r1               ; restore return address
+move $$reta $r3               ; restore return address
 poph i524288                  ; restore registers 40..64
 popl i15                      ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
@@ -833,7 +805,7 @@ output:
     Finished debug [unoptimized + fuel] target(s) [4.584 KB] in ???
     script array_repeat
       Bytecode size: 4584 bytes (4.584 KB)
-      Bytecode hash: 0x33ebd97dfae325c6277dc81d618559c9266f48f9ab7127507f25b286489f521f
+      Bytecode hash: 0xca94e206724f138b65f71ddee439ab8e9d6d290913e703a5019fd11ee5833126
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat

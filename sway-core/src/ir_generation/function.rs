@@ -4130,21 +4130,25 @@ impl<'a> FnCompiler<'a> {
         if let Some(array_size_in_bytes) =
             array_size_if_mcli_possible(context, elem_type, length_as_u64, value_value)
         {
-            let ptr_arg = BaseIdent::new_no_span("ptr".to_string());
-            let args = vec![AsmArg {
-                name: ptr_arg.clone(),
-                initializer: Some(array_value),
-            }];
-            let body = vec![AsmInstruction {
-                op_name: BaseIdent::new_no_span("mcli".to_string()),
-                args: vec![BaseIdent::new_no_span("ptr".to_string())],
-                immediate: Some(BaseIdent::new_no_span(format!("i{array_size_in_bytes}"))),
-                metadata: span_md_idx,
-            }];
-            let return_type = array_type;
             self.current_block
                 .append(context)
-                .asm_block(args, body, return_type, Some(ptr_arg));
+                .mem_clear_val(array_value);
+
+            // let ptr_arg = BaseIdent::new_no_span("ptr".to_string());
+            // let args = vec![AsmArg {
+            //     name: ptr_arg.clone(),
+            //     initializer: Some(array_value),
+            // }];
+            // let body = vec![AsmInstruction {
+            //     op_name: BaseIdent::new_no_span("mcli".to_string()),
+            //     args: vec![BaseIdent::new_no_span("ptr".to_string())],
+            //     immediate: Some(BaseIdent::new_no_span(format!("i{array_size_in_bytes}"))),
+            //     metadata: span_md_idx,
+            // }];
+            // let return_type = array_type;
+            // self.current_block
+            //     .append(context)
+            //     .asm_block(args, body, return_type, Some(ptr_arg));
         } else if length_as_u64 > 5 {
             self.compile_array_init_loop(
                 context,

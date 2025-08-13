@@ -493,6 +493,27 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     dst_val_ptr,
                     src_val_ptr,
                 } => self.compile_mem_copy_val(instr_val, dst_val_ptr, src_val_ptr),
+                InstOp::MemClearVal { dst_val_ptr } => {
+                    let owning_span = self
+                        .md_mgr
+                        .val_to_span(self.context, *instr_val)
+                        .unwrap_or(Span::dummy());
+                    let dst_val_ptr_pointee_ty = dst_val_ptr.get_type(self.context).unwrap().get_pointee_type(self.context).unwrap();
+                    let len_in_bytes = dst_val_ptr_pointee_ty.size(self.context).in_bytes();
+                    let len = VirtualImmediate18::new(len_in_bytes, owning_span.clone())
+                        .expect("type too big");
+                    let dst_reg = self.value_to_register(dst_val_ptr).unwrap();
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MCLI(dst_reg, len)),
+                        comment: format!(
+                            "clear memory {}, {} bytes",
+                            dst_val_ptr_pointee_ty.as_string(self.context),
+                            len_in_bytes
+                        ),
+                        owning_span: Some(owning_span),
+                    });
+                    Ok(())
+                }
                 InstOp::Nop => Ok(()),
                 InstOp::PtrToInt(ptr_val, _int_ty) => self.compile_no_op_move(instr_val, ptr_val),
                 InstOp::Ret(ret_val, ty) => {

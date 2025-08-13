@@ -114,6 +114,8 @@ pub enum InstOp {
         dst_val_ptr: Value,
         src_val_ptr: Value,
     },
+    /// Clear a value, fills with zero
+    MemClearVal { dst_val_ptr: Value },
     /// No-op, handy as a placeholder instruction.
     Nop,
     /// Cast a pointer to an integer.
@@ -341,6 +343,9 @@ impl InstOp {
             InstOp::MemCopyBytes { .. } | InstOp::MemCopyVal { .. } | InstOp::Store { .. } => {
                 Some(Type::get_unit(context))
             }
+            InstOp::MemClearVal { dst_val_ptr } => {
+                todo!();
+            }
 
             // Wide Operations
             InstOp::FuelVm(FuelVmInstruction::WideUnaryOp { result, .. }) => {
@@ -419,6 +424,9 @@ impl InstOp {
                 src_val_ptr,
             } => {
                 vec![*dst_val_ptr, *src_val_ptr]
+            }
+            InstOp::MemClearVal { dst_val_ptr } => {
+                vec![*dst_val_ptr]
             }
             InstOp::Nop => vec![],
             InstOp::PtrToInt(v, _) => vec![*v],
@@ -652,6 +660,9 @@ impl InstOp {
                 } else {
                     panic!("Invalid index for MemCopyVal");
                 }
+            }
+            InstOp::MemClearVal { dst_val_ptr } => {
+                todo!();
             }
             InstOp::Nop => (),
             InstOp::PtrToInt(v, _) => {
@@ -934,6 +945,9 @@ impl InstOp {
                 replace(dst_val_ptr);
                 replace(src_val_ptr);
             }
+            InstOp::MemClearVal { dst_val_ptr } => {
+                replace(dst_val_ptr);
+            }
             InstOp::Nop => (),
             InstOp::PtrToInt(value, _) => replace(value),
             InstOp::Ret(ret_val, _) => replace(ret_val),
@@ -1050,6 +1064,7 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::Retd { .. })
             | InstOp::MemCopyBytes { .. }
             | InstOp::MemCopyVal { .. }
+            | InstOp::MemClearVal { .. }
             | InstOp::Store { .. }
             | InstOp::Ret(..)
             | InstOp::FuelVm(FuelVmInstruction::WideUnaryOp { .. })
@@ -1593,5 +1608,9 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
                 stored_val,
             }
         )
+    }
+
+    pub fn mem_clear_val(self, dst_val_ptr: Value) -> Value {
+        insert_instruction!(self, InstOp::MemClearVal { dst_val_ptr })
     }
 }

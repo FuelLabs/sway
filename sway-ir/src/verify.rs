@@ -363,6 +363,18 @@ impl InstructionVerifier<'_, '_> {
                     dst_val_ptr,
                     src_val_ptr,
                 } => self.verify_mem_copy_val(dst_val_ptr, src_val_ptr)?,
+                InstOp::MemClearVal { dst_val_ptr } => {
+                    if !dst_val_ptr
+                        .get_type(self.context)
+                        .unwrap()
+                        .is_ptr(self.context)
+                    {
+                        return Err(IrError::VerifyMemcopyNonPointer(String::new()));
+                    // TODO better error
+                    } else {
+                        ()
+                    }
+                }
                 InstOp::Nop => (),
                 InstOp::PtrToInt(val, ty) => self.verify_ptr_to_int(val, ty)?,
                 InstOp::Ret(val, ty) => self.verify_ret(val, ty)?,
