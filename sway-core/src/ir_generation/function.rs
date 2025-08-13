@@ -4956,18 +4956,9 @@ impl<'a> FnCompiler<'a> {
     }
 }
 
-<<<<<<< HEAD
 fn can_mem_clear_be_used(ctx: &mut Context<'_>, elem_type: Type, value: Value) -> Option<bool> {
     match elem_type.get_content(ctx) {
         TypeContent::Bool if !(value.get_constant(ctx)?.get_content(ctx).as_bool()?) => Some(true),
-=======
-fn can_mcli_be_used(ctx: &mut Context<'_>, elem_type: Type, value: Value) -> Option<bool> {
-    match elem_type.get_content(ctx) {
-        TypeContent::Bool if !(value.get_constant(ctx)?.get_content(ctx).as_bool()?) => Some(true),
-        TypeContent::Uint(8) if value.get_constant(ctx)?.get_content(ctx).as_uint()? == 0 => {
-            Some(true)
-        }
->>>>>>> 01c9c85d7 (fmt and clippy issues)
         TypeContent::Uint(256)
             if value
                 .get_constant(ctx)?
