@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-B499DAB0CB6ABDFD"
+
+[[package]]
+name = "test-project"
+source = "member"
+dependencies = ["std"]

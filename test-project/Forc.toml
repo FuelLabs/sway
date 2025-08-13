@@ -1,0 +1,8 @@
+[project]
+authors = ["runner"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "test-project"
+
+[dependencies]
+std = { path = "../sway-lib-std/" }
