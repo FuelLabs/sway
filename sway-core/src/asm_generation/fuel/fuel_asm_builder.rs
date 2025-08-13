@@ -498,7 +498,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         .md_mgr
                         .val_to_span(self.context, *instr_val)
                         .unwrap_or(Span::dummy());
-                    let dst_val_ptr_pointee_ty = dst_val_ptr.get_type(self.context).unwrap().get_pointee_type(self.context).unwrap();
+                    let dst_val_ptr_pointee_ty = dst_val_ptr
+                        .get_type(self.context)
+                        .unwrap()
+                        .get_pointee_type(self.context)
+                        .unwrap();
                     let len_in_bytes = dst_val_ptr_pointee_ty.size(self.context).in_bytes();
                     let len = VirtualImmediate18::new(len_in_bytes, owning_span.clone())
                         .expect("type too big");

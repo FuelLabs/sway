@@ -340,12 +340,10 @@ impl InstOp {
             }
 
             // Memory writes return unit.
-            InstOp::MemCopyBytes { .. } | InstOp::MemCopyVal { .. } | InstOp::Store { .. } => {
-                Some(Type::get_unit(context))
-            }
-            InstOp::MemClearVal { dst_val_ptr } => {
-                todo!();
-            }
+            InstOp::MemCopyBytes { .. }
+            | InstOp::MemCopyVal { .. }
+            | InstOp::MemClearVal { .. }
+            | InstOp::Store { .. } => Some(Type::get_unit(context)),
 
             // Wide Operations
             InstOp::FuelVm(FuelVmInstruction::WideUnaryOp { result, .. }) => {
@@ -662,7 +660,11 @@ impl InstOp {
                 }
             }
             InstOp::MemClearVal { dst_val_ptr } => {
-                todo!();
+                if idx == 0 {
+                    *dst_val_ptr = replacement;
+                } else {
+                    panic!("Invalid index for MemClearVal");
+                }
             }
             InstOp::Nop => (),
             InstOp::PtrToInt(v, _) => {
