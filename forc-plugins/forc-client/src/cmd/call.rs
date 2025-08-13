@@ -326,6 +326,14 @@ forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
     --amount 100 \
     --mode live
 ```
+
+### Call a contract with interactive debugger after transaction
+```sh
+forc call 0x0dcba78d7b09a1f77353f51367afd8b8ab94b5b2bb6c9437d9ba9eea47dede97 \
+    --abi ./contract-abi.json \
+    get_balance 0x0087675439e10a8351b1d5e4cf9d0ea6da77675623ff6b16470b5e3c58998423 \
+    --debug
+```
 "#)]
 pub struct Command {
     /// The contract ID to call
@@ -409,6 +417,10 @@ pub struct Command {
     /// - `-v=2`: Additionally print receipts and script json
     #[clap(short = 'v', action = clap::ArgAction::Count, help_heading = "OUTPUT")]
     pub verbosity: u8,
+
+    /// Start interactive debugger after transaction execution
+    #[clap(long, help_heading = "DEBUG")]
+    pub debug: bool,
 }
 
 impl Command {
