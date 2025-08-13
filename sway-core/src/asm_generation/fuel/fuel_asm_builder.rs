@@ -493,7 +493,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     dst_val_ptr,
                     src_val_ptr,
                 } => self.compile_mem_copy_val(instr_val, dst_val_ptr, src_val_ptr),
-                InstOp::MemClearVal { dst_val_ptr } => self.compile_mem_clear_val(instr_val, dst_val_ptr),
+                InstOp::MemClearVal { dst_val_ptr } => {
+                    self.compile_mem_clear_val(instr_val, dst_val_ptr)
+                }
                 InstOp::Nop => Ok(()),
                 InstOp::PtrToInt(ptr_val, _int_ty) => self.compile_no_op_move(instr_val, ptr_val),
                 InstOp::Ret(ret_val, ty) => {
