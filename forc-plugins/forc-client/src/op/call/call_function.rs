@@ -436,7 +436,7 @@ async fn start_debug_session(
     );
 
     // Start the interactive CLI session with the prepared command
-    let mut cli = forc_debug::cli::Cli::new().map_err(|e| anyhow!("Failed to create CLI: {e}"))?;
+    let mut cli = forc_debug::cli::Cli::new().map_err(|e| anyhow!("Failed to create debug CLI interface: {e}"))?;
     cli.run(&mut debugger, Some(tx_cmd))
         .await
         .map_err(|e| anyhow!("Interactive CLI failed: {e}"))?;
