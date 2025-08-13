@@ -495,14 +495,17 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
 
 /// Fetches package from CDN as a fallback when IPFS fails
 async fn fetch_from_s3(pinned: &Pinned, path: &Path) -> anyhow::Result<()> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(180))
+        .build()
+        .context("Failed to create HTTP client")?;
 
     // Construct CDN URL directly from IPFS hash
-    let cdn_url = format!("http://cdn.forc.pub/{}", pinned.cid.0);
+    let cdn_url = format!("https://cdn.forc.pub/{}", pinned.cid.0);
 
     println_action_green(
         "Fetching",
-        "from http://cdn.forc.pub. Note: This can take several minutes.",
+        &format!("from {cdn_url}. Note: This can take several minutes."),
     );
 
     // Download directly from CDN
