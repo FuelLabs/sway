@@ -419,7 +419,7 @@ pub struct Command {
     pub verbosity: u8,
 
     /// Start interactive debugger after transaction execution
-    #[clap(long, help_heading = "DEBUG")]
+    #[clap(long, short = 'd', help_heading = "DEBUG")]
     pub debug: bool,
 }
 
