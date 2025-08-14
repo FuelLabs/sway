@@ -805,6 +805,7 @@ mod ir_builder {
         Log(IrAstTy, String, String),
         MemCopyBytes(String, String, u64),
         MemCopyVal(String, String),
+        MemClearVal(String),
         Nop,
         PtrToInt(String, IrAstTy),
         ReadRegister(String),
@@ -1436,6 +1437,10 @@ mod ir_builder {
                             *val_map.get(&dst_name).unwrap(),
                             *val_map.get(&src_name).unwrap(),
                         )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::MemClearVal(dst_name) => block
+                        .append(context)
+                        .mem_clear_val(*val_map.get(&dst_name).unwrap())
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::Nop => block.append(context).nop(),
                     IrAstOperation::PtrToInt(val, ty) => {
