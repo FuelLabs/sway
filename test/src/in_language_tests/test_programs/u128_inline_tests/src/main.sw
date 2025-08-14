@@ -20,9 +20,9 @@ fn u128_from_u8() {
     let u128_2 = <U128 as From<u8>>::from(u8_2);
     let u128_3 = <U128 as From<u8>>::from(u8_3);
 
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 255u64);
-    assert(u128_3.as_u64().unwrap() == 1u64);
+    assert(u128_1.try_as_u64().unwrap() == 0u64);
+    assert(u128_2.try_as_u64().unwrap() == 255u64);
+    assert(u128_3.try_as_u64().unwrap() == 1u64);
 }
 
 #[test]
@@ -35,9 +35,9 @@ fn u128_u8_into() {
     let u128_2: U128 = u8_2.into();
     let u128_3: U128 = u8_3.into();
 
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 255u64);
-    assert(u128_3.as_u64().unwrap() == 1u64);
+    assert(u128_1.try_as_u64().unwrap() == 0u64);
+    assert(u128_2.try_as_u64().unwrap() == 255u64);
+    assert(u128_3.try_as_u64().unwrap() == 1u64);
 }
 
 #[test]
@@ -50,9 +50,9 @@ fn u128_from_u16() {
     let u128_2 = <U128 as From<u16>>::from(u16_2);
     let u128_3 = <U128 as From<u16>>::from(u16_3);
 
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 65535u64);
-    assert(u128_3.as_u64().unwrap() == 1u64);
+    assert(u128_1.try_as_u64().unwrap() == 0u64);
+    assert(u128_2.try_as_u64().unwrap() == 65535u64);
+    assert(u128_3.try_as_u64().unwrap() == 1u64);
 }
 
 #[test]
@@ -65,9 +65,9 @@ fn u128_u16_into() {
     let u128_2: U128 = u16_2.into();
     let u128_3: U128 = u16_3.into();
 
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 65535u64);
-    assert(u128_3.as_u64().unwrap() == 1u64);
+    assert(u128_1.try_as_u64().unwrap() == 0u64);
+    assert(u128_2.try_as_u64().unwrap() == 65535u64);
+    assert(u128_3.try_as_u64().unwrap() == 1u64);
 }
 
 #[test]
@@ -80,9 +80,9 @@ fn u128_from_u32() {
     let u128_2 = <U128 as From<u32>>::from(u32_2);
     let u128_3 = <U128 as From<u32>>::from(u32_3);
 
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 4294967295u64);
-    assert(u128_3.as_u64().unwrap() == 1u64);
+    assert(u128_1.try_as_u64().unwrap() == 0u64);
+    assert(u128_2.try_as_u64().unwrap() == 4294967295u64);
+    assert(u128_3.try_as_u64().unwrap() == 1u64);
 }
 
 #[test]
@@ -95,9 +95,9 @@ fn u128_u32_into() {
     let u128_2: U128 = u32_2.into();
     let u128_3: U128 = u32_3.into();
 
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 4294967295u64);
-    assert(u128_3.as_u64().unwrap() == 1u64);
+    assert(u128_1.try_as_u64().unwrap() == 0u64);
+    assert(u128_2.try_as_u64().unwrap() == 4294967295u64);
+    assert(u128_3.try_as_u64().unwrap() == 1u64);
 }
 
 #[test]
@@ -110,9 +110,9 @@ fn u128_from_u64() {
     let u128_2 = <U128 as From<u64>>::from(u64_2);
     let u128_3 = <U128 as From<u64>>::from(u64_3);
 
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 18446744073709551615u64);
-    assert(u128_3.as_u64().unwrap() == 1u64);
+    assert(u128_1.try_as_u64().unwrap() == 0u64);
+    assert(u128_2.try_as_u64().unwrap() == 18446744073709551615u64);
+    assert(u128_3.try_as_u64().unwrap() == 1u64);
 }
 
 #[test]
@@ -125,9 +125,9 @@ fn u128_u64_into() {
     let u128_2: U128 = u64_2.into();
     let u128_3: U128 = u64_3.into();
 
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 18446744073709551615u64);
-    assert(u128_3.as_u64().unwrap() == 1u64);
+    assert(u128_1.try_as_u64().unwrap() == 0u64);
+    assert(u128_2.try_as_u64().unwrap() == 18446744073709551615u64);
+    assert(u128_3.try_as_u64().unwrap() == 1u64);
 }
 
 #[test]
@@ -328,17 +328,17 @@ fn u128_as_u64() {
     let u128_2 = <U128 as From<u64>>::from(u64_2);
     let u128_3 = <U128 as From<u64>>::from(u64_3);
 
-    assert(u128_1.as_u64().unwrap() == 0u64);
-    assert(u128_2.as_u64().unwrap() == 18446744073709551615u64);
-    assert(u128_3.as_u64().unwrap() == 1u64);
+    assert(u128_1.try_as_u64().unwrap() == 0u64);
+    assert(u128_2.try_as_u64().unwrap() == 18446744073709551615u64);
+    assert(u128_3.try_as_u64().unwrap() == 1u64);
 
     let u128_4 = <U128 as From<(u64, u64)>>::from((u64_3, u64_1));
     let u128_5 = <U128 as From<(u64, u64)>>::from((u64_2, u64_1));
     let u128_6 = <U128 as From<(u64, u64)>>::from((u64_2, u64_2));
 
-    assert(u128_4.as_u64().is_err());
-    assert(u128_5.as_u64().is_err());
-    assert(u128_6.as_u64().is_err());
+    assert(u128_4.try_as_u64().is_err());
+    assert(u128_5.try_as_u64().is_err());
+    assert(u128_6.try_as_u64().is_err());
 }
 
 #[test]
@@ -393,7 +393,7 @@ fn u128_lower() {
 #[test]
 fn u128_zero() {
     let zero_u128 = U128::zero();
-    assert(zero_u128.as_u64().unwrap() == 0u64);
+    assert(zero_u128.try_as_u64().unwrap() == 0u64);
 }
 
 #[test]
