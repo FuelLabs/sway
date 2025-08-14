@@ -1,6 +1,8 @@
 use crate::{
     cmd::{ForcNodeCmd, Mode},
+    consts::MINIMUM_OPEN_FILE_DESCRIPTOR_LIMIT,
     consts::MIN_FUEL_CORE_VERSION,
+    util::check_open_fds_limit,
     util::get_fuel_core_version,
 };
 use forc_util::forc_result_bail;
@@ -19,6 +21,8 @@ pub async fn run(cmd: ForcNodeCmd) -> anyhow::Result<Option<Child>> {
             current_version
         ));
     }
+    check_open_fds_limit(MINIMUM_OPEN_FILE_DESCRIPTOR_LIMIT)
+        .map_err(|e| anyhow::anyhow!("Failed to check open file descriptor limit: {}", e))?;
     let forc_node_handle = match cmd.mode {
         Mode::Local(local) => crate::local::op::run(local, cmd.dry_run).await?,
         Mode::Testnet(testnet) => crate::testnet::op::run(testnet, cmd.dry_run).await?,

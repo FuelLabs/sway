@@ -29,7 +29,7 @@ remove_generated_code "STRARRAY_ENCODE" "codec.sw"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="impl AbiEncode for str[$i] { fn abi_encode(self, buffer: Buffer) -> Buffer { Buffer { buffer: __encode_buffer_append(buffer.buffer, self) } } }"
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl AbiEncode for str[$i] { fn abi_encode(self, buffer: Buffer) -> Buffer { Buffer { buffer: __encode_buffer_append(buffer.buffer, self) } } }"
     sed -i "s/\/\/ BEGIN STRARRAY_ENCODE/\/\/ BEGIN STRARRAY_ENCODE\n$CODE/g" ./src/codec.sw
 done
 
@@ -37,7 +37,7 @@ remove_generated_code "STRARRAY_DECODE" "codec.sw"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="impl AbiDecode for str[$i] { fn abi_decode(ref mut buffer: BufferReader) -> str[$i] { let data = buffer.read_bytes($i); asm(s: data.ptr()) { s: str[$i] } } }"
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl AbiDecode for str[$i] { fn abi_decode(ref mut buffer: BufferReader) -> str[$i] { let data = buffer.read_bytes($i); asm(s: data.ptr()) { s: str[$i] } } }"
     sed -i "s/\/\/ BEGIN STRARRAY_DECODE/\/\/ BEGIN STRARRAY_DECODE\n$CODE/g" ./src/codec.sw
 done
 

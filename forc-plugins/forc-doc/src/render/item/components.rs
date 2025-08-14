@@ -16,6 +16,13 @@ use sway_types::BaseIdent;
 
 use super::documentable_type::DocumentableType;
 
+// Asset file names to avoid repeated string formatting
+const SWAY_LOGO_FILE: &str = "sway-logo.svg";
+const NORMALIZE_CSS_FILE: &str = "normalize.css";
+const SWAYDOC_CSS_FILE: &str = "swaydoc.css";
+const AYU_CSS_FILE: &str = "ayu.css";
+const AYU_MIN_CSS_FILE: &str = "ayu.min.css";
+
 /// All necessary components to render the header portion of
 /// the item html doc.
 #[derive(Clone, Debug)]
@@ -33,15 +40,16 @@ impl Renderable for ItemHeader {
             item_name,
         } = self;
 
-        let favicon =
-            module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/sway-logo.svg"));
-        let normalize =
-            module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/normalize.css"));
-        let swaydoc =
-            module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/swaydoc.css"));
-        let ayu = module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/ayu.css"));
-        let ayu_hjs =
-            module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/ayu.min.css"));
+        let favicon = module_info
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{SWAY_LOGO_FILE}"));
+        let normalize = module_info
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{NORMALIZE_CSS_FILE}"));
+        let swaydoc = module_info
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{SWAYDOC_CSS_FILE}"));
+        let ayu =
+            module_info.to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{AYU_CSS_FILE}"));
+        let ayu_hjs = module_info
+            .to_html_shorthand_path_string(&format!("{ASSETS_DIR_NAME}/{AYU_MIN_CSS_FILE}"));
 
         Ok(box_html! {
             head {
