@@ -242,6 +242,7 @@ mod ir_builder {
                 / op_log()
                 / op_mem_copy_bytes()
                 / op_mem_copy_val()
+                / op_mem_clear_val()
                 / op_nop()
                 / op_ptr_to_int()
                 / op_read_register()
@@ -394,6 +395,11 @@ mod ir_builder {
                 = "mem_copy_val" _ dst_name:id() comma() src_name:id() {
                     IrAstOperation::MemCopyVal(dst_name, src_name)
                 }
+
+            rule op_mem_clear_val() -> IrAstOperation
+            = "mem_clear_val" _ dst_name:id() {
+                IrAstOperation::MemClearVal(dst_name)
+            }
 
             rule op_nop() -> IrAstOperation
                 = "nop" _ {
