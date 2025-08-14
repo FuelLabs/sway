@@ -3006,6 +3006,7 @@ dependencies = [
  "dialoguer",
  "either",
  "forc",
+ "forc-debug",
  "forc-pkg",
  "forc-tracing 0.69.1",
  "forc-tx",
