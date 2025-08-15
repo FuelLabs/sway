@@ -628,7 +628,7 @@ impl AllocatedOp {
             MOD(a, b, c) => op::MOD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             MODI(a, b, c) => op::MODI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             MOVE(a, b) => op::MOVE::new(a.to_reg_id(), b.to_reg_id()).into(),
-            MOVI(a, b) => op::MOVI::new(a.to_reg_id(), b.into_imm18().unwrap()).into(),
+            MOVI(a, b) => op::MOVI::new(a.to_reg_id(), b.as_imm18().unwrap()).into(),
             MROO(a, b, c) => op::MROO::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             MUL(a, b, c) => op::MUL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             MULI(a, b, c) => op::MULI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
@@ -687,9 +687,9 @@ impl AllocatedOp {
             JI(a) => op::JI::new(a.value().into()).into(),
             JNE(a, b, c) => op::JNE::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             JNEI(a, b, c) => op::JNEI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
-            JNZI(a, b) => op::JNZI::new(a.to_reg_id(), b.into_imm18().unwrap()).into(),
-            JMPB(a, b) => op::JMPB::new(a.to_reg_id(), b.into_imm18().unwrap()).into(),
-            JMPF(a, b) => op::JMPF::new(a.to_reg_id(), b.into_imm18().unwrap()).into(),
+            JNZI(a, b) => op::JNZI::new(a.to_reg_id(), b.as_imm18().unwrap()).into(),
+            JMPB(a, b) => op::JMPB::new(a.to_reg_id(), b.as_imm18().unwrap()).into(),
+            JMPF(a, b) => op::JMPF::new(a.to_reg_id(), b.as_imm18().unwrap()).into(),
             JNZB(a, b, c) => op::JNZB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             JNZF(a, b, c) => op::JNZF::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             JAL(a, b, c) => op::JAL::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
@@ -706,7 +706,7 @@ impl AllocatedOp {
             LB(a, b, c) => op::LB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             LW(a, b, c) => op::LW::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             MCL(a, b) => op::MCL::new(a.to_reg_id(), b.to_reg_id()).into(),
-            MCLI(a, b) => op::MCLI::new(a.to_reg_id(), b.into_imm18().unwrap()).into(),
+            MCLI(a, b) => op::MCLI::new(a.to_reg_id(), b.as_imm18().unwrap()).into(),
             MCP(a, b, c) => op::MCP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             MCPI(a, b, c) => op::MCPI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             MEQ(a, b, c, d) => {
@@ -791,7 +791,7 @@ impl AllocatedOp {
                 op::ECAL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
             FLAG(a) => op::FLAG::new(a.to_reg_id()).into(),
-            GM(a, b) => op::GM::new(a.to_reg_id(), b.into_imm18().unwrap()).into(),
+            GM(a, b) => op::GM::new(a.to_reg_id(), b.as_imm18().unwrap()).into(),
             GTF(a, b, c) => op::GTF::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
 
             /* Non-VM Instructions */

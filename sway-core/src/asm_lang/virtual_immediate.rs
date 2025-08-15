@@ -165,7 +165,7 @@ impl VirtualImmediate18 {
         self.value
     }
 
-    pub fn into_imm18(&self) -> Option<Imm18> {
+    pub fn as_imm18(&self) -> Option<Imm18> {
         Imm18::new_checked(self.value)
     }
 }

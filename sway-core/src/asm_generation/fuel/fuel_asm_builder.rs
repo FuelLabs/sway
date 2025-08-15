@@ -24,7 +24,6 @@ use crate::{
     BuildConfig,
 };
 
-use fuel_vm::fuel_asm::Imm12;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -1540,7 +1539,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
                         let len_reg = VirtualRegister::Constant(ConstantRegister::Scratch);
                         self.cur_bytecode.push(Op {
-                            opcode: Either::Left(VirtualOp::LoadDataId(len_reg.clone(), len_dataid)),
+                            opcode: Either::Left(VirtualOp::LoadDataId(
+                                len_reg.clone(),
+                                len_dataid,
+                            )),
                             comment: "loading copy size in bytes".to_string(),
                             owning_span: owning_span.clone(),
                         });
