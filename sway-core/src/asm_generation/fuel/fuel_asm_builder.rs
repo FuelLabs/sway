@@ -1657,7 +1657,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 let len_reg = VirtualRegister::Constant(ConstantRegister::Scratch);
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LoadDataId(len_reg.clone(), len_dataid)),
-                    comment: format!("loading clear size in bytes"),
+                    comment: "loading clear size in bytes".to_string(),
                     owning_span: owning_span.clone(),
                 });
 
