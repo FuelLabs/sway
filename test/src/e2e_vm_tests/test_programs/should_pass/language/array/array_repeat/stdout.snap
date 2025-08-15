@@ -725,20 +725,20 @@ pshl i15                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function big_array_repeat_16
 cfei i32                      ; allocate 32 bytes for locals and 0 slots for call arguments
-move $r2 $$arg0               ; save argument 0 (__ret_value)
-move $r3 $$reta               ; save return address
-move $r1 $zero                ; move parameter from branch to block argument
-mul  $r0 $r1 $one             ; get offset to array element
-add  $r0 $$locbase $r0        ; add array element offset to array base
-sb   $r0 $one i0              ; store byte
-add  $r1 $r1 $one
-movi $r0 i25                  ; initialize constant into register
-lt   $r0 $r1 $r0
-jnzb $r0 $zero i5
-mcpi $r2 $$locbase i25        ; copy memory
-move $$retv $r2               ; set return value
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+move $r3 $zero                ; move parameter from branch to block argument
+mul  $r2 $r3 $one             ; get offset to array element
+add  $r2 $$locbase $r2        ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+add  $r3 $r3 $one
+movi $r2 i25                  ; initialize constant into register
+lt   $r2 $r3 $r2
+jnzb $r2 $zero i5
+mcpi $r0 $$locbase i25        ; copy memory
+move $$retv $r0               ; set return value
 cfsi i32                      ; free 32 bytes for locals and 0 slots for extra call arguments
-move $$reta $r3               ; restore return address
+move $$reta $r1               ; restore return address
 poph i524288                  ; restore registers 40..64
 popl i15                      ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
@@ -1236,6 +1236,7 @@ output:
     Finished debug [unoptimized + fuel] target(s) [6.648 KB] in ???
     script array_repeat
 <<<<<<< HEAD
+<<<<<<< HEAD
       Bytecode size: 6648 bytes (6.648 KB)
 <<<<<<< HEAD
       Bytecode hash: 0x556fd20a12eccbbba1405bdda2eb527e6da68804f20c081c92bd630a22877ead
@@ -1245,12 +1246,23 @@ output:
       Bytecode size: 4584 bytes (4.584 KB)
       Bytecode hash: 0xca94e206724f138b65f71ddee439ab8e9d6d290913e703a5019fd11ee5833126
 >>>>>>> 03947be32 (mem_clear_val IR instruction)
+<<<<<<< HEAD
 >>>>>>> a9f6cf6f0 (mem_clear_val IR instruction)
+=======
+=======
+      Bytecode size: 6648 bytes (6.648 KB)
+      Bytecode hash: 0xc47b47e3d0075184dad7e1e4b429964a6a07baf01efe58c770f955a94dfb4604
+>>>>>>> cd0a63724 (fix problem with sizes bigger than 2^18)
+>>>>>>> b97bfcfe7 (fix problem with sizes bigger than 2^18)
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat
 
+<<<<<<< HEAD
       test test_array_repeat_zero ... ok (???, 27815938 gas)
+=======
+      test test_array_repeat_zero ... ok (???, 27815544 gas)
+>>>>>>> cd0a63724 (fix problem with sizes bigger than 2^18)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
