@@ -84,6 +84,13 @@ fn big_array_repeat() -> [bool; 25] {
     [true; 25]
 }
 
+// This array is bigger than 2^18, se we need to use MCL
+//  2^18 = 262144
+#[inline(never)]
+fn u8_array_bigger_than_18_bits() -> [u8; 262145] {
+    [0u8; 262145]
+}
+
 fn main() {
     let _ = array_repeat_zero_small_u8();
     let _ = array_repeat_zero_small_u16();
@@ -103,6 +110,8 @@ fn main() {
 
     let _ = small_array_repeat();
     let _ = big_array_repeat();
+
+    let _ = u8_array_bigger_than_18_bits();
 }
 
 trait IsZero { fn is_zero(self) -> bool; }
@@ -140,4 +149,6 @@ fn test_array_repeat_zero() {
     is_all_zero(array_repeat_zero_big_u256(), 25);
     is_all_zero(array_repeat_zero_big_b256(), 25);
     is_all_zero(array_repeat_zero_big_bool(), 25);
+
+    is_all_zero(u8_array_bigger_than_18_bits(), 262145);
 }
