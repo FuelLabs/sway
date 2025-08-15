@@ -742,7 +742,19 @@ move $$reta $r1               ; restore return address
 poph i524288                  ; restore registers 40..64
 popl i15                      ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
+<<<<<<< HEAD
 pshl i3                       ; save registers 16..40
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+pshl i3                       ; save registers 16..40
+=======
+pshl i7                       ; save registers 16..40
+>>>>>>> cd0a63724 (fix problem with sizes bigger than 2^18)
+=======
+pshl i3                       ; save registers 16..40
+>>>>>>> 4f08c47e5 (fix mem_copy_val problem with types bigger than 2^18)
+>>>>>>> 38ee2270b (fix mem_copy_val problem with types bigger than 2^18)
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function u8_array_bigger_than_18_bits_17
 cfei i262152                  ; allocate 262152 bytes for locals and 0 slots for call arguments
@@ -750,13 +762,40 @@ move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
 load $$tmp data_NonConfigurable_0; loading clear size in bytes
 mcl  $$locbase $$tmp          ; clear memory [u8; 262145]
+<<<<<<< HEAD
 load $$tmp data_NonConfigurable_0; loading copy size in bytes
 mcp  $r0 $$locbase $$tmp      ; copy memory
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+load $$tmp data_NonConfigurable_0; loading copy size in bytes
+mcp  $r0 $$locbase $$tmp      ; copy memory
+=======
+movi $r2 i262145              ; get data length for memory copy
+mcp  $r0 $$locbase $r2        ; copy memory
+>>>>>>> cd0a63724 (fix problem with sizes bigger than 2^18)
+=======
+load $$tmp data_NonConfigurable_0; loading copy size in bytes
+mcp  $r0 $$locbase $$tmp      ; copy memory
+>>>>>>> 4f08c47e5 (fix mem_copy_val problem with types bigger than 2^18)
+>>>>>>> 38ee2270b (fix mem_copy_val problem with types bigger than 2^18)
 move $$retv $r0               ; set return value
 cfsi i262152                  ; free 262152 bytes for locals and 0 slots for extra call arguments
 move $$reta $r1               ; restore return address
 poph i524288                  ; restore registers 40..64
+<<<<<<< HEAD
 popl i3                       ; restore registers 16..40
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+popl i3                       ; restore registers 16..40
+=======
+popl i7                       ; restore registers 16..40
+>>>>>>> cd0a63724 (fix problem with sizes bigger than 2^18)
+=======
+popl i3                       ; restore registers 16..40
+>>>>>>> 4f08c47e5 (fix mem_copy_val problem with types bigger than 2^18)
+>>>>>>> 38ee2270b (fix mem_copy_val problem with types bigger than 2^18)
 jal  $zero $$reta i0          ; return from call
 .data:
 data_NonConfigurable_0 .word 262145
@@ -1107,7 +1146,19 @@ data_NonConfigurable_0 .word 262145
 0x00000558 POPH 0x80000                                    ;; [152, 8, 0, 0]
 0x0000055c POPL 0xf                                        ;; [151, 0, 0, 15]
 0x00000560 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+<<<<<<< HEAD
 0x00000564 PSHL 0x3                                        ;; [149, 0, 0, 3]
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+0x00000564 PSHL 0x3                                        ;; [149, 0, 0, 3]
+=======
+0x00000564 PSHL 0x7                                        ;; [149, 0, 0, 7]
+>>>>>>> cd0a63724 (fix problem with sizes bigger than 2^18)
+=======
+0x00000564 PSHL 0x3                                        ;; [149, 0, 0, 3]
+>>>>>>> 4f08c47e5 (fix mem_copy_val problem with types bigger than 2^18)
+>>>>>>> 38ee2270b (fix mem_copy_val problem with types bigger than 2^18)
 0x00000568 PSHH 0x80000                                    ;; [150, 8, 0, 0]
 0x0000056c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
 0x00000570 CFEI 0x40008                                    ;; [145, 4, 0, 8]
@@ -1115,13 +1166,40 @@ data_NonConfigurable_0 .word 262145
 0x00000578 MOVE R17 R62                                    ;; [26, 71, 224, 0]
 0x0000057c LW R60 R63 0x0                                  ;; [93, 243, 240, 0]
 0x00000580 MCL R59 R60                                     ;; [39, 239, 192, 0]
+<<<<<<< HEAD
 0x00000584 LW R60 R63 0x0                                  ;; [93, 243, 240, 0]
 0x00000588 MCP $writable R59 R60                           ;; [40, 67, 191, 0]
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+0x00000584 LW R60 R63 0x0                                  ;; [93, 243, 240, 0]
+0x00000588 MCP $writable R59 R60                           ;; [40, 67, 191, 0]
+=======
+0x00000584 MOVI R18 0x1                                    ;; [114, 72, 0, 1]
+0x00000588 MCP $writable R59 R18                           ;; [40, 67, 180, 128]
+>>>>>>> cd0a63724 (fix problem with sizes bigger than 2^18)
+=======
+0x00000584 LW R60 R63 0x0                                  ;; [93, 243, 240, 0]
+0x00000588 MCP $writable R59 R60                           ;; [40, 67, 191, 0]
+>>>>>>> 4f08c47e5 (fix mem_copy_val problem with types bigger than 2^18)
+>>>>>>> 38ee2270b (fix mem_copy_val problem with types bigger than 2^18)
 0x0000058c MOVE R61 $writable                              ;; [26, 245, 0, 0]
 0x00000590 CFSI 0x40008                                    ;; [146, 4, 0, 8]
 0x00000594 MOVE R62 R17                                    ;; [26, 249, 16, 0]
 0x00000598 POPH 0x80000                                    ;; [152, 8, 0, 0]
+<<<<<<< HEAD
 0x0000059c POPL 0x3                                        ;; [151, 0, 0, 3]
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+0x0000059c POPL 0x3                                        ;; [151, 0, 0, 3]
+=======
+0x0000059c POPL 0x7                                        ;; [151, 0, 0, 7]
+>>>>>>> cd0a63724 (fix problem with sizes bigger than 2^18)
+=======
+0x0000059c POPL 0x3                                        ;; [151, 0, 0, 3]
+>>>>>>> 4f08c47e5 (fix mem_copy_val problem with types bigger than 2^18)
+>>>>>>> 38ee2270b (fix mem_copy_val problem with types bigger than 2^18)
 0x000005a0 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
 0x000005a4 NOOP                                            ;; [71, 0, 0, 0]
 .data_section:
@@ -1251,18 +1329,29 @@ output:
 =======
 =======
       Bytecode size: 6648 bytes (6.648 KB)
+<<<<<<< HEAD
       Bytecode hash: 0xc47b47e3d0075184dad7e1e4b429964a6a07baf01efe58c770f955a94dfb4604
 >>>>>>> cd0a63724 (fix problem with sizes bigger than 2^18)
+<<<<<<< HEAD
 >>>>>>> b97bfcfe7 (fix problem with sizes bigger than 2^18)
+=======
+=======
+      Bytecode hash: 0x0ae596de91be50b99f5af33b3ffdf03b48086eef74ff481547652feb85078b94
+>>>>>>> 4f08c47e5 (fix mem_copy_val problem with types bigger than 2^18)
+>>>>>>> 38ee2270b (fix mem_copy_val problem with types bigger than 2^18)
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       test test_array_repeat_zero ... ok (???, 27815938 gas)
 =======
       test test_array_repeat_zero ... ok (???, 27815544 gas)
 >>>>>>> cd0a63724 (fix problem with sizes bigger than 2^18)
+=======
+      test test_array_repeat_zero ... ok (???, 27815938 gas)
+>>>>>>> 4f08c47e5 (fix mem_copy_val problem with types bigger than 2^18)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
