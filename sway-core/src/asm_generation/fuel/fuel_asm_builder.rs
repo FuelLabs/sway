@@ -1590,7 +1590,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .expect("already verified to be a pointer");
 
         let len_in_bytes = dst_val_ptr_pointee_ty.size(self.context).in_bytes();
-<<<<<<< HEAD
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         let dst_reg = self.value_to_register(dst_val_ptr).unwrap();
@@ -1614,7 +1613,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 let len_reg = VirtualRegister::Constant(ConstantRegister::Scratch);
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LoadDataId(len_reg.clone(), len_dataid)),
-                    comment: "loading clear size in bytes".to_string(),
+                    comment: format!("loading clear size in bytes"),
                     owning_span: owning_span.clone(),
                 });
 
@@ -1628,22 +1627,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 });
             }
         }
-=======
-        let len = VirtualImmediate18::new_unchecked(len_in_bytes, "cannot fit length in 18 bits");
-
-        let dst_reg = self.value_to_register(dst_val_ptr).unwrap();
-
-        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MCLI(dst_reg, len)),
-            comment: format!(
-                "clear memory {}, {} bytes",
-                dst_val_ptr_pointee_ty.as_string(self.context),
-                len_in_bytes
-            ),
-            owning_span,
-        });
->>>>>>> b2c6722d0 (improving code)
 
         Ok(())
     }
