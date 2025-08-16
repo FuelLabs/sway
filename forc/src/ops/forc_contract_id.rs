@@ -1,6 +1,6 @@
 use crate::cli::ContractIdCommand;
 use anyhow::{bail, Result};
-use forc_pkg::{self as pkg, build_with_options};
+use forc_pkg::{self as pkg, build_with_options, DumpOpts};
 use forc_tracing::println_green;
 use sway_core::{fuel_prelude::fuel_tx, BuildTarget};
 use tracing::info;
@@ -63,6 +63,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
+        dump: DumpOpts::default(),
         time_phases: cmd.print.time_phases,
         profile: cmd.print.profile,
         metrics_outfile: cmd.print.metrics_outfile.clone(),

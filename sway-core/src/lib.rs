@@ -27,7 +27,9 @@ pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
+use crate::language::{CallPath, CallPathType};
 use crate::query_engine::ModuleCacheEntry;
+use crate::semantic_analysis::type_resolve::{resolve_call_path, VisibilityCheck};
 use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_context_to_finalized_asm;
 use asm_generation::FinalizedAsm;
@@ -1460,6 +1462,94 @@ fn check_should_abort(
         }
     }
     Ok(())
+}
+
+pub fn check_dump_impls(
+    engines: &Engines,
+    pkg_namespace: &namespace::Package,
+    typename: &str,
+) -> Result<(), ErrorEmitted> {
+    let handler = Handler::default();
+    let namespace =
+        namespace::Namespace::new(&handler, engines, pkg_namespace.clone(), false).unwrap();
+
+    let path: Vec<&str> = typename.split("::").collect();
+    let mut call_path = CallPath::fullpath(&path);
+    call_path.callpath_type = CallPathType::Ambiguous;
+
+    let mod_path = [pkg_namespace.root_module().name().clone()];
+
+    let resolved = resolve_call_path(
+        &handler,
+        engines,
+        &namespace,
+        &mod_path,
+        &call_path,
+        None,
+        VisibilityCheck::No,
+    );
+
+    eprintln!("decl {:?}", resolved);
+
+    if let Ok(resolved) = resolved {
+        let struct_decl = resolved.to_struct_decl(&handler, engines)?.expect_typed();
+        let struct_decl = struct_decl.to_struct_decl(&handler, engines)?;
+
+        let module = &pkg_namespace.root_module();
+
+        walk_trait_map(engines, handler, struct_decl, module);
+
+        for ext_pkg in pkg_namespace.external_packages.iter() {
+            let ext_module = ext_pkg.1.root_module();
+            let subhandler = Handler::default();
+            walk_trait_map(engines, subhandler, struct_decl, ext_module);
+        }
+    }
+
+    Ok(())
+}
+
+fn walk_trait_map(
+    engines: &Engines,
+    handler: Handler,
+    struct_decl: decl_engine::DeclId<ty::TyStructDecl>,
+    module: &namespace::Module,
+) {
+    module.walk_scope_chain(|lexical_scope| {
+        module.submodules().iter().for_each(|(_, sub)| {
+            let subhandler = Handler::default();
+            walk_trait_map(engines, subhandler, struct_decl, sub);
+        });
+
+        let trait_map = &lexical_scope.items.implemented_traits;
+
+        for key in trait_map.trait_impls.keys() {
+            for trait_entry in trait_map.trait_impls[key].iter() {
+                let trait_type = engines.te().get(trait_entry.inner.key.type_id);
+                if !trait_type.is_struct() {
+                    continue;
+                }
+
+                let trait_struct = match trait_type.expect_struct(&handler, engines, &Span::dummy())
+                {
+                    Ok(struct_decl) => struct_decl,
+                    Err(_) => {
+                        continue;
+                    }
+                };
+
+                let struct_decl2 = engines.de().get_struct(&struct_decl);
+                let trait_struct2 = engines.de().get_struct(&trait_struct);
+
+                if struct_decl2.span.source_id() == trait_struct2.span.source_id() {
+                    eprintln!(
+                        "===> Found impl {:?}",
+                        engines.help_out(trait_entry.inner.key.trait_decl_span.clone())
+                    );
+                }
+            }
+        }
+    });
 }
 
 #[test]

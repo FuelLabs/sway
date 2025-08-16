@@ -279,12 +279,19 @@ pub struct MinifyOpts {
 /// Represents a compiled contract ID as a pub const in a contract.
 type ContractIdConst = String;
 
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+pub struct DumpOpts {
+    /// Dump all trait implementations for the given type name.
+    pub dump_impls: Option<String>,
+}
+
 /// The set of options provided to the `build` functions.
 #[derive(Default, Clone)]
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
     pub minify: MinifyOpts,
+    pub dump: DumpOpts,
     /// If set, generates a JSON file containing the hex-encoded script binary.
     pub hex_outfile: Option<String>,
     /// If set, outputs a binary file representing the script bytes.
@@ -1724,7 +1731,7 @@ pub fn compile(
             &handler,
             engines,
             source,
-            namespace,
+            namespace.clone(),
             Some(&sway_build_config),
             &pkg.name,
             None,
@@ -1752,6 +1759,14 @@ pub fn compile(
 
     if handler.has_errors() {
         return fail(handler);
+    }
+
+    if let Some(typename) = &profile.dump.dump_impls {
+        let _ = sway_core::check_dump_impls(
+            engines,
+            typed_program.namespace.current_package_ref(),
+            typename,
+        );
     }
 
     let asm_res = time_expr!(
@@ -2108,6 +2123,7 @@ fn build_profile_from_opts(
         metrics_outfile,
         tests,
         error_on_warnings,
+        dump,
         ..
     } = build_options;
 
@@ -2128,6 +2144,7 @@ fn build_profile_from_opts(
             BuildProfile::default()
         });
     profile.name = selected_profile_name.into();
+    profile.dump = dump.clone();
     profile.print_ast |= print.ast;
     if profile.print_dca_graph.is_none() {
         profile.print_dca_graph.clone_from(&print.dca_graph);
