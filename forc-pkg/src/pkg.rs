@@ -9,7 +9,7 @@ use anyhow::{anyhow, bail, Context, Error, Result};
 use byte_unit::{Byte, UnitType};
 use forc_tracing::{println_action_green, println_warning};
 use forc_util::{
-    default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
+    default_output_directory, find_file_name, kebab_to_snake_case, print_compiling, print_infos,
     print_on_failure, print_warnings,
 };
 use petgraph::{
@@ -1701,10 +1701,11 @@ pub fn compile(
     let terse_mode = profile.terse;
     let reverse_results = profile.reverse_results;
     let fail = |handler: Handler| {
-        let (errors, warnings) = handler.consume();
+        let (errors, warnings, infos) = handler.consume();
         print_on_failure(
             engines.se(),
             terse_mode,
+            &infos,
             &warnings,
             &errors,
             reverse_results,
@@ -1862,8 +1863,9 @@ pub fn compile(
         _ => return fail(handler),
     };
 
-    let (_, warnings) = handler.consume();
+    let (_, warnings, infos) = handler.consume();
 
+    print_infos(engines.se(), terse_mode, &infos);
     print_warnings(engines.se(), terse_mode, &pkg.name, &warnings, &tree_type);
 
     // Metadata to be placed into the binary.
@@ -2420,10 +2422,11 @@ pub fn build(
             manifest_file: manifest.clone(),
         };
 
-        let fail = |warnings, errors| {
+        let fail = |infos, warnings, errors| {
             print_on_failure(
                 engines.se(),
                 profile.terse,
+                infos,
                 warnings,
                 errors,
                 profile.reverse_results,
@@ -2467,7 +2470,7 @@ pub fn build(
                 dbg_generation,
             ) {
                 Ok(o) => o,
-                Err(errs) => return fail(&[], &errs),
+                Err(errs) => return fail(&[], &[], &errs),
             };
 
             let compiled_without_tests = compile(
@@ -2543,6 +2546,7 @@ pub fn build(
                 print_on_failure(
                     engines.se(),
                     profile.terse,
+                    &[],
                     &[],
                     &errs,
                     profile.reverse_results,

@@ -1,4 +1,7 @@
-use crate::{error::CompileError, warning::CompileWarning};
+use crate::{
+    error::CompileError,
+    warning::{CompileInfo, CompileWarning},
+};
 use core::cell::RefCell;
 
 /// A handler with which you can emit diagnostics.
@@ -6,23 +9,33 @@ use core::cell::RefCell;
 pub struct Handler {
     /// The inner handler.
     /// This construction is used to avoid `&mut` all over the compiler.
-    inner: RefCell<HandlerInner>,
+    inner: RefCell<HandlerDiagnostics>,
 }
 
 /// Contains the actual data for `Handler`.
 /// Modelled this way to afford an API using interior mutability.
 #[derive(Default, Debug, Clone)]
-struct HandlerInner {
+struct HandlerDiagnostics {
     /// The sink through which errors will be emitted.
     errors: Vec<CompileError>,
     /// The sink through which warnings will be emitted.
     warnings: Vec<CompileWarning>,
+    /// The sink through which infos will be emitted.
+    infos: Vec<CompileInfo>,
 }
 
 impl Handler {
-    pub fn from_parts(errors: Vec<CompileError>, warnings: Vec<CompileWarning>) -> Self {
+    pub fn from_parts(
+        errors: Vec<CompileError>,
+        warnings: Vec<CompileWarning>,
+        infos: Vec<CompileInfo>,
+    ) -> Self {
         Self {
-            inner: RefCell::new(HandlerInner { errors, warnings }),
+            inner: RefCell::new(HandlerDiagnostics {
+                errors,
+                warnings,
+                infos,
+            }),
         }
     }
 
@@ -40,6 +53,11 @@ impl Handler {
     /// Emit the warning `warn`.
     pub fn emit_warn(&self, warn: CompileWarning) {
         self.inner.borrow_mut().warnings.push(warn);
+    }
+
+    /// Emit the info `info`.
+    pub fn emit_info(&self, info: CompileInfo) {
+        self.inner.borrow_mut().infos.push(info);
     }
 
     pub fn has_errors(&self) -> bool {
@@ -67,21 +85,24 @@ impl Handler {
         }
     }
 
-    /// Extract all the warnings and errors from this handler.
-    pub fn consume(self) -> (Vec<CompileError>, Vec<CompileWarning>) {
+    /// Extract all the diagnostics from this handler.
+    pub fn consume(self) -> (Vec<CompileError>, Vec<CompileWarning>, Vec<CompileInfo>) {
         let inner = self.inner.into_inner();
-        (inner.errors, inner.warnings)
+        (inner.errors, inner.warnings, inner.infos)
     }
 
     pub fn append(&self, other: Handler) -> Option<ErrorEmitted> {
         let other_has_errors = other.has_errors();
 
-        let (errors, warnings) = other.consume();
+        let (errors, warnings, infos) = other.consume();
         for warn in warnings {
             self.emit_warn(warn);
         }
         for err in errors {
             self.emit_err(err);
+        }
+        for inf in infos {
+            self.emit_info(inf);
         }
 
         if other_has_errors {
@@ -118,7 +139,7 @@ impl Handler {
     ) -> Result<(), ErrorEmitted> {
         let mut emitted = Ok(());
 
-        let (errs, _) = other.consume();
+        let (errs, _, _) = other.consume();
         for err in errs {
             if let Some(err) = (f)(err) {
                 emitted = Err(self.emit_err(err));

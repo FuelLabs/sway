@@ -605,6 +605,55 @@ impl ToDiagnostic for CompileWarning {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CollectedTraitImpl {
+    pub impl_span: Span,
+    pub trait_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Info {
+}
+
+impl fmt::Display for Info {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Info::*;
+        match self {
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CompileInfo {
+    pub span: Span,
+    pub content: Info,
+}
+
+impl Spanned for CompileInfo {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
+impl CompileInfo {
+    pub fn source_id(&self) -> Option<SourceId> {
+        self.span.source_id().cloned()
+    }
+
+    pub fn to_friendly_string(&self) -> String {
+        self.content.to_string()
+    }
+}
+
+impl ToDiagnostic for CompileInfo {
+    fn to_diagnostic(&self, source_engine: &sway_types::SourceEngine) -> Diagnostic {
+        let code = Code::warnings;
+        use Info::*;
+        match &self.content {
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use sway_types::style::*;
