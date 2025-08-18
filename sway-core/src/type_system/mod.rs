@@ -176,7 +176,7 @@ fn generic_enum_resolution() {
     engines
         .te()
         .unify(&h, &engines, ty_1, ty_2, &sp, "", || None);
-    let (_, errors) = h.consume();
+    let (errors, _warnings, _infos) = h.consume();
     assert!(errors.is_empty());
 
     if let TypeInfo::Enum(decl_ref_1) = &*engines.te().get(ty_1) {
@@ -204,7 +204,7 @@ fn basic_numeric_unknown() {
     // Unify them together...
     let h = Handler::default();
     engines.te().unify(&h, &engines, id, id2, &sp, "", || None);
-    let (_, errors) = h.consume();
+    let (errors, _warnings, _infos) = h.consume();
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -226,7 +226,7 @@ fn unify_numerics() {
     // Unify them together...
     let h = Handler::default();
     engines.te().unify(&h, &engines, id2, id, &sp, "", || None);
-    let (_, errors) = h.consume();
+    let (errors, _warnings, _infos) = h.consume();
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -249,7 +249,7 @@ fn unify_numerics_2() {
     // Unify them together...
     let h = Handler::default();
     type_engine.unify(&h, &engines, id, id2, &sp, "", || None);
-    let (_, errors) = h.consume();
+    let (errors, _warnings, _infos) = h.consume();
     assert!(errors.is_empty());
 
     assert!(matches!(

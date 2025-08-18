@@ -51,7 +51,7 @@ use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::warning::{CollectedTraitImpl, CompileInfo, CompileWarning, Info, Warning};
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
@@ -1019,8 +1019,8 @@ pub fn compile_to_ast(
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
             entry.programs.metrics.reused_programs += 1;
 
-            let (warnings, errors) = entry.handler_data;
-            let new_handler = Handler::from_parts(warnings, errors);
+            let (warnings, errors, infos) = entry.handler_data;
+            let new_handler = Handler::from_parts(warnings, errors, infos);
             handler.append(new_handler);
             return Ok(entry.programs);
         };
