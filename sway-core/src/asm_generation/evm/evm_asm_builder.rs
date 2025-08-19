@@ -353,6 +353,9 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                     dst_val_ptr,
                     src_val_ptr,
                 } => self.compile_mem_copy_val(instr_val, dst_val_ptr, src_val_ptr),
+                InstOp::MemClearVal { dst_val_ptr } => {
+                    todo!();
+                }
                 InstOp::Nop => (),
                 InstOp::PtrToInt(ptr_val, int_ty) => {
                     self.compile_ptr_to_int(instr_val, ptr_val, int_ty)
