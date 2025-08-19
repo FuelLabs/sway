@@ -11,6 +11,7 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context};
 use file_location::{location_from_root, Namespace};
+use flate2::read::GzDecoder;
 use forc_tracing::println_action_green;
 use index_file::IndexFile;
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,7 @@ use std::{
     thread,
     time::Duration,
 };
+use tar::Archive;
 
 /// Name of the folder containing fetched registry sources.
 pub const REG_DIR_NAME: &str = "registry";
@@ -458,18 +460,30 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
 
             let cid = resolve_to_cid(&index_file, pinned)?;
 
-            match ipfs_node {
+            // Try IPFS first, fallback to CDN if it fails
+            let ipfs_result = match ipfs_node {
                 IPFSNode::Local => {
                     println_action_green("Fetching", "with local IPFS node");
-                    cid.fetch_with_client(&ipfs_client(), &path).await?;
+                    cid.fetch_with_client(&ipfs_client(), &path).await
                 }
                 IPFSNode::WithUrl(gateway_url) => {
                     println_action_green(
                         "Fetching",
                         &format!("from {}. Note: This can take several minutes.", gateway_url),
                     );
-                    cid.fetch_with_gateway_url(gateway_url, &path).await?;
+                    cid.fetch_with_gateway_url(gateway_url, &path).await
                 }
+            };
+
+            // If IPFS fails, try CDN fallback
+            if let Err(ipfs_error) = ipfs_result {
+                println_action_green("Warning", &format!("IPFS fetch failed: {}", ipfs_error));
+                fetch_from_s3(pinned, &path).await.with_context(|| {
+                    format!(
+                        "Both IPFS and CDN fallback failed. IPFS error: {}",
+                        ipfs_error
+                    )
+                })?;
             }
 
             Ok(path)
@@ -477,6 +491,64 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
     )
     .await?;
     Ok(path)
+}
+
+/// Fetches package from CDN as a fallback when IPFS fails
+async fn fetch_from_s3(pinned: &Pinned, path: &Path) -> anyhow::Result<()> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(180))
+        .build()
+        .context("Failed to create HTTP client")?;
+
+    // Construct CDN URL directly from IPFS hash
+    let cdn_url = format!("https://cdn.forc.pub/{}", pinned.cid.0);
+
+    println_action_green(
+        "Fetching",
+        &format!("from {cdn_url}. Note: This can take several minutes."),
+    );
+
+    // Download directly from CDN
+    let source_response = client
+        .get(&cdn_url)
+        .send()
+        .await
+        .context("Failed to download source code from CDN")?;
+
+    if !source_response.status().is_success() {
+        bail!(
+            "Failed to download source from CDN: HTTP {}",
+            source_response.status()
+        );
+    }
+
+    let bytes = source_response
+        .bytes()
+        .await
+        .context("Failed to read source code bytes")?;
+
+    // Extract the tarball to the destination path
+    extract_s3_archive(&bytes, path, &pinned.cid)?;
+
+    Ok(())
+}
+
+/// Extracts CDN archive to destination path
+fn extract_s3_archive(bytes: &[u8], dst: &Path, cid: &Cid) -> anyhow::Result<()> {
+    // Create the destination directory with CID name (to match IPFS behavior)
+    let dst_dir = dst.join(cid.0.to_string());
+    fs::create_dir_all(&dst_dir)?;
+
+    // Decompress and extract the tar.gz archive
+    let tar = GzDecoder::new(bytes);
+    let mut archive = Archive::new(tar);
+
+    // Extract all entries
+    for entry in archive.entries()? {
+        let mut entry = entry?;
+        entry.unpack_in(&dst_dir)?;
+    }
+    Ok(())
 }
 
 async fn with_tmp_fetch_index<F, O, Fut>(
