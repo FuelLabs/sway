@@ -1,5 +1,6 @@
 use crate::asm_generation::fuel::compiler_constants;
 
+use fuel_vm::fuel_asm::Imm18;
 use sway_error::error::CompileError;
 use sway_types::span::Span;
 
@@ -163,7 +164,12 @@ impl VirtualImmediate18 {
     pub fn value(&self) -> u32 {
         self.value
     }
+
+    pub fn as_imm18(&self) -> Option<Imm18> {
+        Imm18::new_checked(self.value)
+    }
 }
+
 impl fmt::Display for VirtualImmediate18 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "i{}", self.value)

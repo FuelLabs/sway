@@ -269,7 +269,9 @@ fn hash_fn(
                 crate::InstOp::IntToPtr(_, ty) => ty.hash(state),
                 crate::InstOp::Load(_) => (),
                 crate::InstOp::MemCopyBytes { byte_len, .. } => byte_len.hash(state),
-                crate::InstOp::MemCopyVal { .. } | crate::InstOp::Nop => (),
+                crate::InstOp::MemCopyVal { .. }
+                | crate::InstOp::MemClearVal { .. }
+                | crate::InstOp::Nop => (),
                 crate::InstOp::PtrToInt(_, ty) => ty.hash(state),
                 crate::InstOp::Ret(_, ty) => ty.hash(state),
                 crate::InstOp::Store { .. } => (),

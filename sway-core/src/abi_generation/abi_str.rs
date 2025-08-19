@@ -57,8 +57,11 @@ impl TypeId {
                 }
                 (TypeInfo::Array(_, length), TypeInfo::Array(type_arg, resolved_length)) => {
                     assert_eq!(
-                        length.expr().as_literal_val().unwrap(),
-                        resolved_length.expr().as_literal_val().unwrap()
+                        length.expr().as_literal_val(),
+                        resolved_length.expr().as_literal_val(),
+                        "{:?} {:?}",
+                        length.expr().as_literal_val(),
+                        resolved_length.expr().as_literal_val()
                     );
                     let inner_type = if ctx.abi_with_fully_specified_types {
                         type_engine
