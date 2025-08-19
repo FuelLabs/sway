@@ -67,16 +67,16 @@ pub(crate) fn render_type_anchor(
             let enum_decl = render_plan.engines.de().get_enum(&decl_id);
             if !render_plan.document_private_items && enum_decl.visibility.is_private() {
                 Ok(box_html! {
-                    : enum_decl.name().clone().as_str();
+                    : enum_decl.name().as_str();
                 })
             } else {
                 let module_info = ModuleInfo::from_call_path(&enum_decl.call_path);
-                let file_name = format!("enum.{}.html", enum_decl.name().clone().as_str());
+                let file_name = format!("enum.{}.html", enum_decl.name().as_str());
                 let href =
                     module_info.file_path_from_location(&file_name, current_module_info, false)?;
                 Ok(box_html! {
                     a(class="enum", href=href) {
-                        : enum_decl.name().clone().as_str();
+                        : enum_decl.name().as_str();
                     }
                 })
             }
@@ -85,16 +85,16 @@ pub(crate) fn render_type_anchor(
             let struct_decl = render_plan.engines.de().get_struct(&decl_id);
             if !render_plan.document_private_items && struct_decl.visibility.is_private() {
                 Ok(box_html! {
-                    : struct_decl.name().clone().as_str();
+                    : struct_decl.name().as_str();
                 })
             } else {
                 let module_info = ModuleInfo::from_call_path(&struct_decl.call_path);
-                let file_name = format!("struct.{}.html", struct_decl.name().clone().as_str());
+                let file_name = format!("struct.{}.html", struct_decl.name().as_str());
                 let href =
                     module_info.file_path_from_location(&file_name, current_module_info, false)?;
                 Ok(box_html! {
                     a(class="struct", href=href) {
-                        : struct_decl.name().clone().as_str();
+                        : struct_decl.name().as_str();
                     }
                 })
             }

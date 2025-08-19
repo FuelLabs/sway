@@ -44,7 +44,7 @@ pub struct CallResponse {
     pub receipts: Vec<Receipt>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trace_events: Vec<trace::TraceEvent>,
-    #[serde(rename = "script", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "Script", skip_serializing_if = "Option::is_none")]
     pub script_json: Option<serde_json::Value>,
 }
 
@@ -207,6 +207,14 @@ pub struct Abi {
     type_lookup: HashMap<usize, UnifiedTypeDeclaration>,
 }
 
+impl Abi {
+    /// Set the source of the ABI after creation
+    pub fn with_source(mut self, source: AbiSource) -> Self {
+        self.source = source;
+        self
+    }
+}
+
 impl FromStr for Abi {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -326,8 +334,9 @@ pub async fn create_abi_map(
 ) -> anyhow::Result<HashMap<ContractId, Abi>> {
     // Load main ABI
     let main_abi_str = load_abi(main_abi).await?;
-    let main_abi =
-        Abi::from_str(&main_abi_str).map_err(|e| anyhow!("Failed to parse main ABI: {}", e))?;
+    let main_abi = Abi::from_str(&main_abi_str)
+        .map_err(|e| anyhow!("Failed to parse main ABI: {}", e))?
+        .with_source(main_abi.clone());
 
     // Start with main contract ABI
     let mut abi_map = HashMap::from([(main_contract_id, main_abi)]);
@@ -338,7 +347,7 @@ pub async fn create_abi_map(
             match load_abi(&abi_path).await {
                 Ok(abi_str) => match Abi::from_str(&abi_str) {
                     Ok(additional_abi) => {
-                        abi_map.insert(contract_id, additional_abi);
+                        abi_map.insert(contract_id, additional_abi.with_source(abi_path.clone()));
                         forc_tracing::println_action_green(
                             "Loaded additional ABI for contract",
                             &format!("0x{}", contract_id),

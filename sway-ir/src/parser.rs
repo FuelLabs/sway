@@ -242,6 +242,7 @@ mod ir_builder {
                 / op_log()
                 / op_mem_copy_bytes()
                 / op_mem_copy_val()
+                / op_mem_clear_val()
                 / op_nop()
                 / op_ptr_to_int()
                 / op_read_register()
@@ -394,6 +395,11 @@ mod ir_builder {
                 = "mem_copy_val" _ dst_name:id() comma() src_name:id() {
                     IrAstOperation::MemCopyVal(dst_name, src_name)
                 }
+
+            rule op_mem_clear_val() -> IrAstOperation
+            = "mem_clear_val" _ dst_name:id() {
+                IrAstOperation::MemClearVal(dst_name)
+            }
 
             rule op_nop() -> IrAstOperation
                 = "nop" _ {
@@ -799,6 +805,7 @@ mod ir_builder {
         Log(IrAstTy, String, String),
         MemCopyBytes(String, String, u64),
         MemCopyVal(String, String),
+        MemClearVal(String),
         Nop,
         PtrToInt(String, IrAstTy),
         ReadRegister(String),
@@ -1430,6 +1437,10 @@ mod ir_builder {
                             *val_map.get(&dst_name).unwrap(),
                             *val_map.get(&src_name).unwrap(),
                         )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::MemClearVal(dst_name) => block
+                        .append(context)
+                        .mem_clear_val(*val_map.get(&dst_name).unwrap())
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::Nop => block.append(context).nop(),
                     IrAstOperation::PtrToInt(val, ty) => {

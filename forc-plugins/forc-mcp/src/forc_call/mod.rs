@@ -558,6 +558,7 @@ fn build_call_command(
         external_contracts: None,
         output: OutputFormat::Json,
         verbosity,
+        debug: false,
     })
 }
 
@@ -599,6 +600,7 @@ fn build_list_command(contract_id: &str, abi: &str) -> anyhow::Result<forc_clien
         external_contracts: None,
         output: OutputFormat::Default,
         verbosity: 0,
+        debug: false,
     })
 }
 
@@ -657,6 +659,7 @@ fn build_transfer_command(
         external_contracts: None,
         output: OutputFormat::Json,
         verbosity,
+        debug: false,
     })
 }
 

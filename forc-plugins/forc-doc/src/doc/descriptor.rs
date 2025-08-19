@@ -27,7 +27,7 @@ trait RequiredMethods {
 impl RequiredMethods for Vec<DeclRefTraitFn> {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn> {
         self.iter()
-            .map(|decl_ref| (*decl_engine.get_trait_fn(decl_ref)).clone())
+            .map(|decl_ref| decl_engine.get_trait_fn(decl_ref).as_ref().clone())
             .collect()
     }
 }
@@ -371,7 +371,7 @@ impl Descriptor {
                     module_info,
                     ty: DocumentableType::Primitive(type_info.clone()),
                     item_name: item_name.clone(),
-                    code_str: item_name.clone().to_string(),
+                    code_str: item_name.to_string(),
                     attrs_opt: attrs_opt.clone(),
                     item_context: Default::default(),
                 },

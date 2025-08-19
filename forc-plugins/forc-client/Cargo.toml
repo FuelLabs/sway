@@ -39,6 +39,7 @@ devault.workspace = true
 dialoguer.workspace = true
 either.workspace = true
 forc.workspace = true
+forc-debug.workspace = true
 forc-pkg.workspace = true
 forc-tracing.workspace = true
 forc-tx.workspace = true

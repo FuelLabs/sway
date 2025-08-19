@@ -257,11 +257,11 @@ pub async fn call_function(
         }
     };
 
-    let fuel_tx::Transaction::Script(script) = tx.into() else {
+    let tx: fuel_tx::Transaction = tx.into();
+    let fuel_tx::Transaction::Script(script) = &tx else {
         bail!("Transaction is not a script");
     };
-
-    let script_json = serde_json::to_value(&script)
+    let script_json = serde_json::to_value(script)
         .map_err(|e| anyhow!("Failed to convert script to JSON: {e}"))?;
 
     // Parse the result based on output format
@@ -293,7 +293,7 @@ pub async fn call_function(
             wallet.provider(),
             &mode,
             &consensus_params,
-            &script,
+            script,
             tx_execution.result.receipts(),
             storage_reads,
             &abi_map,
@@ -332,6 +332,11 @@ pub async fn call_function(
         &mode,
         &node,
     );
+
+    // Start interactive debugger if requested
+    if cmd.debug {
+        start_debug_session(&client, &tx, abi).await?;
+    }
 
     Ok(CallResponse {
         tx_hash: tx_execution.id.to_string(),
@@ -397,6 +402,49 @@ fn prepare_contract_call_data(
     Ok((encoded_data, output_param))
 }
 
+/// Starts an interactive debugging session with the given transaction and ABI
+async fn start_debug_session(
+    fuel_client: &FuelClient,
+    tx: &fuel_tx::Transaction,
+    abi: &super::Abi,
+) -> Result<()> {
+    // Create debugger instance from the existing fuel client
+    let mut debugger = forc_debug::debugger::Debugger::from_client(fuel_client.clone())
+        .await
+        .map_err(|e| anyhow!("Failed to create debugger: {e}"))?;
+
+    // Create temporary files for transaction and ABI (auto-cleaned when dropped)
+    let mut tx_file = tempfile::Builder::new()
+        .suffix(".json")
+        .tempfile()
+        .map_err(|e| anyhow!("Failed to create temp transaction file: {e}"))?;
+    serde_json::to_writer_pretty(&mut tx_file, tx)
+        .map_err(|e| anyhow!("Failed to write transaction to temp file: {e}"))?;
+
+    let mut abi_file = tempfile::Builder::new()
+        .suffix(".json")
+        .tempfile()
+        .map_err(|e| anyhow!("Failed to create temp ABI file: {e}"))?;
+    serde_json::to_writer_pretty(&mut abi_file, &abi.program)
+        .map_err(|e| anyhow!("Failed to write ABI to temp file: {e}"))?;
+
+    // Prepare the start_tx command string for the CLI
+    let tx_cmd = format!(
+        "start_tx {} {}",
+        tx_file.path().to_string_lossy(),
+        abi_file.path().to_string_lossy()
+    );
+
+    // Start the interactive CLI session with the prepared command
+    let mut cli = forc_debug::cli::Cli::new()
+        .map_err(|e| anyhow!("Failed to create debug CLI interface: {e}"))?;
+    cli.run(&mut debugger, Some(tx_cmd))
+        .await
+        .map_err(|e| anyhow!("Interactive debugging session failed: {e}"))?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::*;
@@ -432,6 +480,7 @@ pub mod tests {
             output: cmd::call::OutputFormat::Raw,
             list_functions: false,
             verbosity: 0,
+            debug: false,
         }
     }
 

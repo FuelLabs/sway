@@ -21,7 +21,7 @@ pub enum Error {
     SessionError(String),
 
     #[error("I/O error")]
-    IoError(std::io::Error),
+    IoError(#[from] std::io::Error),
 
     #[error("ABI error: {0}")]
     AbiError(String),
@@ -40,6 +40,9 @@ pub enum Error {
 pub enum ArgumentError {
     #[error("Invalid argument: {0}")]
     Invalid(String),
+
+    #[error("Unknown command: {0}")]
+    UnknownCommand(String),
 
     #[error("Not enough arguments, expected {expected} but got {got}")]
     NotEnough { expected: usize, got: usize },

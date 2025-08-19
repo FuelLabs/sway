@@ -1,4 +1,4 @@
-use crate::{cli::commands::Commands, names, types::AbiMap, FuelClient};
+use crate::{cli::commands::Commands, names};
 use rustyline::{
     completion::Completer,
     highlight::{CmdKind, Highlighter},
@@ -8,22 +8,6 @@ use rustyline::{
 };
 use serde_json::Value;
 use std::{borrow::Cow, collections::HashSet, fs};
-
-pub struct State {
-    pub client: FuelClient,
-    pub session_id: String,
-    pub contract_abis: AbiMap,
-}
-
-impl State {
-    pub fn new(client: FuelClient) -> Self {
-        Self {
-            client,
-            session_id: String::new(),
-            contract_abis: AbiMap::default(),
-        }
-    }
-}
 
 pub struct DebuggerHelper {
     pub commands: Commands,

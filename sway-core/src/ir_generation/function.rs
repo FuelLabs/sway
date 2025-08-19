@@ -187,14 +187,16 @@ fn calc_addr_as_ptr(
     assert!(ptr.get_type(context).unwrap().is_ptr(context));
     assert!(len.get_type(context).unwrap().is_uint64(context));
 
-    let uint64 = Type::get_uint64(context);
-    let ptr = current_block.append(context).ptr_to_int(ptr, uint64);
     let addr = current_block
         .append(context)
         .binary_op(BinaryOpKind::Add, ptr, len);
 
+    // cast the addr to ptr_to
     let ptr_to = Type::new_typed_pointer(context, ptr_to);
-    current_block.append(context).int_to_ptr(addr, ptr_to)
+    current_block
+        .append(context)
+        .cast_ptr(addr, ptr_to)
+        .add_metadatum(context, None)
 }
 
 impl<'a> FnCompiler<'a> {
@@ -450,17 +452,18 @@ impl<'a> FnCompiler<'a> {
         string_len: u64,
     ) -> Result<TerminatorValue, CompileError> {
         let int_ty = Type::get_uint64(context);
+        let ptr_ty = Type::get_ptr(context);
 
         // build field values of the slice
         let ptr_val = self
             .current_block
             .append(context)
-            .ptr_to_int(string_data, int_ty)
+            .cast_ptr(string_data, ptr_ty)
             .add_metadatum(context, span_md_idx);
         let len_val = ConstantContent::get_uint(context, 64, string_len);
 
         // a slice is a pointer and a length
-        let field_types = vec![int_ty, int_ty];
+        let field_types = vec![ptr_ty, int_ty];
 
         // build a struct variable to store the values
         let struct_type = Type::new_struct(context, field_types.clone());
@@ -1777,15 +1780,14 @@ impl<'a> FnCompiler<'a> {
                     immediate: None,
                     metadata: None,
                 }];
+
+                let ptr_ty = Type::get_ptr(context);
                 let ptr = self.current_block.append(context).asm_block(
                     args,
                     body,
-                    uint64,
+                    ptr_ty,
                     Some(Ident::new_no_span("hp".into())),
                 );
-
-                let ptr_ty = Type::get_ptr(context);
-                let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_ty);
 
                 let len = ConstantContent::new_uint(context, 64, 0);
                 let len_c = Constant::unique(context, len);
@@ -2353,13 +2355,13 @@ impl<'a> FnCompiler<'a> {
                 )
                 .expect_register();
 
-                let uint64 = Type::get_uint64(context);
+                let uint64_ty = Type::get_uint64(context);
+                let ptr_ty = Type::get_ptr(context);
                 let (ptr, _, len) = self.compile_buffer_into_parts(context, buffer)?;
-                let ptr = self.current_block.append(context).ptr_to_int(ptr, uint64);
                 let slice_as_tuple = self.compile_tuple_from_values(
                     context,
                     vec![ptr, len],
-                    vec![uint64, uint64],
+                    vec![ptr_ty, uint64_ty],
                     None,
                 )?;
 
@@ -4114,42 +4116,46 @@ impl<'a> FnCompiler<'a> {
             .function
             .new_local_var(context, temp_name, array_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
-        let array_value = self
+        let whole_array_value = self
             .current_block
             .append(context)
             .get_local(array_local_var)
             .add_metadatum(context, span_md_idx);
 
-        let value_value = return_on_termination_or_extract!(
+        let repeated_item_value = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, value_expr)?
         )
         .expect_register();
 
-        if length_as_u64 > 5 {
+        if let Some(true) = can_mem_clear_be_used(context, elem_type, repeated_item_value) {
+            self.current_block
+                .append(context)
+                .mem_clear_val(whole_array_value);
+        } else if length_as_u64 > 5 {
             self.compile_array_init_loop(
                 context,
-                array_value,
+                whole_array_value,
                 elem_type,
-                value_value,
+                repeated_item_value,
                 length_as_u64,
                 span_md_idx,
             );
         } else {
             for i in 0..length_as_u64 {
                 let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
-                    array_value,
+                    whole_array_value,
                     elem_type,
                     i,
                 );
                 self.current_block
                     .append(context)
-                    .store(gep_val, value_value)
+                    .store(gep_val, repeated_item_value)
                     .add_metadatum(context, span_md_idx);
             }
         }
 
         Ok(TerminatorValue::new(
-            CompiledValue::InMemory(array_value),
+            CompiledValue::InMemory(whole_array_value),
             context,
         ))
     }
@@ -4987,5 +4993,33 @@ impl<'a> FnCompiler<'a> {
             CompiledValue::InMemory(storage_key),
             context,
         ))
+    }
+}
+
+fn can_mem_clear_be_used(ctx: &mut Context<'_>, elem_type: Type, value: Value) -> Option<bool> {
+    match elem_type.get_content(ctx) {
+        TypeContent::Bool if !(value.get_constant(ctx)?.get_content(ctx).as_bool()?) => Some(true),
+        TypeContent::Uint(256)
+            if value
+                .get_constant(ctx)?
+                .get_content(ctx)
+                .as_u256()?
+                .is_zero() =>
+        {
+            Some(true)
+        }
+        TypeContent::Uint(_) if value.get_constant(ctx)?.get_content(ctx).as_uint()? == 0 => {
+            Some(true)
+        }
+        TypeContent::B256
+            if value
+                .get_constant(ctx)?
+                .get_content(ctx)
+                .as_b256()?
+                .is_zero() =>
+        {
+            Some(true)
+        }
+        _ => None,
     }
 }

@@ -72,7 +72,7 @@ impl AttributeArg {
     /// Returns a mandatory [String] value from `self`,
     /// or an error if the value does not exist or is not of type [String].
     ///
-    /// `attribute` is the the parent [Attribute] of `self`.
+    /// `attribute` is the parent [Attribute] of `self`.
     pub fn get_string(
         &self,
         handler: &Handler,
@@ -125,7 +125,7 @@ impl AttributeArg {
     /// Returns a mandatory `bool` value from `self`,
     /// or an error if the value does not exist or is not of type `bool`.
     ///
-    /// `attribute` is the the parent [Attribute] of `self`.
+    /// `attribute` is the parent [Attribute] of `self`.
     pub fn get_bool(&self, handler: &Handler, attribute: &Attribute) -> Result<bool, ErrorEmitted> {
         match &self.value {
             Some(literal) => match literal {

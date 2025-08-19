@@ -363,6 +363,7 @@ impl InstructionVerifier<'_, '_> {
                     dst_val_ptr,
                     src_val_ptr,
                 } => self.verify_mem_copy_val(dst_val_ptr, src_val_ptr)?,
+                InstOp::MemClearVal { dst_val_ptr } => self.verify_mem_clear_val(dst_val_ptr)?,
                 InstOp::Nop => (),
                 InstOp::PtrToInt(val, ty) => self.verify_ptr_to_int(val, ty)?,
                 InstOp::Ret(val, ty) => self.verify_ret(val, ty)?,
@@ -950,6 +951,12 @@ impl InstructionVerifier<'_, '_> {
                         )
                     })
             })
+    }
+
+    // dst_val_ptr must be a a pointer.
+    fn verify_mem_clear_val(&self, dst_val_ptr: &Value) -> Result<(), IrError> {
+        let _ = self.get_ptr_type(dst_val_ptr, IrError::VerifyMemClearValNonPointer)?;
+        Ok(())
     }
 
     fn verify_ptr_to_int(&self, val: &Value, ty: &Type) -> Result<(), IrError> {

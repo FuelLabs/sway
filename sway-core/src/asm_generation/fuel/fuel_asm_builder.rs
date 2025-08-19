@@ -24,7 +24,6 @@ use crate::{
     BuildConfig,
 };
 
-use fuel_vm::fuel_asm::Imm12;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -493,6 +492,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     dst_val_ptr,
                     src_val_ptr,
                 } => self.compile_mem_copy_val(instr_val, dst_val_ptr, src_val_ptr),
+                InstOp::MemClearVal { dst_val_ptr } => {
+                    self.compile_mem_clear_val(instr_val, dst_val_ptr)
+                }
                 InstOp::Nop => Ok(()),
                 InstOp::PtrToInt(ptr_val, _int_ty) => self.compile_no_op_move(instr_val, ptr_val),
                 InstOp::Ret(ret_val, ty) => {
@@ -1504,37 +1506,55 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let dst_reg = self.value_to_register(dst_val_ptr)?;
         let src_reg = self.value_to_register(src_val_ptr)?;
 
-        if byte_len <= u64::from(Imm12::MAX.to_u16()) {
-            // Can be done using a single MCPI instruction.
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MCPI(
-                    dst_reg,
-                    src_reg,
-                    VirtualImmediate12::new_unchecked(byte_len, "argument size checked above"),
-                )),
-                comment: "copy memory".into(),
-                owning_span,
-            });
-        } else {
-            // Too many bytes for MCPI, so we need to use a separate register to hold the length.
-            let len_reg = self.reg_seqr.next();
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MOVI(
-                    len_reg.clone(),
-                    VirtualImmediate18::new_unchecked(
-                        byte_len,
-                        "cannot fit byte length in 18 bits",
-                    ),
-                )),
-                comment: "get data length for memory copy".into(),
-                owning_span: owning_span.clone(),
-            });
+        // Try to fit the length in 12, 18 bits... if impossible use data section
+        match VirtualImmediate12::new(byte_len, Span::dummy()) {
+            Ok(byte_len) => {
+                // Can be done using a single MCPI instruction.
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MCPI(dst_reg, src_reg, byte_len)),
+                    comment: "copy memory".into(),
+                    owning_span,
+                });
+            }
+            Err(_) => {
+                match VirtualImmediate18::new(byte_len, Span::dummy()) {
+                    Ok(byte_len) => {
+                        // Too many bytes for MCPI, so we need to use a separate register to hold the length.
+                        let len_reg = self.reg_seqr.next();
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::MOVI(len_reg.clone(), byte_len)),
+                            comment: "get data length for memory copy".into(),
+                            owning_span: owning_span.clone(),
+                        });
 
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
-                comment: "copy memory".into(),
-                owning_span,
-            });
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
+                            comment: "copy memory".into(),
+                            owning_span,
+                        });
+                    }
+                    Err(_) => {
+                        let len_entry = Entry::new_word(byte_len, EntryName::NonConfigurable, None);
+                        let len_dataid = self.data_section.insert_data_value(len_entry);
+
+                        let len_reg = VirtualRegister::Constant(ConstantRegister::Scratch);
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::LoadDataId(
+                                len_reg.clone(),
+                                len_dataid,
+                            )),
+                            comment: "loading copy size in bytes".to_string(),
+                            owning_span: owning_span.clone(),
+                        });
+
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::MCP(dst_reg, src_reg, len_reg)),
+                            comment: "copy memory".into(),
+                            owning_span,
+                        });
+                    }
+                }
+            }
         }
 
         Ok(())
@@ -1559,6 +1579,59 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             })?;
         let byte_len = dst_ty.size(self.context).in_bytes();
         self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, byte_len)
+    }
+
+    fn compile_mem_clear_val(
+        &mut self,
+        instr_val: &Value,
+        dst_val_ptr: &Value,
+    ) -> Result<(), CompileError> {
+        let dst_val_ptr_pointee_ty = dst_val_ptr
+            .get_type(self.context)
+            .expect("already verified to be a pointer")
+            .get_pointee_type(self.context)
+            .expect("already verified to be a pointer");
+
+        let len_in_bytes = dst_val_ptr_pointee_ty.size(self.context).in_bytes();
+
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+        let dst_reg = self.value_to_register(dst_val_ptr).unwrap();
+
+        match VirtualImmediate18::new(len_in_bytes, owning_span.clone().unwrap_or(Span::dummy())) {
+            Ok(len) => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MCLI(dst_reg, len)),
+                    comment: format!(
+                        "clear memory {}, {} bytes",
+                        dst_val_ptr_pointee_ty.as_string(self.context),
+                        len_in_bytes
+                    ),
+                    owning_span,
+                });
+            }
+            Err(_) => {
+                let len_entry = Entry::new_word(len_in_bytes, EntryName::NonConfigurable, None);
+                let len_dataid = self.data_section.insert_data_value(len_entry);
+
+                let len_reg = VirtualRegister::Constant(ConstantRegister::Scratch);
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LoadDataId(len_reg.clone(), len_dataid)),
+                    comment: "loading clear size in bytes".to_string(),
+                    owning_span: owning_span.clone(),
+                });
+
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MCL(dst_reg, len_reg)),
+                    comment: format!(
+                        "clear memory {}",
+                        dst_val_ptr_pointee_ty.as_string(self.context),
+                    ),
+                    owning_span,
+                });
+            }
+        }
+
+        Ok(())
     }
 
     fn compile_log(

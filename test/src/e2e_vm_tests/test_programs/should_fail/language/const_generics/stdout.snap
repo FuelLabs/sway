@@ -28,4 +28,4 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics)
-    Finished debug [unoptimized + fuel] target(s) [288 B] in ???
+    Finished debug [unoptimized + fuel] target(s) [120 B] in ???

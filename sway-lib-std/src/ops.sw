@@ -2,7 +2,7 @@ library;
 
 use ::primitives::*;
 use ::registers::flags;
-use ::flags::panic_on_overflow_enabled;
+use ::flags::{disable_panic_on_overflow, panic_on_overflow_enabled, set_flags};
 
 const MAX_U32_U64: u64 = __transmute::<u32, u64>(u32::max());
 const MAX_U16_U64: u64 = __transmute::<u16, u64>(u16::max());
@@ -1570,6 +1570,28 @@ impl PartialEq for str {
 impl Eq for str {}
 
 impl u8 {
+    /// Wrapping (modular) addition. Computes `self + other`, wrapping around at the boundary of the type.
+    pub fn wrapping_add(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self + other;
+        set_flags(f);
+        res
+    }
+    /// Wrapping (modular) subtraction. Computes `self - other`, wrapping around at the boundary of the type.
+    pub fn wrapping_sub(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self - other;
+        set_flags(f);
+        res
+    }
+    /// Wrapping (modular) multiplication. Computes `self * other`, wrapping around at the boundary of the type.
+    pub fn wrapping_mul(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self * other;
+        set_flags(f);
+        res
+    }
+
     /// Returns whether a `u8` is set to zero.
     ///
     /// # Returns
@@ -1590,6 +1612,28 @@ impl u8 {
 }
 
 impl u16 {
+    /// Wrapping (modular) addition. Computes `self + other`, wrapping around at the boundary of the type.
+    pub fn wrapping_add(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self + other;
+        set_flags(f);
+        res
+    }
+    /// Wrapping (modular) subtraction. Computes `self - other`, wrapping around at the boundary of the type.
+    pub fn wrapping_sub(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self - other;
+        set_flags(f);
+        res
+    }
+    /// Wrapping (modular) multiplication. Computes `self * other`, wrapping around at the boundary of the type.
+    pub fn wrapping_mul(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self * other;
+        set_flags(f);
+        res
+    }
+
     /// Returns whether a `u16` is set to zero.
     ///
     /// # Returns
@@ -1610,6 +1654,28 @@ impl u16 {
 }
 
 impl u32 {
+    /// Wrapping (modular) addition. Computes `self + other`, wrapping around at the boundary of the type.
+    pub fn wrapping_add(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self + other;
+        set_flags(f);
+        res
+    }
+    /// Wrapping (modular) subtraction. Computes `self - other`, wrapping around at the boundary of the type.
+    pub fn wrapping_sub(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self - other;
+        set_flags(f);
+        res
+    }
+    /// Wrapping (modular) multiplication. Computes `self * other`, wrapping around at the boundary of the type.
+    pub fn wrapping_mul(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self * other;
+        set_flags(f);
+        res
+    }
+
     /// Returns whether a `u32` is set to zero.
     ///
     /// # Returns
@@ -1630,6 +1696,28 @@ impl u32 {
 }
 
 impl u64 {
+    /// Wrapping (modular) addition. Computes `self + other`, wrapping around at the boundary of the type.
+    pub fn wrapping_add(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self + other;
+        set_flags(f);
+        res
+    }
+    /// Wrapping (modular) subtraction. Computes `self - other`, wrapping around at the boundary of the type.
+    pub fn wrapping_sub(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self - other;
+        set_flags(f);
+        res
+    }
+    /// Wrapping (modular) multiplication. Computes `self * other`, wrapping around at the boundary of the type.
+    pub fn wrapping_mul(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self * other;
+        set_flags(f);
+        res
+    }
+
     /// Returns whether a `u64` is set to zero.
     ///
     /// # Returns
@@ -1650,6 +1738,28 @@ impl u64 {
 }
 
 impl u256 {
+    /// Wrapping (modular) addition. Computes `self + other`, wrapping around at the boundary of the type.
+    pub fn wrapping_add(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self + other;
+        set_flags(f);
+        res
+    }
+    /// Wrapping (modular) subtraction. Computes `self - other`, wrapping around at the boundary of the type.
+    pub fn wrapping_sub(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self - other;
+        set_flags(f);
+        res
+    }
+    /// Wrapping (modular) multiplication. Computes `self * other`, wrapping around at the boundary of the type.
+    pub fn wrapping_mul(self, other: Self) -> Self {
+        let f = disable_panic_on_overflow();
+        let res = self * other;
+        set_flags(f);
+        res
+    }
+
     /// Returns whether a `u256` is set to zero.
     ///
     /// # Returns

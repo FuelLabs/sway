@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod debugger;
 pub mod error;
 pub mod names;
 pub mod server;
