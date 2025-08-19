@@ -6,7 +6,11 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    get_gep_symbol, get_referred_symbol, get_referred_symbols, get_stored_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols, FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass, PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum, ARG_POINTEE_MUTABILITY_NAME, ESCAPED_SYMBOLS_NAME
+    get_gep_symbol, get_referred_symbol, get_referred_symbols, get_stored_symbols, memory_utils,
+    AnalysisResults, ArgPointeeMutability, ArgPointeeMutabilityResult, Block, Context,
+    EscapedSymbols, FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError,
+    LocalVar, Pass, PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum,
+    ARG_POINTEE_MUTABILITY_NAME, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -269,6 +273,8 @@ fn local_copy_prop(
         EscapedSymbols::Complete(syms) => syms,
         EscapedSymbols::Incomplete(_) => return Ok(false),
     };
+    let fn_mutability: &ArgPointeeMutabilityResult =
+        analyses.get_analysis_result(function.get_module(context));
 
     // Currently (as we scan a block) available `memcpy`s.
     let mut available_copies: FxHashSet<Value>;
@@ -558,15 +564,29 @@ fn local_copy_prop(
             for inst in block.instruction_iter(context) {
                 match inst.get_instruction(context).unwrap() {
                     Instruction {
-                        op: InstOp::Call(_, args),
+                        op: InstOp::Call(callee, args),
                         ..
-                    } => kill_escape_args(
-                        context,
-                        args,
-                        &mut available_copies,
-                        &mut src_to_copies,
-                        &mut dest_to_copies,
-                    ),
+                    } => {
+                        let mutable_args: Vec<_> = args
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(arg_idx, arg)| {
+                                let arg_mutability = fn_mutability.get_mutability(*callee, arg_idx);
+                                if arg_mutability == ArgPointeeMutability::Mutable {
+                                    Some(*arg)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+                        kill_escape_args(
+                            context,
+                            &mutable_args,
+                            &mut available_copies,
+                            &mut src_to_copies,
+                            &mut dest_to_copies,
+                        )
+                    }
                     Instruction {
                         op: InstOp::AsmBlock(_, args),
                         ..

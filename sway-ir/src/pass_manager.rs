@@ -1,5 +1,15 @@
 use crate::{
-    create_arg_demotion_pass, create_arg_pointee_mutability_pass, create_ccp_pass, create_const_demotion_pass, create_const_folding_pass, create_cse_pass, create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass, create_fn_dedup_debug_profile_pass, create_fn_dedup_release_profile_pass, create_fn_inline_pass, create_globals_dce_pass, create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_module_printer_pass, create_module_verifier_pass, create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass, Context, Function, IrError, Module, ARG_DEMOTION_NAME, CCP_NAME, CONST_DEMOTION_NAME, CONST_FOLDING_NAME, CSE_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME
+    create_arg_demotion_pass, create_arg_pointee_mutability_pass, create_ccp_pass,
+    create_const_demotion_pass, create_const_folding_pass, create_cse_pass, create_dce_pass,
+    create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
+    create_fn_dedup_debug_profile_pass, create_fn_dedup_release_profile_pass,
+    create_fn_inline_pass, create_globals_dce_pass, create_mem2reg_pass, create_memcpyopt_pass,
+    create_misc_demotion_pass, create_module_printer_pass, create_module_verifier_pass,
+    create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass,
+    Context, Function, IrError, Module, ARG_DEMOTION_NAME, CCP_NAME, CONST_DEMOTION_NAME,
+    CONST_FOLDING_NAME, CSE_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME,
+    FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME,
+    MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
@@ -29,6 +39,7 @@ impl PassScope for Function {
 }
 
 /// Is a pass an Analysis or a Transformation over the IR?
+#[derive(Clone)]
 pub enum PassMutability<S: PassScope> {
     /// An analysis pass, producing an analysis result.
     Analysis(fn(&Context, analyses: &AnalysisResults, S) -> Result<AnalysisResult, IrError>),
@@ -37,6 +48,7 @@ pub enum PassMutability<S: PassScope> {
 }
 
 /// A concrete version of [PassScope].
+#[derive(Clone)]
 pub enum ScopedPass {
     ModulePass(PassMutability<Module>),
     FunctionPass(PassMutability<Function>),
@@ -202,23 +214,38 @@ impl PassManager {
 
     fn actually_run(&mut self, ir: &mut Context, pass: &'static str) -> Result<bool, IrError> {
         let mut modified = false;
-        let pass_t = self.passes.get(pass).expect("Unregistered pass");
 
-        // Run passes that this depends on.
-        for dep in pass_t.deps.clone() {
-            self.actually_run(ir, dep)?;
+        fn run_deps(
+            pm: &mut PassManager,
+            ir: &mut Context,
+            pass: &'static str,
+        ) -> Result<(), IrError> {
+            // Run passes that pass depends on.
+            let pass_t = pm.passes.get(pass).expect("Unregistered pass");
+            for dep in pass_t.deps.clone() {
+                let dep_t = pm.passes.get(dep).expect("Unregistered dependent pass");
+                // Not sure if we need this constraint. Can be removed if necessary.
+                assert!(
+                    dep_t.is_analysis(),
+                    "Pass {} cannot depend on a transformation pass {}",
+                    pass,
+                    dep
+                );
+                pm.actually_run(ir, dep)?;
+            }
+            Ok(())
         }
 
-        // To please the borrow checker, get current pass again.
-        let pass_t = self.passes.get(pass).expect("Unregistered pass");
-
         for m in ir.module_iter() {
-            match &pass_t.runner {
+            run_deps(self, ir, pass)?;
+            let pass_t = self.passes.get(pass).expect("Unregistered pass");
+            let pass_runner = pass_t.runner.clone();
+            match pass_runner {
                 ScopedPass::ModulePass(mp) => match mp {
                     PassMutability::Analysis(analysis) => {
-                        if !self.analyses.is_analysis_result_available(pass_t.name, m) {
+                        if !self.analyses.is_analysis_result_available(pass, m) {
                             let result = analysis(ir, &self.analyses, m)?;
-                            self.analyses.add_result(pass_t.name, m, result);
+                            self.analyses.add_result(pass, m, result);
                         }
                     }
                     PassMutability::Transform(transform) => {
@@ -233,11 +260,12 @@ impl PassManager {
                 },
                 ScopedPass::FunctionPass(fp) => {
                     for f in m.function_iter(ir) {
+                        run_deps(self, ir, pass)?;
                         match fp {
                             PassMutability::Analysis(analysis) => {
-                                if !self.analyses.is_analysis_result_available(pass_t.name, f) {
+                                if !self.analyses.is_analysis_result_available(pass, f) {
                                     let result = analysis(ir, &self.analyses, f)?;
-                                    self.analyses.add_result(pass_t.name, f, result);
+                                    self.analyses.add_result(pass, f, result);
                                 }
                             }
                             PassMutability::Transform(transform) => {
