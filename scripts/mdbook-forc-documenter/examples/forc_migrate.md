@@ -183,7 +183,7 @@ At the end of the `run`, the migration will either guide you to:
 
 To migrate a workspace, you will need to migrate each workspace member separately, following the above procedure. The projects should be migrated in order of their dependencies.
 
-> **Note**: There is a know limitation when running `forc migrate` on projects that are listed as workspace members. `forc migrate` will run, but possibly not find all the occurrences in code that need to be migrated. Therefore, **before running migrations on projects that are workspace members, remove them temporarily from the the list of workspace `members`**.
+> **Note**: There is a know limitation when running `forc migrate` on projects that are listed as workspace members. `forc migrate` will run, but possibly not find all the occurrences in code that need to be migrated. Therefore, **before running migrations on projects that are workspace members, remove them temporarily from the list of workspace `members`**.
 
 ## Additional after-migration steps
 
