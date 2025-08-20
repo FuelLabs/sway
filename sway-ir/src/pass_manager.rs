@@ -224,13 +224,8 @@ impl PassManager {
             let pass_t = pm.passes.get(pass).expect("Unregistered pass");
             for dep in pass_t.deps.clone() {
                 let dep_t = pm.passes.get(dep).expect("Unregistered dependent pass");
-                // Not sure if we need this constraint. Can be removed if necessary.
-                assert!(
-                    dep_t.is_analysis(),
-                    "Pass {} cannot depend on a transformation pass {}",
-                    pass,
-                    dep
-                );
+                // If pass registration allows transformations as dependents, we could remove this I guess.
+                assert!(dep_t.is_analysis());
                 pm.actually_run(ir, dep)?;
             }
             Ok(())
@@ -405,10 +400,10 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_postorder_pass());
     pm.register(create_dominators_pass());
     pm.register(create_dom_fronts_pass());
+    pm.register(create_arg_pointee_mutability_pass());
     pm.register(create_escaped_symbols_pass());
     pm.register(create_module_printer_pass());
     pm.register(create_module_verifier_pass());
-    pm.register(create_arg_pointee_mutability_pass());
     // Optimization passes.
     pm.register(create_fn_dedup_release_profile_pass());
     pm.register(create_fn_dedup_debug_profile_pass());

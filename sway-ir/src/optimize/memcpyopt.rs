@@ -2,6 +2,7 @@
 //! - replace a `store` directly from a `load` with a `mem_copy_val`.
 
 use indexmap::IndexMap;
+use itertools::{Either, Itertools};
 use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
@@ -273,6 +274,7 @@ fn local_copy_prop(
         EscapedSymbols::Complete(syms) => syms,
         EscapedSymbols::Incomplete(_) => return Ok(false),
     };
+
     let fn_mutability: &ArgPointeeMutabilityResult =
         analyses.get_analysis_result(function.get_module(context));
 
@@ -434,7 +436,7 @@ fn local_copy_prop(
         inst: Value,
         src_val_ptr: Value,
         dest_to_copies: &FxIndexMap<Symbol, FxIndexSet<Value>>,
-        replacements: &mut FxHashMap<Value, Replacement>,
+        replacements: &mut FxHashMap<Value, (Value, Replacement)>,
     ) -> bool {
         // For every `memcpy` that src_val_ptr is a destination of,
         // check if we can do the load from the source of that memcpy.
@@ -464,7 +466,8 @@ fn local_copy_prop(
                 ) {
                     // Replace src_val_ptr with src_ptr_memcpy.
                     if src_val_ptr.get_type(context) == src_ptr_memcpy.get_type(context) {
-                        replacements.insert(inst, Replacement::OldGep(src_ptr_memcpy));
+                        replacements
+                            .insert(inst, (src_val_ptr, Replacement::OldGep(src_ptr_memcpy)));
                         return true;
                     }
                 } else {
@@ -488,11 +491,14 @@ fn local_copy_prop(
                         {
                             replacements.insert(
                                 inst,
-                                Replacement::NewGep(ReplGep {
-                                    base: memcpy_src_sym,
-                                    elem_ptr_ty: src_val_ptr.get_type(context).unwrap(),
-                                    indices: new_indices,
-                                }),
+                                (
+                                    src_val_ptr,
+                                    Replacement::NewGep(ReplGep {
+                                        base: memcpy_src_sym,
+                                        elem_ptr_ty: src_val_ptr.get_type(context).unwrap(),
+                                        indices: new_indices,
+                                    }),
+                                ),
                             );
                             return true;
                         }
@@ -567,25 +573,36 @@ fn local_copy_prop(
                         op: InstOp::Call(callee, args),
                         ..
                     } => {
-                        let mutable_args: Vec<_> = args
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(arg_idx, arg)| {
-                                let arg_mutability = fn_mutability.get_mutability(*callee, arg_idx);
-                                if arg_mutability == ArgPointeeMutability::Mutable {
-                                    Some(*arg)
+                        let (immutable_args, mutable_args): (Vec<_>, Vec<_>) =
+                            args.iter().enumerate().partition_map(|(arg_idx, arg)| {
+                                if fn_mutability.get_mutability(*callee, arg_idx)
+                                    == ArgPointeeMutability::Immutable
+                                {
+                                    Either::Left(arg.clone())
                                 } else {
-                                    None
+                                    Either::Right(arg.clone())
                                 }
-                            })
-                            .collect();
+                            });
+                        // whichever args may get mutabed, we kill them.
                         kill_escape_args(
                             context,
                             &mutable_args,
                             &mut available_copies,
                             &mut src_to_copies,
                             &mut dest_to_copies,
-                        )
+                        );
+                        // args that aren't mutated can be treated as a "load" (for the purposes
+                        // of optimization).
+                        for arg in immutable_args {
+                            process_load(
+                                context,
+                                escaped_symbols,
+                                inst,
+                                arg,
+                                &dest_to_copies,
+                                &mut replacements,
+                            );
+                        }
                     }
                     Instruction {
                         op: InstOp::AsmBlock(_, args),
@@ -712,13 +729,16 @@ fn local_copy_prop(
             let mut new_insts = vec![];
             for inst in block.instruction_iter(context) {
                 if let Some(replacement) = replacements.remove(&inst) {
-                    let replacement = match replacement {
-                        Replacement::OldGep(v) => v,
-                        Replacement::NewGep(ReplGep {
-                            base,
-                            elem_ptr_ty,
-                            indices,
-                        }) => {
+                    let (to_replace, replacement) = match replacement {
+                        (to_replace, Replacement::OldGep(v)) => (to_replace, v),
+                        (
+                            to_replace,
+                            Replacement::NewGep(ReplGep {
+                                base,
+                                elem_ptr_ty,
+                                indices,
+                            }),
+                        ) => {
                             let base = match base {
                                 Symbol::Local(local) => {
                                     let base = Value::new_instruction(
@@ -743,7 +763,7 @@ fn local_copy_prop(
                                 },
                             );
                             new_insts.push(v);
-                            v
+                            (to_replace, v)
                         }
                     };
                     match inst.get_instruction_mut(context) {
@@ -766,7 +786,20 @@ fn local_copy_prop(
                                     ..
                                 },
                             ..
-                        }) => *src_val_ptr = replacement,
+                        }) => {
+                            assert!(to_replace == *src_val_ptr);
+                            *src_val_ptr = replacement
+                        },
+                        Some(Instruction {
+                            op: InstOp::Call(_callee, args),
+                            ..
+                        }) => {
+                            for arg in args {
+                                if *arg == to_replace {
+                                    *arg = replacement;
+                                }
+                            }
+                        }
                         _ => panic!("Unexpected instruction type"),
                     }
                 }
