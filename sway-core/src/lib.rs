@@ -553,6 +553,8 @@ fn parse_module_tree(
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
+    // don't use reloaded file if we already have it in memory, that way new spans will still point to the same string
+    let src = engines.se().get_or_create_source_buffer(&source_id, src);
     let module = sway_parse::parse_file(handler, src.clone(), Some(source_id), experimental)?;
 
     // Parse all submodules before converting to the `ParseTree`.
