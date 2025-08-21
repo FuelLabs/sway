@@ -70,12 +70,7 @@ impl SourceEngine {
         source: span::Source,
     ) -> span::Source {
         let mut map = self.source_to_buffer_map.write();
-        if !map.contains_key(source_id) {
-            map.insert(*source_id, source.clone());
-            source
-        } else {
-            map.get(source_id).unwrap().clone()
-        }
+        map.entry(*source_id).or_insert(source).clone()
     }
 
     /// This function retrieves an integer-based source ID for a provided path buffer.
