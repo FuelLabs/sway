@@ -348,7 +348,7 @@ impl U128 {
     /// # Returns
     ///
     /// * [Result<u64, U128Error>] - The result of the downcast.
-    #[deprecated(note = "Use `try_as_u64` instead for consistency with other downcast functions")]
+    #[deprecated(note = "Use `try_as_u64` instead, for consistency with other downcast functions.")]
     pub fn as_u64(self) -> Result<u64, U128Error> {
         self.try_as_u64()
     }
