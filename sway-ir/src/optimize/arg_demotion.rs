@@ -1,10 +1,13 @@
+use std::result;
+
 /// Function argument demotion.
 ///
 /// This pass demotes 'by-value' function arg types to 'by-reference` pointer types, based on target
 /// specific parameters.
 use crate::{
     AnalysisResults, Block, BlockArgument, Context, Function, InstOp, Instruction,
-    InstructionInserter, IrError, Pass, PassMutability, ScopedPass, Type, Value, ValueDatum,
+    InstructionInserter, IrError, Module, Pass, PassMutability, ScopedPass, Type, Value,
+    ValueDatum,
 };
 
 use rustc_hash::FxHashMap;
@@ -16,20 +19,25 @@ pub fn create_arg_demotion_pass() -> Pass {
         name: ARG_DEMOTION_NAME,
         descr: "Demotion of by-value function arguments to by-reference",
         deps: Vec::new(),
-        runner: ScopedPass::FunctionPass(PassMutability::Transform(arg_demotion)),
+        runner: ScopedPass::ModulePass(PassMutability::Transform(arg_demotion)),
     }
 }
 
 pub fn arg_demotion(
     context: &mut Context,
     _: &AnalysisResults,
-    function: Function,
+    module: Module,
 ) -> Result<bool, IrError> {
-    let mut result = fn_arg_demotion(context, function)?;
+    let mut result = false;
+    // This is a module pass because modifying the signature of a function may affect the
+    // call sites in other functions, requiring their modification as well.
+    for function in module.function_iter(context) {
+        result |= fn_arg_demotion(context, function)?;
 
-    // We also need to be sure that block args within this function are demoted.
-    for block in function.block_iter(context) {
-        result |= demote_block_signature(context, &function, block);
+        // We also need to be sure that block args within this function are demoted.
+        for block in function.block_iter(context) {
+            result |= demote_block_signature(context, &function, block);
+        }
     }
 
     Ok(result)
