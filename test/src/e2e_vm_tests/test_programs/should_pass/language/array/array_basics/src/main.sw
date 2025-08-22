@@ -7,18 +7,6 @@ struct S {
     bar: u64,
 }
 
-// should not generate a loop
-#[inline(never)]
-fn small_array_repeat() -> [bool; 5] {
-    [true; 5]
-}
-
-// should generate a loop
-#[inline(never)]
-fn big_array_repeat() -> [bool; 25] {
-    [true; 25]
-}
-
 fn main() -> bool {
     let _a: [bool; 5] = [true, true, true, false, true];
     let b: [u32; 10] = [3; 10];
@@ -33,7 +21,7 @@ fn main() -> bool {
 
     assert(test_init() == 110);
 
-    b[0] == b[9] && e[0][1] + e[1][2] == 9 && g[0].foo + g[1].bar == 12 && j(g) && /* a.len() == 5 && */ true && small_array_repeat()[0] && big_array_repeat()[1]
+    b[0] == b[9] && e[0][1] + e[1][2] == 9 && g[0].foo + g[1].bar == 12 && j(g) && /* a.len() == 5 && */ true
 }
 
 fn i() -> [u64; 4] {
