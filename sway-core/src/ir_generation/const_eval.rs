@@ -274,9 +274,10 @@ fn create_array_from_vec(
     });
 
     let arr = create_array_aggregate(
-        te,
-        lookup.engines.de(),
+        lookup.engines,
         lookup.context,
+        lookup.md_mgr,
+        lookup.module,
         elem_type,
         element_types.len().try_into().unwrap(),
     )
@@ -309,6 +310,10 @@ fn const_eval_typed_expr(
 
     Ok(match &expr.expression {
         ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+            
+            if decl.value.is_none() {
+                todo!("{}", std::backtrace::Backtrace::force_capture());
+            }
             assert!(decl.value.is_some());
             const_eval_typed_expr(lookup, known_consts, decl.value.as_ref().unwrap())?
         }
@@ -358,17 +363,14 @@ fn const_eval_typed_expr(
             res?
         }
         ty::TyExpressionVariant::ConstantExpression {
-            decl: const_decl, ..
+            decl, ..
         } => {
-            let call_path = &const_decl.call_path;
+            let call_path = &decl.call_path;
             let name = &call_path.suffix;
-
             match known_consts.get(name) {
-                // 1. Check if name/call_path is in known_consts.
-                Some(cvs) => Some(*cvs),
+                Some(constant) => Some(*constant),
                 None => {
-                    // 2. Check if name is a global constant.
-                    (lookup.lookup)(lookup, call_path, &Some(*const_decl.clone()))
+                    (lookup.lookup)(lookup, call_path, &Some(*decl.clone()))
                         .ok()
                         .flatten()
                         .and_then(|v| v.get_constant(lookup.context).cloned())
@@ -419,9 +421,10 @@ fn const_eval_typed_expr(
             assert!(field_vals.len() == fields.len());
 
             get_struct_for_types(
-                lookup.engines.te(),
-                lookup.engines.de(),
+                lookup.engines,
                 lookup.context,
+                lookup.md_mgr,
+                lookup.module,
                 &field_types,
             )
             .map_or(None, |struct_ty| {
@@ -456,9 +459,10 @@ fn const_eval_typed_expr(
             assert!(field_vals.len() == fields.len());
 
             create_tuple_aggregate(
-                lookup.engines.te(),
-                lookup.engines.de(),
+                lookup.engines,
                 lookup.context,
+                lookup.md_mgr,
+                lookup.module,
                 &field_types,
             )
             .map_or(None, |tuple_ty| {
@@ -525,9 +529,10 @@ fn const_eval_typed_expr(
         } => {
             let enum_decl = lookup.engines.de().get_enum(enum_ref);
             let aggregate = create_tagged_union_type(
-                lookup.engines.te(),
-                lookup.engines.de(),
+                lookup.engines,
                 lookup.context,
+                lookup.md_mgr,
+                lookup.module,
                 &enum_decl.variants,
             );
 
@@ -1177,9 +1182,11 @@ fn const_eval_intrinsic(
         Intrinsic::SizeOfType => {
             let targ = &intrinsic.type_arguments[0];
             let ir_type = convert_resolved_type_id(
-                lookup.engines.te(),
-                lookup.engines.de(),
+                lookup.engines,
                 lookup.context,
+                lookup.md_mgr,
+                lookup.module,
+                lookup.function_compiler,
                 targ.type_id(),
                 &targ.span(),
             )
@@ -1195,9 +1202,11 @@ fn const_eval_intrinsic(
             let val = &intrinsic.arguments[0];
             let type_id = val.return_type;
             let ir_type = convert_resolved_type_id(
-                lookup.engines.te(),
-                lookup.engines.de(),
+                lookup.engines,
                 lookup.context,
+                lookup.md_mgr,
+                lookup.module,
+                lookup.function_compiler,
                 type_id,
                 &val.span,
             )
@@ -1211,9 +1220,11 @@ fn const_eval_intrinsic(
         Intrinsic::SizeOfStr => {
             let targ = &intrinsic.type_arguments[0];
             let ir_type = convert_resolved_type_id(
-                lookup.engines.te(),
-                lookup.engines.de(),
+                lookup.engines,
                 lookup.context,
+                lookup.md_mgr,
+                lookup.module,
+                lookup.function_compiler,
                 targ.type_id(),
                 &targ.span(),
             )
@@ -1229,9 +1240,11 @@ fn const_eval_intrinsic(
         Intrinsic::AssertIsStrArray => {
             let targ = &intrinsic.type_arguments[0];
             let ir_type = convert_resolved_type_id(
-                lookup.engines.te(),
-                lookup.engines.de(),
+                lookup.engines,
                 lookup.context,
+                lookup.md_mgr,
+                lookup.module,
+                lookup.function_compiler,
                 targ.type_id(),
                 &targ.span(),
             )
@@ -1547,9 +1560,11 @@ fn const_eval_intrinsic(
         Intrinsic::Transmute => {
             let src_type = &intrinsic.type_arguments[0];
             let src_ir_type = convert_resolved_type_id(
-                lookup.engines.te(),
-                lookup.engines.de(),
+                lookup.engines,
                 lookup.context,
+                lookup.md_mgr,
+                lookup.module,
+                lookup.function_compiler,
                 src_type.type_id(),
                 &src_type.span(),
             )
@@ -1557,9 +1572,11 @@ fn const_eval_intrinsic(
 
             let dst_type = &intrinsic.type_arguments[1];
             let dst_ir_type = convert_resolved_type_id(
-                lookup.engines.te(),
-                lookup.engines.de(),
+                lookup.engines,
                 lookup.context,
+                lookup.md_mgr,
+                lookup.module,
+                lookup.function_compiler,
                 dst_type.type_id(),
                 &dst_type.span(),
             )

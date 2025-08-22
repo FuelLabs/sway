@@ -3374,17 +3374,22 @@ where
     T: AbiDecode,
 {
     fn abi_decode(ref mut buffer: BufferReader) -> [T; N] {
-        let first: T = buffer.decode::<T>();
-        let mut array = [first; N];
-        let mut i = 1;
+        const LENGTH: u64 = __size_of::<T>() * N;
+        let mut array = [0u8; LENGTH];
+        let array: &mut [T; N] = __transmute::<&mut [u8; LENGTH], &mut [T; N]>(&mut array);
+
+        let mut i = 0;
+        
         while i < N {
-            let item: &mut T = __elem_at(&mut array, i);
+            let item: &mut T = __elem_at(array, i);
             *item = buffer.decode::<T>();
             i += 1;
         }
-        array
+        
+        *array
     }
 }
+
 
 // BEGIN ARRAY_DECODE
 #[cfg(experimental_const_generics = false)]

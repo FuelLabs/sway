@@ -584,11 +584,11 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::UnsafeDowncast { exp, .. } => {
                 exp.materialize_const_generics(engines, handler, name, value)
             }
-            _ => Err(handler.emit_err(
+            _ => dbg!(Err(handler.emit_err(
                 sway_error::error::CompileError::ConstGenericNotSupportedHere {
                     span: self.span.clone(),
                 },
-            )),
+            ))),
         }
     }
 }

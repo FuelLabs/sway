@@ -2,8 +2,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        TyDeclParsedType, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait, TyStructDecl, TyTraitDecl,
-        TyTraitFn, TyTraitType, TyTypeAliasDecl,
+        TyConstantDecl, TyDeclParsedType, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, TyTypeAliasDecl
     },
     type_system::*,
 };
@@ -228,6 +227,19 @@ impl SubstTypes for DeclId<TyTypeAliasDecl> {
 }
 
 impl SubstTypes for DeclId<TyTraitType> {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        let decl_engine = ctx.engines.de();
+        let mut decl = (*decl_engine.get(self)).clone();
+        if decl.subst(ctx).has_changes() {
+            decl_engine.replace(*self, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
+    }
+}
+
+impl SubstTypes for DeclId<TyConstantDecl> {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();

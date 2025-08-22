@@ -41,6 +41,8 @@ impl ty::TyConstantDecl {
         mut ctx: TypeCheckContext,
         decl: ConstantDeclaration,
     ) -> Result<Self, ErrorEmitted> {
+        
+
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
@@ -51,7 +53,7 @@ impl ty::TyConstantDecl {
             value,
             attributes,
             visibility,
-        } = decl;
+        } = decl.clone();
 
         *type_ascription.type_id_mut() = ctx
             .resolve_type(
@@ -85,6 +87,7 @@ impl ty::TyConstantDecl {
             ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
                 .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
         });
+
         // Integers are special in the sense that we can't only rely on the type of `expression`
         // to get the type of the variable. The type of the variable *has* to follow
         // `type_ascription` if `type_ascription` is a concrete integer type that does not
@@ -100,8 +103,7 @@ impl ty::TyConstantDecl {
         let mut call_path: CallPath = name.into();
         call_path = call_path.to_fullpath(engines, ctx.namespace());
 
-        // create the const decl
-        let decl = ty::TyConstantDecl {
+        Ok(ty::TyConstantDecl {
             call_path,
             attributes,
             return_type,
@@ -109,8 +111,7 @@ impl ty::TyConstantDecl {
             span,
             value,
             visibility,
-        };
-        Ok(decl)
+        })
     }
 
     /// Used to create a stubbed out constant when the constant fails to
