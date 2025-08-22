@@ -11,6 +11,7 @@ output:
    Compiling script panicking_script (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [3.544 KB] in ???
 =======
 =======
@@ -31,6 +32,9 @@ output:
     Finished release [optimized + fuel] target(s) [3.64 KB] in ???
 >>>>>>> 56393cb86 (update tests)
 >>>>>>> 72fe12820 (update tests)
+=======
+    Finished release [optimized + fuel] target(s) [3.64 KB] in ???
+>>>>>>> 6ecb6582a (update tests)
      Running 11 tests, filtered 0 tests
 
 tested -- panicking_script
