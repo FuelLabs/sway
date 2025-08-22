@@ -4,6 +4,7 @@ Attributes are a form of metadata that can additionally instruct Sway compiler o
 
 Below is the list of attributes supported by the Sway compiler, ordered alphabetically:
 
+- [ABI Name](#abi-name)
 - [Allow](#allow)
 - [Cfg](#cfg)
 - [Deprecated](#deprecated)
@@ -14,6 +15,62 @@ Below is the list of attributes supported by the Sway compiler, ordered alphabet
 - [Payable](#payable)
 - [Storage](#payable)
 - [Test](#test)
+
+## ABI Name
+
+The `#[abi_name]` attribute allows to specify the ABI name for an item.
+This means that when an ABI JSON file is generated, the name that is output is the one specified
+by the attribute. This can be useful to allow renaming items, while allowing for keeping backwards
+compatibility at the contract ABI level.
+
+> **Note**: At the moment, only enum and struct types support the attribute.
+
+In the example that follows, we originally had `MyStruct` and `MyEnum` types, which we, later on, renamed to `RenamedMyStruct` and `RenamedMyEnum` in code. To keep the backward compatibility of the ABI, we annotate the types with the `#[abi_name]` attribute and give them the original names:
+
+```sway
+contract;
+
+#[abi_name(name = "MyStruct")]
+struct RenamedMyStruct {}
+
+#[abi_name(name = "MyEnum")]
+enum RenamedMyEnum {
+  A: ()
+}
+
+abi MyAbi {
+    fn my_struct() -> RenamedMyStruct;
+    fn my_enum() -> RenamedMyEnum;
+}
+
+impl MyAbi for Contract {
+  fn my_struct() -> RenamedMyStruct { RenamedMyStruct{} }
+  fn my_enum() -> RenamedMyEnum { RenamedMyEnum::A }
+}
+```
+
+This generates the following JSON ABI:
+
+```json
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "215af2bca9e1aa8fec647dab22a0cd36c63ce5ed051a132d51323807e28c0d67",
+      "metadataTypeId": 1,
+      "type": "enum MyEnum"
+    },
+    {
+      "concreteTypeId": "d31db280ac133d726851d8003bd2f06ec2d3fc76a46f1007d13914088fbd0791",
+      "type": "struct MyStruct"
+    }
+  ],
+  ...
+}
+```
+
+We get the same JSON ABI output both before and after renaming the types, due to attributing them with
+`#[abi_name(name = ...)]`, which forces them to be generated with their previous Sway names.
+This means consumers of this contract will still get the original names, keeping compatibility at the ABI level.
 
 ## Allow
 

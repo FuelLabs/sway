@@ -28,7 +28,6 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
-use sway_core::namespace::Package;
 use sway_core::transform::AttributeArg;
 pub use sway_core::Programs;
 use sway_core::{
@@ -47,6 +46,7 @@ use sway_core::{
     source_map::SourceMap,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
+use sway_core::{namespace::Package, Observer};
 use sway_core::{set_bytecode_configurables_offset, DbgGeneration, PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
@@ -1579,7 +1579,8 @@ pub fn sway_build_config(
     .with_time_phases(build_profile.time_phases)
     .with_profile(build_profile.profile)
     .with_metrics(build_profile.metrics_outfile.clone())
-    .with_optimization_level(build_profile.optimization_level);
+    .with_optimization_level(build_profile.optimization_level)
+    .with_backtrace(build_profile.backtrace);
     Ok(build_config)
 }
 
@@ -1790,6 +1791,7 @@ pub fn compile(
                         panic_occurrences: &asm.panic_occurrences,
                         abi_with_callpaths: true,
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
+                        unique_names: HashMap::new(),
                     },
                     engines,
                     if experimental.new_encoding {
@@ -2147,7 +2149,6 @@ fn build_profile_from_opts(
     }
     profile.include_tests |= tests;
     profile.error_on_warnings |= error_on_warnings;
-    // profile.experimental = *experimental;
 
     Ok(profile)
 }
@@ -2177,7 +2178,10 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
 }
 
 /// Builds a project with given BuildOptions.
-pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
+pub fn build_with_options(
+    build_options: &BuildOpts,
+    callback_handler: Option<Box<dyn Observer>>,
+) -> Result<Built> {
     let BuildOpts {
         hex_outfile,
         minify,
@@ -2235,6 +2239,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         &outputs,
         experimental,
         no_experimental,
+        callback_handler,
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     let total_size = built_packages
@@ -2358,6 +2363,7 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     experimental: &[sway_features::Feature],
     no_experimental: &[sway_features::Feature],
+    callback_handler: Option<Box<dyn Observer>>,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2367,6 +2373,10 @@ pub fn build(
         .collect();
 
     let engines = Engines::default();
+    if let Some(callbacks) = callback_handler {
+        engines.obs().set_observer(callbacks);
+    }
+
     let include_tests = profile.include_tests;
 
     // This is the Contract ID of the current contract being compiled.

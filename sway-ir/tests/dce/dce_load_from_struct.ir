@@ -13,22 +13,22 @@ script {
         local { u64, u64 } local
 
         entry():
-        v0 = get_local ptr { u64, u64 }, __anon_0
+        v0 = get_local __ptr { u64, u64 }, __anon_0
         v1 = const u64 0
-        v2 = get_elem_ptr v0, ptr u64, v1
+        v2 = get_elem_ptr v0, __ptr u64, v1
         v3 = const u64 112233
         store v3 to v2
         v4 = const u64 1
-        v5 = get_elem_ptr v0, ptr u64, v4
+        v5 = get_elem_ptr v0, __ptr u64, v4
         v6 = const u64 445566
         store v6 to v5
         v7 = load v0
-        v8 = get_local ptr { u64, u64 }, local
+        v8 = get_local __ptr { u64, u64 }, local
         store v7 to v8
-        v9 = get_local ptr { u64, u64 }, local
+        v9 = get_local __ptr { u64, u64 }, local
         v10 = load v9
         v11 = call take_struct_2(v10)
-        v12 = get_local ptr { u64, u64 }, x
+        v12 = get_local __ptr { u64, u64 }, x
         store v11 to v12
         v13 = const unit ()
         ret () v13
@@ -38,7 +38,7 @@ script {
         local { u64, u64 } __anon_0
 
         entry(_x: { u64, u64 }):
-        v0 = get_local ptr { u64, u64 }, __anon_0
+        v0 = get_local __ptr { u64, u64 }, __anon_0
         v1 = load v0
         ret { u64, u64 } v1
     }
@@ -47,5 +47,5 @@ script {
 // check: entry fn main() -> () {
 // not: local { u64, u64 } x
 // check: entry():
-// not: get_local ptr { u64, u64 }, x
+// not: get_local __ptr { u64, u64 }, x
 // check: ret ()

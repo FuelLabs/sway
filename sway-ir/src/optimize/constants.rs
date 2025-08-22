@@ -484,7 +484,7 @@ mod tests {
             entry():
                 zero = const u64 0, !0
                 one = const u64 1, !0
-                l_ptr = get_local ptr u64, LOCAL, !0
+                l_ptr = get_local __ptr u64, LOCAL, !0
                 l = load l_ptr, !0
                 result1 = mul l, one, !0
                 result2 = mul one, result1, !0
@@ -495,7 +495,7 @@ mod tests {
                 ret u64 result6, !0
          }",
             Some([
-                "v0 = get_local ptr u64, LOCAL",
+                "v0 = get_local __ptr u64, LOCAL",
                 "v1 = load v0",
                 "ret u64 v1",
             ]),

@@ -19,6 +19,7 @@ pub mod ir_generation;
 pub mod language;
 pub mod marker_traits;
 mod metadata;
+pub mod obs_engine;
 pub mod query_engine;
 pub mod semantic_analysis;
 pub mod source_map;
@@ -32,7 +33,9 @@ pub use asm_generation::from_ir::compile_ir_context_to_finalized_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::DbgGeneration;
-pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr};
+pub use build_config::{
+    Backtrace, BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr,
+};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
 use itertools::Itertools;
@@ -78,6 +81,7 @@ pub mod fuel_prelude {
 }
 
 pub use engine_threading::Engines;
+pub use obs_engine::{ObservabilityEngine, Observer};
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
 ///
@@ -549,6 +553,8 @@ fn parse_module_tree(
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
+    // don't use reloaded file if we already have it in memory, that way new spans will still point to the same string
+    let src = engines.se().get_or_create_source_buffer(&source_id, src);
     let module = sway_parse::parse_file(handler, src.clone(), Some(source_id), experimental)?;
 
     // Parse all submodules before converting to the `ParseTree`.

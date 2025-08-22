@@ -2759,6 +2759,6 @@ where
 impl<const N: u64> Debug for str[N] {
     fn fmt(self, ref mut f: Formatter) {
         use ::str::*;
-        from_str_array(self).fmt(f);
+        from_str_array::<str[N]>(self).fmt(f);
     }
 }

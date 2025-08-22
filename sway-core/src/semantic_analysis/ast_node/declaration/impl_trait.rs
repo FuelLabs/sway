@@ -558,22 +558,20 @@ impl TyImplSelfOrTrait {
                 handler.scope(|handler| {
                     for item in items.iter() {
                         match item {
-                            ImplItem::Fn(fn_decl_id) => {
-                                let fn_decl = engines.pe().get_function(fn_decl_id);
-                                let fn_decl = match ty::TyFunctionDecl::type_check_signature(
+                            ImplItem::Fn(id) => {
+                                let fn_decl = engines.pe().get_function(id);
+                                let Ok(fn_decl) = ty::TyFunctionDecl::type_check_signature(
                                     handler,
                                     ctx.by_ref(),
                                     &fn_decl,
                                     true,
                                     true,
                                     Some(implementing_for.type_id()),
-                                ) {
-                                    Ok(res) => res,
-                                    Err(_) => continue,
+                                ) else {
+                                    continue;
                                 };
-                                new_items.push(TyImplItem::Fn(
-                                    decl_engine.insert(fn_decl, Some(fn_decl_id)),
-                                ));
+                                new_items
+                                    .push(TyImplItem::Fn(decl_engine.insert(fn_decl, Some(id))));
                             }
                             ImplItem::Constant(decl_id) => {
                                 let const_decl =
@@ -952,7 +950,7 @@ fn type_check_trait_implementation(
     }
 
     let mut trait_type_mapping =
-        TypeSubstMap::from_type_parameters_and_type_arguments(vec![], vec![]);
+        TypeSubstMap::from_type_parameters_and_type_arguments([].into_iter(), [].into_iter());
 
     for item in impl_items {
         match item {
@@ -997,22 +995,24 @@ fn type_check_trait_implementation(
                 if let Some(type_arg) = type_decl.ty.clone() {
                     trait_type_mapping.extend(
                         &TypeSubstMap::from_type_parameters_and_type_arguments(
-                            vec![type_engine.insert_trait_type(
+                            [type_engine.insert_trait_type(
                                 engines,
                                 type_decl.name.clone(),
                                 implementing_for,
-                            )],
-                            vec![type_arg.type_id()],
+                            )]
+                            .into_iter(),
+                            [type_arg.type_id()].into_iter(),
                         ),
                     );
                     trait_type_mapping.extend(
                         &TypeSubstMap::from_type_parameters_and_type_arguments(
-                            vec![type_engine.insert_trait_type(
+                            [type_engine.insert_trait_type(
                                 engines,
                                 type_decl.name.clone(),
                                 self_type_id,
-                            )],
-                            vec![type_arg.type_id()],
+                            )]
+                            .into_iter(),
+                            [type_arg.type_id()].into_iter(),
                         ),
                     );
                 }
@@ -1113,19 +1113,15 @@ fn type_check_trait_implementation(
     // using the stub decl ids from the interface surface and the new
     // decl ids from the newly implemented methods.
     let mut type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-        trait_type_parameters
-            .iter()
-            .map(|p| {
-                let p = p
-                    .as_type_parameter()
-                    .expect("only works with type parameters");
-                p.type_id
-            })
-            .collect(),
+        trait_type_parameters.iter().map(|p| {
+            let p = p
+                .as_type_parameter()
+                .expect("only works with type parameters");
+            p.type_id
+        }),
         trait_type_arguments
             .iter()
-            .map(|type_arg| type_arg.type_id())
-            .collect(),
+            .map(|type_arg| type_arg.type_id()),
     );
     type_mapping.extend(&trait_type_mapping);
 
@@ -1586,11 +1582,12 @@ fn type_check_const_decl(
     }
 
     // Ensure that there aren't multiple definitions of this constant
-    if impld_constant_ids.contains_key(&(const_name.clone(), self_type_id)) {
+    if let Some(old) = impld_constant_ids.get(&(const_name.clone(), self_type_id)) {
         return Err(
             handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
                 name: const_name.clone(),
-                span: const_name.span(),
+                new: const_name.span(),
+                old: old.span(),
             }),
         );
     }

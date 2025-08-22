@@ -11,6 +11,7 @@
 mod demo;
 mod error_type;
 mod merge_core_std;
+mod new_hashing;
 mod partial_eq;
 mod references;
 mod storage_domains;
@@ -161,31 +162,63 @@ pub(crate) enum InteractionResponse {
     PostponeStep,
 }
 
+/// A single occurrence of a [MigrationStep] report.
+pub(crate) struct Occurrence {
+    /// The [Span] of the occurrence in the original source code.
+    pub span: Span,
+    /// An optional help message that provides additional
+    /// information about the occurrence.
+    ///
+    /// For most of migration steps, this will be `None`.
+    /// Use it only if it brings valuable additional information
+    /// about the particular [Occurrence].
+    pub msg: Option<String>,
+}
+
+impl Occurrence {
+    pub fn new(span: Span, msg: String) -> Self {
+        Occurrence {
+            span,
+            msg: Some(msg),
+        }
+    }
+
+    pub fn msg_or_empty(&self) -> String {
+        self.msg.clone().unwrap_or_default()
+    }
+}
+
+impl From<Span> for Occurrence {
+    fn from(span: Span) -> Self {
+        Occurrence { span, msg: None }
+    }
+}
+
 /// A function that analyses a program given by the [ProgramInfo] and returns
-/// the [Span]s of all the places in the program code that need to be addressed
+/// the [Occurrence]s of all the places in the program code that need to be addressed
 /// during a manual migration step.
 ///
 /// The function does not modify the original program, and can use either the
 /// [ProgramInfo::lexed_program] or the [ProgramInfo::ty_program], or both,
 /// to perform the analysis.
-type InstructionFn = for<'a> fn(&'a ProgramInfo<'a>) -> Result<Vec<Span>>;
+type InstructionFn = for<'a> fn(&'a ProgramInfo<'a>) -> Result<Vec<Occurrence>>;
 
 /// A function that analyses a program given by the [MutProgramInfo] and returns
-/// the [Span]s of all the places in the **original** program code that will be changed
+/// the [Occurrence]s of all the places in the **original** program code that will be changed
 /// during an automatic or semiautomatic migration step.
 ///
 /// The function modifies the [LexedProgram] to perform the required code change,
 /// unless the [DryRun] parameter is set to [DryRun::Yes].
-type CodeModificationFn = for<'a> fn(&'a mut MutProgramInfo<'a>, DryRun) -> Result<Vec<Span>>;
+type CodeModificationFn = for<'a> fn(&'a mut MutProgramInfo<'a>, DryRun) -> Result<Vec<Occurrence>>;
 
 /// A function that interacts with the developer, eventually modifying the original
 /// program given by [MutProgramInfo]. The developer's input decides if the modification
 /// will happen or not.
 ///
-/// Returns the [Span]s of all the places in the **original** program code that are
+/// Returns the [Occurrence]s of all the places in the **original** program code that are
 /// changed during the interaction, if any, together with the developer's [InteractionResponse].
 type InteractionFn =
-    for<'a> fn(&'a mut MutProgramInfo<'a>) -> Result<(InteractionResponse, Vec<Span>)>;
+    for<'a> fn(&'a mut MutProgramInfo<'a>) -> Result<(InteractionResponse, Vec<Occurrence>)>;
 
 /// A function that visits the [Module] and its corresponding [TyModule],
 /// potentially alters the lexed module, and returns a
@@ -494,4 +527,7 @@ fn assert_migration_steps_consistency(migration_steps: MigrationSteps) {
 
 /// The list of the migration steps, grouped by the Sway feature that causes
 /// the breaking changes behind the migration steps.
-const MIGRATION_STEPS: MigrationSteps = &[];
+const MIGRATION_STEPS: MigrationSteps = &[(
+    Feature::NewHashing,
+    &[new_hashing::REVIEW_EXISTING_USAGES_OF_STORAGE_MAP_SHA256_AND_KECCAK256],
+)];

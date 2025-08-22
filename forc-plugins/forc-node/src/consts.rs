@@ -1,6 +1,8 @@
 /// Minimum fuel-core version supported.
 pub const MIN_FUEL_CORE_VERSION: &str = "0.43.0";
 
+pub const MINIMUM_OPEN_FILE_DESCRIPTOR_LIMIT: u64 = 51200;
+
 pub const TESTNET_SERVICE_NAME: &str = "fuel-sepolia-testnet-node";
 pub const TESTNET_SYNC_HEADER_BATCH_SIZE: u32 = 100;
 pub const TESTNET_RELAYER_LISTENING_CONTRACT: &str = "0x01855B78C1f8868DE70e84507ec735983bf262dA";

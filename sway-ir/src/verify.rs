@@ -363,6 +363,7 @@ impl InstructionVerifier<'_, '_> {
                     dst_val_ptr,
                     src_val_ptr,
                 } => self.verify_mem_copy_val(dst_val_ptr, src_val_ptr)?,
+                InstOp::MemClearVal { dst_val_ptr } => self.verify_mem_clear_val(dst_val_ptr)?,
                 InstOp::Nop => (),
                 InstOp::PtrToInt(val, ty) => self.verify_ptr_to_int(val, ty)?,
                 InstOp::Ret(val, ty) => self.verify_ret(val, ty)?,
@@ -548,14 +549,14 @@ impl InstructionVerifier<'_, '_> {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }
             }
-            BinaryOpKind::Add => {
+            BinaryOpKind::Add | BinaryOpKind::Sub => {
                 if !(arg1_ty.eq(self.context, &arg2_ty) && arg1_ty.is_uint(self.context)
                     || arg1_ty.is_ptr(self.context) && arg2_ty.is_uint64(self.context))
                 {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }
             }
-            BinaryOpKind::Sub | BinaryOpKind::Mul | BinaryOpKind::Div | BinaryOpKind::Mod => {
+            BinaryOpKind::Mul | BinaryOpKind::Div | BinaryOpKind::Mod => {
                 if !arg1_ty.eq(self.context, &arg2_ty) || !arg1_ty.is_uint(self.context) {
                     return Err(IrError::VerifyBinaryOpIncorrectArgType);
                 }
@@ -633,7 +634,17 @@ impl InstructionVerifier<'_, '_> {
     }
 
     fn verify_cast_ptr(&self, val: &Value, ty: &Type) -> Result<(), IrError> {
-        let _ = self.get_ptr_type(val, IrError::VerifyPtrCastFromNonPointer)?;
+        if !(val
+            .get_type(self.context)
+            .is_some_and(|ty| ty.is_ptr(self.context)))
+        {
+            let ty = val
+                .get_type(self.context)
+                .map(|ty| ty.as_string(self.context))
+                .unwrap_or("Unknown".into());
+            return Err(IrError::VerifyPtrCastFromNonPointer(ty));
+        }
+
         if !ty.is_ptr(self.context) {
             Err(IrError::VerifyPtrCastToNonPointer(
                 ty.as_string(self.context),
@@ -703,7 +714,7 @@ impl InstructionVerifier<'_, '_> {
         lhs_value: &Value,
         rhs_value: &Value,
     ) -> Result<(), IrError> {
-        // Comparisons must be between integers at this stage.
+        // Comparisons must be between integers or equivalent pointers at this stage.
         match (
             lhs_value.get_type(self.context),
             rhs_value.get_type(self.context),
@@ -716,6 +727,7 @@ impl InstructionVerifier<'_, '_> {
                     ))
                 } else if lhs_ty.is_bool(self.context)
                     || lhs_ty.is_uint(self.context)
+                    || lhs_ty.is_ptr(self.context)
                     || lhs_ty.is_b256(self.context)
                 {
                     Ok(())
@@ -941,11 +953,26 @@ impl InstructionVerifier<'_, '_> {
             })
     }
 
+    // dst_val_ptr must be a a pointer.
+    fn verify_mem_clear_val(&self, dst_val_ptr: &Value) -> Result<(), IrError> {
+        let _ = self.get_ptr_type(dst_val_ptr, IrError::VerifyMemClearValNonPointer)?;
+        Ok(())
+    }
+
     fn verify_ptr_to_int(&self, val: &Value, ty: &Type) -> Result<(), IrError> {
         // XXX Casting pointers to integers is a low level operation which needs to be verified in
         // the target specific verifier.  e.g., for Fuel it is assumed that b256s are 'reference
         // types' and you can to a ptr_to_int on them, but for target agnostic IR this isn't true.
-        let _ = self.get_ptr_type(val, IrError::VerifyPtrCastFromNonPointer)?;
+        if !(val
+            .get_type(self.context)
+            .is_some_and(|ty| ty.is_ptr(self.context)))
+        {
+            let ty = val
+                .get_type(self.context)
+                .map(|ty| ty.as_string(self.context))
+                .unwrap_or("Unknown".into());
+            return Err(IrError::VerifyPtrCastFromNonPointer(ty));
+        }
         if !ty.is_uint(self.context) {
             Err(IrError::VerifyPtrToIntToNonInteger(
                 ty.as_string(self.context),

@@ -1,3 +1,5 @@
+use crate::e2e_vm_tests::harness_callback_handler::HarnessCallbackHandler;
+
 use super::RunConfig;
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
@@ -18,7 +20,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
 use std::{fs, io::Read, path::PathBuf, str::FromStr};
-use sway_core::{asm_generation::ProgramABI, BuildTarget};
+use sway_core::{asm_generation::ProgramABI, BuildTarget, Observer};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
@@ -258,10 +260,15 @@ pub(crate) fn runs_in_vm(
 
 /// Compiles the code and optionally captures the output of forc and the compilation.
 /// Returns a tuple with the result of the compilation, as well as the output.
-pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) -> Result<Built> {
+pub(crate) async fn compile_to_bytes(
+    file_name: &str,
+    run_config: &RunConfig,
+    logs: &Option<String>,
+) -> Result<Built> {
     println!("Compiling {} ...", file_name.bold());
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let root = format!("{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}");
     let build_opts = forc_pkg::BuildOpts {
         build_target: run_config.build_target,
         build_profile: BuildProfile::DEBUG.into(),
@@ -277,9 +284,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             reverse_order: false,
         },
         pkg: forc_pkg::PkgOpts {
-            path: Some(format!(
-                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}",
-            )),
+            path: Some(root.clone()),
             locked: run_config.locked,
             terse: false,
             ..Default::default()
@@ -288,7 +293,15 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         no_experimental: run_config.experimental.no_experimental.clone(),
         ..Default::default()
     };
-    match std::panic::catch_unwind(|| forc_pkg::build_with_options(&build_opts)) {
+
+    match std::panic::catch_unwind(|| {
+        let callback_handler: Option<Box<dyn Observer>> = if let Some(script) = logs {
+            Some(Box::new(HarnessCallbackHandler::new(&root, script)))
+        } else {
+            None
+        };
+        forc_pkg::build_with_options(&build_opts, callback_handler)
+    }) {
         Ok(result) => {
             // Print the result of the compilation (i.e., any errors Forc produces).
             if let Err(ref e) = result {

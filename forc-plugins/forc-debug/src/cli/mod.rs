@@ -4,17 +4,18 @@ mod state;
 pub use commands::parse_int;
 
 use crate::{
-    error::{Error, Result},
-    FuelClient,
+    debugger::Debugger,
+    error::{ArgumentError, Error, Result},
 };
 use rustyline::{CompletionType, Config, EditMode, Editor};
-use state::{DebuggerHelper, State};
+use state::DebuggerHelper;
 use std::path::PathBuf;
 
 /// Start the CLI debug interface
 pub async fn start_cli(api_url: &str) -> Result<()> {
     let mut cli = Cli::new()?;
-    cli.run(api_url).await
+    let mut debugger = Debugger::new(api_url).await?;
+    cli.run(&mut debugger, None).await
 }
 
 pub struct Cli {
@@ -54,26 +55,27 @@ impl Cli {
         })
     }
 
-    pub async fn run(&mut self, api_url: &str) -> Result<()> {
-        let client = FuelClient::new(api_url).map_err(|e| Error::FuelClientError(e.to_string()))?;
-        let mut state = State::new(client);
-
-        // Start session
-        state.session_id = state
-            .client
-            .start_session()
-            .await
-            .map_err(|e| Error::FuelClientError(e.to_string()))?;
-
+    /// Main CLI entry point with optional initial input
+    pub async fn run(
+        &mut self,
+        debugger: &mut Debugger,
+        initial_input: Option<String>,
+    ) -> Result<()> {
         println!("Welcome to the Sway Debugger! Type \"help\" for a list of commands.");
+
+        let mut prefill_next = initial_input;
 
         // Main REPL loop
         loop {
-            let readline = self.editor.readline(">> ");
+            let readline = if let Some(prefill) = prefill_next.take() {
+                self.editor.readline_with_initial(">> ", (&prefill, ""))
+            } else {
+                self.editor.readline(">> ")
+            };
+
             match readline {
                 Ok(line) => {
                     let args: Vec<String> = line.split_whitespace().map(String::from).collect();
-
                     if args.is_empty() {
                         continue;
                     }
@@ -85,53 +87,32 @@ impl Cli {
                                     println!("Error: {}", e);
                                 }
                             }
-                            cmd if helper.commands.is_tx_command(cmd) => {
-                                if let Err(e) = commands::cmd_start_tx(&mut state, args).await {
-                                    println!("Error: {}", e);
-                                }
-                            }
-                            cmd if helper.commands.is_register_command(cmd) => {
-                                if let Err(e) = commands::cmd_registers(&mut state, args).await {
-                                    println!("Error: {}", e);
-                                }
-                            }
-                            cmd if helper.commands.is_breakpoint_command(cmd) => {
-                                if let Err(e) = commands::cmd_breakpoint(&mut state, args).await {
-                                    println!("Error: {}", e);
-                                }
-                            }
-                            cmd if helper.commands.is_memory_command(cmd) => {
-                                if let Err(e) = commands::cmd_memory(&mut state, args).await {
-                                    println!("Error: {}", e);
-                                }
-                            }
                             cmd if helper.commands.is_quit_command(cmd) => {
                                 break Ok(());
                             }
-                            cmd if helper.commands.is_reset_command(cmd) => {
-                                if let Err(e) = commands::cmd_reset(&mut state, args).await {
-                                    println!("Error: {}", e);
-                                }
-                            }
-                            cmd if helper.commands.is_continue_command(cmd) => {
-                                if let Err(e) = commands::cmd_continue(&mut state, args).await {
-                                    println!("Error: {}", e);
-                                }
-                            }
-                            cmd if helper.commands.is_step_command(cmd) => {
-                                if let Err(e) = commands::cmd_step(&mut state, args).await {
-                                    println!("Error: {}", e);
-                                }
-                            }
-                            unknown_cmd => {
-                                if let Some(suggestion) = helper.commands.find_closest(unknown_cmd)
+                            _ => {
+                                // Execute the command using debugger
+                                if let Err(e) = debugger
+                                    .execute_from_args(args.clone(), &mut std::io::stdout())
+                                    .await
                                 {
-                                    println!(
-                                        "Unknown command: '{}'. Did you mean '{}'?",
-                                        unknown_cmd, suggestion.name
-                                    );
-                                } else {
-                                    println!("Unknown command: '{}'", unknown_cmd);
+                                    if let Error::ArgumentError(ArgumentError::UnknownCommand(
+                                        cmd,
+                                    )) = &e
+                                    {
+                                        // Check if this is an unknown command error and provide suggestions
+                                        if let Some(suggestion) = helper.commands.find_closest(cmd)
+                                        {
+                                            println!(
+                                                "Unknown command: '{}'. Did you mean '{}'?",
+                                                cmd, suggestion.name
+                                            );
+                                        } else {
+                                            println!("Error: {}", e);
+                                        }
+                                    } else {
+                                        println!("Error: {}", e);
+                                    }
                                 }
                             }
                         }

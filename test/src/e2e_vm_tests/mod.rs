@@ -1,6 +1,7 @@
 // Please take a look in test_programs/README.md for details on how these tests work.
 
 mod harness;
+mod harness_callback_handler;
 mod util;
 
 use crate::e2e_vm_tests::harness::run_and_capture_output;
@@ -105,6 +106,7 @@ struct TestDescription {
     run_config: RunConfig,
     experimental: ExperimentalFeatures,
     has_experimental_field: bool,
+    logs: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -325,6 +327,7 @@ impl TestContext {
             expected_decoded_test_logs,
             experimental,
             has_experimental_field,
+            logs,
             ..
         } = test;
 
@@ -347,7 +350,8 @@ impl TestContext {
                 let expected_result = expected_result.expect("No expected result found. This is likely because test.toml is missing either an \"expected_result_new_encoding\" or \"expected_result\" entry");
 
                 let (result, out) =
-                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
+                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config, &logs))
+                        .await;
                 *output = out;
 
                 if let Ok(result) = result.as_ref() {
@@ -489,7 +493,8 @@ impl TestContext {
 
             TestCategory::Compiles => {
                 let (result, out) =
-                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
+                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config, &logs))
+                        .await;
                 *output = out;
 
                 let compiled_pkgs = match result? {
@@ -548,7 +553,8 @@ impl TestContext {
 
             TestCategory::FailsToCompile => {
                 let (result, out) =
-                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
+                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config, &logs))
+                        .await;
 
                 *output = out;
 
@@ -1263,6 +1269,11 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         supported_targets
     });
 
+    let logs = toml_content
+        .get("logs")
+        .and_then(|x| x.as_str())
+        .map(|x| x.to_string());
+
     Ok(TestDescription {
         name,
         suffix: path.file_name().unwrap().to_str().map(|x| x.to_string()),
@@ -1283,6 +1294,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         expected_decoded_test_logs,
         experimental,
         has_experimental_field,
+        logs,
     })
 }
 

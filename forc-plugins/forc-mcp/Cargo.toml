@@ -1,0 +1,43 @@
+[package]
+name = "forc-mcp"
+version.workspace = true
+description = "Model Context Protocol (MCP) server plugin for Forc"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords = ["blockchain", "fuel", "sway", "mcp"]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "forc-mcp"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+chrono.workspace = true
+clap.workspace = true
+forc-client.workspace = true
+forc-tx.workspace = true
+fuel-crypto.workspace = true
+fuels-core.workspace = true
+hex.workspace = true
+rand.workspace = true
+rmcp = { workspace = true, features = ["client", "transport-io", "transport-sse-server", "transport-sse-client", "transport-streamable-http-server", "transport-streamable-http-client", "reqwest", "macros"] }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+fuels.workspace = true
+fuels-accounts.workspace = true
+tempfile.workspace = true

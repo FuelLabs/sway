@@ -1,8 +1,9 @@
 use crate::{
     decl_engine::MaterializeConstGenerics,
+    has_changes,
     language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath},
     semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext},
-    SubstTypes, TypeId,
+    HasChanges, SubstTypes, TypeId,
 };
 use serde::{Deserialize, Serialize};
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -20,7 +21,15 @@ pub struct TyConstGenericDecl {
 
 impl SubstTypes for TyConstGenericDecl {
     fn subst_inner(&mut self, ctx: &crate::SubstTypesContext) -> crate::HasChanges {
-        self.return_type.subst(ctx)
+        has_changes! {
+            self.return_type.subst(ctx);
+            if let Some(v) = ctx.get_renamed_const_generic(&self.call_path.suffix) {
+                self.call_path.suffix = v.clone();
+                HasChanges::Yes
+            } else {
+                HasChanges::No
+            };
+        }
     }
 }
 
@@ -33,8 +42,24 @@ impl MaterializeConstGenerics for TyConstGenericDecl {
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
         if self.call_path.suffix.as_str() == name {
-            assert!(self.value.is_none());
-            self.value = Some(value.clone());
+            match self.value.as_ref() {
+                Some(v) => {
+                    assert!(
+                        v.extract_literal_value()
+                            .unwrap()
+                            .cast_value_to_u64()
+                            .unwrap()
+                            == value
+                                .extract_literal_value()
+                                .unwrap()
+                                .cast_value_to_u64()
+                                .unwrap()
+                    );
+                }
+                None => {
+                    self.value = Some(value.clone());
+                }
+            }
         }
         Ok(())
     }

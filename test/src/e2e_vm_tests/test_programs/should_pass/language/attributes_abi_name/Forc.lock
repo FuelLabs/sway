@@ -1,0 +1,8 @@
+[[package]]
+name = "attributes_abi_name"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-43A72CA5046445DF"

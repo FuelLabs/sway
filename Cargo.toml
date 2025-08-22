@@ -25,7 +25,7 @@ exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
-version = "0.69.0"
+version = "0.69.1"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
@@ -36,37 +36,38 @@ repository = "https://github.com/FuelLabs/sway"
 # Internal dependencies in order to propagate `workspace.version`
 #
 
-forc = { path = "forc/", version = "0.69.0" }
-forc-pkg = { path = "forc-pkg/", version = "0.69.0" }
-forc-test = { path = "forc-test/", version = "0.69.0" }
-forc-tracing = { path = "forc-tracing/", version = "0.69.0" }
-forc-util = { path = "forc-util/", version = "0.69.0" }
+forc = { path = "forc/", version = "0.69.1" }
+forc-pkg = { path = "forc-pkg/", version = "0.69.1" }
+forc-test = { path = "forc-test/", version = "0.69.1" }
+forc-tracing = { path = "forc-tracing/", version = "0.69.1" }
+forc-util = { path = "forc-util/", version = "0.69.1" }
 
 # Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.69.0" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.69.0" }
-forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.69.0" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.69.0" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.69.0" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.69.0" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.69.0" }
-forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.69.0" }
-forc-publish = { path = "forc-plugins/forc-publish/", version = "0.69.0" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.69.0" }
+forc-plugins = { path = "forc-plugins/", version = "0.69.1" }
+forc-client = { path = "forc-plugins/forc-client/", version = "0.69.1" }
+forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.69.1" }
+forc-debug = { path = "forc-plugins/forc-debug/", version = "0.69.1" }
+forc-doc = { path = "forc-plugins/forc-doc/", version = "0.69.1" }
+forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.69.1" }
+forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.69.1" }
+forc-mcp = { path = "forc-plugins/forc-mcp/", version = "0.69.1" }
+forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.69.1" }
+forc-publish = { path = "forc-plugins/forc-publish/", version = "0.69.1" }
+forc-tx = { path = "forc-plugins/forc-tx/", version = "0.69.1" }
 
-sway-ast = { path = "sway-ast/", version = "0.69.0" }
-sway-core = { path = "sway-core/", version = "0.69.0" }
-sway-error = { path = "sway-error/", version = "0.69.0" }
-sway-features = { path = "sway-features/", version = "0.69.0" }
-sway-lsp = { path = "sway-lsp/", version = "0.69.0" }
-sway-parse = { path = "sway-parse/", version = "0.69.0" }
-sway-types = { path = "sway-types/", version = "0.69.0" }
-sway-utils = { path = "sway-utils/", version = "0.69.0" }
-swayfmt = { path = "swayfmt/", version = "0.69.0" }
+sway-ast = { path = "sway-ast/", version = "0.69.1" }
+sway-core = { path = "sway-core/", version = "0.69.1" }
+sway-error = { path = "sway-error/", version = "0.69.1" }
+sway-features = { path = "sway-features/", version = "0.69.1" }
+sway-lsp = { path = "sway-lsp/", version = "0.69.1" }
+sway-parse = { path = "sway-parse/", version = "0.69.1" }
+sway-types = { path = "sway-types/", version = "0.69.1" }
+sway-utils = { path = "sway-utils/", version = "0.69.1" }
+swayfmt = { path = "swayfmt/", version = "0.69.1" }
 
 # Sway IR
-sway-ir = { path = "sway-ir/", version = "0.69.0" }
-sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.69.0" }
+sway-ir = { path = "sway-ir/", version = "0.69.1" }
+sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.69.1" }
 
 #
 # External Fuel dependencies
@@ -112,6 +113,7 @@ assert_matches = "1.5"
 async-trait = "0.1"
 aws-config = "1.5"
 aws-sdk-kms = "1.44"
+axum = "0.8"
 byte-unit = "5.1"
 bytes = "1.7"
 chrono = { version = "0.4", default-features = false }
@@ -166,6 +168,7 @@ ipfs-api-backend-hyper = "0.6"
 itertools = "0.13"
 k256 = "0.13"
 lazy_static = "1.4"
+libc = "0.2"
 libp2p-identity = "0.2"
 libtest-mimic = "0.7"
 lsp-types = "0.94"
@@ -197,6 +200,7 @@ regex = "1.10"
 reqwest = "0.12"
 rexpect = "0.6"
 revm = "14.0"
+rmcp = "0.2"
 ropey = "1.5"
 rpassword = "7.2"
 rustc-hash = "1.1"

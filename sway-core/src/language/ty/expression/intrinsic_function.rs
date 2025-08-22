@@ -90,10 +90,11 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
                 )
                 .map_err(|err| handler.emit_err(err))?;
                 let logged_type = TypeMetadata::new_logged_type(
+                    handler,
                     ctx.engines,
                     logged_type_id,
                     ctx.program_name.clone(),
-                );
+                )?;
                 types_metadata.push(logged_type);
             }
             Intrinsic::Smo => {

@@ -1,0 +1,1247 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build  --path test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat --experimental const_generics --ir final --asm final --bytecode
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
+// IR: Final
+library {
+}
+
+;; --- START OF TARGET BYTECODE ---
+
+0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
+0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 32]
+0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
+0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
+0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
+.data_section:
+;; --- END OF TARGET BYTECODE ---
+
+   Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
+// IR: Final
+script {
+    pub entry fn __entry() -> __ptr slice, !3 {
+        local mut slice __aggr_memcpy_0
+        local { u64, u64 } __anon_0
+        local slice __ret_value
+
+        entry():
+        v0 = get_local __ptr slice, __ret_value
+        v1 = call main_0(), !6
+        v2 = get_local __ptr { u64, u64 }, __anon_0, !7
+        v3 = const u64 0
+        v4 = get_elem_ptr v2, __ptr u64, v3, !7
+        v5 = const u64 0, !8
+        store v5 to v4, !7
+        v6 = const u64 1
+        v7 = get_elem_ptr v2, __ptr u64, v6, !7
+        v8 = const u64 0, !9
+        store v8 to v7, !7
+        v9 = asm(s: v2) -> __ptr slice s {
+        }
+        v10 = get_local __ptr slice, __aggr_memcpy_0
+        mem_copy_val v10, v9
+        mem_copy_val v0, v10
+        ret __ptr slice v0
+    }
+
+    entry_orig fn main_0() -> (), !13 {
+        local [u8; 5] __ret_val
+        local [u64; 5] __ret_val0
+        local [u64; 5] __ret_val1
+        local [u256; 25] __ret_val10
+        local [b256; 25] __ret_val11
+        local [bool; 25] __ret_val12
+        local [bool; 5] __ret_val13
+        local [bool; 25] __ret_val14
+        local [u8; 262145] __ret_val15
+        local [u64; 5] __ret_val2
+        local [u256; 5] __ret_val3
+        local [b256; 5] __ret_val4
+        local [bool; 5] __ret_val5
+        local [u8; 25] __ret_val6
+        local [u64; 25] __ret_val7
+        local [u64; 25] __ret_val8
+        local [u64; 25] __ret_val9
+
+        entry():
+        v0 = get_local __ptr [u8; 5], __ret_val
+        v1 = call array_repeat_zero_small_u8_1(v0)
+        v2 = get_local __ptr [u64; 5], __ret_val0
+        v3 = call array_repeat_zero_small_u16_2(v2)
+        v4 = get_local __ptr [u64; 5], __ret_val1
+        v5 = call array_repeat_zero_small_u32_3(v4)
+        v6 = get_local __ptr [u64; 5], __ret_val2
+        v7 = call array_repeat_zero_small_u64_4(v6)
+        v8 = get_local __ptr [u256; 5], __ret_val3
+        v9 = call array_repeat_zero_small_u256_5(v8)
+        v10 = get_local __ptr [b256; 5], __ret_val4
+        v11 = call array_repeat_zero_small_b256_6(v10)
+        v12 = get_local __ptr [bool; 5], __ret_val5
+        v13 = call array_repeat_zero_small_bool_7(v12)
+        v14 = get_local __ptr [u8; 25], __ret_val6
+        v15 = call array_repeat_zero_big_u8_8(v14)
+        v16 = get_local __ptr [u64; 25], __ret_val7
+        v17 = call array_repeat_zero_big_u16_9(v16)
+        v18 = get_local __ptr [u64; 25], __ret_val8
+        v19 = call array_repeat_zero_big_u32_10(v18)
+        v20 = get_local __ptr [u64; 25], __ret_val9
+        v21 = call array_repeat_zero_big_u64_11(v20)
+        v22 = get_local __ptr [u256; 25], __ret_val10
+        v23 = call array_repeat_zero_big_u256_12(v22)
+        v24 = get_local __ptr [b256; 25], __ret_val11
+        v25 = call array_repeat_zero_big_b256_13(v24)
+        v26 = get_local __ptr [bool; 25], __ret_val12
+        v27 = call array_repeat_zero_big_bool_14(v26)
+        v28 = get_local __ptr [bool; 5], __ret_val13
+        v29 = call small_array_repeat_15(v28)
+        v30 = get_local __ptr [bool; 25], __ret_val14
+        v31 = call big_array_repeat_16(v30)
+        v32 = get_local __ptr [u8; 262145], __ret_val15
+        v33 = call u8_array_bigger_than_18_bits_17(v32)
+        v34 = const unit ()
+        ret () v34
+    }
+
+    fn array_repeat_zero_small_u8_1(__ret_value: __ptr [u8; 5]) -> __ptr [u8; 5], !17 {
+        local [u8; 5] __anon_0
+
+        entry(__ret_value: __ptr [u8; 5]):
+        v0 = get_local __ptr [u8; 5], __anon_0, !18
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [u8; 5] __ret_value
+    }
+
+    fn array_repeat_zero_small_u16_2(__ret_value: __ptr [u64; 5]) -> __ptr [u64; 5], !21 {
+        local [u64; 5] __anon_0
+
+        entry(__ret_value: __ptr [u64; 5]):
+        v0 = get_local __ptr [u64; 5], __anon_0, !22
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [u64; 5] __ret_value
+    }
+
+    fn array_repeat_zero_small_u32_3(__ret_value: __ptr [u64; 5]) -> __ptr [u64; 5], !25 {
+        local [u64; 5] __anon_0
+
+        entry(__ret_value: __ptr [u64; 5]):
+        v0 = get_local __ptr [u64; 5], __anon_0, !26
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [u64; 5] __ret_value
+    }
+
+    fn array_repeat_zero_small_u64_4(__ret_value: __ptr [u64; 5]) -> __ptr [u64; 5], !29 {
+        local [u64; 5] __anon_0
+
+        entry(__ret_value: __ptr [u64; 5]):
+        v0 = get_local __ptr [u64; 5], __anon_0, !30
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [u64; 5] __ret_value
+    }
+
+    fn array_repeat_zero_small_u256_5(__ret_value: __ptr [u256; 5]) -> __ptr [u256; 5], !33 {
+        local [u256; 5] __anon_0
+
+        entry(__ret_value: __ptr [u256; 5]):
+        v0 = get_local __ptr [u256; 5], __anon_0, !34
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [u256; 5] __ret_value
+    }
+
+    fn array_repeat_zero_small_b256_6(__ret_value: __ptr [b256; 5]) -> __ptr [b256; 5], !37 {
+        local [b256; 5] __anon_0
+
+        entry(__ret_value: __ptr [b256; 5]):
+        v0 = get_local __ptr [b256; 5], __anon_0, !38
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [b256; 5] __ret_value
+    }
+
+    fn array_repeat_zero_small_bool_7(__ret_value: __ptr [bool; 5]) -> __ptr [bool; 5], !41 {
+        local [bool; 5] __anon_0
+
+        entry(__ret_value: __ptr [bool; 5]):
+        v0 = get_local __ptr [bool; 5], __anon_0, !42
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [bool; 5] __ret_value
+    }
+
+    fn array_repeat_zero_big_u8_8(__ret_value: __ptr [u8; 25]) -> __ptr [u8; 25], !45 {
+        local [u8; 25] __anon_0
+
+        entry(__ret_value: __ptr [u8; 25]):
+        v0 = get_local __ptr [u8; 25], __anon_0, !46
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [u8; 25] __ret_value
+    }
+
+    fn array_repeat_zero_big_u16_9(__ret_value: __ptr [u64; 25]) -> __ptr [u64; 25], !49 {
+        local [u64; 25] __anon_0
+
+        entry(__ret_value: __ptr [u64; 25]):
+        v0 = get_local __ptr [u64; 25], __anon_0, !50
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [u64; 25] __ret_value
+    }
+
+    fn array_repeat_zero_big_u32_10(__ret_value: __ptr [u64; 25]) -> __ptr [u64; 25], !53 {
+        local [u64; 25] __anon_0
+
+        entry(__ret_value: __ptr [u64; 25]):
+        v0 = get_local __ptr [u64; 25], __anon_0, !54
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [u64; 25] __ret_value
+    }
+
+    fn array_repeat_zero_big_u64_11(__ret_value: __ptr [u64; 25]) -> __ptr [u64; 25], !57 {
+        local [u64; 25] __anon_0
+
+        entry(__ret_value: __ptr [u64; 25]):
+        v0 = get_local __ptr [u64; 25], __anon_0, !58
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [u64; 25] __ret_value
+    }
+
+    fn array_repeat_zero_big_u256_12(__ret_value: __ptr [u256; 25]) -> __ptr [u256; 25], !61 {
+        local [u256; 25] __anon_0
+
+        entry(__ret_value: __ptr [u256; 25]):
+        v0 = get_local __ptr [u256; 25], __anon_0, !62
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [u256; 25] __ret_value
+    }
+
+    fn array_repeat_zero_big_b256_13(__ret_value: __ptr [b256; 25]) -> __ptr [b256; 25], !65 {
+        local [b256; 25] __anon_0
+
+        entry(__ret_value: __ptr [b256; 25]):
+        v0 = get_local __ptr [b256; 25], __anon_0, !66
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [b256; 25] __ret_value
+    }
+
+    fn array_repeat_zero_big_bool_14(__ret_value: __ptr [bool; 25]) -> __ptr [bool; 25], !69 {
+        local [bool; 25] __anon_0
+
+        entry(__ret_value: __ptr [bool; 25]):
+        v0 = get_local __ptr [bool; 25], __anon_0, !70
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [bool; 25] __ret_value
+    }
+
+    fn small_array_repeat_15(__ret_value: __ptr [bool; 5]) -> __ptr [bool; 5], !73 {
+        local [bool; 5] __anon_0
+
+        entry(__ret_value: __ptr [bool; 5]):
+        v0 = get_local __ptr [bool; 5], __anon_0, !74
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, __ptr bool, v1
+        v3 = const bool true, !75
+        store v3 to v2, !74
+        v4 = const u64 1
+        v5 = get_elem_ptr v0, __ptr bool, v4
+        store v3 to v5, !74
+        v6 = const u64 2
+        v7 = get_elem_ptr v0, __ptr bool, v6
+        store v3 to v7, !74
+        v8 = const u64 3
+        v9 = get_elem_ptr v0, __ptr bool, v8
+        store v3 to v9, !74
+        v10 = const u64 4
+        v11 = get_elem_ptr v0, __ptr bool, v10
+        store v3 to v11, !74
+        mem_copy_val __ret_value, v0
+        ret __ptr [bool; 5] __ret_value
+    }
+
+    fn big_array_repeat_16(__ret_value: __ptr [bool; 25]) -> __ptr [bool; 25], !78 {
+        local [bool; 25] __anon_0
+
+        entry(__ret_value: __ptr [bool; 25]):
+        v0 = get_local __ptr [bool; 25], __anon_0, !79
+        v1 = const u64 0
+        br array_init_loop(v1)
+
+        array_init_loop(v2: u64):
+        v3 = get_elem_ptr v0, __ptr bool, v2
+        v4 = const bool true, !80
+        store v4 to v3, !79
+        v5 = const u64 1
+        v6 = add v2, v5
+        v7 = const u64 25
+        v8 = cmp lt v6 v7
+        cbr v8, array_init_loop(v6), array_init_exit()
+
+        array_init_exit():
+        mem_copy_val __ret_value, v0
+        ret __ptr [bool; 25] __ret_value
+    }
+
+    fn u8_array_bigger_than_18_bits_17(__ret_value: __ptr [u8; 262145]) -> __ptr [u8; 262145], !83 {
+        local [u8; 262145] __anon_0
+
+        entry(__ret_value: __ptr [u8; 262145]):
+        v0 = get_local __ptr [u8; 262145], __anon_0, !84
+        mem_clear_val v0
+        mem_copy_val __ret_value, v0
+        ret __ptr [u8; 262145] __ret_value
+    }
+}
+
+!0 = "test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.<autogenerated>.sw"
+!1 = span !0 0 135
+!2 = fn_name_span !0 7 14
+!3 = (!1 !2)
+!4 = span !0 66 72
+!5 = fn_call_path_span !0 66 70
+!6 = (!4 !5)
+!7 = span !0 97 103
+!8 = span !0 98 99
+!9 = span !0 101 102
+!10 = "test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw"
+!11 = span !10 1854 2572
+!12 = fn_name_span !10 1857 1861
+!13 = (!11 !12)
+!14 = span !10 58 117
+!15 = fn_name_span !10 61 87
+!16 = inline "never"
+!17 = (!14 !15 !16)
+!18 = span !10 107 115
+!19 = span !10 220 282
+!20 = fn_name_span !10 223 250
+!21 = (!19 !20 !16)
+!22 = span !10 271 280
+!23 = span !10 388 450
+!24 = fn_name_span !10 391 418
+!25 = (!23 !24 !16)
+!26 = span !10 439 448
+!27 = span !10 556 618
+!28 = fn_name_span !10 559 586
+!29 = (!27 !28 !16)
+!30 = span !10 607 616
+!31 = span !10 725 855
+!32 = fn_name_span !10 728 756
+!33 = (!31 !32 !16)
+!34 = span !10 778 853
+!35 = span !10 1030 1156
+!36 = fn_name_span !10 1033 1061
+!37 = (!35 !36 !16)
+!38 = span !10 1083 1154
+!39 = span !10 1327 1392
+!40 = fn_name_span !10 1330 1358
+!41 = (!39 !40 !16)
+!42 = span !10 1380 1390
+!43 = span !10 135 194
+!44 = fn_name_span !10 138 162
+!45 = (!43 !44 !16)
+!46 = span !10 183 192
+!47 = span !10 300 362
+!48 = fn_name_span !10 303 328
+!49 = (!47 !48 !16)
+!50 = span !10 350 360
+!51 = span !10 468 530
+!52 = fn_name_span !10 471 496
+!53 = (!51 !52 !16)
+!54 = span !10 518 528
+!55 = span !10 636 698
+!56 = fn_name_span !10 639 664
+!57 = (!55 !56 !16)
+!58 = span !10 686 696
+!59 = span !10 873 1003
+!60 = fn_name_span !10 876 902
+!61 = (!59 !60 !16)
+!62 = span !10 925 1001
+!63 = span !10 1174 1300
+!64 = fn_name_span !10 1177 1203
+!65 = (!63 !64 !16)
+!66 = span !10 1226 1298
+!67 = span !10 1410 1475
+!68 = fn_name_span !10 1413 1439
+!69 = (!67 !68 !16)
+!70 = span !10 1462 1473
+!71 = span !10 1536 1590
+!72 = fn_name_span !10 1539 1557
+!73 = (!71 !72 !16)
+!74 = span !10 1579 1588
+!75 = span !10 1580 1584
+!76 = span !10 1633 1687
+!77 = fn_name_span !10 1636 1652
+!78 = (!76 !77 !16)
+!79 = span !10 1675 1685
+!80 = span !10 1676 1680
+!81 = span !10 1781 1852
+!82 = fn_name_span !10 1784 1812
+!83 = (!81 !82 !16)
+!84 = span !10 1837 1850
+
+;; ASM: Final program
+;; Program kind: Script
+.program:
+move $$tmp $pc
+jmpf $zero i4
+DATA_SECTION_OFFSET[0..32]
+DATA_SECTION_OFFSET[32..64]
+CONFIGURABLES_OFFSET[0..32]
+CONFIGURABLES_OFFSET[32..64]
+lw   $$ds $$tmp i1
+add  $$ds $$ds $$tmp
+cfei i0                       ; allocate stack space for globals
+move $$locbase $sp            ; save locals base register for function __entry
+cfei i48                      ; allocate 48 bytes for locals and 0 slots for call arguments
+addi $r0 $$locbase i32        ; get offset to local
+jal  $$reta $pc i9            ; [call]: call main_0
+addi $r1 $$locbase i16        ; get offset to local
+sw   $$locbase $zero i2       ; store word
+sw   $$locbase $zero i3       ; store word
+mcpi $$locbase $r1 i16        ; copy memory
+mcpi $r0 $$locbase i16        ; copy memory
+lw   $r1 $r0 i1               ; load size of returned slice
+lw   $r0 $r0 i0               ; load pointer to returned slice
+retd  $r0 $r1
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function main_0
+cfei i264912                  ; allocate 264912 bytes for locals and 0 slots for call arguments
+move $r1 $$reta               ; save return address
+move $$arg0 $$locbase         ; [call]: pass argument 0
+jal  $$reta $pc i71           ; [call]: call array_repeat_zero_small_u8_1
+addi $r0 $$locbase i8         ; get offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i82           ; [call]: call array_repeat_zero_small_u16_2
+addi $r0 $$locbase i48        ; get offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i93           ; [call]: call array_repeat_zero_small_u32_3
+movi $r0 i32989               ; get word offset to local from base
+muli $r0 $r0 i8               ; get byte offset to local from base
+add  $r0 $$locbase $r0        ; get absolute byte offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i102          ; [call]: call array_repeat_zero_small_u64_4
+movi $r0 i32994               ; get word offset to local from base
+muli $r0 $r0 i8               ; get byte offset to local from base
+add  $r0 $$locbase $r0        ; get absolute byte offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i111          ; [call]: call array_repeat_zero_small_u256_5
+movi $r0 i33014               ; get word offset to local from base
+muli $r0 $r0 i8               ; get byte offset to local from base
+add  $r0 $$locbase $r0        ; get absolute byte offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i120          ; [call]: call array_repeat_zero_small_b256_6
+movi $r0 i33034               ; get word offset to local from base
+muli $r0 $r0 i8               ; get byte offset to local from base
+add  $r0 $$locbase $r0        ; get absolute byte offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i129          ; [call]: call array_repeat_zero_small_bool_7
+movi $r0 i33035               ; get word offset to local from base
+muli $r0 $r0 i8               ; get byte offset to local from base
+add  $r0 $$locbase $r0        ; get absolute byte offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i138          ; [call]: call array_repeat_zero_big_u8_8
+movi $r0 i33039               ; get word offset to local from base
+muli $r0 $r0 i8               ; get byte offset to local from base
+add  $r0 $$locbase $r0        ; get absolute byte offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i147          ; [call]: call array_repeat_zero_big_u16_9
+movi $r0 i33064               ; get word offset to local from base
+muli $r0 $r0 i8               ; get byte offset to local from base
+add  $r0 $$locbase $r0        ; get absolute byte offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i156          ; [call]: call array_repeat_zero_big_u32_10
+movi $r0 i33089               ; get word offset to local from base
+muli $r0 $r0 i8               ; get byte offset to local from base
+add  $r0 $$locbase $r0        ; get absolute byte offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i165          ; [call]: call array_repeat_zero_big_u64_11
+addi $r0 $$locbase i88        ; get offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i176          ; [call]: call array_repeat_zero_big_u256_12
+addi $r0 $$locbase i888       ; get offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i187          ; [call]: call array_repeat_zero_big_b256_13
+addi $r0 $$locbase i1688      ; get offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i198          ; [call]: call array_repeat_zero_big_bool_14
+addi $r0 $$locbase i1720      ; get offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i209          ; [call]: call small_array_repeat_15
+addi $r0 $$locbase i1728      ; get offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i237          ; [call]: call big_array_repeat_16
+addi $r0 $$locbase i1760      ; get offset to local
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i255          ; [call]: call u8_array_bigger_than_18_bits_17
+move $$retv $zero             ; set return value
+cfsi i264912                  ; free 264912 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_small_u8_1
+cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i5             ; clear memory [u8; 5], 5 bytes
+mcpi $r0 $$locbase i5         ; copy memory
+move $$retv $r0               ; set return value
+cfsi i8                       ; free 8 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_small_u16_2
+cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i40            ; clear memory [u64; 5], 40 bytes
+mcpi $r0 $$locbase i40        ; copy memory
+move $$retv $r0               ; set return value
+cfsi i40                      ; free 40 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_small_u32_3
+cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i40            ; clear memory [u64; 5], 40 bytes
+mcpi $r0 $$locbase i40        ; copy memory
+move $$retv $r0               ; set return value
+cfsi i40                      ; free 40 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_small_u64_4
+cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i40            ; clear memory [u64; 5], 40 bytes
+mcpi $r0 $$locbase i40        ; copy memory
+move $$retv $r0               ; set return value
+cfsi i40                      ; free 40 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_small_u256_5
+cfei i160                     ; allocate 160 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i160           ; clear memory [u256; 5], 160 bytes
+mcpi $r0 $$locbase i160       ; copy memory
+move $$retv $r0               ; set return value
+cfsi i160                     ; free 160 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_small_b256_6
+cfei i160                     ; allocate 160 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i160           ; clear memory [b256; 5], 160 bytes
+mcpi $r0 $$locbase i160       ; copy memory
+move $$retv $r0               ; set return value
+cfsi i160                     ; free 160 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_small_bool_7
+cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i5             ; clear memory [bool; 5], 5 bytes
+mcpi $r0 $$locbase i5         ; copy memory
+move $$retv $r0               ; set return value
+cfsi i8                       ; free 8 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_big_u8_8
+cfei i32                      ; allocate 32 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i25            ; clear memory [u8; 25], 25 bytes
+mcpi $r0 $$locbase i25        ; copy memory
+move $$retv $r0               ; set return value
+cfsi i32                      ; free 32 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_big_u16_9
+cfei i200                     ; allocate 200 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i200           ; clear memory [u64; 25], 200 bytes
+mcpi $r0 $$locbase i200       ; copy memory
+move $$retv $r0               ; set return value
+cfsi i200                     ; free 200 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_big_u32_10
+cfei i200                     ; allocate 200 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i200           ; clear memory [u64; 25], 200 bytes
+mcpi $r0 $$locbase i200       ; copy memory
+move $$retv $r0               ; set return value
+cfsi i200                     ; free 200 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_big_u64_11
+cfei i200                     ; allocate 200 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i200           ; clear memory [u64; 25], 200 bytes
+mcpi $r0 $$locbase i200       ; copy memory
+move $$retv $r0               ; set return value
+cfsi i200                     ; free 200 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_big_u256_12
+cfei i800                     ; allocate 800 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i800           ; clear memory [u256; 25], 800 bytes
+mcpi $r0 $$locbase i800       ; copy memory
+move $$retv $r0               ; set return value
+cfsi i800                     ; free 800 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_big_b256_13
+cfei i800                     ; allocate 800 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i800           ; clear memory [b256; 25], 800 bytes
+mcpi $r0 $$locbase i800       ; copy memory
+move $$retv $r0               ; set return value
+cfsi i800                     ; free 800 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function array_repeat_zero_big_bool_14
+cfei i32                      ; allocate 32 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mcli $$locbase i25            ; clear memory [bool; 25], 25 bytes
+mcpi $r0 $$locbase i25        ; copy memory
+move $$retv $r0               ; set return value
+cfsi i32                      ; free 32 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i7                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function small_array_repeat_15
+cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+mul  $r2 $zero $one           ; get offset to array element
+add  $r2 $$locbase $r2        ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+mul  $r2 $one $one            ; get offset to array element
+add  $r2 $$locbase $r2        ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+movi $r2 i2                   ; initialize constant into register
+mul  $r2 $r2 $one             ; get offset to array element
+add  $r2 $$locbase $r2        ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+movi $r2 i3                   ; initialize constant into register
+mul  $r2 $r2 $one             ; get offset to array element
+add  $r2 $$locbase $r2        ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+movi $r2 i4                   ; initialize constant into register
+mul  $r2 $r2 $one             ; get offset to array element
+add  $r2 $$locbase $r2        ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+mcpi $r0 $$locbase i5         ; copy memory
+move $$retv $r0               ; set return value
+cfsi i8                       ; free 8 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i7                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i15                      ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function big_array_repeat_16
+cfei i32                      ; allocate 32 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+move $r3 $zero                ; move parameter from branch to block argument
+mul  $r2 $r3 $one             ; get offset to array element
+add  $r2 $$locbase $r2        ; add array element offset to array base
+sb   $r2 $one i0              ; store byte
+add  $r3 $r3 $one
+movi $r2 i25                  ; initialize constant into register
+lt   $r2 $r3 $r2
+jnzb $r2 $zero i5
+mcpi $r0 $$locbase i25        ; copy memory
+move $$retv $r0               ; set return value
+cfsi i32                      ; free 32 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i15                      ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function u8_array_bigger_than_18_bits_17
+cfei i262152                  ; allocate 262152 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (__ret_value)
+move $r1 $$reta               ; save return address
+load $$tmp data_NonConfigurable_0; loading clear size in bytes
+mcl  $$locbase $$tmp          ; clear memory [u8; 262145]
+load $$tmp data_NonConfigurable_0; loading copy size in bytes
+mcp  $r0 $$locbase $$tmp      ; copy memory
+move $$retv $r0               ; set return value
+cfsi i262152                  ; free 262152 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+.data:
+data_NonConfigurable_0 .word 262145
+
+
+;; --- START OF TARGET BYTECODE ---
+
+0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
+0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 5, 168]
+0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
+0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
+0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
+0x00000020 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000024 CFEI 0x30                                       ;; [145, 0, 0, 48]
+0x00000028 ADDI $writable R59 0x20                         ;; [80, 67, 176, 32]
+0x0000002c JAL R62 $pc 0x9                                 ;; [153, 248, 48, 9]
+0x00000030 ADDI R17 R59 0x10                               ;; [80, 71, 176, 16]
+0x00000034 SW R59 $zero 0x2                                ;; [95, 236, 0, 2]
+0x00000038 SW R59 $zero 0x3                                ;; [95, 236, 0, 3]
+0x0000003c MCPI R59 R17 0x10                               ;; [96, 237, 16, 16]
+0x00000040 MCPI $writable R59 0x10                         ;; [96, 67, 176, 16]
+0x00000044 LW R17 $writable 0x1                            ;; [93, 69, 0, 1]
+0x00000048 LW $writable $writable 0x0                      ;; [93, 65, 0, 0]
+0x0000004c RETD $writable R17                              ;; [37, 65, 16, 0]
+0x00000050 PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x00000054 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000058 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x0000005c CFEI 0x40ad0                                    ;; [145, 4, 10, 208]
+0x00000060 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x00000064 MOVE R58 R59                                    ;; [26, 235, 176, 0]
+0x00000068 JAL R62 $pc 0x47                                ;; [153, 248, 48, 71]
+0x0000006c ADDI $writable R59 0x8                          ;; [80, 67, 176, 8]
+0x00000070 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000074 JAL R62 $pc 0x52                                ;; [153, 248, 48, 82]
+0x00000078 ADDI $writable R59 0x30                         ;; [80, 67, 176, 48]
+0x0000007c MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000080 JAL R62 $pc 0x5d                                ;; [153, 248, 48, 93]
+0x00000084 MOVI $writable 0x80dd                           ;; [114, 64, 128, 221]
+0x00000088 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
+0x0000008c ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
+0x00000090 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000094 JAL R62 $pc 0x66                                ;; [153, 248, 48, 102]
+0x00000098 MOVI $writable 0x80e2                           ;; [114, 64, 128, 226]
+0x0000009c MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
+0x000000a0 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
+0x000000a4 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x000000a8 JAL R62 $pc 0x6f                                ;; [153, 248, 48, 111]
+0x000000ac MOVI $writable 0x80f6                           ;; [114, 64, 128, 246]
+0x000000b0 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
+0x000000b4 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
+0x000000b8 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x000000bc JAL R62 $pc 0x78                                ;; [153, 248, 48, 120]
+0x000000c0 MOVI $writable 0x810a                           ;; [114, 64, 129, 10]
+0x000000c4 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
+0x000000c8 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
+0x000000cc MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x000000d0 JAL R62 $pc 0x81                                ;; [153, 248, 48, 129]
+0x000000d4 MOVI $writable 0x810b                           ;; [114, 64, 129, 11]
+0x000000d8 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
+0x000000dc ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
+0x000000e0 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x000000e4 JAL R62 $pc 0x8a                                ;; [153, 248, 48, 138]
+0x000000e8 MOVI $writable 0x810f                           ;; [114, 64, 129, 15]
+0x000000ec MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
+0x000000f0 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
+0x000000f4 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x000000f8 JAL R62 $pc 0x93                                ;; [153, 248, 48, 147]
+0x000000fc MOVI $writable 0x8128                           ;; [114, 64, 129, 40]
+0x00000100 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
+0x00000104 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
+0x00000108 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x0000010c JAL R62 $pc 0x9c                                ;; [153, 248, 48, 156]
+0x00000110 MOVI $writable 0x8141                           ;; [114, 64, 129, 65]
+0x00000114 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
+0x00000118 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
+0x0000011c MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000120 JAL R62 $pc 0xa5                                ;; [153, 248, 48, 165]
+0x00000124 ADDI $writable R59 0x58                         ;; [80, 67, 176, 88]
+0x00000128 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x0000012c JAL R62 $pc 0xb0                                ;; [153, 248, 48, 176]
+0x00000130 ADDI $writable R59 0x378                        ;; [80, 67, 179, 120]
+0x00000134 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000138 JAL R62 $pc 0xbb                                ;; [153, 248, 48, 187]
+0x0000013c ADDI $writable R59 0x698                        ;; [80, 67, 182, 152]
+0x00000140 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000144 JAL R62 $pc 0xc6                                ;; [153, 248, 48, 198]
+0x00000148 ADDI $writable R59 0x6b8                        ;; [80, 67, 182, 184]
+0x0000014c MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000150 JAL R62 $pc 0xd1                                ;; [153, 248, 48, 209]
+0x00000154 ADDI $writable R59 0x6c0                        ;; [80, 67, 182, 192]
+0x00000158 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x0000015c JAL R62 $pc 0xed                                ;; [153, 248, 48, 237]
+0x00000160 ADDI $writable R59 0x6e0                        ;; [80, 67, 182, 224]
+0x00000164 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000168 JAL R62 $pc 0xff                                ;; [153, 248, 48, 255]
+0x0000016c MOVE R61 $zero                                  ;; [26, 244, 0, 0]
+0x00000170 CFSI 0x40ad0                                    ;; [146, 4, 10, 208]
+0x00000174 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000178 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000017c POPL 0x3                                        ;; [151, 0, 0, 3]
+0x00000180 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000184 PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x00000188 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x0000018c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000190 CFEI 0x8                                        ;; [145, 0, 0, 8]
+0x00000194 MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000198 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x0000019c MCLI R59 0x5                                    ;; [112, 236, 0, 5]
+0x000001a0 MCPI $writable R59 0x5                          ;; [96, 67, 176, 5]
+0x000001a4 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x000001a8 CFSI 0x8                                        ;; [146, 0, 0, 8]
+0x000001ac MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x000001b0 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000001b4 POPL 0x3                                        ;; [151, 0, 0, 3]
+0x000001b8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000001bc PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x000001c0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000001c4 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x000001c8 CFEI 0x28                                       ;; [145, 0, 0, 40]
+0x000001cc MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x000001d0 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x000001d4 MCLI R59 0x28                                   ;; [112, 236, 0, 40]
+0x000001d8 MCPI $writable R59 0x28                         ;; [96, 67, 176, 40]
+0x000001dc MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x000001e0 CFSI 0x28                                       ;; [146, 0, 0, 40]
+0x000001e4 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x000001e8 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000001ec POPL 0x3                                        ;; [151, 0, 0, 3]
+0x000001f0 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000001f4 PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x000001f8 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000001fc MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000200 CFEI 0x28                                       ;; [145, 0, 0, 40]
+0x00000204 MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000208 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x0000020c MCLI R59 0x28                                   ;; [112, 236, 0, 40]
+0x00000210 MCPI $writable R59 0x28                         ;; [96, 67, 176, 40]
+0x00000214 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000218 CFSI 0x28                                       ;; [146, 0, 0, 40]
+0x0000021c MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000220 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000224 POPL 0x3                                        ;; [151, 0, 0, 3]
+0x00000228 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x0000022c PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x00000230 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000234 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000238 CFEI 0x28                                       ;; [145, 0, 0, 40]
+0x0000023c MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000240 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x00000244 MCLI R59 0x28                                   ;; [112, 236, 0, 40]
+0x00000248 MCPI $writable R59 0x28                         ;; [96, 67, 176, 40]
+0x0000024c MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000250 CFSI 0x28                                       ;; [146, 0, 0, 40]
+0x00000254 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000258 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000025c POPL 0x3                                        ;; [151, 0, 0, 3]
+0x00000260 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000264 PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x00000268 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x0000026c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000270 CFEI 0xa0                                       ;; [145, 0, 0, 160]
+0x00000274 MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000278 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x0000027c MCLI R59 0xa0                                   ;; [112, 236, 0, 160]
+0x00000280 MCPI $writable R59 0xa0                         ;; [96, 67, 176, 160]
+0x00000284 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000288 CFSI 0xa0                                       ;; [146, 0, 0, 160]
+0x0000028c MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000290 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000294 POPL 0x3                                        ;; [151, 0, 0, 3]
+0x00000298 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x0000029c PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x000002a0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000002a4 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x000002a8 CFEI 0xa0                                       ;; [145, 0, 0, 160]
+0x000002ac MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x000002b0 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x000002b4 MCLI R59 0xa0                                   ;; [112, 236, 0, 160]
+0x000002b8 MCPI $writable R59 0xa0                         ;; [96, 67, 176, 160]
+0x000002bc MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x000002c0 CFSI 0xa0                                       ;; [146, 0, 0, 160]
+0x000002c4 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x000002c8 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000002cc POPL 0x3                                        ;; [151, 0, 0, 3]
+0x000002d0 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000002d4 PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x000002d8 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000002dc MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x000002e0 CFEI 0x8                                        ;; [145, 0, 0, 8]
+0x000002e4 MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x000002e8 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x000002ec MCLI R59 0x5                                    ;; [112, 236, 0, 5]
+0x000002f0 MCPI $writable R59 0x5                          ;; [96, 67, 176, 5]
+0x000002f4 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x000002f8 CFSI 0x8                                        ;; [146, 0, 0, 8]
+0x000002fc MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000300 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000304 POPL 0x3                                        ;; [151, 0, 0, 3]
+0x00000308 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x0000030c PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x00000310 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000314 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000318 CFEI 0x20                                       ;; [145, 0, 0, 32]
+0x0000031c MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000320 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x00000324 MCLI R59 0x19                                   ;; [112, 236, 0, 25]
+0x00000328 MCPI $writable R59 0x19                         ;; [96, 67, 176, 25]
+0x0000032c MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000330 CFSI 0x20                                       ;; [146, 0, 0, 32]
+0x00000334 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000338 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000033c POPL 0x3                                        ;; [151, 0, 0, 3]
+0x00000340 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000344 PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x00000348 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x0000034c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000350 CFEI 0xc8                                       ;; [145, 0, 0, 200]
+0x00000354 MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000358 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x0000035c MCLI R59 0xc8                                   ;; [112, 236, 0, 200]
+0x00000360 MCPI $writable R59 0xc8                         ;; [96, 67, 176, 200]
+0x00000364 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000368 CFSI 0xc8                                       ;; [146, 0, 0, 200]
+0x0000036c MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000370 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000374 POPL 0x3                                        ;; [151, 0, 0, 3]
+0x00000378 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x0000037c PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x00000380 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000384 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000388 CFEI 0xc8                                       ;; [145, 0, 0, 200]
+0x0000038c MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000390 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x00000394 MCLI R59 0xc8                                   ;; [112, 236, 0, 200]
+0x00000398 MCPI $writable R59 0xc8                         ;; [96, 67, 176, 200]
+0x0000039c MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x000003a0 CFSI 0xc8                                       ;; [146, 0, 0, 200]
+0x000003a4 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x000003a8 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000003ac POPL 0x3                                        ;; [151, 0, 0, 3]
+0x000003b0 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000003b4 PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x000003b8 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000003bc MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x000003c0 CFEI 0xc8                                       ;; [145, 0, 0, 200]
+0x000003c4 MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x000003c8 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x000003cc MCLI R59 0xc8                                   ;; [112, 236, 0, 200]
+0x000003d0 MCPI $writable R59 0xc8                         ;; [96, 67, 176, 200]
+0x000003d4 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x000003d8 CFSI 0xc8                                       ;; [146, 0, 0, 200]
+0x000003dc MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x000003e0 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000003e4 POPL 0x3                                        ;; [151, 0, 0, 3]
+0x000003e8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000003ec PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x000003f0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000003f4 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x000003f8 CFEI 0x320                                      ;; [145, 0, 3, 32]
+0x000003fc MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000400 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x00000404 MCLI R59 0x320                                  ;; [112, 236, 3, 32]
+0x00000408 MCPI $writable R59 0x320                        ;; [96, 67, 179, 32]
+0x0000040c MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000410 CFSI 0x320                                      ;; [146, 0, 3, 32]
+0x00000414 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000418 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000041c POPL 0x3                                        ;; [151, 0, 0, 3]
+0x00000420 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000424 PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x00000428 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x0000042c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000430 CFEI 0x320                                      ;; [145, 0, 3, 32]
+0x00000434 MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000438 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x0000043c MCLI R59 0x320                                  ;; [112, 236, 3, 32]
+0x00000440 MCPI $writable R59 0x320                        ;; [96, 67, 179, 32]
+0x00000444 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000448 CFSI 0x320                                      ;; [146, 0, 3, 32]
+0x0000044c MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000450 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000454 POPL 0x3                                        ;; [151, 0, 0, 3]
+0x00000458 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x0000045c PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x00000460 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000464 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000468 CFEI 0x20                                       ;; [145, 0, 0, 32]
+0x0000046c MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000470 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x00000474 MCLI R59 0x19                                   ;; [112, 236, 0, 25]
+0x00000478 MCPI $writable R59 0x19                         ;; [96, 67, 176, 25]
+0x0000047c MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000480 CFSI 0x20                                       ;; [146, 0, 0, 32]
+0x00000484 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000488 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000048c POPL 0x3                                        ;; [151, 0, 0, 3]
+0x00000490 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000494 PSHL 0x7                                        ;; [149, 0, 0, 7]
+0x00000498 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x0000049c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x000004a0 CFEI 0x8                                        ;; [145, 0, 0, 8]
+0x000004a4 MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x000004a8 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x000004ac MUL R18 $zero $one                              ;; [27, 72, 0, 64]
+0x000004b0 ADD R18 R59 R18                                 ;; [16, 75, 180, 128]
+0x000004b4 SB R18 $one 0x0                                 ;; [94, 72, 16, 0]
+0x000004b8 MUL R18 $one $one                               ;; [27, 72, 16, 64]
+0x000004bc ADD R18 R59 R18                                 ;; [16, 75, 180, 128]
+0x000004c0 SB R18 $one 0x0                                 ;; [94, 72, 16, 0]
+0x000004c4 MOVI R18 0x2                                    ;; [114, 72, 0, 2]
+0x000004c8 MUL R18 R18 $one                                ;; [27, 73, 32, 64]
+0x000004cc ADD R18 R59 R18                                 ;; [16, 75, 180, 128]
+0x000004d0 SB R18 $one 0x0                                 ;; [94, 72, 16, 0]
+0x000004d4 MOVI R18 0x3                                    ;; [114, 72, 0, 3]
+0x000004d8 MUL R18 R18 $one                                ;; [27, 73, 32, 64]
+0x000004dc ADD R18 R59 R18                                 ;; [16, 75, 180, 128]
+0x000004e0 SB R18 $one 0x0                                 ;; [94, 72, 16, 0]
+0x000004e4 MOVI R18 0x4                                    ;; [114, 72, 0, 4]
+0x000004e8 MUL R18 R18 $one                                ;; [27, 73, 32, 64]
+0x000004ec ADD R18 R59 R18                                 ;; [16, 75, 180, 128]
+0x000004f0 SB R18 $one 0x0                                 ;; [94, 72, 16, 0]
+0x000004f4 MCPI $writable R59 0x5                          ;; [96, 67, 176, 5]
+0x000004f8 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x000004fc CFSI 0x8                                        ;; [146, 0, 0, 8]
+0x00000500 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000504 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000508 POPL 0x7                                        ;; [151, 0, 0, 7]
+0x0000050c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000510 PSHL 0xf                                        ;; [149, 0, 0, 15]
+0x00000514 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000518 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x0000051c CFEI 0x20                                       ;; [145, 0, 0, 32]
+0x00000520 MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000524 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x00000528 MOVE R19 $zero                                  ;; [26, 76, 0, 0]
+0x0000052c MUL R18 R19 $one                                ;; [27, 73, 48, 64]
+0x00000530 ADD R18 R59 R18                                 ;; [16, 75, 180, 128]
+0x00000534 SB R18 $one 0x0                                 ;; [94, 72, 16, 0]
+0x00000538 ADD R19 R19 $one                                ;; [16, 77, 48, 64]
+0x0000053c MOVI R18 0x19                                   ;; [114, 72, 0, 25]
+0x00000540 LT R18 R19 R18                                  ;; [22, 73, 52, 128]
+0x00000544 JNZB R18 $zero 0x5                              ;; [119, 72, 0, 5]
+0x00000548 MCPI $writable R59 0x19                         ;; [96, 67, 176, 25]
+0x0000054c MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000550 CFSI 0x20                                       ;; [146, 0, 0, 32]
+0x00000554 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000558 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000055c POPL 0xf                                        ;; [151, 0, 0, 15]
+0x00000560 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000564 PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x00000568 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x0000056c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000570 CFEI 0x40008                                    ;; [145, 4, 0, 8]
+0x00000574 MOVE $writable R58                              ;; [26, 67, 160, 0]
+0x00000578 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x0000057c LW R60 R63 0x0                                  ;; [93, 243, 240, 0]
+0x00000580 MCL R59 R60                                     ;; [39, 239, 192, 0]
+0x00000584 LW R60 R63 0x0                                  ;; [93, 243, 240, 0]
+0x00000588 MCP $writable R59 R60                           ;; [40, 67, 191, 0]
+0x0000058c MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000590 CFSI 0x40008                                    ;; [146, 4, 0, 8]
+0x00000594 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x00000598 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000059c POPL 0x3                                        ;; [151, 0, 0, 3]
+0x000005a0 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000005a4 NOOP                                            ;; [71, 0, 0, 0]
+.data_section:
+0x000005a8 .word i262145, as hex be bytes ([00, 00, 00, 00, 00, 04, 00, 01])
+;; --- END OF TARGET BYTECODE ---
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw:119:24
+    |
+117 | trait IsZero { fn is_zero(self) -> bool; }
+118 | 
+119 | impl IsZero for bool { fn is_zero(self) -> bool { self == false }}
+    |                        ------------------------------------------ This method is never called.
+120 | impl IsZero for u8 { fn is_zero(self) -> bool { self == 0 }}
+121 | impl IsZero for u16 { fn is_zero(self) -> bool { self == 0 }}
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw:120:22
+    |
+118 | 
+119 | impl IsZero for bool { fn is_zero(self) -> bool { self == false }}
+120 | impl IsZero for u8 { fn is_zero(self) -> bool { self == 0 }}
+    |                      -------------------------------------- This method is never called.
+121 | impl IsZero for u16 { fn is_zero(self) -> bool { self == 0 }}
+122 | impl IsZero for u32 { fn is_zero(self) -> bool { self == 0 }}
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw:121:23
+    |
+119 | impl IsZero for bool { fn is_zero(self) -> bool { self == false }}
+120 | impl IsZero for u8 { fn is_zero(self) -> bool { self == 0 }}
+121 | impl IsZero for u16 { fn is_zero(self) -> bool { self == 0 }}
+    |                       -------------------------------------- This method is never called.
+122 | impl IsZero for u32 { fn is_zero(self) -> bool { self == 0 }}
+123 | impl IsZero for u64 { fn is_zero(self) -> bool { self == 0 }}
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw:122:23
+    |
+120 | impl IsZero for u8 { fn is_zero(self) -> bool { self == 0 }}
+121 | impl IsZero for u16 { fn is_zero(self) -> bool { self == 0 }}
+122 | impl IsZero for u32 { fn is_zero(self) -> bool { self == 0 }}
+    |                       -------------------------------------- This method is never called.
+123 | impl IsZero for u64 { fn is_zero(self) -> bool { self == 0 }}
+124 | impl IsZero for u256 { fn is_zero(self) -> bool { self == 0x0000000000000000000000000000000000000000000000000000000000000000u256 }}
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw:123:23
+    |
+121 | impl IsZero for u16 { fn is_zero(self) -> bool { self == 0 }}
+122 | impl IsZero for u32 { fn is_zero(self) -> bool { self == 0 }}
+123 | impl IsZero for u64 { fn is_zero(self) -> bool { self == 0 }}
+    |                       -------------------------------------- This method is never called.
+124 | impl IsZero for u256 { fn is_zero(self) -> bool { self == 0x0000000000000000000000000000000000000000000000000000000000000000u256 }}
+125 | impl IsZero for b256 { fn is_zero(self) -> bool { self == 0x0000000000000000000000000000000000000000000000000000000000000000 }}
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw:124:24
+    |
+122 | impl IsZero for u32 { fn is_zero(self) -> bool { self == 0 }}
+123 | impl IsZero for u64 { fn is_zero(self) -> bool { self == 0 }}
+124 | impl IsZero for u256 { fn is_zero(self) -> bool { self == 0x0000000000000000000000000000000000000000000000000000000000000000u256 }}
+    |                        ----------------------------------------------------------------------------------------------------------- This method is never called.
+125 | impl IsZero for b256 { fn is_zero(self) -> bool { self == 0x0000000000000000000000000000000000000000000000000000000000000000 }}
+126 | 
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw:125:24
+    |
+123 | impl IsZero for u64 { fn is_zero(self) -> bool { self == 0 }}
+124 | impl IsZero for u256 { fn is_zero(self) -> bool { self == 0x0000000000000000000000000000000000000000000000000000000000000000u256 }}
+125 | impl IsZero for b256 { fn is_zero(self) -> bool { self == 0x0000000000000000000000000000000000000000000000000000000000000000 }}
+    |                        ------------------------------------------------------------------------------------------------------- This method is never called.
+126 | 
+127 | fn is_all_zero<T, const N: u64>(array: [T; N], n: u64) where T: IsZero {
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw:127:4
+    |
+125 | impl IsZero for b256 { fn is_zero(self) -> bool { self == 0x0000000000000000000000000000000000000000000000000000000000000000 }}
+126 | 
+127 | fn is_all_zero<T, const N: u64>(array: [T; N], n: u64) where T: IsZero {
+    |    ----------- This function is never called.
+128 |     let mut i = 0;
+129 |     while i < n {
+    |
+____
+
+  Compiled script "array_repeat" with 8 warnings.
+    Finished debug [unoptimized + fuel] target(s) [1.456 KB] in ???
+
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat --experimental const_generics --verbose
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
+   Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
+    Finished debug [unoptimized + fuel] target(s) [6.648 KB] in ???
+    script array_repeat
+      Bytecode size: 6648 bytes (6.648 KB)
+      Bytecode hash: 0x0ae596de91be50b99f5af33b3ffdf03b48086eef74ff481547652feb85078b94
+     Running 1 test, filtered 0 tests
+
+tested -- array_repeat
+
+      test test_array_repeat_zero ... ok (???, 27815938 gas)
+
+test result: OK. 1 passed; 0 failed; finished in ???
+
+    Finished in ???

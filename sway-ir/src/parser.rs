@@ -242,6 +242,7 @@ mod ir_builder {
                 / op_log()
                 / op_mem_copy_bytes()
                 / op_mem_copy_val()
+                / op_mem_clear_val()
                 / op_nop()
                 / op_ptr_to_int()
                 / op_read_register()
@@ -394,6 +395,11 @@ mod ir_builder {
                 = "mem_copy_val" _ dst_name:id() comma() src_name:id() {
                     IrAstOperation::MemCopyVal(dst_name, src_name)
                 }
+
+            rule op_mem_clear_val() -> IrAstOperation
+            = "mem_clear_val" _ dst_name:id() {
+                IrAstOperation::MemClearVal(dst_name)
+            }
 
             rule op_nop() -> IrAstOperation
                 = "nop" _ {
@@ -585,11 +591,13 @@ mod ir_builder {
                 / "u256" _ { IrAstTy::U256 }
                 / "b256" _ { IrAstTy::B256 }
                 / "slice" _ { IrAstTy::Slice }
+                / "__slice" _ "[" _ ty:ast_ty() "]" _ { IrAstTy::TypedSlice(Box::new(ty)) }
                 / "string" _ "<" _ sz:decimal() ">" _ { IrAstTy::String(sz) }
                 / array_ty()
                 / struct_ty()
                 / union_ty()
-                / "ptr" _ ty:ast_ty() { IrAstTy::Ptr(Box::new(ty)) }
+                / "__ptr" _ ty:ast_ty() _ { IrAstTy::TypedPtr(Box::new(ty)) }
+                / "ptr" _ { IrAstTy::Ptr }
 
             rule array_ty() -> IrAstTy
                 = "[" _ ty:ast_ty() ";" _ c:decimal() "]" _ {
@@ -797,6 +805,7 @@ mod ir_builder {
         Log(IrAstTy, String, String),
         MemCopyBytes(String, String, u64),
         MemCopyVal(String, String),
+        MemClearVal(String),
         Nop,
         PtrToInt(String, IrAstTy),
         ReadRegister(String),
@@ -953,11 +962,13 @@ mod ir_builder {
         U256,
         B256,
         Slice,
+        TypedSlice(Box<IrAstTy>),
         String(u64),
         Array(Box<IrAstTy>, u64),
         Union(Vec<IrAstTy>),
         Struct(Vec<IrAstTy>),
-        Ptr(Box<IrAstTy>),
+        TypedPtr(Box<IrAstTy>),
+        Ptr,
     }
 
     impl IrAstTy {
@@ -970,6 +981,10 @@ mod ir_builder {
                 IrAstTy::U256 => Type::get_uint256(context),
                 IrAstTy::B256 => Type::get_b256(context),
                 IrAstTy::Slice => Type::get_slice(context),
+                IrAstTy::TypedSlice(el_ty) => {
+                    let inner_ty = el_ty.to_ir_type(context);
+                    Type::get_typed_slice(context, inner_ty)
+                }
                 IrAstTy::String(n) => Type::new_string_array(context, *n),
                 IrAstTy::Array(el_ty, count) => {
                     let el_ty = el_ty.to_ir_type(context);
@@ -983,10 +998,11 @@ mod ir_builder {
                     let tys = tys.iter().map(|ty| ty.to_ir_type(context)).collect();
                     Type::new_struct(context, tys)
                 }
-                IrAstTy::Ptr(ty) => {
+                IrAstTy::TypedPtr(ty) => {
                     let inner_ty = ty.to_ir_type(context);
-                    Type::new_ptr(context, inner_ty)
+                    Type::new_typed_pointer(context, inner_ty)
                 }
+                IrAstTy::Ptr => Type::get_ptr(context),
             }
         }
     }
@@ -1422,6 +1438,10 @@ mod ir_builder {
                             *val_map.get(&src_name).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::MemClearVal(dst_name) => block
+                        .append(context)
+                        .mem_clear_val(*val_map.get(&dst_name).unwrap())
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Nop => block.append(context).nop(),
                     IrAstOperation::PtrToInt(val, ty) => {
                         let to_ty = ty.to_ir_type(context);
@@ -1607,7 +1627,7 @@ mod ir_builder {
                 let config_val = ConfigContent::V1 {
                     name: config.value_name.clone(),
                     ty,
-                    ptr_ty: Type::new_ptr(context, ty),
+                    ptr_ty: Type::new_typed_pointer(context, ty),
                     encoded_bytes: config.encoded_bytes,
                     // this will point to the correct function after all functions are compiled
                     decode_fn: Cell::new(Function(KeyData::default().into())),

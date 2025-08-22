@@ -67,13 +67,14 @@ impl Preprocessor for ForcDocumenter {
                             for sub_sub_item in &mut plugin_chapter.sub_items {
                                 if let BookItem::Chapter(ref mut plugin_sub_chapter) = sub_sub_item
                                 {
+                                    // Skip validation for nested documentation entries
+                                    // These are documentation-only entries that don't correspond to actual commands
                                     if let Some(content) =
                                         plugin_contents.remove(&plugin_sub_chapter.name)
                                     {
                                         inject_content(plugin_sub_chapter, &content, &examples);
-                                    } else {
-                                        removed_commands.push(plugin_sub_chapter.name.clone());
-                                    };
+                                    }
+                                    // Don't mark nested entries as removed - they're documentation sections
                                 }
                             }
                         }

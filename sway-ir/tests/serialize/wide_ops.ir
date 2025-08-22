@@ -2,7 +2,7 @@ script {
     fn main() -> () {
         local u256 a
         entry():
-        v0 = get_local ptr u256, a
+        v0 = get_local __ptr u256, a
         v1 = const u64 2
 
         wide add v0, v0 to v0

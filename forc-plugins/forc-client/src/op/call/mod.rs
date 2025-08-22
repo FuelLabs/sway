@@ -1,8 +1,8 @@
 mod call_function;
-mod list_functions;
+pub mod list_functions;
 mod missing_contracts;
 mod parser;
-mod trace;
+pub mod trace;
 mod transfer;
 
 use crate::cmd::call::AbiSource;
@@ -37,11 +37,14 @@ use std::{collections::HashMap, str::FromStr};
 #[serde(rename_all = "snake_case")]
 pub struct CallResponse {
     pub tx_hash: String,
+    pub total_gas: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub receipts: Vec<Receipt>,
-    #[serde(rename = "script", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub trace_events: Vec<trace::TraceEvent>,
+    #[serde(rename = "Script", skip_serializing_if = "Option::is_none")]
     pub script_json: Option<serde_json::Value>,
 }
 
@@ -194,7 +197,7 @@ async fn get_wallet(
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Abi {
+pub struct Abi {
     source: AbiSource,
     program: ProgramABI,
     unified: UnifiedProgramABI,
@@ -202,6 +205,14 @@ pub(crate) struct Abi {
     // ↳ gh issue: https://github.com/FuelLabs/sway/issues/7197
     #[allow(dead_code)]
     type_lookup: HashMap<usize, UnifiedTypeDeclaration>,
+}
+
+impl Abi {
+    /// Set the source of the ABI after creation
+    pub fn with_source(mut self, source: AbiSource) -> Self {
+        self.source = source;
+        self
+    }
 }
 
 impl FromStr for Abi {
@@ -316,15 +327,16 @@ pub(crate) fn display_detailed_call_info(
 
 /// Create a HashMap of contract ABIs from a main ABI and optional additional contract ABIs
 /// This is a reusable function for both call_function and list_functions operations
-pub(crate) async fn create_abi_map(
+pub async fn create_abi_map(
     main_contract_id: ContractId,
     main_abi: &AbiSource,
     additional_contract_abis: Option<Vec<(ContractId, AbiSource)>>,
 ) -> anyhow::Result<HashMap<ContractId, Abi>> {
     // Load main ABI
     let main_abi_str = load_abi(main_abi).await?;
-    let main_abi =
-        Abi::from_str(&main_abi_str).map_err(|e| anyhow!("Failed to parse main ABI: {}", e))?;
+    let main_abi = Abi::from_str(&main_abi_str)
+        .map_err(|e| anyhow!("Failed to parse main ABI: {}", e))?
+        .with_source(main_abi.clone());
 
     // Start with main contract ABI
     let mut abi_map = HashMap::from([(main_contract_id, main_abi)]);
@@ -335,7 +347,7 @@ pub(crate) async fn create_abi_map(
             match load_abi(&abi_path).await {
                 Ok(abi_str) => match Abi::from_str(&abi_str) {
                     Ok(additional_abi) => {
-                        abi_map.insert(contract_id, additional_abi);
+                        abi_map.insert(contract_id, additional_abi.with_source(abi_path.clone()));
                         forc_tracing::println_action_green(
                             "Loaded additional ABI for contract",
                             &format!("0x{}", contract_id),

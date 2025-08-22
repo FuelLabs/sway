@@ -220,45 +220,14 @@ error: Number of attribute arguments is invalid
    |
 ____
 
-error: Attribute can be applied only once
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/trace_attr.sw:13:7
-   |
-...
-11 |     #[trace]
-   |       ----- info: It is already applied here.
-12 |     #[trace()]
-   |       ----- info: And here.
-13 |     #[trace(always, never)]
-   |       ^^^^^ "trace" attribute can be applied only once, but is applied three times.
-   |
-____
-
 error: Number of attribute arguments is invalid
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/trace_attr.sw:11:7
-   |
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/abi_name_attr.sw:6:12
+  |
 ...
-11 |     #[trace]
-   |       ^^^^^ "trace" attribute must have exactly one argument, but has none.
-   |
+6 | #[abi_name(name = "name", name = "other name")]
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "abi_name" attribute must have exactly one argument, but has two.
+  |
 ____
 
-error: Number of attribute arguments is invalid
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/trace_attr.sw:12:7
-   |
-...
-12 |     #[trace()]
-   |       ^^^^^ "trace" attribute must have exactly one argument, but has none.
-   |
-____
-
-error: Number of attribute arguments is invalid
-  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/trace_attr.sw:13:13
-   |
-...
-13 |     #[trace(always, never)]
-   |             ^^^^^^^^^^^^^ "trace" attribute must have exactly one argument, but has two.
-   |
-____
-
-  Aborting due to 22 errors.
+  Aborting due to 19 errors.
 error: Failed to compile attributes_invalid_args_multiplicity

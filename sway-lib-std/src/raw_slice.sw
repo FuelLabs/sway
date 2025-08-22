@@ -169,3 +169,11 @@ impl PartialEq for raw_slice {
 }
 
 impl Eq for raw_slice {}
+
+impl AsRawSlice for str {
+    fn as_raw_slice(self) -> raw_slice {
+        asm(s: self) {
+            s: raw_slice
+        }
+    }
+}

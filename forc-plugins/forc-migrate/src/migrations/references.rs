@@ -2,7 +2,7 @@
 
 use std::vec;
 
-use crate::migrations::{visit_all_modules_mut, MutProgramInfo};
+use crate::migrations::{visit_all_modules_mut, MutProgramInfo, Occurrence};
 use anyhow::{Ok, Result};
 use itertools::Itertools;
 use sway_ast::{
@@ -47,13 +47,13 @@ pub(super) const REPLACE_REF_MUT_FN_PARAMETERS_STEP: MigrationStep = MigrationSt
 fn replace_ref_mut_fn_parameters_step(
     program_info: &mut MutProgramInfo,
     dry_run: DryRun,
-) -> Result<Vec<Span>> {
+) -> Result<Vec<Occurrence>> {
     fn replace_ref_mut_fn_parameters_step_impl(
         _engines: &Engines,
         module: &mut Module,
         _ty_module: &TyModule,
         dry_run: DryRun,
-    ) -> Result<Vec<Span>> {
+    ) -> Result<Vec<Occurrence>> {
         let mut result = vec![];
 
         // TODO: Current implementation inspects only module functions. Extend it
@@ -100,7 +100,7 @@ fn replace_ref_mut_fn_parameters_step(
                                 .span(),
                             &name.span(),
                         );
-                        result.push(result_span);
+                        result.push(result_span.into());
 
                         // Replace `ref mut` with `&mut` if it is not a dry-run.
                         if dry_run == DryRun::No {

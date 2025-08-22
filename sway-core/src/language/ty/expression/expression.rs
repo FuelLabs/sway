@@ -380,10 +380,11 @@ impl CollectTypesMetadata for TyExpression {
                     TypeMetadata::get_logged_type_id(exp, ctx.experimental.new_encoding)
                         .map_err(|err| handler.emit_err(err))?;
                 res.push(TypeMetadata::new_logged_type(
+                    handler,
                     ctx.engines,
                     logged_type_id,
                     ctx.program_name.clone(),
-                ));
+                )?);
 
                 // We still need to dive into the expression because it can have additional types to collect.
                 // E.g., `revert some_function_that_returns_error_enum_and_internally_logs_some_types()`;
@@ -434,19 +435,51 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::ImplicitReturn(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
             }
-            TyExpressionVariant::FunctionApplication { arguments, .. } => {
+            TyExpressionVariant::FunctionApplication {
+                arguments,
+                type_binding,
+                fn_ref,
+                ..
+            } => {
+                // Materialize non dummy fns
+                let new_decl = engines.de().get(fn_ref.id());
+                if !new_decl.is_trait_method_dummy {
+                    let mut type_subst_map = TypeSubstMap::new();
+                    type_subst_map
+                        .const_generics_materialization
+                        .insert(name.to_string(), value.clone());
+
+                    let mut new_decl = TyFunctionDecl::clone(&*new_decl);
+                    let r = new_decl.subst_inner(&SubstTypesContext {
+                        engines,
+                        type_subst_map: Some(&type_subst_map),
+                        subst_function_body: true,
+                    });
+
+                    if matches!(r, HasChanges::Yes) {
+                        *fn_ref = engines.de().insert(new_decl, None);
+                    }
+                }
+
+                if let Some(type_binding) = type_binding.as_mut() {
+                    type_binding
+                        .type_arguments
+                        .to_vec_mut()
+                        .materialize_const_generics(engines, handler, name, value)?;
+                }
+
                 for (_, expr) in arguments {
                     expr.materialize_const_generics(engines, handler, name, value)?;
                 }
                 Ok(())
             }
             TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
-                arguments, ..
+                arguments,
+                type_arguments,
+                ..
             }) => {
-                for expr in arguments {
-                    expr.materialize_const_generics(engines, handler, name, value)?;
-                }
-                Ok(())
+                type_arguments.materialize_const_generics(engines, handler, name, value)?;
+                arguments.materialize_const_generics(engines, handler, name, value)
             }
             TyExpressionVariant::Return(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
@@ -945,8 +978,8 @@ impl TyExpression {
                 // we want to report the element type instead
                 if h.has_errors() {
                     handler.emit_err(CompileError::TypeError(TypeError::MismatchedType {
-                        expected: format!("{:?}", engines.help_out(&array_elem_type)),
-                        received: format!("{:?}", engines.help_out(element_type)),
+                        expected: engines.help_out(&*array_elem_type).to_string(),
+                        received: engines.help_out(&*element_type).to_string(),
                         help_text: String::new(),
                         span: element.span.clone(),
                     }));

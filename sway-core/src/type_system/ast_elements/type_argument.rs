@@ -1,10 +1,24 @@
-use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
+use crate::{
+    decl_engine::MaterializeConstGenerics, engine_threading::*, language::CallPathTree,
+    type_system::priv_prelude::*,
+};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 
 use super::type_parameter::ConstGenericExpr;
 
+/// [GenericTypeArgument] can be seen as an "annotated reference" to a [TypeInfo].
+/// It holds the [GenericTypeArgument::type_id] which is the actual "reference"
+/// to the type, as well as an additional information about that type,
+/// called the annotation.
+///
+/// If a [GenericTypeArgument] only references a [TypeInfo] and is considered as
+/// not being annotated, its `initial_type_id` must be the same as `type_id`,
+/// its `span` must be [Span::dummy] and its `call_path_tree` must be `None`.
+///
+/// The annotations are ignored when calculating the [GenericTypeArgument]'s hash
+/// (with engines) and equality (with engines).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenericTypeArgument {
     /// The [TypeId] of the "referenced" [TypeInfo].
@@ -38,17 +52,6 @@ pub struct GenericConstArgument {
     pub expr: ConstGenericExpr,
 }
 
-/// [TypeArgument] can be seen as an "annotated reference" to a [TypeInfo].
-/// It holds the [TypeArgument::type_id] which is the actual "reference"
-/// to the type, as well as an additional information about that type,
-/// called the annotation.
-///
-/// If a [TypeArgument] only references a [TypeInfo] and is considered as
-/// not being annotated, its `initial_type_id` must be the same as `type_id`,
-/// its `span` must be [Span::dummy] and its `call_path_tree` must be `None`.
-///
-/// The annotations are ignored when calculating the [TypeArgument]'s hash
-/// (with engines) and equality (with engines).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GenericArgument {
     Type(GenericTypeArgument),
@@ -278,5 +281,43 @@ impl SubstTypes for GenericArgument {
             GenericArgument::Type(a) => a.type_id.subst(ctx),
             GenericArgument::Const(_) => HasChanges::No,
         }
+    }
+}
+
+impl MaterializeConstGenerics for GenericArgument {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &sway_error::handler::Handler,
+        name: &str,
+        value: &crate::language::ty::TyExpression,
+    ) -> Result<(), sway_error::handler::ErrorEmitted> {
+        match self {
+            GenericArgument::Type(arg) => {
+                arg.type_id
+                    .materialize_const_generics(engines, handler, name, value)?;
+            }
+            GenericArgument::Const(arg) => {
+                let new_expr = match &arg.expr {
+                    ConstGenericExpr::AmbiguousVariableExpression { ident }
+                        if ident.as_str() == name =>
+                    {
+                        Some(ConstGenericExpr::Literal {
+                            val: value
+                                .extract_literal_value()
+                                .unwrap()
+                                .cast_value_to_u64()
+                                .unwrap() as usize,
+                            span: value.span.clone(),
+                        })
+                    }
+                    _ => None,
+                };
+                if let Some(new_expr) = new_expr {
+                    arg.expr = new_expr;
+                }
+            }
+        }
+        Ok(())
     }
 }

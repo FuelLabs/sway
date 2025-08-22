@@ -18,7 +18,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     fmt,
     hash::{Hash, Hasher},
 };
@@ -226,12 +226,23 @@ impl OrdWithEngines for TypeParameter {
 
 impl DebugWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        match self {
-            TypeParameter::Type(p) => p.fmt(f, engines),
-            TypeParameter::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+        let s = match self {
+            TypeParameter::Type(p) => {
+                format!(
+                    "{:?} -> {:?}",
+                    engines.help_out(p.initial_type_id),
+                    engines.help_out(p.type_id)
+                )
             }
-        }
+            TypeParameter::Const(p) => match p.expr.as_ref() {
+                Some(ConstGenericExpr::Literal { val, .. }) => format!("{} -> {}", p.name, val),
+                Some(ConstGenericExpr::AmbiguousVariableExpression { ident }) => {
+                    format!("{}", ident)
+                }
+                None => format!("{} -> None", p.name),
+            },
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -250,9 +261,18 @@ impl TypeParameter {
         }
     }
 
-    pub fn abi_str(&self, engines: &Engines, ctx: &AbiStrContext, is_root: bool) -> String {
+    pub fn abi_str(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &AbiStrContext,
+        is_root: bool,
+    ) -> Result<String, ErrorEmitted> {
         match self {
-            TypeParameter::Type(p) => engines.te().get(p.type_id).abi_str(ctx, engines, is_root),
+            TypeParameter::Type(p) => engines
+                .te()
+                .get(p.type_id)
+                .abi_str(handler, ctx, engines, is_root),
             TypeParameter::Const(_) => {
                 todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
@@ -260,6 +280,13 @@ impl TypeParameter {
     }
 
     pub fn as_const_parameter(&self) -> Option<&ConstGenericParameter> {
+        match self {
+            TypeParameter::Type(_) => None,
+            TypeParameter::Const(p) => Some(p),
+        }
+    }
+
+    pub fn as_const_parameter_mut(&mut self) -> Option<&mut ConstGenericParameter> {
         match self {
             TypeParameter::Type(_) => None,
             TypeParameter::Const(p) => Some(p),
@@ -510,6 +537,7 @@ impl GenericTypeParameter {
         }
 
         handler.scope(|handler| {
+            let mut already_declared = HashMap::new();
             for p in generic_params {
                 let p = match p {
                     TypeParameter::Type(p) => {
@@ -518,7 +546,21 @@ impl GenericTypeParameter {
                             Err(_) => continue,
                         }
                     }
-                    TypeParameter::Const(p) => TypeParameter::Const(p.clone()),
+                    TypeParameter::Const(p) => {
+                        if let Some(old) = already_declared.insert(p.name.clone(), p.span.clone()) {
+                            let (old, new) = if old < p.span {
+                                (old, p.span.clone())
+                            } else {
+                                (p.span.clone(), old)
+                            };
+                            handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
+                                name: p.name.clone(),
+                                new,
+                                old,
+                            });
+                        }
+                        TypeParameter::Const(p.clone())
+                    }
                 };
                 p.insert_into_namespace_self(handler, ctx.by_ref())?;
                 new_generic_params.push(p)
@@ -780,27 +822,21 @@ impl GenericTypeParameter {
                         type_arguments: trait_type_arguments,
                     } = trait_constraint;
 
-                    let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) =
-                        match handle_trait(
-                            handler,
-                            &ctx,
-                            *type_id,
-                            trait_name,
-                            trait_type_arguments,
-                            function_name,
-                            access_span.clone(),
-                        ) {
-                            Ok(res) => {
-                                res
-                            },
-                            Err(_) => {
-                                continue
-                            },
-                        };
+                    let Ok((mut trait_interface_item_refs, mut trait_item_refs, mut trait_impld_item_refs)) = handle_trait(
+                        handler,
+                        &ctx,
+                        *type_id,
+                        trait_name,
+                        trait_type_arguments,
+                        function_name,
+                        access_span.clone(),
+                    ) else {
+                        continue;
+                    };
 
-                    interface_item_refs.extend(trait_interface_item_refs);
-                    item_refs.extend(trait_item_refs);
-                    impld_item_refs.extend(trait_impld_item_refs);
+                    interface_item_refs.append(&mut trait_interface_item_refs);
+                    item_refs.append(&mut trait_item_refs);
+                    impld_item_refs.append(&mut trait_impld_item_refs);
                 }
             }
 
@@ -1082,8 +1118,27 @@ impl PartialEqWithEngines for ConstGenericParameter {
 }
 
 impl SubstTypes for ConstGenericParameter {
-    fn subst_inner(&mut self, _ctx: &SubstTypesContext) -> HasChanges {
-        HasChanges::No
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        let mut has_changes = HasChanges::No;
+
+        let Some(map) = ctx.type_subst_map else {
+            return HasChanges::No;
+        };
+
+        // Check if it needs to be renamed
+        if let Some(new_name) = map.const_generics_renaming.get(&self.name) {
+            self.name = new_name.clone();
+            has_changes = HasChanges::Yes;
+        }
+
+        // Check if it needs to be materialized
+        if let Some(v) = map.const_generics_materialization.get(self.name.as_str()) {
+            let handler = sway_error::handler::Handler::default();
+            self.expr = Some(ConstGenericExpr::from_ty_expression(&handler, v).unwrap());
+            has_changes = HasChanges::Yes;
+        }
+
+        has_changes
     }
 }
 
