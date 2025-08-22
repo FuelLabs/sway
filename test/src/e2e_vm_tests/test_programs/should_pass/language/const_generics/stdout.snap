@@ -415,7 +415,199 @@ exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
    Compiling library std (sway-lib-std)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
 warning
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:87:5
    |
@@ -446,15 +638,20 @@ ____
   Compiled script "const_generics" with 2 warnings.
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [8.8 KB] in ???
 =======
 =======
 >>>>>>> 72fe12820 (update tests)
+=======
+>>>>>>> 6ecb6582a (update tests)
 <<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [9.536 KB] in ???
 =======
 =======
 >>>>>>> 382a0a673 (update tests)
+=======
+>>>>>>> 586981b65 (update tests)
 <<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [9.56 KB] in ???
 =======
@@ -482,8 +679,17 @@ ____
     Finished debug [unoptimized + fuel] target(s) [9.552 KB] in ???
 >>>>>>> 56393cb86 (update tests)
 >>>>>>> 045eb5cb4 (update tests)
+<<<<<<< HEAD
 >>>>>>> 382a0a673 (update tests)
+<<<<<<< HEAD
 >>>>>>> 72fe12820 (update tests)
+=======
+=======
+=======
+    Finished debug [unoptimized + fuel] target(s) [9.496 KB] in ???
+>>>>>>> e1e58a0e9 (update tests)
+>>>>>>> 586981b65 (update tests)
+>>>>>>> 6ecb6582a (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
