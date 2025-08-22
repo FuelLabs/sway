@@ -5,10 +5,15 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    ast_elements::type_parameter::{ConstGenericExpr, ConstGenericExprTyDecl}, language::{
+    ast_elements::type_parameter::{ConstGenericExpr, ConstGenericExprTyDecl},
+    language::{
         ty::{self, TyDecl, TyTraitItem},
         CallPath, CallPathType, QualifiedCallPath,
-    }, monomorphization::type_decl_opt_to_type_id, namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem}, type_system::SubstTypes, EnforceTypeArguments, Engines, Length, Namespace, SubstTypesContext, TypeId, TypeInfo
+    },
+    monomorphization::type_decl_opt_to_type_id,
+    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
+    type_system::SubstTypes,
+    EnforceTypeArguments, Engines, Length, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
 
 use super::namespace::TraitMap;
@@ -29,9 +34,10 @@ fn resolve_length(
     self_type: Option<TypeId>,
 ) -> Result<Length, ErrorEmitted> {
     match length.expr() {
-        ConstGenericExpr::Literal { val, span } => {
-            Ok(Length(ConstGenericExpr::Literal { val: *val, span: span.clone() }))
-        },
+        ConstGenericExpr::Literal { val, span } => Ok(Length(ConstGenericExpr::Literal {
+            val: *val,
+            span: span.clone(),
+        })),
         ConstGenericExpr::AmbiguousVariableExpression { ident, decl } => {
             if decl.is_some() {
                 return Ok(length.clone());
@@ -55,10 +61,13 @@ fn resolve_length(
             let decl = match resolved_decl {
                 TyDecl::ConstGenericDecl(decl) => ConstGenericExprTyDecl::ConstGenericDecl(decl),
                 TyDecl::ConstantDecl(decl) => ConstGenericExprTyDecl::ConstantDecl(decl),
-                x => todo!("{x:?}")
+                x => todo!("{x:?}"),
             };
-            Ok(Length(ConstGenericExpr::AmbiguousVariableExpression { ident: ident.clone(), decl: Some(decl) }))
-        },
+            Ok(Length(ConstGenericExpr::AmbiguousVariableExpression {
+                ident: ident.clone(),
+                decl: Some(decl),
+            }))
+        }
     }
 }
 
@@ -129,14 +138,7 @@ pub fn resolve_type(
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
-            let length = resolve_length(
-                length,
-                handler,
-                engines,
-                namespace,
-                mod_path,
-                self_type,
-            )?;
+            let length = resolve_length(length, handler, engines, namespace, mod_path, self_type)?;
 
             engines.te().insert_array(engines, elem_ty, length.clone())
         }
@@ -230,14 +232,7 @@ pub fn resolve_type(
             engines.te().insert_ref(engines, *to_mutable_value, ty)
         }
         TypeInfo::StringArray(length) => {
-            let length = resolve_length(
-                length,
-                handler,
-                engines,
-                namespace,
-                mod_path,
-                self_type,
-            )?;
+            let length = resolve_length(length, handler, engines, namespace, mod_path, self_type)?;
             engines.te().insert_string_array(engines, length)
         }
         _ => type_id,

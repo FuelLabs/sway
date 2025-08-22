@@ -2,7 +2,8 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        TyConstantDecl, TyDeclParsedType, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, TyTypeAliasDecl
+        TyConstantDecl, TyDeclParsedType, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait,
+        TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, TyTypeAliasDecl,
     },
     type_system::*,
 };

@@ -1,5 +1,6 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericExprTyDecl, decl_engine::{DeclEngineGet as _, DeclEngineInsert, MaterializeConstGenerics}, engine_threading::*, language::{ty::{ConstGenericDecl, ConstantDecl, TyConstGenericDecl, TyConstantDecl}, CallPathTree}, type_system::priv_prelude::*
+    decl_engine::MaterializeConstGenerics, engine_threading::*, language::CallPathTree,
+    type_system::priv_prelude::*,
 };
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
@@ -299,8 +300,7 @@ impl MaterializeConstGenerics for GenericArgument {
             }
             GenericArgument::Const(arg) => {
                 arg.expr = match arg.expr.clone() {
-                    ConstGenericExpr::AmbiguousVariableExpression { ident, mut decl } =>
-                    {
+                    ConstGenericExpr::AmbiguousVariableExpression { ident, mut decl } => {
                         if let Some(decl) = decl.as_mut() {
                             decl.materialize_const_generics(engines, handler, name, value)?;
                         }

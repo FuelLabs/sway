@@ -1036,7 +1036,7 @@ impl<'a> FnCompiler<'a> {
                     context,
                     md_mgr,
                     self.module,
-                    Some(&self),
+                    Some(self),
                     exp.return_type,
                     &exp.span,
                 )?;
@@ -1054,7 +1054,7 @@ impl<'a> FnCompiler<'a> {
                     context,
                     md_mgr,
                     self.module,
-                    Some(&self),
+                    Some(self),
                     targ.type_id(),
                     &targ.span(),
                 )?;
@@ -1071,7 +1071,7 @@ impl<'a> FnCompiler<'a> {
                     context,
                     md_mgr,
                     self.module,
-                    Some(&self),
+                    Some(self),
                     targ.type_id(),
                     &targ.span(),
                 )?;
@@ -1113,7 +1113,7 @@ impl<'a> FnCompiler<'a> {
                     context,
                     md_mgr,
                     self.module,
-                    Some(&self),
+                    Some(self),
                     targ.type_id(),
                     &targ.span(),
                 )?;
@@ -1202,7 +1202,7 @@ impl<'a> FnCompiler<'a> {
                     context,
                     md_mgr,
                     self.module,
-                    Some(&self),
+                    Some(self),
                     target_type.type_id(),
                     &target_type.span(),
                 )?;
@@ -1532,7 +1532,7 @@ impl<'a> FnCompiler<'a> {
                     context,
                     md_mgr,
                     self.module,
-                    Some(&self),
+                    Some(self),
                     len.type_id(),
                     &len.span(),
                 )?;
@@ -2419,13 +2419,15 @@ impl<'a> FnCompiler<'a> {
     ) -> Result<TerminatorValue, CompileError> {
         assert!(arguments.len() == 1);
 
-        let return_type_ir_type = convert_resolved_type_id(self.engines,
+        let return_type_ir_type = convert_resolved_type_id(
+            self.engines,
             context,
             md_mgr,
-            self.module, 
-            Some(&self),
+            self.module,
+            Some(self),
             return_type,
-            span)?;
+            span,
+        )?;
         let return_type_ir_type_ptr = Type::new_typed_pointer(context, return_type_ir_type);
 
         let first_argument_expr = &arguments[0];
@@ -2467,7 +2469,6 @@ impl<'a> FnCompiler<'a> {
         md_mgr: &mut MetadataManager,
     ) -> Result<(Value, TypeId), CompileError> {
         let te = self.engines.te();
-        let de = self.engines.de();
 
         let err = CompileError::TypeArgumentsNotAllowed {
             span: first_argument_expr.span.clone(),
@@ -2499,7 +2500,7 @@ impl<'a> FnCompiler<'a> {
                 context,
                 md_mgr,
                 self.module,
-                Some(&self),
+                Some(self),
                 elem_ty,
                 &first_argument_expr.span.clone(),
             )?;
@@ -2525,15 +2526,12 @@ impl<'a> FnCompiler<'a> {
         elem_type_id: TypeId,
         idx: Value,
     ) -> Result<(Value, Type), CompileError> {
-        let te = self.engines.te();
-        let de = self.engines.de();
-
         let elem_ir_type = convert_resolved_type_id(
             self.engines,
             context,
             md_mgr,
             self.module,
-            Some(&self),
+            Some(self),
             elem_type_id,
             &first_argument_expr.span.clone(),
         )?;
@@ -3266,7 +3264,7 @@ impl<'a> FnCompiler<'a> {
             context,
             md_mgr,
             self.module,
-            Some(&self),
+            Some(self),
             ast_return_type,
         )?;
         let ret_is_copy_type = self
@@ -3432,7 +3430,7 @@ impl<'a> FnCompiler<'a> {
                 context,
                 md_mgr,
                 self.module,
-                Some(&self),
+                Some(self),
                 return_type,
             )
             .unwrap_or_else(|_| Type::get_unit(context));
@@ -3469,7 +3467,7 @@ impl<'a> FnCompiler<'a> {
             context,
             md_mgr,
             self.module,
-            Some(&self),
+            Some(self),
             exp.return_type,
             &exp.span,
         )? {
@@ -3769,7 +3767,7 @@ impl<'a> FnCompiler<'a> {
             context,
             md_mgr,
             self.module,
-            Some(&self),
+            Some(self),
             body.return_type,
             &body.span,
         )?;
@@ -3853,7 +3851,7 @@ impl<'a> FnCompiler<'a> {
                     context,
                     md_mgr,
                     self.module,
-                    Some(&self),
+                    Some(self),
                     value.return_type,
                     &value.span,
                 )?;
@@ -4130,11 +4128,10 @@ impl<'a> FnCompiler<'a> {
             context,
             md_mgr,
             self.module,
-            Some(&self),
+            Some(self),
             elem_type,
         )?;
 
-        
         let length_as_u64 = compile_constant_expression_to_constant(
             self.engines,
             context,
@@ -4210,7 +4207,7 @@ impl<'a> FnCompiler<'a> {
             context,
             md_mgr,
             self.module,
-            Some(&self),
+            Some(self),
             elem_type,
         )?;
 
@@ -4480,7 +4477,7 @@ impl<'a> FnCompiler<'a> {
                 context,
                 md_mgr,
                 self.module,
-                Some(&self),
+                Some(self),
                 struct_field.value.return_type,
             )?;
             field_types.push(field_type);
@@ -4569,7 +4566,7 @@ impl<'a> FnCompiler<'a> {
             context,
             md_mgr,
             self.module,
-            Some(&self),
+            Some(self),
             field_type_id,
             &ast_field.span,
         )?;
@@ -4750,7 +4747,7 @@ impl<'a> FnCompiler<'a> {
                     context,
                     md_mgr,
                     self.module,
-                    Some(&self),
+                    Some(self),
                     field_expr.return_type,
                 )?;
                 init_values.push(init_value);
@@ -4784,7 +4781,7 @@ impl<'a> FnCompiler<'a> {
             context,
             md_mgr,
             self.module,
-            Some(&self),
+            Some(self),
             tuple_type,
             &span,
         )?;
@@ -4805,6 +4802,7 @@ impl<'a> FnCompiler<'a> {
         Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_storage_access(
         &mut self,
         context: &mut Context,
@@ -4832,7 +4830,7 @@ impl<'a> FnCompiler<'a> {
             context,
             md_mgr,
             self.module,
-            Some(&self),
+            Some(self),
             base_type,
         )?;
 
@@ -4915,7 +4913,7 @@ impl<'a> FnCompiler<'a> {
             context,
             md_mgr,
             self.module,
-            Some(&self),
+            Some(self),
             return_type,
         )?;
         let val = self

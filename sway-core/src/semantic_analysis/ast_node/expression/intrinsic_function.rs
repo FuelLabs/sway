@@ -8,11 +8,14 @@ use sway_types::Span;
 use sway_types::{integer_bits::IntegerBits, Spanned};
 
 use crate::{
-    decl_engine::engine, engine_threading::*, language::{
+    engine_threading::*,
+    language::{
         parsed::{Expression, ExpressionKind},
         ty::{self, TyIntrinsicFunctionKind},
         Literal,
-    }, semantic_analysis::TypeCheckContext, type_system::*
+    },
+    semantic_analysis::TypeCheckContext,
+    type_system::*,
 };
 
 impl ty::TyIntrinsicFunctionKind {
@@ -159,39 +162,6 @@ fn type_check_transmute(
             None,
         )
         .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
-
-    // Forbid ref and ptr types
-    fn assert_type_is_valid(
-        engines: &Engines,
-        handler: &Handler,
-        t: TypeId,
-        span: &Span,
-    ) -> Result<(), ErrorEmitted> {
-        let types = t.extract_inner_types(engines, IncludeSelf::Yes).into_iter()
-            .filter(|x| {
-                matches!(
-                    &*engines.te().get(*x),
-                    TypeInfo::StringSlice
-                        | TypeInfo::RawUntypedPtr
-                        | TypeInfo::RawUntypedSlice
-                        | TypeInfo::Ptr(_)
-                        | TypeInfo::Slice(_)
-                        | TypeInfo::Ref { .. }
-                )
-            }).collect::<Vec<_>>();
-
-        if !types.is_empty() {
-            Err(handler.emit_err(CompileError::TypeNotAllowed {
-                reason: sway_error::error::TypeNotAllowedReason::NotAllowedInTransmute,
-                span: span.clone(),
-            }))
-        } else {
-            Ok(())
-        }
-    }
-
-    //assert_type_is_valid(engines, handler, src_type, &type_arguments[0].span())?;
-    //assert_type_is_valid(engines, handler, return_type, &type_arguments[1].span())?;
 
     // type check first argument
     let arg_type = engines.te().new_unknown();
