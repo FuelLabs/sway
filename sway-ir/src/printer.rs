@@ -1077,6 +1077,13 @@ fn instruction_to_doc<'a>(
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
+            InstOp::MemClearVal { dst_val_ptr } => Doc::line(
+                Doc::text(format!(
+                    "mem_clear_val {}",
+                    namer.name(context, dst_val_ptr),
+                ))
+                .append(md_namer.md_idx_to_doc(context, metadata)),
+            ),
             InstOp::Nop => Doc::line(
                 Doc::text(format!("{} = nop", namer.name(context, ins_value)))
                     .append(md_namer.md_idx_to_doc(context, metadata)),

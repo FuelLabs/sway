@@ -1,0 +1,8 @@
+[[package]]
+name = "array_repeat"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-11E97B726DC445EB"
