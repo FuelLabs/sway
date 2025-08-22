@@ -1,5 +1,3 @@
-use std::result;
-
 /// Function argument demotion.
 ///
 /// This pass demotes 'by-value' function arg types to 'by-reference` pointer types, based on target
