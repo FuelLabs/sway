@@ -343,7 +343,7 @@ impl U128 {
     ///
     /// If the `U128` is larger than `u64::max()`, an error is returned.
     ///
-    /// **Deprecated:** Use `try_as_u64` instead for consistency with other downcast functions.
+    /// **Deprecated:** Use `try_as_u64` instead, for consistency with other downcast functions.
     ///
     /// # Returns
     ///
