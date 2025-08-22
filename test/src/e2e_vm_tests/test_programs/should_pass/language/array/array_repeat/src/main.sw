@@ -112,6 +112,22 @@ fn main() {
     let _ = big_array_repeat();
 
     let _ = u8_array_bigger_than_18_bits();
+
+    // Array decode
+    let array: [u8; 1] = decode_array();
+    assert_eq(array[0], 255u8);
+}
+
+#[inline(never)]
+fn decode_array() -> [u8; 1] {
+    let s: raw_slice = to_slice([255u8]);
+    abi_decode::<[u8; 1]>(s)
+}
+
+#[inline(never)]
+fn to_slice<T>(array: T) -> raw_slice {
+    let len = __size_of::<T>();
+    raw_slice::from_parts::<u8>(__addr_of(array), len)
 }
 
 trait IsZero { fn is_zero(self) -> bool; }

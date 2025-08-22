@@ -3311,7 +3311,7 @@ fn expr_to_const_generic_expr(
             let expr = expr_to_expression(context, handler, engines, expr.clone())?;
             match expr.kind {
                 ExpressionKind::AmbiguousVariableExpression(ident) => {
-                    Ok(ConstGenericExpr::AmbiguousVariableExpression { ident })
+                    Ok(ConstGenericExpr::AmbiguousVariableExpression { ident, decl: None })
                 }
                 _ => Err(handler.emit_err(CompileError::LengthExpressionNotSupported { span })),
             }
