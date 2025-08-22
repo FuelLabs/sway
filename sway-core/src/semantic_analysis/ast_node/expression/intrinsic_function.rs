@@ -8,14 +8,11 @@ use sway_types::Span;
 use sway_types::{integer_bits::IntegerBits, Spanned};
 
 use crate::{
-    engine_threading::*,
-    language::{
+    decl_engine::engine, engine_threading::*, language::{
         parsed::{Expression, ExpressionKind},
         ty::{self, TyIntrinsicFunctionKind},
         Literal,
-    },
-    semantic_analysis::TypeCheckContext,
-    type_system::*,
+    }, semantic_analysis::TypeCheckContext, type_system::*
 };
 
 impl ty::TyIntrinsicFunctionKind {
@@ -164,17 +161,16 @@ fn type_check_transmute(
         .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
     // Forbid ref and ptr types
-    fn forbid_ref_ptr_types(
+    fn assert_type_is_valid(
         engines: &Engines,
         handler: &Handler,
         t: TypeId,
         span: &Span,
     ) -> Result<(), ErrorEmitted> {
-        let types = t.extract_any_including_self(
-            engines,
-            &|t| {
+        let types = t.extract_inner_types(engines, IncludeSelf::Yes).into_iter()
+            .filter(|x| {
                 matches!(
-                    t,
+                    &*engines.te().get(*x),
                     TypeInfo::StringSlice
                         | TypeInfo::RawUntypedPtr
                         | TypeInfo::RawUntypedSlice
@@ -182,10 +178,8 @@ fn type_check_transmute(
                         | TypeInfo::Slice(_)
                         | TypeInfo::Ref { .. }
                 )
-            },
-            vec![],
-            0,
-        );
+            }).collect::<Vec<_>>();
+
         if !types.is_empty() {
             Err(handler.emit_err(CompileError::TypeNotAllowed {
                 reason: sway_error::error::TypeNotAllowedReason::NotAllowedInTransmute,
@@ -196,10 +190,10 @@ fn type_check_transmute(
         }
     }
 
-    forbid_ref_ptr_types(engines, handler, src_type, &type_arguments[0].span())?;
-    forbid_ref_ptr_types(engines, handler, return_type, &type_arguments[1].span())?;
+    //assert_type_is_valid(engines, handler, src_type, &type_arguments[0].span())?;
+    //assert_type_is_valid(engines, handler, return_type, &type_arguments[1].span())?;
 
-    // check first argument
+    // type check first argument
     let arg_type = engines.te().new_unknown();
     let first_argument_typed_expr = {
         let ctx = ctx

@@ -165,7 +165,7 @@ where
                     (_, GenericArgument::Const(arg)) => {
                         match &arg.expr {
                             crate::ast_elements::type_parameter::ConstGenericExpr::Literal { ..} => {},
-                            crate::ast_elements::type_parameter::ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+                            crate::ast_elements::type_parameter::ConstGenericExpr::AmbiguousVariableExpression { ident, .. } => {
                                 let _ = crate::semantic_analysis::type_resolve::resolve_call_path(
                                     handler,
                                     engines,
