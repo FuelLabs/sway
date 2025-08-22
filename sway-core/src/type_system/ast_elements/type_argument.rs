@@ -1,6 +1,5 @@
 use crate::{
-    decl_engine::MaterializeConstGenerics, engine_threading::*, language::CallPathTree,
-    type_system::priv_prelude::*,
+    ast_elements::type_parameter::ConstGenericExprTyDecl, decl_engine::{DeclEngineGet as _, DeclEngineInsert, MaterializeConstGenerics}, engine_threading::*, language::{ty::{ConstGenericDecl, ConstantDecl, TyConstGenericDecl, TyConstantDecl}, CallPathTree}, type_system::priv_prelude::*
 };
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt, hash::Hasher};
@@ -268,6 +267,7 @@ impl From<&TypeParameter> for GenericArgument {
                     Some(expr) => expr.clone(),
                     None => ConstGenericExpr::AmbiguousVariableExpression {
                         ident: p.name.clone(),
+                        decl: None,
                     },
                 },
             }),
@@ -298,24 +298,28 @@ impl MaterializeConstGenerics for GenericArgument {
                     .materialize_const_generics(engines, handler, name, value)?;
             }
             GenericArgument::Const(arg) => {
-                let new_expr = match &arg.expr {
-                    ConstGenericExpr::AmbiguousVariableExpression { ident }
-                        if ident.as_str() == name =>
+                arg.expr = match arg.expr.clone() {
+                    ConstGenericExpr::AmbiguousVariableExpression { ident, mut decl } =>
                     {
-                        Some(ConstGenericExpr::Literal {
-                            val: value
-                                .extract_literal_value()
-                                .unwrap()
-                                .cast_value_to_u64()
-                                .unwrap() as usize,
-                            span: value.span.clone(),
-                        })
+                        if let Some(decl) = decl.as_mut() {
+                            decl.materialize_const_generics(engines, handler, name, value)?;
+                        }
+
+                        if ident.as_str() == name {
+                            ConstGenericExpr::Literal {
+                                val: value
+                                    .extract_literal_value()
+                                    .unwrap()
+                                    .cast_value_to_u64()
+                                    .unwrap() as usize,
+                                span: value.span.clone(),
+                            }
+                        } else {
+                            ConstGenericExpr::AmbiguousVariableExpression { ident, decl }
+                        }
                     }
-                    _ => None,
+                    expr => expr,
                 };
-                if let Some(new_expr) = new_expr {
-                    arg.expr = new_expr;
-                }
             }
         }
         Ok(())
