@@ -6,6 +6,54 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/const_generics
    Compiling library std (sway-lib-std)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
+[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
+{ span: self.span.clone(), },)) = Err(
+    ErrorEmitted {
+        _priv: (),
+    },
+)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/const_generics)
 warning
   --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:24:5
