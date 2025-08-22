@@ -17,7 +17,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Span, Spanned as _};
+use sway_types::{Ident, Span};
 
 pub trait GetDeclIdent {
     fn get_decl_ident(&self, engines: &Engines) -> Option<Ident>;
@@ -151,7 +151,7 @@ impl MaterializeConstGenerics for TyAstNode {
         match &mut self.content {
             TyAstNodeContent::Declaration(TyDecl::ConstantDecl(constant_decl)) => {
                 let decl = engines.de().get(&constant_decl.decl_id);
-                
+
                 let mut decl = TyConstantDecl::clone(&*decl);
                 decl.materialize_const_generics(engines, handler, name, value)?;
 

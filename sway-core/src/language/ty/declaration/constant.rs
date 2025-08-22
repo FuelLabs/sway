@@ -1,5 +1,12 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr, decl_engine::{DeclMapping, MaterializeConstGenerics, ReplaceDecls}, engine_threading::*, has_changes, language::{parsed::ConstantDeclaration, ty::*, CallPath, Visibility}, semantic_analysis::TypeCheckContext, transform, type_system::*
+    ast_elements::type_parameter::ConstGenericExpr,
+    decl_engine::{DeclMapping, MaterializeConstGenerics, ReplaceDecls},
+    engine_threading::*,
+    has_changes,
+    language::{parsed::ConstantDeclaration, ty::*, CallPath, Visibility},
+    semantic_analysis::TypeCheckContext,
+    transform,
+    type_system::*,
 };
 use serde::{Deserialize, Serialize};
 use std::{

@@ -579,9 +579,6 @@ fn compile_fn(
     test_decl_ref: Option<DeclRefFunction>,
     cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
-    let type_engine = engines.te();
-    let decl_engine = engines.de();
-
     let inline = ast_fn_decl.inline();
     let trace = ast_fn_decl.trace();
     let ty::TyFunctionDecl {

@@ -265,7 +265,6 @@ fn create_array_from_vec(
     element_types: Vec<crate::TypeId>,
     element_vals: Vec<Constant>,
 ) -> Option<Constant> {
-    let te = lookup.engines.te();
     assert!({
         let unify_check = UnifyCheck::coercion(lookup.engines);
         element_types
@@ -310,7 +309,6 @@ fn const_eval_typed_expr(
 
     Ok(match &expr.expression {
         ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
-            
             if decl.value.is_none() {
                 todo!("{}", std::backtrace::Backtrace::force_capture());
             }
@@ -362,19 +360,15 @@ fn const_eval_typed_expr(
 
             res?
         }
-        ty::TyExpressionVariant::ConstantExpression {
-            decl, ..
-        } => {
+        ty::TyExpressionVariant::ConstantExpression { decl, .. } => {
             let call_path = &decl.call_path;
             let name = &call_path.suffix;
             match known_consts.get(name) {
                 Some(constant) => Some(*constant),
-                None => {
-                    (lookup.lookup)(lookup, call_path, &Some(*decl.clone()))
-                        .ok()
-                        .flatten()
-                        .and_then(|v| v.get_constant(lookup.context).cloned())
-                }
+                None => (lookup.lookup)(lookup, call_path, &Some(*decl.clone()))
+                    .ok()
+                    .flatten()
+                    .and_then(|v| v.get_constant(lookup.context).cloned()),
             }
         }
         ty::TyExpressionVariant::ConfigurableExpression { span, .. } => {

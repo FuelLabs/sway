@@ -41,8 +41,6 @@ impl ty::TyConstantDecl {
         mut ctx: TypeCheckContext,
         decl: ConstantDeclaration,
     ) -> Result<Self, ErrorEmitted> {
-        
-
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 

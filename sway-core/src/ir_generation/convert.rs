@@ -1,11 +1,15 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr, ir_generation::{const_eval::compile_const_decl, function::FnCompiler}, language::{ty::{TyExpression, TyExpressionVariant}, Literal}, metadata::MetadataManager, type_system::{TypeId, TypeInfo}, Engines
+    ir_generation::function::FnCompiler,
+    language::Literal,
+    metadata::MetadataManager,
+    type_system::{TypeId, TypeInfo},
+    Engines,
 };
 
 use super::types::{create_tagged_union_type, create_tuple_aggregate};
 
 use sway_error::error::CompileError;
-use sway_ir::{Constant, ConstantContent, Context, Type, Value, module::Module};
+use sway_ir::{module::Module, Constant, ConstantContent, Context, Type, Value};
 use sway_types::{integer_bits::IntegerBits, span::Span};
 
 pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Value {
@@ -60,7 +64,15 @@ pub(super) fn convert_resolved_type_id(
     span: &Span,
 ) -> Result<Type, CompileError> {
     let ast_type = engines.te().get(ast_type);
-    convert_resolved_type_info(engines, context, md_mgr, module, function_compiler, &ast_type, span)
+    convert_resolved_type_info(
+        engines,
+        context,
+        md_mgr,
+        module,
+        function_compiler,
+        &ast_type,
+        span,
+    )
 }
 
 pub(super) fn convert_resolved_typeid_no_span(
@@ -73,7 +85,15 @@ pub(super) fn convert_resolved_typeid_no_span(
 ) -> Result<Type, CompileError> {
     let msg = "unknown source location";
     let span = crate::span::Span::from_string(msg.to_string());
-    convert_resolved_type_id(engines, context, md_mgr, module, function_compiler, ast_type, &span)
+    convert_resolved_type_id(
+        engines,
+        context,
+        md_mgr,
+        module,
+        function_compiler,
+        ast_type,
+        &span,
+    )
 }
 
 fn convert_resolved_type_info(
@@ -114,7 +134,8 @@ fn convert_resolved_type_info(
             context,
             md_mgr,
             module,
-            engines.de()
+            engines
+                .de()
                 .get_struct(decl_ref)
                 .fields
                 .iter()
@@ -132,15 +153,17 @@ fn convert_resolved_type_info(
         TypeInfo::Array(elem_type, length) => {
             let const_expr = length.expr().to_ty_expression(engines);
 
-            let constant_evaluated = crate::ir_generation::const_eval::compile_constant_expression_to_constant(
-                engines,
-                context,
-                md_mgr,
-                module,
-                None,
-                function_compiler,
-                &const_expr,
-            ).unwrap();
+            let constant_evaluated =
+                crate::ir_generation::const_eval::compile_constant_expression_to_constant(
+                    engines,
+                    context,
+                    md_mgr,
+                    module,
+                    None,
+                    function_compiler,
+                    &const_expr,
+                )
+                .unwrap();
             let len = constant_evaluated.get_content(context).as_uint().unwrap();
 
             let elem_type = convert_resolved_type_id(
@@ -180,9 +203,15 @@ fn convert_resolved_type_info(
             )?;
             Type::new_typed_pointer(context, pointee_ty)
         }
-        TypeInfo::Alias { ty, .. } => {
-            convert_resolved_type_id(engines, context, md_mgr, module, function_compiler, ty.type_id(), span)?
-        }
+        TypeInfo::Alias { ty, .. } => convert_resolved_type_id(
+            engines,
+            context,
+            md_mgr,
+            module,
+            function_compiler,
+            ty.type_id(),
+            span,
+        )?,
         // refs to slice are actually fat pointers,
         // all others refs are thin pointers.
         TypeInfo::Ref {
