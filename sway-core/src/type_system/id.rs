@@ -8,7 +8,14 @@ use sway_error::{
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
-    ast_elements::type_argument, decl_engine::{DeclEngineGet, DeclEngineInsert, MaterializeConstGenerics}, engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines}, language::CallPath, namespace::TraitMap, semantic_analysis::TypeCheckContext, type_system::priv_prelude::*, types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata}, EnforceTypeArguments
+    decl_engine::{DeclEngineGet, DeclEngineInsert, MaterializeConstGenerics},
+    engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
+    language::CallPath,
+    namespace::TraitMap,
+    semantic_analysis::TypeCheckContext,
+    type_system::priv_prelude::*,
+    types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
+    EnforceTypeArguments,
 };
 
 use std::{
@@ -146,11 +153,14 @@ impl MaterializeConstGenerics for TypeId {
                     if let Some(decl) = decl.as_mut() {
                         decl.materialize_const_generics(engines, handler, name, value)?;
                     }
-                    
+
                     *self = engines.te().insert_array(
                         engines,
                         elem_type,
-                        Length(ConstGenericExpr::AmbiguousVariableExpression { ident: ident.clone(), decl }),
+                        Length(ConstGenericExpr::AmbiguousVariableExpression {
+                            ident: ident.clone(),
+                            decl,
+                        }),
                     );
                 }
             }
@@ -184,11 +194,19 @@ impl MaterializeConstGenerics for TypeId {
                     }),
                 );
             }
-            TypeInfo::Ref { to_mutable_value, referenced_type, .. } => {
+            TypeInfo::Ref {
+                to_mutable_value,
+                referenced_type,
+                ..
+            } => {
                 let mut referenced_type = referenced_type.clone();
-                referenced_type.type_id_mut().materialize_const_generics(engines, handler, name, value)?;
+                referenced_type
+                    .type_id_mut()
+                    .materialize_const_generics(engines, handler, name, value)?;
 
-                *self = engines.te().insert_ref(engines, *to_mutable_value, referenced_type);
+                *self = engines
+                    .te()
+                    .insert_ref(engines, *to_mutable_value, referenced_type);
             }
             _ => {}
         }

@@ -934,6 +934,7 @@ pub fn array_constraint_subset() {
         }),
         Length(ConstGenericExpr::AmbiguousVariableExpression {
             ident: sway_types::BaseIdent::new_no_span("N".into()),
+            decl: None,
         }),
     );
 

@@ -1,5 +1,10 @@
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument, decl_engine::DeclEngine, language::ty, metadata::MetadataManager, type_system::{TypeId, TypeInfo}, Engines, GenericArgument, TypeEngine
+    ast_elements::type_argument::GenericTypeArgument,
+    decl_engine::DeclEngine,
+    language::ty,
+    metadata::MetadataManager,
+    type_system::{TypeId, TypeInfo},
+    Engines, GenericArgument, TypeEngine,
 };
 
 use super::convert::convert_resolved_typeid_no_span;
@@ -52,7 +57,9 @@ pub(super) fn create_tuple_aggregate(
 ) -> Result<Type, CompileError> {
     let field_types = fields
         .iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(engines, context, md_mgr, module, None, *ty_id))
+        .map(|ty_id| {
+            convert_resolved_typeid_no_span(engines, context, md_mgr, module, None, *ty_id)
+        })
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     Ok(Type::new_struct(context, field_types))
@@ -80,7 +87,9 @@ pub(super) fn get_struct_for_types(
 ) -> Result<Type, CompileError> {
     let types = type_ids
         .iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(engines, context, md_mgr, module, None, *ty_id))
+        .map(|ty_id| {
+            convert_resolved_typeid_no_span(engines, context, md_mgr, module, None, *ty_id)
+        })
         .collect::<Result<Vec<_>, CompileError>>()?;
     Ok(Type::new_struct(context, types))
 }

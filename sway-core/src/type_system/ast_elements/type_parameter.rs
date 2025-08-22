@@ -1,13 +1,17 @@
 use crate::{
     abi_generation::abi_str::AbiStrContext,
     decl_engine::{
-        parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineInsert as _, DeclMapping, InterfaceItemMap, ItemMap, MaterializeConstGenerics, ParsedDeclEngineGet as _
+        parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineInsert as _, DeclMapping,
+        InterfaceItemMap, ItemMap, MaterializeConstGenerics, ParsedDeclEngineGet as _,
     },
     engine_threading::*,
     has_changes,
     language::{
         parsed::ConstGenericDeclaration,
-        ty::{self, ConstGenericDecl, ConstantDecl, TyConstGenericDecl, TyConstantDecl, TyExpression, TyExpressionVariant},
+        ty::{
+            self, ConstGenericDecl, ConstantDecl, TyConstGenericDecl, TyConstantDecl, TyExpression,
+            TyExpressionVariant,
+        },
         CallPath, CallPathType,
     },
     namespace::TraitMap,
@@ -947,7 +951,7 @@ fn handle_trait(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ConstGenericExprTyDecl {
     ConstGenericDecl(ConstGenericDecl),
-    ConstantDecl(ConstantDecl)
+    ConstantDecl(ConstantDecl),
 }
 
 impl MaterializeConstGenerics for ConstGenericExprTyDecl {
@@ -964,29 +968,35 @@ impl MaterializeConstGenerics for ConstGenericExprTyDecl {
                 decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
-                *self = ConstGenericExprTyDecl::ConstGenericDecl(ConstGenericDecl { 
-                    decl_id: *decl_ref.id()
+                *self = ConstGenericExprTyDecl::ConstGenericDecl(ConstGenericDecl {
+                    decl_id: *decl_ref.id(),
                 });
                 Ok(())
-            },
+            }
             ConstGenericExprTyDecl::ConstantDecl(decl) => {
                 let mut decl = TyConstantDecl::clone(&*engines.de().get(&decl.decl_id));
                 decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
-                *self = ConstGenericExprTyDecl::ConstantDecl(ConstantDecl { 
-                    decl_id: *decl_ref.id()
+                *self = ConstGenericExprTyDecl::ConstantDecl(ConstantDecl {
+                    decl_id: *decl_ref.id(),
                 });
                 Ok(())
-            },
+            }
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ConstGenericExpr {
-    Literal { val: usize, span: Span },
-    AmbiguousVariableExpression { ident: Ident, decl: Option<ConstGenericExprTyDecl> },
+    Literal {
+        val: usize,
+        span: Span,
+    },
+    AmbiguousVariableExpression {
+        ident: Ident,
+        decl: Option<ConstGenericExprTyDecl>,
+    },
 }
 
 impl ConstGenericExpr {
@@ -1007,7 +1017,7 @@ impl ConstGenericExpr {
                     decl: None,
                 })
             }
-            ty::TyExpressionVariant::ConstantExpression {  decl, .. } => {
+            ty::TyExpressionVariant::ConstantExpression { decl, .. } => {
                 Ok(ConstGenericExpr::AmbiguousVariableExpression {
                     ident: decl.call_path.suffix.clone(),
                     decl: None,
@@ -1035,24 +1045,32 @@ impl ConstGenericExpr {
             },
             ConstGenericExpr::AmbiguousVariableExpression { ident, decl } => {
                 let expression = match decl {
-                    Some(ConstGenericExprTyDecl::ConstGenericDecl(decl)) => TyExpressionVariant::ConstGenericExpression { 
-                        decl: Box::new(TyConstGenericDecl::clone(&*engines.de().get(&decl.decl_id))),
-                        span: ident.span(), 
-                        call_path: CallPath {
-                            prefixes: vec![],
-                            suffix: ident.clone(),
-                            callpath_type: CallPathType::Ambiguous,
+                    Some(ConstGenericExprTyDecl::ConstGenericDecl(decl)) => {
+                        TyExpressionVariant::ConstGenericExpression {
+                            decl: Box::new(TyConstGenericDecl::clone(
+                                &*engines.de().get(&decl.decl_id),
+                            )),
+                            span: ident.span(),
+                            call_path: CallPath {
+                                prefixes: vec![],
+                                suffix: ident.clone(),
+                                callpath_type: CallPathType::Ambiguous,
+                            },
                         }
-                    },
-                    Some(ConstGenericExprTyDecl::ConstantDecl(decl)) => TyExpressionVariant::ConstantExpression { 
-                        decl: Box::new(TyConstantDecl::clone(&*engines.de().get(&decl.decl_id))),
-                        span: ident.span(),
-                        call_path: Some(CallPath {
-                            prefixes: vec![],
-                            suffix: ident.clone(),
-                            callpath_type: CallPathType::Ambiguous,
-                        })
-                    },
+                    }
+                    Some(ConstGenericExprTyDecl::ConstantDecl(decl)) => {
+                        TyExpressionVariant::ConstantExpression {
+                            decl: Box::new(TyConstantDecl::clone(
+                                &*engines.de().get(&decl.decl_id),
+                            )),
+                            span: ident.span(),
+                            call_path: Some(CallPath {
+                                prefixes: vec![],
+                                suffix: ident.clone(),
+                                callpath_type: CallPathType::Ambiguous,
+                            }),
+                        }
+                    }
                     None => todo!(),
                 };
                 TyExpression {
