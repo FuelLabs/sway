@@ -36,7 +36,10 @@ pub enum IrError {
     VerifyGepFromNonPointer(String, Option<Value>),
     VerifyGepInconsistentTypes(String, Option<crate::Value>),
     VerifyGepOnNonAggregate,
-    VerifyGetNonExistentPointer,
+    VerifyGetNonExistentLocalVarPointer,
+    VerifyGetNonExistentGlobalVarPointer,
+    VerifyGetNonExistentConfigPointer,
+    VerifyGetNonExistentStorageKeyPointer,
     VerifyGlobalMissingInitializer(String),
     VerifyInsertElementOfIncorrectType,
     VerifyInsertValueOfIncorrectType,
@@ -227,10 +230,28 @@ impl fmt::Display for IrError {
                     "Verification failed: Attempt to access a field from a non struct."
                 )
             }
-            IrError::VerifyGetNonExistentPointer => {
+            IrError::VerifyGetNonExistentLocalVarPointer => {
                 write!(
                     f,
-                    "Verification failed: Attempt to get pointer not found in function locals."
+                    "Verification failed: Attempt to get pointer not found in function local variables."
+                )
+            }
+            IrError::VerifyGetNonExistentGlobalVarPointer => {
+                write!(
+                    f,
+                    "Verification failed: Attempt to get pointer not found in module global variables."
+                )
+            }
+            IrError::VerifyGetNonExistentConfigPointer => {
+                write!(
+                    f,
+                    "Verification failed: Attempt to get pointer not found in module configurables."
+                )
+            }
+            IrError::VerifyGetNonExistentStorageKeyPointer => {
+                write!(
+                    f,
+                    "Verification failed: Attempt to get pointer not found in module storage keys."
                 )
             }
             IrError::VerifyInsertElementOfIncorrectType => {

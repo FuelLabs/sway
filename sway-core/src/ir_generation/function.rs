@@ -5,7 +5,7 @@
 use super::{
     convert::*,
     lexical_map::LexicalMap,
-    storage::{add_to_b256, get_storage_field_id, get_storage_key},
+    storage::{add_to_b256, get_storage_field_path_and_field_id, get_storage_key},
     types::*,
     CompiledFunctionCache,
 };
@@ -754,6 +754,7 @@ impl<'a> FnCompiler<'a> {
                 )?;
                 self.compile_storage_access(
                     context,
+                    md_mgr,
                     access.storage_field_names.clone(),
                     access.struct_field_names.clone(),
                     key,
@@ -4547,12 +4548,6 @@ impl<'a> FnCompiler<'a> {
         tag: usize,
         contents: Option<&ty::TyExpression>,
     ) -> Result<TerminatorValue, CompileError> {
-        // XXX The enum instantiation AST node includes the full declaration.  If the enum was
-        // declared in a different module then it seems for now there's no easy way to pre-analyse
-        // it and add its type/aggregate to the context.  We can re-use them here if we recognise
-        // the name, and if not add a new aggregate... OTOH the naming seems a little fragile and
-        // we could potentially use the wrong aggregate with the same name, different module...
-        // dunno.
         let span_md_idx = md_mgr.span_to_md(context, &enum_decl.span);
         let enum_type = create_tagged_union_type(
             self.engines.te(),
@@ -4760,24 +4755,23 @@ impl<'a> FnCompiler<'a> {
     fn compile_storage_access(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         storage_field_names: Vec<String>,
         struct_field_names: Vec<String>,
         key: Option<U256>,
         fields: &[ty::TyStorageAccessDescriptor],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        // Get the list of indices used to access the storage field. This will be empty
-        // if the storage field type is not a struct.
-        // FIXME: shouldn't have to extract the first field like this.
+        // Get the list of indices used to access the storage field.
         let base_type = fields[0].type_id;
-        let field_idcs = get_indices_for_struct_access(
+        let field_indices = get_indices_for_struct_access(
             self.engines.te(),
             self.engines.de(),
             base_type,
             &fields[1..],
         )?;
 
-        // Get the IR type of the storage variable
+        // Get the IR type of the storage variable.
         let base_type = convert_resolved_typeid_no_span(
             self.engines.te(),
             self.engines.de(),
@@ -4785,14 +4779,13 @@ impl<'a> FnCompiler<'a> {
             base_type,
         )?;
 
-        // Do the actual work. This is a recursive function because we want to drill down
-        // to load each primitive type in the storage field in its own storage slot.
-        self.compile_storage_read(
+        self.compile_get_storage_key(
             context,
+            md_mgr,
             storage_field_names,
             struct_field_names,
             key,
-            &field_idcs,
+            &field_indices,
             &base_type,
             span_md_idx,
         )
@@ -4877,9 +4870,10 @@ impl<'a> FnCompiler<'a> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn compile_storage_read(
+    fn compile_get_storage_key(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         storage_field_names: Vec<String>,
         struct_field_names: Vec<String>,
         key: Option<U256>,
@@ -4887,106 +4881,62 @@ impl<'a> FnCompiler<'a> {
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        // Use the `struct_field_names` to get a field id that is unique even for zero-sized values that live in the same slot.
-        // We calculate the `unique_field_id` early, here, before the `storage_filed_names` get consumed by `get_storage_key` below.
-        let unique_field_id = get_storage_field_id(&storage_field_names, &struct_field_names);
+        let (path, field_id) = get_storage_field_path_and_field_id(&storage_field_names, &struct_field_names);
 
-        // Get the actual storage key as a `Bytes32` as well as the offset, in words,
-        // within the slot. The offset depends on what field of the top level storage
-        // variable is being accessed.
-        let (storage_key, offset_within_slot) = {
-            let offset_in_words = match base_type.get_indexed_offset(context, indices) {
-                Some(offset_in_bytes) => {
-                    // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
-                    //       The memory layout of structs can be changed in the future.
-                    //       We will not refactor the Storage API at the moment to remove this
-                    //       assumption. It is a questionable effort because we anyhow
-                    //       want to improve and refactor Storage API in the future.
-                    assert!(
-                        offset_in_bytes % 8 == 0,
-                        "Expected struct fields to be aligned to word boundary. The field offset in bytes was {}.",
-                        offset_in_bytes
-                    );
-                    offset_in_bytes / 8
-                }
-                None => {
-                    return Err(CompileError::Internal(
-                        "Cannot get the offset within the slot while compiling storage read.",
-                        Span::dummy(),
-                    ))
-                }
-            };
-            let offset_in_slots = offset_in_words / 4;
-            let offset_remaining = offset_in_words % 4;
+        let storage_key = match self.module.get_storage_key(context, &path) {
+            Some(storage_key) => *storage_key,
+            None => {
+                // Get the actual storage key as a `Bytes32` as well as the offset, in words,
+                // within the slot. The offset depends on what field of the top level storage
+                // variable is being accessed.
+                let (slot, offset_within_slot) = {
+                    let offset_in_words = match base_type.get_indexed_offset(context, indices) {
+                        Some(offset_in_bytes) => {
+                            // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
+                            //       The memory layout of structs can be changed in the future.
+                            //       We will not refactor the Storage API at the moment to remove this
+                            //       assumption. It is a questionable effort because we anyhow
+                            //       want to improve and refactor Storage API in the future.
+                            assert!(
+                                offset_in_bytes % 8 == 0,
+                                "Expected struct fields to be aligned to word boundary. The field offset in bytes was {}.",
+                                offset_in_bytes
+                            );
+                            offset_in_bytes / 8
+                        }
+                        None => {
+                            return Err(CompileError::Internal(
+                                "Cannot get the offset within the slot while compiling storage read.",
+                                md_mgr
+                                    .md_to_span(context, span_md_idx)
+                                    .unwrap_or_else(Span::dummy),
+                            ))
+                        }
+                    };
+                    let offset_in_slots = offset_in_words / 4;
+                    let offset_remaining = offset_in_words % 4;
 
-            // The storage key we need is the storage key of the top level storage variable
-            // plus the offset, in number of slots, computed above. The offset within this
-            // particular slot is the remaining offset, in words.
-            (
-                add_to_b256(get_storage_key(storage_field_names, key), offset_in_slots),
-                offset_remaining,
-            )
+                    // The storage key we need is the storage key of the top level storage variable
+                    // plus the offset, in number of slots, computed above. The offset within this
+                    // particular slot is the remaining offset, in words.
+                    (
+                        add_to_b256(get_storage_key(storage_field_names, key), offset_in_slots),
+                        offset_remaining,
+                    )
+                };
+
+                let storage_key = StorageKey::new(context, slot.into(), offset_within_slot, field_id.into());
+
+                self.module.add_storage_key(context, path, storage_key);
+
+                storage_key
+            },
         };
 
-        // Const value for the key from the hash
-        let const_key = convert_literal_to_value(context, &Literal::B256(storage_key.into()))
-            .add_metadatum(context, span_md_idx);
-
-        // The type of a storage access is `StorageKey` which is a struct containing
-        // a `b256`, `u64` and `b256`.
-        let b256_ty = Type::get_b256(context);
-        let uint64_ty = Type::get_uint64(context);
-        let storage_key_aggregate = Type::new_struct(context, vec![b256_ty, uint64_ty, b256_ty]);
-
-        // Local variable holding the `StorageKey` struct
-        let storage_key_local_name = self.lexical_map.insert_anon();
-        let storage_key_ptr = self
-            .function
-            .new_local_var(
-                context,
-                storage_key_local_name,
-                storage_key_aggregate,
-                None,
-                false,
-            )
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let storage_key = self
             .current_block
             .append(context)
-            .get_local(storage_key_ptr)
-            .add_metadatum(context, span_md_idx);
-
-        // Store the key as the first field in the `StorageKey` struct
-        let gep_0_val =
-            self.current_block
-                .append(context)
-                .get_elem_ptr_with_idx(storage_key, b256_ty, 0);
-        self.current_block
-            .append(context)
-            .store(gep_0_val, const_key)
-            .add_metadatum(context, span_md_idx);
-
-        // Store the offset as the second field in the `StorageKey` struct
-        let offset_within_slot_val = ConstantContent::get_uint(context, 64, offset_within_slot);
-        let gep_1_val =
-            self.current_block
-                .append(context)
-                .get_elem_ptr_with_idx(storage_key, uint64_ty, 1);
-        self.current_block
-            .append(context)
-            .store(gep_1_val, offset_within_slot_val)
-            .add_metadatum(context, span_md_idx);
-
-        // Store the field identifier as the third field in the `StorageKey` struct
-        let field_id = convert_literal_to_value(context, &Literal::B256(unique_field_id.into()))
-            .add_metadatum(context, span_md_idx);
-        let gep_2_val =
-            self.current_block
-                .append(context)
-                .get_elem_ptr_with_idx(storage_key, b256_ty, 2);
-        self.current_block
-            .append(context)
-            .store(gep_2_val, field_id)
+            .get_storage_key(storage_key)
             .add_metadatum(context, span_md_idx);
 
         Ok(TerminatorValue::new(

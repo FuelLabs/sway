@@ -6,18 +6,7 @@
 use itertools::Itertools;
 
 use crate::{
-    context::Context,
-    error::IrError,
-    function::Function,
-    instruction::{FuelVmInstruction, InstOp, Predicate},
-    irtype::Type,
-    metadata::{MetadataIndex, Metadatum},
-    printer,
-    value::{Value, ValueDatum},
-    variable::LocalVar,
-    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
-    BranchToWithArgs, Doc, GlobalVar, Module, Pass, PassMutability, ScopedPass, TypeOption,
-    UnaryOpKind,
+    context::Context, error::IrError, function::Function, instruction::{FuelVmInstruction, InstOp, Predicate}, irtype::Type, metadata::{MetadataIndex, Metadatum}, printer, value::{Value, ValueDatum}, variable::LocalVar, AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument, BranchToWithArgs, Doc, GlobalVar, Module, Pass, PassMutability, ScopedPass, StorageKey, TypeOption, UnaryOpKind
 };
 
 pub struct ModuleVerifierResult;
@@ -352,6 +341,7 @@ impl InstructionVerifier<'_, '_> {
                 InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
                 InstOp::GetGlobal(global_var) => self.verify_get_global(global_var)?,
                 InstOp::GetConfig(_, name) => self.verify_get_config(self.cur_module, name)?,
+                InstOp::GetStorageKey(storage_key) => self.verify_get_storage_key(storage_key)?,
                 InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                 InstOp::Load(ptr) => self.verify_load(ptr)?,
                 InstOp::MemCopyBytes {
@@ -846,7 +836,7 @@ impl InstructionVerifier<'_, '_> {
             .values()
             .any(|var| var == local_var)
         {
-            Err(IrError::VerifyGetNonExistentPointer)
+            Err(IrError::VerifyGetNonExistentLocalVarPointer)
         } else {
             Ok(())
         }
@@ -858,7 +848,7 @@ impl InstructionVerifier<'_, '_> {
             .values()
             .any(|var| var == global_var)
         {
-            Err(IrError::VerifyGetNonExistentPointer)
+            Err(IrError::VerifyGetNonExistentGlobalVarPointer)
         } else {
             Ok(())
         }
@@ -866,7 +856,19 @@ impl InstructionVerifier<'_, '_> {
 
     fn verify_get_config(&self, module: Module, name: &str) -> Result<(), IrError> {
         if !self.context.modules[module.0].configs.contains_key(name) {
-            Err(IrError::VerifyGetNonExistentPointer)
+            Err(IrError::VerifyGetNonExistentConfigPointer)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn verify_get_storage_key(&self, storage_key: &StorageKey) -> Result<(), IrError> {
+        if !self.context.modules[self.cur_module.0]
+            .storage_keys
+            .values()
+            .any(|key| key == storage_key)
+        {
+            Err(IrError::VerifyGetNonExistentStorageKeyPointer)
         } else {
             Ok(())
         }

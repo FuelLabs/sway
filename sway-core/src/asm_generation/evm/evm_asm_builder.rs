@@ -342,6 +342,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                 InstOp::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
                 InstOp::GetGlobal(global_var) => self.compile_get_global(instr_val, global_var),
                 InstOp::GetConfig(_, name) => self.compile_get_config(instr_val, name),
+                InstOp::GetStorageKey(storage_key) => self.compile_get_storage_key(instr_val, storage_key),
                 InstOp::IntToPtr(val, _) => self.compile_int_to_ptr(instr_val, val),
                 InstOp::Load(src_val) => self.compile_load(handler, instr_val, src_val)?,
                 InstOp::MemCopyBytes {
@@ -455,14 +456,6 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         todo!();
     }
 
-    fn compile_get_storage_key(
-        &mut self,
-        handler: &Handler,
-        instr_val: &Value,
-    ) -> Result<(), ErrorEmitted> {
-        todo!();
-    }
-
     fn compile_get_elem_ptr(
         &mut self,
         instr_val: &Value,
@@ -482,6 +475,10 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
     }
 
     fn compile_get_config(&mut self, instr_val: &Value, name: &str) {
+        todo!();
+    }
+
+    fn compile_get_storage_key(&mut self, instr_val: &Value, storage_key: &StorageKey) {
         todo!();
     }
 
