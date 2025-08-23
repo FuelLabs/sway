@@ -24,7 +24,7 @@ fuel-asm.workspace = true
 fuel-tx = { workspace = true, optional = true }
 fuels-core = { workspace = true, optional = true }
 hex.workspace = true
-paste.workspace = true
+pastey.workspace = true
 regex.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
@@ -35,9 +35,9 @@ sway-types.workspace = true
 sway-utils.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = [
-    "ansi",
-    "env-filter",
-    "json",
+  "ansi",
+  "env-filter",
+  "json",
 ] }
 unicode-xid.workspace = true
 

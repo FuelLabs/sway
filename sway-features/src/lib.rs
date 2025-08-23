@@ -4,7 +4,7 @@ use clap::{Parser, ValueEnum};
 
 macro_rules! features {
     ($($name:ident = $enabled:literal, $url:literal),* $(,)?) => {
-        paste::paste! {
+        pastey::paste! {
             #[derive(Copy, Clone, Debug, ValueEnum, PartialEq, Eq, Hash)]
             #[value(rename_all = "snake")]
             pub enum Feature {

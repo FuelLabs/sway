@@ -14,8 +14,8 @@ repository.workspace = true
 [dependencies]
 
 [dev-dependencies]
-paste.workspace = true
+pastey.workspace = true
 prettydiff.workspace = true
 
 [package.metadata.cargo-udeps.ignore]
-development = ["paste", "prettydiff"]
+development = ["pastey", "prettydiff"]

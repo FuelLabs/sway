@@ -25,7 +25,7 @@ thiserror.workspace = true
 toml = { workspace = true, features = ["parse"] }
 
 [dev-dependencies]
-paste.workspace = true
+pastey.workspace = true
 prettydiff.workspace = true
 similar.workspace = true
 test-macros = { path = "test_macros" }

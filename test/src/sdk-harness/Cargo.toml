@@ -21,7 +21,7 @@ fuel-vm = { version = "0.62", features = ["random"] }
 fuels = { version = "0.74", features = ["fuel-core-lib"] }
 
 hex = "0.4"
-paste = "1.0"
+pastey = "0.1.1"
 pretty_assertions = "1.4"
 rand = "0.8"
 sha2 = "0.10"

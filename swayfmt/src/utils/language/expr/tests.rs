@@ -1,7 +1,7 @@
 //! Specific tests for the expression module
 
 use forc_tracing::{println_green, println_red};
-use paste::paste;
+use pastey::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
 use test_macros::fmt_test_expr;
 

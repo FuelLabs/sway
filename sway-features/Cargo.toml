@@ -10,6 +10,6 @@ repository.workspace = true
 
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
-paste.workspace = true
+pastey.workspace = true
 sway-error.workspace = true
 sway-types.workspace = true

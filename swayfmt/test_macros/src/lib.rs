@@ -5,7 +5,7 @@
 /// Provide a known good, and then some named test cases that should evaluate to
 /// that known good. e.g.:
 /// ```
-/// # use paste::paste;
+/// # use pastey::paste;
 /// # use prettydiff::{basic::DiffOp, diff_lines};
 /// # use test_macros::fmt_test_item; fn main() {
 ///               // test suite name       known good
@@ -29,7 +29,7 @@ macro_rules! fmt_test_item {
 /// Provide a known good, and then some named test cases that should evaluate to
 /// that known good. e.g.:
 /// ```
-/// # use paste::paste;
+/// # use pastey::paste;
 /// # use prettydiff::{basic::DiffOp, diff_lines};
 /// # use test_macros::fmt_test_expr; fn main() {
 ///               // test suite name       known good

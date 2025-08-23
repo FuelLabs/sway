@@ -3,7 +3,7 @@ use super::*;
 #[macro_export]
 macro_rules! generate_try_insert_tests {
     ($input_string:expr, $key:expr, $value1:expr, $value2:expr) => {
-        paste::paste! {
+        pastey::paste! {
             #[tokio::test]
             async fn [<try_insert_ $input_string _exists>]() {
                 let instance = test_storage_map_instance().await;

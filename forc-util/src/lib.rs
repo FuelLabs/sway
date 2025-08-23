@@ -33,7 +33,7 @@ pub mod tx_utils;
 pub mod cli;
 
 pub use ansiterm;
-pub use paste;
+pub use pastey;
 pub use regex::Regex;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";

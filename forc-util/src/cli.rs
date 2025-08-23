@@ -4,7 +4,7 @@ macro_rules! cli_examples {
     ($st:path { $( [ $($description:ident)* => $command:stmt ] )* }) => {
         forc_util::cli_examples! {
             {
-                $crate::paste::paste! {
+                $crate::pastey::paste! {
                     use clap::Parser;
                     $st::try_parse_from
                 }
@@ -14,7 +14,7 @@ macro_rules! cli_examples {
         }
     };
     ( $code:block { $( [ $($description:ident)* => $command:stmt ] )* }) => {
-        $crate::paste::paste! {
+        $crate::pastey::paste! {
         #[cfg(test)]
         mod cli_parsing {
             $(
@@ -109,7 +109,7 @@ macro_rules! cli_examples {
         pub fn examples() -> &'static str {
             Box::leak( [
             $(
-            $crate::paste::paste! {
+            $crate::pastey::paste! {
                 format!("    # {}\n    {}\n\n", stringify!($($description)*), $command)
             },
             )*

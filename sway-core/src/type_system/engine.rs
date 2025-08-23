@@ -217,7 +217,7 @@ macro_rules! type_engine_shareable_built_in_types {
 
     // The actual recursion step that generates the `id_of_<type>` functions.
     (@step $idx:expr, ($ty_name:ident, $ti:expr, $ti_pat:pat), $(($tail_ty_name:ident, $tail_ti:expr, $tail_ti_pat:pat),)*) => {
-        paste::paste! {
+        pastey::paste! {
             pub const fn [<id_of_ $ty_name>](&self) -> TypeId {
                 TypeId::new($idx)
             }
@@ -302,7 +302,7 @@ macro_rules! type_engine_shareable_built_in_types {
         /// For a particular shareable built-in type, the method guarantees to always
         /// return the same, existing [TypeId].
         fn get_shareable_built_in_type_id(&self, type_info: &TypeInfo) -> Option<TypeId> {
-            paste::paste! {
+            pastey::paste! {
                 use TypeInfo::*;
                 match type_info {
                     Tuple(v) if v.is_empty() => Some(self.id_of_unit()),

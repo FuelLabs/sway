@@ -30,7 +30,7 @@ itertools.workspace = true
 lazy_static.workspace = true
 object = { workspace = true, features = ["write"] }
 parking_lot.workspace = true
-paste.workspace = true
+pastey.workspace = true
 pest.workspace = true
 pest_derive.workspace = true
 petgraph.workspace = true
