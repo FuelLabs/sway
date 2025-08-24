@@ -303,7 +303,6 @@ impl U128 {
         }
     }
 
-    // TODO: Rename to `try_as_u64` to be consistent with all other downcasts
     /// Safely downcast to `u64` without loss of precision.
     ///
     /// # Additional Information
@@ -321,21 +320,37 @@ impl U128 {
     ///
     /// fn foo() {
     ///     let zero_u128 = U128::from(0, 0);
-    ///     let zero_u64 = zero_u128.as_u64().unwrap();
+    ///     let zero_u64 = zero_u128.try_as_u64().unwrap();
     ///
     ///     assert(zero_u64 == 0);
     ///
     ///     let max_u128 = U128::max();
-    ///     let result = max_u128.as_u64();
+    ///     let result = max_u128.try_as_u64();
     ///
     ///     assert(result.is_err()));
     /// }
     /// ```
-    pub fn as_u64(self) -> Result<u64, U128Error> {
+    pub fn try_as_u64(self) -> Result<u64, U128Error> {
         match self.upper {
             0 => Ok(self.lower),
             _ => Err(U128Error::LossOfPrecision),
         }
+    }
+
+    /// Safely downcast to `u64` without loss of precision.
+    ///
+    /// # Additional Information
+    ///
+    /// If the `U128` is larger than `u64::max()`, an error is returned.
+    ///
+    /// **Deprecated:** Use `try_as_u64` instead, for consistency with other downcast functions.
+    ///
+    /// # Returns
+    ///
+    /// * [Result<u64, U128Error>] - The result of the downcast.
+    #[deprecated(note = "Use `try_as_u64` instead, for consistency with other downcast functions.")]
+    pub fn as_u64(self) -> Result<u64, U128Error> {
+        self.try_as_u64()
     }
 
     /// Upcasts a `U128` to a `u256`.
