@@ -615,19 +615,25 @@ where
             return Err(err);
         };
 
+        let return_encode = if return_type == "()" {
+            "asm(s: (0, 0)) { s: raw_slice }".to_string()
+        } else {
+            format!("encode::<{return_type}>(_result)")
+        };
+
         let code = if args_types == "()" {
             format!(
                 "pub fn __entry() -> raw_slice {{
-                let result: {return_type} = main();
-                encode::<{return_type}>(result)
+                let _result: {return_type} = main();
+                {return_encode}
             }}"
             )
         } else {
             format!(
                 "pub fn __entry() -> raw_slice {{
                 let args: {args_types} = decode_script_data::<{args_types}>();
-                let result: {return_type} = main({expanded_args});
-                encode::<{return_type}>(result)
+                let _result: {return_type} = main({expanded_args});
+                {return_encode}
             }}"
             )
         };

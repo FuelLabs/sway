@@ -4116,42 +4116,46 @@ impl<'a> FnCompiler<'a> {
             .function
             .new_local_var(context, temp_name, array_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
-        let array_value = self
+        let whole_array_value = self
             .current_block
             .append(context)
             .get_local(array_local_var)
             .add_metadatum(context, span_md_idx);
 
-        let value_value = return_on_termination_or_extract!(
+        let repeated_item_value = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, value_expr)?
         )
         .expect_register();
 
-        if length_as_u64 > 5 {
+        if let Some(true) = can_mem_clear_be_used(context, elem_type, repeated_item_value) {
+            self.current_block
+                .append(context)
+                .mem_clear_val(whole_array_value);
+        } else if length_as_u64 > 5 {
             self.compile_array_init_loop(
                 context,
-                array_value,
+                whole_array_value,
                 elem_type,
-                value_value,
+                repeated_item_value,
                 length_as_u64,
                 span_md_idx,
             );
         } else {
             for i in 0..length_as_u64 {
                 let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
-                    array_value,
+                    whole_array_value,
                     elem_type,
                     i,
                 );
                 self.current_block
                     .append(context)
-                    .store(gep_val, value_value)
+                    .store(gep_val, repeated_item_value)
                     .add_metadatum(context, span_md_idx);
             }
         }
 
         Ok(TerminatorValue::new(
-            CompiledValue::InMemory(array_value),
+            CompiledValue::InMemory(whole_array_value),
             context,
         ))
     }
@@ -4989,5 +4993,33 @@ impl<'a> FnCompiler<'a> {
             CompiledValue::InMemory(storage_key),
             context,
         ))
+    }
+}
+
+fn can_mem_clear_be_used(ctx: &mut Context<'_>, elem_type: Type, value: Value) -> Option<bool> {
+    match elem_type.get_content(ctx) {
+        TypeContent::Bool if !(value.get_constant(ctx)?.get_content(ctx).as_bool()?) => Some(true),
+        TypeContent::Uint(256)
+            if value
+                .get_constant(ctx)?
+                .get_content(ctx)
+                .as_u256()?
+                .is_zero() =>
+        {
+            Some(true)
+        }
+        TypeContent::Uint(_) if value.get_constant(ctx)?.get_content(ctx).as_uint()? == 0 => {
+            Some(true)
+        }
+        TypeContent::B256
+            if value
+                .get_constant(ctx)?
+                .get_content(ctx)
+                .as_b256()?
+                .is_zero() =>
+        {
+            Some(true)
+        }
+        _ => None,
     }
 }

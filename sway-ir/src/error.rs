@@ -50,6 +50,7 @@ pub enum IrError {
     VerifyLogMismatchedTypes,
     VerifyMemcopyNonPointer(String),
     VerifyMemcopyMismatchedTypes(String, String),
+    VerifyMemClearValNonPointer(String),
     VerifyPtrCastFromNonPointer(String),
     VerifyPtrCastToNonPointer(String),
     VerifyPtrToIntToNonInteger(String),
@@ -274,6 +275,12 @@ impl fmt::Display for IrError {
                     f,
                     "Verification failed: mem_copy cannot be from {src_ty} pointer to {dst_ty} \
                     pointer.",
+                )
+            }
+            IrError::VerifyMemClearValNonPointer(ty) => {
+                write!(
+                    f,
+                    "Verification failed: mem_clear_val argument is not a pointer {ty}.",
                 )
             }
             IrError::VerifyReturnMismatchedTypes(fn_str) => write!(

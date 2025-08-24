@@ -55,6 +55,9 @@ pub struct Command {
     /// Arguments to pass into main function with forc run.
     #[clap(long)]
     pub args: Option<Vec<String>>,
+    /// Start interactive debugger after transaction execution
+    #[clap(long, help_heading = "DEBUG")]
+    pub debug: bool,
 
     #[clap(flatten)]
     pub experimental: sway_features::CliFields,

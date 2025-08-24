@@ -428,6 +428,7 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
             InstOp::Load(_) => (),
             InstOp::MemCopyBytes { .. } => (),
             InstOp::MemCopyVal { .. } => (),
+            InstOp::MemClearVal { .. } => (),
             InstOp::Nop => (),
             InstOp::PtrToInt(v, _) => add_from_val(&mut result, v, &mut is_complete),
             InstOp::Ret(_, _) => (),
@@ -469,6 +470,7 @@ pub fn get_loaded_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         } => vec![*params, *coins, *asset_id],
         InstOp::Call(_, args) => args.clone(),
         InstOp::AsmBlock(_, args) => args.iter().filter_map(|val| val.initializer).collect(),
+        InstOp::MemClearVal { .. } => vec![],
         InstOp::MemCopyBytes { src_val_ptr, .. }
         | InstOp::MemCopyVal { src_val_ptr, .. }
         | InstOp::Ret(src_val_ptr, _)
@@ -553,6 +555,7 @@ pub fn get_stored_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         InstOp::AsmBlock(_, args) => args.iter().filter_map(|val| val.initializer).collect(),
         InstOp::MemCopyBytes { dst_val_ptr, .. }
         | InstOp::MemCopyVal { dst_val_ptr, .. }
+        | InstOp::MemClearVal { dst_val_ptr }
         | InstOp::Store { dst_val_ptr, .. } => vec![*dst_val_ptr],
         InstOp::Load(_) => vec![],
         InstOp::FuelVm(vmop) => match vmop {
