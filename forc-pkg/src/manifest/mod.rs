@@ -478,7 +478,7 @@ impl PackageManifestFile {
         let parse_res = parse_tree_type(&handler, entry_string);
 
         parse_res.map_err(|_| {
-            let (errors, _warnings) = handler.consume();
+            let (errors, _warnings, _infos) = handler.consume();
             parsing_failed(&self.project.name, &errors)
         })
     }

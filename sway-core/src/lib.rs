@@ -27,7 +27,10 @@ pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
+use crate::language::{CallPath, CallPathType};
 use crate::query_engine::ModuleCacheEntry;
+use crate::semantic_analysis::namespace::ResolvedDeclaration;
+use crate::semantic_analysis::type_resolve::{resolve_call_path, VisibilityCheck};
 use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_context_to_finalized_asm;
 use asm_generation::FinalizedAsm;
@@ -51,7 +54,7 @@ use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::warning::{CollectedTraitImpl, CompileInfo, CompileWarning, Info, Warning};
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
@@ -1019,8 +1022,8 @@ pub fn compile_to_ast(
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
             entry.programs.metrics.reused_programs += 1;
 
-            let (warnings, errors) = entry.handler_data;
-            let new_handler = Handler::from_parts(warnings, errors);
+            let (warnings, errors, infos) = entry.handler_data;
+            let new_handler = Handler::from_parts(warnings, errors, infos);
             handler.append(new_handler);
             return Ok(entry.programs);
         };
@@ -1462,6 +1465,121 @@ fn check_should_abort(
         }
     }
     Ok(())
+}
+
+pub fn dump_trait_impls_for_typename(
+    handler: &Handler,
+    engines: &Engines,
+    namespace: &namespace::Namespace,
+    typename: &str,
+) -> Result<(), ErrorEmitted> {
+    let path: Vec<&str> = typename.split("::").collect();
+    let mut call_path = CallPath::fullpath(&path);
+    call_path.callpath_type = CallPathType::Ambiguous;
+
+    let pkg_namespace = namespace.current_package_ref();
+    let mod_path = [pkg_namespace.root_module().name().clone()];
+
+    let resolve_handler = Handler::default();
+    let resolved = resolve_call_path(
+        &resolve_handler,
+        engines,
+        namespace,
+        &mod_path,
+        &call_path,
+        None,
+        VisibilityCheck::No,
+    );
+
+    if let Ok(resolved) = resolved {
+        let module = &pkg_namespace.root_module();
+
+        let mut impls = Vec::new();
+        find_trait_impls_for_type(engines, namespace, &resolved, module, &mut impls);
+
+        for ext_pkg in pkg_namespace.external_packages.iter() {
+            let ext_module = ext_pkg.1.root_module();
+            find_trait_impls_for_type(engines, namespace, &resolved, ext_module, &mut impls);
+        }
+
+        let unique_impls = impls
+            .iter()
+            .unique_by(|i| i.impl_span.clone())
+            .cloned()
+            .collect::<Vec<_>>();
+        handler.emit_info(CompileInfo {
+            span: resolved.span(engines).subset_first_of("{").unwrap(),
+            content: Info::ImplTraitsForType {
+                impls: unique_impls,
+            },
+        });
+    }
+
+    Ok(())
+}
+
+fn find_trait_impls_for_type(
+    engines: &Engines,
+    namespace: &namespace::Namespace,
+    resolved_decl: &ResolvedDeclaration,
+    module: &namespace::Module,
+    impls: &mut Vec<CollectedTraitImpl>,
+) {
+    let handler = Handler::default();
+    let struct_decl_source_id = resolved_decl
+        .to_struct_decl(&handler, engines)
+        .map(|d| d.expect_typed())
+        .and_then(|decl| decl.to_struct_decl(&handler, engines))
+        .map(|decl_id| engines.de().get_struct(&decl_id).span.source_id().cloned())
+        .ok()
+        .flatten();
+
+    let enum_decl_source_id = resolved_decl
+        .to_enum_decl(&handler, engines)
+        .map(|d| d.expect_typed())
+        .and_then(|decl| decl.to_enum_id(&handler, engines))
+        .map(|decl_id| engines.de().get_enum(&decl_id).span.source_id().cloned())
+        .ok()
+        .flatten();
+
+    module.walk_scope_chain(|lexical_scope| {
+        module.submodules().iter().for_each(|(_, sub)| {
+            find_trait_impls_for_type(engines, namespace, resolved_decl, sub, impls);
+        });
+
+        let trait_map = &lexical_scope.items.implemented_traits;
+
+        for key in trait_map.trait_impls.keys() {
+            for trait_entry in trait_map.trait_impls[key].iter() {
+                let trait_type = engines.te().get(trait_entry.inner.key.type_id);
+
+                let matched = match *trait_type {
+                    TypeInfo::Enum(decl_id) => {
+                        let trait_enum = engines.de().get_enum(&decl_id);
+                        enum_decl_source_id == trait_enum.span.source_id().cloned()
+                    }
+                    TypeInfo::Struct(decl_id) => {
+                        let trait_struct = engines.de().get_struct(&decl_id);
+                        struct_decl_source_id == trait_struct.span.source_id().cloned()
+                    }
+                    _ => false,
+                };
+
+                if matched {
+                    let trait_callpath = trait_entry.inner.key.name.to_fullpath(engines, namespace);
+                    impls.push(CollectedTraitImpl {
+                        impl_span: trait_entry
+                            .inner
+                            .value
+                            .impl_span
+                            .subset_first_of("{")
+                            .unwrap(),
+                        trait_name: engines.help_out(trait_callpath).to_string(),
+                    });
+                }
+            }
+        }
+    });
 }
 
 #[test]

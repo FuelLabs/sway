@@ -18,7 +18,7 @@ use sway_core::language::parsed::TreeType;
 use sway_error::{
     diagnostic::{Diagnostic, Issue, Label, LabelType, Level, ToDiagnostic},
     error::CompileError,
-    warning::CompileWarning,
+    warning::{CompileInfo, CompileWarning},
 };
 use sway_types::{LineCol, LineColRange, SourceEngine, Span};
 use sway_utils::constants;
@@ -295,6 +295,18 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
     );
 }
 
+pub fn print_infos(source_engine: &SourceEngine, terse_mode: bool, infos: &[CompileInfo]) {
+    if infos.is_empty() {
+        return;
+    }
+
+    if !terse_mode {
+        infos
+            .iter()
+            .for_each(|n| format_diagnostic(&n.to_diagnostic(source_engine)));
+    }
+}
+
 pub fn print_warnings(
     source_engine: &SourceEngine,
     terse_mode: bool,
@@ -329,10 +341,13 @@ pub fn print_warnings(
 pub fn print_on_failure(
     source_engine: &SourceEngine,
     terse_mode: bool,
+    infos: &[CompileInfo],
     warnings: &[CompileWarning],
     errors: &[CompileError],
     reverse_results: bool,
 ) {
+    print_infos(source_engine, terse_mode, infos);
+
     let e_len = errors.len();
     let w_len = warnings.len();
 

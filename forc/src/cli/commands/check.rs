@@ -45,6 +45,10 @@ pub struct Command {
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
 
+    /// Dump all trait implementations for the given type name.
+    #[clap(long = "dump-impls", value_name = "TYPE")]
+    pub dump_impls: Option<String>,
+
     #[clap(flatten)]
     pub experimental: sway_features::CliFields,
 }

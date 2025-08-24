@@ -1,0 +1,34 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_enum --release --dump-impls=MyEnum
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_enum
+   Compiling library dump_impls_enum (test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_enum)
+info: Trait impls dump was requested.
+  --> test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_enum/src/lib.sw:3:1
+   |
+...
+ 3 | enum MyEnum {
+   | ------------ info: Matching implemented traits for this type.
+...
+11 | impl MyTrait for MyEnum {}
+   | ------------------------ help: trait is dump_impls_enum::MyTrait
+   |
+____
+
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_enum/src/lib.sw:4:5
+  |
+2 | 
+3 | enum MyEnum {
+4 |     A: ()
+  |     - Enum variant A is never constructed.
+5 | }
+6 | 
+  |
+____
+
+  Compiled library "dump_impls_enum" with 1 warning.
+    Finished release [optimized + fuel] target(s) [32 B] in ???
