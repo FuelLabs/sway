@@ -15,6 +15,7 @@ use sway_types::{integer_bits::IntegerBits, BaseIdent, Ident, Span, Spanned};
 use crate::{
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert,
+        ParsedDeclEngineGet,
     },
     engine_threading::*,
     language::{
@@ -1733,15 +1734,25 @@ impl TraitMap {
             Contract => TypeRootFilter::Contract,
             ErrorRecovery(_) => TypeRootFilter::ErrorRecovery,
             Tuple(fields) => TypeRootFilter::Tuple(fields.len()),
-            UntypedEnum(decl_id) => TypeRootFilter::Enum(*decl_id),
-            UntypedStruct(decl_id) => TypeRootFilter::Struct(*decl_id),
+            UntypedEnum(decl_id) => {
+                TypeRootFilter::Enum((*decl_id, engines.pe().get(decl_id).name.clone()))
+            }
+            UntypedStruct(decl_id) => {
+                TypeRootFilter::Struct((*decl_id, engines.pe().get(decl_id).name.clone()))
+            }
             Enum(decl_id) => {
                 // TODO Remove unwrap once #6475 is fixed
-                TypeRootFilter::Enum(engines.de().get_parsed_decl_id(decl_id).unwrap())
+                TypeRootFilter::Enum((
+                    engines.de().get_parsed_decl_id(decl_id).unwrap(),
+                    engines.de().get(decl_id).call_path.suffix.clone(),
+                ))
             }
             Struct(decl_id) => {
                 // TODO Remove unwrap once #6475 is fixed
-                TypeRootFilter::Struct(engines.de().get_parsed_decl_id(decl_id).unwrap())
+                TypeRootFilter::Struct((
+                    engines.de().get_parsed_decl_id(decl_id).unwrap(),
+                    engines.de().get(decl_id).call_path.suffix.clone(),
+                ))
             }
             ContractCaller { abi_name, .. } => TypeRootFilter::ContractCaller(abi_name.to_string()),
             Array(_, _) => TypeRootFilter::Array,
