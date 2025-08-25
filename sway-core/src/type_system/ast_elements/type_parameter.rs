@@ -165,6 +165,21 @@ impl TypeParameter {
 
         Ok(())
     }
+
+    pub(crate) fn unifies(
+        &self,
+        type_id: TypeId,
+        decider: impl Fn(TypeId, TypeId) -> bool,
+    ) -> bool {
+        match self {
+            TypeParameter::Type(generic_type_parameter) => {
+                decider(type_id, generic_type_parameter.type_id)
+            }
+            TypeParameter::Const(const_generic_parameter) => {
+                decider(type_id, const_generic_parameter.ty)
+            }
+        }
+    }
 }
 
 impl Named for TypeParameter {

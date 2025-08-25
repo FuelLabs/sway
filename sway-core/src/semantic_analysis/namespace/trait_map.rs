@@ -814,6 +814,62 @@ impl TraitMap {
             self.filter_by_type_inner(engines, all_types, decider2),
             engines,
         );
+
+        // include indirect trait impls for cases like StorageKey<T>
+        for key in self.trait_impls.keys() {
+            for entry in self.trait_impls[key].iter() {
+                let TraitEntry {
+                    key:
+                        TraitKey {
+                            name: trait_name,
+                            type_id: trait_type_id,
+                            trait_decl_span,
+                            impl_type_parameters,
+                            is_impl_interface_surface,
+                        },
+                    value:
+                        TraitValue {
+                            trait_items,
+                            impl_span,
+                        },
+                } = entry.inner.as_ref();
+
+                let decider3 =
+                    |left: TypeId, right: TypeId| unify_checker_for_item_import.check(right, left);
+
+                let matches_generic_params = match *engines.te().get(*trait_type_id) {
+                    TypeInfo::Enum(decl_id) => engines
+                        .de()
+                        .get(&decl_id)
+                        .generic_parameters
+                        .iter()
+                        .any(|gp| gp.unifies(type_id, decider3)),
+                    TypeInfo::Struct(decl_id) => engines
+                        .de()
+                        .get(&decl_id)
+                        .generic_parameters
+                        .iter()
+                        .any(|gp| gp.unifies(type_id, decider3)),
+                    _ => false,
+                };
+
+                if matches_generic_params
+                    || impl_type_parameters.iter().any(|tp| decider(type_id, *tp))
+                {
+                    trait_map.insert_inner(
+                        trait_name.clone(),
+                        impl_span.clone(),
+                        trait_decl_span.clone(),
+                        *trait_type_id,
+                        impl_type_parameters.clone(),
+                        trait_items.clone(),
+                        is_impl_interface_surface.clone(),
+                        engines,
+                    );
+                }
+            }
+        }
+
         trait_map
     }
 
