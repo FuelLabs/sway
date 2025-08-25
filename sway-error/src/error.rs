@@ -2724,6 +2724,29 @@ impl ToDiagnostic for CompileError {
             },
             Parse { error } => {
                 match &error.kind {
+                    ParseErrorKind::MissingColonInEnumTypeField { variant_name, tuple_contents } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Enum variant declaration is not valid".to_string())),
+                        issue: Issue::error(
+                            source_engine,
+                            error.span.clone(),
+                            format!("`{}` is not a valid enum variant declaration.", error.span.as_str()),
+                        ),
+                        hints: vec![
+                            if let Some(tuple_contents) = tuple_contents {
+                                Hint::help(
+                                    source_engine,
+                                    error.span.clone(),
+                                    format!("Did you mean `{}: ({})`?", variant_name, tuple_contents.as_str())
+                                )
+                            } else {
+                                Hint::none()
+                            }
+                        ],
+                        help: vec![
+                            "In Sway, enum variants are in the form `Variant: ()`, `Variant: <type>`, or `Variant: (<type1>, ..., <typeN>)`.".to_string(),
+                            "E.g., `Foo: (), `Bar: u64`, or `Bar: (bool, u32)`.".to_string(),
+                        ],
+                    },
                     ParseErrorKind::UnassignableExpression { erroneous_expression_kind, erroneous_expression_span } => Diagnostic {
                         reason: Some(Reason::new(code(1), "Expression cannot be assigned to".to_string())),
                         // A bit of a special handling for parentheses, because they are the only

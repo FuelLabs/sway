@@ -215,7 +215,8 @@ fn analyse_fn(
                         // Since we don't worry about pointers that are indirectly mutated,
                         // (i.e., inside the loaded value) we're done here.
                     }
-                    InstOp::MemCopyBytes { dst_val_ptr, .. }
+                    InstOp::MemClearVal { dst_val_ptr }
+                    | InstOp::MemCopyBytes { dst_val_ptr, .. }
                     | InstOp::MemCopyVal { dst_val_ptr, .. } => {
                         // If the destination is an alias of the argument pointer,
                         // then the argument is being mutated. (We could be here

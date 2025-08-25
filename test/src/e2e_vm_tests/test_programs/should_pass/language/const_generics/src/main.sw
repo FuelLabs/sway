@@ -153,10 +153,17 @@ fn main(a: [u64; 2]) {
     let a: str[3] = __to_str_array("ABC");
     assert(a.len() == 3);
     let _ = __dbg(a.len());
+    let _ = __dbg(a);
 
     let a: str[5] = __to_str_array("ABCDE");
     assert(a.len() == 5);
     let _ = __dbg(a.len());
+    let _ = __dbg(a);
+
+    let a: str[70] = __to_str_array("1234567890123456789012345678901234567890123456789012345678901234567890");
+    assert(a.len() == 70);
+    let _ = __dbg(a.len());
+    let _ = __dbg(a);
 }
 
 #[test]

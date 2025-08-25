@@ -62,6 +62,7 @@
 - [Debugging](./debugging/index.md)
   - [Debugging with CLI](./debugging/debugging_with_cli.md)
   - [Debugging with IDE](./debugging/debugging_with_ide.md)
+  - [Debugging with Forc Call](./debugging/debugging_with_forc_call.md)
 - [Sway LSP](./lsp/index.md)
   - [Installation](./lsp/installation.md)
   - [Features](./lsp/features.md)
