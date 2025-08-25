@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-4F829CC0A9DE5C47"
+
+[[package]]
+name = "trait_map_use_indirect_impl"
+source = "member"
+dependencies = ["std"]
