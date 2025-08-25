@@ -454,6 +454,7 @@ impl Namespace {
         src: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
+        // eprintln!("star_import_to_current_module {:?}", src);
         self.check_module_visibility(handler, src)?;
 
         let src_mod = self.require_module_from_absolute_path(handler, src)?;
@@ -528,6 +529,15 @@ impl Namespace {
             .iter()
             .chain(glob_imports.iter())
             .for_each(|(symbol, decl, path)| {
+                // eprintln!("decls_and_item_imports {:?} {:?} {:?}", symbol, decl, path);
+
+                if src.last().is_some_and(|f| f.as_str() == "foobar") {
+                    eprintln!(
+                        "star_import_to_current_module decls_and_item_imports {:?} {:?} {:?}",
+                        symbol, decl, path
+                    );
+                }
+
                 dst_mod.current_items_mut().insert_glob_use_symbol(
                     engines,
                     symbol.clone(),
@@ -536,6 +546,24 @@ impl Namespace {
                     visibility,
                 )
             });
+
+        if src.last().is_some_and(|f| f.as_str() == "foobar") {
+            eprintln!("star_import_to_current_module {:?}", src);
+
+            use std::io::Write;
+            let mut file = std::fs::OpenOptions::new()
+                .create(true) // create if it doesn’t exist
+                .append(true) // append instead of overwriting
+                .open("works.log")
+                .expect("Unable to open file");
+
+            writeln!(
+                file,
+                "star_import_to_current_module trait_map {:#?}",
+                engines.help_out(dst_mod.root_items().implemented_traits.clone())
+            )
+            .expect("Unable to write data");
+        }
 
         Ok(())
     }
@@ -551,6 +579,8 @@ impl Namespace {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
+        // eprintln!("variant_star_import_to_current_module {:?}", src);
+
         self.check_module_visibility(handler, src)?;
 
         let parsed_decl_engine = engines.pe();
@@ -650,6 +680,8 @@ impl Namespace {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
+        // eprintln!("item_import_to_current_module {:?}", src);
+
         self.check_module_visibility(handler, src)?;
 
         let src_mod = self.require_module_from_absolute_path(handler, src)?;
@@ -657,6 +689,9 @@ impl Namespace {
         let (decl, path) = self.item_lookup(handler, engines, item, src, false)?;
 
         let mut impls_to_insert = TraitMap::default();
+        // eprintln!("item_import_to_current_module decl {:?}", decl.clone());
+
+        let mut dump = false;
         if decl.is_typed() {
             // We only handle trait imports when handling typed declarations,
             // that is, when performing type-checking, and not when collecting.
@@ -664,13 +699,41 @@ impl Namespace {
             // declarations.
             //  if this is an enum or struct or function, import its implementations
             if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
+                // eprintln!(
+                //     "item_import_to_current_module type_id {:?}",
+                //     engines.help_out(type_id)
+                // );
+
+                dump = engines.help_out(type_id).to_string() == "StorageFoobar";
+
                 impls_to_insert.extend(
                     src_mod
                         .root_items()
                         .implemented_traits
-                        .filter_by_type_item_import(type_id, engines),
+                        .filter_by_type_item_import(type_id, engines, dump),
                     engines,
                 );
+
+                if dump {
+                    use std::io::Write;
+                    let mut file = std::fs::OpenOptions::new()
+                        .create(true) // create if it doesn’t exist
+                        .append(true) // append instead of overwriting
+                        .open("src.log")
+                        .expect("Unable to open file");
+
+                    writeln!(
+                        file,
+                        "{:#?}",
+                        engines.help_out(src_mod.root_items().implemented_traits.clone())
+                    )
+                    .expect("Unable to write data");
+
+                    eprintln!(
+                        "item_import_to_current_module impls_to_insert {:?}",
+                        engines.help_out(impls_to_insert.clone())
+                    );
+                }
             }
             // if this is a trait, import its implementations
             let decl_span = decl.span(engines);
@@ -714,7 +777,25 @@ impl Namespace {
         dst_mod
             .current_items_mut()
             .implemented_traits
-            .extend(impls_to_insert, engines);
+            .extend(impls_to_insert.clone(), engines);
+
+        if dump {
+            eprintln!("item_import_to_current_module {:?}", src);
+
+            use std::io::Write;
+            let mut file = std::fs::OpenOptions::new()
+                .create(true) // create if it doesn’t exist
+                .append(true) // append instead of overwriting
+                .open("broken.log")
+                .expect("Unable to open file");
+
+            writeln!(
+                file,
+                "item_import_to_current_module trait_map {:#?}",
+                engines.help_out(dst_mod.current_items_mut().implemented_traits.clone())
+            )
+            .expect("Unable to write data");
+        }
 
         Ok(())
     }
@@ -734,6 +815,8 @@ impl Namespace {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
+        // eprintln!("variant_import_to_current_module {:?}", src);
+
         self.check_module_visibility(handler, src)?;
 
         let decl_engine = engines.de();

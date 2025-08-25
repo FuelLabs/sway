@@ -1254,7 +1254,7 @@ impl<'a> TypeCheckContext<'a> {
                 lexical_scope
                     .items
                     .implemented_traits
-                    .filter_by_type_item_import(type_id, engines),
+                    .filter_by_type_item_import(type_id, engines, false),
                 engines,
             );
             Ok(None::<()>)

@@ -799,6 +799,7 @@ impl TraitMap {
         &self,
         type_id: TypeId,
         engines: &Engines,
+        dump: bool,
     ) -> TraitMap {
         let unify_checker = UnifyCheck::constraint_subset(engines);
         let unify_checker_for_item_import = UnifyCheck::non_generic_constraint_subset(engines);
@@ -815,10 +816,94 @@ impl TraitMap {
         // a curried version of the decider protocol to use in the helper functions
         let decider2 = |left: TypeId, right: TypeId| unify_checker.check(left, right);
 
+        if dump {
+            eprintln!(
+                "filter_by_type_item_import {:?} {:?}",
+                engines.help_out(type_id),
+                all_types
+                    .iter()
+                    .map(|t| engines.help_out(t))
+                    .collect::<Vec<_>>()
+            );
+        }
+
         trait_map.extend(
             self.filter_by_type_inner(engines, all_types, decider2),
             engines,
         );
+
+        // include indirect trait impls for cases like StorageKey<T>
+        for key in self.trait_impls.keys() {
+            for entry in self.trait_impls[key].iter() {
+                let TraitEntry {
+                    key:
+                        TraitKey {
+                            name: trait_name,
+                            type_id: trait_type_id,
+                            trait_decl_span,
+                            impl_type_parameters,
+                            is_impl_interface_surface,
+                        },
+                    value:
+                        TraitValue {
+                            trait_items,
+                            impl_span,
+                        },
+                } = entry.inner.as_ref();
+
+                let trait_name_str = format!("{:?}", engines.help_out(trait_type_id));
+                // if dump {
+                //     eprintln!("filter_by_type_item_import {:?}", trait_name_str);
+                // }
+
+                let decider3 =
+                    |left: TypeId, right: TypeId| unify_checker_for_item_import.check(right, left);
+
+                let matches_generic_params = match *engines.te().get(*trait_type_id) {
+                    TypeInfo::UntypedEnum(parsed_decl_id) => false,
+                    TypeInfo::UntypedStruct(parsed_decl_id) => false,
+                    TypeInfo::Enum(decl_id) => false,
+                    TypeInfo::Struct(decl_id) => engines
+                        .de()
+                        .get(&decl_id)
+                        .generic_parameters
+                        .iter()
+                        .any(|gp| gp.unifies(engines, type_id, decider3)),
+                    _ => false,
+                };
+
+                let matched = matches_generic_params
+                    || impl_type_parameters.iter().any(|tp| decider(type_id, *tp));
+                if dump && trait_name_str.contains("StorageKey") {
+                    eprintln!(
+                        "filter_by_type_item_import {:?} {}",
+                        trait_name_str, matched
+                    );
+
+                    // impl_type_parameters.iter().for_each(|tp| {
+                    //     eprintln!(
+                    //         "filter_by_type_item_import matching {:?} {}",
+                    //         engines.help_out(type_id),
+                    //         engines.help_out(tp)
+                    //     );
+                    // });
+                }
+
+                if matched {
+                    trait_map.insert_inner(
+                        trait_name.clone(),
+                        impl_span.clone(),
+                        trait_decl_span.clone(),
+                        *trait_type_id,
+                        impl_type_parameters.clone(),
+                        trait_items.clone(),
+                        is_impl_interface_surface.clone(),
+                        engines,
+                    );
+                }
+            }
+        }
+
         trait_map
     }
 
@@ -849,6 +934,12 @@ impl TraitMap {
                         },
                 } = entry.inner.as_ref();
 
+                let trait_name = format!("{:?}", engines.help_out(map_trait_name));
+                let dump = trait_name.as_str().contains("StorageKey<StorageFoobar>");
+                // if dump {
+                eprintln!("filter_by_type_inner {:?}", trait_name);
+                // }
+
                 if !type_engine.is_type_changeable(engines, &type_info) && *type_id == *map_type_id
                 {
                     trait_map.insert_inner(
@@ -861,7 +952,11 @@ impl TraitMap {
                         IsImplInterfaceSurface::No,
                         engines,
                     );
-                } else if decider(*type_id, *map_type_id) {
+                } else if decider(*type_id, *map_type_id)
+                    || map_impl_type_parameters
+                        .iter()
+                        .any(|tp| decider(*type_id, *tp))
+                {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
