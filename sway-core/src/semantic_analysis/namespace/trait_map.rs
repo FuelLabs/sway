@@ -15,6 +15,7 @@ use sway_types::{integer_bits::IntegerBits, BaseIdent, Ident, Span, Spanned};
 use crate::{
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert,
+        ParsedDeclEngineGet,
     },
     engine_threading::*,
     language::{
@@ -210,8 +211,8 @@ pub(crate) enum TypeRootFilter {
     Contract,
     ErrorRecovery,
     Tuple(usize),
-    Enum(ParsedDeclId<EnumDeclaration>),
-    Struct(ParsedDeclId<StructDeclaration>),
+    Enum((ParsedDeclId<EnumDeclaration>, Ident)),
+    Struct((ParsedDeclId<StructDeclaration>, Ident)),
     ContractCaller(String),
     Array,
     RawUntypedPtr,
@@ -219,6 +220,47 @@ pub(crate) enum TypeRootFilter {
     Ptr,
     Slice,
     TraitType(String),
+}
+
+impl DebugWithEngines for TypeRootFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, _engines: &Engines) -> fmt::Result {
+        use TypeRootFilter::*;
+        match self {
+            Unknown => write!(f, "Unknown"),
+            Never => write!(f, "Never"),
+            Placeholder => write!(f, "Placeholder"),
+            StringSlice => write!(f, "StringSlice"),
+            StringArray => write!(f, "StringArray"),
+            U8 => write!(f, "u8"),
+            U16 => write!(f, "u16"),
+            U32 => write!(f, "u32"),
+            U64 => write!(f, "u64"),
+            U256 => write!(f, "u256"),
+            Bool => write!(f, "bool"),
+            Custom(name) => write!(f, "Custom({})", name),
+            B256 => write!(f, "b256"),
+            Contract => write!(f, "Contract"),
+            ErrorRecovery => write!(f, "ErrorRecovery"),
+            Tuple(n) => write!(f, "Tuple(len={})", n),
+            Enum((parsed_id, name)) => {
+                // let decl = engines.pe().get(parsed_id);
+                // write!(f, "Enum({})", decl.name.as_str())
+                write!(f, "Enum({}, {:?})", name, parsed_id)
+            }
+            Struct((parsed_id, name)) => {
+                // let decl = engines.pe().get(parsed_id);
+                write!(f, "Struct({}, {:?})", name, parsed_id)
+                // write!(f, "Struct({:?})", parsed_id)
+            }
+            ContractCaller(abi_name) => write!(f, "ContractCaller({})", abi_name),
+            Array => write!(f, "Array"),
+            RawUntypedPtr => write!(f, "RawUntypedPtr"),
+            RawUntypedSlice => write!(f, "RawUntypedSlice"),
+            Ptr => write!(f, "Ptr"),
+            Slice => write!(f, "Slice"),
+            TraitType(name) => write!(f, "TraitType({})", name),
+        }
+    }
 }
 
 /// Map holding trait implementations for types.
@@ -245,6 +287,70 @@ pub(crate) enum IsExtendingExistingImpl {
 pub(crate) enum IsImplInterfaceSurface {
     Yes,
     No,
+}
+
+impl DebugWithEngines for TraitMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        if self.trait_impls.is_empty() {
+            return write!(f, "TraitMap {{ <empty> }}");
+        }
+
+        writeln!(f, "TraitMap {{")?;
+
+        for (root, entries) in &self.trait_impls {
+            writeln!(f, "  [root={:?}]", engines.help_out(root))?;
+
+            for se in entries {
+                let entry = &se.inner;
+                let key = &entry.key;
+                let value = &entry.value;
+
+                let trait_name_str = engines.help_out(&*key.name).to_string();
+                let ty_str = engines.help_out(key.type_id).to_string();
+
+                let iface_flag = match key.is_impl_interface_surface {
+                    IsImplInterfaceSurface::Yes => "interface_surface",
+                    IsImplInterfaceSurface::No => "impl",
+                };
+
+                let mut impl_tparams = String::new();
+                if !key.impl_type_parameters.is_empty() {
+                    impl_tparams.push_str(" where [");
+                    let mut first = true;
+                    for t in &key.impl_type_parameters {
+                        if !first {
+                            impl_tparams.push_str(", ");
+                        }
+                        first = false;
+                        impl_tparams.push_str(&engines.help_out(*t).to_string());
+                    }
+                    impl_tparams.push(']');
+                }
+
+                writeln!(
+                    f,
+                    "    impl {} for {} [{}]{} {{",
+                    trait_name_str, ty_str, iface_flag, impl_tparams
+                )?;
+
+                for (name, item) in &value.trait_items {
+                    match item {
+                        ResolvedTraitImplItem::Parsed(_p) => {
+                            writeln!(f, "      - {}: <parsed>", name)?;
+                        }
+                        ResolvedTraitImplItem::Typed(ty_item) => {
+                            writeln!(f, "      - {}: {:?}", name, engines.help_out(ty_item))?;
+                        }
+                    }
+                }
+
+                writeln!(f, "      [impl span: {:?}]", value.impl_span)?;
+                writeln!(f, "    }}")?;
+            }
+        }
+
+        write!(f, "}}")
+    }
 }
 
 impl TraitMap {
@@ -693,6 +799,7 @@ impl TraitMap {
         &self,
         type_id: TypeId,
         engines: &Engines,
+        dump: bool,
     ) -> TraitMap {
         let unify_checker = UnifyCheck::constraint_subset(engines);
         let unify_checker_for_item_import = UnifyCheck::non_generic_constraint_subset(engines);
@@ -709,10 +816,94 @@ impl TraitMap {
         // a curried version of the decider protocol to use in the helper functions
         let decider2 = |left: TypeId, right: TypeId| unify_checker.check(left, right);
 
+        if dump {
+            eprintln!(
+                "filter_by_type_item_import {:?} {:?}",
+                engines.help_out(type_id),
+                all_types
+                    .iter()
+                    .map(|t| engines.help_out(t))
+                    .collect::<Vec<_>>()
+            );
+        }
+
         trait_map.extend(
             self.filter_by_type_inner(engines, all_types, decider2),
             engines,
         );
+
+        // include indirect trait impls for cases like StorageKey<T>
+        for key in self.trait_impls.keys() {
+            for entry in self.trait_impls[key].iter() {
+                let TraitEntry {
+                    key:
+                        TraitKey {
+                            name: trait_name,
+                            type_id: trait_type_id,
+                            trait_decl_span,
+                            impl_type_parameters,
+                            is_impl_interface_surface,
+                        },
+                    value:
+                        TraitValue {
+                            trait_items,
+                            impl_span,
+                        },
+                } = entry.inner.as_ref();
+
+                let trait_name_str = format!("{:?}", engines.help_out(trait_type_id));
+                // if dump {
+                //     eprintln!("filter_by_type_item_import {:?}", trait_name_str);
+                // }
+
+                let decider3 =
+                    |left: TypeId, right: TypeId| unify_checker_for_item_import.check(right, left);
+
+                let matches_generic_params = match *engines.te().get(*trait_type_id) {
+                    TypeInfo::UntypedEnum(parsed_decl_id) => false,
+                    TypeInfo::UntypedStruct(parsed_decl_id) => false,
+                    TypeInfo::Enum(decl_id) => false,
+                    TypeInfo::Struct(decl_id) => engines
+                        .de()
+                        .get(&decl_id)
+                        .generic_parameters
+                        .iter()
+                        .any(|gp| gp.unifies(engines, type_id, decider3)),
+                    _ => false,
+                };
+
+                let matched = matches_generic_params
+                    || impl_type_parameters.iter().any(|tp| decider(type_id, *tp));
+                if dump && trait_name_str.contains("StorageKey") {
+                    eprintln!(
+                        "filter_by_type_item_import {:?} {}",
+                        trait_name_str, matched
+                    );
+
+                    // impl_type_parameters.iter().for_each(|tp| {
+                    //     eprintln!(
+                    //         "filter_by_type_item_import matching {:?} {}",
+                    //         engines.help_out(type_id),
+                    //         engines.help_out(tp)
+                    //     );
+                    // });
+                }
+
+                if matched {
+                    trait_map.insert_inner(
+                        trait_name.clone(),
+                        impl_span.clone(),
+                        trait_decl_span.clone(),
+                        *trait_type_id,
+                        impl_type_parameters.clone(),
+                        trait_items.clone(),
+                        is_impl_interface_surface.clone(),
+                        engines,
+                    );
+                }
+            }
+        }
+
         trait_map
     }
 
@@ -743,6 +934,12 @@ impl TraitMap {
                         },
                 } = entry.inner.as_ref();
 
+                let trait_name = format!("{:?}", engines.help_out(map_trait_name));
+                let dump = trait_name.as_str().contains("StorageKey<StorageFoobar>");
+                // if dump {
+                eprintln!("filter_by_type_inner {:?}", trait_name);
+                // }
+
                 if !type_engine.is_type_changeable(engines, &type_info) && *type_id == *map_type_id
                 {
                     trait_map.insert_inner(
@@ -755,7 +952,11 @@ impl TraitMap {
                         IsImplInterfaceSurface::No,
                         engines,
                     );
-                } else if decider(*type_id, *map_type_id) {
+                } else if decider(*type_id, *map_type_id)
+                    || map_impl_type_parameters
+                        .iter()
+                        .any(|tp| decider(*type_id, *tp))
+                {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         impl_span.clone(),
@@ -1628,15 +1829,25 @@ impl TraitMap {
             Contract => TypeRootFilter::Contract,
             ErrorRecovery(_) => TypeRootFilter::ErrorRecovery,
             Tuple(fields) => TypeRootFilter::Tuple(fields.len()),
-            UntypedEnum(decl_id) => TypeRootFilter::Enum(*decl_id),
-            UntypedStruct(decl_id) => TypeRootFilter::Struct(*decl_id),
+            UntypedEnum(decl_id) => {
+                TypeRootFilter::Enum((*decl_id, engines.pe().get(decl_id).name.clone()))
+            }
+            UntypedStruct(decl_id) => {
+                TypeRootFilter::Struct((*decl_id, engines.pe().get(decl_id).name.clone()))
+            }
             Enum(decl_id) => {
                 // TODO Remove unwrap once #6475 is fixed
-                TypeRootFilter::Enum(engines.de().get_parsed_decl_id(decl_id).unwrap())
+                TypeRootFilter::Enum((
+                    engines.de().get_parsed_decl_id(decl_id).unwrap(),
+                    engines.de().get(decl_id).call_path.suffix.clone(),
+                ))
             }
             Struct(decl_id) => {
                 // TODO Remove unwrap once #6475 is fixed
-                TypeRootFilter::Struct(engines.de().get_parsed_decl_id(decl_id).unwrap())
+                TypeRootFilter::Struct((
+                    engines.de().get_parsed_decl_id(decl_id).unwrap(),
+                    engines.de().get(decl_id).call_path.suffix.clone(),
+                ))
             }
             ContractCaller { abi_name, .. } => TypeRootFilter::ContractCaller(abi_name.to_string()),
             Array(_, _) => TypeRootFilter::Array,
