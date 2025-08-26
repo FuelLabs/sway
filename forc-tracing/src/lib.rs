@@ -13,6 +13,7 @@ pub use tracing_subscriber::{
     filter::{filter_fn, EnvFilter, LevelFilter},
     fmt::{format::FmtSpan, MakeWriter},
     layer::SubscriberExt,
+    util::SubscriberInitExt,
 };
 
 const ACTION_COLUMN_WIDTH: usize = 12;
@@ -20,9 +21,17 @@ const ACTION_COLUMN_WIDTH: usize = 12;
 // Global flag to track if JSON output mode is active
 static JSON_MODE_ACTIVE: AtomicBool = AtomicBool::new(false);
 
+// Global flag to track if telemetry is disabled
+static TELEMETRY_DISABLED: AtomicBool = AtomicBool::new(false);
+
 /// Check if JSON mode is currently active
 fn is_json_mode_active() -> bool {
     JSON_MODE_ACTIVE.load(Ordering::SeqCst)
+}
+
+/// Check if telemetry is disabled
+pub fn is_telemetry_disabled() -> bool {
+    TELEMETRY_DISABLED.load(Ordering::SeqCst)
 }
 
 /// Returns the indentation for the action prefix relative to [ACTION_COLUMN_WIDTH].
@@ -184,7 +193,7 @@ pub fn println_red_err(txt: &str) {
 
 const LOG_FILTER: &str = "RUST_LOG";
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum TracingWriter {
     /// Write ERROR and WARN to stderr and everything else to stdout.
     Stdio,
@@ -196,13 +205,14 @@ pub enum TracingWriter {
     Json,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct TracingSubscriberOptions {
     pub verbosity: Option<u8>,
     pub silent: Option<bool>,
     pub log_level: Option<LevelFilter>,
     pub writer_mode: Option<TracingWriter>,
     pub regex_filter: Option<String>,
+    pub disable_telemetry: Option<bool>,
 }
 
 // This allows us to write ERROR and WARN level logs to stderr and everything else to stdout.
@@ -306,6 +316,32 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
             tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
         }
     }
+}
+
+/// Initialize telemetry if enabled and not disabled via options
+#[cfg(feature = "telemetry")]
+pub fn init_telemetry(options: &TracingSubscriberOptions) {
+    let disabled = is_telemetry_disabled_from_options(options);
+    TELEMETRY_DISABLED.store(disabled, Ordering::SeqCst);
+    
+    if disabled {
+        return;
+    }
+    
+    // Initialize fuel-telemetry here if needed
+    // This is where telemetry initialization logic would go
+}
+
+/// Initialize telemetry if enabled and not disabled via options (no-op when telemetry feature is disabled)
+#[cfg(not(feature = "telemetry"))]
+pub fn init_telemetry(options: &TracingSubscriberOptions) {
+    // Still set the global flag even when telemetry feature is disabled for consistency
+    let disabled = is_telemetry_disabled_from_options(options);
+    TELEMETRY_DISABLED.store(disabled, Ordering::SeqCst);
+}
+
+fn is_telemetry_disabled_from_options(options: &TracingSubscriberOptions) -> bool {
+    options.disable_telemetry.unwrap_or(false) || env::var("FORC_DISABLE_TELEMETRY").is_ok()
 }
 
 #[cfg(test)]

@@ -11,7 +11,7 @@ use clap::{Parser, Subcommand};
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
 pub(crate) use contract_id::Command as ContractIdCommand;
-use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions};
+use forc_tracing::{init_telemetry, init_tracing_subscriber, TracingSubscriberOptions};
 use forc_util::ForcResult;
 pub use init::Command as InitCommand;
 pub use new::Command as NewCommand;
@@ -62,6 +62,10 @@ struct Opt {
     /// Set the log level
     #[clap(short='L', long, global = true, value_parser = LevelFilter::from_str)]
     log_level: Option<LevelFilter>,
+
+    /// Disable telemetry
+    #[clap(long, global = true)]
+    disable_telemetry: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -127,10 +131,12 @@ pub async fn run_cli() -> ForcResult<()> {
         verbosity: Some(opt.verbose),
         silent: Some(opt.silent),
         log_level: opt.log_level,
+        disable_telemetry: Some(opt.disable_telemetry),
         ..Default::default()
     };
 
-    init_tracing_subscriber(tracing_options);
+    init_tracing_subscriber(tracing_options.clone());
+    init_telemetry(&tracing_options);
 
     match opt.command {
         Forc::Add(command) => add::exec(command),

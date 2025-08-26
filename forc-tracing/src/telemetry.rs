@@ -8,8 +8,10 @@ macro_rules! error_telemetry {
     ($($arg:tt)*) => {{
         #[cfg(feature = "telemetry")]
         {
-            use fuel_telemetry::{telemetry, TelemetryLevel};
-            telemetry(TelemetryLevel::Error, "forc", &format!($($arg)*));
+            if !$crate::is_telemetry_disabled() {
+                use fuel_telemetry::{telemetry, TelemetryLevel};
+                telemetry(TelemetryLevel::Error, "forc", &format!($($arg)*));
+            }
         }
     }};
 }
@@ -20,8 +22,10 @@ macro_rules! warn_telemetry {
     ($($arg:tt)*) => {{
         #[cfg(feature = "telemetry")]
         {
-            use fuel_telemetry::{telemetry, TelemetryLevel};
-            telemetry(TelemetryLevel::Warn, "forc", &format!($($arg)*));
+            if !$crate::is_telemetry_disabled() {
+                use fuel_telemetry::{telemetry, TelemetryLevel};
+                telemetry(TelemetryLevel::Warn, "forc", &format!($($arg)*));
+            }
         }
     }};
 }
@@ -32,8 +36,10 @@ macro_rules! info_telemetry {
     ($($arg:tt)*) => {{
         #[cfg(feature = "telemetry")]
         {
-            use fuel_telemetry::{telemetry, TelemetryLevel};
-            telemetry(TelemetryLevel::Info, "forc", &format!($($arg)*));
+            if !$crate::is_telemetry_disabled() {
+                use fuel_telemetry::{telemetry, TelemetryLevel};
+                telemetry(TelemetryLevel::Info, "forc", &format!($($arg)*));
+            }
         }
     }};
 }
@@ -44,8 +50,10 @@ macro_rules! debug_telemetry {
     ($($arg:tt)*) => {{
         #[cfg(feature = "telemetry")]
         {
-            use fuel_telemetry::{telemetry, TelemetryLevel};
-            telemetry(TelemetryLevel::Debug, "forc", &format!($($arg)*));
+            if !$crate::is_telemetry_disabled() {
+                use fuel_telemetry::{telemetry, TelemetryLevel};
+                telemetry(TelemetryLevel::Debug, "forc", &format!($($arg)*));
+            }
         }
     }};
 }
