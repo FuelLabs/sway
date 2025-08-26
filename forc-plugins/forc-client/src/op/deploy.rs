@@ -12,7 +12,7 @@ use crate::{
     },
 };
 use anyhow::{bail, Context, Result};
-use forc_pkg::{self as pkg, PackageManifestFile};
+use forc_pkg::{self as pkg, DumpOpts, PackageManifestFile};
 use forc_pkg::{manifest::GenericManifestFile, MemberFilter};
 use forc_tracing::{println_action_green, println_warning};
 use forc_util::default_output_directory;
@@ -814,6 +814,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
+        dump: DumpOpts::default(),
         time_phases: cmd.print.time_phases,
         profile: cmd.print.profile,
         metrics_outfile: cmd.print.metrics_outfile.clone(),

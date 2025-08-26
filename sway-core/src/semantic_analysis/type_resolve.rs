@@ -442,6 +442,7 @@ fn resolve_symbol_and_mod_path_inner(
     // This block tries to resolve associated types
     let mut current_module = root_module;
     let mut current_mod_path = vec![mod_path[0].clone()];
+
     let mut decl_opt = None;
     let mut is_self_type = IsSelfType::No;
     for ident in mod_path.iter().skip(1) {
@@ -491,12 +492,17 @@ fn resolve_symbol_and_mod_path_inner(
         return Ok((decl, is_self_type, current_mod_path));
     }
 
-    root_module
-        .lookup_submodule(handler, &mod_path[1..])
-        .and_then(|module| {
-            let (decl, decl_path) = module.resolve_symbol(handler, engines, symbol)?;
-            Ok((decl, is_self_type, decl_path))
-        })
+    if mod_path.len() == 1 {
+        let (decl, decl_path) = root_module.resolve_symbol(handler, engines, symbol)?;
+        Ok((decl, is_self_type, decl_path))
+    } else {
+        root_module
+            .lookup_submodule(handler, &mod_path[1..])
+            .and_then(|module| {
+                let (decl, decl_path) = module.resolve_symbol(handler, engines, symbol)?;
+                Ok((decl, is_self_type, decl_path))
+            })
+    }
 }
 
 fn decl_to_type_info(

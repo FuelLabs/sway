@@ -173,6 +173,37 @@ impl Declaration {
         }
     }
 
+    pub(crate) fn to_enum_decl(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ParsedDeclId<EnumDeclaration>, ErrorEmitted> {
+        match self {
+            Declaration::EnumDeclaration(decl_id) => Ok(*decl_id),
+            Declaration::TypeAliasDeclaration(decl_id) => {
+                let alias = engines.pe().get_type_alias(decl_id);
+                let enum_decl_id = engines.te().get(alias.ty.type_id()).expect_enum(
+                    handler,
+                    engines,
+                    String::default(),
+                    &self.span(engines),
+                )?;
+
+                let parsed_decl_id = engines.de().get_parsed_decl_id(&enum_decl_id);
+                parsed_decl_id.ok_or_else(|| {
+                    handler.emit_err(CompileError::InternalOwned(
+                        "Cannot get parsed decl id from decl id".to_string(),
+                        self.span(engines),
+                    ))
+                })
+            }
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(engines),
+            })),
+        }
+    }
+
     #[allow(unused)]
     pub(crate) fn visibility(&self, decl_engine: &ParsedDeclEngine) -> Visibility {
         match self {

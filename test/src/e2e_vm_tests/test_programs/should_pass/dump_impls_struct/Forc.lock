@@ -1,0 +1,8 @@
+[[package]]
+name = "dump_impls_common"
+source = "path+from-root-264A8D30FF222119"
+
+[[package]]
+name = "dump_impls_struct"
+source = "member"
+dependencies = ["dump_impls_common"]

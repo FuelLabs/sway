@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag, Position, Range};
 use serde::{Deserialize, Serialize};
-use sway_error::warning::CompileWarning;
+use sway_error::warning::{CompileInfo, CompileWarning, Info};
 use sway_error::{error::CompileError, warning::Warning};
 use sway_types::{LineCol, LineColRange, SourceEngine, Spanned};
 
@@ -11,6 +11,7 @@ pub(crate) type DiagnosticMap = HashMap<PathBuf, Diagnostics>;
 
 #[derive(Debug, Default, Clone)]
 pub struct Diagnostics {
+    pub infos: Vec<Diagnostic>,
     pub warnings: Vec<Diagnostic>,
     pub errors: Vec<Diagnostic>,
 }
@@ -37,12 +38,30 @@ fn get_warning_diagnostic(warning: &CompileWarning) -> Diagnostic {
     }
 }
 
+fn get_info_diagnostic(info: &CompileInfo) -> Diagnostic {
+    Diagnostic {
+        range: get_range(info.span().line_col_one_index()),
+        severity: Some(DiagnosticSeverity::INFORMATION),
+        message: info.to_friendly_string(),
+        tags: get_info_diagnostic_tags(&info.content),
+        ..Default::default()
+    }
+}
+
 pub fn get_diagnostics(
+    infos: &[CompileInfo],
     warnings: &[CompileWarning],
     errors: &[CompileError],
     source_engine: &SourceEngine,
 ) -> DiagnosticMap {
     let mut diagnostics = DiagnosticMap::new();
+    for info in infos {
+        let diagnostic = get_info_diagnostic(info);
+        if let Some(source_id) = info.span().source_id() {
+            let path = source_engine.get_path(source_id);
+            diagnostics.entry(path).or_default().infos.push(diagnostic);
+        }
+    }
     for warning in warnings {
         let diagnostic = get_warning_diagnostic(warning);
         if let Some(source_id) = warning.span().source_id() {
@@ -87,6 +106,12 @@ fn get_warning_diagnostic_tags(warning: &Warning) -> Option<Vec<DiagnosticTag>> 
         | Warning::UnreachableCode
         | Warning::UnusedReturnValue { .. } => Some(vec![DiagnosticTag::UNNECESSARY]),
         _ => None,
+    }
+}
+
+fn get_info_diagnostic_tags(info: &Info) -> Option<Vec<DiagnosticTag>> {
+    match info {
+        Info::ImplTraitsForType { .. } => Some(vec![DiagnosticTag::UNNECESSARY]),
     }
 }
 
