@@ -183,6 +183,37 @@ address = "0xd8c4b07a0d1be57b228f4c18ba7bca0c8655eb6e9d695f14080f2cf4fc7cd946" #
 
 If an `address` is present, `forc` calls into that contract to update its `target` instead of deploying a new contract. Since a new proxy deployment adds its own `address` into the `Forc.toml` automatically, you can simply enable the proxy once and after the initial deployment, `forc` will keep updating the target accordingly for each new deployment of the same contract.
 
+### Multi-Network Proxy Support
+
+For projects that need to deploy across multiple networks (testnet, mainnet, devnet, local), you can configure network-specific proxy addresses using the `addresses` table instead of a single `address` field:
+
+```TOML
+[project]
+name = "test_contract"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+implicit-std = false
+
+[proxy]
+enabled = true
+
+[proxy.addresses]
+testnet = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+mainnet = "0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321"
+devnet = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+local = "0x567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456"
+```
+
+When using network-specific proxy addresses:
+- `forc-deploy` automatically determines the current network and uses the appropriate proxy address
+- If no proxy address is configured for the current network, a new proxy contract will be deployed
+- The proxy address for the current network is automatically updated in `Forc.toml` after deployment
+
+**Note:** The `address` and `addresses` fields are mutually exclusive. Use `address` for single-network deployments or `addresses` for multi-network setups.
+
+This approach eliminates the need to manually update proxy addresses when switching between networks, making multi-network deployment workflows much more robust.
+
 ## Large Contracts
 
 For contracts over the maximum contract size limit (currently `100kB`) defined by the network, `forc-deploy` will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's [loader contract](https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md) functionality. Chunks that have already been deployed will be reused on subsequent deployments.
