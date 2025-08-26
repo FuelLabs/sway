@@ -1,7 +1,8 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/transmute --ir final --asm final | swayir transmute_by_reference_7
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/transmute --ir final --asm final | filter-fn transmute transmute_by_reference_7
+
 fn transmute_by_reference_7(__ret_value: __ptr u256) -> __ptr u256 {
     local [u8; 64] __anon_0
     local __ptr [u8; 64] __anon_1
@@ -24,9 +25,10 @@ fn transmute_by_reference_7(__ret_value: __ptr u256) -> __ptr u256 {
     mem_copy_val __ret_value, v7
     ret __ptr u256 __ret_value
 }
-pshl i15                      ; save registers 16..40pshh i524288                  ; save registers 40..64
 
 
+pshl i15                      ; save registers 16..40
+pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function transmute_by_reference_7
 cfei i144                     ; allocate 144 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)

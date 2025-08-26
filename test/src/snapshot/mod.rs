@@ -57,7 +57,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 .to_string();
 
             let repo_root = repo_root.clone();
-            Trial::test(name, move || {
+            Trial::test(name.clone(), move || {
                 let snapshot_toml =
                     std::fs::read_to_string(format!("{}/snapshot.toml", dir.display()))?;
                 let snapshot_toml = toml::from_str::<toml::Value>(&snapshot_toml)?;
@@ -76,8 +76,10 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 use std::fmt::Write;
                 let mut snapshot = String::new();
 
+                let name = PathBuf::from_str(&name).unwrap();
+                let name = name.file_stem().unwrap();
                 for cmd in cmds {
-                    let cmd = cmd.replace("{root}", &root);
+                    let cmd = cmd.replace("{root}", &root).replace("{name}", name.to_str().unwrap());
 
                     let _ = writeln!(&mut snapshot, "> {cmd}");
 
@@ -127,9 +129,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                 last_output = Some(new_output);
                             }
                             continue;
-                        } else if let Some(args) = cmd.strip_prefix("swayir") {
+                        } else if let Some(args) = cmd.strip_prefix("filter-fn") {
                             if let Some(output) = last_output.take() {
-                                let fns = args.split(",")
+                                let (name, fns) = args.trim().split_once(" ").unwrap();
+
+                                let fns = fns.split(",")
                                     .map(|x| x.trim().to_string())
                                     .collect::<BTreeSet<String>>();
 
@@ -140,8 +144,9 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                 let mut last_asm_lines = VecDeque::new();
                                 let mut capture_line = false;
 
+                                let compiling_project_line = format!("Compiling script {name}");
                                 for line in output.lines() {
-                                    if line.contains("Compiling script transmute") { // TODO hardocded pkg name
+                                    if line.contains(&compiling_project_line) {
                                         inside_ir = true;
                                     }
 
@@ -161,9 +166,9 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                             for m in ir.module_iter() {
                                                 for f in m.function_iter(&ir) {
                                                     if fns.contains(f.get_name(&ir)) {
-                                                        captured.push('\n');
+                                                        snapshot.push('\n');
                                                         function_print(&mut snapshot, &ir, f, false).unwrap();
-                                                        captured.push('\n');
+                                                        snapshot.push('\n');
                                                     }
                                                 }
                                             }
@@ -180,11 +185,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                                 if line.contains(f.as_str()) {
                                                     capture_line = true;
 
-                                                    captured.push('\n');
+                                                    snapshot.push('\n');
 
                                                     for l in last_asm_lines.drain(..) {
                                                         snapshot.push_str(l);
-                                                        captured.push('\n');
+                                                        snapshot.push('\n');
                                                     }
                                                 }
                                             }
@@ -223,7 +228,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                             }
                             continue;
                         } else {
-                            panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex, swayir");
+                            panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex, filter-fn");
                         };
 
                         let o = duct::cmd!("bash", "-c", cmd.clone())
