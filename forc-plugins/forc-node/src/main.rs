@@ -3,15 +3,15 @@
 use clap::Parser;
 use forc_node::{
     cmd::{ForcNodeCmd, Mode},
-    consts::{MIN_FUEL_CORE_VERSION, MINIMUM_OPEN_FILE_DESCRIPTOR_LIMIT},
-    local, testnet, ignition,
+    consts::{MINIMUM_OPEN_FILE_DESCRIPTOR_LIMIT, MIN_FUEL_CORE_VERSION},
+    ignition, local, testnet,
     util::{check_open_fds_limit, get_fuel_core_version},
 };
 use forc_tracing::init_tracing_subscriber;
 use forc_util::forc_result_bail;
 use semver::Version;
 use std::{env, process::Child, str::FromStr};
-use tracing_subscriber::{Layer, filter::EnvFilter, layer::SubscriberExt, registry};
+use tracing_subscriber::{filter::EnvFilter, layer::SubscriberExt, registry, Layer};
 
 /// Initialize logging with the same setup as fuel-core CLI
 fn init_logging() {
@@ -19,9 +19,7 @@ fn init_logging() {
     const HUMAN_LOGGING: &str = "HUMAN_LOGGING";
 
     let filter = match env::var_os(LOG_FILTER) {
-        Some(_) => {
-            EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided")
-        }
+        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
         None => EnvFilter::new("info"),
     };
 
@@ -57,8 +55,7 @@ fn init_logging() {
         .with(filter) // filter out low-level debug tracing (eg tokio executor)
         .with(fmt); // log to stdout
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("setting global default failed");
+    tracing::subscriber::set_global_default(subscriber).expect("setting global default failed");
 }
 
 /// Initialize common setup for testnet and ignition modes
