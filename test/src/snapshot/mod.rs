@@ -2,12 +2,15 @@ use anyhow::Result;
 use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
 use regex::Regex;
+use std::{
+    collections::{BTreeSet, VecDeque},
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::Once,
+};
 use sway_core::Engines;
 use sway_features::ExperimentalFeatures;
 use sway_ir::function_print;
-use std::{
-    collections::{BTreeSet, VecDeque}, path::{Path, PathBuf}, str::FromStr, sync::Once
-};
 
 static FORC_COMPILATION: Once = Once::new();
 static FORC_DOC_COMPILATION: Once = Once::new();
@@ -154,13 +157,13 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                         if line.starts_with("!0 =") {
                                             let engines = Engines::default();
                                             let ir = sway_ir::parse(&captured, engines.se(), ExperimentalFeatures::default()).unwrap();
-                                            
+
                                             for m in ir.module_iter() {
                                                 for f in m.function_iter(&ir) {
                                                     if fns.contains(f.get_name(&ir)) {
-                                                        snapshot.push_str("\n");
+                                                        captured.push('\n');
                                                         function_print(&mut snapshot, &ir, f, false).unwrap();
-                                                        snapshot.push_str("\n");
+                                                        captured.push('\n');
                                                     }
                                                 }
                                             }
@@ -170,18 +173,18 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                             captured.clear();
                                         }
                                     }
-                                
+
                                     if inside_asm {
                                         if line.contains("save locals base register for function") {
                                             for f in fns.iter() {
                                                 if line.contains(f.as_str()) {
                                                     capture_line = true;
 
-                                                    snapshot.push_str("\n");
+                                                    captured.push('\n');
 
                                                     for l in last_asm_lines.drain(..) {
                                                         snapshot.push_str(l);
-                                                        snapshot.push_str("\n");    
+                                                        captured.push('\n');
                                                     }
                                                 }
                                             }
@@ -192,15 +195,15 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                             last_asm_lines.pop_front();
                                         }
                                         last_asm_lines.push_back(line);
-                                        
+
                                         if line.is_empty() {
                                             inside_asm = false;
                                         }
 
                                         if line.contains("; return from call") {
                                             if capture_line {
-                                                captured.push_str(&line);
-                                                captured.push_str("\n");
+                                                captured.push_str(line);
+                                                captured.push('\n');
 
                                                 write!(&mut snapshot, "{}", captured).unwrap();
                                                 captured.clear();
@@ -211,11 +214,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                     }
 
                                     if capture_line {
-                                        captured.push_str(&line);
-                                        captured.push_str("\n");
+                                        captured.push_str(line);
+                                        captured.push('\n');
                                     }
                                 }
-                                
+
                                 last_output = Some(String::new());
                             }
                             continue;
