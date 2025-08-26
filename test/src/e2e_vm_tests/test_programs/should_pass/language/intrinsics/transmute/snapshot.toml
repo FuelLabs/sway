@@ -1,0 +1,3 @@
+cmds = [
+    "forc build --path {root} --ir final --asm final | swayir transmute_by_reference_7",
+]

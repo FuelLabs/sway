@@ -309,6 +309,7 @@ fn const_eval_typed_expr(
 
     Ok(match &expr.expression {
         ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
+            eprintln!("    BBB: {}", decl.span.as_str());
             if decl.value.is_none() {
                 todo!("{}", std::backtrace::Backtrace::force_capture());
             }

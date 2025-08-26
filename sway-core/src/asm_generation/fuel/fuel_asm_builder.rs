@@ -1351,7 +1351,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             byte_offs,
                             instr_reg.clone(),
                             Some(&base_reg),
-                            "get offset to local",
+                            format!("get offset to local {}", local_var.get_type(self.context).as_string(self.context)),
                             owning_span,
                         );
                     }
