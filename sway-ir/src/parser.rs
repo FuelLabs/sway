@@ -748,7 +748,20 @@ mod ir_builder {
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     use crate::{
-        asm::{AsmArg, AsmInstruction}, block::Block, constant::{ConstantContent, ConstantValue}, context::Context, error::IrError, function::Function, instruction::{InstOp, Predicate, Register}, irtype::Type, metadata::{MetadataIndex, Metadatum}, module::{Kind, Module}, value::Value, variable::LocalVar, BinaryOpKind, BlockArgument, ConfigContent, Constant, GlobalVar, Instruction, StorageKey, UnaryOpKind, B256
+        asm::{AsmArg, AsmInstruction},
+        block::Block,
+        constant::{ConstantContent, ConstantValue},
+        context::Context,
+        error::IrError,
+        function::Function,
+        instruction::{InstOp, Predicate, Register},
+        irtype::Type,
+        metadata::{MetadataIndex, Metadatum},
+        module::{Kind, Module},
+        value::Value,
+        variable::LocalVar,
+        BinaryOpKind, BlockArgument, ConfigContent, Constant, GlobalVar, Instruction, StorageKey,
+        UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -1073,11 +1086,7 @@ mod ir_builder {
             module,
             configs_map: build_configs_map(&mut ctx, &module, ir_ast_mod.configs, &md_map),
             globals_map: build_global_vars_map(&mut ctx, &module, ir_ast_mod.global_vars),
-            storage_keys_map: build_storage_keys_map(
-                &mut ctx,
-                &module,
-                ir_ast_mod.storage_keys,
-            ),
+            storage_keys_map: build_storage_keys_map(&mut ctx, &module, ir_ast_mod.storage_keys),
             md_map,
             unresolved_calls: Vec::new(),
         };
@@ -1658,7 +1667,8 @@ mod ir_builder {
         storage_keys
             .into_iter()
             .map(|storage_key_node| {
-                let path = format!("{}.{}",
+                let path = format!(
+                    "{}.{}",
                     storage_key_node.namespaces.join("::"),
                     storage_key_node.fields.join("."),
                 );
@@ -1667,12 +1677,18 @@ mod ir_builder {
                     _ => panic!("Storage key slot must be a hex string representing b256."),
                 };
                 let offset = match storage_key_node.offset {
-                    Some(IrAstConst { value: IrAstConstValue::Number(n), .. }) => n,
+                    Some(IrAstConst {
+                        value: IrAstConstValue::Number(n),
+                        ..
+                    }) => n,
                     None => 0,
                     _ => panic!("Storage key offset must be a u64 constant."),
                 };
                 let field_id = match storage_key_node.field_id {
-                    Some(IrAstConst { value: IrAstConstValue::Hex256(val), .. }) => val,
+                    Some(IrAstConst {
+                        value: IrAstConstValue::Hex256(val),
+                        ..
+                    }) => val,
                     // If the field id is not specified, it is the same as the slot.
                     None => slot,
                     _ => panic!("Storage key field id must be a hex string representing b256."),

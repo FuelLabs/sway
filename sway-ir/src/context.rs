@@ -12,7 +12,13 @@ use sway_features::ExperimentalFeatures;
 use sway_types::SourceEngine;
 
 use crate::{
-    block::BlockContent, function::FunctionContent, metadata::Metadatum, module::{Kind, ModuleContent, ModuleIterator}, value::ValueContent, variable::LocalVarContent, Constant, ConstantContent, GlobalVarContent, StorageKeyContent, Type, TypeContent
+    block::BlockContent,
+    function::FunctionContent,
+    metadata::Metadatum,
+    module::{Kind, ModuleContent, ModuleIterator},
+    value::ValueContent,
+    variable::LocalVarContent,
+    Constant, ConstantContent, GlobalVarContent, StorageKeyContent, Type, TypeContent,
 };
 
 const PANIC_REVERT_CODE_LOWER_BOUND: u64 = 0xffff_ffff_0000_0000;

@@ -5,7 +5,9 @@
 use std::{cell::Cell, collections::BTreeMap};
 
 use crate::{
-    context::Context, function::{Function, FunctionIterator}, Constant, GlobalVar, MetadataIndex, StorageKey, Type
+    context::Context,
+    function::{Function, FunctionIterator},
+    Constant, GlobalVar, MetadataIndex, StorageKey, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
@@ -121,21 +123,14 @@ impl Module {
     }
 
     /// Add a storage key value to this module.
-    pub fn add_storage_key(
-        &self,
-        context: &mut Context,
-        path: String,
-        storage_key: StorageKey,
-    ) {
-        context.modules[self.0].storage_keys.insert(path, storage_key);
+    pub fn add_storage_key(&self, context: &mut Context, path: String, storage_key: StorageKey) {
+        context.modules[self.0]
+            .storage_keys
+            .insert(path, storage_key);
     }
 
     /// Get a storage key with the given `path` from this module, if found.
-    pub fn get_storage_key<'a>(
-        &self,
-        context: &'a Context,
-        path: &str,
-    ) -> Option<&'a StorageKey> {
+    pub fn get_storage_key<'a>(&self, context: &'a Context, path: &str) -> Option<&'a StorageKey> {
         context.modules[self.0].storage_keys.get(path)
     }
 

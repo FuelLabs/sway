@@ -4882,7 +4882,8 @@ impl<'a> FnCompiler<'a> {
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let (path, field_id) = get_storage_field_path_and_field_id(&storage_field_names, &struct_field_names);
+        let (path, field_id) =
+            get_storage_field_path_and_field_id(&storage_field_names, &struct_field_names);
 
         let storage_key = match self.module.get_storage_key(context, &path) {
             Some(storage_key) => *storage_key,
@@ -4905,14 +4906,12 @@ impl<'a> FnCompiler<'a> {
                             );
                             offset_in_bytes / 8
                         }
-                        None => {
-                            return Err(CompileError::Internal(
-                                "Cannot get the offset within the slot while compiling storage read.",
-                                md_mgr
-                                    .md_to_span(context, span_md_idx)
-                                    .unwrap_or_else(Span::dummy),
-                            ))
-                        }
+                        None => return Err(CompileError::Internal(
+                            "Cannot get the offset within the slot while compiling storage read.",
+                            md_mgr
+                                .md_to_span(context, span_md_idx)
+                                .unwrap_or_else(Span::dummy),
+                        )),
                     };
                     let offset_in_slots = offset_in_words / 4;
                     let offset_remaining = offset_in_words % 4;
@@ -4926,12 +4925,13 @@ impl<'a> FnCompiler<'a> {
                     )
                 };
 
-                let storage_key = StorageKey::new(context, slot.into(), offset_within_slot, field_id.into());
+                let storage_key =
+                    StorageKey::new(context, slot.into(), offset_within_slot, field_id.into());
 
                 self.module.add_storage_key(context, path, storage_key);
 
                 storage_key
-            },
+            }
         };
 
         let storage_key = self

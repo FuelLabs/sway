@@ -159,9 +159,7 @@ impl Source {
             .as_path()
             .to_str()
             .ok_or_else(|| {
-                io::Error::other(
-                    "Failed to get the string representation of the path!",
-                )
+                io::Error::other("Failed to get the string representation of the path!")
             })?
             .as_bytes()
             .iter())

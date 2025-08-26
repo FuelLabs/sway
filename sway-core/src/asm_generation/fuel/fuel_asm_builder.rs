@@ -481,9 +481,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     indices,
                 } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
                 InstOp::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
-                InstOp::GetGlobal(global_var) => self.compile_get_global(instr_val, global_var, module),
+                InstOp::GetGlobal(global_var) => {
+                    self.compile_get_global(instr_val, global_var, module)
+                }
                 InstOp::GetConfig(_, name) => self.compile_get_config(instr_val, name),
-                InstOp::GetStorageKey(storage_key) => self.compile_get_storage_key(instr_val, storage_key, module),
+                InstOp::GetStorageKey(storage_key) => {
+                    self.compile_get_storage_key(instr_val, storage_key, module)
+                }
                 InstOp::IntToPtr(val, _) => self.compile_no_op_move(instr_val, val),
                 InstOp::Load(src_val) => self.compile_load(instr_val, src_val),
                 InstOp::MemCopyBytes {
@@ -1265,7 +1269,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .md_mgr
             .val_to_span(self.context, *instr_val)
             .unwrap_or_else(Span::dummy);
-        let name = module.lookup_global_variable_name(self.context, global_var).unwrap_or_else(|| "constant".into());
+        let name = module
+            .lookup_global_variable_name(self.context, global_var)
+            .unwrap_or_else(|| "constant".into());
 
         let Some(constant) = global_var.get_initializer(self.context) else {
             return Err(CompileError::Internal(
@@ -1422,12 +1428,19 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         Ok(())
     }
 
-    fn compile_get_storage_key(&mut self, instr_val: &Value, storage_key: &StorageKey, module: Module) -> Result<(), CompileError> {
+    fn compile_get_storage_key(
+        &mut self,
+        instr_val: &Value,
+        storage_key: &StorageKey,
+        module: Module,
+    ) -> Result<(), CompileError> {
         let span = self
             .md_mgr
             .val_to_span(self.context, *instr_val)
             .unwrap_or_else(Span::dummy);
-        let path = module.lookup_storage_key_path(self.context, storage_key).unwrap_or("storage key");
+        let path = module
+            .lookup_storage_key_path(self.context, storage_key)
+            .unwrap_or("storage key");
 
         let entry = Entry::from_constant(
             self.context,

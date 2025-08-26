@@ -36,9 +36,11 @@ impl Read for MemoryReader<'_> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let at = self.at;
         self.at += buf.len() as Word;
-        buf.copy_from_slice(self.mem.read(at, buf.len()).map_err(|_err| {
-            std::io::Error::other("Inaccessible memory")
-        })?);
+        buf.copy_from_slice(
+            self.mem
+                .read(at, buf.len())
+                .map_err(|_err| std::io::Error::other("Inaccessible memory"))?,
+        );
         Ok(buf.len())
     }
 }

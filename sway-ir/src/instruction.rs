@@ -53,7 +53,10 @@ pub enum InstOp {
     /// An opaque list of ASM instructions passed directly to codegen.
     AsmBlock(AsmBlock, Vec<AsmArg>),
     /// Unary arithmetic operations
-    UnaryOp { op: UnaryOpKind, arg: Value },
+    UnaryOp {
+        op: UnaryOpKind,
+        arg: Value,
+    },
     /// Binary arithmetic operations
     BinaryOp {
         op: BinaryOpKind,
@@ -116,7 +119,9 @@ pub enum InstOp {
         src_val_ptr: Value,
     },
     /// Clear a value, fills with zero
-    MemClearVal { dst_val_ptr: Value },
+    MemClearVal {
+        dst_val_ptr: Value,
+    },
     /// No-op, handy as a placeholder instruction.
     Nop,
     /// Cast a pointer to an integer.

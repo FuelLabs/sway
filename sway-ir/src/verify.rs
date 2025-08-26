@@ -6,7 +6,18 @@
 use itertools::Itertools;
 
 use crate::{
-    context::Context, error::IrError, function::Function, instruction::{FuelVmInstruction, InstOp, Predicate}, irtype::Type, metadata::{MetadataIndex, Metadatum}, printer, value::{Value, ValueDatum}, variable::LocalVar, AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument, BranchToWithArgs, Doc, GlobalVar, Module, Pass, PassMutability, ScopedPass, StorageKey, TypeOption, UnaryOpKind
+    context::Context,
+    error::IrError,
+    function::Function,
+    instruction::{FuelVmInstruction, InstOp, Predicate},
+    irtype::Type,
+    metadata::{MetadataIndex, Metadatum},
+    printer,
+    value::{Value, ValueDatum},
+    variable::LocalVar,
+    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
+    BranchToWithArgs, Doc, GlobalVar, Module, Pass, PassMutability, ScopedPass, StorageKey,
+    TypeOption, UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;

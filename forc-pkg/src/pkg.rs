@@ -693,10 +693,7 @@ impl BuildPlan {
         // longer exists at its specified location, etc. We must first remove all invalid nodes
         // before we can determine what we need to fetch.
         let invalid_deps = validate_graph(&graph, manifests)?;
-        let members: HashSet<String> = manifests
-            .keys()
-            .cloned()
-            .collect();
+        let members: HashSet<String> = manifests.keys().cloned().collect();
         remove_deps(&mut graph, &members, &invalid_deps);
 
         // We know that the remaining nodes have valid paths, otherwise they would have been

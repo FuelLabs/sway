@@ -287,7 +287,7 @@ fn module_to_doc<'a>(
                             } else {
                                 "".to_string()
                             },
-                        ))
+                        )),
                     )
                 })
                 .collect(),
