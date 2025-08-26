@@ -2043,10 +2043,13 @@ impl PkgTestEntry {
 
         let test_attr = test_function_decl.attributes.test();
         let fuzz_attr = test_function_decl.attributes.fuzz();
-        
+
         match (test_attr, fuzz_attr) {
             (Some(_), Some(_)) => {
-                bail!("Function \"{}\" cannot have both #[test] and #[fuzz] attributes", test_function_decl.name);
+                bail!(
+                    "Function \"{}\" cannot have both #[test] and #[fuzz] attributes",
+                    test_function_decl.name
+                );
             }
             (None, None) => {
                 unreachable!("`test_function_decl` is guaranteed to be a test or fuzz function and it must have a `#[test]` or `#[fuzz]` attribute");
