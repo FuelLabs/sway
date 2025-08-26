@@ -324,12 +324,10 @@ pub fn init_telemetry(options: &TracingSubscriberOptions) {
     let disabled = is_telemetry_disabled_from_options(options);
     TELEMETRY_DISABLED.store(disabled, Ordering::SeqCst);
     
-    if disabled {
-        return;
+    if !disabled {
+        // Initialize fuel-telemetry here if needed
+        // This is where telemetry initialization logic would go
     }
-    
-    // Initialize fuel-telemetry here if needed
-    // This is where telemetry initialization logic would go
 }
 
 /// Initialize telemetry if enabled and not disabled via options (no-op when telemetry feature is disabled)
