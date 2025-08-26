@@ -1026,8 +1026,8 @@ impl ConstGenericExpr {
             _ => Err(
                 handler.emit_err(CompileError::ConstGenericNotSupportedHere {
                     span: expr.span.clone(),
-                })
-            )
+                }),
+            ),
         }
     }
 

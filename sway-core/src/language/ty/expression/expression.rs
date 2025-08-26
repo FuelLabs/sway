@@ -600,8 +600,8 @@ impl MaterializeConstGenerics for TyExpression {
             _ => Err(handler.emit_err(
                 sway_error::error::CompileError::ConstGenericNotSupportedHere {
                     span: self.span.clone(),
-                }
-            ))
+                },
+            )),
         }
     }
 }
