@@ -1,6 +1,4 @@
-# TODO Enable this test once https://github.com/FuelLabs/sway/issues/6899 is fixed.
-#      Compilation fails with error: No method "contains4(Data2<u64, u64>, Data2<numeric, numeric>) -> bool" found for type "Data2<T, K>".
-category = "disabled"
+category = "run"
 expected_result = { action = "return", value = 10 }
 expected_result_new_encoding = { action = "return_data", value = "000000000000000A" }
 validate_abi = true

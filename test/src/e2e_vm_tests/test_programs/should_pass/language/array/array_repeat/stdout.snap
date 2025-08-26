@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 162
 ---
 > forc build  --path test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat --experimental const_generics --ir final --asm final --bytecode
 exit status: 0
@@ -1235,7 +1236,7 @@ output:
     Finished debug [unoptimized + fuel] target(s) [6.648 KB] in ???
     script array_repeat
       Bytecode size: 6648 bytes (6.648 KB)
-      Bytecode hash: 0x0ae596de91be50b99f5af33b3ffdf03b48086eef74ff481547652feb85078b94
+      Bytecode hash: 0x556fd20a12eccbbba1405bdda2eb527e6da68804f20c081c92bd630a22877ead
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat

@@ -283,6 +283,12 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
                 op: InstOp::GetConfig(_, _),
                 ..
             }) if !gep_only => (),
+            // We've reached a global at the top of the chain.
+            // There cannot be a symbol behind it, and so the returned set is complete.
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::GetGlobal(_),
+                ..
+            }) if !gep_only => (),
             // Note that in this case, the pointer itself is coming from a `Load`,
             // and not an address. So, we just continue following the pointer.
             ValueDatum::Instruction(Instruction {
