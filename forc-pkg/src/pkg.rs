@@ -694,8 +694,8 @@ impl BuildPlan {
         // before we can determine what we need to fetch.
         let invalid_deps = validate_graph(&graph, manifests)?;
         let members: HashSet<String> = manifests
-            .iter()
-            .map(|(member_name, _)| member_name.clone())
+            .keys()
+            .cloned()
             .collect();
         remove_deps(&mut graph, &members, &invalid_deps);
 
@@ -737,8 +737,8 @@ impl BuildPlan {
                 &format!("a new `Forc.lock` file. (Cause: {})", cause),
             );
             let member_names = manifests
-                .iter()
-                .map(|(_, manifest)| manifest.project.name.to_string())
+                .values()
+                .map(|manifest| manifest.project.name.to_string())
                 .collect();
             crate::lock::print_diff(&member_names, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)

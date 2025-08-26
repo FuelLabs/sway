@@ -4752,6 +4752,7 @@ impl<'a> FnCompiler<'a> {
         Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_storage_access(
         &mut self,
         context: &mut Context,

@@ -159,8 +159,7 @@ impl Source {
             .as_path()
             .to_str()
             .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::Other,
+                io::Error::other(
                     "Failed to get the string representation of the path!",
                 )
             })?

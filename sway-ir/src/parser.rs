@@ -1674,7 +1674,7 @@ mod ir_builder {
                 let field_id = match storage_key_node.field_id {
                     Some(IrAstConst { value: IrAstConstValue::Hex256(val), .. }) => val,
                     // If the field id is not specified, it is the same as the slot.
-                    None => slot.clone(),
+                    None => slot,
                     _ => panic!("Storage key field id must be a hex string representing b256."),
                 };
                 let storage_key = StorageKey::new(context, slot, offset, field_id);

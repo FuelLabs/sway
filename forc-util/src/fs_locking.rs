@@ -72,8 +72,7 @@ impl PidFileLocking {
     /// Removes the lock file if it is not locked or the process that locked it is no longer active
     pub fn release(&self) -> io::Result<()> {
         if self.is_locked() {
-            Err(io::Error::new(
-                std::io::ErrorKind::Other,
+            Err(io::Error::other(
                 format!(
                     "Cannot remove a dirty lock file, it is locked by another process (PID: {:#?})",
                     self.get_locker_pid()

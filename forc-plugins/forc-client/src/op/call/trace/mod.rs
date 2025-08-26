@@ -37,7 +37,7 @@ impl Read for MemoryReader<'_> {
         let at = self.at;
         self.at += buf.len() as Word;
         buf.copy_from_slice(self.mem.read(at, buf.len()).map_err(|_err| {
-            std::io::Error::new(std::io::ErrorKind::Other, "Inaccessible memory")
+            std::io::Error::other("Inaccessible memory")
         })?);
         Ok(buf.len())
     }
