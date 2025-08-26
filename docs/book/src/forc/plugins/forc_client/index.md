@@ -191,12 +191,12 @@ Initialized proxy contract for test_contract
 ```
 
 The `Forc.toml` will be automatically updated with the proxy address:
+
 ```TOML
 [proxy]
 enabled = true
 address = "0x19d465200575ebd085300242002efcda38db99e22449a5c1346588efe9ced7f7"
 ```
-
 
 ### Updating Existing Proxy
 
@@ -248,7 +248,7 @@ The proxy contract includes both its own storage slots and preserves the storage
 
 ## Large Contracts
 
-For contracts over the maximum contract size limit (currently `100kB`) defined by the network, `forc-deploy` will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's [loader contract](https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md) functionality. Chunks that have already been deployed will be reused on subsequent deployments.
+For contracts over the maximum contract size limit (currently `100<!-- markdownlint-disable-line -->kB`) defined by the network, `forc-deploy` will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's [loader contract](https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md) functionality. Chunks that have already been deployed will be reused on subsequent deployments.
 
 ## Deploying Scripts and Predicates
 
@@ -269,4 +269,4 @@ The loader files contain the bytecode necessary to load and execute your script 
 
 This new deployment method allows for more efficient storage and execution of scripts and predicates on the Fuel network.
 
-Note: Contracts are still deployed directly, not as blobs given that the contract size is under the maximum contract size limit defined by network (currently `100kB`).
+Note: Contracts are still deployed directly, not as blobs given that the contract size is under the maximum contract size limit defined by network (currently `100<!-- markdownlint-disable-line -->kB`).
