@@ -157,20 +157,21 @@ pub fn module_print(context: &Context, _analyses: &AnalysisResults, module: Modu
 }
 
 /// Print a function to stdout.
-pub fn function_print(context: &Context, function: Function) {
+pub fn function_print<W: std::fmt::Write>(w: &mut W, context: &Context, function: Function, metadata: bool) -> Result<(), std::fmt::Error> {
     let mut md_namer = MetadataNamer::default();
-    println!(
-        "{}",
-        function_to_doc(
-            context,
-            &mut md_namer,
-            &mut Namer::new(function),
-            context.functions.get(function.0).unwrap(),
-            &|_, doc| doc
-        )
-        .append(md_namer.to_doc(context))
-        .build()
+    let doc = function_to_doc(
+        context,
+        &mut md_namer,
+        &mut Namer::new(function),
+        context.functions.get(function.0).unwrap(),
+        &|_, doc| doc
     );
+    let doc = if metadata {
+        doc.append(md_namer.to_doc(context))
+    } else {
+        doc
+    };
+    write!(w, "{}", doc.build())
 }
 
 /// Print an instruction to stdout.

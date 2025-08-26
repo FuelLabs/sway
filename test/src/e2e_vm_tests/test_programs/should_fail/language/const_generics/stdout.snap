@@ -27,53 +27,6 @@ exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
    Compiling library std (sway-lib-std)
-[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
-{ span: self.span.clone(), },)) = Err(
-    ErrorEmitted {
-        _priv: (),
-    },
-)
-[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
-{ span: self.span.clone(), },)) = Err(
-    ErrorEmitted {
-        _priv: (),
-    },
-)
-[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
-{ span: self.span.clone(), },)) = Err(
-    ErrorEmitted {
-        _priv: (),
-    },
-)
-[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
-{ span: self.span.clone(), },)) = Err(
-    ErrorEmitted {
-        _priv: (),
-    },
-)
-[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
-{ span: self.span.clone(), },)) = Err(
-    ErrorEmitted {
-        _priv: (),
-    },
-)
-[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
-{ span: self.span.clone(), },)) = Err(
-    ErrorEmitted {
-        _priv: (),
-    },
-)
-[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
-{ span: self.span.clone(), },)) = Err(
-    ErrorEmitted {
-        _priv: (),
-    },
-)
-[sway-core/src/language/ty/expression/expression.rs:587:18] Err(handler.emit_err(sway_error::error::CompileError::ConstGenericNotSupportedHere
-{ span: self.span.clone(), },)) = Err(
-    ErrorEmitted {
-        _priv: (),
-    },
-)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics)
+AAA: main()
     Finished debug [unoptimized + fuel] target(s) [120 B] in ???

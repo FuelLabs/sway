@@ -2,10 +2,11 @@ use anyhow::Result;
 use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
 use regex::Regex;
+use sway_core::Engines;
+use sway_features::ExperimentalFeatures;
+use sway_ir::function_print;
 use std::{
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::Once,
+    collections::{BTreeSet, VecDeque}, path::{Path, PathBuf}, str::FromStr, sync::Once
 };
 
 static FORC_COMPILATION: Once = Once::new();
@@ -123,8 +124,103 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                 last_output = Some(new_output);
                             }
                             continue;
+                        } else if let Some(args) = cmd.strip_prefix("swayir") {
+                            if let Some(output) = last_output.take() {
+                                let fns = args.split(",")
+                                    .map(|x| x.trim().to_string())
+                                    .collect::<BTreeSet<String>>();
+
+                                let mut captured = String::new();
+
+                                let mut inside_ir = false;
+                                let mut inside_asm = false;
+                                let mut last_asm_lines = VecDeque::new();
+                                let mut capture_line = false;
+
+                                for line in output.lines() {
+                                    if line.contains("Compiling script transmute") { // TODO hardocded pkg name
+                                        inside_ir = true;
+                                    }
+
+                                    if line.contains(";; ASM: Final program") {
+                                        inside_asm = true;
+                                    }
+
+                                    if inside_ir {
+                                        if line.starts_with("// IR:") {
+                                            capture_line = true;
+                                        }
+
+                                        if line.starts_with("!0 =") {
+                                            let engines = Engines::default();
+                                            let ir = sway_ir::parse(&captured, engines.se(), ExperimentalFeatures::default()).unwrap();
+                                            
+                                            for m in ir.module_iter() {
+                                                for f in m.function_iter(&ir) {
+                                                    if fns.contains(f.get_name(&ir)) {
+                                                        snapshot.push_str("\n");
+                                                        function_print(&mut snapshot, &ir, f, false).unwrap();
+                                                        snapshot.push_str("\n");
+                                                    }
+                                                }
+                                            }
+
+                                            capture_line = false;
+                                            inside_ir = false;
+                                            captured.clear();
+                                        }
+                                    }
+                                
+                                    if inside_asm {
+                                        if line.contains("save locals base register for function") {
+                                            for f in fns.iter() {
+                                                if line.contains(f.as_str()) {
+                                                    capture_line = true;
+
+                                                    snapshot.push_str("\n");
+
+                                                    for l in last_asm_lines.drain(..) {
+                                                        snapshot.push_str(l);
+                                                        snapshot.push_str("\n");    
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // keep the last two lines
+                                        if last_asm_lines.len() >= 2 {
+                                            last_asm_lines.pop_front();
+                                        }
+                                        last_asm_lines.push_back(line);
+                                        
+                                        if line.is_empty() {
+                                            inside_asm = false;
+                                        }
+
+                                        if line.contains("; return from call") {
+                                            if capture_line {
+                                                captured.push_str(&line);
+                                                captured.push_str("\n");
+
+                                                write!(&mut snapshot, "{}", captured).unwrap();
+                                                captured.clear();
+                                            }
+
+                                            capture_line = false;
+                                        }
+                                    }
+
+                                    if capture_line {
+                                        captured.push_str(&line);
+                                        captured.push_str("\n");
+                                    }
+                                }
+                                
+                                last_output = Some(String::new());
+                            }
+                            continue;
                         } else {
-                            panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex");
+                            panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex, swayir");
                         };
 
                         let o = duct::cmd!("bash", "-c", cmd.clone())
