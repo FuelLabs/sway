@@ -81,6 +81,8 @@ fuel-abi-types = "0.12"
 # Although ALL versions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball.
+fuel-core = { version = "0.44", default-features = false }
+fuel-core-chain-config = { version = "0.44", default-features = false }
 fuel-core-client = { version = "0.44.0", default-features = false }
 fuel-core-storage = { version = "0.44", default-features = false }
 fuel-core-types = { version = "0.44", default-features = false }
@@ -251,3 +253,7 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+# Patch yamux to fix compilation issue with unstable feature
+[patch.crates-io]
+yamux = { git = "https://github.com/libp2p/rust-yamux", tag = "yamux-v0.13.3" }
