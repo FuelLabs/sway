@@ -4,18 +4,18 @@ source: test/src/snapshot/mod.rs
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/transmute --ir final --asm final | filter-fn transmute transmute_by_reference_7
 
 fn transmute_by_reference_7(__ret_value: __ptr u256) -> __ptr u256 {
-    local [u8; 64] __anon_0
-    local __ptr [u8; 64] __anon_1
-    local mut [u8; 64] bytes
+    local [u8; 32] __anon_0
+    local __ptr [u8; 32] __anon_1
+    local mut [u8; 32] bytes
     local __ptr u256 v
 
     entry(__ret_value: __ptr u256):
-    v0 = get_local __ptr [u8; 64], __anon_0
+    v0 = get_local __ptr [u8; 32], __anon_0
     mem_clear_val v0
-    v1 = get_local __ptr [u8; 64], bytes
+    v1 = get_local __ptr [u8; 32], bytes
     mem_copy_val v1, v0
-    v2 = get_local __ptr [u8; 64], bytes
-    v3 = get_local __ptr __ptr [u8; 64], __anon_1
+    v2 = get_local __ptr [u8; 32], bytes
+    v3 = get_local __ptr __ptr [u8; 32], __anon_1
     store v2 to v3
     v4 = cast_ptr v3 to __ptr __ptr u256
     v5 = get_local __ptr __ptr u256, v
@@ -30,21 +30,21 @@ fn transmute_by_reference_7(__ret_value: __ptr u256) -> __ptr u256 {
 pshl i15                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function transmute_by_reference_7
-cfei i144                     ; allocate 144 bytes for locals and 0 slots for call arguments
+cfei i80                      ; allocate 80 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-mcli $$locbase i64            ; clear memory [u8; 64], 64 bytes
-addi $r2 $$locbase i72        ; get offset to local __ptr [u8; 64]
-mcpi $r2 $$locbase i64        ; copy memory
-addi $r2 $$locbase i72        ; get offset to local __ptr [u8; 64]
-addi $r3 $$locbase i64        ; get offset to local __ptr __ptr [u8; 64]
-sw   $$locbase $r2 i8         ; store word
-addi $r2 $$locbase i136       ; get offset to local __ptr __ptr u256
+mcli $$locbase i32            ; clear memory [u8; 32], 32 bytes
+addi $r2 $$locbase i40        ; get offset to local __ptr [u8; 32]
+mcpi $r2 $$locbase i32        ; copy memory
+addi $r2 $$locbase i40        ; get offset to local __ptr [u8; 32]
+addi $r3 $$locbase i32        ; get offset to local __ptr __ptr [u8; 32]
+sw   $$locbase $r2 i4         ; store word
+addi $r2 $$locbase i72        ; get offset to local __ptr __ptr u256
 mcpi $r2 $r3 i8               ; copy memory
-lw   $r2 $$locbase i17        ; load word
+lw   $r2 $$locbase i9         ; load word
 mcpi $r0 $r2 i32              ; copy memory
 move $$retv $r0               ; set return value
-cfsi i144                     ; free 144 bytes for locals and 0 slots for extra call arguments
+cfsi i80                      ; free 80 bytes for locals and 0 slots for extra call arguments
 move $$reta $r1               ; restore return address
 poph i524288                  ; restore registers 40..64
 popl i15                      ; restore registers 16..40

@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 162
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests --logs --raw-logs --dbgs --reverts passing_
 exit status: 0
@@ -24,6 +23,7 @@ ____
 
 tested -- panic_handling_in_unit_tests
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -64,6 +64,9 @@ tested -- panic_handling_in_unit_tests
       test passing_dbgs_and_logs ... ok (???, 2219 gas)
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      test passing_dbgs_and_logs ... ok (???, 2175 gas)
+>>>>>>> 25301cb25 (update snapshot tests)
            debug output:
 [src/main.sw:23:13] "This is a passing test containing `__dbg` outputs." = "This is a passing test containing `__dbg` outputs."
 [src/main.sw:25:13] x = 42
@@ -71,6 +74,7 @@ tested -- panic_handling_in_unit_tests
 AsciiString { data: "This is a log from the passing test." }, log rb: 10098701174489624218
 42, log rb: 1515152261580153489
            raw logs:
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -111,6 +115,9 @@ AsciiString { data: "This is a log from the passing test." }, log rb: 1009870117
 [{"LogData":{"data":"0000000000000024546869732069732061206c6f672066726f6d207468652070617373696e6720746573742e","digest":"29d742ad9093cdf81404ff756467a44448729b85ab3c0d65197829fb61d2dd29","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":44,"pc":15824,"ptr":67107840,"ra":0,"rb":10098701174489624218}},{"LogData":{"data":"000000000000002a","digest":"a6bb133cb1e3638ad7b8a3ff0539668e9e56f9b850ef1b2a810f5422eaa6c323","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":16456,"ptr":67106816,"ra":0,"rb":1515152261580153489}}]
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+[{"LogData":{"data":"0000000000000024546869732069732061206c6f672066726f6d207468652070617373696e6720746573742e","digest":"29d742ad9093cdf81404ff756467a44448729b85ab3c0d65197829fb61d2dd29","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":44,"pc":15664,"ptr":67107840,"ra":0,"rb":10098701174489624218}},{"LogData":{"data":"000000000000002a","digest":"a6bb133cb1e3638ad7b8a3ff0539668e9e56f9b850ef1b2a810f5422eaa6c323","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":16296,"ptr":67106816,"ra":0,"rb":1515152261580153489}}]
+>>>>>>> 25301cb25 (update snapshot tests)
       test passing_no_dbgs_or_logs ... ok (???, 18 gas)
 
 test result: OK. 2 passed; 0 failed; finished in ???
@@ -134,6 +141,7 @@ warning: Error message is empty
 ____
 
   Compiled script "panic_handling_in_unit_tests" with 1 warning.
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -170,10 +178,14 @@ ____
     Finished debug [unoptimized + fuel] target(s) [9.552 KB] in ???
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+    Finished debug [unoptimized + fuel] target(s) [9.392 KB] in ???
+>>>>>>> 25301cb25 (update snapshot tests)
      Running 20 tests, filtered 0 tests
 
 tested -- panic_handling_in_unit_tests
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -184,6 +196,8 @@ tested -- panic_handling_in_unit_tests
 =======
 >>>>>>> 6ecb6582a (update tests)
 <<<<<<< HEAD
+=======
+>>>>>>> 25301cb25 (update snapshot tests)
       test passing_dbgs_and_logs ... ok (???, 2175 gas)
 >>>>>>> 6735b0f5b (update tests)
       test passing_no_dbgs_or_logs ... ok (???, 18 gas)
@@ -194,30 +208,6 @@ tested -- panic_handling_in_unit_tests
       test failing_error_signal_assert_ne ... FAILED (???, 1350 gas)
       test failing_error_signal_require_str_error ... FAILED (???, 316 gas)
       test failing_error_signal_require_enum_error ... FAILED (???, 416 gas)
-=======
-=======
->>>>>>> 382a0a673 (update tests)
-<<<<<<< HEAD
-=======
->>>>>>> 586981b65 (update tests)
-      test passing_dbgs_and_logs ... ok (???, 2219 gas)
-      test passing_no_dbgs_or_logs ... ok (???, 18 gas)
-      test failing_revert_intrinsic ... FAILED (???, 19 gas)
-      test failing_revert_function_with_dbgs_and_logs ... FAILED (???, 2346 gas)
-      test failing_error_signal_assert ... FAILED (???, 497 gas)
-      test failing_error_signal_assert_eq ... FAILED (???, 1394 gas)
-      test failing_error_signal_assert_ne ... FAILED (???, 1389 gas)
-      test failing_error_signal_require_str_error ... FAILED (???, 318 gas)
-      test failing_error_signal_require_enum_error ... FAILED (???, 414 gas)
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 32bafbbe1 (update tests)
-=======
-<<<<<<< HEAD
->>>>>>> 382a0a673 (update tests)
-=======
->>>>>>> 586981b65 (update tests)
       test failing_panic_no_arg ... FAILED (???, 197 gas)
       test failing_panic_unit_arg ... FAILED (???, 197 gas)
       test failing_panic_const_eval_str_arg ... FAILED (???, 19 gas)
@@ -254,6 +244,7 @@ AsciiString { data: "This is a log from the reverting test." }, log rb: 10098701
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "pc": 15396,
 =======
 =======
@@ -291,6 +282,9 @@ AsciiString { data: "This is a log from the reverting test." }, log rb: 10098701
       "pc": 15824,
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      "pc": 15664,
+>>>>>>> 25301cb25 (update snapshot tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -327,6 +321,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "pc": 15396,
 =======
 =======
@@ -364,6 +359,9 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "pc": 15824,
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      "pc": 15664,
+>>>>>>> 25301cb25 (update snapshot tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -379,6 +377,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "pc": 16028,
 =======
 =======
@@ -416,6 +415,9 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "pc": 16456,
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      "pc": 16296,
+>>>>>>> 25301cb25 (update snapshot tests)
       "ptr": 67106816,
       "ra": 0,
       "rb": 1515152261580153489
@@ -431,6 +433,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "pc": 16028,
 =======
 =======
@@ -468,6 +471,9 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "pc": 16456,
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      "pc": 16296,
+>>>>>>> 25301cb25 (update snapshot tests)
       "ptr": 67105792,
       "ra": 0,
       "rb": 1515152261580153489
@@ -497,6 +503,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "pc": 15396,
 =======
 =======
@@ -534,6 +541,9 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "pc": 15824,
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      "pc": 15664,
+>>>>>>> 25301cb25 (update snapshot tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -549,6 +559,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "pc": 16028,
 =======
 =======
@@ -586,6 +597,9 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "pc": 16456,
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      "pc": 16296,
+>>>>>>> 25301cb25 (update snapshot tests)
       "ptr": 67106816,
       "ra": 0,
       "rb": 1515152261580153489
@@ -601,6 +615,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "pc": 16028,
 =======
 =======
@@ -638,6 +653,9 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "pc": 16456,
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      "pc": 16296,
+>>>>>>> 25301cb25 (update snapshot tests)
       "ptr": 67105792,
       "ra": 0,
       "rb": 1515152261580153489
@@ -663,6 +681,7 @@ AsciiString { data: "This is an error message in a `require` call." }, log rb: 1
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "pc": 15396,
 =======
 =======
@@ -700,6 +719,9 @@ AsciiString { data: "This is an error message in a `require` call." }, log rb: 1
       "pc": 15824,
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      "pc": 15664,
+>>>>>>> 25301cb25 (update snapshot tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -815,6 +837,7 @@ AsciiString { data: "Panicked with a non-const evaluated string argument." }, lo
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "pc": 17984,
 =======
 =======
@@ -852,6 +875,9 @@ AsciiString { data: "Panicked with a non-const evaluated string argument." }, lo
       "pc": 18436,
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      "pc": 18276,
+>>>>>>> 25301cb25 (update snapshot tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -878,6 +904,7 @@ AsciiString { data: "" }, log rb: 10098701174489624218
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "pc": 17984,
 =======
 =======
@@ -915,6 +942,9 @@ AsciiString { data: "" }, log rb: 10098701174489624218
       "pc": 18436,
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      "pc": 18276,
+>>>>>>> 25301cb25 (update snapshot tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -941,6 +971,7 @@ AsciiString { data: "    " }, log rb: 10098701174489624218
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "pc": 17984,
 =======
 =======
@@ -978,6 +1009,9 @@ AsciiString { data: "    " }, log rb: 10098701174489624218
       "pc": 18436,
 >>>>>>> 586981b65 (update tests)
 >>>>>>> 6ecb6582a (update tests)
+=======
+      "pc": 18276,
+>>>>>>> 25301cb25 (update snapshot tests)
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
