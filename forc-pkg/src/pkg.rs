@@ -2041,36 +2041,51 @@ impl PkgTestEntry {
         let span = decl_ref.span();
         let test_function_decl = engines.de().get_function(decl_ref);
 
-        let Some(test_attr) = test_function_decl.attributes.test() else {
-            unreachable!("`test_function_decl` is guaranteed to be a test function and it must have a `#[test]` attribute");
-        };
-
-        let pass_condition = match test_attr
-            .args
-            .iter()
-            // Last "should_revert" argument wins ;-)
-            .rfind(|arg| arg.is_test_should_revert())
-        {
-            Some(should_revert_arg) => {
-                match should_revert_arg.get_string_opt(&Handler::default()) {
-                    Ok(should_revert_arg_value) => TestPassCondition::ShouldRevert(
-                        should_revert_arg_value
-                            .map(|val| val.parse::<u64>())
-                            .transpose()
-                            .map_err(|_| {
-                                anyhow!(get_invalid_revert_code_error_msg(
-                                    &test_function_decl.name,
-                                    should_revert_arg
-                                ))
-                            })?,
-                    ),
-                    Err(_) => bail!(get_invalid_revert_code_error_msg(
-                        &test_function_decl.name,
-                        should_revert_arg
-                    )),
-                }
+        let test_attr = test_function_decl.attributes.test();
+        let fuzz_attr = test_function_decl.attributes.fuzz();
+        
+        match (test_attr, fuzz_attr) {
+            (Some(_), Some(_)) => {
+                bail!("Function \"{}\" cannot have both #[test] and #[fuzz] attributes", test_function_decl.name);
             }
-            None => TestPassCondition::ShouldNotRevert,
+            (None, None) => {
+                unreachable!("`test_function_decl` is guaranteed to be a test or fuzz function and it must have a `#[test]` or `#[fuzz]` attribute");
+            }
+            _ => {} // Valid: exactly one attribute present
+        }
+
+        let pass_condition = if let Some(test_attr) = test_attr {
+            // Handle #[test] attributes
+            match test_attr
+                .args
+                .iter()
+                // Last "should_revert" argument wins ;-)
+                .rfind(|arg| arg.is_test_should_revert())
+            {
+                Some(should_revert_arg) => {
+                    match should_revert_arg.get_string_opt(&Handler::default()) {
+                        Ok(should_revert_arg_value) => TestPassCondition::ShouldRevert(
+                            should_revert_arg_value
+                                .map(|val| val.parse::<u64>())
+                                .transpose()
+                                .map_err(|_| {
+                                    anyhow!(get_invalid_revert_code_error_msg(
+                                        &test_function_decl.name,
+                                        should_revert_arg
+                                    ))
+                                })?,
+                        ),
+                        Err(_) => bail!(get_invalid_revert_code_error_msg(
+                            &test_function_decl.name,
+                            should_revert_arg
+                        )),
+                    }
+                }
+                None => TestPassCondition::ShouldNotRevert,
+            }
+        } else {
+            // Handle #[fuzz] attributes - fuzz tests shouldn't revert by default
+            TestPassCondition::ShouldNotRevert
         };
 
         let file_path =

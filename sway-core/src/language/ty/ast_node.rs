@@ -220,7 +220,7 @@ impl TyAstNode {
             } => {
                 let fn_decl = decl_engine.get_function(decl_id);
                 let TyFunctionDecl { attributes, .. } = &*fn_decl;
-                attributes.has_any_of_kind(AttributeKind::Test)
+                attributes.has_any_of_kind(AttributeKind::Test) || attributes.has_any_of_kind(AttributeKind::Fuzz)
             }
             _ => false,
         }

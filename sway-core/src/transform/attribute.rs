@@ -179,6 +179,22 @@ impl AttributeArg {
         self.name.as_str() == TEST_SHOULD_REVERT_ARG_NAME
     }
 
+    pub fn is_fuzz_param_name(&self) -> bool {
+        self.name.as_str() == FUZZ_PARAM_NAME_ARG_NAME
+    }
+
+    pub fn is_fuzz_param_iteration(&self) -> bool {
+        self.name.as_str() == FUZZ_PARAM_ITERATION_ARG_NAME
+    }
+
+    pub fn is_fuzz_param_min_val(&self) -> bool {
+        self.name.as_str() == FUZZ_PARAM_MIN_VAL_ARG_NAME
+    }
+
+    pub fn is_fuzz_param_max_val(&self) -> bool {
+        self.name.as_str() == FUZZ_PARAM_MAX_VAL_ARG_NAME
+    }
+
     pub fn is_error_message(&self) -> bool {
         self.name.as_str() == ERROR_M_ARG_NAME
     }
@@ -356,6 +372,8 @@ pub enum AttributeKind {
     Error,
     Trace,
     AbiName,
+    Fuzz,
+    FuzzParam,
 }
 
 /// Denotes if an [ItemTraitItem] belongs to an ABI or to a trait.
@@ -388,6 +406,8 @@ impl AttributeKind {
             ERROR_ATTRIBUTE_NAME => AttributeKind::Error,
             TRACE_ATTRIBUTE_NAME => AttributeKind::Trace,
             ABI_NAME_ATTRIBUTE_NAME => AttributeKind::AbiName,
+            FUZZ_ATTRIBUTE_NAME => AttributeKind::Fuzz,
+            FUZZ_PARAM_ATTRIBUTE_NAME => AttributeKind::FuzzParam,
             _ => AttributeKind::Unknown,
         }
     }
@@ -418,6 +438,8 @@ impl AttributeKind {
             Error => false,
             Trace => false,
             AbiName => false,
+            Fuzz => false,
+            FuzzParam => true,
         }
     }
 }
@@ -461,6 +483,10 @@ impl Attribute {
             // `trace(never)` or `trace(always)`.
             Trace => Multiplicity::exactly(1),
             AbiName => Multiplicity::exactly(1),
+            // `fuzz` takes no arguments.
+            Fuzz => Multiplicity::zero(),
+            // `fuzz_param(name = "foo", iteration = 100)`.
+            FuzzParam => Multiplicity::at_least(1),
         }
     }
 
@@ -518,6 +544,13 @@ impl Attribute {
             Error => MustBeIn(vec![ERROR_M_ARG_NAME]),
             Trace => MustBeIn(vec![TRACE_ALWAYS_ARG_NAME, TRACE_NEVER_ARG_NAME]),
             AbiName => MustBeIn(vec![ABI_NAME_NAME_ARG_NAME]),
+            Fuzz => None,
+            FuzzParam => MustBeIn(vec![
+                FUZZ_PARAM_NAME_ARG_NAME,
+                FUZZ_PARAM_ITERATION_ARG_NAME,
+                FUZZ_PARAM_MIN_VAL_ARG_NAME,
+                FUZZ_PARAM_MAX_VAL_ARG_NAME,
+            ]),
         }
     }
 
@@ -543,6 +576,9 @@ impl Attribute {
             Error => Yes,
             Trace => No,
             AbiName => Yes,
+            Fuzz => No,
+            // `fuzz_param(name = "foo", iteration = 100)`.
+            FuzzParam => Yes,
         }
     }
 
@@ -565,6 +601,8 @@ impl Attribute {
             Error => false,
             Trace => false,
             AbiName => false,
+            Fuzz => false,
+            FuzzParam => false,
         }
     }
 
@@ -620,6 +658,8 @@ impl Attribute {
             Error => false,
             Trace => matches!(item_kind, ItemKind::Fn(_)),
             AbiName => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
+            Fuzz => matches!(item_kind, ItemKind::Fn(_)),
+            FuzzParam => matches!(item_kind, ItemKind::Fn(_)),
         }
     }
 
@@ -647,6 +687,8 @@ impl Attribute {
             Error => struct_or_enum_field == StructOrEnumField::EnumField,
             Trace => false,
             AbiName => false,
+            Fuzz => false,
+            FuzzParam => false,
         }
     }
 
@@ -676,6 +718,8 @@ impl Attribute {
             // because they don't have implementation.
             Trace => false,
             AbiName => false,
+            Fuzz => false,
+            FuzzParam => false,
         }
     }
 
@@ -700,6 +744,8 @@ impl Attribute {
             Error => false,
             Trace => matches!(item, ItemImplItem::Fn(..)),
             AbiName => false,
+            Fuzz => matches!(item, ItemImplItem::Fn(..)),
+            FuzzParam => matches!(item, ItemImplItem::Fn(..)),
         }
     }
 
@@ -723,6 +769,8 @@ impl Attribute {
             Error => false,
             Trace => true,
             AbiName => false,
+            Fuzz => false,
+            FuzzParam => false,
         }
     }
 
@@ -744,6 +792,8 @@ impl Attribute {
             Error => false,
             Trace => false,
             AbiName => false,
+            Fuzz => false,
+            FuzzParam => false,
         }
     }
 
@@ -764,6 +814,8 @@ impl Attribute {
             Error => false,
             Trace => false,
             AbiName => false,
+            Fuzz => false,
+            FuzzParam => false,
         }
     }
 
@@ -819,6 +871,8 @@ impl Attribute {
             AbiName => vec![
                 "\"abi_name\" attribute can only annotate structs and enums.",
             ],
+            Fuzz => vec!["\"fuzz\" attribute can only annotate module functions."],
+            FuzzParam => vec!["\"fuzz_param\" attribute can only annotate module functions."],
         };
 
         if help.is_empty() && target_friendly_name.starts_with("module kind") {
@@ -1058,6 +1112,18 @@ impl Attributes {
     pub fn test(&self) -> Option<&Attribute> {
         // Last-wins approach.
         self.of_kind(AttributeKind::Test).last()
+    }
+
+    /// Returns the `#[fuzz]` [Attribute], or `None` if the
+    /// [Attributes] does not contain any `#[fuzz]` attributes.
+    pub fn fuzz(&self) -> Option<&Attribute> {
+        // Last-wins approach.
+        self.of_kind(AttributeKind::Fuzz).last()
+    }
+
+    /// Returns all `#[fuzz_param]` [Attribute]s.
+    pub fn fuzz_params(&self) -> impl Iterator<Item = &Attribute> {
+        self.of_kind(AttributeKind::FuzzParam)
     }
 
     /// Returns the `#[error]` [Attribute], or `None` if the

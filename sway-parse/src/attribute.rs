@@ -543,4 +543,225 @@ mod tests {
         )
         "#);
     }
+
+    #[test]
+    fn parse_fuzz_attribute() {
+        assert_ron_snapshot!(parse::<Attribute>(r#"
+            fuzz
+        "#,), @r#"
+        Attribute(
+          name: BaseIdent(
+            name_override_opt: None,
+            span: Span(
+              src: "\n            fuzz\n        ",
+              start: 13,
+              end: 17,
+              source_id: None,
+            ),
+            is_raw_ident: false,
+          ),
+          args: None,
+        )
+        "#);
+    }
+
+    #[test]
+    fn parse_fuzz_param_attribute() {
+        assert_ron_snapshot!(parse::<Attribute>(r#"
+            fuzz_param(name = "input1", iteration = 100)
+        "#,), @r#"
+        Attribute(
+          name: BaseIdent(
+            name_override_opt: None,
+            span: Span(
+              src: "\n            fuzz_param(name = \"input1\", iteration = 100)\n        ",
+              start: 13,
+              end: 23,
+              source_id: None,
+            ),
+            is_raw_ident: false,
+          ),
+          args: Some(Parens(
+            inner: Punctuated(
+              value_separator_pairs: [
+                (AttributeArg(
+                  name: BaseIdent(
+                    name_override_opt: None,
+                    span: Span(
+                      src: "\n            fuzz_param(name = \"input1\", iteration = 100)\n        ",
+                      start: 24,
+                      end: 28,
+                      source_id: None,
+                    ),
+                    is_raw_ident: false,
+                  ),
+                  value: Some(String(LitString(
+                    span: Span(
+                      src: "\n            fuzz_param(name = \"input1\", iteration = 100)\n        ",
+                      start: 31,
+                      end: 39,
+                      source_id: None,
+                    ),
+                    parsed: "input1",
+                  ))),
+                ), CommaToken(
+                  span: Span(
+                    src: "\n            fuzz_param(name = \"input1\", iteration = 100)\n        ",
+                    start: 39,
+                    end: 40,
+                    source_id: None,
+                  ),
+                )),
+              ],
+              final_value_opt: Some(AttributeArg(
+                name: BaseIdent(
+                  name_override_opt: None,
+                  span: Span(
+                    src: "\n            fuzz_param(name = \"input1\", iteration = 100)\n        ",
+                    start: 41,
+                    end: 50,
+                    source_id: None,
+                  ),
+                  is_raw_ident: false,
+                ),
+                value: Some(Int(LitInt(
+                  span: Span(
+                    src: "\n            fuzz_param(name = \"input1\", iteration = 100)\n        ",
+                    start: 53,
+                    end: 56,
+                    source_id: None,
+                  ),
+                  parsed: [
+                    100,
+                  ],
+                  ty_opt: None,
+                  is_generated_b256: false,
+                ))),
+              )),
+            ),
+            span: Span(
+              src: "\n            fuzz_param(name = \"input1\", iteration = 100)\n        ",
+              start: 23,
+              end: 57,
+              source_id: None,
+            ),
+          )),
+        )
+        "#);
+    }
+
+    #[test]
+    fn parse_fuzz_param_min_max_attribute() {
+        assert_ron_snapshot!(parse::<Attribute>(r#"
+            fuzz_param(name = "input2", min_val = 0, max_val = 255)
+        "#,), @r#"
+        Attribute(
+          name: BaseIdent(
+            name_override_opt: None,
+            span: Span(
+              src: "\n            fuzz_param(name = \"input2\", min_val = 0, max_val = 255)\n        ",
+              start: 13,
+              end: 23,
+              source_id: None,
+            ),
+            is_raw_ident: false,
+          ),
+          args: Some(Parens(
+            inner: Punctuated(
+              value_separator_pairs: [
+                (AttributeArg(
+                  name: BaseIdent(
+                    name_override_opt: None,
+                    span: Span(
+                      src: "\n            fuzz_param(name = \"input2\", min_val = 0, max_val = 255)\n        ",
+                      start: 24,
+                      end: 28,
+                      source_id: None,
+                    ),
+                    is_raw_ident: false,
+                  ),
+                  value: Some(String(LitString(
+                    span: Span(
+                      src: "\n            fuzz_param(name = \"input2\", min_val = 0, max_val = 255)\n        ",
+                      start: 31,
+                      end: 39,
+                      source_id: None,
+                    ),
+                    parsed: "input2",
+                  ))),
+                ), CommaToken(
+                  span: Span(
+                    src: "\n            fuzz_param(name = \"input2\", min_val = 0, max_val = 255)\n        ",
+                    start: 39,
+                    end: 40,
+                    source_id: None,
+                  ),
+                )),
+                (AttributeArg(
+                  name: BaseIdent(
+                    name_override_opt: None,
+                    span: Span(
+                      src: "\n            fuzz_param(name = \"input2\", min_val = 0, max_val = 255)\n        ",
+                      start: 41,
+                      end: 48,
+                      source_id: None,
+                    ),
+                    is_raw_ident: false,
+                  ),
+                  value: Some(Int(LitInt(
+                    span: Span(
+                      src: "\n            fuzz_param(name = \"input2\", min_val = 0, max_val = 255)\n        ",
+                      start: 51,
+                      end: 52,
+                      source_id: None,
+                    ),
+                    parsed: [],
+                    ty_opt: None,
+                    is_generated_b256: false,
+                  ))),
+                ), CommaToken(
+                  span: Span(
+                    src: "\n            fuzz_param(name = \"input2\", min_val = 0, max_val = 255)\n        ",
+                    start: 52,
+                    end: 53,
+                    source_id: None,
+                  ),
+                )),
+              ],
+              final_value_opt: Some(AttributeArg(
+                name: BaseIdent(
+                  name_override_opt: None,
+                  span: Span(
+                    src: "\n            fuzz_param(name = \"input2\", min_val = 0, max_val = 255)\n        ",
+                    start: 54,
+                    end: 61,
+                    source_id: None,
+                  ),
+                  is_raw_ident: false,
+                ),
+                value: Some(Int(LitInt(
+                  span: Span(
+                    src: "\n            fuzz_param(name = \"input2\", min_val = 0, max_val = 255)\n        ",
+                    start: 64,
+                    end: 67,
+                    source_id: None,
+                  ),
+                  parsed: [
+                    255,
+                  ],
+                  ty_opt: None,
+                  is_generated_b256: false,
+                ))),
+              )),
+            ),
+            span: Span(
+              src: "\n            fuzz_param(name = \"input2\", min_val = 0, max_val = 255)\n        ",
+              start: 23,
+              end: 68,
+              source_id: None,
+            ),
+          )),
+        )
+        "#);
+    }
 }
