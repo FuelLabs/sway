@@ -61,8 +61,9 @@ fn resolve_length(
             let decl = match resolved_decl {
                 TyDecl::ConstGenericDecl(decl) => ConstGenericExprTyDecl::ConstGenericDecl(decl),
                 TyDecl::ConstantDecl(decl) => ConstGenericExprTyDecl::ConstantDecl(decl),
-                x => todo!("{x:?}"),
+                _ => unreachable!(),
             };
+
             Ok(Length(ConstGenericExpr::AmbiguousVariableExpression {
                 ident: ident.clone(),
                 decl: Some(decl),

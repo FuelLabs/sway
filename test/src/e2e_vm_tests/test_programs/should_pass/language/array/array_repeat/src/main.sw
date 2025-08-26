@@ -91,7 +91,7 @@ fn u8_array_bigger_than_18_bits() -> [u8; 262145] {
     [0u8; 262145]
 }
 
-// These arrays' length are const declarations
+// Test arrays length that are const declarations
 
 const GLOBAL_A: u64 = 1;
 #[inline(never)]

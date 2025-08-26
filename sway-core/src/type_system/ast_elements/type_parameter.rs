@@ -1023,14 +1023,11 @@ impl ConstGenericExpr {
                     decl: None,
                 })
             }
-            x => {
-                dbg!(x);
-                Err(
-                    handler.emit_err(CompileError::ConstGenericNotSupportedHere {
-                        span: expr.span.clone(),
-                    }),
-                )
-            }
+            _ => Err(
+                handler.emit_err(CompileError::ConstGenericNotSupportedHere {
+                    span: expr.span.clone(),
+                })
+            )
         }
     }
 

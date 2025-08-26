@@ -22,7 +22,6 @@ library {
 ;; --- END OF TARGET BYTECODE ---
 
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
-    BBB: N
 // IR: Final
 script {
     global std::error_signals::FAILED_ASSERT_EQ_SIGNAL : u64 = const u64 18446744073709486083
@@ -3060,7 +3059,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
-    BBB: N
     Finished debug [unoptimized + fuel] target(s) [8.24 KB] in ???
     script array_repeat
       Bytecode size: 8240 bytes (8.24 KB)

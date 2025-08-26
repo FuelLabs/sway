@@ -439,11 +439,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
-    BBB: N
-    BBB: B
-    BBB: B
-    BBB: B
-    BBB: B
 warning
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:107:5
     |
