@@ -311,7 +311,7 @@ impl InterpreterStorage for ShallowStorage {
         block_height: fuel_vm::fuel_types::BlockHeight,
     ) -> Result<fuel_vm::prelude::Bytes32, Self::DataError> {
         // Block header hashes for blocks with height greater than or equal to current block height are zero (0x00**32).
-        // https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/instruction_set.md#bhsh-block-hash
+        // https://docs.fuel.network/docs/specs/fuel-vm/instruction-set/#bhsh-block-hash
         if block_height >= self.block_height || block_height == Default::default() {
             Ok(Bytes32::zeroed())
         } else {

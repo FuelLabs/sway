@@ -23,7 +23,7 @@ lazy_static! {
 
 // remote="Self" is a serde pattern for post-deserialization code.
 // See https://github.com/serde-rs/serde/issues/1118#issuecomment-1320706758
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(transparent, remote = "Self")]
 pub struct Source {
     pub text: Arc<str>,

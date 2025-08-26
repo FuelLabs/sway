@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 162
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --release
 exit status: 1
@@ -443,12 +444,12 @@ warning
 ____
 
   Compiled script "const_generics" with 2 warnings.
-    Finished debug [unoptimized + fuel] target(s) [9.552 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [9.56 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-      test run_main ... ok (???, 17570 gas)
+      test run_main ... ok (???, 17574 gas)
            debug output:
 [src/main.sw:105:13] a = [1, 2]
 [src/main.sw:109:13] [C {}].len() = 1

@@ -11,6 +11,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
+use fuel_abi_types::abi::program::ProgramABI;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction};
 use fuels::{
@@ -164,11 +165,17 @@ pub async fn run_pkg(
         info!("{:?}", tx);
         Ok(RanScript { receipts: vec![] })
     } else {
+        let program_abi = match &compiled.program_abi {
+            sway_core::asm_generation::ProgramABI::Fuel(abi) => Some(abi),
+            _ => None,
+        };
         let receipts = try_send_tx(
             node_url.as_str(),
             &tx.into(),
             command.pretty_print,
             command.simulate,
+            command.debug,
+            program_abi,
         )
         .await?;
         Ok(RanScript { receipts })
@@ -180,13 +187,15 @@ async fn try_send_tx(
     tx: &Transaction,
     pretty_print: bool,
     simulate: bool,
+    debug: bool,
+    abi: Option<&ProgramABI>,
 ) -> Result<Vec<fuel_tx::Receipt>> {
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
         Ok(_) => timeout(
             Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
-            send_tx(&client, tx, pretty_print, simulate),
+            send_tx(&client, tx, pretty_print, simulate, debug, abi),
         )
         .await
         .with_context(|| format!("timeout waiting for {:?} to be included in a block", tx))?,
@@ -199,6 +208,8 @@ async fn send_tx(
     tx: &Transaction,
     pretty_print: bool,
     simulate: bool,
+    debug: bool,
+    abi: Option<&ProgramABI>,
 ) -> Result<Vec<fuel_tx::Receipt>> {
     let outputs = {
         if !simulate {
@@ -229,7 +240,59 @@ async fn send_tx(
     if !outputs.is_empty() {
         info!("{}", format_log_receipts(&outputs, pretty_print)?);
     }
+    if debug {
+        start_debug_session(client, tx, abi).await?;
+    }
     Ok(outputs)
+}
+
+/// Starts an interactive debugging session with the given transaction
+async fn start_debug_session(
+    fuel_client: &FuelClient,
+    tx: &fuel_tx::Transaction,
+    program_abi: Option<&ProgramABI>,
+) -> Result<()> {
+    // Create debugger instance from the existing fuel client
+    let mut debugger = forc_debug::debugger::Debugger::from_client(fuel_client.clone())
+        .await
+        .map_err(|e| anyhow!("Failed to create debugger: {e}"))?;
+
+    // Create temporary files for transaction and ABI (auto-cleaned when dropped)
+    let mut tx_file = tempfile::Builder::new()
+        .suffix(".json")
+        .tempfile()
+        .map_err(|e| anyhow!("Failed to create temp transaction file: {e}"))?;
+    serde_json::to_writer_pretty(&mut tx_file, tx)
+        .map_err(|e| anyhow!("Failed to write transaction to temp file: {e}"))?;
+
+    let mut abi_file = tempfile::Builder::new()
+        .suffix(".json")
+        .tempfile()
+        .map_err(|e| anyhow!("Failed to create temp ABI file: {e}"))?;
+
+    let tx_cmd = if let Some(abi) = program_abi {
+        serde_json::to_writer_pretty(&mut abi_file, &abi)
+            .map_err(|e| anyhow!("Failed to write ABI to temp file: {e}"))?;
+
+        // Prepare the start_tx command string for the CLI
+        format!(
+            "start_tx {} {}",
+            tx_file.path().to_string_lossy(),
+            abi_file.path().to_string_lossy()
+        )
+    } else {
+        // Prepare the start_tx command string for the CLI
+        format!("start_tx {}", tx_file.path().to_string_lossy())
+    };
+
+    // Start the interactive CLI session with the prepared command
+    let mut cli = forc_debug::cli::Cli::new()
+        .map_err(|e| anyhow!("Failed to create debug CLI interface: {e}"))?;
+    cli.run(&mut debugger, Some(tx_cmd))
+        .await
+        .map_err(|e| anyhow!("Interactive debugging session failed: {e}"))?;
+
+    Ok(())
 }
 
 fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {

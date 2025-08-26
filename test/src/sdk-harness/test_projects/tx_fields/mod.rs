@@ -577,7 +577,7 @@ mod tx {
             predicate_coin_amount as usize * subsections.len()
         );
 
-        // Upload each sub section in a separate transaction and include the predicate with the transaction.
+        // Upload each subsection in a separate transaction and include the predicate with the transaction.
         for subsection in subsections {
             let mut builder = UploadTransactionBuilder::prepare_subsection_upload(
                 subsection,
@@ -637,7 +637,7 @@ mod tx {
         let subsection_size = 65536;
         let subsections = UploadSubsection::split_bytecode(&bytecode, subsection_size).unwrap();
 
-        // Upload each sub section in a separate transaction and include the predicate with the transaction.
+        // Upload each subsection in a separate transaction and include the predicate with the transaction.
         for subsection in subsections.clone() {
             let mut builder = UploadTransactionBuilder::prepare_subsection_upload(
                 subsection,
@@ -1049,7 +1049,7 @@ mod inputs {
             let subsection_size = 65536;
             let subsections = UploadSubsection::split_bytecode(&bytecode, subsection_size).unwrap();
 
-            // Upload each sub section in a separate transaction and include the predicate with the transaction.
+            // Upload each subsection in a separate transaction and include the predicate with the transaction.
             for subsection in subsections.clone() {
                 let mut builder = UploadTransactionBuilder::prepare_subsection_upload(
                     subsection,
@@ -1595,7 +1595,7 @@ mod outputs {
             // Build transaction
             let tx = tb.build(provider).await.unwrap();
 
-            // Send trandaction
+            // Send transaction
             provider
                 .send_transaction_and_await_commit(tx)
                 .await
@@ -1673,7 +1673,7 @@ mod outputs {
             let subsection_size = 65536;
             let subsections = UploadSubsection::split_bytecode(&bytecode, subsection_size).unwrap();
 
-            // Upload each sub section in a separate transaction and include the predicate with the transaction.
+            // Upload each subsection in a separate transaction and include the predicate with the transaction.
             for subsection in subsections.clone() {
                 let mut builder = UploadTransactionBuilder::prepare_subsection_upload(
                     subsection,

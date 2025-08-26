@@ -88,12 +88,12 @@ fn main() -> bool {
     assert(not_3_0.upper() == u64::max() - 3);
     assert(not_3_0.lower() == u64::max());
 
-    // test as_u64()
+    // test try_as_u64()
     let eleven = U128::from((0, 11));
-    let unwrapped = eleven.as_u64().unwrap();
+    let unwrapped = eleven.try_as_u64().unwrap();
     assert(unwrapped == 11);
 
-    let err_1 = U128::from((42, 11)).as_u64();
+    let err_1 = U128::from((42, 11)).try_as_u64();
     assert(match err_1 {
         Err(U128Error::LossOfPrecision) => {
             true
@@ -103,7 +103,7 @@ fn main() -> bool {
         },
     });
 
-    let err_1 = U128::from((42, 0)).as_u64();
+    let err_1 = U128::from((42, 0)).try_as_u64();
     assert(match err_1 {
         Err(U128Error::LossOfPrecision) => {
             true
