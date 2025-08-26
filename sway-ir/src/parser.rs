@@ -646,12 +646,12 @@ mod ir_builder {
                 }
 
             rule id() -> String
-                = !(ast_ty() " ") id:$(id_char0() id_char()*) _ {
+                = !(ast_ty() (" " "\n")) id:$(id_char0() id_char()*) _ {
                     id.to_owned()
                 }
 
             rule id_id() -> Ident
-                = !(ast_ty() " ") id:$(id_char0() id_char()*) _ {
+                = !(ast_ty() (" " "\n")) id:$(id_char0() id_char()*) _ {
                     Ident::new(Span::new(id.into(), 0, id.len(), None).unwrap())
                 }
 
