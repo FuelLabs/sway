@@ -167,6 +167,7 @@ enabled = true
 ```
 
 The proxy configuration supports two fields:
+
 - `enabled` (boolean, required): Whether to deploy a proxy contract
 - `address` (string, optional): Address of an existing proxy contract to update
 
@@ -181,7 +182,8 @@ If there is no `address` field present under the proxy table, like the example a
 5. **Update Manifest**: The proxy address is automatically added to your `Forc.toml`
 
 After deployment, you'll see output similar to:
-```
+
+```console
 Deploying contract test_contract chunks
 Finished deploying test_contract 0x440b...925
 Finished deploying proxy contract for test_contract 0x19d4...f7
@@ -194,6 +196,7 @@ The `Forc.toml` will be automatically updated with the proxy address:
 enabled = true
 address = "0x19d465200575ebd085300242002efcda38db99e22449a5c1346588efe9ced7f7"
 ```
+
 
 ### Updating Existing Proxy
 
@@ -213,6 +216,7 @@ address = "0xd8c4b07a0d1be57b228f4c18ba7bca0c8655eb6e9d695f14080f2cf4fc7cd946" #
 ```
 
 When an `address` is present, `forc` will:
+
 1. Deploy the new implementation contract
 2. Call the existing proxy's `set_proxy_target` method to update the target
 3. The proxy address remains the same, providing seamless upgrades
@@ -220,11 +224,13 @@ When an `address` is present, `forc` will:
 ### Transaction Details
 
 When deploying with proxy enabled, you'll see multiple transactions in the confirmation:
+
 - One transaction to deploy the implementation contract
 - One additional transaction to deploy the proxy (for fresh deployments) or update the target (for existing proxies)
 
 Example output:
-```
+
+```console
 Confirming transactions [deploy test_contract + deploy proxy]
 Network: https://testnet.fuel.network
 ```
@@ -237,7 +243,7 @@ The proxy contract includes both its own storage slots and preserves the storage
 
 - The proxy owner (initially set to the deploying account) has exclusive rights to update the proxy target
 - Once a proxy is deployed, the address in your `Forc.toml` allows for automatic target updates on subsequent deployments
-- Proxy contracts work with both regular and [chunked contracts](#large-contracts) (contracts over 100kB)
+- Proxy contracts work with both regular and [chunked contracts](#large-contracts) (contracts over 100<!-- markdownlint-disable-line MD032 -->kB)
 - The implementation uses the SRC-14 standard for maximum compatibility with the Fuel ecosystem
 
 ## Large Contracts
