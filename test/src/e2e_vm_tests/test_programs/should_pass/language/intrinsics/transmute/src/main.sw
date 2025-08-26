@@ -21,10 +21,11 @@ pub struct SomeStruct {
 // Transmute by reference.
 #[inline(never)]
 fn transmute_by_reference() -> u256 {
-    let mut bytes = [0u8; 64];
-    let v: &mut u256 = __transmute::<&mut [u8; 64], &mut u256>(&mut bytes);
+    let mut bytes = [0u8; 32];
+    let v: &mut u256 = __transmute::<&mut [u8; 32], &mut u256>(&mut bytes);
     *v
 }
+
 #[inline(never)]
 fn const_transmute() {
     // u16 needs 8 bytes as u64
