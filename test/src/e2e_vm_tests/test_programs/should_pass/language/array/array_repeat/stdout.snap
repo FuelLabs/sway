@@ -23,53 +23,7 @@ library {
 ;; --- END OF TARGET BYTECODE ---
 
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
-AAA: main()
-AAA: array_repeat_zero_small_u8()
-AAA: array_repeat_zero_small_u16()
-AAA: array_repeat_zero_small_u32()
-AAA: array_repeat_zero_small_u64()
-AAA: array_repeat_zero_small_u256()
-AAA: array_repeat_zero_small_b256()
-AAA: array_repeat_zero_small_bool()
-AAA: array_repeat_zero_big_u8()
-AAA: array_repeat_zero_big_u16()
-AAA: array_repeat_zero_big_u32()
-AAA: array_repeat_zero_big_u64()
-AAA: array_repeat_zero_big_u256()
-AAA: array_repeat_zero_big_b256()
-AAA: array_repeat_zero_big_bool()
-AAA: small_array_repeat()
-AAA: big_array_repeat()
-AAA: u8_array_bigger_than_18_bits()
-AAA: arrays_with_const_length()
-AAA: [0u64; A]
-AAA: [0u64; A]
-AAA: [0u64; GLOBAL_A]
-AAA: [0u64]
-AAA: [0u64; B]
-AAA: [0u64, 1u64]
-AAA: decode_array()
-AAA: to_slice([255u8])
-AAA: __size_of::<T>()
-AAA: BufferReader::from_parts(data.ptr(), data.len::<u8>())
     BBB: N
-AAA: [0u8; LENGTH]
-AAA: __transmute::<&mut [u8; LENGTH], &mut [T; N]>(&mut array)
-AAA: 0
-AAA: __elem_at(array, i)
-AAA: __size_of::<T>()
-AAA: asm(ptr: self.ptr) {
-                ptr: T
-            }
-AAA: asm(ptr: self.ptr, val) {
-                lb val ptr i0;
-                val: T
-            }
-AAA: asm(ptr: self.ptr, val) {
-            lw val ptr i0;
-            val: T
-        }
-AAA: item.abi_encode(Buffer::new())
 // IR: Final
 script {
     global std::error_signals::FAILED_ASSERT_EQ_SIGNAL : u64 = const u64 18446744073709486083
@@ -1615,9 +1569,9 @@ add  $$ds $$ds $$tmp
 cfei i0                       ; allocate stack space for globals
 move $$locbase $sp            ; save locals base register for function __entry
 cfei i48                      ; allocate 48 bytes for locals and 0 slots for call arguments
-addi $r0 $$locbase i32        ; get offset to local
+addi $r0 $$locbase i32        ; get offset to local __ptr slice
 jal  $$reta $pc i9            ; [call]: call main_0
-addi $r1 $$locbase i16        ; get offset to local
+addi $r1 $$locbase i16        ; get offset to local __ptr { u64, u64 }
 sw   $$locbase $zero i2       ; store word
 sw   $$locbase $zero i3       ; store word
 mcpi $$locbase $r1 i16        ; copy memory
@@ -1649,7 +1603,7 @@ movi $r0 i33116               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i40           ; copy memory
-addi $r1 $$locbase i8         ; get offset to local
+addi $r1 $$locbase i8         ; get offset to local __ptr [u64; 5]
 mcpi $r1 $r0 i40              ; copy memory
 movi $r0 i66236               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1660,7 +1614,7 @@ movi $r0 i33121               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i40           ; copy memory
-addi $r1 $$locbase i48        ; get offset to local
+addi $r1 $$locbase i48        ; get offset to local __ptr [u64; 5]
 mcpi $r1 $r0 i40              ; copy memory
 movi $r0 i99220               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1671,7 +1625,7 @@ movi $r0 i66105               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i40           ; copy memory
-addi $r1 $$locbase i88        ; get offset to local
+addi $r1 $$locbase i88        ; get offset to local __ptr [u64; 5]
 mcpi $r1 $r0 i40              ; copy memory
 movi $r0 i99225               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1682,7 +1636,7 @@ movi $r0 i66110               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i160          ; copy memory
-addi $r1 $$locbase i128       ; get offset to local
+addi $r1 $$locbase i128       ; get offset to local __ptr [u256; 5]
 mcpi $r1 $r0 i160             ; copy memory
 movi $r0 i99245               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1693,7 +1647,7 @@ movi $r0 i66130               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i160          ; copy memory
-addi $r1 $$locbase i288       ; get offset to local
+addi $r1 $$locbase i288       ; get offset to local __ptr [b256; 5]
 mcpi $r1 $r0 i160             ; copy memory
 movi $r0 i99265               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1704,7 +1658,7 @@ movi $r0 i66150               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i5            ; copy memory
-addi $r1 $$locbase i448       ; get offset to local
+addi $r1 $$locbase i448       ; get offset to local __ptr [bool; 5]
 mcpi $r1 $r0 i5               ; copy memory
 movi $r0 i99266               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1715,7 +1669,7 @@ movi $r0 i66151               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i25           ; copy memory
-addi $r1 $$locbase i456       ; get offset to local
+addi $r1 $$locbase i456       ; get offset to local __ptr [u8; 25]
 mcpi $r1 $r0 i25              ; copy memory
 movi $r0 i99270               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1726,7 +1680,7 @@ movi $r0 i66155               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i200          ; copy memory
-addi $r1 $$locbase i488       ; get offset to local
+addi $r1 $$locbase i488       ; get offset to local __ptr [u64; 25]
 mcpi $r1 $r0 i200             ; copy memory
 movi $r0 i99295               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1737,7 +1691,7 @@ movi $r0 i66180               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i200          ; copy memory
-addi $r1 $$locbase i688       ; get offset to local
+addi $r1 $$locbase i688       ; get offset to local __ptr [u64; 25]
 mcpi $r1 $r0 i200             ; copy memory
 movi $r0 i99320               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1748,7 +1702,7 @@ movi $r0 i66205               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i200          ; copy memory
-addi $r1 $$locbase i888       ; get offset to local
+addi $r1 $$locbase i888       ; get offset to local __ptr [u64; 25]
 mcpi $r1 $r0 i200             ; copy memory
 movi $r0 i66241               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1759,7 +1713,7 @@ movi $r0 i33126               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i800          ; copy memory
-addi $r1 $$locbase i1088      ; get offset to local
+addi $r1 $$locbase i1088      ; get offset to local __ptr [u256; 25]
 mcpi $r1 $r0 i800             ; copy memory
 movi $r0 i66341               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1770,7 +1724,7 @@ movi $r0 i33226               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i800          ; copy memory
-addi $r1 $$locbase i1888      ; get offset to local
+addi $r1 $$locbase i1888      ; get offset to local __ptr [b256; 25]
 mcpi $r1 $r0 i800             ; copy memory
 movi $r0 i66441               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1781,7 +1735,7 @@ movi $r0 i33326               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i25           ; copy memory
-addi $r1 $$locbase i2688      ; get offset to local
+addi $r1 $$locbase i2688      ; get offset to local __ptr [bool; 25]
 mcpi $r1 $r0 i25              ; copy memory
 movi $r0 i66445               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1792,7 +1746,7 @@ movi $r0 i33330               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i5            ; copy memory
-addi $r1 $$locbase i2720      ; get offset to local
+addi $r1 $$locbase i2720      ; get offset to local __ptr [bool; 5]
 mcpi $r1 $r0 i5               ; copy memory
 movi $r0 i66446               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1803,7 +1757,7 @@ movi $r0 i33331               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 mcpi $r0 $$retv i25           ; copy memory
-addi $r1 $$locbase i2728      ; get offset to local
+addi $r1 $$locbase i2728      ; get offset to local __ptr [bool; 25]
 mcpi $r1 $r0 i25              ; copy memory
 movi $r0 i66450               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
@@ -1816,7 +1770,7 @@ muli $r1 $r1 i8               ; get byte offset to local from base
 add  $r1 $$locbase $r1        ; get absolute byte offset to local
 load $$tmp data_NonConfigurable_0; loading copy size in bytes
 mcp  $r1 $r0 $$tmp            ; copy memory
-addi $r0 $$locbase i2760      ; get offset to local
+addi $r0 $$locbase i2760      ; get offset to local __ptr [u8; 262145]
 load $$tmp data_NonConfigurable_0; loading copy size in bytes
 mcp  $r0 $r1 $$tmp            ; copy memory
 jal  $$reta $pc i343          ; [call]: call arrays_with_const_length_18
@@ -2219,11 +2173,11 @@ move $$locbase $sp            ; save locals base register for function arrays_wi
 cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
 move $r0 $$reta               ; save return address
 mcli $$locbase i8             ; clear memory [u64; 1], 8 bytes
-addi $r1 $$locbase i8         ; get offset to local
+addi $r1 $$locbase i8         ; get offset to local __ptr [u64; 1]
 mcli $r1 i8                   ; clear memory [u64; 1], 8 bytes
-addi $r1 $$locbase i16        ; get offset to local
+addi $r1 $$locbase i16        ; get offset to local __ptr [u64; 1]
 mcli $r1 i8                   ; clear memory [u64; 1], 8 bytes
-addi $r1 $$locbase i24        ; get offset to local
+addi $r1 $$locbase i24        ; get offset to local __ptr [u64; 2]
 mcli $r1 i16                  ; clear memory [u64; 2], 16 bytes
 move $$retv $zero             ; set return value
 cfsi i40                      ; free 40 bytes for locals and 0 slots for extra call arguments
@@ -2237,27 +2191,27 @@ move $$locbase $sp            ; save locals base register for function decode_ar
 cfei i96                      ; allocate 96 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
-addi $r2 $$locbase i24        ; get offset to local
+addi $r2 $$locbase i24        ; get offset to local __ptr [u8; 1]
 mul  $r3 $zero $one           ; get offset to array element
 add  $r3 $r2 $r3              ; add array element offset to array base
 movi $r4 i255                 ; initialize constant into register
 sb   $r3 $r4 i0               ; store byte
-addi $r3 $$locbase i56        ; get offset to local
+addi $r3 $$locbase i56        ; get offset to local __ptr [u8; 1]
 mcpi $r3 $r2 i1               ; copy memory
-addi $r2 $$locbase i32        ; get offset to local
+addi $r2 $$locbase i32        ; get offset to local __ptr slice
 move $$arg0 $r3               ; [call]: pass argument 0
 move $$arg1 $r2               ; [call]: pass argument 1
 jal  $$reta $pc i19           ; [call]: call to_slice_20
 mcpi $$locbase $$retv i16     ; copy memory
-addi $r2 $$locbase i80        ; get offset to local
+addi $r2 $$locbase i80        ; get offset to local __ptr slice
 mcpi $r2 $$locbase i16        ; copy memory
-addi $r2 $$locbase i64        ; get offset to local
+addi $r2 $$locbase i64        ; get offset to local __ptr slice
 mcpi $r2 $$locbase i16        ; copy memory
-addi $r3 $$locbase i48        ; get offset to local
+addi $r3 $$locbase i48        ; get offset to local __ptr [u8; 1]
 move $$arg0 $r2               ; [call]: pass argument 0
 move $$arg1 $r3               ; [call]: pass argument 1
 jal  $$reta $pc i44           ; [call]: call abi_decode_24
-addi $r2 $$locbase i16        ; get offset to local
+addi $r2 $$locbase i16        ; get offset to local __ptr [u8; 1]
 mcpi $r2 $$retv i1            ; copy memory
 mcpi $r0 $r2 i1               ; copy memory
 move $$retv $r0               ; set return value
@@ -2272,26 +2226,26 @@ move $$locbase $sp            ; save locals base register for function to_slice_
 cfei i112                     ; allocate 112 bytes for locals and 0 slots for call arguments
 move $r0 $$arg1               ; save argument 1 (__ret_value)
 move $r1 $$reta               ; save return address
-addi $r2 $$locbase i64        ; get offset to local
+addi $r2 $$locbase i64        ; get offset to local __ptr [u8; 1]
 mcpi $r2 $$arg0 i1            ; copy memory
 sw   $$locbase $one i9        ; store word
-addi $r2 $$locbase i64        ; get offset to local
+addi $r2 $$locbase i64        ; get offset to local __ptr [u8; 1]
 sw   $$locbase $r2 i13        ; store word
-addi $r2 $$locbase i104       ; get offset to local
+addi $r2 $$locbase i104       ; get offset to local __ptr ptr
 sw   $$locbase $one i10       ; store word
 lw   $r3 $$locbase i9         ; load word
 lw   $r4 $$locbase i10        ; load word
 mul  $r3 $r3 $r4
-addi $r4 $$locbase i16        ; get offset to local
+addi $r4 $$locbase i16        ; get offset to local __ptr { ptr, u64 }
 mcpi $r4 $r2 i8               ; copy memory
 sw   $$locbase $r3 i3         ; store word
-addi $r2 $$locbase i88        ; get offset to local
+addi $r2 $$locbase i88        ; get offset to local __ptr { ptr, u64 }
 mcpi $r2 $r4 i16              ; copy memory
-addi $r2 $$locbase i88        ; get offset to local
+addi $r2 $$locbase i88        ; get offset to local __ptr { ptr, u64 }
 mcpi $$locbase $r2 i16        ; copy memory
-addi $r2 $$locbase i32        ; get offset to local
+addi $r2 $$locbase i32        ; get offset to local __ptr slice
 mcpi $r2 $$locbase i16        ; copy memory
-addi $r3 $$locbase i48        ; get offset to local
+addi $r3 $$locbase i48        ; get offset to local __ptr slice
 mcpi $r3 $r2 i16              ; copy memory
 mcpi $r0 $r3 i16              ; copy memory
 move $$retv $r0               ; set return value
@@ -2306,37 +2260,37 @@ move $$locbase $sp            ; save locals base register for function abi_decod
 cfei i416                     ; allocate 416 bytes for locals and 0 slots for call arguments
 move $r4 $$arg1               ; save argument 1 (__ret_value)
 move $r3 $$reta               ; save return address
-addi $r0 $$locbase i192       ; get offset to local
+addi $r0 $$locbase i192       ; get offset to local __ptr slice
 mcpi $r0 $$arg0 i16           ; copy memory
-addi $r0 $$locbase i192       ; get offset to local
-addi $r1 $$locbase i264       ; get offset to local
+addi $r0 $$locbase i192       ; get offset to local __ptr slice
+addi $r1 $$locbase i264       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
-addi $r0 $$locbase i264       ; get offset to local
-addi $r1 $$locbase i360       ; get offset to local
+addi $r0 $$locbase i264       ; get offset to local __ptr slice
+addi $r1 $$locbase i360       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
-addi $r0 $$locbase i360       ; get offset to local
-addi $r1 $$locbase i8         ; get offset to local
+addi $r0 $$locbase i360       ; get offset to local __ptr slice
+addi $r1 $$locbase i8         ; get offset to local __ptr { ptr, u64 }
 mcpi $r1 $r0 i16              ; copy memory
-addi $r0 $$locbase i96        ; get offset to local
+addi $r0 $$locbase i96        ; get offset to local __ptr { ptr, u64 }
 mcpi $r0 $r1 i16              ; copy memory
-addi $r1 $$locbase i40        ; get offset to local
+addi $r1 $$locbase i40        ; get offset to local __ptr { ptr, u64 }
 mcpi $r1 $r0 i16              ; copy memory
 lw   $r0 $$locbase i5         ; load word
-addi $r1 $$locbase i192       ; get offset to local
-addi $r2 $$locbase i280       ; get offset to local
+addi $r1 $$locbase i192       ; get offset to local __ptr slice
+addi $r2 $$locbase i280       ; get offset to local __ptr slice
 mcpi $r2 $r1 i16              ; copy memory
-addi $r1 $$locbase i280       ; get offset to local
-addi $r2 $$locbase i376       ; get offset to local
+addi $r1 $$locbase i280       ; get offset to local __ptr slice
+addi $r2 $$locbase i376       ; get offset to local __ptr slice
 mcpi $r2 $r1 i16              ; copy memory
-addi $r1 $$locbase i376       ; get offset to local
-addi $r2 $$locbase i24        ; get offset to local
+addi $r1 $$locbase i376       ; get offset to local __ptr slice
+addi $r2 $$locbase i24        ; get offset to local __ptr { ptr, u64 }
 mcpi $r2 $r1 i16              ; copy memory
-addi $r1 $$locbase i112       ; get offset to local
+addi $r1 $$locbase i112       ; get offset to local __ptr { ptr, u64 }
 mcpi $r1 $r2 i16              ; copy memory
-addi $r2 $$locbase i56        ; get offset to local
+addi $r2 $$locbase i56        ; get offset to local __ptr { ptr, u64 }
 mcpi $r2 $r1 i16              ; copy memory
 addi $r1 $r2 i8               ; get offset to aggregate element
-addi $r2 $$locbase i296       ; get offset to local
+addi $r2 $$locbase i296       ; get offset to local __ptr u64
 mcpi $r2 $r1 i8               ; copy memory
 sw   $$locbase $one i28       ; store word
 lw   $r1 $$locbase i37        ; load word
@@ -2344,28 +2298,28 @@ lw   $r2 $$locbase i28        ; load word
 div  $r1 $r1 $r2
 sw   $$locbase $r0 i32        ; store word
 sw   $$locbase $r1 i18        ; store word
-addi $r0 $$locbase i256       ; get offset to local
-addi $r1 $$locbase i72        ; get offset to local
+addi $r0 $$locbase i256       ; get offset to local __ptr ptr
+addi $r1 $$locbase i72        ; get offset to local __ptr { ptr }
 mcpi $r1 $r0 i8               ; copy memory
-addi $r0 $$locbase i128       ; get offset to local
+addi $r0 $$locbase i128       ; get offset to local __ptr { ptr }
 mcpi $r0 $r1 i8               ; copy memory
-addi $r1 $$locbase i168       ; get offset to local
+addi $r1 $$locbase i168       ; get offset to local __ptr { ptr }
 mcpi $r1 $r0 i8               ; copy memory
-addi $r0 $$locbase i168       ; get offset to local
+addi $r0 $$locbase i168       ; get offset to local __ptr { ptr }
 sw   $$locbase $r0 i22        ; store word
 sw   $$locbase $one i0        ; store word
-addi $r0 $$locbase i80        ; get offset to local
+addi $r0 $$locbase i80        ; get offset to local __ptr [u8; 1]
 mcli $r0 i1                   ; clear memory [u8; 1], 1 bytes
-addi $r1 $$locbase i152       ; get offset to local
+addi $r1 $$locbase i152       ; get offset to local __ptr [u8; 1]
 mcpi $r1 $r0 i1               ; copy memory
-addi $r0 $$locbase i152       ; get offset to local
-addi $r1 $$locbase i88        ; get offset to local
+addi $r0 $$locbase i152       ; get offset to local __ptr [u8; 1]
+addi $r1 $$locbase i88        ; get offset to local __ptr __ptr [u8; 1]
 sw   $$locbase $r0 i11        ; store word
-addi $r0 $$locbase i160       ; get offset to local
+addi $r0 $$locbase i160       ; get offset to local __ptr __ptr [u8; 1]
 mcpi $r0 $r1 i8               ; copy memory
 sw   $$locbase $zero i26      ; store word
-addi $r0 $$locbase i208       ; get offset to local
-addi $r1 $$locbase i328       ; get offset to local
+addi $r0 $$locbase i208       ; get offset to local __ptr u64
+addi $r1 $$locbase i328       ; get offset to local __ptr u64
 mcpi $r1 $r0 i8               ; copy memory
 sw   $$locbase $one i29       ; store word
 lw   $r0 $$locbase i41        ; load word
@@ -2373,7 +2327,7 @@ lw   $r1 $$locbase i29        ; load word
 lt   $r0 $r0 $r1
 jnzf $r0 $zero i6
 lw   $r0 $$locbase i20        ; load word
-addi $r1 $$locbase i136       ; get offset to local
+addi $r1 $$locbase i136       ; get offset to local __ptr [u8; 1]
 mcpi $r1 $r0 i1               ; copy memory
 mcpi $r4 $r1 i1               ; copy memory
 move $$retv $r4               ; set return value
@@ -2383,31 +2337,31 @@ lw   $r1 $$locbase i26        ; load word
 mul  $r1 $r1 $one
 add  $r0 $r0 $r1
 sw   $$locbase $r0 i27        ; store word
-addi $r0 $$locbase i176       ; get offset to local
-addi $r1 $$locbase i320       ; get offset to local
+addi $r0 $$locbase i176       ; get offset to local __ptr __ptr { ptr }
+addi $r1 $$locbase i320       ; get offset to local __ptr __ptr { ptr }
 mcpi $r1 $r0 i8               ; copy memory
-addi $r0 $$locbase i320       ; get offset to local
-addi $r1 $$locbase i184       ; get offset to local
+addi $r0 $$locbase i320       ; get offset to local __ptr __ptr { ptr }
+addi $r1 $$locbase i184       ; get offset to local __ptr __ptr { ptr }
 mcpi $r1 $r0 i8               ; copy memory
-addi $r0 $$locbase i184       ; get offset to local
-addi $r1 $$locbase i304       ; get offset to local
+addi $r0 $$locbase i184       ; get offset to local __ptr __ptr { ptr }
+addi $r1 $$locbase i304       ; get offset to local __ptr __ptr { ptr }
 mcpi $r1 $r0 i8               ; copy memory
 sw   $$locbase $one i44       ; store word
-addi $r0 $$locbase i352       ; get offset to local
-addi $r1 $$locbase i312       ; get offset to local
+addi $r0 $$locbase i352       ; get offset to local __ptr u64
+addi $r1 $$locbase i312       ; get offset to local __ptr u64
 mcpi $r1 $r0 i8               ; copy memory
 sw   $$locbase $one i30       ; store word
 lw   $r0 $$locbase i39        ; load word
 lw   $r1 $$locbase i30        ; load word
 eq   $r0 $r0 $r1
 jnzf $r0 $zero i18
-addi $r0 $$locbase i304       ; get offset to local
-addi $r1 $$locbase i336       ; get offset to local
+addi $r0 $$locbase i304       ; get offset to local __ptr __ptr { ptr }
+addi $r1 $$locbase i336       ; get offset to local __ptr __ptr { ptr }
 mcpi $r1 $r0 i8               ; copy memory
 lw   $r0 $$locbase i42        ; load word
 lw   $r0 $r0 i0               ; load word
 lw   $r0 $r0 i0               ; lw val ptr i0
-addi $r1 $$locbase i400       ; get offset to local
+addi $r1 $$locbase i400       ; get offset to local __ptr u8
 sb   $r1 $r0 i0               ; store byte
 lw   $r0 $$locbase i42        ; load word
 lw   $r0 $r0 i0               ; load word
@@ -2416,13 +2370,13 @@ mul  $r1 $one $r1
 add  $r0 $r0 $r1
 lw   $r1 $$locbase i42        ; load word
 sw   $r1 $r0 i0               ; store word
-addi $r0 $$locbase i400       ; get offset to local
+addi $r0 $$locbase i400       ; get offset to local __ptr u8
 lb   $r0 $r0 i0               ; load byte
 jmpf $zero i13
 lw   $r0 $$locbase i38        ; load word
 lw   $r0 $r0 i0               ; load word
 lb   $r0 $r0 i0               ; lb val ptr i0
-addi $r1 $$locbase i408       ; get offset to local
+addi $r1 $$locbase i408       ; get offset to local __ptr u8
 sb   $r1 $r0 i0               ; store byte
 lw   $r0 $$locbase i38        ; load word
 lw   $r0 $r0 i0               ; load word
@@ -2430,12 +2384,12 @@ mul  $r1 $one $one
 add  $r0 $r0 $r1
 lw   $r1 $$locbase i38        ; load word
 sw   $r1 $r0 i0               ; store word
-addi $r0 $$locbase i408       ; get offset to local
+addi $r0 $$locbase i408       ; get offset to local __ptr u8
 lb   $r0 $r0 i0               ; load byte
 lw   $r1 $$locbase i27        ; load word
 sb   $r1 $r0 i0               ; store byte
-addi $r0 $$locbase i208       ; get offset to local
-addi $r1 $$locbase i344       ; get offset to local
+addi $r0 $$locbase i208       ; get offset to local __ptr u64
+addi $r1 $$locbase i344       ; get offset to local __ptr u64
 mcpi $r1 $r0 i8               ; copy memory
 sw   $$locbase $one i31       ; store word
 lw   $r0 $$locbase i43        ; load word
@@ -2453,37 +2407,37 @@ pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function log_42
 cfei i464                     ; allocate 464 bytes for locals and 0 slots for call arguments
 move $r5 $$reta               ; save return address
-addi $r0 $$locbase i456       ; get offset to local
+addi $r0 $$locbase i456       ; get offset to local __ptr u8
 sb   $r0 $$arg0 i0            ; store byte
-addi $r0 $$locbase i456       ; get offset to local
-addi $r1 $$locbase i416       ; get offset to local
+addi $r0 $$locbase i456       ; get offset to local __ptr u8
+addi $r1 $$locbase i416       ; get offset to local __ptr u8
 mcpi $r1 $r0 i1               ; copy memory
-addi $r0 $$locbase i416       ; get offset to local
+addi $r0 $$locbase i416       ; get offset to local __ptr u8
 movi $r1 i1024                ; initialize constant into register
 aloc $r1
-addi $r1 $$locbase i112       ; get offset to local
+addi $r1 $$locbase i112       ; get offset to local __ptr { ptr, u64, u64 }
 sw   $$locbase $hp i14        ; store word
 movi $r2 i1024                ; initialize constant into register
 sw   $$locbase $r2 i15        ; store word
 sw   $$locbase $zero i16      ; store word
 mcpi $$locbase $r1 i24        ; copy memory
-addi $r1 $$locbase i184       ; get offset to local
+addi $r1 $$locbase i184       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r1 $$locbase i24        ; copy memory
-addi $r2 $$locbase i288       ; get offset to local
+addi $r2 $$locbase i288       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
-addi $r1 $$locbase i424       ; get offset to local
+addi $r1 $$locbase i424       ; get offset to local __ptr u8
 mcpi $r1 $r0 i1               ; copy memory
-addi $r0 $$locbase i392       ; get offset to local
+addi $r0 $$locbase i392       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r0 $r2 i24              ; copy memory
-addi $r0 $$locbase i392       ; get offset to local
-addi $r1 $$locbase i24        ; get offset to local
+addi $r0 $$locbase i392       ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r1 $$locbase i24        ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r1 $r0 i24              ; copy memory
-addi $r0 $$locbase i136       ; get offset to local
+addi $r0 $$locbase i136       ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r0 $r1 i24              ; copy memory
 lw   $r0 $$locbase i17        ; load word
 lw   $r4 $$locbase i18        ; load word
 lw   $r1 $$locbase i19        ; load word
-addi $r2 $$locbase i424       ; get offset to local
+addi $r2 $$locbase i424       ; get offset to local __ptr u8
 lb   $r2 $r2 i0               ; load byte
 add  $r3 $r1 $one
 gt   $r3 $r3 $r4
@@ -2498,38 +2452,38 @@ move $r0 $hp                  ; move parameter from branch to block argument
 add  $r3 $r0 $r1
 sb   $r3 $r2 i0               ; store byte
 add  $r1 $r1 $one
-addi $r2 $$locbase i208       ; get offset to local
+addi $r2 $$locbase i208       ; get offset to local __ptr { ptr, u64, u64 }
 sw   $$locbase $r0 i26        ; store word
 sw   $$locbase $r4 i27        ; store word
 sw   $$locbase $r1 i28        ; store word
-addi $r0 $$locbase i48        ; get offset to local
+addi $r0 $$locbase i48        ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r0 $r2 i24              ; copy memory
-addi $r1 $$locbase i248       ; get offset to local
+addi $r1 $$locbase i248       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r1 $r0 i24              ; copy memory
-addi $r0 $$locbase i312       ; get offset to local
+addi $r0 $$locbase i312       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r0 $r1 i24              ; copy memory
-addi $r1 $$locbase i368       ; get offset to local
+addi $r1 $$locbase i368       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r1 $r0 i24              ; copy memory
-addi $r0 $$locbase i368       ; get offset to local
-addi $r1 $$locbase i432       ; get offset to local
+addi $r0 $$locbase i368       ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r1 $$locbase i432       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r1 $r0 i24              ; copy memory
-addi $r0 $$locbase i432       ; get offset to local
-addi $r1 $$locbase i72        ; get offset to local
+addi $r0 $$locbase i432       ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r1 $$locbase i72        ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r1 $r0 i24              ; copy memory
-addi $r0 $$locbase i160       ; get offset to local
+addi $r0 $$locbase i160       ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r0 $r1 i24              ; copy memory
 addi $r1 $r0 i16              ; get offset to aggregate element
-addi $r2 $$locbase i232       ; get offset to local
+addi $r2 $$locbase i232       ; get offset to local __ptr { ptr, u64 }
 mcpi $r2 $r0 i8               ; copy memory
 addi $r0 $r2 i8               ; get offset to aggregate element
 mcpi $r0 $r1 i8               ; copy memory
-addi $r0 $$locbase i96        ; get offset to local
+addi $r0 $$locbase i96        ; get offset to local __ptr slice
 mcpi $r0 $r2 i16              ; copy memory
-addi $r1 $$locbase i336       ; get offset to local
+addi $r1 $$locbase i336       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
-addi $r0 $$locbase i352       ; get offset to local
+addi $r0 $$locbase i352       ; get offset to local __ptr slice
 mcpi $r0 $r1 i16              ; copy memory
-addi $r1 $$locbase i272       ; get offset to local
+addi $r1 $$locbase i272       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
 load $r0 data_NonConfigurable_2; load constant from data section
 lw   $r1 $$locbase i34        ; load slice pointer for logging data
@@ -3883,68 +3837,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
-AAA: main()
-AAA: array_repeat_zero_small_u8()
-AAA: array_repeat_zero_small_u16()
-AAA: array_repeat_zero_small_u32()
-AAA: array_repeat_zero_small_u64()
-AAA: array_repeat_zero_small_u256()
-AAA: array_repeat_zero_small_b256()
-AAA: array_repeat_zero_small_bool()
-AAA: array_repeat_zero_big_u8()
-AAA: array_repeat_zero_big_u16()
-AAA: array_repeat_zero_big_u32()
-AAA: array_repeat_zero_big_u64()
-AAA: array_repeat_zero_big_u256()
-AAA: array_repeat_zero_big_b256()
-AAA: array_repeat_zero_big_bool()
-AAA: small_array_repeat()
-AAA: big_array_repeat()
-AAA: u8_array_bigger_than_18_bits()
-AAA: arrays_with_const_length()
-AAA: [0u64; A]
-AAA: [0u64; A]
-AAA: [0u64; GLOBAL_A]
-AAA: [0u64]
-AAA: [0u64; B]
-AAA: [0u64, 1u64]
-AAA: decode_array()
-AAA: to_slice([255u8])
-AAA: __size_of::<T>()
-AAA: BufferReader::from_parts(data.ptr(), data.len::<u8>())
     BBB: N
-AAA: [0u8; LENGTH]
-AAA: __transmute::<&mut [u8; LENGTH], &mut [T; N]>(&mut array)
-AAA: 0
-AAA: __elem_at(array, i)
-AAA: __size_of::<T>()
-AAA: asm(ptr: self.ptr) {
-                ptr: T
-            }
-AAA: asm(ptr: self.ptr, val) {
-                lb val ptr i0;
-                val: T
-            }
-AAA: asm(ptr: self.ptr, val) {
-            lw val ptr i0;
-            val: T
-        }
-AAA: item.abi_encode(Buffer::new())
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
-AAA: 0
     Finished debug [unoptimized + fuel] target(s) [8.76 KB] in ???
     script array_repeat
 <<<<<<< HEAD
