@@ -136,6 +136,17 @@ fn patch_manifest_file_with_proxy_table(manifest_dir: &Path, proxy: Proxy) -> an
         proxy_table.remove("address");
     }
 
+    if let Some(addresses) = proxy.addresses {
+        let addresses_table = proxy_table.entry("addresses").or_insert(Item::Table(Table::new()));
+        let addresses_table = addresses_table.as_table_mut().unwrap();
+        
+        for (network, address) in addresses {
+            addresses_table.insert(&network, value(address));
+        }
+    } else {
+        proxy_table.remove("addresses");
+    }
+
     fs::write(&toml_path, doc.to_string())?;
     Ok(())
 }
@@ -441,6 +452,7 @@ async fn test_deploy_fresh_proxy() {
     let proxy = Proxy {
         enabled: true,
         address: None,
+        addresses: None,
     };
     patch_manifest_file_with_proxy_table(tmp_dir.path(), proxy).unwrap();
 
@@ -494,6 +506,7 @@ async fn test_proxy_contract_re_routes_call() {
     let proxy = Proxy {
         enabled: true,
         address: None,
+        addresses: None,
     };
     patch_manifest_file_with_proxy_table(tmp_dir.path(), proxy).unwrap();
 
@@ -630,6 +643,7 @@ async fn test_non_owner_fails_to_set_target() {
     let proxy = Proxy {
         enabled: true,
         address: None,
+        addresses: None,
     };
     patch_manifest_file_with_proxy_table(tmp_dir.path(), proxy).unwrap();
 
@@ -814,6 +828,7 @@ async fn chunked_deploy_with_proxy_re_routes_call() {
     let proxy = Proxy {
         enabled: true,
         address: None,
+        addresses: None,
     };
     patch_manifest_file_with_proxy_table(tmp_dir.path(), proxy).unwrap();
 
@@ -1337,4 +1352,183 @@ async fn offset_shifted_abi_works() {
     pretty_assertions::assert_eq!(loader_with_configs_from_forc, loader_with_configs_from_sdk);
 
     node.kill().unwrap()
+}
+
+#[tokio::test]
+async fn test_deploy_proxy_with_network_specific_addresses() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("standalone_contract");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+    
+    // Configure network-specific proxy addresses
+    let mut addresses = std::collections::BTreeMap::new();
+    addresses.insert("local".to_string(), "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string());
+    addresses.insert("testnet".to_string(), "0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321".to_string());
+    
+    let proxy = Proxy {
+        enabled: true,
+        address: None,
+        addresses: Some(addresses),
+    };
+    patch_manifest_file_with_proxy_table(tmp_dir.path(), proxy).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url),
+        target: None,
+        testnet: false,
+        mainnet: false,
+        devnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+
+    // This should use the "local" network address from the addresses table
+    let contract_ids = deploy(cmd).await.unwrap();
+    node.kill().unwrap();
+    
+    // Verify proxy was used and updated
+    let deployed_contract = expect_deployed_contract(contract_ids.into_iter().next().unwrap());
+    assert!(deployed_contract.proxy.is_some());
+    
+    // Verify the manifest was updated with network-specific address
+    let updated_toml = fs::read_to_string(tmp_dir.path().join("Forc.toml")).unwrap();
+    assert!(updated_toml.contains("[proxy.addresses]"));
+    assert!(updated_toml.contains("local"));
+}
+
+#[tokio::test]
+async fn test_deploy_fresh_proxy_with_network_addresses() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("standalone_contract");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+    
+    // Configure proxy without any addresses - should deploy fresh proxy
+    let proxy = Proxy {
+        enabled: true,
+        address: None,
+        addresses: None,
+    };
+    patch_manifest_file_with_proxy_table(tmp_dir.path(), proxy).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url),
+        target: None,
+        testnet: false,
+        mainnet: false,
+        devnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+
+    // This should deploy a fresh proxy and update the manifest with network-specific format
+    let contract_ids = deploy(cmd).await.unwrap();
+    node.kill().unwrap();
+    
+    let deployed_contract = expect_deployed_contract(contract_ids.into_iter().next().unwrap());
+    assert!(deployed_contract.proxy.is_some());
+    
+    // Verify the manifest was updated to network-specific format
+    let updated_toml = fs::read_to_string(tmp_dir.path().join("Forc.toml")).unwrap();
+    assert!(updated_toml.contains("[proxy.addresses]"));
+    assert!(updated_toml.contains("local"));
+}
+
+#[test]
+fn test_proxy_validation_mutually_exclusive_fields() {
+    // Test that having both address and addresses fields fails validation
+    let mut addresses = std::collections::BTreeMap::new();
+    addresses.insert("testnet".to_string(), "0x1234".to_string());
+    
+    let proxy = Proxy {
+        enabled: true,
+        address: Some("0x5678".to_string()),
+        addresses: Some(addresses),
+    };
+    
+    // This should fail validation
+    assert!(proxy.validate().is_err());
+}
+
+#[test]
+fn test_proxy_address_for_network() {
+    // Test network-specific address resolution
+    let mut addresses = std::collections::BTreeMap::new();
+    addresses.insert("testnet".to_string(), "0x1111".to_string());
+    addresses.insert("mainnet".to_string(), "0x2222".to_string());
+    
+    let proxy = Proxy {
+        enabled: true,
+        address: None,
+        addresses: Some(addresses),
+    };
+    
+    assert_eq!(proxy.address_for_network("testnet"), Some(&"0x1111".to_string()));
+    assert_eq!(proxy.address_for_network("mainnet"), Some(&"0x2222".to_string()));
+    assert_eq!(proxy.address_for_network("devnet"), None);
+}
+
+#[test]
+fn test_proxy_address_fallback_to_single_address() {
+    // Test fallback to single address field when addresses is not configured
+    let proxy = Proxy {
+        enabled: true,
+        address: Some("0x3333".to_string()),
+        addresses: None,
+    };
+    
+    assert_eq!(proxy.address_for_network("testnet"), Some(&"0x3333".to_string()));
+    assert_eq!(proxy.address_for_network("any_network"), Some(&"0x3333".to_string()));
+}
+
+#[test] 
+fn test_proxy_has_address_detection() {
+    // Test has_address() method
+    let proxy_with_single = Proxy {
+        enabled: true,
+        address: Some("0x1234".to_string()),
+        addresses: None,
+    };
+    assert!(proxy_with_single.has_address());
+    
+    let mut addresses = std::collections::BTreeMap::new();
+    addresses.insert("testnet".to_string(), "0x5678".to_string());
+    let proxy_with_addresses = Proxy {
+        enabled: true,
+        address: None,
+        addresses: Some(addresses),
+    };
+    assert!(proxy_with_addresses.has_address());
+    
+    let proxy_without_address = Proxy {
+        enabled: true,
+        address: None,
+        addresses: None,
+    };
+    assert!(!proxy_without_address.has_address());
 }
