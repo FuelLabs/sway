@@ -959,7 +959,7 @@ impl ty::TyExpression {
                 &arms_reachability[..catch_all_arm_position],
             );
         }
-        // if there are no interior catch-all arms and there is more then one arm
+        // if there are no interior catch-all arms and there is more than one arm
         else if let Some((last_arm_report, other_arms_reachability)) =
             arms_reachability.split_last()
         {

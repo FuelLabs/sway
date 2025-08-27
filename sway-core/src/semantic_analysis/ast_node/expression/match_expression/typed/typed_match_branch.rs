@@ -412,7 +412,7 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
                         // return the calculated condition and no carry overs.
                         // `vars` and `tuples` will be empty after appending.
 
-                        // Note that if we have more then one tuple in carry over, this means they
+                        // Note that if we have more than one tuple in carry over, this means they
                         // are coming from an AND node (because an OR node always produces a single tuple).
                         // In that case the `vars` redefined in tuples are never the same and we can
                         // safely declare them in any order after the tuples.

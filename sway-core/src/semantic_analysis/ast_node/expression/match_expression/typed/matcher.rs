@@ -111,14 +111,14 @@ pub(super) enum ReqDeclNode {
     /// E.g., a literal `123` will have a requirement on the scrutinee e.g. `struct.x == 123`.
     ReqOrVarDecl(ReqOrVarDecl),
     /// Represent the requirements and declarations connected with the lazy AND operator,
-    /// if there are more then two of them.
+    /// if there are more than two of them.
     /// Notice that the vector of contained nodes can be empty or have only one element.
     /// AND semantics is applied if there are two or more elements.
     /// E.g., requirements coming from the struct and tuple patterns
     /// must all be fulfilled in order for the whole pattern to match.
     And(Vec<ReqDeclNode>),
     /// Represent the requirements and declarations connected with the lazy OR operator,
-    /// if there are more then two of them.
+    /// if there are more than two of them.
     /// Notice that the vector of contained nodes can be empty or have only one element.
     /// OR semantics is applied if there are two or more elements.
     /// Only the requirements coming from the individual variants of an OR match arm
