@@ -177,7 +177,7 @@ fn inline() {
             .flat_map(|module| module.function_iter(ir))
             .collect::<Vec<_>>();
 
-        if params.iter().any(|&p| p == "all") {
+        if params.contains(&"all") {
             // Just inline everything, replacing all CALL instructions.
             funcs.into_iter().fold(false, |acc, func| {
                 opt::inline_all_function_calls(ir, &func).unwrap() || acc

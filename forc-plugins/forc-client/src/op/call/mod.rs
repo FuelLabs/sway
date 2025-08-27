@@ -219,10 +219,10 @@ impl FromStr for Abi {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let program: ProgramABI =
-            serde_json::from_str(s).map_err(|err| format!("failed to parse ABI: {}", err))?;
+            serde_json::from_str(s).map_err(|err| format!("failed to parse ABI: {err}"))?;
 
         let unified = UnifiedProgramABI::from_counterpart(&program)
-            .map_err(|err| format!("conversion to unified ABI format failed: {}", err))?;
+            .map_err(|err| format!("conversion to unified ABI format failed: {err}"))?;
 
         let type_lookup = unified
             .types
@@ -257,7 +257,7 @@ pub(crate) fn display_tx_info(
         if let Some(explorer_url) = node.get_explorer_url() {
             forc_tracing::println_label_green(
                 "\nView transaction:",
-                &format!("{}/tx/0x{}\n", explorer_url, tx_hash),
+                &format!("{explorer_url}/tx/0x{tx_hash}\n"),
             );
         }
     }
@@ -318,7 +318,7 @@ pub(crate) fn display_detailed_call_info(
         if !logs.is_empty() {
             forc_tracing::println_green_bold("logs:");
             for log in logs.iter() {
-                writeln!(writer, "  {:#}", log)?;
+                writeln!(writer, "  {log:#}")?;
             }
         }
     }
@@ -350,20 +350,18 @@ pub async fn create_abi_map(
                         abi_map.insert(contract_id, additional_abi.with_source(abi_path.clone()));
                         forc_tracing::println_action_green(
                             "Loaded additional ABI for contract",
-                            &format!("0x{}", contract_id),
+                            &format!("0x{contract_id}"),
                         );
                     }
                     Err(e) => {
                         forc_tracing::println_warning(&format!(
-                            "Failed to parse ABI for contract 0x{}: {}",
-                            contract_id, e
+                            "Failed to parse ABI for contract 0x{contract_id}: {e}"
                         ));
                     }
                 },
                 Err(e) => {
                     forc_tracing::println_warning(&format!(
-                        "Failed to load ABI for contract 0x{}: {}",
-                        contract_id, e
+                        "Failed to load ABI for contract 0x{contract_id}: {e}"
                     ));
                 }
             }

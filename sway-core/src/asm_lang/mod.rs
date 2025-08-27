@@ -56,7 +56,7 @@ fn fmt_opcode_and_comment(
             op_and_comment.push(' ');
             op_length += 1;
         }
-        write!(op_and_comment, "; {}", comment)?;
+        write!(op_and_comment, "; {comment}")?;
     }
 
     write!(fmtr, "{op_and_comment}")

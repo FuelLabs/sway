@@ -277,7 +277,7 @@ impl FromStr for HexSalt {
 impl Display for HexSalt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let salt = self.0;
-        write!(f, "{}", salt)
+        write!(f, "{salt}")
     }
 }
 

@@ -244,7 +244,7 @@ fn get_text_edit_for_group(
 
         TextEdit {
             range: get_range_from_span(&span.clone()),
-            new_text: format!("use {}::{{{}}};", prefix_string, suffix_string),
+            new_text: format!("use {prefix_string}::{{{suffix_string}}};"),
         }
     })
 }
@@ -278,7 +278,7 @@ fn get_text_edit_in_use_block(
 
     Some(TextEdit {
         range: Range::new(Position::new(range_line, 0), Position::new(range_line, 0)),
-        new_text: format!("use {};\n", call_path),
+        new_text: format!("use {call_path};\n"),
     })
 }
 

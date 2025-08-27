@@ -211,8 +211,7 @@ impl fmt::Display for IrError {
             IrError::VerifyGepInconsistentTypes(error, _) => {
                 write!(
                     f,
-                    "Verification failed: Struct field type mismatch: ({}).",
-                    error
+                    "Verification failed: Struct field type mismatch: ({error})."
                 )
             }
             IrError::VerifyGepFromNonPointer(ty, _) => {

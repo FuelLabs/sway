@@ -198,7 +198,7 @@ async fn try_send_tx(
             send_tx(&client, tx, pretty_print, simulate, debug, abi),
         )
         .await
-        .with_context(|| format!("timeout waiting for {:?} to be included in a block", tx))?,
+        .with_context(|| format!("timeout waiting for {tx:?} to be included in a block"))?,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }

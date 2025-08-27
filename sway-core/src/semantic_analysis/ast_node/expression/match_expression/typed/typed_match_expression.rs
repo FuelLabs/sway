@@ -506,7 +506,7 @@ impl ty::TyMatchExpression {
                             BaseIdent::new_no_span("slice_ptr".into()),
                             BaseIdent::new_no_span("slice_ptr".into()),
                         ],
-                        immediate: Some(BaseIdent::new_no_span(format!("i{}", slice_pos))),
+                        immediate: Some(BaseIdent::new_no_span(format!("i{slice_pos}"))),
                         span: Span::dummy(),
                     },
                     AsmOp {
@@ -524,7 +524,7 @@ impl ty::TyMatchExpression {
                             BaseIdent::new_no_span("prefix_ptr".into()),
                             BaseIdent::new_no_span("prefix_ptr".into()),
                         ],
-                        immediate: Some(BaseIdent::new_no_span(format!("i{}", prefix_pos))),
+                        immediate: Some(BaseIdent::new_no_span(format!("i{prefix_pos}"))),
                         span: Span::dummy(),
                     },
                     AsmOp {

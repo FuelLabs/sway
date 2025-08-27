@@ -237,12 +237,12 @@ impl DebugWithEngines for TypeParameter {
             TypeParameter::Const(p) => match p.expr.as_ref() {
                 Some(ConstGenericExpr::Literal { val, .. }) => format!("{} -> {}", p.name, val),
                 Some(ConstGenericExpr::AmbiguousVariableExpression { ident }) => {
-                    format!("{}", ident)
+                    format!("{ident}")
                 }
                 None => format!("{} -> None", p.name),
             },
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

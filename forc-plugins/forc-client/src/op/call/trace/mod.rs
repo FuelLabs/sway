@@ -36,9 +36,11 @@ impl Read for MemoryReader<'_> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let at = self.at;
         self.at += buf.len() as Word;
-        buf.copy_from_slice(self.mem.read(at, buf.len()).map_err(|_err| {
-            std::io::Error::new(std::io::ErrorKind::Other, "Inaccessible memory")
-        })?);
+        buf.copy_from_slice(
+            self.mem
+                .read(at, buf.len())
+                .map_err(|_err| std::io::Error::other("Inaccessible memory"))?,
+        );
         Ok(buf.len())
     }
 }
@@ -261,7 +263,7 @@ pub fn display_transaction_trace<W: std::io::Write>(
             if let Some(label) = labels.get(&contract_id) {
                 label.to_string()
             } else {
-                format!("0x{}", contract_id)
+                format!("0x{contract_id}")
             }
         };
 
@@ -305,7 +307,7 @@ pub fn display_transaction_trace<W: std::io::Write>(
                 depth = depth.saturating_sub(1);
             }
             TraceEvent::Return { val, .. } => {
-                writeln!(writer, "{}    └─ ← [Return] val: {}", indent, val)?;
+                writeln!(writer, "{indent}    └─ ← [Return] val: {val}")?;
                 depth = depth.saturating_sub(1);
             }
             TraceEvent::LogData { value, .. } => {
@@ -317,7 +319,7 @@ pub fn display_transaction_trace<W: std::io::Write>(
                         Color::BrightCyan.paint(log_value)
                     )?;
                 } else {
-                    writeln!(writer, "{}    ├─ emit ()", indent)?;
+                    writeln!(writer, "{indent}    ├─ emit ()")?;
                 }
             }
             TraceEvent::Revert { .. } => {
@@ -347,27 +349,24 @@ pub fn display_transaction_trace<W: std::io::Write>(
             } => {
                 writeln!(
                     writer,
-                    "{}    ├─ [Transfer] to:{} asset_id:{} amount:{}",
-                    indent, to, asset_id, amount
+                    "{indent}    ├─ [Transfer] to:{to} asset_id:{asset_id} amount:{amount}"
                 )?;
             }
             TraceEvent::Mint { asset_id, val, .. } => {
                 writeln!(
                     writer,
-                    "{}    ├─ [Mint] asset_id:{} val:{}",
-                    indent, asset_id, val
+                    "{indent}    ├─ [Mint] asset_id:{asset_id} val:{val}"
                 )?;
             }
             TraceEvent::Burn { asset_id, val, .. } => {
                 writeln!(
                     writer,
-                    "{}    ├─ [Burn] asset_id:{} val:{}",
-                    indent, asset_id, val
+                    "{indent}    ├─ [Burn] asset_id:{asset_id} val:{val}"
                 )?;
             }
 
             TraceEvent::Log { rb, .. } => {
-                writeln!(writer, "{}    ├─ [Log] rb: 0x{:x}", indent, rb)?;
+                writeln!(writer, "{indent}    ├─ [Log] rb: 0x{rb:x}")?;
             }
             TraceEvent::MessageOut {
                 amount,
@@ -393,8 +392,7 @@ pub fn display_transaction_trace<W: std::io::Write>(
             } => {
                 writeln!(
                     writer,
-                    "  [ScriptResult] result: {:?}, gas_used: {}",
-                    result, gas_used
+                    "  [ScriptResult] result: {result:?}, gas_used: {gas_used}"
                 )?;
                 writeln!(writer)?;
 
@@ -409,7 +407,7 @@ pub fn display_transaction_trace<W: std::io::Write>(
             }
         }
     }
-    writeln!(writer, "Gas used: {}", total_gas)?;
+    writeln!(writer, "Gas used: {total_gas}")?;
     Ok(())
 }
 
@@ -591,9 +589,9 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Transfer {
                     index,
                     id: *id,
-                    to: format!("0x{}", to),
+                    to: format!("0x{to}"),
                     amount: *amount,
-                    asset_id: format!("0x{}", asset_id),
+                    asset_id: format!("0x{asset_id}"),
                 },
 
                 Receipt::TransferOut {
@@ -605,9 +603,9 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Transfer {
                     index,
                     id: *id,
-                    to: format!("0x{}", to),
+                    to: format!("0x{to}"),
                     amount: *amount,
-                    asset_id: format!("0x{}", asset_id),
+                    asset_id: format!("0x{asset_id}"),
                 },
 
                 Receipt::ScriptResult { result, gas_used } => TraceEvent::ScriptResult {
@@ -626,8 +624,8 @@ impl<'a> CallRetTracer<'a> {
                     let data_hex = data.as_ref().map(|d| format!("0x{}", hex::encode(d)));
                     TraceEvent::MessageOut {
                         index,
-                        sender: format!("0x{}", sender),
-                        recipient: format!("0x{}", recipient),
+                        sender: format!("0x{sender}"),
+                        recipient: format!("0x{recipient}"),
                         amount: *amount,
                         data: data_hex,
                         nonce: 0,
@@ -645,7 +643,7 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Mint {
                     index,
                     contract_id: *contract_id,
-                    asset_id: format!("0x{}", sub_id),
+                    asset_id: format!("0x{sub_id}"),
                     val: *val,
                 },
 
@@ -657,7 +655,7 @@ impl<'a> CallRetTracer<'a> {
                 } => TraceEvent::Burn {
                     index,
                     contract_id: *contract_id,
-                    asset_id: format!("0x{}", sub_id),
+                    asset_id: format!("0x{sub_id}"),
                     val: *val,
                 },
             };
@@ -766,9 +764,7 @@ mod tests {
         assert_eq!(
             normalize(&trace_output),
             normalize(expected_output),
-            "\nExpected:\n{}\n\nActual:\n{}\n",
-            expected_output,
-            trace_output
+            "\nExpected:\n{expected_output}\n\nActual:\n{trace_output}\n"
         );
     }
 
@@ -824,9 +820,7 @@ mod tests {
         assert_eq!(
             normalize(&trace_output),
             normalize(expected_output),
-            "\nExpected:\n{}\n\nActual:\n{}\n",
-            expected_output,
-            trace_output
+            "\nExpected:\n{expected_output}\n\nActual:\n{trace_output}\n"
         );
     }
 
@@ -889,9 +883,7 @@ mod tests {
         assert_eq!(
             normalize(&trace_output),
             normalize(expected_output),
-            "\nExpected:\n{}\n\nActual:\n{}\n",
-            expected_output,
-            trace_output
+            "\nExpected:\n{expected_output}\n\nActual:\n{trace_output}\n"
         );
     }
 
@@ -972,9 +964,7 @@ mod tests {
         assert_eq!(
             normalize(&trace_output),
             normalize(expected_output),
-            "\nExpected:\n{}\n\nActual:\n{}\n",
-            expected_output,
-            trace_output
+            "\nExpected:\n{expected_output}\n\nActual:\n{trace_output}\n"
         );
     }
 
@@ -1056,9 +1046,7 @@ mod tests {
         assert_eq!(
             normalize(&trace_output),
             normalize(expected_output),
-            "\nExpected:\n{}\n\nActual:\n{}\n",
-            expected_output,
-            trace_output
+            "\nExpected:\n{expected_output}\n\nActual:\n{trace_output}\n"
         );
     }
 
@@ -1184,9 +1172,7 @@ mod tests {
         assert_eq!(
             normalize(&trace_output),
             normalize(expected_output),
-            "\nExpected:\n{}\n\nActual:\n{}\n",
-            expected_output,
-            trace_output
+            "\nExpected:\n{expected_output}\n\nActual:\n{trace_output}\n"
         );
     }
 
@@ -1257,9 +1243,7 @@ mod tests {
         assert_eq!(
             normalize(&trace_output),
             normalize(expected_output),
-            "\nExpected:\n{}\n\nActual:\n{}\n",
-            expected_output,
-            trace_output
+            "\nExpected:\n{expected_output}\n\nActual:\n{trace_output}\n"
         );
     }
 
@@ -1323,9 +1307,7 @@ mod tests {
         assert_eq!(
             normalize(&trace_output),
             normalize(expected_output),
-            "\nExpected:\n{}\n\nActual:\n{}\n",
-            expected_output,
-            trace_output
+            "\nExpected:\n{expected_output}\n\nActual:\n{trace_output}\n"
         );
     }
 
@@ -1385,9 +1367,7 @@ mod tests {
         assert_eq!(
             normalize(&trace_output),
             normalize(expected_output),
-            "\nExpected:\n{}\n\nActual:\n{}\n",
-            expected_output,
-            trace_output
+            "\nExpected:\n{expected_output}\n\nActual:\n{trace_output}\n"
         );
     }
 }
