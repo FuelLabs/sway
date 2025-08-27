@@ -1,0 +1,46 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_struct --release --dump-impls=MyStruct
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_struct
+   Compiling library dump_impls_common (test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_common)
+info: Trait impls dump was requested.
+  --> test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_common/src/lib.sw:3:1
+   |
+...
+ 3 | pub struct MyStruct { }
+   | -------------------- info: Matching implemented traits for this type.
+...
+11 | impl MyTrait for MyStruct {}
+   | -------------------------- help: trait is dump_impls_common::MyTrait
+   |
+____
+
+   Compiling library dump_impls_struct (test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_struct)
+info: Trait impls dump was requested.
+  --> test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_common/src/lib.sw:3:1
+   |
+...
+ 3 | pub struct MyStruct { }
+   | -------------------- info: Matching implemented traits for this type.
+...
+11 | impl MyTrait for MyStruct {}
+   | -------------------------- help: trait is dump_impls_common::MyTrait
+   |
+  ::: test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_struct/src/foo.sw:5:1
+   |
+...
+ 5 | impl MyTraitFoo for dump_impls_common::MyStruct {}
+   | ------------------------------------------------ help: trait is dump_impls_struct::foo::MyTraitFoo
+   |
+  ::: test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_struct/src/lib.sw:9:1
+   |
+...
+ 9 | impl MyTraitStruct for MyStruct {}
+   | -------------------------------- help: trait is dump_impls_struct::MyTraitStruct
+   |
+____
+
+    Finished release [optimized + fuel] target(s) [32 B] in ???
