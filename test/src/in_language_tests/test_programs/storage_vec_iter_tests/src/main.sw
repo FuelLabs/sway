@@ -8,23 +8,6 @@ use impls::Enum;
 use std::hash::{Hash, sha256};
 use std::storage::storage_vec::*;
 
-abi StorageVecIterTest {
-    #[storage(read)]
-    fn assert_empty_vec_next_returns_none();
-
-    #[storage(read, write)]
-    fn assert_vec_with_elements_next_returns_element();
-
-    #[storage(read, write)]
-    fn assert_vec_with_elements_for_loop_iteration();
-
-    #[storage(read, write)]
-    fn storage_vec_field_for_loop_iteration();
-
-    #[storage(read, write)]
-    fn storage_vec_field_nested_for_loop_iteration();
-}
-
 storage {
     vec: StorageVec<u64> = StorageVec {},
     vec_of_vec: StorageVec<StorageVec<u64>> = StorageVec {},
@@ -33,8 +16,7 @@ storage {
 #[storage(read)]
 fn assert_empty_vec_next_returns_none_impl<T>(slot_id_preimage: u64) {
     let vec: StorageKey<StorageVec<T>> = StorageKey::new(sha256(slot_id_preimage), 0, sha256(slot_id_preimage + 100));
-    // TODO: Replace with `.is_none()` method call once https://github.com/FuelLabs/sway/issues/6825 is fixed.
-    assert(Option::is_none(vec.iter().next()));
+    assert(vec.iter().next().is_none());
 }
 
 #[storage(read, write)]
@@ -58,8 +40,7 @@ where
     let mut iter = vec.iter();
     while i < NUM_OF_ELEMENTS {
         let element = iter.next();
-        // TODO: Replace with `.is_some()` method call once https://github.com/FuelLabs/sway/issues/6825 is fixed.
-        assert(Option::is_some(element));
+        assert(element.is_some());
 
         let value = element.unwrap().read();
         assert_eq(value, vec.get(i).unwrap().read());
@@ -67,11 +48,10 @@ where
         i += 1;
     }
 
-    // TODO: Replace with `.is_none()` method call once https://github.com/FuelLabs/sway/issues/6825 is fixed.
     let element_after_last = iter.next();
-    assert(Option::is_none(element_after_last));
+    assert(element_after_last.is_none());
     let element_after_last = iter.next();
-    assert(Option::is_none(element_after_last));
+    assert(element_after_last.is_none());
 }
 
 #[storage(read, write)]
@@ -91,21 +71,18 @@ where
         i += 1;
     }
 
-    // TODO: This code fails to compile with the error given below.
-    //       Uncomment this test once https://github.com/FuelLabs/sway/issues/6825 is fixed.
-    // let mut i = 0;
-    // for element in vec.iter() {
-    //     // ERROR:  ^^^^^^^^^^ No method "unwrap(Option<StorageKey<T>>)" found for type "Option<StorageKey<T>>".
-    //     let value = element.read();
-    //     assert_eq(value, vec.get(i).unwrap().read());
+    let mut i = 0;
+    for element in vec.iter() {
+        let value = element.read();
+        assert_eq(value, vec.get(i).unwrap().read());
 
-    //     i += 1;
-    // }
+        i += 1;
+    }
 
-    // assert_eq(vec.len(), i);
+    assert_eq(vec.len(), i);
 }
 
-impl StorageVecIterTest for Contract {
+impl Contract {
     #[storage(read)]
     fn assert_empty_vec_next_returns_none() {
         assert_empty_vec_next_returns_none_impl::<()>(1);
@@ -124,7 +101,7 @@ impl StorageVecIterTest for Contract {
         assert_empty_vec_next_returns_none_impl::<Enum>(14);
         assert_empty_vec_next_returns_none_impl::<(u8, u32)>(15);
         assert_empty_vec_next_returns_none_impl::<b256>(16);
-        assert_empty_vec_next_returns_none_impl::<raw_ptr>(17);
+        assert_empty_vec_next_returns_none_impl::<RawPtrNewtype>(17);
         assert_empty_vec_next_returns_none_impl::<raw_slice>(18);
     }
 
@@ -147,7 +124,7 @@ impl StorageVecIterTest for Contract {
         assert_vec_with_elements_next_returns_element_impl::<Enum>(14);
         assert_vec_with_elements_next_returns_element_impl::<(u8, u32)>(15);
         assert_vec_with_elements_next_returns_element_impl::<b256>(16);
-        assert_vec_with_elements_next_returns_element_impl::<raw_ptr>(17);
+        assert_vec_with_elements_next_returns_element_impl::<RawPtrNewtype>(17);
         assert_vec_with_elements_next_returns_element_impl::<raw_slice>(18);
     }
 
@@ -170,7 +147,7 @@ impl StorageVecIterTest for Contract {
         assert_vec_with_elements_for_loop_iteration_impl::<Enum>(14);
         assert_vec_with_elements_for_loop_iteration_impl::<(u8, u32)>(15);
         assert_vec_with_elements_for_loop_iteration_impl::<b256>(16);
-        assert_vec_with_elements_for_loop_iteration_impl::<raw_ptr>(17);
+        assert_vec_with_elements_for_loop_iteration_impl::<RawPtrNewtype>(17);
         assert_vec_with_elements_for_loop_iteration_impl::<raw_slice>(18);
     }
 
@@ -239,30 +216,30 @@ impl StorageVecIterTest for Contract {
 
 #[test]
 fn empty_vec_next_returns_none() {
-    let contract_abi = abi(StorageVecIterTest, CONTRACT_ID);
+    let contract_abi = abi(StorageVecIterTestsAbi, CONTRACT_ID);
     contract_abi.assert_empty_vec_next_returns_none();
 }
 
 #[test]
 fn vec_with_elements_next_returns_element() {
-    let contract_abi = abi(StorageVecIterTest, CONTRACT_ID);
+    let contract_abi = abi(StorageVecIterTestsAbi, CONTRACT_ID);
     contract_abi.assert_vec_with_elements_next_returns_element();
 }
 
 #[test]
 fn vec_with_elements_for_loop_iteration() {
-    let contract_abi = abi(StorageVecIterTest, CONTRACT_ID);
+    let contract_abi = abi(StorageVecIterTestsAbi, CONTRACT_ID);
     contract_abi.assert_vec_with_elements_for_loop_iteration();
 }
 
 #[test]
 fn storage_vec_field_for_loop_iteration() {
-    let contract_abi = abi(StorageVecIterTest, CONTRACT_ID);
+    let contract_abi = abi(StorageVecIterTestsAbi, CONTRACT_ID);
     contract_abi.storage_vec_field_for_loop_iteration();
 }
 
 #[test]
 fn storage_vec_field_nested_for_loop_iteration() {
-    let contract_abi = abi(StorageVecIterTest, CONTRACT_ID);
+    let contract_abi = abi(StorageVecIterTestsAbi, CONTRACT_ID);
     contract_abi.storage_vec_field_nested_for_loop_iteration();
 }

@@ -256,7 +256,7 @@ pub(super) async fn run(
                     None,
                     experimental
                 );
-                let (errors, _warnings) = handler.consume();
+                let (errors, _warnings, _infos) = handler.consume();
                 if !errors.is_empty() {
                     panic!(
                         "Failed to compile test {}:\n{}",
@@ -431,7 +431,7 @@ pub(super) async fn run(
                                 &ir,
                     Some(&BuildConfig::dummy_for_asm_generation().with_optimization_level(OptLevel::Opt1))
                             );
-                            let (errors, _warnings) = handler.consume();
+                            let (errors, _warnings, _infos) = handler.consume();
 
                             if asm_result.is_err() || !errors.is_empty() {
                                 println!("Errors when compiling {test_file_name} IR to ASM:\n");
@@ -550,6 +550,7 @@ fn compile_std(
         locked: false,
         ipfs_node: None,
         experimental: run_config.experimental.clone(),
+        dump_impls: None,
     };
 
     let res = match forc::test::forc_check::check(check_cmd, engines) {
@@ -562,7 +563,7 @@ fn compile_std(
     match res.0 {
         Some(typed_program) => typed_program.namespace.current_package_ref().clone(),
         _ => {
-            let (errors, _warnings) = res.1.consume();
+            let (errors, _warnings, _infos) = res.1.consume();
             for err in errors {
                 println!("{err:?}");
             }

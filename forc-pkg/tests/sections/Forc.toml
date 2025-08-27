@@ -7,6 +7,7 @@ name = "sections"
 [dependencies]
 
 [build-profile.release]
+dump = {}
 print-ast = true
 print-dca-graph = "dca_graph"
 print-dca-graph-url-format = "print_dca_graph_url_format"
@@ -23,9 +24,11 @@ optimization-level = 0
 backtrace = "none"
 
 [build-profile.custom_asm]
+dump = {}
 print-asm = { virtual = false, allocated = false, final = true }
 
 [build-profile.custom_ir]
+dump = {}
 print-ir = { initial = true, final = false, modified = true, passes = [
     "dce",
     "sroa",
@@ -33,3 +36,4 @@ print-ir = { initial = true, final = false, modified = true, passes = [
 
 [build-profile.custom_backtrace]
 backtrace = "only_always"
+dump = {}

@@ -84,7 +84,10 @@ pub(crate) fn instantiate_if_expression(
         }));
     }
 
-    let (new_errors, new_warnings) = h.consume();
+    let (new_errors, new_warnings, new_infos) = h.consume();
+    for info in new_infos {
+        handler.emit_info(info);
+    }
     for warn in new_warnings {
         handler.emit_warn(warn);
     }
