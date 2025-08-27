@@ -710,7 +710,7 @@ fn check_is_valid_error_type_enum(
     {
         let (last_occurrence, previous_occurrences) = duplicated_error_messages
             .split_last()
-            .expect("`duplicated_error_messages` has more then one element");
+            .expect("`duplicated_error_messages` has more than one element");
         handler.emit_warn(CompileWarning {
             span: last_occurrence.clone(),
             warning_content: Warning::ErrorDuplicatedErrorMessage {
