@@ -366,7 +366,7 @@ pub fn get_gep_symbol(context: &Context, val: Value) -> Option<Symbol> {
 }
 
 /// Return [Symbol] referred by `val` if there is _exactly one_ symbol referred,
-/// or `None` if there are no [Symbol]s referred or if there is more then one
+/// or `None` if there are no [Symbol]s referred or if there is more than one
 /// referred.
 pub fn get_referred_symbol(context: &Context, val: Value) -> Option<Symbol> {
     let syms = get_referred_symbols(context, val);
