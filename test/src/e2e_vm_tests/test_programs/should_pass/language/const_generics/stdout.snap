@@ -555,8 +555,12 @@ ____
 >>>>>>> fcd1d6288 (update snapshot tests)
 =======
   Compiled script "const_generics" with 3 warnings.
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [10.016 KB] in ???
 >>>>>>> 25301cb25 (update snapshot tests)
+=======
+    Finished debug [unoptimized + fuel] target(s) [10.008 KB] in ???
+>>>>>>> 7c46cf4b0 (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
