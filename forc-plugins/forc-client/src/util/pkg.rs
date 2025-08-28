@@ -43,7 +43,7 @@ pub(crate) fn create_proxy_contract(pkg_name: &str) -> Result<PathBuf> {
     // Create the proxy contract folder.
     let proxy_contract_dir = user_forc_directory()
         .join(GENERATED_CONTRACT_FOLDER_NAME)
-        .join(format!("{}-proxy", pkg_name));
+        .join(format!("{pkg_name}-proxy"));
     std::fs::create_dir_all(&proxy_contract_dir)?;
     std::fs::write(
         proxy_contract_dir.join(PROXY_BIN_FILE_NAME),

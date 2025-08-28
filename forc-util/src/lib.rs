@@ -117,7 +117,7 @@ impl<T> Termination for ForcCliResult<T> {
         match self.result {
             Ok(_) => DEFAULT_SUCCESS_EXIT_CODE.into(),
             Err(e) => {
-                println_error(&format!("{}", e));
+                println_error(&format!("{e}"));
                 e.exit_code.into()
             }
         }

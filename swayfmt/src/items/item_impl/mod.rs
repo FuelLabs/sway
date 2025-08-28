@@ -54,10 +54,10 @@ impl Format for ItemImpl {
         } else {
             Self::open_curly_brace(formatted_code, formatter)?;
             formatter.indent();
-            write!(formatted_code, "{}", NEW_LINE)?;
+            write!(formatted_code, "{NEW_LINE}")?;
             for item in contents.iter() {
                 item.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", NEW_LINE)?;
+                write!(formatted_code, "{NEW_LINE}")?;
             }
             Self::close_curly_brace(formatted_code, formatter)?;
         }

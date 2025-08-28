@@ -101,8 +101,7 @@ impl ForcCallTools {
             Ok(cmd) => cmd,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Error: Invalid arguments: {}",
-                    e
+                    "Error: Invalid arguments: {e}"
                 ))]))
             }
         };
@@ -111,8 +110,7 @@ impl ForcCallTools {
             Ok(op) => op,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Error: Failed to validate command: {}",
-                    e
+                    "Error: Failed to validate command: {e}"
                 ))]))
             }
         };
@@ -121,8 +119,7 @@ impl ForcCallTools {
             Ok(resp) => resp,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Error: Contract call failed: {}",
-                    e
+                    "Error: Contract call failed: {e}"
                 ))]))
             }
         };
@@ -131,8 +128,7 @@ impl ForcCallTools {
             Ok(content) => content,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Failed to convert response to JSON: {}",
-                    e
+                    "Failed to convert response to JSON: {e}"
                 ))]))
             }
         };
@@ -149,8 +145,7 @@ impl ForcCallTools {
             Ok(cmd) => cmd,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Error: Invalid arguments: {}",
-                    e
+                    "Error: Invalid arguments: {e}"
                 ))]))
             }
         };
@@ -159,8 +154,7 @@ impl ForcCallTools {
             Ok(op) => op,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Error: Failed to validate command: {}",
-                    e
+                    "Error: Failed to validate command: {e}"
                 ))]))
             }
         };
@@ -173,8 +167,7 @@ impl ForcCallTools {
                     Ok(abi_map) => (contract_id, abi_map),
                     Err(e) => {
                         return Ok(CallToolResult::error(vec![Content::text(format!(
-                            "Failed to create ABI map: {}",
-                            e
+                            "Failed to create ABI map: {e}"
                         ))]))
                     }
                 }
@@ -194,8 +187,7 @@ impl ForcCallTools {
             &mut output_buffer,
         ) {
             return Ok(CallToolResult::error(vec![Content::text(format!(
-                "Failed to list contract functions: {}",
-                e
+                "Failed to list contract functions: {e}"
             ))]));
         }
 
@@ -204,8 +196,7 @@ impl ForcCallTools {
             Ok(s) => s,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Output was not valid UTF-8: {}",
-                    e
+                    "Output was not valid UTF-8: {e}"
                 ))]))
             }
         };
@@ -232,8 +223,7 @@ impl ForcCallTools {
             Ok(cmd) => cmd,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Error: Invalid arguments: {}",
-                    e
+                    "Error: Invalid arguments: {e}"
                 ))]))
             }
         };
@@ -242,8 +232,7 @@ impl ForcCallTools {
             Ok(op) => op,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Error: Failed to validate command: {}",
-                    e
+                    "Error: Failed to validate command: {e}"
                 ))]))
             }
         };
@@ -252,8 +241,7 @@ impl ForcCallTools {
             Ok(resp) => resp,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Error: Transfer failed: {}",
-                    e
+                    "Error: Transfer failed: {e}"
                 ))]))
             }
         };
@@ -262,8 +250,7 @@ impl ForcCallTools {
             Ok(content) => content,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Failed to convert response to JSON: {}",
-                    e
+                    "Failed to convert response to JSON: {e}"
                 ))]))
             }
         };
@@ -287,8 +274,7 @@ impl ForcCallTools {
                 Ok(event) => trace_events.push(event),
                 Err(e) => {
                     return Ok(CallToolResult::error(vec![Content::text(format!(
-                        "Error: Failed to parse trace_event: {}",
-                        e
+                        "Error: Failed to parse trace_event: {e}"
                     ))]))
                 }
             }
@@ -305,8 +291,7 @@ impl ForcCallTools {
                         }
                         Err(e) => {
                             return Ok(CallToolResult::error(vec![Content::text(format!(
-                                "Error: Failed to parse contract ID '{}': {}",
-                                contract_id_str, e
+                                "Error: Failed to parse contract ID '{contract_id_str}': {e}"
                             ))]))
                         }
                     }
@@ -327,8 +312,7 @@ impl ForcCallTools {
             &mut trace_buffer,
         ) {
             return Ok(CallToolResult::error(vec![Content::text(format!(
-                "Error: Failed to generate trace: {}",
-                e
+                "Error: Failed to generate trace: {e}"
             ))]));
         }
 
@@ -336,8 +320,7 @@ impl ForcCallTools {
             Ok(output) => output,
             Err(e) => {
                 return Ok(CallToolResult::error(vec![Content::text(format!(
-                    "Error: Failed to convert trace output to string: {}",
-                    e
+                    "Error: Failed to convert trace output to string: {e}"
                 ))]))
             }
         };
@@ -791,10 +774,10 @@ mod tests {
             let abi_path = "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json";
 
             Ok(E2ETestFixture {
-                contract_id: format!("0x{}", contract_id),
+                contract_id: format!("0x{contract_id}"),
                 abi_path: abi_path.to_string(),
                 node_url: provider.url().to_string(),
-                secret_key: format!("0x{}", secret_key),
+                secret_key: format!("0x{secret_key}"),
                 provider,
             })
         }
@@ -898,7 +881,7 @@ mod tests {
                 // Convert HashMap<ContractId, String> to HashMap<String, String>
                 let labels_map: HashMap<String, String> = labels
                     .iter()
-                    .map(|(contract_id, label)| (format!("0x{}", contract_id), label.clone()))
+                    .map(|(contract_id, label)| (format!("0x{contract_id}"), label.clone()))
                     .collect();
                 args.insert(
                     "labels".to_string(),
@@ -1326,7 +1309,7 @@ mod tests {
         // Convert HashMap<ContractId, String> to HashMap<String, String>
         let labels_map: HashMap<String, String> = labels
             .iter()
-            .map(|(contract_id, label)| (format!("0x{}", contract_id), label.clone()))
+            .map(|(contract_id, label)| (format!("0x{contract_id}"), label.clone()))
             .collect();
 
         // Convert trace_events to array of JSON objects

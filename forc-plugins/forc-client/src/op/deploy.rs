@@ -588,7 +588,7 @@ pub async fn deploy_contracts(
 
                 // Update manifest file such that the proxy address field points to the new proxy contract.
                 update_proxy_address_in_manifest(
-                    &format!("0x{}", deployed_proxy_contract),
+                    &format!("0x{deployed_proxy_contract}"),
                     &pkg.descriptor.manifest_file,
                 )?;
                 Some(deployed_proxy_contract)
@@ -709,11 +709,11 @@ pub async fn deploy_pkg(
                 // Create a deployment artifact.
                 create_deployment_artifact(
                     DeploymentArtifact {
-                        transaction_id: format!("0x{}", transaction_id),
-                        salt: format!("0x{}", salt),
+                        transaction_id: format!("0x{transaction_id}"),
+                        salt: format!("0x{salt}"),
                         network_endpoint: node_url.to_string(),
                         chain_id,
-                        contract_id: format!("0x{}", contract_id),
+                        contract_id: format!("0x{contract_id}"),
                         deployment_size: bytecode.len(),
                         deployed_block_height: None,
                     },
@@ -743,10 +743,10 @@ pub async fn deploy_pkg(
                     create_deployment_artifact(
                         DeploymentArtifact {
                             transaction_id: format!("0x{}", tx.id(&chain_id)),
-                            salt: format!("0x{}", salt),
+                            salt: format!("0x{salt}"),
                             network_endpoint: node_url.to_string(),
                             chain_id,
-                            contract_id: format!("0x{}", contract_id),
+                            contract_id: format!("0x{contract_id}"),
                             deployment_size: bytecode.len(),
                             deployed_block_height: Some(*block_height),
                         },

@@ -20,10 +20,10 @@ async fn run_example() -> Result<(), anyhow::Error> {
     assert!(status.breakpoint.is_some());
 
     let value = client.register(&session_id, 12).await?;
-    println!("reg[12] = {}", value);
+    println!("reg[12] = {value}");
 
     let mem = client.memory(&session_id, 0x10, 0x20).await?;
-    println!("mem[0x10..0x30] = {:?}", mem);
+    println!("mem[0x10..0x30] = {mem:?}");
 
     client.set_single_stepping(&session_id, true).await?;
 

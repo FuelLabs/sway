@@ -1737,7 +1737,7 @@ mod tests {
         let (errors, _warnings, _infos) = handler.consume();
 
         if !errors.is_empty() {
-            panic!("{:#?}", errors);
+            panic!("{errors:#?}");
         }
 
         let f = r.unwrap();

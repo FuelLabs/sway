@@ -134,7 +134,7 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
         TraitType {
             name,
             trait_type_id: _,
-        } => format!("trait type {}", name),
+        } => format!("trait type {name}"),
         Ref {
             to_mutable_value,
             referenced_type,

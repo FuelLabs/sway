@@ -262,7 +262,7 @@ impl SourceEngine {
         let pkg = if package_version.is_empty() {
             package_name.clone()
         } else {
-            format!("{}@{}", package_name, package_version)
+            format!("{package_name}@{package_version}")
         };
 
         // Get the relative path of the source file with respect to the manifest path.
