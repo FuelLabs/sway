@@ -4,7 +4,8 @@ use forc_publish::error::Result;
 use forc_publish::forc_pub_client::ForcPubClient;
 use forc_publish::tarball::create_tarball_from_current_dir;
 use forc_tracing::{
-    init_tracing_subscriber, println_action_green, println_error, TracingSubscriberOptions,
+    init_telemetry, init_tracing_subscriber, println_action_green, println_error,
+    TracingSubscriberOptions,
 };
 use tempfile::tempdir;
 use url::Url;
@@ -26,7 +27,9 @@ pub struct Opt {
 
 #[tokio::main]
 async fn main() {
-    init_tracing_subscriber(TracingSubscriberOptions::default());
+    let tracing_options = TracingSubscriberOptions::default();
+    init_tracing_subscriber(tracing_options.clone());
+    init_telemetry(&tracing_options);
 
     if let Err(err) = run().await {
         println!();
