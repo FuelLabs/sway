@@ -272,7 +272,7 @@ pub(crate) fn attr_decls_to_attributes(
         if attributes_of_kind.len() > 1 {
             let (last_attribute, previous_attributes) = attributes_of_kind
                 .split_last()
-                .expect("`attributes_of_kind` has more then one element");
+                .expect("`attributes_of_kind` has more than one element");
             handler.emit_err(
                 ConvertParseTreeError::InvalidAttributeMultiplicity {
                     last_occurrence: (&last_attribute.name).into(),
