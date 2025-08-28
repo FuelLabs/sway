@@ -1,24 +1,24 @@
 [[package]]
 name = "abi_impl_methods_callable"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "asset_id"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "asset_ops"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "auth_caller_contract"
 source = "member"
 dependencies = [
     "auth_testing_abi",
-    "std",
+    "std path+from-root-214E8589AEAE48E5",
 ]
 
 [[package]]
@@ -26,74 +26,74 @@ name = "auth_caller_script"
 source = "member"
 dependencies = [
     "auth_testing_abi",
-    "std",
+    "std path+from-root-214E8589AEAE48E5",
 ]
 
 [[package]]
 name = "auth_predicate"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "auth_testing_abi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "auth_testing_contract"
 source = "member"
 dependencies = [
     "auth_testing_abi",
-    "std",
+    "std path+from-root-214E8589AEAE48E5",
 ]
 
 [[package]]
 name = "balance_contract"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "block"
 source = "member"
 dependencies = [
     "block_test_abi",
-    "std",
+    "std path+from-root-214E8589AEAE48E5",
 ]
 
 [[package]]
 name = "block_test_abi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "call_frames"
 source = "member"
 dependencies = [
     "call_frames_test_abi",
-    "std",
+    "std path+from-root-214E8589AEAE48E5",
 ]
 
 [[package]]
 name = "call_frames_test_abi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "configurables_in_contract"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "configurables_in_script"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "context"
 source = "member"
 dependencies = [
     "context_testing_abi",
-    "std",
+    "std path+from-root-214E8589AEAE48E5",
 ]
 
 [[package]]
@@ -101,71 +101,71 @@ name = "context_caller_contract"
 source = "member"
 dependencies = [
     "context_testing_abi",
-    "std",
+    "std path+from-root-214E8589AEAE48E5",
 ]
 
 [[package]]
 name = "context_testing_abi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "contract_bytecode"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "ec_recover"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "ec_recover_and_match_predicate"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "evm"
 source = "member"
 dependencies = [
     "evm_test_abi",
-    "std",
+    "std path+from-root-214E8589AEAE48E5",
 ]
 
 [[package]]
 name = "evm_ec_recover"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "evm_test_abi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "generics_in_abi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "logging"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "low_level_call"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "low_level_callee_contract"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "messages"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "methods_abi"
@@ -176,287 +176,291 @@ name = "methods_contract"
 source = "member"
 dependencies = [
     "methods_abi",
-    "std",
+    "std path+from-root-214E8589AEAE48E5",
 ]
 
 [[package]]
 name = "option_field_order"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "option_in_abi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "parsing_logs"
 source = "member"
 dependencies = [
     "parsing_logs_test_abi",
-    "std",
+    "std path+from-root-214E8589AEAE48E5",
 ]
 
 [[package]]
 name = "parsing_logs_test_abi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "pow"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "predicate_data_simple"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "predicate_data_struct"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "predicate_panic_expression"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "private_struct_fields_in_storage_and_abi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "registers"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "result_in_abi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "result_option_expect"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "run_external_proxy"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "run_external_proxy_with_storage"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "run_external_target"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "run_external_target_with_storage"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "script_bytecode"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "script_data"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "script_string_slice"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-46F77C673B224E6F"]
 
 [[package]]
 name = "std"
 source = "path+from-root-214E8589AEAE48E5"
 
 [[package]]
+name = "std"
+source = "path+from-root-46F77C673B224E6F"
+
+[[package]]
 name = "storage"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "storage_access"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "storage_bytes"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "storage_init"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "storage_map"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "storage_map_nested"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "storage_string"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "storage_vec_nested"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "storage_vec_of_storage_string"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "storage_vec_to_vec"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "string_slice_predicate"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "superabi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "superabi_supertrait"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "svec_array"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "svec_b256"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "svec_bool"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "svec_enum"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "svec_str"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "svec_struct"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "svec_tuple"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "svec_u16"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "svec_u32"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "svec_u64"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "svec_u8"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "time"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "tx_contract"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "tx_fields"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "tx_input_count_predicate"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "tx_output_contract"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "tx_output_contract_creation_predicate"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "tx_output_count_predicate"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "tx_output_predicate"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "tx_type_predicate"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "tx_witness_predicate"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "type_aliases"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]
 
 [[package]]
 name = "vec_in_abi"
 source = "member"
-dependencies = ["std"]
+dependencies = ["std path+from-root-214E8589AEAE48E5"]

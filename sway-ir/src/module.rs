@@ -85,9 +85,9 @@ impl Module {
             .insert(call_path, const_val);
     }
 
-    /// Add a value to the function global storage, by forcing the name to be unique if needed.
+    /// Add a value to the module global storage, by forcing the name to be unique if needed.
     ///
-    /// Will use the provided name as a hint and rename to guarantee insertion.
+    /// Will use the provided name as a hint and eventually rename it to guarantee insertion.
     pub fn new_unique_global_var(
         &self,
         context: &mut Context,
