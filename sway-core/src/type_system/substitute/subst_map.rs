@@ -44,7 +44,7 @@ impl DebugWithEngines for TypeSubstMap {
                 .join(", "),
             self.const_generics_renaming
                 .iter()
-                .map(|(a, b)| format!("{:?} -> {:?}", a, b))
+                .map(|(a, b)| format!("{a:?} -> {b:?}"))
                 .collect::<Vec<_>>()
                 .join(", ")
         )

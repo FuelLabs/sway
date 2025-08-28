@@ -17,8 +17,7 @@ pub async fn transfer(
     let tx_response = if provider.is_user_account(*recipient).await? {
         writeln!(
             writer,
-            "\nTransferring {} 0x{} to recipient address 0x{}...\n",
-            amount, asset_id, recipient
+            "\nTransferring {amount} 0x{asset_id} to recipient address 0x{recipient}...\n"
         )?;
         wallet
             .transfer(recipient, amount, asset_id, tx_policies)
@@ -27,8 +26,7 @@ pub async fn transfer(
     } else {
         writeln!(
             writer,
-            "\nTransferring {} 0x{} to contract address 0x{}...\n",
-            amount, asset_id, recipient
+            "\nTransferring {amount} 0x{asset_id} to contract address 0x{recipient}...\n"
         )?;
         let contract_id = (*recipient).into();
         wallet

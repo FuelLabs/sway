@@ -898,7 +898,7 @@ fn handle_impl_contract(
                 // Generate ABI name using project name with "Abi" suffix
                 let contract_name = to_upper_camel_case(context.package_name.as_str());
                 let anon_abi_name =
-                    Ident::new_with_override(format!("{}Abi", contract_name), span.clone());
+                    Ident::new_with_override(format!("{contract_name}Abi"), span.clone());
 
                 // Convert the methods to ABI interface
                 let mut interface_surface = Vec::new();

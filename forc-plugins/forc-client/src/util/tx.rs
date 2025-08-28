@@ -213,9 +213,8 @@ pub(crate) async fn select_account(
                     format!(
                         "Your wallet does not have any funds to pay for the transaction.\
                         \n\nIf you are interacting with a testnet, consider using the faucet.\
-                        \n-> {target} network faucet: {}/?address={first_account}\
-                        \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.",
-                        faucet_url
+                        \n-> {target} network faucet: {faucet_url}/?address={first_account}\
+                        \nIf you are interacting with a local node, consider providing a chainConfig which funds your account."
                     )
                 } else {
                     "Your wallet does not have any funds to pay for the transaction.".to_string()

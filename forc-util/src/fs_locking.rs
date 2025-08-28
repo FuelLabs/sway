@@ -50,7 +50,7 @@ impl PidFileLocking {
             .expect("Failed to execute ps command");
 
         let output_str = String::from_utf8_lossy(&output.stdout);
-        output_str.contains(&format!("{} ", pid))
+        output_str.contains(&format!("{pid} "))
     }
 
     #[cfg(target_os = "windows")]
@@ -72,13 +72,10 @@ impl PidFileLocking {
     /// Removes the lock file if it is not locked or the process that locked it is no longer active
     pub fn release(&self) -> io::Result<()> {
         if self.is_locked() {
-            Err(io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "Cannot remove a dirty lock file, it is locked by another process (PID: {:#?})",
-                    self.get_locker_pid()
-                ),
-            ))
+            Err(io::Error::other(format!(
+                "Cannot remove a dirty lock file, it is locked by another process (PID: {:#?})",
+                self.get_locker_pid()
+            )))
         } else {
             self.remove_file()?;
             Ok(())

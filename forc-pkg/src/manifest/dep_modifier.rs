@@ -287,7 +287,7 @@ impl fmt::Display for Section {
             Section::Deps => "dependencies",
             Section::ContractDeps => "contract-dependencies",
         };
-        write!(f, "{}", section)
+        write!(f, "{section}")
     }
 }
 
@@ -335,12 +335,12 @@ impl Section {
                     Dependency::Simple(ver) => {
                         let mut inline = InlineTable::default();
                         inline.insert("version", Value::from(ver.to_string()));
-                        inline.insert("salt", Value::from(format!("0x{}", salt)));
+                        inline.insert("salt", Value::from(format!("0x{salt}")));
                         Item::Value(toml_edit::Value::InlineTable(inline))
                     }
                     Dependency::Detailed(details) => {
                         let mut inline = generate_table(details);
-                        inline.insert("salt", Value::from(format!("0x{}", salt)));
+                        inline.insert("salt", Value::from(format!("0x{salt}")));
                         Item::Value(toml_edit::Value::InlineTable(inline))
                     }
                 };
@@ -445,11 +445,10 @@ mod tests {
             authors = ["Test"]
             entry = "main.sw"
             license = "MIT"
-            name = "{}"
+            name = "{name}"
             
             [dependencies]
-        "#,
-            name
+        "#
         );
         fs::write(base_path.join("Forc.toml"), forc_toml)?;
 
@@ -500,11 +499,10 @@ mod tests {
                 authors = ["Test"]
                 entry = "main.sw"
                 license = "MIT"
-                name = "{}"
+                name = "{name}"
                 
                 [dependencies]
-            "#,
-                name
+            "#
             );
             fs::write(member_path.join("Forc.toml"), forc_toml)?;
 
@@ -942,7 +940,7 @@ mod tests {
         let base_path = temp_dir.path();
         let package_dir = base_path.join("pkg1");
         let dep = "pkg1";
-        let resp = format!("cannot add `{}` as a dependency to itself", dep);
+        let resp = format!("cannot add `{dep}` as a dependency to itself");
 
         let manifest_file = ManifestFile::from_dir(base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
@@ -1062,7 +1060,7 @@ mod tests {
         );
         assert_eq!(
             contract_table.get("salt").unwrap().as_str(),
-            Some(format!("0x{}", hex_salt).as_str())
+            Some(format!("0x{hex_salt}").as_str())
         );
     }
 

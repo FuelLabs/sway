@@ -132,7 +132,7 @@ pub async fn call_function(
                     "Automatically provided external contract addresses with call (max 10):",
                 );
                 external_contracts.iter().for_each(|addr| {
-                    forc_tracing::println_warning(&format!("- 0x{}", addr));
+                    forc_tracing::println_warning(&format!("- 0x{addr}"));
                 });
             }
             external_contracts
@@ -917,8 +917,8 @@ pub mod tests {
         let (_, id_2, _, _) = get_contract_instance().await;
         let (amount, asset_id, recipient) = (
             "1",
-            &format!("{{0x{}}}", base_asset_id),
-            &format!("(ContractId:{{0x{}}})", id_2),
+            &format!("{{0x{base_asset_id}}}"),
+            &format!("(ContractId:{{0x{id_2}}})"),
         );
         let mut cmd = get_contract_call_cmd(
             id,
@@ -952,7 +952,7 @@ pub mod tests {
         let random_wallet = Wallet::random(&mut rand::thread_rng(), provider.clone());
         let (amount, asset_id, recipient) = (
             "2",
-            &format!("{{0x{}}}", base_asset_id),
+            &format!("{{0x{base_asset_id}}}"),
             &format!("(Address:{{0x{}}})", random_wallet.address()),
         );
         let mut cmd = get_contract_call_cmd(
@@ -982,7 +982,7 @@ pub mod tests {
         let random_wallet = Wallet::random(&mut rand::thread_rng(), provider.clone());
         let (amount, asset_id, recipient) = (
             "5",
-            &format!("{{0x{}}}", base_asset_id),
+            &format!("{{0x{base_asset_id}}}"),
             &format!("(Address:{{0x{}}})", random_wallet.address()),
         );
         let mut cmd = get_contract_call_cmd(
@@ -1010,7 +1010,7 @@ pub mod tests {
         let random_wallet = Wallet::random(&mut rand::thread_rng(), provider.clone());
         let (amount, asset_id, recipient) = (
             "3",
-            &format!("{{0x{}}}", base_asset_id),
+            &format!("{{0x{base_asset_id}}}"),
             &format!("(Address:{{0x{}}})", random_wallet.address()),
         );
         let mut cmd = get_contract_call_cmd(

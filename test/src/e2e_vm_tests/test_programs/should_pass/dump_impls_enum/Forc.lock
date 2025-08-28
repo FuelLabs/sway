@@ -1,0 +1,8 @@
+[[package]]
+name = "dump_impls_common"
+source = "path+from-root-29E5B2F445F21592"
+
+[[package]]
+name = "dump_impls_enum"
+source = "member"
+dependencies = ["dump_impls_common"]

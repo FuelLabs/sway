@@ -284,6 +284,12 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
                 op: InstOp::GetConfig(_, _),
                 ..
             }) if !gep_only => (),
+            // We've reached a global at the top of the chain.
+            // There cannot be a symbol behind it, and so the returned set is complete.
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::GetGlobal(_),
+                ..
+            }) if !gep_only => (),
             // Note that in this case, the pointer itself is coming from a `Load`,
             // and not an address. So, we just continue following the pointer.
             ValueDatum::Instruction(Instruction {
@@ -355,7 +361,7 @@ pub fn get_gep_symbol(context: &Context, val: Value) -> Option<Symbol> {
 }
 
 /// Return [Symbol] referred by `val` if there is _exactly one_ symbol referred,
-/// or `None` if there are no [Symbol]s referred or if there is more then one
+/// or `None` if there are no [Symbol]s referred or if there is more than one
 /// referred.
 pub fn get_referred_symbol(context: &Context, val: Value) -> Option<Symbol> {
     let syms = get_referred_symbols(context, val);

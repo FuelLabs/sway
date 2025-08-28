@@ -6,7 +6,10 @@ use std::{
     sync::Arc,
     time::SystemTime,
 };
-use sway_error::{error::CompileError, warning::CompileWarning};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileInfo, CompileWarning},
+};
 use sway_types::{IdentUnique, ProgramId, SourceId, Spanned};
 
 use crate::{
@@ -131,7 +134,7 @@ pub type FunctionsCacheMap = HashMap<(IdentUnique, String), FunctionCacheEntry>;
 pub struct ProgramsCacheEntry {
     pub path: Arc<PathBuf>,
     pub programs: Programs,
-    pub handler_data: (Vec<CompileError>, Vec<CompileWarning>),
+    pub handler_data: (Vec<CompileError>, Vec<CompileWarning>, Vec<CompileInfo>),
 }
 
 #[derive(Clone, Debug)]

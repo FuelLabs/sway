@@ -75,7 +75,7 @@ impl Inner {
         for cmd in cmds.iter() {
             match cmd {
                 Cmds::PrintArgs => {
-                    self.snapshot.push_str(&format!("{}\n", args));
+                    self.snapshot.push_str(&format!("{args}\n"));
                 }
                 Cmds::Trace(enable) => {
                     ctx.engines.obs().enable_trace(*enable);

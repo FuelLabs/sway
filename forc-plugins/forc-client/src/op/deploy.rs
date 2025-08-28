@@ -12,7 +12,7 @@ use crate::{
     },
 };
 use anyhow::{bail, Context, Result};
-use forc_pkg::{self as pkg, PackageManifestFile};
+use forc_pkg::{self as pkg, DumpOpts, PackageManifestFile};
 use forc_pkg::{manifest::GenericManifestFile, MemberFilter};
 use forc_tracing::{println_action_green, println_warning};
 use forc_util::default_output_directory;
@@ -588,7 +588,7 @@ pub async fn deploy_contracts(
 
                 // Update manifest file such that the proxy address field points to the new proxy contract.
                 update_proxy_address_in_manifest(
-                    &format!("0x{}", deployed_proxy_contract),
+                    &format!("0x{deployed_proxy_contract}"),
                     &pkg.descriptor.manifest_file,
                 )?;
                 Some(deployed_proxy_contract)
@@ -709,11 +709,11 @@ pub async fn deploy_pkg(
                 // Create a deployment artifact.
                 create_deployment_artifact(
                     DeploymentArtifact {
-                        transaction_id: format!("0x{}", transaction_id),
-                        salt: format!("0x{}", salt),
+                        transaction_id: format!("0x{transaction_id}"),
+                        salt: format!("0x{salt}"),
                         network_endpoint: node_url.to_string(),
                         chain_id,
-                        contract_id: format!("0x{}", contract_id),
+                        contract_id: format!("0x{contract_id}"),
                         deployment_size: bytecode.len(),
                         deployed_block_height: None,
                     },
@@ -743,10 +743,10 @@ pub async fn deploy_pkg(
                     create_deployment_artifact(
                         DeploymentArtifact {
                             transaction_id: format!("0x{}", tx.id(&chain_id)),
-                            salt: format!("0x{}", salt),
+                            salt: format!("0x{salt}"),
                             network_endpoint: node_url.to_string(),
                             chain_id,
-                            contract_id: format!("0x{}", contract_id),
+                            contract_id: format!("0x{contract_id}"),
                             deployment_size: bytecode.len(),
                             deployed_block_height: Some(*block_height),
                         },
@@ -814,6 +814,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
+        dump: DumpOpts::default(),
         time_phases: cmd.print.time_phases,
         profile: cmd.print.profile,
         metrics_outfile: cmd.print.metrics_outfile.clone(),
