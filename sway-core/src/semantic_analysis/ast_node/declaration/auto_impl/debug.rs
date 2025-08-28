@@ -139,17 +139,13 @@ where
                     format!(
                         "{enum_name}::{variant_name} => {{
                         _f.print_str(\"{variant_name}\");
-                    }}, \n",
-                        enum_name = enum_name,
-                        variant_name = variant_name
+                    }}, \n"
                     )
                 } else {
                     format!(
                         "{enum_name}::{variant_name}(value) => {{
                         _f.debug_tuple(\"{enum_name}\").field(value).finish();
                     }}, \n",
-                        enum_name = enum_name,
-                        variant_name = variant_name,
                     )
                 }
             })

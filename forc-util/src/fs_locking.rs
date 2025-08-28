@@ -50,7 +50,7 @@ impl PidFileLocking {
             .expect("Failed to execute ps command");
 
         let output_str = String::from_utf8_lossy(&output.stdout);
-        output_str.contains(&format!("{} ", pid))
+        output_str.contains(&format!("{pid} "))
     }
 
     #[cfg(target_os = "windows")]

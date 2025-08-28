@@ -50,7 +50,7 @@ pub(crate) fn generate_searchbar(module_info: &ModuleInfo) -> Box<dyn RenderBox>
                             const name = item.type_name === "module"
                                 ? [...item.module_info.slice(0, -1), formattedName].join("::")
                                 : [...item.module_info, formattedName].join("::");
-                            const path = ["{}", ...item.module_info, item.html_filename].join("/");
+                            const path = ["{path_to_root}", ...item.module_info, item.html_filename].join("/");
                             const left = `<td><span>${{name}}</span></td>`;
                             const right = `<td><p>${{item.preview}}</p></td>`;
                             return `<tr onclick="window.location='${{path}}';">${{left}}${{right}}</tr>`;
@@ -71,7 +71,7 @@ pub(crate) fn generate_searchbar(module_info: &ModuleInfo) -> Box<dyn RenderBox>
             // Check for any query parameters initially
             onQueryParamsChange();
         }}
-    );"#, path_to_root)).to_string();
+    );"#)).to_string();
     box_html! {
         script(src=format!("{}/search.js", path_to_root), type="text/javascript");
         script {

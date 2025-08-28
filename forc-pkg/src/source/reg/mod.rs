@@ -469,7 +469,7 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
                 IPFSNode::WithUrl(gateway_url) => {
                     println_action_green(
                         "Fetching",
-                        &format!("from {}. Note: This can take several minutes.", gateway_url),
+                        &format!("from {gateway_url}. Note: This can take several minutes."),
                     );
                     cid.fetch_with_gateway_url(gateway_url, &path).await
                 }
@@ -477,12 +477,9 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
 
             // If IPFS fails, try CDN fallback
             if let Err(ipfs_error) = ipfs_result {
-                println_action_green("Warning", &format!("IPFS fetch failed: {}", ipfs_error));
+                println_action_green("Warning", &format!("IPFS fetch failed: {ipfs_error}"));
                 fetch_from_s3(pinned, &path).await.with_context(|| {
-                    format!(
-                        "Both IPFS and CDN fallback failed. IPFS error: {}",
-                        ipfs_error
-                    )
+                    format!("Both IPFS and CDN fallback failed. IPFS error: {ipfs_error}")
                 })?;
             }
 
@@ -600,10 +597,7 @@ where
 
     let contents = index_response.text().await?;
     let index_file: IndexFile = serde_json::from_str(&contents).with_context(|| {
-        format!(
-            "Unable to deserialize a github registry lookup response. Body was: \"{}\"",
-            contents
-        )
+        format!("Unable to deserialize a github registry lookup response. Body was: \"{contents}\"")
     })?;
 
     let res = f(index_file).await?;

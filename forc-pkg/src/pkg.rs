@@ -738,7 +738,7 @@ impl BuildPlan {
             }
             println_action_green(
                 "Creating",
-                &format!("a new `Forc.lock` file. (Cause: {})", cause),
+                &format!("a new `Forc.lock` file. (Cause: {cause})"),
             );
             let member_names = manifests
                 .values()

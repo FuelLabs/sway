@@ -159,9 +159,8 @@ fn test_is_valid_project_name_format() {
 
     let format_error_message = |name: &str| -> String {
         format!(
-            "'{}' is not a valid name for a project. \n\
-            The name may use letters, numbers, hyphens, and underscores, and must start with a letter.",
-            name
+            "'{name}' is not a valid name for a project. \n\
+            The name may use letters, numbers, hyphens, and underscores, and must start with a letter."
         )
     };
 

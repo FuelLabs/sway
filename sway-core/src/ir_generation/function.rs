@@ -541,12 +541,22 @@ impl<'a> FnCompiler<'a> {
         match &ast_expr.expression {
             ty::TyExpressionVariant::Literal(Literal::String(s)) => {
                 let string_data =
-                    ConstantContent::get_string(context, s.as_str().as_bytes().to_vec());
-                let string_data_ptr =
-                    store_to_memory(self, context, CompiledValue::InRegister(string_data))?
-                        .expect_memory();
+                    ConstantContent::get_string(context, s.as_str().as_bytes().to_vec())
+                        .get_constant(context)
+                        .unwrap();
+                let string_data_ptr = self.module.new_unique_global_var(
+                    context,
+                    "__const_global".into(),
+                    string_data.get_content(context).ty,
+                    Some(*string_data),
+                    false,
+                );
+                let string_ptr = self
+                    .current_block
+                    .append(context)
+                    .get_global(string_data_ptr);
                 let string_len = s.as_str().len() as u64;
-                self.compile_string_slice(context, span_md_idx, string_data_ptr, string_len)
+                self.compile_string_slice(context, span_md_idx, string_ptr, string_len)
             }
             ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
                 let implied_lit = match &*self.engines.te().get(ast_expr.return_type) {
@@ -4901,8 +4911,7 @@ impl<'a> FnCompiler<'a> {
                             //       want to improve and refactor Storage API in the future.
                             assert!(
                                 offset_in_bytes % 8 == 0,
-                                "Expected struct fields to be aligned to word boundary. The field offset in bytes was {}.",
-                                offset_in_bytes
+                                "Expected struct fields to be aligned to word boundary. The field offset in bytes was {offset_in_bytes}.",
                             );
                             offset_in_bytes / 8
                         }

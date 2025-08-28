@@ -132,7 +132,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                         VirtualRegister::Constant(ConstantRegister::FuncArg0),
                         dataid,
                     )),
-                    comment: format!("get pointer to configurable {} default value", name),
+                    comment: format!("get pointer to configurable {name} default value"),
                     owning_span: None,
                 });
 
@@ -145,7 +145,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                             "Error representing encoded_bytes length as 12-bit immediate",
                         ),
                     )),
-                    comment: format!("get length of configurable {} default value", name),
+                    comment: format!("get length of configurable {name} default value"),
                     owning_span: None,
                 });
 
@@ -158,7 +158,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                             "Error representing global offset as 12-bit immediate",
                         ),
                     )),
-                    comment: format!("get pointer to configurable {} stack address", name),
+                    comment: format!("get pointer to configurable {name} stack address"),
                     owning_span: None,
                 });
 
@@ -168,7 +168,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                         to: *decode_fn_label,
                         type_: JumpType::Call,
                     }),
-                    comment: format!("decode configurable {}", name),
+                    comment: format!("decode configurable {name}"),
                     owning_span: None,
                 });
             }
@@ -645,10 +645,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
             (
                 ret_reg,
-                format!(
-                    "return value from ASM block with return register {}",
-                    ret_reg_name
-                ),
+                format!("return value from ASM block with return register {ret_reg_name}"),
             )
         } else {
             // If the return register is not specified, the return value is unit, `()`, and we
@@ -1407,7 +1404,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         "offset must fit in 12 bits",
                     ),
                 )),
-                comment: format!("get address of configurable {}", name),
+                comment: format!("get address of configurable {name}"),
                 owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
             });
             self.reg_map.insert(*addr_val, addr_reg);
@@ -1419,7 +1416,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     addr_reg.clone(),
                     dataid.clone(),
                 )),
-                comment: format!("get address of configurable {}", name),
+                comment: format!("get address of configurable {name}"),
                 owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
             });
             self.reg_map.insert(*addr_val, addr_reg);

@@ -87,6 +87,42 @@ impl Module {
             .insert(call_path, const_val);
     }
 
+    /// Add a value to the module global storage, by forcing the name to be unique if needed.
+    ///
+    /// Will use the provided name as a hint and eventually rename it to guarantee insertion.
+    pub fn new_unique_global_var(
+        &self,
+        context: &mut Context,
+        name: String,
+        local_type: Type,
+        initializer: Option<Constant>,
+        mutable: bool,
+    ) -> GlobalVar {
+        let module = &context.modules[self.0];
+        let new_name = if module.global_variables.contains_key(&vec![name.clone()]) {
+            // Assuming that we'll eventually find a unique name by appending numbers to the old
+            // one...
+            (0..)
+                .find_map(|n| {
+                    let candidate = format!("{name}{n}");
+                    if module
+                        .global_variables
+                        .contains_key(&vec![candidate.clone()])
+                    {
+                        None
+                    } else {
+                        Some(candidate)
+                    }
+                })
+                .unwrap()
+        } else {
+            name
+        };
+        let gv = GlobalVar::new(context, local_type, initializer, mutable);
+        self.add_global_variable(context, vec![new_name], gv);
+        gv
+    }
+
     /// Get a named global variable from this module, if found.
     pub fn get_global_variable(
         &self,
