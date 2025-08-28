@@ -6,4 +6,4 @@ name = "script_string_slice"
 
 
 [dependencies]
-std = { path = "../../../../e2e_vm_tests/reduced_std_libs/sway-lib-std-assert" }
+std = { path = "../../../../../../sway-lib-std" }
