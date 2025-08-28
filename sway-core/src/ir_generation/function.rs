@@ -2438,7 +2438,6 @@ impl<'a> FnCompiler<'a> {
             return_type,
             span,
         )?;
-        let return_type_ir_type_ptr = Type::new_typed_pointer(context, return_type_ir_type);
 
         let first_argument_expr = &arguments[0];
         let first_argument_value = return_on_termination_or_extract!(
@@ -2447,24 +2446,50 @@ impl<'a> FnCompiler<'a> {
         let first_argument_type = first_argument_value
             .get_type(context)
             .expect("transmute first argument type not found");
-        let first_argument_ptr =
-            store_to_memory(self, context, first_argument_value)?.expect_memory();
 
-        // check IR sizes match
-        let first_arg_size = first_argument_type.size(context).in_bytes();
-        let return_type_size = return_type_ir_type.size(context).in_bytes();
-        if first_arg_size != return_type_size {
-            return Err(CompileError::Internal(
-                "Types size do not match",
-                span.clone(),
-            ));
-        }
+        let is_first_argument_ptr = first_argument_type.is_ptr(context);
+        let is_return_type_ptr = return_type_ir_type.is_ptr(context);
+        
+        // Both types needs to be pointers
+        // or both need to be non pointers
+        let final_value = match (is_first_argument_ptr, is_return_type_ptr) {
+            (true, false) | (false, true) => {
+                return Err(CompileError::Internal(
+                    "__transmute both types need to be references, or both need to be not references",
+                    span.clone(),
+                ));
+            },
+            (true, true) => {
+                let first_argument_value = first_argument_value.value();
+                self
+                    .current_block
+                    .append(context)
+                    .cast_ptr(first_argument_value, return_type_ir_type)
+            },
+            (false, false) => {
+                // check IR sizes match
+                let first_arg_size = first_argument_type.size(context).in_bytes();
+                let return_type_size = return_type_ir_type.size(context).in_bytes();
 
-        let casted_ptr = self
-            .current_block
-            .append(context)
-            .cast_ptr(first_argument_ptr, return_type_ir_type_ptr);
-        let final_value = self.current_block.append(context).load(casted_ptr);
+                if first_arg_size != return_type_size {
+                    return Err(CompileError::Internal(
+                        "Types size do not match",
+                        span.clone(),
+                    ));
+                }
+
+                let return_type_ir_type_ptr = Type::new_typed_pointer(context, return_type_ir_type);
+                let first_argument_ptr = store_to_memory(self, context, first_argument_value)?.expect_memory();
+
+                let casted_ptr = self
+                    .current_block
+                    .append(context)
+                    .cast_ptr(first_argument_ptr, return_type_ir_type_ptr);
+
+                self.current_block.append(context).load(casted_ptr)
+            },
+        };
+
         Ok(TerminatorValue::new(
             CompiledValue::InRegister(final_value),
             context,
