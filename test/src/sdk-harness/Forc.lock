@@ -273,6 +273,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "script_string_slice"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "std"
 source = "path+from-root-214E8589AEAE48E5"
 
