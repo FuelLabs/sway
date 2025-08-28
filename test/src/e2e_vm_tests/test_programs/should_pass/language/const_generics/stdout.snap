@@ -478,119 +478,13 @@ warning
    |
 ____
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-  Compiled script "const_generics" with 2 warnings.
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [8.8 KB] in ???
-=======
-=======
->>>>>>> 72fe12820 (update tests)
-=======
->>>>>>> 6ecb6582a (update tests)
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [9.536 KB] in ???
-=======
-=======
->>>>>>> 382a0a673 (update tests)
-=======
->>>>>>> 586981b65 (update tests)
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [9.56 KB] in ???
-=======
-=======
->>>>>>> 045eb5cb4 (update tests)
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [9.552 KB] in ???
-=======
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [9.712 KB] in ???
-=======
-    Finished debug [unoptimized + fuel] target(s) [7.512 KB] in ???
->>>>>>> 3494eda35 (update tests)
->>>>>>> 5622aa817 (update tests)
-<<<<<<< HEAD
->>>>>>> 926681eec (update tests)
-<<<<<<< HEAD
->>>>>>> 32bafbbe1 (update tests)
-<<<<<<< HEAD
->>>>>>> 6735b0f5b (update tests)
-=======
-=======
-=======
-=======
-    Finished debug [unoptimized + fuel] target(s) [9.552 KB] in ???
->>>>>>> 56393cb86 (update tests)
->>>>>>> 045eb5cb4 (update tests)
-<<<<<<< HEAD
->>>>>>> 382a0a673 (update tests)
-<<<<<<< HEAD
->>>>>>> 72fe12820 (update tests)
-=======
-=======
-=======
-    Finished debug [unoptimized + fuel] target(s) [9.496 KB] in ???
->>>>>>> e1e58a0e9 (update tests)
-<<<<<<< HEAD
->>>>>>> 586981b65 (update tests)
-<<<<<<< HEAD
->>>>>>> 6ecb6582a (update tests)
-=======
-=======
-=======
   Compiled script "const_generics" with 3 warnings.
-    Finished debug [unoptimized + fuel] target(s) [10.032 KB] in ???
->>>>>>> c2b490553 (allow filter of specific fns for snapshot tests)
->>>>>>> 07d563d76 (allow filter of specific fns for snapshot tests)
-<<<<<<< HEAD
->>>>>>> 43b25a93f (allow filter of specific fns for snapshot tests)
-=======
-=======
-  Compiled script "const_generics" with 3 warnings.
-    Finished debug [unoptimized + fuel] target(s) [10.04 KB] in ???
->>>>>>> 1c69c633c (update snapshot tests)
->>>>>>> fcd1d6288 (update snapshot tests)
-=======
-  Compiled script "const_generics" with 3 warnings.
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [10.016 KB] in ???
->>>>>>> 25301cb25 (update snapshot tests)
-=======
-    Finished debug [unoptimized + fuel] target(s) [10.008 KB] in ???
->>>>>>> 7c46cf4b0 (update tests)
+    Finished debug [unoptimized + fuel] target(s) [9.208 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-      test run_main ... ok (???, 17159 gas)
-=======
-=======
->>>>>>> fcd1d6288 (update snapshot tests)
-<<<<<<< HEAD
-      test run_main ... ok (???, 17350 gas)
-=======
-<<<<<<< HEAD
-      test run_main ... ok (???, 17574 gas)
-=======
-      test run_main ... ok (???, 19576 gas)
->>>>>>> c2b490553 (allow filter of specific fns for snapshot tests)
->>>>>>> 07d563d76 (allow filter of specific fns for snapshot tests)
-<<<<<<< HEAD
->>>>>>> 43b25a93f (allow filter of specific fns for snapshot tests)
-=======
-=======
-      test run_main ... ok (???, 19580 gas)
->>>>>>> 1c69c633c (update snapshot tests)
->>>>>>> fcd1d6288 (update snapshot tests)
-=======
-      test run_main ... ok (???, 19336 gas)
->>>>>>> 25301cb25 (update snapshot tests)
+      test run_main ... ok (???, 19129 gas)
            debug output:
 [src/main.sw:111:13] a = [1, 2]
 [src/main.sw:115:13] [C {}].len() = 1
