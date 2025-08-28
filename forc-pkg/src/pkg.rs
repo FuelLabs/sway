@@ -700,10 +700,7 @@ impl BuildPlan {
         // longer exists at its specified location, etc. We must first remove all invalid nodes
         // before we can determine what we need to fetch.
         let invalid_deps = validate_graph(&graph, manifests)?;
-        let members: HashSet<String> = manifests
-            .iter()
-            .map(|(member_name, _)| member_name.clone())
-            .collect();
+        let members: HashSet<String> = manifests.keys().cloned().collect();
         remove_deps(&mut graph, &members, &invalid_deps);
 
         // We know that the remaining nodes have valid paths, otherwise they would have been
@@ -741,11 +738,11 @@ impl BuildPlan {
             }
             println_action_green(
                 "Creating",
-                &format!("a new `Forc.lock` file. (Cause: {})", cause),
+                &format!("a new `Forc.lock` file. (Cause: {cause})"),
             );
             let member_names = manifests
-                .iter()
-                .map(|(_, manifest)| manifest.project.name.to_string())
+                .values()
+                .map(|manifest| manifest.project.name.to_string())
                 .collect();
             crate::lock::print_diff(&member_names, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)

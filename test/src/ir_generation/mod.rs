@@ -140,9 +140,9 @@ fn pretty_print_error_report(error: &str) {
                     println!("{}", line.bold())
                 }
             }
-            println!("{}", current)
+            println!("{current}")
         } else if current.starts_with("Define") {
-            println!("{}", current)
+            println!("{current}")
         } else if current.starts_with("Missed") && current.contains("check: ") {
             for line in stash.drain(..) {
                 if line.contains("^~") {
@@ -160,7 +160,7 @@ fn pretty_print_error_report(error: &str) {
                     println!("{}", line.bold())
                 }
             }
-            println!("{}", current)
+            println!("{current}")
         } else {
             stash.push(current);
         }

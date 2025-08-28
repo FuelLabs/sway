@@ -116,7 +116,7 @@ impl ModuleDepGraph {
             use petgraph::dot::{Config, Dot};
             let string_graph = self.dep_graph.filter_map(
                 |_idx, node| Some(format!("{:?}", engines.help_out(node))),
-                |_idx, edge| Some(format!("{}", edge)),
+                |_idx, edge| Some(format!("{edge}")),
             );
 
             let output = format!(

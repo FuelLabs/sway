@@ -93,10 +93,7 @@ impl Namespace {
             .root_module_mut()
             .submodule_mut(package_relative_path)
             .unwrap_or_else(|| {
-                panic!(
-                    "Could not retrieve submodule for mod_path: {:?}",
-                    package_relative_path
-                );
+                panic!("Could not retrieve submodule for mod_path: {package_relative_path:?}");
             })
     }
 

@@ -4904,8 +4904,7 @@ impl<'a> FnCompiler<'a> {
                     //       want to improve and refactor Storage API in the future.
                     assert!(
                         offset_in_bytes % 8 == 0,
-                        "Expected struct fields to be aligned to word boundary. The field offset in bytes was {}.",
-                        offset_in_bytes
+                        "Expected struct fields to be aligned to word boundary. The field offset in bytes was {offset_in_bytes}."
                     );
                     offset_in_bytes / 8
                 }

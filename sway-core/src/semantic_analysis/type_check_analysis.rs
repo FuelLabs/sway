@@ -224,7 +224,7 @@ impl TypeCheckAnalysisContext<'_> {
             use petgraph::dot::{Config, Dot};
             let string_graph = self.dep_graph.filter_map(
                 |_idx, node| Some(format!("{:?}", engines.help_out(node))),
-                |_idx, edge| Some(format!("{}", edge)),
+                |_idx, edge| Some(format!("{edge}")),
             );
 
             let output = format!(
@@ -369,7 +369,7 @@ impl DebugWithEngines for TyNodeDepGraphNode {
                     ty::TyTraitItem::Constant(node) => node.name().as_str(),
                     ty::TyTraitItem::Type(node) => node.name().as_str(),
                 };
-                format!("{:?}", str)
+                format!("{str:?}")
             }
             TyNodeDepGraphNode::ImplTrait { node } => {
                 let decl = engines.de().get_impl_self_or_trait(&node.decl_id);

@@ -115,19 +115,17 @@ mod test {
             .expect("register completion script");
 
         let output =
-            if let Ok(output) = runtime.complete(&format!("{} \t\t", command_to_complete), &term) {
+            if let Ok(output) = runtime.complete(&format!("{command_to_complete} \t\t"), &term) {
                 output
             } else {
-                println!("Skipping {}", shell);
+                println!("Skipping {shell}");
                 return;
             };
 
         for expectation in expectations {
             assert!(
                 output.contains(expectation),
-                "Failed find {} in {}",
-                expectation,
-                output
+                "Failed find {expectation} in {output}"
             );
         }
     }

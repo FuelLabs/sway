@@ -88,7 +88,7 @@ where
                     let mut iter = value_separator_pairs.iter().peekable();
 
                     while let Some((type_field, comma_token)) = iter.next() {
-                        write!(formatted_code, "{}{}", type_field, comma_token)?;
+                        write!(formatted_code, "{type_field}{comma_token}")?;
                         if iter.peek().is_none() && self.final_value_opt.is_none() {
                             break;
                         }
