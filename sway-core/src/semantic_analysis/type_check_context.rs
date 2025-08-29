@@ -114,6 +114,20 @@ pub struct TypeCheckContext<'a> {
     code_block_first_pass: bool,
 }
 
+/// Lightweight, cached view of a function decl we can match against quickly.
+struct MethodCandidate {
+    decl_ref: DeclRefFunction,
+    params: Vec<TypeId>,
+    ret: TypeId,
+    is_contract_call: bool,
+}
+
+enum MatchScore {
+    Exact,
+    Coercible,
+    Incompatible,
+}
+
 impl<'a> TypeCheckContext<'a> {
     /// Initialize a type-checking context with a namespace.
     pub fn from_namespace(
@@ -870,6 +884,98 @@ impl<'a> TypeCheckContext<'a> {
             .collect()
     }
 
+    #[inline]
+    fn to_method_candidate(&self, decl_ref: &DeclRefFunction) -> MethodCandidate {
+        let de = self.engines.de();
+        let f = de.get_function(decl_ref);
+        MethodCandidate {
+            decl_ref: decl_ref.clone(),
+            params: f
+                .parameters
+                .iter()
+                .map(|p| p.type_argument.type_id())
+                .collect(),
+            ret: f.return_type.type_id(),
+            is_contract_call: f.is_contract_call,
+        }
+    }
+
+    /// Decide whether `cand` matches the given argument and annotation types.
+    /// - Keeps current behavior: *accept on coercion*; `Exact` is a label for later tie-breakers.
+    fn score_candidate(
+        &self,
+        cand: &MethodCandidate,
+        argument_types: &[TypeId],
+        annotation_type: TypeId,
+    ) -> MatchScore {
+        let eq_check = UnifyCheck::constraint_subset(self.engines).with_unify_ref_mut(false);
+        let coercion_check = UnifyCheck::coercion(self.engines).with_ignore_generic_names(true);
+
+        // Handle "phantom self" for contract calls.
+        let args_len_diff = if cand.is_contract_call && !argument_types.is_empty() {
+            1
+        } else {
+            0
+        };
+
+        // Parameter count must match after offset.
+        if cand.params.len() != argument_types.len().saturating_sub(args_len_diff) {
+            return MatchScore::Incompatible;
+        }
+
+        // Param-by-param check.
+        let mut all_exact = true;
+        for (p, a) in cand
+            .params
+            .iter()
+            .zip(argument_types.iter().skip(args_len_diff))
+        {
+            if eq_check.check(*a, *p) {
+                continue;
+            }
+            if coercion_check.check(*a, *p) {
+                all_exact = false;
+                continue;
+            }
+            return MatchScore::Incompatible;
+        }
+
+        // Return type gate: unchanged from original logic.
+        let te = self.engines.te();
+        let ann = &*te.get(annotation_type);
+        let ret_ok = matches!(ann, TypeInfo::Unknown)
+            || matches!(&*te.get(cand.ret), TypeInfo::Never)
+            || coercion_check.check(annotation_type, cand.ret);
+
+        if !ret_ok {
+            return MatchScore::Incompatible;
+        }
+
+        if all_exact {
+            MatchScore::Exact
+        } else {
+            MatchScore::Coercible
+        }
+    }
+
+    /// Keep only compatible candidates (coercible or exact).
+    fn filter_by_signature(
+        &self,
+        decl_refs: Vec<DeclRefFunction>,
+        argument_types: &[TypeId],
+        annotation_type: TypeId,
+    ) -> Vec<MethodCandidate> {
+        let mut out = Vec::new();
+        for r in decl_refs {
+            let cand = self.to_method_candidate(&r);
+            match self.score_candidate(&cand, argument_types, annotation_type) {
+                MatchScore::Exact | MatchScore::Coercible => out.push(cand),
+                MatchScore::Incompatible => {}
+            }
+        }
+        out
+    }
+
     /// Given a `method_name` and a `type_id`, find that method on that type in the namespace.
     /// `annotation_type` is the expected method return type. Requires `argument_types` because:
     /// - standard operations like +, <=, etc. are called like "std::ops::<operation>" and the
@@ -893,7 +999,6 @@ impl<'a> TypeCheckContext<'a> {
         let type_engine = self.engines.te();
 
         let eq_check = UnifyCheck::constraint_subset(self.engines);
-        let coercion_check = UnifyCheck::coercion(self.engines).with_ignore_generic_names(true);
 
         self.default_numeric_if_needed(handler, type_id, method_name)?;
 
@@ -912,34 +1017,13 @@ impl<'a> TypeCheckContext<'a> {
         let matching_method_decl_ref: Option<
             crate::decl_engine::DeclRef<crate::decl_engine::DeclId<ty::TyFunctionDecl>>,
         > = {
-            // Case where multiple methods exist with the same name
-            // This is the case of https://github.com/FuelLabs/sway/issues/3633
-            // where multiple generic trait impls use the same method name but with different parameter types
-            let mut maybe_method_decl_refs: Vec<DeclRefFunction> = vec![];
-            for decl_ref in matching_method_decl_refs.clone().into_iter() {
-                let method = decl_engine.get_function(&decl_ref);
-                // Contract call methods don't have self parameter.
-                let args_len_diff = if method.is_contract_call && !arguments_types.is_empty() {
-                    1
-                } else {
-                    0
-                };
-                if method.parameters.len() == arguments_types.len() - args_len_diff
-                    && method
-                        .parameters
-                        .iter()
-                        .zip(arguments_types.iter().skip(args_len_diff))
-                        .all(|(p, a)| coercion_check.check(*a, p.type_argument.type_id()))
-                    && (matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
-                        || matches!(
-                            &*type_engine.get(method.return_type.type_id()),
-                            TypeInfo::Never
-                        )
-                        || coercion_check.check(annotation_type, method.return_type.type_id()))
-                {
-                    maybe_method_decl_refs.push(decl_ref);
-                }
-            }
+            let candidates = self.filter_by_signature(
+                matching_method_decl_refs.clone(),
+                arguments_types,
+                annotation_type,
+            );
+            let maybe_method_decl_refs: Vec<DeclRefFunction> =
+                candidates.iter().map(|c| c.decl_ref.clone()).collect();
 
             if !maybe_method_decl_refs.is_empty() {
                 let mut trait_methods = BTreeMap::<
