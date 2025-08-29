@@ -896,18 +896,18 @@ fn unify_arguments_and_parameters(
 pub(crate) fn resolve_method_name(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    method_name: &TypeBinding<MethodName>,
+    method_name_binding: &TypeBinding<MethodName>,
     arguments_types: &[TypeId],
 ) -> Result<(DeclRefFunction, TypeId), ErrorEmitted> {
     ctx.engines
         .obs()
-        .raise_on_before_method_resolution(&ctx, method_name, arguments_types);
+        .raise_on_before_method_resolution(&ctx, method_name_binding, arguments_types);
 
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
-    let (decl_ref, type_id) = match &method_name.inner {
+    let (decl_ref, type_id) = match &method_name_binding.inner {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -933,7 +933,7 @@ pub(crate) fn resolve_method_name(
                 method_name,
                 ctx.type_annotation(),
                 arguments_types,
-                None,
+                Some(&method_name_binding.inner),
             )?;
 
             (decl_ref, type_id)
@@ -977,7 +977,7 @@ pub(crate) fn resolve_method_name(
                 &call_path.suffix,
                 ctx.type_annotation(),
                 arguments_types,
-                None,
+                Some(&method_name_binding.inner),
             )?;
 
             (decl_ref, type_id)
@@ -1000,15 +1000,13 @@ pub(crate) fn resolve_method_name(
                 method_name,
                 ctx.type_annotation(),
                 arguments_types,
-                None,
+                Some(&method_name_binding.inner),
             )?;
 
             (decl_ref, type_id)
         }
         MethodName::FromQualifiedPathRoot {
-            ty,
-            as_trait,
-            method_name,
+            ty, method_name, ..
         } => {
             // type check the call path
             let type_id = ty.type_id();
@@ -1024,7 +1022,7 @@ pub(crate) fn resolve_method_name(
                 method_name,
                 ctx.type_annotation(),
                 arguments_types,
-                Some(*as_trait),
+                Some(&method_name_binding.inner),
             )?;
 
             (decl_ref, type_id)
@@ -1033,7 +1031,7 @@ pub(crate) fn resolve_method_name(
 
     ctx.engines.obs().raise_on_after_method_resolution(
         &ctx,
-        method_name,
+        method_name_binding,
         arguments_types,
         decl_ref.clone(),
         type_id,
