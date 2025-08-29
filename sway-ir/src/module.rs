@@ -7,7 +7,7 @@ use std::{cell::Cell, collections::BTreeMap};
 use crate::{
     context::Context,
     function::{Function, FunctionIterator},
-    Constant, GlobalVar, MetadataIndex, Type,
+    Constant, GlobalVar, MetadataIndex, StorageKey, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
@@ -21,6 +21,7 @@ pub struct ModuleContent {
     pub functions: Vec<Function>,
     pub global_variables: BTreeMap<Vec<String>, GlobalVar>,
     pub configs: BTreeMap<String, ConfigContent>,
+    pub storage_keys: BTreeMap<String, StorageKey>,
 }
 
 #[derive(Clone, Debug)]
@@ -59,6 +60,7 @@ impl Module {
             functions: Vec::new(),
             global_variables: BTreeMap::new(),
             configs: BTreeMap::new(),
+            storage_keys: BTreeMap::new(),
         };
         Module(context.modules.insert(content))
     }
@@ -133,7 +135,7 @@ impl Module {
             .copied()
     }
 
-    /// Lookup global variable name
+    /// Lookup global variable name.
     pub fn lookup_global_variable_name(
         &self,
         context: &Context,
@@ -154,6 +156,31 @@ impl Module {
     /// Get a named config content from this module, if found.
     pub fn get_config<'a>(&self, context: &'a Context, name: &str) -> Option<&'a ConfigContent> {
         context.modules[self.0].configs.get(name)
+    }
+
+    /// Add a storage key value to this module.
+    pub fn add_storage_key(&self, context: &mut Context, path: String, storage_key: StorageKey) {
+        context.modules[self.0]
+            .storage_keys
+            .insert(path, storage_key);
+    }
+
+    /// Get a storage key with the given `path` from this module, if found.
+    pub fn get_storage_key<'a>(&self, context: &'a Context, path: &str) -> Option<&'a StorageKey> {
+        context.modules[self.0].storage_keys.get(path)
+    }
+
+    /// Lookup storage key path.
+    pub fn lookup_storage_key_path<'a>(
+        &self,
+        context: &'a Context,
+        storage_key: &StorageKey,
+    ) -> Option<&'a str> {
+        context.modules[self.0]
+            .storage_keys
+            .iter()
+            .find(|(_key, val)| *val == storage_key)
+            .map(|(key, _)| key.as_str())
     }
 
     /// Removed a function from the module.  Returns true if function was found and removed.

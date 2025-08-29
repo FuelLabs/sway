@@ -289,6 +289,12 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
                 op: InstOp::GetGlobal(_),
                 ..
             }) if !gep_only => (),
+            // We've reached a storage key at the top of the chain.
+            // There cannot be a symbol behind it, and so the returned set is complete.
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::GetStorageKey(_),
+                ..
+            }) if !gep_only => (),
             // Note that in this case, the pointer itself is coming from a `Load`,
             // and not an address. So, we just continue following the pointer.
             ValueDatum::Instruction(Instruction {
@@ -429,6 +435,7 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
             InstOp::GetLocal(_) => (),
             InstOp::GetGlobal(_) => (),
             InstOp::GetConfig(_, _) => (),
+            InstOp::GetStorageKey(_) => (),
             InstOp::GetElemPtr { .. } => (),
             InstOp::IntToPtr(_, _) => (),
             InstOp::Load(_) => (),
@@ -465,6 +472,7 @@ pub fn get_loaded_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         | InstOp::GetLocal(_)
         | InstOp::GetGlobal(_)
         | InstOp::GetConfig(_, _)
+        | InstOp::GetStorageKey(_)
         | InstOp::GetElemPtr { .. }
         | InstOp::IntToPtr(_, _) => vec![],
         InstOp::PtrToInt(src_val_ptr, _) => vec![*src_val_ptr],
@@ -554,6 +562,7 @@ pub fn get_stored_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         | InstOp::GetLocal(_)
         | InstOp::GetGlobal(_)
         | InstOp::GetConfig(_, _)
+        | InstOp::GetStorageKey(_)
         | InstOp::GetElemPtr { .. }
         | InstOp::IntToPtr(_, _) => vec![],
         InstOp::ContractCall { params, .. } => vec![*params],

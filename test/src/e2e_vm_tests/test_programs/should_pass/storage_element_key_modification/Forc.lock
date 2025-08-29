@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-6E867D7A70DC3A62"
+
+[[package]]
+name = "storage_element_key_modification"
+source = "member"
+dependencies = ["std"]
