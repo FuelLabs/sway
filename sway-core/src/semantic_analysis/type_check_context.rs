@@ -791,6 +791,32 @@ impl<'a> TypeCheckContext<'a> {
         Ok(matching_item_decl_refs)
     }
 
+    #[inline]
+    fn default_numeric_if_needed(
+        &self,
+        handler: &Handler,
+        type_id: TypeId,
+        method_name: &Ident,
+    ) -> Result<(), ErrorEmitted> {
+        let type_engine = self.engines.te();
+
+        // default numeric types to u64
+        if type_engine.contains_numeric(self.engines, type_id) {
+            // While collecting unifications we don't decay numeric and will ignore this error.
+            if self.collecting_unifications {
+                return Err(handler.emit_err(CompileError::MethodNotFound {
+                    method: method_name.clone().as_str().to_string(),
+                    type_name: self.engines.help_out(type_id).to_string(),
+                    matching_method_strings: vec![],
+                    span: method_name.span(),
+                }));
+            }
+            type_engine.decay_numeric(handler, self.engines, type_id, &method_name.span())?;
+        }
+
+        Ok(())
+    }
+
     /// Given a `method_name` and a `type_id`, find that method on that type in the namespace.
     /// `annotation_type` is the expected method return type. Requires `argument_types` because:
     /// - standard operations like +, <=, etc. are called like "std::ops::<operation>" and the
@@ -816,19 +842,7 @@ impl<'a> TypeCheckContext<'a> {
         let eq_check = UnifyCheck::constraint_subset(self.engines);
         let coercion_check = UnifyCheck::coercion(self.engines).with_ignore_generic_names(true);
 
-        // default numeric types to u64
-        if type_engine.contains_numeric(self.engines, type_id) {
-            // While collecting unification we don't decay numeric and will ignore this error.
-            if self.collecting_unifications {
-                return Err(handler.emit_err(CompileError::MethodNotFound {
-                    method: method_name.clone().as_str().to_string(),
-                    type_name: self.engines.help_out(type_id).to_string(),
-                    matching_method_strings: vec![],
-                    span: method_name.span(),
-                }));
-            }
-            type_engine.decay_numeric(handler, self.engines, type_id, &method_name.span())?;
-        }
+        self.default_numeric_if_needed(handler, type_id, method_name)?;
 
         let mut matching_item_decl_refs =
             self.find_items_for_type(handler, type_id, method_prefix, method_name)?;
