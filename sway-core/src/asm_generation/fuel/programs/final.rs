@@ -53,7 +53,7 @@ impl std::fmt::Display for FinalProgram {
             ..
         } = self;
 
-        writeln!(f, ";; Program kind: {:?}", kind)?;
+        writeln!(f, ";; Program kind: {kind:?}")?;
         writeln!(
             f,
             ".program:\n{}\n{}",

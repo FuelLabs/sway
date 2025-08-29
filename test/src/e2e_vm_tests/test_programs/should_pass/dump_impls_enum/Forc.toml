@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "dump_impls_enum"
+entry = "lib.sw"
+implicit-std = false
+
+[dependencies]
+dump_impls_common = { path = "../dump_impls_common" }

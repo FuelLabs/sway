@@ -354,7 +354,7 @@ mod tests {
 
         // Test round-trip serialization
         let serialized = serde_json::to_string_pretty(&deserialized).unwrap();
-        println!("Re-serialized JSON: {}", serialized);
+        println!("Re-serialized JSON: {serialized}");
 
         // Deserialize again to ensure it's valid
         let re_deserialized: IndexFile = serde_json::from_str(&serialized).unwrap();

@@ -18,7 +18,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 #[derive(Default)]
 pub(crate) struct MetadataManager {
-    // We want to be able to store more then one `Span` per `MetadataIndex`.
+    // We want to be able to store more than one `Span` per `MetadataIndex`.
     // E.g., storing the span of the function name, and the whole function declaration.
     // The spans differ then by the tag property of their `Metadatum::Struct`.
     // We could cache all such spans in a single `HashMap` where the key would be `(Span, tag)`.

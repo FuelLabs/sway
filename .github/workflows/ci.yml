@@ -35,7 +35,6 @@ jobs:
       - build-forc-test-project
       - cargo-build-workspace
       - cargo-clippy
-      - cargo-run-e2e-test-evm
       - cargo-test-lib-std
       - forc-run-benchmarks
       - forc-unit-tests
@@ -441,21 +440,6 @@ jobs:
           sleep 5 &&
           cargo run --locked --release --bin test -- --locked --release
 
-  cargo-run-e2e-test-evm:
-    runs-on: buildjet-4vcpu-ubuntu-2204
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-provider: "buildjet"
-      - name: Cargo Run E2E Tests (EVM)
-        run: cargo run --locked --release --bin test -- --target evm --locked --no-experimental new_encoding
-
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
     runs-on: buildjet-8vcpu-ubuntu-2204
@@ -779,7 +763,6 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
-        cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
         cargo-test-sway-lsp,
@@ -843,7 +826,6 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
-        cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
         cargo-test-sway-lsp,

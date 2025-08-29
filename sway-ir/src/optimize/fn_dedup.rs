@@ -265,6 +265,11 @@ fn hash_fn(
                     .unwrap()
                     .hash(state),
                 crate::InstOp::GetConfig(_, name) => name.hash(state),
+                crate::InstOp::GetStorageKey(storage_key) => function
+                    .get_module(context)
+                    .lookup_storage_key_path(context, storage_key)
+                    .unwrap()
+                    .hash(state),
                 crate::InstOp::GetElemPtr { elem_ptr_ty, .. } => elem_ptr_ty.hash(state),
                 crate::InstOp::IntToPtr(_, ty) => ty.hash(state),
                 crate::InstOp::Load(_) => (),

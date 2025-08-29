@@ -8,16 +8,13 @@ fn main() -> u64 {
 }
 
 // ::check-ir::
+// check: global __const_global : string<3> = const string<3> "abc"
 // check: local slice a
-
-// check: v0 = get_local __ptr string<3>, $ID
-// check: v1 = const string<3> "abc"
-// check: store v1 to v0
-// check: v2 = cast_ptr v0 to ptr,
-// check: v3 = get_local __ptr { ptr, u64 }, $ID
-// check: v4 = const u64 0
-// check: v5 = get_elem_ptr v3, __ptr ptr, v4
-// check: store v2 to v5,
+// check: get_local __ptr slice, a
+// check: $(v11=$ID) = get_local __ptr slice, a,
+// check: $(v12=$ID) = load $v11
+// check: $(v13=$ID) = call len_0($v12)
+// check: ret u64 $v13
 
 // ::check-ir-optimized::
 // pass: o1

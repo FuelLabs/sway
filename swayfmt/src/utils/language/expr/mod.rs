@@ -76,10 +76,10 @@ fn two_parts_expr(
                 )?;
             }
             _ => {
-                write!(formatted_code, " {} ", operator)?;
+                write!(formatted_code, " {operator} ")?;
             }
         }
-        write!(formatted_code, "{}", rhs_code)?;
+        write!(formatted_code, "{rhs_code}")?;
     }
     Ok(())
 }
@@ -206,7 +206,7 @@ impl Format for Expr {
                             array_descriptor.format(formatted_code, formatter)?;
                         } else {
                             // Expr fits in a single line
-                            write!(formatted_code, "{}", buf)?;
+                            write!(formatted_code, "{buf}")?;
                         }
 
                         Ok(())
@@ -312,7 +312,7 @@ impl Format for Expr {
 
                         Self::open_parenthesis(formatted_code, formatter)?;
                         let (_, args_str) = write_function_call_arguments(args.get(), formatter)?;
-                        write!(formatted_code, "{}", args_str)?;
+                        write!(formatted_code, "{args_str}")?;
                         Self::close_parenthesis(formatted_code, formatter)?;
 
                         Ok(())
@@ -947,7 +947,7 @@ fn format_method_call(
 
     Expr::open_parenthesis(formatted_code, formatter)?;
     let (args_inline, args_str) = write_function_call_arguments(args.get(), formatter)?;
-    write!(formatted_code, "{}", args_str)?;
+    write!(formatted_code, "{args_str}")?;
     Expr::close_parenthesis(formatted_code, formatter)?;
 
     if formatter.shape.code_line.expr_new_line {

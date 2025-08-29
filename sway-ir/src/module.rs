@@ -7,7 +7,7 @@ use std::{cell::Cell, collections::BTreeMap};
 use crate::{
     context::Context,
     function::{Function, FunctionIterator},
-    Constant, GlobalVar, MetadataIndex, Type,
+    Constant, GlobalVar, MetadataIndex, StorageKey, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
@@ -21,6 +21,7 @@ pub struct ModuleContent {
     pub functions: Vec<Function>,
     pub global_variables: BTreeMap<Vec<String>, GlobalVar>,
     pub configs: BTreeMap<String, ConfigContent>,
+    pub storage_keys: BTreeMap<String, StorageKey>,
 }
 
 #[derive(Clone, Debug)]
@@ -59,6 +60,7 @@ impl Module {
             functions: Vec::new(),
             global_variables: BTreeMap::new(),
             configs: BTreeMap::new(),
+            storage_keys: BTreeMap::new(),
         };
         Module(context.modules.insert(content))
     }
@@ -85,6 +87,42 @@ impl Module {
             .insert(call_path, const_val);
     }
 
+    /// Add a value to the module global storage, by forcing the name to be unique if needed.
+    ///
+    /// Will use the provided name as a hint and eventually rename it to guarantee insertion.
+    pub fn new_unique_global_var(
+        &self,
+        context: &mut Context,
+        name: String,
+        local_type: Type,
+        initializer: Option<Constant>,
+        mutable: bool,
+    ) -> GlobalVar {
+        let module = &context.modules[self.0];
+        let new_name = if module.global_variables.contains_key(&vec![name.clone()]) {
+            // Assuming that we'll eventually find a unique name by appending numbers to the old
+            // one...
+            (0..)
+                .find_map(|n| {
+                    let candidate = format!("{name}{n}");
+                    if module
+                        .global_variables
+                        .contains_key(&vec![candidate.clone()])
+                    {
+                        None
+                    } else {
+                        Some(candidate)
+                    }
+                })
+                .unwrap()
+        } else {
+            name
+        };
+        let gv = GlobalVar::new(context, local_type, initializer, mutable);
+        self.add_global_variable(context, vec![new_name], gv);
+        gv
+    }
+
     /// Get a named global variable from this module, if found.
     pub fn get_global_variable(
         &self,
@@ -97,7 +135,7 @@ impl Module {
             .copied()
     }
 
-    /// Lookup global variable name
+    /// Lookup global variable name.
     pub fn lookup_global_variable_name(
         &self,
         context: &Context,
@@ -118,6 +156,31 @@ impl Module {
     /// Get a named config content from this module, if found.
     pub fn get_config<'a>(&self, context: &'a Context, name: &str) -> Option<&'a ConfigContent> {
         context.modules[self.0].configs.get(name)
+    }
+
+    /// Add a storage key value to this module.
+    pub fn add_storage_key(&self, context: &mut Context, path: String, storage_key: StorageKey) {
+        context.modules[self.0]
+            .storage_keys
+            .insert(path, storage_key);
+    }
+
+    /// Get a storage key with the given `path` from this module, if found.
+    pub fn get_storage_key<'a>(&self, context: &'a Context, path: &str) -> Option<&'a StorageKey> {
+        context.modules[self.0].storage_keys.get(path)
+    }
+
+    /// Lookup storage key path.
+    pub fn lookup_storage_key_path<'a>(
+        &self,
+        context: &'a Context,
+        storage_key: &StorageKey,
+    ) -> Option<&'a str> {
+        context.modules[self.0]
+            .storage_keys
+            .iter()
+            .find(|(_key, val)| *val == storage_key)
+            .map(|(key, _)| key.as_str())
     }
 
     /// Removed a function from the module.  Returns true if function was found and removed.

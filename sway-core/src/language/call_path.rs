@@ -518,9 +518,9 @@ impl<T: Clone> CallPath<T> {
             }
             CallPathType::Ambiguous => {
                 if self.prefixes.is_empty() {
-                    // 		    // Given a path to a symbol that has no prefixes, discover the path to the symbol as a
-                    // 		    // combination of the package name in which the symbol is defined and the path to the
-                    // 		    // current submodule.
+                    // Given a path to a symbol that has no prefixes, discover the path to the symbol as a
+                    // combination of the package name in which the symbol is defined and the path to the
+                    // current submodule.
                     CallPath {
                         prefixes: mod_path.clone(),
                         suffix: self.suffix.clone(),

@@ -1,6 +1,6 @@
 use crate::cli::PredicateRootCommand;
 use anyhow::Result;
-use forc_pkg::{self as pkg, build_with_options};
+use forc_pkg::{self as pkg, build_with_options, DumpOpts};
 use sway_core::BuildTarget;
 
 pub fn predicate_root(command: PredicateRootCommand) -> Result<()> {
@@ -32,6 +32,7 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
+        dump: DumpOpts::default(),
         time_phases: cmd.print.time_phases,
         profile: cmd.print.profile,
         metrics_outfile: cmd.print.metrics_outfile,

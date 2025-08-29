@@ -577,7 +577,7 @@ impl DisplayWithEngines for TypeInfo {
                         ident.as_str().to_string()
                     }
                 };
-                format!("str[{}]", length)
+                format!("str[{length}]")
             }
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -704,7 +704,7 @@ impl DebugWithEngines for TypeInfo {
                 if tc_str.is_empty() {
                     name.to_string()
                 } else {
-                    format!("{}:{}", name, tc_str)
+                    format!("{name}:{tc_str}")
                 }
             }
             Placeholder(t) => format!("placeholder({:?})", engines.help_out(t)),
@@ -992,7 +992,7 @@ impl TypeInfo {
                     .expr()
                     .as_literal_val()
                     .expect("unexpected non literal length");
-                format!("str[{}]", len)
+                format!("str[{len}]")
             }
             UnsignedInteger(bits) => {
                 use IntegerBits::{Eight, Sixteen, SixtyFour, ThirtyTwo, V256};
@@ -1151,7 +1151,7 @@ impl TypeInfo {
                     error_msg_span,
                 );
                 let name = name?;
-                format!("a[{};{}]", name, len)
+                format!("a[{name};{len}]")
             }
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
@@ -1914,7 +1914,7 @@ impl TypeInfo {
             TraitType {
                 name,
                 trait_type_id: _,
-            } => format!("trait type {}", name),
+            } => format!("trait type {name}"),
             Ref {
                 to_mutable_value,
                 referenced_type,

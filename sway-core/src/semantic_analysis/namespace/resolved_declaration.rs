@@ -5,7 +5,7 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, StructDecl, TyDecl},
+        ty::{self, EnumDecl, StructDecl, TyDecl},
         Visibility,
     },
     TypeId,
@@ -102,6 +102,21 @@ impl ResolvedDeclaration {
             ResolvedDeclaration::Typed(decl) => decl.to_struct_decl(handler, engines).map(|id| {
                 ResolvedDeclaration::Typed(TyDecl::StructDecl(StructDecl { decl_id: id }))
             }),
+        }
+    }
+
+    pub(crate) fn to_enum_decl(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        match self {
+            ResolvedDeclaration::Parsed(decl) => decl
+                .to_enum_decl(handler, engines)
+                .map(|id| ResolvedDeclaration::Parsed(Declaration::EnumDeclaration(id))),
+            ResolvedDeclaration::Typed(decl) => decl
+                .to_enum_id(handler, engines)
+                .map(|id| ResolvedDeclaration::Typed(TyDecl::EnumDecl(EnumDecl { decl_id: id }))),
         }
     }
 

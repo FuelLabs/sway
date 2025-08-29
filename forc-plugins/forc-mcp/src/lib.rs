@@ -448,7 +448,7 @@ async fn admin_auth_middleware(
             Err(e) => Err((
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
                 axum::Json(auth::ErrorResponse {
-                    error: format!("Internal server error: {}", e),
+                    error: format!("Internal server error: {e}"),
                 }),
             )
                 .into_response()),
@@ -504,10 +504,10 @@ pub mod tests {
                 return Err(anyhow!("Server task completed before test could run"));
             }
 
-            let base_url = format!("http://127.0.0.1:{}", port);
+            let base_url = format!("http://127.0.0.1:{port}");
 
             // Create MCP client using SSE transport
-            let transport = SseClientTransport::start(format!("{}/sse", base_url)).await?;
+            let transport = SseClientTransport::start(format!("{base_url}/sse")).await?;
             let client_info = ClientInfo {
                 protocol_version: Default::default(),
                 capabilities: ClientCapabilities::default(),
@@ -544,7 +544,7 @@ pub mod tests {
                 return Err(anyhow!("Server task completed before test could run"));
             }
 
-            let base_url = format!("http://127.0.0.1:{}/mcp", port);
+            let base_url = format!("http://127.0.0.1:{port}/mcp");
 
             // Create MCP client using HTTP streamable transport
             let transport = StreamableHttpClientTransport::from_uri(base_url);

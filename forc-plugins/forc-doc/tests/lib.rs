@@ -28,7 +28,7 @@ fn test_impl_traits_default() {
     let doc_dir_name: &str = "impl_traits_default";
     let project_name = "impl_traits";
     let command = Command {
-        path: Some(format!("{}/{}", DATA_DIR, project_name)),
+        path: Some(format!("{DATA_DIR}/{project_name}")),
         doc_path: Some(doc_dir_name.into()),
         ..Default::default()
     };
@@ -72,7 +72,7 @@ fn test_workspace_docs() {
     let doc_dir_name: &str = "workspace_docs";
     let workspace_name = "sample_workspace";
     let command = Command {
-        path: Some(format!("{}/{}", DATA_DIR, workspace_name)),
+        path: Some(format!("{DATA_DIR}/{workspace_name}")),
         doc_path: Some(doc_dir_name.into()),
         ..Default::default()
     };
@@ -133,7 +133,7 @@ fn test_impl_traits_no_deps() {
     let doc_dir_name: &str = "impl_traits_no_deps";
     let project_name: &str = "impl_traits_generic";
     let command = Command {
-        path: Some(format!("{}/{}", DATA_DIR, project_name)),
+        path: Some(format!("{DATA_DIR}/{project_name}")),
         doc_path: Some(doc_dir_name.into()),
         no_deps: true,
         ..Default::default()
@@ -170,7 +170,7 @@ fn test_impl_traits_no_deps() {
 }
 
 fn assert_index_html(doc_path: &Path, project_name: &str, expect: &Expect) {
-    let path_to_file = PathBuf::from(format!("{}/{}", project_name, IMPL_FOR));
+    let path_to_file = PathBuf::from(format!("{project_name}/{IMPL_FOR}"));
     check_file(doc_path, &path_to_file, expect);
 }
 
@@ -182,12 +182,12 @@ fn assert_search_js(doc_path: &Path, expect: &Expect) {
 fn check_file(doc_path: &Path, path_to_file: &PathBuf, expect: &Expect) {
     let path = doc_path.join(path_to_file);
     let actual = std::fs::read_to_string(path.clone())
-        .unwrap_or_else(|_| panic!("failed to read file: {:?}", path));
+        .unwrap_or_else(|_| panic!("failed to read file: {path:?}"));
     expect.assert_eq(&actual)
 }
 
 fn assert_file_tree(doc_dir_name: &str, project_name: &str, expected_files: Vec<&str>) {
-    let doc_root: PathBuf = format!("{}/{}/out/{}", DATA_DIR, project_name, doc_dir_name).into();
+    let doc_root: PathBuf = format!("{DATA_DIR}/{project_name}/out/{doc_dir_name}").into();
     let expected = expected_files
         .iter()
         .map(PathBuf::from)
