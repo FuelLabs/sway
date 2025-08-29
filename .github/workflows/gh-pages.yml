@@ -59,7 +59,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./sway-lib-std/out/doc
+          publish_dir: ./sway-lib-std/out/doc/std
           destination_dir: master
         if: github.ref == 'refs/heads/master'
 
