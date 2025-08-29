@@ -817,7 +817,10 @@ pub(crate) fn prepare_const_generics_materialization<'a>(
         let b = engines.te().get(args_types.next().unwrap());
         match (&*a, &*b) {
             (
-                TypeInfo::Array(_, Length(ConstGenericExpr::AmbiguousVariableExpression { ident })),
+                TypeInfo::Array(
+                    _,
+                    Length(ConstGenericExpr::AmbiguousVariableExpression { ident, .. }),
+                ),
                 TypeInfo::Array(_, Length(ConstGenericExpr::Literal { val, .. })),
             ) => {
                 const_generics.insert(
@@ -832,6 +835,7 @@ pub(crate) fn prepare_const_generics_materialization<'a>(
             (
                 TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
                     ident,
+                    ..
                 })),
                 TypeInfo::StringArray(Length(ConstGenericExpr::Literal { val, .. })),
             ) => {

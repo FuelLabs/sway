@@ -101,6 +101,12 @@ fn return_inner_const<const ZZZ: u64>() -> u64 {
     ZZZ
 }
 
+#[inline(never)]
+fn const_with_const_generics<const B: u64>() {
+    const A: u64 = B + 1;
+    __dbg(A);
+}
+
 fn main(a: [u64; 2]) {
     let _ = __dbg(a);
 
@@ -164,6 +170,9 @@ fn main(a: [u64; 2]) {
     assert(a.len() == 70);
     let _ = __dbg(a.len());
     let _ = __dbg(a);
+
+    const_with_const_generics::<1>();
+    const_with_const_generics::<5>();
 }
 
 #[test]

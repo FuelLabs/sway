@@ -2,20 +2,22 @@ use crate::{
     ast_elements::type_argument::GenericTypeArgument,
     decl_engine::DeclEngine,
     language::ty,
+    metadata::MetadataManager,
     type_system::{TypeId, TypeInfo},
-    GenericArgument, TypeEngine,
+    Engines, GenericArgument, TypeEngine,
 };
 
 use super::convert::convert_resolved_typeid_no_span;
 
 use sway_error::error::CompileError;
-use sway_ir::{Context, Type};
+use sway_ir::{Context, Module, Type};
 use sway_types::span::Spanned;
 
 pub(super) fn create_tagged_union_type(
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     context: &mut Context,
+    md_mgr: &mut MetadataManager,
+    module: Module,
     variants: &[ty::TyEnumVariant],
 ) -> Result<Type, CompileError> {
     // Create the enum aggregate first.  NOTE: single variant enums don't need an aggregate but are
@@ -24,9 +26,11 @@ pub(super) fn create_tagged_union_type(
         .iter()
         .map(|variant| {
             convert_resolved_typeid_no_span(
-                type_engine,
-                decl_engine,
+                engines,
                 context,
+                md_mgr,
+                module,
+                None,
                 variant.type_argument.type_id(),
             )
         })
@@ -45,40 +49,47 @@ pub(super) fn create_tagged_union_type(
 }
 
 pub(super) fn create_tuple_aggregate(
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     context: &mut Context,
+    md_mgr: &mut MetadataManager,
+    module: Module,
     fields: &[TypeId],
 ) -> Result<Type, CompileError> {
     let field_types = fields
         .iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(type_engine, decl_engine, context, *ty_id))
+        .map(|ty_id| {
+            convert_resolved_typeid_no_span(engines, context, md_mgr, module, None, *ty_id)
+        })
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     Ok(Type::new_struct(context, field_types))
 }
 
 pub(super) fn create_array_aggregate(
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     context: &mut Context,
+    md_mgr: &mut MetadataManager,
+    module: Module,
     element_type_id: TypeId,
     count: u64,
 ) -> Result<Type, CompileError> {
     let element_type =
-        convert_resolved_typeid_no_span(type_engine, decl_engine, context, element_type_id)?;
+        convert_resolved_typeid_no_span(engines, context, md_mgr, module, None, element_type_id)?;
     Ok(Type::new_array(context, element_type, count))
 }
 
 pub(super) fn get_struct_for_types(
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     context: &mut Context,
+    md_mgr: &mut MetadataManager,
+    module: Module,
     type_ids: &[TypeId],
 ) -> Result<Type, CompileError> {
     let types = type_ids
         .iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(type_engine, decl_engine, context, *ty_id))
+        .map(|ty_id| {
+            convert_resolved_typeid_no_span(engines, context, md_mgr, module, None, *ty_id)
+        })
         .collect::<Result<Vec<_>, CompileError>>()?;
     Ok(Type::new_struct(context, types))
 }

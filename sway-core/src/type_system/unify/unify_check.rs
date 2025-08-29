@@ -261,8 +261,8 @@ impl<'a> UnifyCheck<'a> {
                 ConstGenericExpr::Literal { val: r, .. },
             ) => l == r,
             (
-                ConstGenericExpr::AmbiguousVariableExpression { ident: l },
-                ConstGenericExpr::AmbiguousVariableExpression { ident: r },
+                ConstGenericExpr::AmbiguousVariableExpression { ident: l, .. },
+                ConstGenericExpr::AmbiguousVariableExpression { ident: r, .. },
             ) => l == r,
             (
                 ConstGenericExpr::Literal { .. },
@@ -934,6 +934,7 @@ pub fn array_constraint_subset() {
         }),
         Length(ConstGenericExpr::AmbiguousVariableExpression {
             ident: sway_types::BaseIdent::new_no_span("N".into()),
+            decl: None,
         }),
     );
 

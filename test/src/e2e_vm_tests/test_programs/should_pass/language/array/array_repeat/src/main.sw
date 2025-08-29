@@ -91,6 +91,24 @@ fn u8_array_bigger_than_18_bits() -> [u8; 262145] {
     [0u8; 262145]
 }
 
+// Test arrays length that are const declarations
+
+const GLOBAL_A: u64 = 1;
+#[inline(never)]
+fn arrays_with_const_length() {
+    const A = 1;
+    const B = A + 1;
+
+    let _ = [0u64; A];
+    let _: [u64; A] = [0u64; A];
+    let _ = [0u64; GLOBAL_A];
+
+    let _: [u64; A] = [0u64];
+
+    let _ = [0u64; B];
+    let _: [u64; B] = [0u64, 1u64];
+}
+
 fn main() {
     let _ = array_repeat_zero_small_u8();
     let _ = array_repeat_zero_small_u16();
@@ -112,6 +130,24 @@ fn main() {
     let _ = big_array_repeat();
 
     let _ = u8_array_bigger_than_18_bits();
+
+    let _ = arrays_with_const_length();
+
+    // Array decode
+    let array: [u8; 1] = decode_array();
+    assert_eq(array[0], 255u8);
+}
+
+#[inline(never)]
+fn decode_array() -> [u8; 1] {
+    let s: raw_slice = to_slice([255u8]);
+    abi_decode::<[u8; 1]>(s)
+}
+
+#[inline(never)]
+fn to_slice<T>(array: T) -> raw_slice {
+    let len = __size_of::<T>();
+    raw_slice::from_parts::<u8>(__addr_of(array), len)
 }
 
 trait IsZero { fn is_zero(self) -> bool; }
