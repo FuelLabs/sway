@@ -817,6 +817,59 @@ impl<'a> TypeCheckContext<'a> {
         Ok(())
     }
 
+    /// Collect all candidate trait items that might provide the method:
+    /// - Items directly available for `type_id`
+    /// - Plus items from any annotation-type inner that can coerce to `type_id`
+    ///   (enables cases like `MyStruct::try_from(x)` where `annotation_type` is a superset).
+    fn collect_candidate_items(
+        &self,
+        handler: &Handler,
+        type_id: TypeId,
+        method_prefix: &ModulePath,
+        method_name: &Ident,
+        annotation_type: TypeId,
+    ) -> Result<Vec<ty::TyTraitItem>, ErrorEmitted> {
+        let type_engine = self.engines.te();
+
+        // Start with items for the concrete type.
+        let mut items = self.find_items_for_type(handler, type_id, method_prefix, method_name)?;
+
+        // Consider items from supersets indicated by the annotation return type.
+        if !matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
+            && !type_id.is_concrete(self.engines, crate::TreatNumericAs::Concrete)
+        {
+            let coercion_check = UnifyCheck::coercion(self.engines).with_ignore_generic_names(true);
+
+            let inner_types =
+                annotation_type.extract_inner_types(self.engines, crate::IncludeSelf::Yes);
+
+            for inner in inner_types {
+                if coercion_check.check(inner, type_id) {
+                    items.extend(self.find_items_for_type(
+                        handler,
+                        inner,
+                        method_prefix,
+                        method_name,
+                    )?);
+                }
+            }
+        }
+
+        Ok(items)
+    }
+
+    /// Convert collected items to just the method decl refs we care about.
+    #[inline]
+    fn items_to_method_refs(&self, items: Vec<ty::TyTraitItem>) -> Vec<DeclRefFunction> {
+        items
+            .into_iter()
+            .filter_map(|item| match item {
+                ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
+                _ => None,
+            })
+            .collect()
+    }
+
     /// Given a `method_name` and a `type_id`, find that method on that type in the namespace.
     /// `annotation_type` is the expected method return type. Requires `argument_types` because:
     /// - standard operations like +, <=, etc. are called like "std::ops::<operation>" and the
@@ -844,39 +897,16 @@ impl<'a> TypeCheckContext<'a> {
 
         self.default_numeric_if_needed(handler, type_id, method_name)?;
 
-        let mut matching_item_decl_refs =
-            self.find_items_for_type(handler, type_id, method_prefix, method_name)?;
-
-        // This code path tries to get items of specific implementation of the annotation type that is a superset of type id.
-        // This allows the following associated method to be found:
-        // let _: Option<MyStruct<u64>> = MyStruct::try_from(my_u64);
-        if !matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
-            && !type_id.is_concrete(self.engines, crate::TreatNumericAs::Concrete)
-        {
-            let inner_types =
-                annotation_type.extract_inner_types(self.engines, crate::IncludeSelf::Yes);
-            for inner_type_id in inner_types {
-                if coercion_check.check(inner_type_id, type_id) {
-                    matching_item_decl_refs.extend(self.find_items_for_type(
-                        handler,
-                        inner_type_id,
-                        method_prefix,
-                        method_name,
-                    )?);
-                }
-            }
-        }
+        let matching_items = self.collect_candidate_items(
+            handler,
+            type_id,
+            method_prefix,
+            method_name,
+            annotation_type,
+        )?;
 
         let mut matching_method_strings = HashSet::<String>::new();
-
-        let matching_method_decl_refs = matching_item_decl_refs
-            .into_iter()
-            .flat_map(|item| match item {
-                ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
-                ty::TyTraitItem::Constant(_) => None,
-                ty::TyTraitItem::Type(_) => None,
-            })
-            .collect::<Vec<_>>();
+        let matching_method_decl_refs = self.items_to_method_refs(matching_items);
 
         let mut qualified_call_path = None;
         let matching_method_decl_ref: Option<
