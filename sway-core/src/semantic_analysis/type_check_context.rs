@@ -1,5 +1,5 @@
 #![allow(clippy::mutable_key_type)]
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{btree_map::Entry, BTreeMap, HashSet};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclRefFunction, MaterializeConstGenerics},
@@ -122,10 +122,19 @@ struct MethodCandidate {
     is_contract_call: bool,
 }
 
-enum MatchScore {
+enum MethodCandidateMatchScore {
     Exact,
     Coercible,
     Incompatible,
+}
+
+type TraitImplId = crate::decl_engine::DeclId<ty::TyImplSelfOrTrait>;
+type TraitKey = (TraitImplId, Option<TypeId>);
+
+struct GroupingResult {
+    trait_methods: BTreeMap<TraitKey, DeclRefFunction>,
+    impl_self_method: Option<DeclRefFunction>,
+    qualified_call_path: Option<QualifiedCallPath>,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -814,7 +823,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         let type_engine = self.engines.te();
 
-        // default numeric types to u64
+        // Default numeric types to u64
         if type_engine.contains_numeric(self.engines, type_id) {
             // While collecting unifications we don't decay numeric and will ignore this error.
             if self.collecting_unifications {
@@ -835,7 +844,7 @@ impl<'a> TypeCheckContext<'a> {
     /// - Items directly available for `type_id`
     /// - Plus items from any annotation-type inner that can coerce to `type_id`
     ///   (enables cases like `MyStruct::try_from(x)` where `annotation_type` is a superset).
-    fn collect_candidate_items(
+    fn collect_method_candidate_items(
         &self,
         handler: &Handler,
         type_id: TypeId,
@@ -886,32 +895,32 @@ impl<'a> TypeCheckContext<'a> {
 
     #[inline]
     fn to_method_candidate(&self, decl_ref: &DeclRefFunction) -> MethodCandidate {
-        let de = self.engines.de();
-        let f = de.get_function(decl_ref);
+        let decl_engine = self.engines.de();
+        let fn_decl = decl_engine.get_function(decl_ref);
         MethodCandidate {
             decl_ref: decl_ref.clone(),
-            params: f
+            params: fn_decl
                 .parameters
                 .iter()
                 .map(|p| p.type_argument.type_id())
                 .collect(),
-            ret: f.return_type.type_id(),
-            is_contract_call: f.is_contract_call,
+            ret: fn_decl.return_type.type_id(),
+            is_contract_call: fn_decl.is_contract_call,
         }
     }
 
     /// Decide whether `cand` matches the given argument and annotation types.
     /// - Keeps current behavior: *accept on coercion*; `Exact` is a label for later tie-breakers.
-    fn score_candidate(
+    fn score_method_candidate(
         &self,
         cand: &MethodCandidate,
         argument_types: &[TypeId],
         annotation_type: TypeId,
-    ) -> MatchScore {
+    ) -> MethodCandidateMatchScore {
         let eq_check = UnifyCheck::constraint_subset(self.engines).with_unify_ref_mut(false);
         let coercion_check = UnifyCheck::coercion(self.engines).with_ignore_generic_names(true);
 
-        // Handle "phantom self" for contract calls.
+        // Handle "self" for contract calls.
         let args_len_diff = if cand.is_contract_call && !argument_types.is_empty() {
             1
         } else {
@@ -920,7 +929,7 @@ impl<'a> TypeCheckContext<'a> {
 
         // Parameter count must match after offset.
         if cand.params.len() != argument_types.len().saturating_sub(args_len_diff) {
-            return MatchScore::Incompatible;
+            return MethodCandidateMatchScore::Incompatible;
         }
 
         // Param-by-param check.
@@ -937,42 +946,297 @@ impl<'a> TypeCheckContext<'a> {
                 all_exact = false;
                 continue;
             }
-            return MatchScore::Incompatible;
+            return MethodCandidateMatchScore::Incompatible;
         }
 
-        // Return type gate: unchanged from original logic.
-        let te = self.engines.te();
-        let ann = &*te.get(annotation_type);
+        let type_engine = self.engines.te();
+        let ann = &*type_engine.get(annotation_type);
         let ret_ok = matches!(ann, TypeInfo::Unknown)
-            || matches!(&*te.get(cand.ret), TypeInfo::Never)
+            || matches!(&*type_engine.get(cand.ret), TypeInfo::Never)
             || coercion_check.check(annotation_type, cand.ret);
 
         if !ret_ok {
-            return MatchScore::Incompatible;
+            return MethodCandidateMatchScore::Incompatible;
         }
 
         if all_exact {
-            MatchScore::Exact
+            MethodCandidateMatchScore::Exact
         } else {
-            MatchScore::Coercible
+            MethodCandidateMatchScore::Coercible
         }
     }
 
     /// Keep only compatible candidates (coercible or exact).
-    fn filter_by_signature(
+    fn filter_method_candidates_by_signature(
         &self,
-        decl_refs: Vec<DeclRefFunction>,
+        decl_refs: &Vec<DeclRefFunction>,
         argument_types: &[TypeId],
         annotation_type: TypeId,
     ) -> Vec<MethodCandidate> {
         let mut out = Vec::new();
         for r in decl_refs {
-            let cand = self.to_method_candidate(&r);
-            match self.score_candidate(&cand, argument_types, annotation_type) {
-                MatchScore::Exact | MatchScore::Coercible => out.push(cand),
-                MatchScore::Incompatible => {}
+            let cand = self.to_method_candidate(r);
+            match self.score_method_candidate(&cand, argument_types, annotation_type) {
+                MethodCandidateMatchScore::Exact | MethodCandidateMatchScore::Coercible => {
+                    out.push(cand)
+                }
+                MethodCandidateMatchScore::Incompatible => {}
             }
         }
+        out
+    }
+
+    // --- Grouping + UFCS filtering ----------------------------------------------
+
+    /// Group signature-compatible method decl refs by their originating impl block,
+    /// optionally filtering by a qualified UFCS trait path.
+    ///
+    /// # What this does
+    /// - Builds a stable grouping map from `(impl_block_id, implementing_for)` → `DeclRefFunction`.
+    ///   * `impl_block_id` is the `DeclId` of the `impl`
+    ///   * `implementing_for` is the concrete `TypeId` (if known) for the impl block.
+    /// - If a method originates from an inherent `impl` (ImplSelf), we remember one such method
+    ///   so later selection can prefer inherent over trait-provided methods when mixed.
+    /// - If UFCS is used (`<S as Trait<T>>::method`), we **only** keep methods that originate from
+    ///   the qualified trait with matching type arguments, and we record the `qualified_call_path`.
+    ///
+    fn group_by_trait_impl(
+        &self,
+        handler: &Handler,
+        as_trait: Option<TypeId>,
+        method_decl_refs: &[DeclRefFunction],
+    ) -> Result<GroupingResult, ErrorEmitted> {
+        let decl_engine = self.engines.de();
+        let type_engine = self.engines.te();
+        let eq_check = UnifyCheck::constraint_subset(self.engines);
+
+        // Parse UFCS spec once (if any).
+        // We keep the qualified path and the optional type arguments for per-impl checks.
+        let (qualified_call_path, ufcs_type_args): (Option<QualifiedCallPath>, Option<Vec<_>>) =
+            if let Some(as_trait_ty) = as_trait {
+                match &*type_engine.get(as_trait_ty) {
+                    TypeInfo::Custom {
+                        qualified_call_path: cp,
+                        type_arguments,
+                    } => (Some(cp.clone()), type_arguments.clone()),
+                    _ => (None, None),
+                }
+            } else {
+                (None, None)
+            };
+
+        let mut trait_methods: BTreeMap<TraitKey, DeclRefFunction> = BTreeMap::new();
+        let mut impl_self_method: Option<DeclRefFunction> = None;
+
+        // Helper: do UFCS trait name + generic args match this impl's trait?
+        let ufcs_allows = |trait_decl: &ty::TyImplSelfOrTrait| -> Result<bool, ErrorEmitted> {
+            // No UFCS? Everything allowed.
+            let Some(qcp) = &qualified_call_path else {
+                return Ok(true);
+            };
+
+            // Trait name must match <... as Trait>::...
+            if trait_decl.trait_name != qcp.clone().to_call_path(handler)? {
+                return Ok(false);
+            }
+
+            // If UFCS provides type args, they must equal the impl's trait type args.
+            if let Some(params) = &ufcs_type_args {
+                if params.len() != trait_decl.trait_type_arguments.len() {
+                    return Ok(false);
+                }
+                for (p1, p2) in params.iter().zip(trait_decl.trait_type_arguments.iter()) {
+                    let p1_type_id = self.resolve_type(
+                        handler,
+                        p1.type_id(),
+                        &p1.span(),
+                        EnforceTypeArguments::Yes,
+                        None,
+                    )?;
+                    let p2_type_id = self.resolve_type(
+                        handler,
+                        p2.type_id(),
+                        &p2.span(),
+                        EnforceTypeArguments::Yes,
+                        None,
+                    )?;
+                    if !eq_check.check(p1_type_id, p2_type_id) {
+                        return Ok(false);
+                    }
+                }
+            }
+            Ok(true)
+        };
+
+        for method_ref in method_decl_refs {
+            let method = decl_engine.get_function(method_ref);
+
+            // Only methods originating from an impl block (trait or inherent).
+            let Some(ty::TyDecl::ImplSelfOrTrait(impl_trait)) = method.implementing_type.as_ref()
+            else {
+                continue;
+            };
+
+            let trait_decl = decl_engine.get_impl_self_or_trait(&impl_trait.decl_id);
+
+            // Enforce UFCS filter (if present).
+            if !ufcs_allows(&trait_decl)? {
+                continue;
+            }
+
+            // Stable key: (impl block id, implementing_for type).
+            let key: TraitKey = (impl_trait.decl_id, method.implementing_for_typeid);
+
+            // Insert/replace according to "prefer finalized" rule:
+            // replace unless (existing is finalized AND new is not finalized).
+            match trait_methods.entry(key) {
+                Entry::Occupied(mut occ) => {
+                    let existing = decl_engine.get_function(occ.get());
+                    let replace =
+                        !existing.is_type_check_finalized || method.is_type_check_finalized;
+                    if replace {
+                        occ.insert(method_ref.clone());
+                    }
+                }
+                Entry::Vacant(vac) => {
+                    vac.insert(method_ref.clone());
+                }
+            }
+
+            // Remember presence of an inherent impl (ImplSelf) so we can prefer it later.
+            if trait_decl.trait_decl_ref.is_none() {
+                impl_self_method = Some(method_ref.clone());
+            }
+        }
+
+        Ok(GroupingResult {
+            trait_methods,
+            impl_self_method,
+            qualified_call_path,
+        })
+    }
+
+    fn prefer_non_blanket_impls(&self, trait_methods: &mut BTreeMap<TraitKey, DeclRefFunction>) {
+        let decl_engine = self.engines.de();
+
+        let non_blanket_impl_exists = {
+            trait_methods.values().any(|v| {
+                let m = decl_engine.get_function(v);
+                !m.is_from_blanket_impl(self.engines)
+            })
+        };
+
+        if non_blanket_impl_exists {
+            trait_methods.retain(|_, v| {
+                let m = decl_engine.get_function(v);
+                !m.is_from_blanket_impl(self.engines)
+            });
+        }
+    }
+
+    // --- Final selection / ambiguity error --------------------------------------
+
+    #[inline]
+    fn trait_sig_string(&self, impl_id: &TraitImplId) -> String {
+        let de = self.engines.de();
+        let trait_decl = de.get_impl_self_or_trait(impl_id);
+        if trait_decl.trait_type_arguments.is_empty() {
+            trait_decl.trait_name.suffix.to_string()
+        } else {
+            let args = trait_decl
+                .trait_type_arguments
+                .iter()
+                .map(|ga| self.engines.help_out(ga).to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{}<{}>", trait_decl.trait_name.suffix, args)
+        }
+    }
+
+    fn select_method_from_grouped(
+        &self,
+        handler: &Handler,
+        method_name: &Ident,
+        type_id: TypeId,
+        trait_methods: &BTreeMap<TraitKey, DeclRefFunction>,
+        impl_self_method: &Option<DeclRefFunction>,
+    ) -> Result<Option<DeclRefFunction>, ErrorEmitted> {
+        let decl_engine = self.engines.de();
+        let eq_check = UnifyCheck::constraint_subset(self.engines);
+
+        match trait_methods.len() {
+            0 => Ok(None),
+            1 => Ok(trait_methods.values().next().cloned()),
+            _ => {
+                if let Some(impl_self) = impl_self_method {
+                    // Prefer inherent impl when mixed with trait methods.
+                    return Ok(Some(impl_self.clone()));
+                }
+
+                // Exact implementing type wins.
+                let mut exact = vec![];
+                for r in trait_methods.values() {
+                    let m = decl_engine.get_function(r);
+                    if let Some(impl_for) = m.implementing_for_typeid {
+                        if eq_check.with_unify_ref_mut(false).check(impl_for, type_id) {
+                            exact.push(r.clone());
+                        }
+                    }
+                }
+                if exact.len() == 1 {
+                    return Ok(Some(exact.remove(0)));
+                }
+
+                // Ambiguity: rebuild strings from impl ids.
+                let mut trait_strings = trait_methods
+                    .keys()
+                    .map(|(impl_id, implementing_for)| {
+                        let trait_str = self.trait_sig_string(impl_id);
+                        let impl_for_str = implementing_for
+                            .map(|t| self.engines.help_out(t).to_string())
+                            .unwrap_or_else(|| self.engines().help_out(type_id).to_string());
+                        (trait_str, impl_for_str)
+                    })
+                    .collect::<Vec<(String, String)>>();
+                trait_strings.sort();
+
+                Err(
+                    handler.emit_err(CompileError::MultipleApplicableItemsInScope {
+                        item_name: method_name.as_str().to_string(),
+                        item_kind: "function".to_string(),
+                        as_traits: trait_strings,
+                        span: method_name.span(),
+                    }),
+                )
+            }
+        }
+    }
+
+    #[inline]
+    fn format_candidate_summaries_for_error(&self, decl_refs: &[DeclRefFunction]) -> Vec<String> {
+        let de = self.engines.de();
+
+        let mut out: Vec<String> = decl_refs
+            .iter()
+            .map(|r| {
+                let m = de.get_function(r);
+                let params = m
+                    .parameters
+                    .iter()
+                    .map(|p| self.engines.help_out(p.type_argument.type_id()).to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let ret = self.engines.help_out(m.return_type.type_id());
+                let in_impl = if let Some(for_ty) = m.implementing_for_typeid {
+                    format!(" in {}", self.engines.help_out(for_ty))
+                } else {
+                    String::new()
+                };
+                format!("{}({}) -> {}{}", m.name.as_str(), params, ret, in_impl)
+            })
+            .collect();
+
+        out.sort();
         out
     }
 
@@ -995,14 +1259,11 @@ impl<'a> TypeCheckContext<'a> {
         arguments_types: &[TypeId],
         as_trait: Option<TypeId>,
     ) -> Result<DeclRefFunction, ErrorEmitted> {
-        let decl_engine = self.engines.de();
         let type_engine = self.engines.te();
-
-        let eq_check = UnifyCheck::constraint_subset(self.engines);
 
         self.default_numeric_if_needed(handler, type_id, method_name)?;
 
-        let matching_items = self.collect_candidate_items(
+        let matching_items = self.collect_method_candidate_items(
             handler,
             type_id,
             method_prefix,
@@ -1010,308 +1271,95 @@ impl<'a> TypeCheckContext<'a> {
             annotation_type,
         )?;
 
-        let mut matching_method_strings = HashSet::<String>::new();
         let matching_method_decl_refs = self.items_to_method_refs(matching_items);
 
-        let mut qualified_call_path = None;
-        let matching_method_decl_ref: Option<
-            crate::decl_engine::DeclRef<crate::decl_engine::DeclId<ty::TyFunctionDecl>>,
-        > = {
-            let candidates = self.filter_by_signature(
-                matching_method_decl_refs.clone(),
-                arguments_types,
-                annotation_type,
-            );
+        let candidates = self.filter_method_candidates_by_signature(
+            &matching_method_decl_refs,
+            arguments_types,
+            annotation_type,
+        );
+
+        let mut matching_method_strings = HashSet::<String>::new();
+
+        let mut qualified_call_path: Option<QualifiedCallPath> = None;
+
+        if !candidates.is_empty() {
             let maybe_method_decl_refs: Vec<DeclRefFunction> =
                 candidates.iter().map(|c| c.decl_ref.clone()).collect();
 
-            if !maybe_method_decl_refs.is_empty() {
-                let mut trait_methods = BTreeMap::<
-                    (
-                        CallPath,
-                        Vec<WithEngines<GenericArgument>>,
-                        Option<WithEngines<TypeInfo>>,
-                    ),
-                    DeclRefFunction,
-                >::new();
-                let mut impl_self_method = None;
-                for method_ref in maybe_method_decl_refs.iter() {
-                    let method = decl_engine.get_function(method_ref);
-                    if let Some(ty::TyDecl::ImplSelfOrTrait(impl_trait)) =
-                        method.implementing_type.as_ref()
-                    {
-                        let trait_decl = decl_engine.get_impl_self_or_trait(&impl_trait.decl_id);
+            let GroupingResult {
+                mut trait_methods,
+                impl_self_method,
+                qualified_call_path: qcp,
+            } = self.group_by_trait_impl(handler, as_trait, &maybe_method_decl_refs)?;
+            qualified_call_path = qcp;
 
-                        let trait_methods_key = (
-                            trait_decl.trait_name.clone(),
-                            trait_decl
-                                .trait_type_arguments
-                                .iter()
-                                .cloned()
-                                .map(|a| self.engines.help_out(a))
-                                .collect::<Vec<_>>(),
-                            method.implementing_for_typeid.map(|t| {
-                                self.engines.help_out((*self.engines.te().get(t)).clone())
-                            }),
-                        );
+            // Prefer non-blanket impls when any concrete impl exists.
+            self.prefer_non_blanket_impls(&mut trait_methods);
 
-                        let mut skip_insert = false;
-                        if let Some(as_trait) = as_trait {
-                            if let TypeInfo::Custom {
-                                qualified_call_path: call_path,
-                                type_arguments,
-                            } = &*type_engine.get(as_trait)
-                            {
-                                qualified_call_path = Some(call_path.clone());
-                                // When `<S as Trait<T>>::method()` is used we only add methods to `trait_methods` that
-                                // originate from the qualified trait.
-                                if trait_decl.trait_name
-                                    == call_path.clone().to_call_path(handler)?
-                                {
-                                    let mut params_equal = true;
-                                    if let Some(params) = type_arguments {
-                                        if params.len() != trait_decl.trait_type_arguments.len() {
-                                            params_equal = false;
-                                        } else {
-                                            for (p1, p2) in params
-                                                .iter()
-                                                .zip(trait_decl.trait_type_arguments.iter())
-                                            {
-                                                let p1_type_id = self.resolve_type(
-                                                    handler,
-                                                    p1.type_id(),
-                                                    &p1.span(),
-                                                    EnforceTypeArguments::Yes,
-                                                    None,
-                                                )?;
-                                                let p2_type_id = self.resolve_type(
-                                                    handler,
-                                                    p2.type_id(),
-                                                    &p2.span(),
-                                                    EnforceTypeArguments::Yes,
-                                                    None,
-                                                )?;
-                                                if !eq_check.check(p1_type_id, p2_type_id) {
-                                                    params_equal = false;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    if params_equal {
-                                        trait_methods
-                                            .insert(trait_methods_key.clone(), method_ref.clone());
-                                    }
-                                }
-                                skip_insert = true;
-                            }
-                        }
-
-                        if let Some(existing_value) = trait_methods.get(&trait_methods_key) {
-                            let existing_method = decl_engine.get_function(existing_value);
-                            if existing_method.is_type_check_finalized
-                                && !method.is_type_check_finalized
-                            {
-                                skip_insert = true;
-                            }
-                        }
-
-                        if !skip_insert {
-                            trait_methods.insert(trait_methods_key, method_ref.clone());
-                        }
-                        if trait_decl.trait_decl_ref.is_none() {
-                            impl_self_method = Some(method_ref);
-                        }
-                    }
-                }
-
-                // If we have: impl<T> FromBytes for T
-                // and: impl FromBytes for DataPoint
-                // We pick the second implementation.
-                let mut non_blanket_impl_exists = false;
-                let mut impls_with_type_params = vec![];
-                let trait_method_clone = trait_methods.clone();
-                let existing_values = trait_method_clone.values().collect::<Vec<_>>();
-                for existing_value in existing_values.iter() {
-                    let existing_method = decl_engine.get_function(*existing_value);
-                    if !existing_method.is_from_blanket_impl(self.engines) {
-                        non_blanket_impl_exists = true;
-                    } else {
-                        impls_with_type_params.push(existing_value.id());
-                    }
-                }
-                if non_blanket_impl_exists {
-                    trait_methods.retain(|_, v| !impls_with_type_params.contains(&v.id()));
-                }
-
-                if trait_methods.len() == 1 {
-                    trait_methods.values().next().cloned()
-                } else if trait_methods.len() > 1 {
-                    if impl_self_method.is_some() {
-                        // In case we have trait methods and a impl self method we use the impl self method.
-                        impl_self_method.cloned()
-                    } else {
-                        // Avoids following error when we already know the exact type:
-                        // Multiple applicable items in scope.
-                        //   Disambiguate the associated function for candidate #0
-                        //     <&&&u64 as Trait>::val
-                        //   Disambiguate the associated function for candidate #1
-                        //     <&mut &mut &u64 as Trait>::val
-                        // If one method has the exact type an the others don't we can use that method.
-                        let mut exact_matching_methods = vec![];
-                        let trait_method_values = trait_methods.values();
-                        for trait_method_ref in trait_method_values {
-                            let method = decl_engine.get_function(trait_method_ref);
-                            if let Some(implementing_for_type) = method.implementing_for_typeid {
-                                if eq_check
-                                    .with_unify_ref_mut(false)
-                                    .check(implementing_for_type, type_id)
-                                {
-                                    exact_matching_methods.push(trait_method_ref.clone());
-                                }
-                            }
-                        }
-
-                        if exact_matching_methods.len() == 1 {
-                            let a: Option<
-                                crate::decl_engine::DeclRef<
-                                    crate::decl_engine::DeclId<ty::TyFunctionDecl>,
-                                >,
-                            > = exact_matching_methods.into_iter().next();
-                            a
-                        } else {
-                            fn to_string(
-                                trait_name: CallPath,
-                                trait_type_args: Vec<WithEngines<GenericArgument>>,
-                            ) -> String {
-                                format!(
-                                    "{}{}",
-                                    trait_name.suffix,
-                                    if trait_type_args.is_empty() {
-                                        String::new()
-                                    } else {
-                                        format!(
-                                            "<{}>",
-                                            trait_type_args
-                                                .iter()
-                                                .map(|type_arg| type_arg.to_string())
-                                                .collect::<Vec<_>>()
-                                                .join(", ")
-                                        )
-                                    },
-                                )
-                            }
-
-                            let mut trait_strings = trait_methods
-                                .keys()
-                                .map(|t| {
-                                    (
-                                        to_string(t.0.clone(), t.1.clone()),
-                                        t.2.clone()
-                                            .map(|t| t.to_string())
-                                            .or_else(|| {
-                                                Some(self.engines().help_out(type_id).to_string())
-                                            })
-                                            .unwrap(),
-                                    )
-                                })
-                                .collect::<Vec<(String, String)>>();
-
-                            // Sort so the output of the error is always the same.
-                            trait_strings.sort();
-                            return Err(handler.emit_err(
-                                CompileError::MultipleApplicableItemsInScope {
-                                    item_name: method_name.as_str().to_string(),
-                                    item_kind: "function".to_string(),
-                                    as_traits: trait_strings,
-                                    span: method_name.span(),
-                                },
-                            ));
-                        }
-                    }
-                } else if qualified_call_path.is_some() {
-                    // When we use a qualified path the expected method should be in trait_methods.
-                    None
-                } else {
-                    let a: Option<
-                        &crate::decl_engine::DeclRef<
-                            crate::decl_engine::DeclId<ty::TyFunctionDecl>,
-                        >,
-                    > = maybe_method_decl_refs.first();
-                    a.cloned()
-                }
-            } else {
-                for decl_ref in matching_method_decl_refs.clone().into_iter() {
-                    let method = decl_engine.get_function(&decl_ref);
-                    matching_method_strings.insert(format!(
-                        "{}({}) -> {}{}",
-                        method.name.as_str(),
-                        method
-                            .parameters
-                            .iter()
-                            .map(|p| self.engines.help_out(p.type_argument.type_id()).to_string())
-                            .collect::<Vec<_>>()
-                            .join(", "),
-                        self.engines.help_out(method.return_type.type_id()),
-                        if let Some(implementing_for_type_id) = method.implementing_for_typeid {
-                            format!(" in {}", self.engines.help_out(implementing_for_type_id))
-                        } else {
-                            "".to_string()
-                        }
-                    ));
-                }
-
-                // When we can't match any method with parameter types we will throw an error.
-                None
+            // Final selection / ambiguity handling.
+            if let Some(pick) = self.select_method_from_grouped(
+                handler,
+                method_name,
+                type_id,
+                &trait_methods,
+                &impl_self_method,
+            )? {
+                return Ok(pick.get_method_safe_to_unify(self.engines, type_id));
             }
-        };
 
-        if let Some(method_decl_ref) = matching_method_decl_ref {
-            return Ok(method_decl_ref.get_method_safe_to_unify(self.engines, type_id));
+            if qualified_call_path.is_none() {
+                if let Some(first) = maybe_method_decl_refs.first() {
+                    return Ok(first.get_method_safe_to_unify(self.engines, type_id));
+                }
+            }
+        } else {
+            // No signature-compatible candidates.
+            matching_method_strings
+                .extend(self.format_candidate_summaries_for_error(&matching_method_decl_refs));
         }
 
+        // Forward an ErrorRecovery from the first argument if present.
         if let Some(TypeInfo::ErrorRecovery(err)) = arguments_types
             .first()
             .map(|x| (*type_engine.get(*x)).clone())
         {
-            Err(err)
-        } else {
-            let type_name = if let Some(call_path) = qualified_call_path {
-                format!(
-                    "{} as {}",
-                    self.engines.help_out(type_id),
-                    call_path.call_path
-                )
-            } else {
-                self.engines.help_out(type_id).to_string()
-            };
-
-            Err(handler.emit_err(CompileError::MethodNotFound {
-                method: format!(
-                    "{}({}){}",
-                    method_name.clone(),
-                    arguments_types
-                        .iter()
-                        .map(|a| self.engines.help_out(a).to_string())
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                    if matches!(
-                        *self.engines.te().get(self.type_annotation),
-                        TypeInfo::Unknown
-                    ) {
-                        "".to_string()
-                    } else {
-                        format!(" -> {}", self.engines.help_out(self.type_annotation))
-                    }
-                ),
-                type_name,
-                matching_method_strings: matching_method_strings
-                    .iter()
-                    .cloned()
-                    .collect::<Vec<_>>(),
-                span: method_name.span(),
-            }))
+            return Err(err);
         }
+
+        let type_name = if let Some(call_path) = qualified_call_path {
+            format!(
+                "{} as {}",
+                self.engines.help_out(type_id),
+                call_path.call_path
+            )
+        } else {
+            self.engines.help_out(type_id).to_string()
+        };
+
+        // Final: MethodNotFound with formatted signature and candidates.
+        Err(handler.emit_err(CompileError::MethodNotFound {
+            method: format!(
+                "{}({}){}",
+                method_name.clone(),
+                arguments_types
+                    .iter()
+                    .map(|a| self.engines.help_out(a).to_string())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                if matches!(
+                    *self.engines.te().get(self.type_annotation),
+                    TypeInfo::Unknown
+                ) {
+                    "".to_string()
+                } else {
+                    format!(" -> {}", self.engines.help_out(self.type_annotation))
+                }
+            ),
+            type_name,
+            matching_method_strings: matching_method_strings.iter().cloned().collect::<Vec<_>>(),
+            span: method_name.span(),
+        }))
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
