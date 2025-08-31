@@ -1,11 +1,12 @@
 //! Telemetry utilities for logging to InfluxDB
 
+#[cfg(feature = "telemetry")]
 pub use fuel_telemetry::*;
 
 /// Logs an error message to telemetry
 #[macro_export]
 macro_rules! error_telemetry {
-    ($($arg:tt)*) => {{
+    ($($arg:tt)+) => {{
         #[cfg(feature = "telemetry")]
         {
             if !$crate::is_telemetry_disabled() {
@@ -19,7 +20,7 @@ macro_rules! error_telemetry {
 /// Logs a warning message to telemetry
 #[macro_export]
 macro_rules! warn_telemetry {
-    ($($arg:tt)*) => {{
+    ($($arg:tt)+) => {{
         #[cfg(feature = "telemetry")]
         {
             if !$crate::is_telemetry_disabled() {
@@ -33,7 +34,7 @@ macro_rules! warn_telemetry {
 /// Logs an info message to telemetry
 #[macro_export]
 macro_rules! info_telemetry {
-    ($($arg:tt)*) => {{
+    ($($arg:tt)+) => {{
         #[cfg(feature = "telemetry")]
         {
             if !$crate::is_telemetry_disabled() {
@@ -47,7 +48,7 @@ macro_rules! info_telemetry {
 /// Logs a debug message to telemetry
 #[macro_export]
 macro_rules! debug_telemetry {
-    ($($arg:tt)*) => {{
+    ($($arg:tt)+) => {{
         #[cfg(feature = "telemetry")]
         {
             if !$crate::is_telemetry_disabled() {
