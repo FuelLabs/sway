@@ -265,6 +265,41 @@ fn module_to_doc<'a>(
     })
     .append(Doc::indent(
         4,
+        Doc::List(
+            module
+                .storage_keys
+                .iter()
+                .map(|(name, storage_key)| {
+                    let (slot, offset, field_id) = storage_key.get_parts(context);
+                    Doc::line(
+                        // If the storage key's path doesn't have struct field names,
+                        // which is 99% of the time, we will display only the slot,
+                        // to avoid clattering.
+                        Doc::text(format!(
+                            "storage_key {name} = 0x{slot:x}{}{}",
+                            if offset != 0 || slot != field_id {
+                                format!(" : {offset}")
+                            } else {
+                                "".to_string()
+                            },
+                            if slot != field_id {
+                                format!(" : 0x{field_id:x}")
+                            } else {
+                                "".to_string()
+                            },
+                        )),
+                    )
+                })
+                .collect(),
+        ),
+    ))
+    .append(if !module.storage_keys.is_empty() {
+        Doc::line(Doc::Empty)
+    } else {
+        Doc::Empty
+    })
+    .append(Doc::indent(
+        4,
         Doc::list_sep(
             module
                 .functions
@@ -1035,6 +1070,21 @@ fn instruction_to_doc<'a>(
                 }
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
+            InstOp::GetStorageKey(storage_key) => {
+                let name = block
+                    .get_function(context)
+                    .get_module(context)
+                    .lookup_storage_key_path(context, storage_key)
+                    .unwrap();
+                Doc::line(
+                    Doc::text(format!(
+                        "{} = get_storage_key {}, {name}",
+                        namer.name(context, ins_value),
+                        storage_key.get_type(context).as_string(context),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                )
+            }
             InstOp::IntToPtr(value, ty) => maybe_constant_to_doc(context, md_namer, namer, value)
                 .append(Doc::line(
                     Doc::text(format!(

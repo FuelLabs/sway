@@ -67,6 +67,24 @@ impl std::fmt::Display for U256 {
     }
 }
 
+impl std::fmt::LowerHex for U256 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:x}", self.0)
+    }
+}
+
+impl std::fmt::UpperHex for U256 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:X}", self.0)
+    }
+}
+
+impl std::fmt::Binary for U256 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:b}", self.0)
+    }
+}
+
 impl From<BigUint> for U256 {
     fn from(value: BigUint) -> Self {
         Self(value)
