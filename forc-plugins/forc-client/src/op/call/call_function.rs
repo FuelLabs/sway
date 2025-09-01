@@ -115,7 +115,7 @@ pub async fn call_function(
 
     // Get external contracts (either provided or auto-detected)
     let external_contracts = match external_contracts {
-        Some(contracts) if contracts.len() == 1 && (contracts[0].is_empty()) => vec![],
+        Some(contracts) if contracts.first().is_some_and(|s| s.is_empty()) => vec![],
         Some(contracts) => {
             // Parse each contract ID
             contracts
