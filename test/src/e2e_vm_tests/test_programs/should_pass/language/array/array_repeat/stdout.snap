@@ -1236,7 +1236,7 @@ output:
     Finished debug [unoptimized + fuel] target(s) [6.648 KB] in ???
     script array_repeat
       Bytecode size: 6648 bytes (6.648 KB)
-      Bytecode hash: 0x556fd20a12eccbbba1405bdda2eb527e6da68804f20c081c92bd630a22877ead
+      Bytecode hash: 0xa8e495df0fe859ae960b7d91ca18f5028aa0e08576cb9830e8c52b669d800e9d
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat
