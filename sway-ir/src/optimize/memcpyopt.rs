@@ -789,7 +789,7 @@ fn local_copy_prop(
                         }) => {
                             assert!(to_replace == *src_val_ptr);
                             *src_val_ptr = replacement
-                        },
+                        }
                         Some(Instruction {
                             op: InstOp::Call(_callee, args),
                             ..

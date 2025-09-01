@@ -201,8 +201,7 @@ fn analyse_fn(
                     | InstOp::AsmBlock(..)
                     | InstOp::Store { .. } => {
                         // It's a store, or we can't trace this anymore. Assume the worst.
-                        *arg_mutabilities.get_mut(arg_idx).unwrap() =
-                            ArgPointeeMutability::Immutable;
+                        *arg_mutabilities.get_mut(arg_idx).unwrap() = ArgPointeeMutability::Mutable;
                         continue 'analyse_next_arg;
                     }
                     InstOp::CastPtr(..) | InstOp::GetElemPtr { .. } => {
