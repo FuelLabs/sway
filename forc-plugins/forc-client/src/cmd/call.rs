@@ -407,7 +407,12 @@ pub struct Command {
     /// to the node, and extract the contract addresses based on the revert reason.
     /// Use an empty string '' to explicitly specify no external contracts.
     /// Multiple contract IDs can be provided separated by commas.
-    #[clap(long, alias = "contracts", value_delimiter = ',', help_heading = "CONTRACT")]
+    #[clap(
+        long,
+        alias = "contracts",
+        value_delimiter = ',',
+        help_heading = "CONTRACT"
+    )]
     pub external_contracts: Option<Vec<String>>,
 
     /// Output format for the call result

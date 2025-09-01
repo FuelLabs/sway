@@ -129,7 +129,9 @@ pub async fn call_function(
         }
         None => {
             // Automatically retrieve missing contract addresses from the call
-            forc_tracing::println_warning("Automatically retrieving missing contract addresses for the call");
+            forc_tracing::println_warning(
+                "Automatically retrieving missing contract addresses for the call",
+            );
             let external_contracts = determine_missing_contracts(
                 &call,
                 wallet.provider(),
