@@ -122,7 +122,7 @@ pub async fn call_function(
                 .into_iter()
                 .filter(|s| !s.is_empty())
                 .map(|s| {
-                    ContractId::from_str(&format!("0x{}", s.trim_start_matches("0x")))
+                    ContractId::from_str(s.strip_prefix("0x").unwrap_or(&s))
                         .map_err(|e| anyhow!("Invalid contract ID '{}': {}", s, e))
                 })
                 .collect::<Result<Vec<_>>>()?
