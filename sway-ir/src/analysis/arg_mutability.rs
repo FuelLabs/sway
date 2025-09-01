@@ -171,6 +171,7 @@ fn analyse_fn(
                     | InstOp::GetLocal(_)
                     | InstOp::GetGlobal(_)
                     | InstOp::GetConfig(_, _)
+                    | InstOp::GetStorageKey(_)
                     | InstOp::IntToPtr(_, _)
                     | InstOp::Nop => {
                         panic!("Pointers shouldn't be used in these instructions");
