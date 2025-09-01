@@ -271,7 +271,7 @@ fn dce() {
     run_tests("dce", |_first_line, ir: &mut Context| {
         let mut pass_mgr = PassManager::default();
         let mut pass_group = PassGroup::default();
-        pass_group.register(create_arg_pointee_mutability_pass());
+        pass_mgr.register(create_arg_pointee_mutability_pass());
         pass_mgr.register(create_escaped_symbols_pass());
         let pass = pass_mgr.register(create_dce_pass());
         pass_group.append_pass(pass);
