@@ -181,9 +181,14 @@ fn analyse_fn(
                             BinaryOpKind::Add | BinaryOpKind::Sub => {
                                 // The result of a pointer add or sub is an alias to the pointer.
                                 // Add uses of this instruction to worklist.
-                                for r#use in def_use.get(&value).cloned().unwrap_or_default() {
-                                    worklist.insert(r#use);
-                                }
+                                def_use
+                                    .get(&value)
+                                    .cloned()
+                                    .unwrap_or_default()
+                                    .iter()
+                                    .for_each(|r#use| {
+                                        worklist.insert(*r#use);
+                                    });
                             }
                             BinaryOpKind::Mul
                             | BinaryOpKind::Div
@@ -207,9 +212,14 @@ fn analyse_fn(
                     }
                     InstOp::CastPtr(..) | InstOp::GetElemPtr { .. } => {
                         // The result is now an alias of the argument. Process it.
-                        for r#use in def_use.get(&value).cloned().unwrap_or_default() {
-                            worklist.insert(r#use);
-                        }
+                        def_use
+                            .get(&value)
+                            .cloned()
+                            .unwrap_or_default()
+                            .iter()
+                            .for_each(|r#use| {
+                                worklist.insert(*r#use);
+                            });
                     }
                     InstOp::Load(_) => {
                         // Since we don't worry about pointers that are indirectly mutated,
@@ -288,9 +298,14 @@ fn analyse_fn(
                 },
                 ValueDatum::Argument(_) => {
                     // Add all users of this argument to the worklist.
-                    for r#use in def_use.get(&value).cloned().unwrap_or_default() {
-                        worklist.insert(r#use);
-                    }
+                    def_use
+                        .get(&value)
+                        .cloned()
+                        .unwrap_or_default()
+                        .iter()
+                        .for_each(|r#use| {
+                            worklist.insert(*r#use);
+                        });
                 }
                 ValueDatum::Constant(_) => panic!("Constants cannot be users"),
             }
@@ -306,5 +321,5 @@ fn analyse_fn(
     //     res.0.get(&function).unwrap()
     // );
 
-    return Ok(());
+    Ok(())
 }

@@ -578,9 +578,9 @@ fn local_copy_prop(
                                 if fn_mutability.get_mutability(*callee, arg_idx)
                                     == ArgPointeeMutability::Immutable
                                 {
-                                    Either::Left(arg.clone())
+                                    Either::Left(*arg)
                                 } else {
-                                    Either::Right(arg.clone())
+                                    Either::Right(*arg)
                                 }
                             });
                         // whichever args may get mutabed, we kill them.
