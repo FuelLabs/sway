@@ -3,7 +3,14 @@ use std::path::PathBuf;
 use itertools::Itertools;
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
-    create_arg_demotion_pass, create_arg_pointee_mutability_pass, create_ccp_pass, create_const_demotion_pass, create_const_folding_pass, create_cse_pass, create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass, create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, metadata_to_inline, optimize as opt, register_known_passes, Context, Function, IrError, PassGroup, PassManager, Value, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME, SROA_NAME
+    create_arg_demotion_pass, create_arg_pointee_mutability_pass, create_ccp_pass,
+    create_const_demotion_pass, create_const_folding_pass, create_cse_pass, create_dce_pass,
+    create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
+    create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
+    create_ret_demotion_pass, create_simplify_cfg_pass, metadata_to_inline, optimize as opt,
+    register_known_passes, Context, Function, IrError, PassGroup, PassManager, Value, DCE_NAME,
+    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME,
+    SROA_NAME,
 };
 use sway_types::SourceEngine;
 
