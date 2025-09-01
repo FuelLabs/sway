@@ -49,6 +49,7 @@ mod ir_builder {
                         kind,
                         configs,
                         global_vars,
+                        storage_keys: vec![],
                         fn_decls,
                         metadata
                     }
@@ -60,12 +61,13 @@ mod ir_builder {
 
             rule contract() -> IrAstModule
                 = "contract" _ "{" _
-                  configs:init_config()* _ global_vars:global_var()* _ fn_decls:fn_decl()* "}" _
+                  configs:init_config()* _ global_vars:global_var()* _ storage_keys:storage_key()* _ fn_decls:fn_decl()* "}" _
                   metadata:metadata_decls() {
                     IrAstModule {
                         kind: crate::module::Kind::Contract,
                         configs,
                         global_vars,
+                        storage_keys,
                         fn_decls,
                         metadata
                     }
@@ -101,6 +103,27 @@ mod ir_builder {
                         decode_fn,
                         metadata,
                     }
+                }
+
+            rule storage_key() -> IrAstStorageKey
+                = "storage_key" _ namespaces:path() "." fields:field_access() _ "=" _ slot:constant() _ offset:storage_key_offset()? _ field_id:storage_key_field_id()? {
+                    IrAstStorageKey {
+                        namespaces,
+                        fields,
+                        slot,
+                        offset,
+                        field_id,
+                    }
+                }
+
+            rule storage_key_offset() -> IrAstConst
+                = ":" _ offset:constant() {
+                    offset
+                }
+
+            rule storage_key_field_id() -> IrAstConst
+                = ":" _ field_id:constant() {
+                    field_id
                 }
 
             rule fn_decl() -> IrAstFnDecl
@@ -236,6 +259,7 @@ mod ir_builder {
                 / op_get_local()
                 / op_get_global()
                 / op_get_config()
+                / op_get_storage_key()
                 / op_gtf()
                 / op_int_to_ptr()
                 / op_load()
@@ -357,13 +381,20 @@ mod ir_builder {
                 = "get_local" _ ast_ty() comma() name:id() {
                     IrAstOperation::GetLocal(name)
                 }
+
             rule op_get_global() -> IrAstOperation
                 = "get_global" _ ast_ty() comma() name:path() {
                     IrAstOperation::GetGlobal(name)
                 }
+
             rule op_get_config() -> IrAstOperation
                 = "get_config" _ ast_ty() comma() name:id() {
                     IrAstOperation::GetConfig(name)
+                }
+
+            rule op_get_storage_key() -> IrAstOperation
+                = "get_storage_key" _ ast_ty() comma() namespaces:path() "." fields:field_access() {
+                    IrAstOperation::GetStorageKey(format!("{}.{}", namespaces.join("::"), fields.join(".")))
                 }
 
             rule op_gtf() -> IrAstOperation
@@ -627,6 +658,9 @@ mod ir_builder {
             rule path() -> Vec<String>
                 = (id() ** "::")
 
+            rule field_access() -> Vec<String>
+                = (id() ** ".")
+
             // Metadata decls are sensitive to the newlines since the assignee idx could belong to
             // the previous decl otherwise.  e.g.,
             //
@@ -726,8 +760,8 @@ mod ir_builder {
         module::{Kind, Module},
         value::Value,
         variable::LocalVar,
-        BinaryOpKind, BlockArgument, ConfigContent, Constant, GlobalVar, Instruction, UnaryOpKind,
-        B256,
+        BinaryOpKind, BlockArgument, ConfigContent, Constant, GlobalVar, Instruction, StorageKey,
+        UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -735,6 +769,7 @@ mod ir_builder {
         kind: Kind,
         configs: Vec<IrAstConfig>,
         global_vars: Vec<IrAstGlobalVar>,
+        storage_keys: Vec<IrAstStorageKey>,
         fn_decls: Vec<IrAstFnDecl>,
         metadata: Vec<(MdIdxRef, IrMetadatum)>,
     }
@@ -745,6 +780,15 @@ mod ir_builder {
         ty: IrAstTy,
         init: Option<IrAstOperation>,
         mutable: bool,
+    }
+
+    #[derive(Debug)]
+    pub(super) struct IrAstStorageKey {
+        namespaces: Vec<String>,
+        fields: Vec<String>,
+        slot: IrAstConst,
+        offset: Option<IrAstConst>,
+        field_id: Option<IrAstConst>,
     }
 
     #[derive(Debug)]
@@ -799,6 +843,7 @@ mod ir_builder {
         GetLocal(String),
         GetGlobal(Vec<String>),
         GetConfig(String),
+        GetStorageKey(String),
         Gtf(String, u64),
         IntToPtr(String, IrAstTy),
         Load(String),
@@ -1041,6 +1086,7 @@ mod ir_builder {
             module,
             configs_map: build_configs_map(&mut ctx, &module, ir_ast_mod.configs, &md_map),
             globals_map: build_global_vars_map(&mut ctx, &module, ir_ast_mod.global_vars),
+            storage_keys_map: build_storage_keys_map(&mut ctx, &module, ir_ast_mod.storage_keys),
             md_map,
             unresolved_calls: Vec::new(),
         };
@@ -1058,6 +1104,7 @@ mod ir_builder {
         module: Module,
         configs_map: BTreeMap<String, String>,
         globals_map: BTreeMap<Vec<String>, GlobalVar>,
+        storage_keys_map: BTreeMap<String, StorageKey>,
         md_map: HashMap<MdIdxRef, MetadataIndex>,
         unresolved_calls: Vec<PendingCall>,
     }
@@ -1397,6 +1444,10 @@ mod ir_builder {
                         .append(context)
                         .get_config(self.module, name)
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::GetStorageKey(path) => block
+                        .append(context)
+                        .get_storage_key(*self.storage_keys_map.get(&path).unwrap())
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Gtf(index, tx_field_id) => block
                         .append(context)
                         .gtf(*val_map.get(&index).unwrap(), tx_field_id)
@@ -1604,6 +1655,47 @@ mod ir_builder {
                 let global_var = GlobalVar::new(context, ty, init, global_var_node.mutable);
                 module.add_global_variable(context, global_var_node.name.clone(), global_var);
                 (global_var_node.name, global_var)
+            })
+            .collect()
+    }
+
+    fn build_storage_keys_map(
+        context: &mut Context,
+        module: &Module,
+        storage_keys: Vec<IrAstStorageKey>,
+    ) -> BTreeMap<String, StorageKey> {
+        storage_keys
+            .into_iter()
+            .map(|storage_key_node| {
+                let path = format!(
+                    "{}.{}",
+                    storage_key_node.namespaces.join("::"),
+                    storage_key_node.fields.join("."),
+                );
+                let slot = match storage_key_node.slot.value {
+                    IrAstConstValue::Hex256(val) => val,
+                    _ => panic!("Storage key slot must be a hex string representing b256."),
+                };
+                let offset = match storage_key_node.offset {
+                    Some(IrAstConst {
+                        value: IrAstConstValue::Number(n),
+                        ..
+                    }) => n,
+                    None => 0,
+                    _ => panic!("Storage key offset must be a u64 constant."),
+                };
+                let field_id = match storage_key_node.field_id {
+                    Some(IrAstConst {
+                        value: IrAstConstValue::Hex256(val),
+                        ..
+                    }) => val,
+                    // If the field id is not specified, it is the same as the slot.
+                    None => slot,
+                    _ => panic!("Storage key field id must be a hex string representing b256."),
+                };
+                let storage_key = StorageKey::new(context, slot, offset, field_id);
+                module.add_storage_key(context, path.clone(), storage_key);
+                (path, storage_key)
             })
             .collect()
     }

@@ -163,3 +163,27 @@ async fn test_string_slice_predicate() {
     let predicate_balance = get_balance(&wallet, predicate_address, asset_id).await;
     assert_eq!(predicate_balance, 0);
 }
+
+#[tokio::test]
+async fn script_string_slice() -> Result<()> {
+    setup_program_test!(
+        Wallets("wallet"),
+        Abigen(Script(
+            name = "MyScript",
+            project = "test_projects/string_slice/script_string_slice",
+        )),
+        LoadScript(
+            name = "script_instance",
+            script = "MyScript",
+            wallet = "wallet"
+        )
+    );
+
+    let response = script_instance
+        .main("script-input".try_into()?)
+        .call()
+        .await?;
+    assert_eq!(response.value, "script-return");
+
+    Ok(())
+}

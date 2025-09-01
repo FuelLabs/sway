@@ -19,7 +19,7 @@ use crate::{
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
     variable::LocalVar,
-    AsmInstruction, ConstantContent, GlobalVar, Module,
+    AsmInstruction, ConstantContent, GlobalVar, Module, StorageKey,
 };
 
 #[derive(Debug, Clone, DebugWithContext)]
@@ -53,7 +53,10 @@ pub enum InstOp {
     /// An opaque list of ASM instructions passed directly to codegen.
     AsmBlock(AsmBlock, Vec<AsmArg>),
     /// Unary arithmetic operations
-    UnaryOp { op: UnaryOpKind, arg: Value },
+    UnaryOp {
+        op: UnaryOpKind,
+        arg: Value,
+    },
     /// Binary arithmetic operations
     BinaryOp {
         op: BinaryOpKind,
@@ -87,12 +90,13 @@ pub enum InstOp {
     },
     /// Umbrella instruction variant for FuelVM-specific instructions
     FuelVm(FuelVmInstruction),
-    /// Return a local variable.
+    /// Return a pointer to a local variable.
     GetLocal(LocalVar),
-    /// Return a global variable.
+    /// Return a pointer to a global variable.
     GetGlobal(GlobalVar),
-    /// Return a ptr to a config
+    /// Return a pointer to a configurable.
     GetConfig(Module, String),
+    GetStorageKey(StorageKey),
     /// Translate a pointer from a base to a nested element in an aggregate type.
     GetElemPtr {
         base: Value,
@@ -115,7 +119,9 @@ pub enum InstOp {
         src_val_ptr: Value,
     },
     /// Clear a value, fills with zero
-    MemClearVal { dst_val_ptr: Value },
+    MemClearVal {
+        dst_val_ptr: Value,
+    },
     /// No-op, handy as a placeholder instruction.
     Nop,
     /// Cast a pointer to an integer.
@@ -312,6 +318,7 @@ impl InstOp {
                 crate::ConfigContent::V0 { ptr_ty, .. } => *ptr_ty,
                 crate::ConfigContent::V1 { ptr_ty, .. } => *ptr_ty,
             }),
+            InstOp::GetStorageKey(storage_key) => Some(storage_key.get_type(context)),
 
             // Use for casting between pointers and pointer-width integers.
             InstOp::IntToPtr(_, ptr_ty) => Some(*ptr_ty),
@@ -406,6 +413,10 @@ impl InstOp {
             }
             InstOp::GetConfig(_, _) => {
                 // `GetConfig` returns an SSA `Value` but does not take any as an operand.
+                vec![]
+            }
+            InstOp::GetStorageKey(_) => {
+                // `GetStorageKey` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
             InstOp::IntToPtr(v, _) => vec![*v],
@@ -619,6 +630,10 @@ impl InstOp {
             InstOp::GetConfig(_, _) => {
                 // `GetConfig` returns an SSA `Value` but does not take any as an operand.
                 panic!("Invalid index for GetConfig");
+            }
+            InstOp::GetStorageKey(_) => {
+                // `GetStorageKey` returns an SSA `Value` but does not take any as an operand.
+                panic!("Invalid index for GetStorageKey");
             }
             InstOp::IntToPtr(v, _) => {
                 if idx == 0 {
@@ -922,6 +937,7 @@ impl InstOp {
             InstOp::GetLocal(_) => (),
             InstOp::GetGlobal(_) => (),
             InstOp::GetConfig(_, _) => (),
+            InstOp::GetStorageKey(_) => (),
             InstOp::GetElemPtr {
                 base,
                 elem_ptr_ty: _,
@@ -1088,6 +1104,7 @@ impl InstOp {
             | InstOp::GetLocal(_)
             | InstOp::GetGlobal(_)
             | InstOp::GetConfig(_, _)
+            | InstOp::GetStorageKey(_)
             | InstOp::IntToPtr(..)
             | InstOp::Load(_)
             | InstOp::Nop
@@ -1451,6 +1468,10 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
 
     pub fn get_config(self, module: Module, name: String) -> Value {
         insert_instruction!(self, InstOp::GetConfig(module, name))
+    }
+
+    pub fn get_storage_key(self, storage_key: StorageKey) -> Value {
+        insert_instruction!(self, InstOp::GetStorageKey(storage_key))
     }
 
     pub fn int_to_ptr(self, value: Value, ty: Type) -> Value {
