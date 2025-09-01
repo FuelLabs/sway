@@ -44,7 +44,7 @@ pub struct Command {
     ///
     /// [possible values: zsh, bash, fish, powershell, elvish]
     ///
-    /// For more info: https://fuellabs.github.io/sway/latest/forc/commands/forc_completions.html
+    /// For more info: https://fuellabs.github.io/sway/v0.18.1/forc/commands/forc_completions.html
     #[clap(short = 'T', long, value_enum)]
     target: Target,
 }
