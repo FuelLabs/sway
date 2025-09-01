@@ -403,10 +403,12 @@ pub struct Command {
     pub gas: Option<Gas>,
 
     /// The external contract addresses to use for the call
-    /// If none are provided, the call will automatically populate external contracts by making a dry-run calls
-    /// to the node, and extract the contract addresses based on the revert reason
-    #[clap(long, alias = "contracts", help_heading = "CONTRACT")]
-    pub external_contracts: Option<Vec<ContractId>>,
+    /// If none are provided, the call will automatically populate external contracts by making dry-run calls
+    /// to the node, and extract the contract addresses based on the revert reason.
+    /// Use an empty string '' to explicitly specify no external contracts.
+    /// Multiple contract IDs can be provided separated by commas.
+    #[clap(long, alias = "contracts", value_delimiter = ',', help_heading = "CONTRACT")]
+    pub external_contracts: Option<Vec<String>>,
 
     /// Output format for the call result
     #[clap(long, short = 'o', default_value = "default", help_heading = "OUTPUT")]
