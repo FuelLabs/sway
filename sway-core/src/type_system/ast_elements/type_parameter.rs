@@ -1068,7 +1068,7 @@ impl ConstGenericExpr {
                             }),
                         }
                     }
-                    None => todo!(),
+                    None => unreachable!("Type check guarantee this variable points to a know decl"),
                 };
                 TyExpression {
                     expression,
