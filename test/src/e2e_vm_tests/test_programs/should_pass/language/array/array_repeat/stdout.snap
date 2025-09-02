@@ -1577,7 +1577,7 @@ add  $r0 $$locbase $r0        ; get absolute byte offset to local
 lb   $r0 $r0 i0               ; load byte
 move $$arg0 $r0               ; [call]: pass argument 0
 jal  $$reta $pc i513          ; [call]: call log_42
-addr $r0 data_NonConfigurable_0; get constant's address in data section
+addr $r0 data_NonConfigurable_0; get std::error_signals::FAILED_ASSERT_EQ_SIGNAL's address in data section
 movi $r1 i33117               ; get word offset to local from base
 muli $r1 $r1 i8               ; get byte offset to local from base
 add  $r1 $$locbase $r1        ; get absolute byte offset to local
