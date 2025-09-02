@@ -8,7 +8,7 @@ bisect-forc.sh sway_project test 30s
 1 - First argument is the sway project that will be compiled over and over until a different behavior is found;
 2 - The second argument is which forc subcommand will be used. It defaults to `build`.
 
-So, `forc` wil be run as:
+So, `forc` will be run as:
 
 ```
 > forc <SECONDARGUMENT> --path <FIRSTARGUMENT>
