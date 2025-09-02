@@ -64,7 +64,10 @@ pub trait Iterator {
 #[cfg(experimental_const_generics = true)]
 impl<T, const N: u64> [T; N] {
     fn iter(self) -> ArrayIterator<T, N> {
-        ArrayIterator { array: self, idx: 0 }
+        ArrayIterator {
+            array: self,
+            idx: 0,
+        }
     }
 }
 
@@ -76,8 +79,8 @@ pub struct ArrayIterator<T, const N: u64> {
 
 #[cfg(experimental_const_generics = true)]
 impl<T, const N: u64> Iterator for ArrayIterator<T, N> {
-    type Item = T;
-
+    type Item = T
+;
     fn next(ref mut self) -> Option<Self::Item> {
         if self.idx >= N {
             None
