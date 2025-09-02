@@ -8,9 +8,9 @@ use sway_error::{
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineInsert, MaterializeConstGenerics},
+    decl_engine::{DeclEngineGet, DeclEngineGetParsedDecl, DeclEngineInsert, MaterializeConstGenerics},
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
-    language::CallPath,
+    language::{ty::TyStructDecl, CallPath},
     namespace::TraitMap,
     semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
@@ -150,9 +150,27 @@ impl MaterializeConstGenerics for TypeId {
                 let mut decl = (*decl).clone();
                 decl.materialize_const_generics(engines, handler, name, value)?;
 
-                let decl_ref = engines.de().insert(decl, None);
+                let parsed_decl = engines.de()
+                    .get_parsed_decl(id)
+                    .unwrap()
+                    .to_enum_decl(handler, engines)
+                    .ok();
+                let decl_ref = engines.de().insert(decl, parsed_decl.as_ref());
 
                 *self = engines.te().insert_enum(engines, *decl_ref.id());
+            }
+            TypeInfo::Struct(id) => {
+                let mut decl = TyStructDecl::clone(&engines.de().get(id));
+                decl.materialize_const_generics(engines, handler, name, value)?;
+
+                let parsed_decl = engines.de()
+                    .get_parsed_decl(id)
+                    .unwrap()
+                    .to_struct_decl(handler, engines)
+                    .ok();
+                let decl_ref = engines.de().insert(decl, parsed_decl.as_ref());
+
+                *self = engines.te().insert_struct(engines, *decl_ref.id());
             }
             TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
                 ident,
