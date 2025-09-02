@@ -1,0 +1,468 @@
+:root {
+  --main-background-color: #262e37;
+  --main-color: #c5c5c5;
+  --settings-input-color: #ffb454;
+  --sidebar-background-color: #161f25;
+  --sidebar-background-color-hover: rgba(70, 70, 70, 0.33);
+  --code-block-background-color: #191f26;
+  --scrollbar-track-background-color: transparent;
+  --scrollbar-thumb-background-color: #5c6773;
+  --scrollbar-color: #5c6773 #24292f;
+  --headings-border-bottom-color: #5c6773;
+}
+.slider {
+  background-color: #ccc;
+}
+.slider:before {
+  background-color: white;
+}
+input:focus + .slider {
+  box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
+}
+h1,
+h2,
+h3,
+h4 {
+  color: white;
+}
+h1.fqn a {
+  color: #fff;
+}
+h4 {
+  border: none;
+}
+.docblock code {
+  color: #ffb454;
+}
+.code-header {
+  color: #e6e1cf;
+  margin-left: 1em;
+}
+.docblock pre > code,
+pre > code {
+  color: #e6e1cf;
+}
+span code {
+  color: #e6e1cf;
+}
+.docblock a > code {
+  color: #39afd7 !important;
+}
+pre,
+.swaydoc.source .example-wrap {
+  color: #e6e1cf;
+}
+.sway-logo {
+  filter: drop-shadow(1px 0 0px #fff) drop-shadow(0 1px 0 #fff)
+    drop-shadow(-1px 0 0 #fff) drop-shadow(0 -1px 0 #fff);
+}
+.sidebar .current,
+.sidebar a:hover {
+  background-color: transparent;
+  color: #ffb44c;
+}
+.sidebar-elems .location {
+  color: #ff7733;
+}
+.line-numbers span {
+  color: #5c6773;
+}
+.line-numbers .line-highlighted {
+  color: #708090;
+  background-color: rgba(255, 236, 164, 0.06);
+  padding-right: 4px;
+  border-right: 1px solid #ffb44c;
+}
+.docblock table td,
+.docblock table th {
+  border-color: #5c6773;
+}
+.content .item-info::before {
+  color: #ccc;
+}
+.content span.foreigntype,
+.content a.foreigntype {
+  color: #ffa0a5;
+}
+.content span.union,
+.content a.union {
+  color: #ffa0a5;
+}
+.content span.constant,
+.content a.constant,
+.content span.static,
+.content a.static {
+  color: #39afd7;
+}
+.content span.primitive,
+.content a.primitive {
+  color: #ffa0a5;
+}
+.content span.traitalias,
+.content a.traitalias {
+  color: #39afd7;
+}
+.content span.keyword,
+.content a.keyword {
+  color: #39afd7;
+}
+.content span.externcrate,
+.content span.mod,
+.content a.mod {
+  color: #39afd7;
+}
+.content span.struct,
+.content a.struct {
+  color: #ffa0a5;
+}
+.content span.enum,
+.content a.enum {
+  color: #ffa0a5;
+}
+.content span.trait,
+.content a.trait {
+  color: #39afd7;
+}
+.content span.type,
+.content a.type,
+.block a.current.type {
+  color: #39afd7;
+}
+.content span.associatedtype,
+.content a.associatedtype,
+.block a.current.associatedtype {
+  color: #39afd7;
+}
+.content span.fn,
+.content a.fn,
+.content span.method,
+.content a.method,
+.content span.tymethod,
+.content a.tymethod,
+.content .fnname {
+  color: #fdd687;
+}
+.content span.attr,
+.content a.attr,
+.content span.derive,
+.content a.derive,
+.content span.macro,
+.content a.macro {
+  color: #a37acc;
+}
+.sidebar a.current.type {
+  color: #53b1db;
+}
+.sidebar a.current.associatedtype {
+  color: #53b1db;
+}
+pre.sway .comment {
+  color: #788797;
+}
+pre.sway .doccomment {
+  color: #a1ac88;
+}
+nav.main .current {
+  border-top-color: #5c6773;
+  border-bottom-color: #5c6773;
+}
+nav.main .separator {
+  border: 1px solid #5c6773;
+}
+a {
+  color: #c5c5c5;
+}
+.sidebar h2 a,
+.sidebar h3 a {
+  color: white;
+}
+
+
+body.source .example-wrap pre.sway a {
+  background: #333;
+}
+details.swaydoc-toggle > summary.hideme > span,
+details.swaydoc-toggle > summary::before {
+  color: #999;
+}
+details.swaydoc-toggle > summary::before {
+  filter: invert(100%);
+}
+#crate-search,
+.search-input {
+  background-color: #141920;
+  border-color: #424c57;
+}
+#crate-search {
+  border-color: #424c57 !important;
+}
+.search-input {
+  color: #ffffff;
+}
+.module-item .stab,
+.import-item .stab {
+  color: #000;
+}
+
+.stab.unstable,
+.stab.deprecated,
+.stab.portability,
+.stab.empty-impl,
+.stab.must_implement {
+  color: #c5c5c5;
+  background: #314559 !important;
+  border-style: none !important;
+  border-radius: 4px;
+  padding: 3px 6px 3px 6px;
+}
+.stab.portability > code {
+  color: #e6e1cf;
+  background: none;
+}
+.rightside,
+.out-of-band {
+  color: grey;
+}
+.result-name .primitive > i,
+.result-name .keyword > i {
+  color: #788797;
+}
+.line-numbers :target {
+  background-color: transparent;
+}
+pre.sway .number,
+pre.sway .string {
+  color: #b8cc52;
+}
+pre.sway .kw,
+pre.sway .kw-2,
+pre.sway .prelude-ty,
+pre.sway .bool-val,
+pre.sway .prelude-val,
+pre.sway .op,
+pre.sway .lifetime {
+  color: #ff7733;
+}
+pre.sway .macro,
+pre.sway .macro-nonterminal {
+  color: #a37acc;
+}
+pre.sway .question-mark {
+  color: #ff9011;
+}
+pre.sway .self {
+  color: #36a3d9;
+  font-style: italic;
+}
+pre.sway .attribute {
+  color: #e6e1cf;
+}
+pre.sway .attribute .ident,
+pre.sway .attribute .op {
+  color: #e6e1cf;
+}
+.example-wrap > pre.line-number {
+  color: #5c67736e;
+  border: none;
+}
+a.test-arrow {
+  font-size: 100%;
+  color: #788797;
+  border-radius: 4px;
+  background-color: rgba(57, 175, 215, 0.09);
+}
+a.test-arrow:hover {
+  background-color: rgba(57, 175, 215, 0.368);
+  color: #c5c5c5;
+}
+.toggle-label,
+.code-attribute {
+  color: #999;
+}
+:target {
+  background: rgba(255, 236, 164, 0.06);
+  border-right: 3px solid rgba(255, 180, 76, 0.85);
+}
+pre.compile_fail {
+  border-left: 2px solid rgba(255, 0, 0, 0.4);
+}
+pre.compile_fail:hover,
+.information:hover + pre.compile_fail {
+  border-left: 2px solid #f00;
+}
+pre.should_panic {
+  border-left: 2px solid rgba(255, 0, 0, 0.4);
+}
+pre.should_panic:hover,
+.information:hover + pre.should_panic {
+  border-left: 2px solid #f00;
+}
+pre.ignore {
+  border-left: 2px solid rgba(255, 142, 0, 0.6);
+}
+pre.ignore:hover,
+.information:hover + pre.ignore {
+  border-left: 2px solid #ff9200;
+}
+.tooltip.compile_fail {
+  color: rgba(255, 0, 0, 0.5);
+}
+.information > .compile_fail:hover {
+  color: #f00;
+}
+.tooltip.should_panic {
+  color: rgba(255, 0, 0, 0.5);
+}
+.information > .should_panic:hover {
+  color: #f00;
+}
+.tooltip.ignore {
+  color: rgba(255, 142, 0, 0.6);
+}
+.information > .ignore:hover {
+  color: #ff9200;
+}
+.search-failed a {
+  color: #39afd7;
+}
+.tooltip::after {
+  background-color: #314559;
+  color: #c5c5c5;
+  border: 1px solid #5c6773;
+}
+.tooltip::before {
+  border-color: transparent #314559 transparent transparent;
+}
+.notable-traits-tooltiptext {
+  background-color: #314559;
+  border-color: #5c6773;
+}
+.notable-traits-tooltiptext .notable {
+  border-bottom-color: #5c6773;
+}
+#titles > button.selected {
+  background-color: #141920 !important;
+  border-bottom: 1px solid #ffb44c !important;
+  border-top: none;
+}
+#titles > button:not(.selected) {
+  background-color: transparent !important;
+  border: none;
+}
+#titles > button:hover {
+  border-bottom: 1px solid rgba(242, 151, 24, 0.3);
+}
+#titles > button > div.count {
+  color: #888;
+}
+
+@media (max-width: 700px) {
+  .sidebar-elems {
+    border-right-color: #5c6773;
+  }
+}
+kbd {
+  color: #c5c5c5;
+  background-color: #314559;
+  border-color: #5c6773;
+  border-bottom-color: #5c6773;
+  box-shadow: inset 0 -1px 0 #5c6773;
+}
+#settings-menu > a,
+#help-button > a {
+  border-color: #5c6773;
+  background-color: #0f1419;
+  color: #fff;
+}
+#settings-menu > a img {
+  filter: invert(100);
+}
+.popover,
+.popover::before,
+#help-button span.top,
+#help-button span.bottom {
+  border-color: #5c6773;
+}
+#copy-path {
+  color: #fff;
+}
+#copy-path > img {
+  filter: invert(70%);
+}
+#copy-path:hover > img {
+  filter: invert(100%);
+}
+#settings-menu > a:hover,
+#settings-menu > a:focus,
+#help-button > a:hover,
+#help-button > a:focus {
+  border-color: #e0e0e0;
+}
+#theme-choices {
+  border-color: #5c6773;
+  background-color: #0f1419;
+}
+#theme-choices > button:not(:first-child) {
+  border-top-color: #5c6773;
+}
+#theme-choices > button:hover,
+#theme-choices > button:focus {
+  background-color: rgba(110, 110, 110, 0.33);
+}
+#source-sidebar > .title {
+  color: #fff;
+  border-bottom-color: #5c6773;
+}
+#source-sidebar div.files > a:hover,
+details.dir-entry summary:hover,
+#source-sidebar div.files > a:focus,
+details.dir-entry summary:focus {
+  background-color: #14191f;
+  color: #ffb44c;
+}
+#source-sidebar div.files > a.selected {
+  background-color: #14191f;
+  color: #ffb44c;
+}
+.scraped-example-list .scrape-help {
+  border-color: #aaa;
+  color: #eee;
+}
+.scraped-example-list .scrape-help:hover {
+  border-color: white;
+  color: white;
+}
+.more-examples-toggle summary,
+.more-examples-toggle .hide-more {
+  color: #999;
+}
+.scraped-example .example-wrap .sway span.highlight {
+  background: rgb(91, 59, 1);
+}
+.scraped-example .example-wrap .sway span.highlight.focus {
+  background: rgb(124, 75, 15);
+}
+.scraped-example:not(.expanded) .code-wrapper:before {
+  background: linear-gradient(
+    to bottom,
+    rgba(15, 20, 25, 1),
+    rgba(15, 20, 25, 0)
+  );
+}
+.scraped-example:not(.expanded) .code-wrapper:after {
+  background: linear-gradient(to top, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
+}
+.toggle-line-inner {
+  background: #999;
+}
+.toggle-line:hover .toggle-line-inner {
+  background: #c5c5c5;
+}
+.sidebar .location {
+  border-color: #000;
+  background-color: #0f1419;
+  color: #fff;
+}
+#all-types {
+  background-color: #14191f;
+}

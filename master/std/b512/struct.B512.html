@@ -1,0 +1,134 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `B512` struct in `b512`."><meta name="keywords" content="sway, swaylang, sway-lang, B512"><link rel="icon" href="../static.files/sway-logo.svg"><title>B512 in b512 - Sway</title><link rel="stylesheet" type="text/css" href="../static.files/normalize.css"><link rel="stylesheet" type="text/css" href="../static.files/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../static.files/ayu.css"><link rel="stylesheet" href="../static.files/ayu.min.css"></head><body class="swaydoc struct"><nav class="sidebar"><a class="sidebar-logo" href="../../std/index.html"><div class="logo-container"><img class="sway-logo" src="../static.files/sway-logo.svg" alt="logo"></div></a><h2 class="location">Struct B512</h2><div class="sidebar-elems"><section><h3><a href="#fields">Fields</a></h3><ul class="block method"><li><a href="#structfield.bits">bits</a></li></ul></section><section><h3><a href="#methods">Methods</a></h3><ul class="block method"><li><a href="#method.new">new</a></li><li><a href="#method.bits">bits</a></li><li><a href="#method.zero">zero</a></li><li><a href="#method.is_zero">is_zero</a></li></ul></section><section><h3><a href="#trait-implementations">Trait Implementations</a></h3><ul class="block method"><li><a href="#impl-AbiEncode">AbiEncode</a></li><li><a href="#impl-AbiDecode">AbiDecode</a></li><li><a href="#impl-Debug">Debug</a></li><li><a href="#impl-PartialEq">PartialEq</a></li><li><a href="#impl-Eq">Eq</a></li><li><a href="#impl-From&lt;(b256, b256)&gt;">From&lt;(b256, b256)&gt;</a></li><li><a href="#impl-TryFrom&lt;Bytes&gt;">TryFrom&lt;Bytes&gt;</a></li><li><a href="#impl-Into&lt;Bytes&gt;">Into&lt;Bytes&gt;</a></li><li><a href="#impl-Hash">Hash</a></li></ul></section></div></nav><main><div class="width-limiter"><script src="../search.js" type="text/javascript"></script><script>function onSearchFormSubmit(event){event.preventDefault();const searchQuery=document.getElementById("search-input").value;const url=new URL(window.location.href);if(searchQuery){url.searchParams.set('search',searchQuery);}else{url.searchParams.delete('search');}history.pushState({search:searchQuery},"",url);window.dispatchEvent(new HashChangeEvent("hashchange"));}document.addEventListener('DOMContentLoaded',()=>{const searchbar=document.getElementById("search-input");const searchForm=document.getElementById("search-form");searchbar.addEventListener("keyup",function(event){onSearchFormSubmit(event);});searchbar.addEventListener("search",function(event){onSearchFormSubmit(event);});function onQueryParamsChange(){const searchParams=new URLSearchParams(window.location.search);const query=searchParams.get("search");const searchSection=document.getElementById('search');const mainSection=document.getElementById('main-content');const searchInput=document.getElementById('search-input');if(query){searchInput.value=query;const results=Object.values(SEARCH_INDEX).flat().filter(item=>{const lowerQuery=query.toLowerCase();return item.name.toLowerCase().includes(lowerQuery);});const header=`<h1>Results for ${query}</h1>`;if(results.length>0){const resultList=results.map(item=>{const formattedName=`<span class="type ${item.type_name}">${item.name}</span>`;const name=item.type_name==="module"?[...item.module_info.slice(0,-1),formattedName].join("::"):[...item.module_info,formattedName].join("::");const path=["../..",...item.module_info,item.html_filename].join("/");const left=`<td><span>${name}</span></td>`;const right=`<td><p>${item.preview}</p></td>`;return`<tr onclick="window.location='${path}';">${left}${right}</tr>`;}).join('');searchSection.innerHTML=`${header}<table>${resultList}</table>`;}else{searchSection.innerHTML=`${header}<p>No results found.</p>`;}searchSection.setAttribute("class","search-results");mainSection.setAttribute("class","content hidden");}else{searchSection.setAttribute("class","search-results hidden");mainSection.setAttribute("class","content");}}window.addEventListener('hashchange',onQueryParamsChange);onQueryParamsChange();});</script><nav class="sub"><form id="search-form" class="search-form" onsubmit="onSearchFormSubmit(event)"><div class="search-container"><input id="search-input" class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Search the docs..." type="search"></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Struct <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="index.html">b512</a><span>::</span><a class="struct" href="#">B512</a></span></h1></div><div class="docblock item-decl"><pre class="sway struct"><code>pub struct B512 {
+    /// The two `b256`s that make up the `B512`.
+    bits: [b256; 2],
+}</code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Stores two <code>b256</code>s in contiguous memory.<br />
+Guaranteed to be contiguous for use with ec-recover: <code>std::ecr::ec_recover</code>.</p>
+</div></details><h2 id="fields" class="fields small-section-header">Fields<a class="anchor" href="#fields"></a></h2><span id="structfield.bits" class="structfield small-section-header"><a class="anchor field" href="#structfield.bits"></a><code>bits: [b256; 2]</code></span><div class="docblock"><p>The two <code>b256</code>s that make up the <code>B512</code>.</p>
+</div><h2 id="methods" class="small-section-header">Implementations<a href="#methods" class="anchor"></a></h2><div id="methods-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-B512" class="impl has-srclink"><a href="#impl-B512" class="anchor"></a><h3 class="code-header in-band">impl B512</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.new" class="method trait-impl"><a href="#method.new" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.new">new</a>() -&gt; Self</h4></div></summary><div class="docblock"><p>Initializes a new, zeroed <code>B512</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[B512] - A zero value B512.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::b512::B512;
+
+fn foo() {
+    let zero = B512::new();
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.bits" class="method trait-impl"><a href="#method.bits" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.bits">bits</a>(self) -&gt; [b256; 2]</h4></div></summary><div class="docblock"><p>Returns the underlying bits for the B512 type.</p>
+<h1>Returns</h1>
+<ul>
+<li>[[b256; 2]] - The two <code>b256</code>s that make up the <code>B512</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::b512::B512;
+
+fn foo() {
+    let zero = B512::new();
+    assert(zero.bits() == [b256::zero(), b256::zero()]);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.zero" class="method trait-impl"><a href="#method.zero" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.zero">zero</a>() -&gt; Self</h4></div></summary><div class="docblock"><p>Returns the zero value for the <code>B512</code> type.</p>
+<h1>Returns</h1>
+<ul>
+<li>[B512] -&gt; The zero value for the <code>B512</code> type.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::b512::B512;
+
+fn foo() {
+    let zero_b512 = B512::zero();
+    assert(zero_b512 == B512::from((b256::zero(), b256::zero())));
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.is_zero" class="method trait-impl"><a href="#method.is_zero" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.is_zero">is_zero</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Returns whether a <code>B512</code> is set to zero.</p>
+<h1>Returns</h1>
+<ul>
+<li>[bool] -&gt; True if the <code>B512</code> is zero, otherwise false.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::b512::B512;
+
+fn foo() {
+    let zero_b512 = B512::zero();
+    assert(zero_b512.is_zero());
+}
+</code></pre>
+</div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiEncode" class="impl has-srclink"><a href="#impl-AbiEncode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../codec/trait.AbiEncode.html">AbiEncode</a> for B512&lt;&gt;</h3></div></summary><div class="impl-items"><div id="method.abi_encode" class="method trait-impl"><a href="#method.abi_encode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_encode">abi_encode</a>(self, buffer: Buffer) -&gt; Buffer</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiDecode" class="impl has-srclink"><a href="#impl-AbiDecode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../codec/trait.AbiDecode.html">AbiDecode</a> for B512&lt;&gt;</h3></div></summary><div class="impl-items"><div id="method.abi_decode" class="method trait-impl"><a href="#method.abi_decode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_decode">abi_decode</a>(refmut buffer: BufferReader) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Debug" class="impl has-srclink"><a href="#impl-Debug" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../debug/trait.Debug.html">Debug</a> for B512&lt;&gt;</h3></div></summary><div class="impl-items"><div id="method.fmt" class="method trait-impl"><a href="#method.fmt" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.fmt">fmt</a>(<br>    self,<br>    refmut _f: Formatter,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-PartialEq" class="impl has-srclink"><a href="#impl-PartialEq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.PartialEq.html">PartialEq</a> for B512</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if two values of the same type are not equal.</p>
+<h1>Additional Information</h1>
+<p>This function is inherited when <code>eq()</code> is implemented.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>other</code>: [Self] - The value of the same type.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if the two values are not equal, otherwise <code>false</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">struct MyStruct {
+    val: u64,
+}
+
+impl PartialEq for MyStruct {
+    fn eq(self, other: Self) -&gt; bool {
+         self.val == other.val
+    }
+}
+
+fn foo() {
+    let struct1 = MyStruct { val: 10 };
+    let struct2 = MyStruct { val: 2 };
+    let result = struct1 != struct2;
+    assert(result);
+}
+</code></pre>
+</div></details></div></details><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Eq.html">Eq</a> for B512</h3></div><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;(b256, b256)&gt;" class="impl has-srclink"><a href="#impl-From&lt;(b256, b256)&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;(b256, b256)&gt; for B512</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(components: (b256, b256)) -&gt; Self</h4></div></summary><div class="docblock"><p>Converts from a <code>b256</code> tuple to a <code>B512</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>components</code>: [(b256, b256)] - The <code>(b256, b256)</code> tuple to convert to a <code>B512</code>.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[B512] - The newly created <code>B512</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::b512::B512;
+
+fn foo() {
+    let tuple: (b256, b256) = (b256::zero(), b256::zero());
+    let b512 = B512::from(tuple);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-TryFrom&lt;Bytes&gt;" class="impl has-srclink"><a href="#impl-TryFrom&lt;Bytes&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.TryFrom.html">TryFrom</a>&lt;Bytes&gt; for B512</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.try_from" class="method trait-impl"><a href="#method.try_from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.try_from">try_from</a>(bytes: Bytes) -&gt; Option&lt;Self&gt;</h4></div></summary><div class="docblock"><p>Casts raw <code>Bytes</code> data to an <code>B512</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>bytes</code>: [Bytes] - The raw <code>Bytes</code> data to be casted.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[B512] - The newly created <code>B512</code> from the raw <code>Bytes</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Bytes;
+
+fn foo(bytes: Bytes) {
+   let result = B512::try_from(bytes);
+   assert(result.is_some());
+   let b512 = result.unwrap();
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Into&lt;Bytes&gt;" class="impl has-srclink"><a href="#impl-Into&lt;Bytes&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.Into.html">Into</a>&lt;Bytes&gt; for B512</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.into">into</a>(self) -&gt; Bytes</h4></div></summary><div class="docblock"><p>Casts an <code>B512</code> to raw <code>Bytes</code> data.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Bytes] - The underlying raw <code>Bytes</code> data of the <code>B512</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let b512 = B512::from((b256::zero(), b256::zero()));
+    let bytes_data: Bytes = b512.into()
+    assert(bytes_data.len() == 64);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Hash" class="impl has-srclink"><a href="#impl-Hash" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../hash/trait.Hash.html">Hash</a> for B512</h3></div></summary><div class="impl-items"><div id="method.hash" class="method trait-impl"><a href="#method.hash" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

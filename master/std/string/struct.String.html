@@ -1,0 +1,204 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `String` struct in `string`."><meta name="keywords" content="sway, swaylang, sway-lang, String"><link rel="icon" href="../static.files/sway-logo.svg"><title>String in string - Sway</title><link rel="stylesheet" type="text/css" href="../static.files/normalize.css"><link rel="stylesheet" type="text/css" href="../static.files/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../static.files/ayu.css"><link rel="stylesheet" href="../static.files/ayu.min.css"></head><body class="swaydoc struct"><nav class="sidebar"><a class="sidebar-logo" href="../../std/index.html"><div class="logo-container"><img class="sway-logo" src="../static.files/sway-logo.svg" alt="logo"></div></a><h2 class="location">Struct String</h2><div class="sidebar-elems"><section><h3><a href="#fields">Fields</a></h3><ul class="block method"><li><a href="#structfield.bytes">bytes</a></li></ul></section><section><h3><a href="#methods">Methods</a></h3><ul class="block method"><li><a href="#method.as_bytes">as_bytes</a></li><li><a href="#method.capacity">capacity</a></li><li><a href="#method.clear">clear</a></li><li><a href="#method.from_ascii">from_ascii</a></li><li><a href="#method.from_ascii_str">from_ascii_str</a></li><li><a href="#method.is_empty">is_empty</a></li><li><a href="#method.new">new</a></li><li><a href="#method.with_capacity">with_capacity</a></li><li><a href="#method.ptr">ptr</a></li><li><a href="#method.as_str">as_str</a></li></ul></section><section><h3><a href="#trait-implementations">Trait Implementations</a></h3><ul class="block method"><li><a href="#impl-From&lt;Bytes&gt;">From&lt;Bytes&gt;</a></li><li><a href="#impl-From&lt;str&gt;">From&lt;str&gt;</a></li><li><a href="#impl-AsRawSlice">AsRawSlice</a></li><li><a href="#impl-From&lt;raw_slice&gt;">From&lt;raw_slice&gt;</a></li><li><a href="#impl-PartialEq">PartialEq</a></li><li><a href="#impl-Eq">Eq</a></li><li><a href="#impl-Hash">Hash</a></li><li><a href="#impl-AbiEncode">AbiEncode</a></li><li><a href="#impl-AbiDecode">AbiDecode</a></li><li><a href="#impl-Clone">Clone</a></li><li><a href="#impl-Debug">Debug</a></li></ul></section></div></nav><main><div class="width-limiter"><script src="../search.js" type="text/javascript"></script><script>function onSearchFormSubmit(event){event.preventDefault();const searchQuery=document.getElementById("search-input").value;const url=new URL(window.location.href);if(searchQuery){url.searchParams.set('search',searchQuery);}else{url.searchParams.delete('search');}history.pushState({search:searchQuery},"",url);window.dispatchEvent(new HashChangeEvent("hashchange"));}document.addEventListener('DOMContentLoaded',()=>{const searchbar=document.getElementById("search-input");const searchForm=document.getElementById("search-form");searchbar.addEventListener("keyup",function(event){onSearchFormSubmit(event);});searchbar.addEventListener("search",function(event){onSearchFormSubmit(event);});function onQueryParamsChange(){const searchParams=new URLSearchParams(window.location.search);const query=searchParams.get("search");const searchSection=document.getElementById('search');const mainSection=document.getElementById('main-content');const searchInput=document.getElementById('search-input');if(query){searchInput.value=query;const results=Object.values(SEARCH_INDEX).flat().filter(item=>{const lowerQuery=query.toLowerCase();return item.name.toLowerCase().includes(lowerQuery);});const header=`<h1>Results for ${query}</h1>`;if(results.length>0){const resultList=results.map(item=>{const formattedName=`<span class="type ${item.type_name}">${item.name}</span>`;const name=item.type_name==="module"?[...item.module_info.slice(0,-1),formattedName].join("::"):[...item.module_info,formattedName].join("::");const path=["../..",...item.module_info,item.html_filename].join("/");const left=`<td><span>${name}</span></td>`;const right=`<td><p>${item.preview}</p></td>`;return`<tr onclick="window.location='${path}';">${left}${right}</tr>`;}).join('');searchSection.innerHTML=`${header}<table>${resultList}</table>`;}else{searchSection.innerHTML=`${header}<p>No results found.</p>`;}searchSection.setAttribute("class","search-results");mainSection.setAttribute("class","content hidden");}else{searchSection.setAttribute("class","search-results hidden");mainSection.setAttribute("class","content");}}window.addEventListener('hashchange',onQueryParamsChange);onQueryParamsChange();});</script><nav class="sub"><form id="search-form" class="search-form" onsubmit="onSearchFormSubmit(event)"><div class="search-container"><input id="search-input" class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Search the docs..." type="search"></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Struct <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="index.html">string</a><span>::</span><a class="struct" href="#">String</a></span></h1></div><div class="docblock item-decl"><pre class="sway struct"><code>pub struct String {
+    /// The bytes representing the characters of the string.
+    bytes: Bytes,
+}</code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A UTF-8 encoded growable string. It has ownership over its buffer.</p>
+<h1>Additional Information</h1>
+<p>WARNING: As this type is meant to be forward compatible with UTF-8, do <em>not</em><br />
+add any mutation functionality or unicode input of any kind until <code>char</code> is<br />
+implemented, codepoints are <em>not</em> guaranteed to fall on byte boundaries</p>
+</div></details><h2 id="fields" class="fields small-section-header">Fields<a class="anchor" href="#fields"></a></h2><span id="structfield.bytes" class="structfield small-section-header"><a class="anchor field" href="#structfield.bytes"></a><code>bytes: <a class="struct" href="../bytes/struct.Bytes.html">Bytes</a></code></span><div class="docblock"><p>The bytes representing the characters of the string.</p>
+</div><h2 id="methods" class="small-section-header">Implementations<a href="#methods" class="anchor"></a></h2><div id="methods-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-String" class="impl has-srclink"><a href="#impl-String" class="anchor"></a><h3 class="code-header in-band">impl String</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_bytes" class="method trait-impl"><a href="#method.as_bytes" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_bytes">as_bytes</a>(self) -&gt; Bytes</h4></div></summary><div class="docblock"><p>Returns <code>Bytes</code> giving a UTF-8 representation of the string.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Bytes] - A UTF-8 representation of the string.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::string::String;
+
+fn foo() {
+    let mut string = String::new();
+    string.push(0u8);
+    let bytes = string.as_bytes();
+    assert(bytes.len() == 1);
+    assert(bytes.get(0).unwrap() == 0u8);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.capacity" class="method trait-impl"><a href="#method.capacity" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.capacity">capacity</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Gets the amount of memory on the heap allocated to the <code>String</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li><code>u64</code> - The number of characters the <code>String</code> can hold without reallocating.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::string::String;
+
+fn foo() {
+    let mut string = String::new();
+    assert(string.capacity() == 0);
+    string.push(0u8);
+    assert(string.capacity() == 1);
+    string.push(1u8);
+    assert(string.capacity() == 2);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.clear" class="method trait-impl"><a href="#method.clear" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.clear">clear</a>(refmut self)</h4></div></summary><div class="docblock"><p>Truncates this <code>String</code> to a length of zero, clearing all content.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::string::String;
+
+fn foo() {
+    let mut string = String::new();
+    string.push(0u8);
+    assert(!string.is_empty());
+    string.clear();
+    assert(string.is_empty());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from_ascii" class="method trait-impl"><a href="#method.from_ascii" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from_ascii">from_ascii</a>(bytes: Bytes) -&gt; Self</h4></div></summary><div class="docblock"><p>Converts a vector of ASCII encoded bytes to a <code>String</code>.</p>
+<h1>Additional Information</h1>
+<p>Each byte represents a single character, this supports ASCII but it does <strong>not</strong> support Unicode.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>bytes</code> - ASCII bytes which will be converted into a <code>String</code>.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[String] - A <code>String</code> containing the ASCII encoded bytes.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::string::String;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(0u8);
+    bytes.push(1u8);
+    let string = String::from_ascii(bytes);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from_ascii_str" class="method trait-impl"><a href="#method.from_ascii_str" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from_ascii_str">from_ascii_str</a>(s: str) -&gt; Self</h4></div></summary><div class="docblock"><p>Converts a string slice containing ASCII encoded bytes to a <code>String</code></p>
+<h1>Arguments</h1>
+<ul>
+<li><code>s</code> - A string slice containing ASCII encoded bytes.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[String] - A <code>String</code> containing the ASCII encoded bytes.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::string::String;
+
+fn foo() {
+    let string = String::from_ascii_str(&quot;ABCDEF&quot;);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.is_empty" class="method trait-impl"><a href="#method.is_empty" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.is_empty">is_empty</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Returns a <code>bool</code> indicating whether the <code>String</code> is empty.</p>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if the <code>String</code> is empty, <code>false</code> otherwise.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::string::String;
+
+fn foo() {
+    let mut string = String::new();
+    assert(string.is_empty());
+    string.push(0u8);
+    assert(!string.is_empty());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.new" class="method trait-impl"><a href="#method.new" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.new">new</a>() -&gt; Self</h4></div></summary><div class="docblock"><p>Constructs a new instance of the <code>String</code> type.</p>
+<h1>Returns</h1>
+<ul>
+<li>[String] - A new empty instance of the <code>String</code> type.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::string::String;
+
+fn foo() {
+    let string = String::new();
+    string.push(0u8);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.with_capacity" class="method trait-impl"><a href="#method.with_capacity" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.with_capacity">with_capacity</a>(capacity: u64) -&gt; Self</h4></div></summary><div class="docblock"><p>Constructs a new instance of the <code>String</code> type with the specified capacity.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>capacity</code>: [u64] - The specified amount of bytes on the heap to be allocated for the <code>String</code>.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[String] - A new empty instance of the <code>String</code> type with the specified capacity.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::string::String;
+
+fn foo() {
+    let string = String::with_capacity(1);
+    string.push(0u8); // This will not reallocate
+    string.push(1u8); // This will reallocate
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.ptr" class="method trait-impl"><a href="#method.ptr" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.ptr">ptr</a>(self) -&gt; raw_ptr</h4></div></summary><div class="docblock"><p>Gets the pointer of the allocation.</p>
+<h1>Returns</h1>
+<p>[raw_ptr] - The location in memory that the allocated string lives.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let string = String::new();
+    assert(!string.ptr().is_null());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_str" class="method trait-impl"><a href="#method.as_str" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_str">as_str</a>(self) -&gt; str</h4></div></summary><div class="docblock"><p>Converts the <code>String</code> into a string slice.</p>
+<h1>Returns</h1>
+<p>[str] - The <code>String</code> as a string slice.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let string = String::from_ascii_str(&quot;Fuel&quot;);
+    assert(string.as_str() == &quot;Fuel&quot;);
+}
+</code></pre>
+</div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;Bytes&gt;" class="impl has-srclink"><a href="#impl-From&lt;Bytes&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;Bytes&gt; for String</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(b: Bytes) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;str&gt;" class="impl has-srclink"><a href="#impl-From&lt;str&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;str&gt; for String</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(s: str) -&gt; String</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AsRawSlice" class="impl has-srclink"><a href="#impl-AsRawSlice" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../raw_slice/trait.AsRawSlice.html">AsRawSlice</a> for String</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_raw_slice" class="method trait-impl"><a href="#method.as_raw_slice" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_raw_slice">as_raw_slice</a>(self) -&gt; raw_slice</h4></div></summary><div class="docblock"><p>Returns a raw slice to all of the elements in the string.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;raw_slice&gt;" class="impl has-srclink"><a href="#impl-From&lt;raw_slice&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;raw_slice&gt; for String</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(slice: raw_slice) -&gt; Self</h4></div></summary><div class="docblock"><p>Converts a <code>raw_slice</code> to a <code>String</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>slice</code>: [raw_slice] - The <code>raw_slice</code> to convert to a <code>String</code>.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[String] - The newly created <code>String</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{alloc::alloc, string::*};
+
+fn foo() {
+    let ptr = alloc::&lt;u64&gt;(1);
+    let slice = raw_slice::from_parts::&lt;u64&gt;(ptr, 1);
+    let string: String = String::from(slice);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-PartialEq" class="impl has-srclink"><a href="#impl-PartialEq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.PartialEq.html">PartialEq</a> for String</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if two values of the same type are not equal.</p>
+<h1>Additional Information</h1>
+<p>This function is inherited when <code>eq()</code> is implemented.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>other</code>: [Self] - The value of the same type.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if the two values are not equal, otherwise <code>false</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">struct MyStruct {
+    val: u64,
+}
+
+impl PartialEq for MyStruct {
+    fn eq(self, other: Self) -&gt; bool {
+         self.val == other.val
+    }
+}
+
+fn foo() {
+    let struct1 = MyStruct { val: 10 };
+    let struct2 = MyStruct { val: 2 };
+    let result = struct1 != struct2;
+    assert(result);
+}
+</code></pre>
+</div></details></div></details><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Eq.html">Eq</a> for String</h3></div><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Hash" class="impl has-srclink"><a href="#impl-Hash" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../hash/trait.Hash.html">Hash</a> for String</h3></div></summary><div class="impl-items"><div id="method.hash" class="method trait-impl"><a href="#method.hash" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiEncode" class="impl has-srclink"><a href="#impl-AbiEncode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../codec/trait.AbiEncode.html">AbiEncode</a> for String</h3></div></summary><div class="impl-items"><div id="method.abi_encode" class="method trait-impl"><a href="#method.abi_encode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_encode">abi_encode</a>(self, buffer: Buffer) -&gt; Buffer</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiDecode" class="impl has-srclink"><a href="#impl-AbiDecode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../codec/trait.AbiDecode.html">AbiDecode</a> for String</h3></div></summary><div class="impl-items"><div id="method.abi_decode" class="method trait-impl"><a href="#method.abi_decode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_decode">abi_decode</a>(refmut buffer: BufferReader) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Clone" class="impl has-srclink"><a href="#impl-Clone" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../clone/trait.Clone.html">Clone</a> for String</h3></div></summary><div class="impl-items"><div id="method.clone" class="method trait-impl"><a href="#method.clone" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.clone">clone</a>(self) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Debug" class="impl has-srclink"><a href="#impl-Debug" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../debug/trait.Debug.html">Debug</a> for String</h3></div></summary><div class="impl-items"><div id="method.fmt" class="method trait-impl"><a href="#method.fmt" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.fmt">fmt</a>(self, refmut f: Formatter)</h4></div></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
