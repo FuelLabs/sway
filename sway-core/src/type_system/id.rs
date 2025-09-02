@@ -8,7 +8,9 @@ use sway_error::{
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineGetParsedDecl, DeclEngineInsert, MaterializeConstGenerics},
+    decl_engine::{
+        DeclEngineGet, DeclEngineGetParsedDecl, DeclEngineInsert, MaterializeConstGenerics,
+    },
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::{ty::TyStructDecl, CallPath},
     namespace::TraitMap,
@@ -150,7 +152,8 @@ impl MaterializeConstGenerics for TypeId {
                 let mut decl = (*decl).clone();
                 decl.materialize_const_generics(engines, handler, name, value)?;
 
-                let parsed_decl = engines.de()
+                let parsed_decl = engines
+                    .de()
                     .get_parsed_decl(id)
                     .unwrap()
                     .to_enum_decl(handler, engines)
@@ -163,7 +166,8 @@ impl MaterializeConstGenerics for TypeId {
                 let mut decl = TyStructDecl::clone(&engines.de().get(id));
                 decl.materialize_const_generics(engines, handler, name, value)?;
 
-                let parsed_decl = engines.de()
+                let parsed_decl = engines
+                    .de()
                     .get_parsed_decl(id)
                     .unwrap()
                     .to_struct_decl(handler, engines)
