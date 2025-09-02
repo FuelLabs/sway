@@ -33,13 +33,11 @@ pub const DOC_COMMENT_ATTRIBUTE_NAME: &str = "doc-comment";
 pub const TEST_ATTRIBUTE_NAME: &str = "test";
 pub const TEST_SHOULD_REVERT_ARG_NAME: &str = "should_revert";
 
+// In-language parameterized testing.
+pub const CASE_ATTRIBUTE_NAME: &str = "case";
+
 // In-language fuzz testing.
 pub const FUZZ_ATTRIBUTE_NAME: &str = "fuzz";
-pub const FUZZ_PARAM_ATTRIBUTE_NAME: &str = "fuzz_param";
-pub const FUZZ_PARAM_NAME_ARG_NAME: &str = "name";
-pub const FUZZ_PARAM_ITERATION_ARG_NAME: &str = "iteration";
-pub const FUZZ_PARAM_MIN_VAL_ARG_NAME: &str = "min_val";
-pub const FUZZ_PARAM_MAX_VAL_ARG_NAME: &str = "max_val";
 
 // Allow warnings.
 pub const ALLOW_ATTRIBUTE_NAME: &str = "allow";
@@ -73,6 +71,7 @@ pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_ATTRIBUTE_NAME,
     DOC_COMMENT_ATTRIBUTE_NAME,
     TEST_ATTRIBUTE_NAME,
+    CASE_ATTRIBUTE_NAME,
     INLINE_ATTRIBUTE_NAME,
     PAYABLE_ATTRIBUTE_NAME,
     ALLOW_ATTRIBUTE_NAME,
@@ -81,7 +80,6 @@ pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     FALLBACK_ATTRIBUTE_NAME,
     ABI_NAME_ATTRIBUTE_NAME,
     FUZZ_ATTRIBUTE_NAME,
-    FUZZ_PARAM_ATTRIBUTE_NAME,
 ];
 
 /// An attribute declaration. Attribute declaration

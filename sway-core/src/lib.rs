@@ -374,6 +374,29 @@ pub(crate) fn attr_decls_to_attributes(
         }
     }
 
+    // Check fixture-based testing requirements: #[case] or #[fuzz] require #[test]
+    let has_test = attributes.of_kind(AttributeKind::Test).any(|_| true);
+    let has_case = attributes.of_kind(AttributeKind::Case).any(|_| true);
+    let has_fuzz = attributes.of_kind(AttributeKind::Fuzz).any(|_| true);
+
+    if (has_case || has_fuzz) && !has_test {
+        let parameterization_attr = if has_case {
+            attributes.of_kind(AttributeKind::Case).next()
+        } else {
+            attributes.of_kind(AttributeKind::Fuzz).next()
+        };
+
+        if let Some(attr) = parameterization_attr {
+            handler.emit_err(
+                ConvertParseTreeError::ParameterizedTestRequiresTestAttribute {
+                    span: attr.span.clone(),
+                    attribute: attr.name.clone(),
+                }
+                .into(),
+            );
+        }
+    }
+
     (handler, attributes)
 }
 

@@ -179,21 +179,6 @@ impl AttributeArg {
         self.name.as_str() == TEST_SHOULD_REVERT_ARG_NAME
     }
 
-    pub fn is_fuzz_param_name(&self) -> bool {
-        self.name.as_str() == FUZZ_PARAM_NAME_ARG_NAME
-    }
-
-    pub fn is_fuzz_param_iteration(&self) -> bool {
-        self.name.as_str() == FUZZ_PARAM_ITERATION_ARG_NAME
-    }
-
-    pub fn is_fuzz_param_min_val(&self) -> bool {
-        self.name.as_str() == FUZZ_PARAM_MIN_VAL_ARG_NAME
-    }
-
-    pub fn is_fuzz_param_max_val(&self) -> bool {
-        self.name.as_str() == FUZZ_PARAM_MAX_VAL_ARG_NAME
-    }
 
     pub fn is_error_message(&self) -> bool {
         self.name.as_str() == ERROR_M_ARG_NAME
@@ -363,6 +348,7 @@ pub enum AttributeKind {
     Storage,
     Inline,
     Test,
+    Case,
     Payable,
     Allow,
     Cfg,
@@ -373,7 +359,6 @@ pub enum AttributeKind {
     Trace,
     AbiName,
     Fuzz,
-    FuzzParam,
 }
 
 /// Denotes if an [ItemTraitItem] belongs to an ABI or to a trait.
@@ -397,6 +382,7 @@ impl AttributeKind {
             STORAGE_ATTRIBUTE_NAME => AttributeKind::Storage,
             INLINE_ATTRIBUTE_NAME => AttributeKind::Inline,
             TEST_ATTRIBUTE_NAME => AttributeKind::Test,
+            CASE_ATTRIBUTE_NAME => AttributeKind::Case,
             PAYABLE_ATTRIBUTE_NAME => AttributeKind::Payable,
             ALLOW_ATTRIBUTE_NAME => AttributeKind::Allow,
             CFG_ATTRIBUTE_NAME => AttributeKind::Cfg,
@@ -407,7 +393,6 @@ impl AttributeKind {
             TRACE_ATTRIBUTE_NAME => AttributeKind::Trace,
             ABI_NAME_ATTRIBUTE_NAME => AttributeKind::AbiName,
             FUZZ_ATTRIBUTE_NAME => AttributeKind::Fuzz,
-            FUZZ_PARAM_ATTRIBUTE_NAME => AttributeKind::FuzzParam,
             _ => AttributeKind::Unknown,
         }
     }
@@ -429,6 +414,7 @@ impl AttributeKind {
             Storage => false,
             Inline => false,
             Test => false,
+            Case => true,
             Payable => false,
             Allow => true,
             Cfg => true,
@@ -439,7 +425,6 @@ impl AttributeKind {
             Trace => false,
             AbiName => false,
             Fuzz => false,
-            FuzzParam => true,
         }
     }
 }
@@ -472,6 +457,8 @@ impl Attribute {
             Inline => Multiplicity::exactly(1),
             // `test`, `test(should_revert)`.
             Test => Multiplicity::at_most(1),
+            // `case(value1, value2, ...)`.
+            Case => Multiplicity::at_least(1),
             Payable => Multiplicity::zero(),
             Allow => Multiplicity::at_least(1),
             Cfg => Multiplicity::exactly(1),
@@ -483,10 +470,8 @@ impl Attribute {
             // `trace(never)` or `trace(always)`.
             Trace => Multiplicity::exactly(1),
             AbiName => Multiplicity::exactly(1),
-            // `fuzz` takes no arguments.
-            Fuzz => Multiplicity::zero(),
-            // `fuzz_param(name = "foo", iteration = 100)`.
-            FuzzParam => Multiplicity::at_least(1),
+            // `fuzz(param_iterations = 10, param_min = 1, param_max = 100)`.
+            Fuzz => Multiplicity::at_least(1),
         }
     }
 
@@ -527,6 +512,7 @@ impl Attribute {
             Storage => MustBeIn(vec![STORAGE_READ_ARG_NAME, STORAGE_WRITE_ARG_NAME]),
             Inline => MustBeIn(vec![INLINE_ALWAYS_ARG_NAME, INLINE_NEVER_ARG_NAME]),
             Test => MustBeIn(vec![TEST_SHOULD_REVERT_ARG_NAME]),
+            Case => Any,  // Case accepts any values as arguments
             Payable => None,
             Allow => ShouldBeIn(vec![ALLOW_DEAD_CODE_ARG_NAME, ALLOW_DEPRECATED_ARG_NAME]),
             Cfg => {
@@ -544,13 +530,7 @@ impl Attribute {
             Error => MustBeIn(vec![ERROR_M_ARG_NAME]),
             Trace => MustBeIn(vec![TRACE_ALWAYS_ARG_NAME, TRACE_NEVER_ARG_NAME]),
             AbiName => MustBeIn(vec![ABI_NAME_NAME_ARG_NAME]),
-            Fuzz => None,
-            FuzzParam => MustBeIn(vec![
-                FUZZ_PARAM_NAME_ARG_NAME,
-                FUZZ_PARAM_ITERATION_ARG_NAME,
-                FUZZ_PARAM_MIN_VAL_ARG_NAME,
-                FUZZ_PARAM_MAX_VAL_ARG_NAME,
-            ]),
+            Fuzz => Any,  // Fuzz will accept parameter-specific arguments
         }
     }
 
@@ -565,6 +545,8 @@ impl Attribute {
             Inline => No,
             // `test(should_revert)`, `test(should_revert = "18446744073709486084")`.
             Test => Maybe,
+            // `case(value1, value2, ...)` - case arguments are values, not key-value pairs.
+            Case => No,
             Payable => No,
             Allow => No,
             Cfg => Yes,
@@ -576,9 +558,8 @@ impl Attribute {
             Error => Yes,
             Trace => No,
             AbiName => Yes,
-            Fuzz => No,
-            // `fuzz_param(name = "foo", iteration = 100)`.
-            FuzzParam => Yes,
+            // `fuzz(param_iterations = 10, param_min = 1, param_max = 100)`.
+            Fuzz => Yes,
         }
     }
 
@@ -590,6 +571,7 @@ impl Attribute {
             Storage => false,
             Inline => false,
             Test => false,
+            Case => false,
             Payable => false,
             Allow => false,
             Cfg => false,
@@ -602,7 +584,6 @@ impl Attribute {
             Trace => false,
             AbiName => false,
             Fuzz => false,
-            FuzzParam => false,
         }
     }
 
@@ -632,6 +613,7 @@ impl Attribute {
             Storage => matches!(item_kind, ItemKind::Fn(_)),
             Inline => matches!(item_kind, ItemKind::Fn(_)),
             Test => matches!(item_kind, ItemKind::Fn(_)),
+            Case => matches!(item_kind, ItemKind::Fn(_)),
             Payable => false,
             Allow => !matches!(item_kind, ItemKind::Submodule(_)),
             Cfg => !matches!(item_kind, ItemKind::Submodule(_)),
@@ -659,7 +641,6 @@ impl Attribute {
             Trace => matches!(item_kind, ItemKind::Fn(_)),
             AbiName => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
             Fuzz => matches!(item_kind, ItemKind::Fn(_)),
-            FuzzParam => matches!(item_kind, ItemKind::Fn(_)),
         }
     }
 
@@ -678,6 +659,7 @@ impl Attribute {
             Storage => false,
             Inline => false,
             Test => false,
+            Case => false,
             Payable => false,
             Allow => true,
             Cfg => true,
@@ -688,7 +670,6 @@ impl Attribute {
             Trace => false,
             AbiName => false,
             Fuzz => false,
-            FuzzParam => false,
         }
     }
 
@@ -706,6 +687,7 @@ impl Attribute {
             // because they don't have implementation.
             Inline => false,
             Test => false,
+            Case => false,
             Payable => parent == TraitItemParent::Abi && matches!(item, ItemTraitItem::Fn(..)),
             Allow => true,
             Cfg => true,
@@ -719,7 +701,6 @@ impl Attribute {
             Trace => false,
             AbiName => false,
             Fuzz => false,
-            FuzzParam => false,
         }
     }
 
@@ -735,6 +716,7 @@ impl Attribute {
             Storage => matches!(item, ItemImplItem::Fn(..)),
             Inline => matches!(item, ItemImplItem::Fn(..)),
             Test => false,
+            Case => matches!(item, ItemImplItem::Fn(..)),
             Payable => parent == ImplItemParent::Contract,
             Allow => true,
             Cfg => true,
@@ -745,7 +727,6 @@ impl Attribute {
             Trace => matches!(item, ItemImplItem::Fn(..)),
             AbiName => false,
             Fuzz => matches!(item, ItemImplItem::Fn(..)),
-            FuzzParam => matches!(item, ItemImplItem::Fn(..)),
         }
     }
 
@@ -760,6 +741,7 @@ impl Attribute {
             Storage => true,
             Inline => true,
             Test => false,
+            Case => false,
             Payable => abi_or_trait_item == TraitItemParent::Abi,
             Allow => true,
             Cfg => true,
@@ -770,7 +752,6 @@ impl Attribute {
             Trace => true,
             AbiName => false,
             Fuzz => false,
-            FuzzParam => false,
         }
     }
 
@@ -782,6 +763,7 @@ impl Attribute {
             Storage => false,
             Inline => false,
             Test => false,
+            Case => false,
             Payable => false,
             Allow => true,
             Cfg => true,
@@ -793,7 +775,6 @@ impl Attribute {
             Trace => false,
             AbiName => false,
             Fuzz => false,
-            FuzzParam => false,
         }
     }
 
@@ -805,6 +786,7 @@ impl Attribute {
             Storage => false,
             Inline => false,
             Test => false,
+            Case => false,
             Payable => false,
             Allow => true,
             Cfg => true,
@@ -815,7 +797,6 @@ impl Attribute {
             Trace => false,
             AbiName => false,
             Fuzz => false,
-            FuzzParam => false,
         }
     }
 
@@ -871,8 +852,8 @@ impl Attribute {
             AbiName => vec![
                 "\"abi_name\" attribute can only annotate structs and enums.",
             ],
-            Fuzz => vec!["\"fuzz\" attribute can only annotate module functions."],
-            FuzzParam => vec!["\"fuzz_param\" attribute can only annotate module functions."],
+            Case => vec!["\"case\" attribute can only annotate test functions (functions with #[test])."],
+            Fuzz => vec!["\"fuzz\" attribute can only annotate test functions (functions with #[test])."],
         };
 
         if help.is_empty() && target_friendly_name.starts_with("module kind") {
@@ -1114,16 +1095,16 @@ impl Attributes {
         self.of_kind(AttributeKind::Test).last()
     }
 
+    /// Returns all `#[case]` [Attribute]s.
+    pub fn cases(&self) -> impl Iterator<Item = &Attribute> {
+        self.of_kind(AttributeKind::Case)
+    }
+
     /// Returns the `#[fuzz]` [Attribute], or `None` if the
     /// [Attributes] does not contain any `#[fuzz]` attributes.
     pub fn fuzz(&self) -> Option<&Attribute> {
         // Last-wins approach.
         self.of_kind(AttributeKind::Fuzz).last()
-    }
-
-    /// Returns all `#[fuzz_param]` [Attribute]s.
-    pub fn fuzz_params(&self) -> impl Iterator<Item = &Attribute> {
-        self.of_kind(AttributeKind::FuzzParam)
     }
 
     /// Returns the `#[error]` [Attribute], or `None` if the
