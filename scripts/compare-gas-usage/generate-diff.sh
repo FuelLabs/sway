@@ -4,10 +4,6 @@
 # The result of the comparison can be printed either as a Markdown table or a CSV file.
 # Usage: `compare_test_gas_usage.sh <before>.csv <after>.csv [MD|CSV]`.
 
-#!/bin/bash
-
-#!/bin/bash
-
 if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
   echo "Usage: $0 <before>.csv <after>.csv [MD|CSV]"
   exit 1
