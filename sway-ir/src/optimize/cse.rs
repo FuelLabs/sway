@@ -104,6 +104,7 @@ fn instr_to_expr(context: &Context, vntable: &VNTable, instr: Value) -> Option<E
         InstOp::GetLocal(_) => None,
         InstOp::GetGlobal(_) => None,
         InstOp::GetConfig(_, _) => None,
+        InstOp::GetStorageKey(_) => None,
         InstOp::GetElemPtr {
             base,
             elem_ptr_ty,

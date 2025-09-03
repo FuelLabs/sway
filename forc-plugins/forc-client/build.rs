@@ -33,10 +33,8 @@ fn update_proxy_abi_decl_with_file(source_file_path: &Path, minified_json: &str)
 
     // Prepare the replacement string for the `abigen!` macro
     let escaped_json = minified_json.replace('\\', "\\\\").replace('"', "\\\"");
-    let new_abigen = format!(
-        "abigen!(Contract(name = \"ProxyContract\", abi = \"{}\",));",
-        escaped_json
-    );
+    let new_abigen =
+        format!("abigen!(Contract(name = \"ProxyContract\", abi = \"{escaped_json}\",));");
 
     // Use a regular expression to find and replace the `abigen!` macro
     let re = regex::Regex::new(r#"abigen!\(Contract\(name = "ProxyContract", abi = ".*?",\)\);"#)

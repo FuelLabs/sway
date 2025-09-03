@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use sway_core::{Backtrace, OptLevel, PrintAsm, PrintIr};
 
+use crate::DumpOpts;
+
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
@@ -11,6 +13,7 @@ pub struct BuildProfile {
     pub print_ast: bool,
     pub print_dca_graph: Option<String>,
     pub print_dca_graph_url_format: Option<String>,
+    pub dump: DumpOpts,
     #[serde(default)]
     pub print_ir: PrintIr,
     #[serde(default)]
@@ -47,6 +50,7 @@ impl BuildProfile {
     pub fn debug() -> Self {
         Self {
             name: Self::DEBUG.into(),
+            dump: DumpOpts::default(),
             print_ast: false,
             print_dca_graph: None,
             print_dca_graph_url_format: None,
@@ -69,6 +73,7 @@ impl BuildProfile {
     pub fn release() -> Self {
         Self {
             name: Self::RELEASE.to_string(),
+            dump: DumpOpts::default(),
             print_ast: false,
             print_dca_graph: None,
             print_dca_graph_url_format: None,
@@ -101,7 +106,7 @@ impl Default for BuildProfile {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BuildProfile, PackageManifest};
+    use crate::{BuildProfile, DumpOpts, PackageManifest};
     use sway_core::{Backtrace, OptLevel, PrintAsm, PrintIr};
 
     #[test]
@@ -154,6 +159,7 @@ mod tests {
         // Adapted release profile.
         let expected = BuildProfile {
             name: "".into(),
+            dump: DumpOpts::default(),
             print_ast: true,
             print_dca_graph: Some("dca_graph".into()),
             print_dca_graph_url_format: Some("print_dca_graph_url_format".into()),

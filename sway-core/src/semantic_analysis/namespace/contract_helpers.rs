@@ -40,8 +40,9 @@ pub fn package_with_contract_id(
         dbg_generation,
     )
     .map_err(|_| {
-        let (errors, warnings) = handler.consume();
+        let (errors, warnings, infos) = handler.consume();
         assert!(warnings.is_empty());
+        assert!(infos.is_empty());
 
         // Invariant: `.value == None` => `!errors.is_empty()`.
         vec1::Vec1::try_from_vec(errors).unwrap()

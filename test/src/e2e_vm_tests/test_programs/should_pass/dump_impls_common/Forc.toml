@@ -1,0 +1,6 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "dump_impls_common"
+entry = "lib.sw"
+implicit-std = false

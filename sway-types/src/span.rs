@@ -319,6 +319,18 @@ impl Span {
             && self.start <= other.start
             && self.end >= other.end
     }
+
+    /// Returns a subset of this span until the first occurrence of the passed text.
+    pub fn subset_first_of(&self, needle: &str) -> Option<Span> {
+        let text = &self.src().text;
+        let needle_offset = text[self.start..].find(needle)?;
+        Span::new(
+            self.src().clone(),
+            self.start,
+            self.start + needle_offset,
+            self.source_id().cloned(),
+        )
+    }
 }
 
 impl fmt::Debug for Span {

@@ -50,6 +50,7 @@ members = [
   "test_projects/type_aliases",
   "test_projects/vec_in_abi",
   "test_projects/string_slice/string_slice_predicate",
+  "test_projects/string_slice/script_string_slice",
   "test_artifacts/auth_caller_contract",
   "test_artifacts/auth_caller_script",
   "test_artifacts/auth_predicate",
