@@ -256,7 +256,9 @@
 }
 </code></pre>
 <h2 id="proxy-contracts"><a class="header" href="#proxy-contracts">Proxy Contracts</a></h2>
-<p><code>forc-deploy</code> supports deploying proxy contracts automatically if it is enabled in the <code>Forc.toml</code> of the contract.</p>
+<p><code>forc-deploy</code> supports deploying proxy contracts automatically if it is enabled in the <code>Forc.toml</code> of the contract. This feature enables upgradeable contracts by deploying a proxy that forwards calls to an implementation contract, allowing you to upgrade the implementation without changing the proxy address.</p>
+<h3 id="configuration"><a class="header" href="#configuration">Configuration</a></h3>
+<p>To enable proxy deployment, add a <code>[proxy]</code> table to your <code>Forc.toml</code>:</p>
 <pre><code class="language-TOML">[project]
 name = "test_contract"
 authors = ["Fuel Labs &lt;contact@fuel.sh&gt;"]
@@ -267,9 +269,33 @@ implicit-std = false
 [proxy]
 enabled = true
 </code></pre>
-<p>If there is no <code>address</code> field present under the proxy table, like the example above, <code>forc</code> will automatically create a proxy contract based on the <a href="https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md">SRC-14</a> implementation from <a href="https://github.com/FuelLabs/sway-standards">sway-standards</a>. After generating and deploying the proxy contract, the target is set to the current contract, and the owner of the proxy is set to the account that is signing the transaction for deployment.</p>
-<p>This means that if you simply enable proxy in the <code>Forc.toml</code>, forc will automatically deploy a proxy contract for you and you do not need to do anything manually aside from signing the deployment transactions for the proxy contract. After deploying the proxy contract, the address is added into the <code>address</code> field of the proxy table.</p>
-<p>If you want to update the target of an <a href="https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md">SRC-14</a> compliant proxy contract rather than deploying a new one, simply add its <code>address</code> in the <code>address</code> field, like the following example:</p>
+<p>The proxy configuration supports two fields:</p>
+<ul>
+<li><code>enabled</code> (boolean, required): Whether to deploy a proxy contract</li>
+<li><code>address</code> (string, optional): Address of an existing proxy contract to update</li>
+</ul>
+<h3 id="fresh-proxy-deployment"><a class="header" href="#fresh-proxy-deployment">Fresh Proxy Deployment</a></h3>
+<p>If there is no <code>address</code> field present under the proxy table, like the example above, <code>forc</code> will automatically create a proxy contract based on the <a href="https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md">SRC-14</a> implementation from <a href="https://github.com/FuelLabs/sway-standards">sway-standards</a>. The deployment process:</p>
+<ol>
+<li><strong>Deploy Implementation Contract</strong>: Your contract is deployed as the implementation</li>
+<li><strong>Generate Proxy Contract</strong>: A standard SRC-14 proxy contract is generated</li>
+<li><strong>Deploy Proxy Contract</strong>: The proxy is deployed with your implementation as the target</li>
+<li><strong>Initialize Proxy</strong>: The proxy is initialized with the deploying account as the owner</li>
+<li><strong>Update Manifest</strong>: The proxy address is automatically added to your <code>Forc.toml</code></li>
+</ol>
+<p>After deployment, you'll see output similar to:</p>
+<pre><code class="language-console">Deploying contract test_contract chunks
+Finished deploying test_contract 0x440b...925
+Finished deploying proxy contract for test_contract 0x19d4...f7
+Initialized proxy contract for test_contract
+</code></pre>
+<p>The <code>Forc.toml</code> will be automatically updated with the proxy address:</p>
+<pre><code class="language-TOML">[proxy]
+enabled = true
+address = "0x19d465200575ebd085300242002efcda38db99e22449a5c1346588efe9ced7f7"
+</code></pre>
+<h3 id="updating-existing-proxy"><a class="header" href="#updating-existing-proxy">Updating Existing Proxy</a></h3>
+<p>If you want to update the target of an existing <a href="https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md">SRC-14</a> compliant proxy contract, specify its address in the <code>address</code> field:</p>
 <pre><code class="language-TOML">[project]
 name = "test_contract"
 authors = ["Fuel Labs &lt;contact@fuel.sh&gt;"]
@@ -281,9 +307,33 @@ implicit-std = false
 enabled = true
 address = "0xd8c4b07a0d1be57b228f4c18ba7bca0c8655eb6e9d695f14080f2cf4fc7cd946" # example proxy contract address
 </code></pre>
-<p>If an <code>address</code> is present, <code>forc</code> calls into that contract to update its <code>target</code> instead of deploying a new contract. Since a new proxy deployment adds its own <code>address</code> into the <code>Forc.toml</code> automatically, you can simply enable the proxy once and after the initial deployment, <code>forc</code> will keep updating the target accordingly for each new deployment of the same contract.</p>
+<p>When an <code>address</code> is present, <code>forc</code> will:</p>
+<ol>
+<li>Deploy the new implementation contract</li>
+<li>Call the existing proxy's <code>set_proxy_target</code> method to update the target</li>
+<li>The proxy address remains the same, providing seamless upgrades</li>
+</ol>
+<h3 id="transaction-details"><a class="header" href="#transaction-details">Transaction Details</a></h3>
+<p>When deploying with proxy enabled, you'll see multiple transactions in the confirmation:</p>
+<ul>
+<li>One transaction to deploy the implementation contract</li>
+<li>One additional transaction to deploy the proxy (for fresh deployments) or update the target (for existing proxies)</li>
+</ul>
+<p>Example output:</p>
+<pre><code class="language-console">Confirming transactions [deploy test_contract + deploy proxy]
+Network: https://testnet.fuel.network
+</code></pre>
+<h3 id="storage-slots"><a class="header" href="#storage-slots">Storage Slots</a></h3>
+<p>The proxy contract includes both its own storage slots and preserves the storage slots from your implementation contract, ensuring that contract state is properly maintained across upgrades.</p>
+<h3 id="important-notes"><a class="header" href="#important-notes">Important Notes</a></h3>
+<ul>
+<li>The proxy owner (initially set to the deploying account) has exclusive rights to update the proxy target</li>
+<li>Once a proxy is deployed, the address in your <code>Forc.toml</code> allows for automatic target updates on subsequent deployments</li>
+<li>Proxy contracts work with both regular and <a href="#large-contracts">chunked contracts</a> (contracts over 100<!-- markdownlint-disable-line MD032 -->kB)</li>
+<li>The implementation uses the SRC-14 standard for maximum compatibility with the Fuel ecosystem</li>
+</ul>
 <h2 id="large-contracts"><a class="header" href="#large-contracts">Large Contracts</a></h2>
-<p>For contracts over the maximum contract size limit (currently <code>100kB</code>) defined by the network, <code>forc-deploy</code> will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's <a href="https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md">loader contract</a> functionality. Chunks that have already been deployed will be reused on subsequent deployments.</p>
+<p>For contracts over the maximum contract size limit (currently <code>100&lt;!-- markdownlint-disable-line --&gt;kB</code>) defined by the network, <code>forc-deploy</code> will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's <a href="https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md">loader contract</a> functionality. Chunks that have already been deployed will be reused on subsequent deployments.</p>
 <h2 id="deploying-scripts-and-predicates"><a class="header" href="#deploying-scripts-and-predicates">Deploying Scripts and Predicates</a></h2>
 <p><code>forc deploy</code> now supports deploying scripts and predicates in addition to contracts. These are deployed as blobs with generated loaders for efficiency.</p>
 <p>Scripts and predicates are deployed automatically when you run <code>forc deploy</code> on a project that contains them. The deployment process differs slightly from contract deployment:</p>
@@ -299,7 +349,7 @@ address = "0xd8c4b07a0d1be57b228f4c18ba7bca0c8655eb6e9d695f14080f2cf4fc7cd946" #
 </ul>
 <p>The loader files contain the bytecode necessary to load and execute your script or predicate from the deployed blob.</p>
 <p>This new deployment method allows for more efficient storage and execution of scripts and predicates on the Fuel network.</p>
-<p>Note: Contracts are still deployed directly, not as blobs given that the contract size is under the maximum contract size limit defined by network (currently <code>100kB</code>).</p>
+<p>Note: Contracts are still deployed directly, not as blobs given that the contract size is under the maximum contract size limit defined by network (currently <code>100&lt;!-- markdownlint-disable-line --&gt;kB</code>).</p>
 
                     </main>
 
