@@ -163,6 +163,11 @@ pub enum ConvertParseTreeError {
         arg: Ident,
         expected_values: Vec<&'static str>,
     },
+    #[error("Parameterized test attribute \"{attribute}\" requires a #[test] attribute on the same function.")]
+    ParameterizedTestRequiresTestAttribute {
+        span: Span,
+        attribute: Ident,
+    },
 }
 
 pub(crate) enum AttributeType {
@@ -268,6 +273,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::InvalidAttributeArgExpectsValue { arg, .. } => arg.span(),
             ConvertParseTreeError::InvalidAttributeArgValueType { span, .. } => span.clone(),
             ConvertParseTreeError::InvalidAttributeArgValue { span, .. } => span.clone(),
+            ConvertParseTreeError::ParameterizedTestRequiresTestAttribute { span, .. } => span.clone(),
         }
     }
 }
