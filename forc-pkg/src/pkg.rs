@@ -2046,17 +2046,17 @@ impl PkgTestEntry {
 
         // With fixture-based testing, #[test] is mandatory and can coexist with #[fuzz] and #[case]
         let has_case = test_function_decl.attributes.cases().next().is_some();
-        match (test_attr, fuzz_attr, has_case) {
-            (None, Some(_), _) | (None, None, true) => {
-                bail!(
-                    "Function \"{}\" has parameterization attributes (#[fuzz] or #[case]) but is missing the required #[test] attribute",
-                    test_function_decl.name
-                );
-            }
-            (None, None, false) => {
-                unreachable!("`test_function_decl` is guaranteed to be a test or fuzz function and it must have a `#[test]` attribute or parameterization attributes");
-            }
-            _ => {} // Valid: #[test] is present or only #[test] is present
+        let has_parameterization = fuzz_attr.is_some() || has_case;
+        
+        if test_attr.is_none() && has_parameterization {
+            bail!(
+                "Function \"{}\" has parameterization attributes (#[fuzz] or #[case]) but is missing the required #[test] attribute",
+                test_function_decl.name
+            );
+        }
+        
+        if test_attr.is_none() && !has_parameterization {
+            unreachable!("`test_function_decl` is guaranteed to be a test or fuzz function and it must have a `#[test]` attribute or parameterization attributes");
         }
 
         let pass_condition = if let Some(test_attr) = test_attr {

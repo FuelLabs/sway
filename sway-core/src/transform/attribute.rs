@@ -618,29 +618,34 @@ impl Attribute {
             Allow => !matches!(item_kind, ItemKind::Submodule(_)),
             Cfg => !matches!(item_kind, ItemKind::Submodule(_)),
             // TODO: Adapt once https://github.com/FuelLabs/sway/issues/6942 is implemented.
-            Deprecated => match item_kind {
-                ItemKind::Submodule(_) => false,
-                ItemKind::Use(_) => false,
-                ItemKind::Struct(_) => true,
-                ItemKind::Enum(_) => true,
-                ItemKind::Fn(_) => true,
-                ItemKind::Trait(_) => false,
-                ItemKind::Impl(_) => false,
-                ItemKind::Abi(_) => false,
-                ItemKind::Const(_) => true,
-                ItemKind::Storage(_) => false,
-                // TODO: Currently, only single configurables can be deprecated.
-                //       Change to true once https://github.com/FuelLabs/sway/issues/6942 is implemented.
-                ItemKind::Configurable(_) => false,
-                ItemKind::TypeAlias(_) => false,
-                ItemKind::Error(_, _) => true,
-            },
+            Deprecated => Self::can_deprecate_item_kind(item_kind),
             Fallback => matches!(item_kind, ItemKind::Fn(_)),
             ErrorType => matches!(item_kind, ItemKind::Enum(_)),
             Error => false,
             Trace => matches!(item_kind, ItemKind::Fn(_)),
             AbiName => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
             Fuzz => matches!(item_kind, ItemKind::Fn(_)),
+        }
+    }
+
+    fn can_deprecate_item_kind(item_kind: &ItemKind) -> bool {
+        matches!(item_kind, 
+            ItemKind::Struct(_) | 
+            ItemKind::Enum(_) | 
+            ItemKind::Fn(_) | 
+            ItemKind::Const(_) | 
+            ItemKind::Error(_, _)
+        )
+    }
+
+    fn storage_help_text(target_friendly_name: &str) -> Vec<&'static str> {
+        if target_friendly_name == "function signature" {
+            vec![
+                "\"storage\" attribute can only annotate functions that have an implementation.",
+                "Function signatures in ABI and trait declarations do not have implementations.",
+            ]
+        } else {
+            vec!["\"storage\" attribute can only annotate functions."]
         }
     }
 
@@ -820,18 +825,7 @@ impl Attribute {
                     vec![]
                 },
             },
-            Storage => {
-                if target_friendly_name == "function signature" {
-                    vec![
-                        "\"storage\" attribute can only annotate functions that have an implementation.",
-                        "Function signatures in ABI and trait declarations do not have implementations.",
-                    ]
-                } else {
-                    vec![
-                        "\"storage\" attribute can only annotate functions.",
-                    ]
-                }
-            },
+            Storage => Self::storage_help_text(target_friendly_name),
             Inline => vec!["\"inline\" attribute can only annotate functions."],
             Test => vec!["\"test\" attribute can only annotate module functions."],
             Payable => vec![

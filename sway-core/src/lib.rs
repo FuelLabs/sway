@@ -218,41 +218,41 @@ pub(crate) fn attr_decls_to_attributes(
             let first_doc_line = attributes
                 .next()
                 .expect("`chunk_by` guarantees existence of at least one element in the chunk");
-            if !can_annotate(first_doc_line) {
-                let last_doc_line = match attributes.last() {
-                    Some(last_attr) => last_attr,
-                    // There is only one doc line in the complete doc comment.
-                    None => first_doc_line,
-                };
+            if can_annotate(first_doc_line) {
+                continue;
+            }
+
+            let last_doc_line = attributes.last().unwrap_or(first_doc_line);
+            handler.emit_err(
+                ConvertParseTreeError::InvalidAttributeTarget {
+                    span: Span::join(
+                        first_doc_line.span.clone(),
+                        &last_doc_line.span.start_span(),
+                    ),
+                    attribute: first_doc_line.name.clone(),
+                    target_friendly_name,
+                    can_only_annotate_help: first_doc_line
+                        .can_only_annotate_help(target_friendly_name),
+                }
+                .into(),
+            );
+        } else {
+            // For other attributes, the error is shown for every individual attribute.
+            for attribute in attributes {
+                if can_annotate(attribute) {
+                    continue;
+                }
+                
                 handler.emit_err(
                     ConvertParseTreeError::InvalidAttributeTarget {
-                        span: Span::join(
-                            first_doc_line.span.clone(),
-                            &last_doc_line.span.start_span(),
-                        ),
-                        attribute: first_doc_line.name.clone(),
+                        span: attribute.name.span(),
+                        attribute: attribute.name.clone(),
                         target_friendly_name,
-                        can_only_annotate_help: first_doc_line
+                        can_only_annotate_help: attribute
                             .can_only_annotate_help(target_friendly_name),
                     }
                     .into(),
                 );
-            }
-        } else {
-            // For other attributes, the error is shown for every individual attribute.
-            for attribute in attributes {
-                if !can_annotate(attribute) {
-                    handler.emit_err(
-                        ConvertParseTreeError::InvalidAttributeTarget {
-                            span: attribute.name.span(),
-                            attribute: attribute.name.clone(),
-                            target_friendly_name,
-                            can_only_annotate_help: attribute
-                                .can_only_annotate_help(target_friendly_name),
-                        }
-                        .into(),
-                    );
-                }
             }
         }
     }
@@ -376,25 +376,24 @@ pub(crate) fn attr_decls_to_attributes(
 
     // Check fixture-based testing requirements: #[case] or #[fuzz] require #[test]
     let has_test = attributes.of_kind(AttributeKind::Test).any(|_| true);
-    let has_case = attributes.of_kind(AttributeKind::Case).any(|_| true);
-    let has_fuzz = attributes.of_kind(AttributeKind::Fuzz).any(|_| true);
+    let has_parameterization = attributes.of_kind(AttributeKind::Case).any(|_| true) 
+        || attributes.of_kind(AttributeKind::Fuzz).any(|_| true);
+    
+    if !has_parameterization || has_test {
+        return (handler, attributes);
+    }
 
-    if (has_case || has_fuzz) && !has_test {
-        let parameterization_attr = if has_case {
-            attributes.of_kind(AttributeKind::Case).next()
-        } else {
-            attributes.of_kind(AttributeKind::Fuzz).next()
-        };
+    let first_param_attr = attributes.of_kind(AttributeKind::Case).next()
+        .or_else(|| attributes.of_kind(AttributeKind::Fuzz).next());
 
-        if let Some(attr) = parameterization_attr {
-            handler.emit_err(
-                ConvertParseTreeError::ParameterizedTestRequiresTestAttribute {
-                    span: attr.span.clone(),
-                    attribute: attr.name.clone(),
-                }
-                .into(),
-            );
-        }
+    if let Some(attr) = first_param_attr {
+        handler.emit_err(
+            ConvertParseTreeError::ParameterizedTestRequiresTestAttribute {
+                span: attr.span.clone(),
+                attribute: attr.name.clone(),
+            }
+            .into(),
+        );
     }
 
     (handler, attributes)
