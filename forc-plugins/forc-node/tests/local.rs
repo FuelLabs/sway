@@ -4,6 +4,7 @@ use forc_node::local::{cmd::LocalCmd, run};
 use serde_json::json;
 use tokio::time::sleep;
 
+#[ignore = "CI errors with: IO error: not a terminal"]
 #[tokio::test]
 async fn start_local_node_check_health() {
     let port = portpicker::pick_unused_port().expect("No ports free");
