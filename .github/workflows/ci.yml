@@ -232,6 +232,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
       - uses: buildjet/cache@v3
         with:
           path: |
@@ -339,6 +340,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           cache-provider: "buildjet"
@@ -356,6 +358,7 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy
+          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           cache-provider: "buildjet"
