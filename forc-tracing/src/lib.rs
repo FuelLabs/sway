@@ -283,7 +283,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
 
     // Initialize telemetry if enabled and not disabled via options
     #[cfg(feature = "telemetry")]
-    let (telemetry_layer, telemetry_guard) = if is_telemetry_disabled_from_options(&options) {
+    let telemetry_layer = if is_telemetry_disabled_from_options(&options) {
         None
     } else {
         Some(fuel_telemetry::new_with_watchers!().unwrap())
