@@ -1,29 +1,40 @@
 //! Utility items shared between forc crates.
 
+#[cfg(feature = "telemetry")]
+pub mod telemetry;
+
 use ansiterm::Colour;
 use std::str;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{env, io};
-use tracing::{Level, Metadata, Subscriber};
+use tracing::{Level, Metadata};
 pub use tracing_subscriber::{
     self,
-    filter::{EnvFilter, LevelFilter},
+    filter::{filter_fn, EnvFilter, LevelFilter},
     fmt::{format::FmtSpan, MakeWriter},
-    layer::{Context, Filter},
-    prelude::__tracing_subscriber_SubscriberExt,
+    layer::SubscriberExt,
     util::SubscriberInitExt,
-    Layer,
 };
 
 #[cfg(feature = "telemetry")]
 use fuel_telemetry::WorkerGuard;
 
-pub mod telemetry;
-
 const ACTION_COLUMN_WIDTH: usize = 12;
 
-/// Check if telemetry is disabled via environment variable
+// Global flag to track if JSON output mode is active
+static JSON_MODE_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+// Global flag to track if telemetry is disabled
+static TELEMETRY_DISABLED: AtomicBool = AtomicBool::new(false);
+
+/// Check if JSON mode is currently active
+fn is_json_mode_active() -> bool {
+    JSON_MODE_ACTIVE.load(Ordering::SeqCst)
+}
+
+/// Check if telemetry is disabled
 pub fn is_telemetry_disabled() -> bool {
-    env::var("FORC_DISABLE_TELEMETRY").is_ok()
+    TELEMETRY_DISABLED.load(Ordering::SeqCst)
 }
 
 /// Returns the indentation for the action prefix relative to [ACTION_COLUMN_WIDTH].
@@ -31,13 +42,64 @@ fn get_action_indentation(action: &str) -> String {
     if action.len() < ACTION_COLUMN_WIDTH {
         " ".repeat(ACTION_COLUMN_WIDTH - action.len())
     } else {
-        "".to_string()
+        String::new()
+    }
+}
+
+enum TextStyle {
+    Plain,
+    Bold,
+    Label(String),
+    Action(String),
+}
+
+enum LogLevel {
+    #[allow(dead_code)]
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error,
+}
+
+/// Common function to handle all kinds of output with color and styling
+fn print_message(text: &str, color: Colour, style: TextStyle, level: LogLevel) {
+    let log_msg = match (is_json_mode_active(), style) {
+        // JSON mode formatting (no colors)
+        (true, TextStyle::Plain | TextStyle::Bold) => text.to_string(),
+        (true, TextStyle::Label(label)) => format!("{label}: {text}"),
+        (true, TextStyle::Action(action)) => {
+            let indent = get_action_indentation(&action);
+            format!("{indent}{action} {text}")
+        }
+
+        // Normal mode formatting (with colors)
+        (false, TextStyle::Plain) => format!("{}", color.paint(text)),
+        (false, TextStyle::Bold) => format!("{}", color.bold().paint(text)),
+        (false, TextStyle::Label(label)) => format!("{} {}", color.bold().paint(label), text),
+        (false, TextStyle::Action(action)) => {
+            let indent = get_action_indentation(&action);
+            format!("{}{} {}", indent, color.bold().paint(action), text)
+        }
+    };
+
+    match level {
+        LogLevel::Trace => tracing::trace!("{}", log_msg),
+        LogLevel::Debug => tracing::debug!("{}", log_msg),
+        LogLevel::Info => tracing::info!("{}", log_msg),
+        LogLevel::Warn => tracing::warn!("{}", log_msg),
+        LogLevel::Error => tracing::error!("{}", log_msg),
     }
 }
 
 /// Prints a label with a green-bold label prefix like "Compiling ".
 pub fn println_label_green(label: &str, txt: &str) {
-    println_label(label, txt, Colour::Green);
+    print_message(
+        txt,
+        Colour::Green,
+        TextStyle::Label(label.to_string()),
+        LogLevel::Info,
+    );
 }
 
 /// Prints an action message with a green-bold prefix like "   Compiling ".
@@ -47,11 +109,12 @@ pub fn println_action_green(action: &str, txt: &str) {
 
 /// Prints a label with a red-bold label prefix like "error: ".
 pub fn println_label_red(label: &str, txt: &str) {
-    println_action(label, txt, Colour::Red);
-}
-
-fn println_label(label: &str, txt: &str, color: Colour) {
-    tracing::info!("{} {}", color.bold().paint(label), txt);
+    print_message(
+        txt,
+        Colour::Red,
+        TextStyle::Label(label.to_string()),
+        LogLevel::Info,
+    );
 }
 
 /// Prints an action message with a red-bold prefix like "   Removing ".
@@ -65,84 +128,108 @@ pub fn println_action_yellow(action: &str, txt: &str) {
 }
 
 fn println_action(action: &str, txt: &str, color: Colour) {
-    tracing::info!(
-        "{}{} {}",
-        get_action_indentation(action),
-        color.bold().paint(action),
-        txt
+    print_message(
+        txt,
+        color,
+        TextStyle::Action(action.to_string()),
+        LogLevel::Info,
     );
 }
 
 /// Prints a warning message to stdout with the yellow prefix "warning: ".
 pub fn println_warning(txt: &str) {
-    tracing::warn!("{}: {}", Colour::Yellow.paint("warning"), txt);
+    print_message(
+        txt,
+        Colour::Yellow,
+        TextStyle::Label("warning:".to_string()),
+        LogLevel::Warn,
+    );
 }
 
 /// Prints a warning message to stdout with the yellow prefix "warning: " only in verbose mode.
 pub fn println_warning_verbose(txt: &str) {
-    tracing::debug!("{}: {}", Colour::Yellow.paint("warning"), txt);
+    print_message(
+        txt,
+        Colour::Yellow,
+        TextStyle::Label("warning:".to_string()),
+        LogLevel::Debug,
+    );
 }
 
 /// Prints a warning message to stderr with the red prefix "error: ".
 pub fn println_error(txt: &str) {
-    tracing::warn!("{}: {}", Colour::Red.paint("error"), txt);
+    print_message(
+        txt,
+        Colour::Red,
+        TextStyle::Label("error:".to_string()),
+        LogLevel::Error,
+    );
 }
 
 pub fn println_red(txt: &str) {
-    println_std_out(txt, Colour::Red);
+    print_message(txt, Colour::Red, TextStyle::Plain, LogLevel::Info);
 }
 
 pub fn println_green(txt: &str) {
-    println_std_out(txt, Colour::Green);
+    print_message(txt, Colour::Green, TextStyle::Plain, LogLevel::Info);
 }
 
 pub fn println_yellow(txt: &str) {
-    println_std_out(txt, Colour::Yellow);
+    print_message(txt, Colour::Yellow, TextStyle::Plain, LogLevel::Info);
 }
 
 pub fn println_green_bold(txt: &str) {
-    tracing::info!("{}", Colour::Green.bold().paint(txt));
+    print_message(txt, Colour::Green, TextStyle::Bold, LogLevel::Info);
 }
 
 pub fn println_yellow_bold(txt: &str) {
-    tracing::info!("{}", Colour::Yellow.bold().paint(txt));
+    print_message(txt, Colour::Yellow, TextStyle::Bold, LogLevel::Info);
 }
 
 pub fn println_yellow_err(txt: &str) {
-    println_std_err(txt, Colour::Yellow);
+    print_message(txt, Colour::Yellow, TextStyle::Plain, LogLevel::Error);
 }
 
 pub fn println_red_err(txt: &str) {
-    println_std_err(txt, Colour::Red);
-}
-
-fn println_std_out(txt: &str, color: Colour) {
-    tracing::info!("{}", color.paint(txt));
-}
-
-fn println_std_err(txt: &str, color: Colour) {
-    tracing::error!("{}", color.paint(txt));
+    print_message(txt, Colour::Red, TextStyle::Plain, LogLevel::Error);
 }
 
 const LOG_FILTER: &str = "RUST_LOG";
 
-// This allows us to write ERROR and WARN level logs to stderr and everything else to stdout.
-// https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
-pub struct StdioTracingWriter {
-    pub writer_mode: TracingWriterMode,
+#[derive(PartialEq, Eq)]
+pub enum TracingWriter {
+    /// Write ERROR and WARN to stderr and everything else to stdout.
+    Stdio,
+    /// Write everything to stdout.
+    Stdout,
+    /// Write everything to stderr.
+    Stderr,
+    /// Write everything as structured JSON to stdout.
+    Json,
 }
 
-impl<'a> MakeWriter<'a> for StdioTracingWriter {
+#[derive(Default)]
+pub struct TracingSubscriberOptions {
+    pub verbosity: Option<u8>,
+    pub silent: Option<bool>,
+    pub log_level: Option<LevelFilter>,
+    pub writer_mode: Option<TracingWriter>,
+    pub regex_filter: Option<String>,
+    pub disable_telemetry: Option<bool>,
+}
+
+// This allows us to write ERROR and WARN level logs to stderr and everything else to stdout.
+// https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
+impl<'a> MakeWriter<'a> for TracingWriter {
     type Writer = Box<dyn io::Write>;
 
     fn make_writer(&'a self) -> Self::Writer {
-        if self.writer_mode == TracingWriterMode::Stderr {
-            Box::new(io::stderr())
-        } else {
+        match self {
+            TracingWriter::Stderr => Box::new(io::stderr()),
             // We must have an implementation of `make_writer` that makes
             // a "default" writer without any configuring metadata. Let's
             // just return stdout in that case.
-            Box::new(io::stdout())
+            _ => Box::new(io::stdout()),
         }
     }
 
@@ -150,8 +237,8 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
         // Here's where we can implement our special behavior. We'll
         // check if the metadata's verbosity level is WARN or ERROR,
         // and return stderr in that case.
-        if self.writer_mode == TracingWriterMode::Stderr
-            || (self.writer_mode == TracingWriterMode::Stdio && meta.level() <= &Level::WARN)
+        if *self == TracingWriter::Stderr
+            || (*self == TracingWriter::Stdio && meta.level() <= &Level::WARN)
         {
             return Box::new(io::stderr());
         }
@@ -161,153 +248,174 @@ impl<'a> MakeWriter<'a> for StdioTracingWriter {
     }
 }
 
-#[derive(PartialEq, Eq)]
-pub enum TracingWriterMode {
-    /// Write ERROR and WARN to stderr and everything else to stdout.
-    Stdio,
-    /// Write everything to stdout.
-    Stdout,
-    /// Write everything to stderr.
-    Stderr,
-}
-
-#[derive(Default)]
-pub struct TracingSubscriberOptions {
-    pub verbosity: Option<u8>,
-    pub silent: Option<bool>,
-    pub log_level: Option<LevelFilter>,
-    pub writer_mode: Option<TracingWriterMode>,
-}
-
-struct HideTelemetryFilter<S: Subscriber> {
-    _marker: std::marker::PhantomData<S>,
-}
-
-impl<S: Subscriber> HideTelemetryFilter<S> {
-    fn new<F: Filter<S>>(_inner: F) -> Self {
-        Self {
-            _marker: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<S> Filter<S> for HideTelemetryFilter<S>
-where
-    S: Subscriber + for<'lookup> tracing_subscriber::registry::LookupSpan<'lookup>,
-{
-    fn enabled(&self, _meta: &Metadata<'_>, ctx: &Context<'_, S>) -> bool {
-        if let Some(span) = ctx.lookup_current() {
-            if span
-                .fields()
-                .iter()
-                .any(|field| field.name() == "telemetry")
-            {
-                return false;
-            }
-        }
-
-        true
-    }
-}
-
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
 pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
+    let env_filter = match env::var_os(LOG_FILTER) {
+        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
+        None => EnvFilter::new("info"),
+    };
+
     let level_filter = options
         .log_level
         .or_else(|| {
-            options.verbosity.and_then(|verbosity| {
-                match verbosity {
-                    1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
-                    2 => Some(LevelFilter::TRACE), // matches -vv
-                    _ => None,
-                }
+            options.verbosity.and_then(|verbosity| match verbosity {
+                1 => Some(LevelFilter::DEBUG), // matches --verbose or -v
+                2 => Some(LevelFilter::TRACE), // matches -vv
+                _ => None,
             })
         })
         .or_else(|| {
             options
                 .silent
-                .and_then(|silent| if silent { Some(LevelFilter::OFF) } else { None })
+                .and_then(|silent| silent.then_some(LevelFilter::OFF))
         });
 
-    let layer = tracing_subscriber::fmt::layer()
+    let writer_mode = match options.writer_mode {
+        Some(TracingWriter::Json) => {
+            JSON_MODE_ACTIVE.store(true, Ordering::SeqCst);
+            TracingWriter::Json
+        }
+        Some(TracingWriter::Stderr) => TracingWriter::Stderr,
+        _ => TracingWriter::Stdio,
+    };
+
+    // Initialize telemetry if enabled and not disabled via options
+    #[cfg(feature = "telemetry")]
+    let (telemetry_layer, telemetry_guard) = if is_telemetry_disabled_from_options(&options) {
+        None
+    } else {
+        Some(fuel_telemetry::new_with_watchers!().unwrap())
+    };
+
+    let builder = tracing_subscriber::fmt::Subscriber::builder()
+        .with_env_filter(env_filter)
         .with_ansi(true)
         .with_level(false)
         .with_file(false)
         .with_line_number(false)
         .without_time()
         .with_target(false)
-        .with_writer(StdioTracingWriter {
-            writer_mode: options.writer_mode.unwrap_or(TracingWriterMode::Stdio),
-        });
+        .with_writer(writer_mode);
 
-    #[cfg(feature = "telemetry")]
-    let (telemetry_layer, telemetry_guard) = if env::var("FORC_DISABLE_TELEMETRY").is_ok() {
-        eprintln!("warning: telemetry is disabled");
-        None
-    } else {
-        Some(fuel_telemetry::new_with_watchers!().unwrap())
-    };
+    // Set the global telemetry disabled flag
+    let disabled = is_telemetry_disabled_from_options(&options);
 
-    // If log level, verbosity, or silent mode is set, it overrides the RUST_LOG setting
-    if let Some(level_filter) = level_filter {
-        let hide_telemetry_filter = HideTelemetryFilter::new(level_filter);
-
-        #[cfg(feature = "telemetry")]
-        if let Some((telemetry_layer_inner, _)) = &telemetry_layer {
-            tracing_subscriber::registry()
-                .with(telemetry_layer_inner.clone())
-                .with(layer.with_filter(hide_telemetry_filter))
-                .init();
+    // Use regex to filter logs - if provided; otherwise allow all logs
+    let regex_filter = options.regex_filter.clone();
+    let filter = filter_fn(move |metadata| {
+        if let Some(ref regex_filter) = regex_filter {
+            let regex = regex::Regex::new(regex_filter).unwrap();
+            regex.is_match(metadata.target())
         } else {
-            tracing_subscriber::registry()
-                .with(layer.with_filter(hide_telemetry_filter))
-                .init();
+            true
         }
+    });
+    TELEMETRY_DISABLED.store(disabled, Ordering::SeqCst);
 
-        #[cfg(not(feature = "telemetry"))]
-        tracing_subscriber::registry()
-            .with(layer.with_filter(hide_telemetry_filter))
-            .init();
-    } else {
-        let env_filter = match env::var_os(LOG_FILTER) {
-            Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
-            None => EnvFilter::new("info"),
-        };
-
-        let hide_telemetry_filter = HideTelemetryFilter::new(env_filter);
-
-        #[cfg(feature = "telemetry")]
-        if let Some((telemetry_layer_inner, _)) = &telemetry_layer {
-            tracing_subscriber::registry()
-                .with(telemetry_layer_inner.clone())
-                .with(layer.with_filter(hide_telemetry_filter))
-                .init();
-        } else {
-            tracing_subscriber::registry()
-                .with(layer.with_filter(hide_telemetry_filter))
-                .init();
-        }
-
-        #[cfg(not(feature = "telemetry"))]
-        tracing_subscriber::registry()
-            .with(layer.with_filter(hide_telemetry_filter))
-            .init();
-    }
-
-    #[cfg(feature = "telemetry")]
-    {
-        if let Some((_, telemetry_guard)) = telemetry_layer {
-            // When the process ends, Thread Local Storage will drop this guard allowing
-            // the tracing appender to flush any remaining telemetry to disk.
-            thread_local! {
-                static GUARD: std::cell::RefCell<Option<WorkerGuard>> = const { std::cell::RefCell::new(None) };
+    match (is_json_mode_active(), level_filter) {
+        (true, Some(level)) => {
+            #[cfg(feature = "telemetry")]
+            if let Some((telemetry_layer, _)) = &telemetry_layer {
+                let subscriber = builder.json().with_max_level(level).finish().with(filter).with(telemetry_layer.clone());
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+            } else {
+                let subscriber = builder.json().with_max_level(level).finish().with(filter);
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
             }
 
-            GUARD.set(Some(telemetry_guard));
+            #[cfg(not(feature = "telemetry"))]
+            {
+                let subscriber = builder.json().with_max_level(level).finish().with(filter);
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+            }
+        }
+        (true, None) => {
+            #[cfg(feature = "telemetry")]
+            if let Some((telemetry_layer, _)) = &telemetry_layer {
+                let subscriber = builder.json().finish().with(filter).with(telemetry_layer.clone());
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+            } else {
+                let subscriber = builder.json().finish().with(filter);
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+            }
+
+            #[cfg(not(feature = "telemetry"))]
+            {
+                let subscriber = builder.json().finish().with(filter);
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+            }
+        }
+        (false, Some(level)) => {
+            #[cfg(feature = "telemetry")]
+            if let Some((telemetry_layer, _)) = &telemetry_layer {
+                let subscriber = builder.with_max_level(level).finish().with(filter).with(telemetry_layer.clone());
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+            } else {
+                let subscriber = builder.with_max_level(level).finish().with(filter);
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+            }
+
+            #[cfg(not(feature = "telemetry"))]
+            {
+                let subscriber = builder.with_max_level(level).finish().with(filter);
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+            }
+        }
+        (false, None) => {
+            #[cfg(feature = "telemetry")]
+            if let Some((telemetry_layer, _)) = &telemetry_layer {
+                let subscriber = builder.finish().with(filter).with(telemetry_layer.clone());
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+            } else {
+                let subscriber = builder.finish().with(filter);
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+            }
+
+            #[cfg(not(feature = "telemetry"))]
+            {
+                let subscriber = builder.finish().with(filter);
+                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
+            }
         }
     }
+
+    // Store telemetry guard in thread-local storage
+    #[cfg(feature = "telemetry")]
+    if let Some((_, telemetry_guard)) = telemetry_layer {
+        thread_local! {
+            static TELEMETRY_GUARD: std::cell::RefCell<Option<WorkerGuard>> = const { std::cell::RefCell::new(None) };
+        }
+        
+        TELEMETRY_GUARD.with(|guard| {
+            *guard.borrow_mut() = Some(telemetry_guard);
+        });
+    }
+}
+
+/// Initialize telemetry if enabled and not disabled via options
+#[cfg(feature = "telemetry")]
+pub fn init_telemetry(options: &TracingSubscriberOptions) {
+    let disabled = is_telemetry_disabled_from_options(options);
+    TELEMETRY_DISABLED.store(disabled, Ordering::SeqCst);
+
+    if !disabled {
+        // Initialize fuel-telemetry here if needed
+        // This is where telemetry initialization logic would go
+    }
+}
+
+/// Initialize telemetry if enabled and not disabled via options (no-op when telemetry feature is disabled)
+#[cfg(not(feature = "telemetry"))]
+pub fn init_telemetry(options: &TracingSubscriberOptions) {
+    // Still set the global flag even when telemetry feature is disabled for consistency
+    let disabled = is_telemetry_disabled_from_options(options);
+    TELEMETRY_DISABLED.store(disabled, Ordering::SeqCst);
+}
+
+fn is_telemetry_disabled_from_options(options: &TracingSubscriberOptions) -> bool {
+    options.disable_telemetry.unwrap_or(false) || env::var("FORC_DISABLE_TELEMETRY").is_ok()
 }
 
 #[cfg(test)]
@@ -315,53 +423,95 @@ mod tests {
     use super::*;
     use tracing_test::traced_test;
 
+    // Helper function to set up each test with consistent JSON mode state
+    fn setup_test() {
+        JSON_MODE_ACTIVE.store(false, Ordering::SeqCst);
+    }
+
     #[traced_test]
     #[test]
     fn test_println_label_green() {
+        setup_test();
+
         let txt = "main.sw";
         println_label_green("Compiling", txt);
 
         let expected_action = "\x1b[1;32mCompiling\x1b[0m";
-        assert!(logs_contain(&format!("{} {}", expected_action, txt)));
+        assert!(logs_contain(&format!("{expected_action} {txt}")));
     }
 
     #[traced_test]
     #[test]
     fn test_println_label_red() {
+        setup_test();
+
         let txt = "main.sw";
         println_label_red("Error", txt);
 
         let expected_action = "\x1b[1;31mError\x1b[0m";
-        assert!(logs_contain(&format!("{} {}", expected_action, txt)));
+        assert!(logs_contain(&format!("{expected_action} {txt}")));
     }
 
     #[traced_test]
     #[test]
     fn test_println_action_green() {
+        setup_test();
+
         let txt = "main.sw";
         println_action_green("Compiling", txt);
 
         let expected_action = "\x1b[1;32mCompiling\x1b[0m";
-        assert!(logs_contain(&format!("    {} {}", expected_action, txt)));
+        assert!(logs_contain(&format!("    {expected_action} {txt}")));
     }
 
     #[traced_test]
     #[test]
     fn test_println_action_green_long() {
+        setup_test();
+
         let txt = "main.sw";
         println_action_green("Supercalifragilistic", txt);
 
         let expected_action = "\x1b[1;32mSupercalifragilistic\x1b[0m";
-        assert!(logs_contain(&format!("{} {}", expected_action, txt)));
+        assert!(logs_contain(&format!("{expected_action} {txt}")));
     }
 
     #[traced_test]
     #[test]
     fn test_println_action_red() {
+        setup_test();
+
         let txt = "main";
         println_action_red("Removing", txt);
 
         let expected_action = "\x1b[1;31mRemoving\x1b[0m";
-        assert!(logs_contain(&format!("     {} {}", expected_action, txt)));
+        assert!(logs_contain(&format!("     {expected_action} {txt}")));
+    }
+
+    #[traced_test]
+    #[test]
+    fn test_json_mode_println_functions() {
+        setup_test();
+
+        JSON_MODE_ACTIVE.store(true, Ordering::SeqCst);
+
+        // Call various print functions and capture the output
+        println_label_green("Label", "Value");
+        assert!(logs_contain("Label: Value"));
+
+        println_action_green("Action", "Target");
+        assert!(logs_contain("Action"));
+        assert!(logs_contain("Target"));
+
+        println_green("Green text");
+        assert!(logs_contain("Green text"));
+
+        println_warning("This is a warning");
+        assert!(logs_contain("This is a warning"));
+
+        println_error("This is an error");
+        assert!(logs_contain("This is an error"));
+
+        JSON_MODE_ACTIVE.store(false, Ordering::SeqCst);
     }
 }
