@@ -21,6 +21,9 @@ clap = { workspace = true, features = ["derive", "string"] }
 dialoguer.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
+fuel-core = { workspace = true, features = ["wasm-executor", "rocksdb", "test-helpers"] }
+fuel-core-chain-config.workspace = true
+fuel-core-types.workspace = true
 fuel-crypto = { workspace = true, features = ["random"] }
 libc.workspace = true
 libp2p-identity = { workspace = true, features = ["secp256k1", "peerid"] }
@@ -31,6 +34,8 @@ serde_json.workspace = true
 sha1.workspace = true
 termion.workspace = true
 tokio = { workspace = true, features = ["macros", "signal", "rt-multi-thread"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
 
 [dev-dependencies]
 portpicker.workspace = true
