@@ -16,9 +16,9 @@ use std::{
     path::PathBuf,
     process::{Child, Command},
 };
-/// Configures the node with testnet configuration to connect the node to latest testnet.
+/// Configures the node with ignition configuration to connect the node to latest mainnet.
 /// Returns `None` if this is a dry_run and no child process created for fuel-core.
-pub(crate) async fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
+pub async fn run(cmd: IgnitionCmd, dry_run: bool) -> anyhow::Result<Option<Child>> {
     check_and_update_chain_config(ChainConfig::Ignition).await?;
     let keypair = if let (Some(peer_id), Some(secret)) = (
         &cmd.connection_settings.peer_id,
