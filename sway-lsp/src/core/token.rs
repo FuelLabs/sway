@@ -58,6 +58,7 @@ pub enum ParsedAstToken {
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum TypedAstToken {
     TypedTypeAliasDeclaration(ty::TyTypeAliasDecl),
@@ -149,6 +150,7 @@ pub enum TypeDefinition {
     Ident(Ident),
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum TokenAstNode {
     Parsed(ParsedAstToken),

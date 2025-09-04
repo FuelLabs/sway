@@ -14,6 +14,7 @@ pub struct TyScrutinee {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum TyScrutineeVariant {
     Or(Vec<TyScrutinee>),
     CatchAll,
