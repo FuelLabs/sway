@@ -17,96 +17,14 @@ pub use tracing_subscriber::{
 #[cfg(feature = "telemetry")]
 use fuel_telemetry::WorkerGuard;
 
-#[cfg(feature = "telemetry")]
-pub mod telemetry {
-    pub use fuel_telemetry::{
-        debug_telemetry, error_telemetry, info_telemetry, span_telemetry, trace_telemetry,
-        warn_telemetry,
-    };
-}
-
-#[macro_export]
-macro_rules! telemetry_disabled {
-    () => {
-        compile_error!("Telemetry is disabled. Add `features = [\"telemetry\"]` to the `forc-tracing` dependency to enable telemetry");
-    }
-}
-
-#[cfg(not(feature = "telemetry"))]
-pub mod telemetry {
-    #[macro_export]
-    macro_rules! error_telemetry {
-        ($($arg:tt)*) => {
-            if option_env!("FORC_DISABLE_TELEMETRY").is_some() {
-                eprintln!("warning: telemetry is disabled");
-            } else {
-                $crate::telemetry_disabled!();
-            }
-        };
-    }
-
-    #[macro_export]
-    macro_rules! info_telemetry {
-        ($($arg:tt)*) => {
-            if option_env!("FORC_DISABLE_TELEMETRY").is_some() {
-                eprintln!("warning: telemetry is disabled");
-            } else {
-                $crate::telemetry_disabled!();
-            }
-        };
-    }
-
-    #[macro_export]
-    macro_rules! warn_telemetry {
-        ($($arg:tt)*) => {
-            if option_env!("FORC_DISABLE_TELEMETRY").is_some() {
-                eprintln!("warning: telemetry is disabled");
-            } else {
-                $crate::telemetry_disabled!();
-            }
-        };
-    }
-
-    #[macro_export]
-    macro_rules! debug_telemetry {
-        ($($arg:tt)*) => {
-            if option_env!("FORC_DISABLE_TELEMETRY").is_some() {
-                eprintln!("warning: telemetry is disabled");
-            } else {
-                $crate::telemetry_disabled!();
-            }
-        };
-    }
-
-    #[macro_export]
-    macro_rules! trace_telemetry {
-        ($($arg:tt)*) => {
-            if option_env!("FORC_DISABLE_TELEMETRY").is_some() {
-                eprintln!("warning: telemetry is disabled");
-            } else {
-                $crate::telemetry_disabled!();
-            }
-        };
-    }
-
-    #[macro_export]
-    macro_rules! span_telemetry {
-        ($($arg:tt)*) => {
-            if option_env!("FORC_DISABLE_TELEMETRY").is_some() {
-                eprintln!("warning: telemetry is disabled");
-            } else {
-                $crate::telemetry_disabled!();
-            }
-        };
-    }
-
-    pub use {
-        debug_telemetry, error_telemetry, info_telemetry, span_telemetry, trace_telemetry,
-        warn_telemetry,
-    };
-}
+pub mod telemetry;
 
 const ACTION_COLUMN_WIDTH: usize = 12;
+
+/// Check if telemetry is disabled via environment variable
+pub fn is_telemetry_disabled() -> bool {
+    env::var("FORC_DISABLE_TELEMETRY").is_ok()
+}
 
 /// Returns the indentation for the action prefix relative to [ACTION_COLUMN_WIDTH].
 fn get_action_indentation(action: &str) -> String {
