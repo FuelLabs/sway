@@ -2,6 +2,7 @@
 use std::collections::{BTreeMap, HashSet};
 
 use crate::{
+    ast_elements::type_argument::GenericTypeArgument,
     decl_engine::{DeclEngineGet, DeclRefFunction, MaterializeConstGenerics},
     engine_threading::*,
     language::{
@@ -11,7 +12,7 @@ use crate::{
     },
     monomorphization::{monomorphize_with_modpath, MonomorphizeHelper},
     namespace::{
-        IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedDeclaration,
+        IsExtendingExistingImpl, IsImplSelf, Module, ModulePath, ResolvedDeclaration,
         ResolvedTraitImplItem, TraitMap,
     },
     semantic_analysis::{
@@ -796,6 +797,19 @@ impl<'a> TypeCheckContext<'a> {
             &mut filter_item,
         );
 
+        // grab the items from where the argument type is declared
+        if let Some(MethodName::FromTrait { .. }) = method_name {
+            let type_module = self.get_namespace_module_from_type_id(type_id);
+            if let Ok(type_module) = type_module {
+                TraitMap::find_items_and_trait_key_for_type(
+                    type_module,
+                    self.engines,
+                    type_id,
+                    &mut filter_item,
+                );
+            }
+        }
+
         if item_prefix != self.namespace().current_mod_path.as_slice() {
             // grab the module where the type itself is declared
             let type_module = self
@@ -812,6 +826,33 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         Ok(matching_item_decl_refs)
+    }
+
+    fn get_namespace_module_from_type_id(&self, type_id: TypeId) -> Result<&Module, ErrorEmitted> {
+        let type_info = self.engines().te().get(type_id);
+        if type_info.is_alias() {
+            if let TypeInfo::Alias { ty, .. } = &*type_info {
+                if let Some(GenericTypeArgument { type_id, .. }) = ty.as_type_argument() {
+                    return self.get_namespace_module_from_type_id(*type_id);
+                }
+            }
+        }
+
+        let handler = Handler::default();
+        let call_path = match *type_info {
+            TypeInfo::Enum(decl_id) => self.engines().de().get_enum(&decl_id).call_path.clone(),
+            TypeInfo::Struct(decl_id) => self.engines().de().get_struct(&decl_id).call_path.clone(),
+            _ => {
+                return Err(handler.emit_err(CompileError::Internal(
+                    "No call path for type id",
+                    Span::dummy(),
+                )))
+            }
+        };
+
+        let call_path = call_path.rshift();
+        self.namespace()
+            .require_module_from_absolute_path(&handler, &call_path.as_vec_ident())
     }
 
     #[inline]
