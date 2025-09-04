@@ -585,7 +585,7 @@ fn map_from_length(
 ) -> TypeSubstMap {
     match (&l.expr(), &r.expr()) {
         (
-            ConstGenericExpr::AmbiguousVariableExpression { ident },
+            ConstGenericExpr::AmbiguousVariableExpression { ident, .. },
             ConstGenericExpr::Literal { val, .. },
         ) => {
             map.const_generics_materialization.insert(
