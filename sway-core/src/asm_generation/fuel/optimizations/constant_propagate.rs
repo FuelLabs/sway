@@ -140,32 +140,29 @@ impl AbstractInstructionSet {
             }
 
             // Some instructions can be further simplified with the known values.
-            match &mut op.opcode {
-                // Conditional jumps can be simplified if we know the value of the register.
-                Either::Right(ControlFlowOp::Jump {
-                    to,
-                    type_: JumpType::NotZero(reg),
-                }) => {
-                    if let Some(con) = known_values.resolve(reg).and_then(|r| r.value()) {
-                        if con == 0 {
-                            let Entry::Occupied(mut count) = jump_target_labels.entry(*to) else {
-                                unreachable!("Jump target label not found in jump_target_labels");
-                            };
-                            *count.get_mut() -= 1;
-                            if *count.get() == 0 {
-                                // Nobody jumps to this label anymore
-                                jump_target_labels.remove(to);
-                            }
-                            op.opcode = Either::Left(VirtualOp::NOOP);
-                        } else {
-                            op.opcode = Either::Right(ControlFlowOp::Jump {
-                                to: *to,
-                                type_: JumpType::Unconditional,
-                            });
+            if let Either::Right(ControlFlowOp::Jump {
+                to,
+                type_: JumpType::NotZero(reg),
+            }) = &mut op.opcode
+            {
+                if let Some(con) = known_values.resolve(reg).and_then(|r| r.value()) {
+                    if con == 0 {
+                        let Entry::Occupied(mut count) = jump_target_labels.entry(*to) else {
+                            unreachable!("Jump target label not found in jump_target_labels");
+                        };
+                        *count.get_mut() -= 1;
+                        if *count.get() == 0 {
+                            // Nobody jumps to this label anymore
+                            jump_target_labels.remove(to);
                         }
+                        op.opcode = Either::Left(VirtualOp::NOOP);
+                    } else {
+                        op.opcode = Either::Right(ControlFlowOp::Jump {
+                            to: *to,
+                            type_: JumpType::Unconditional,
+                        });
                     }
                 }
-                _ => {}
             }
 
             // Some ops are known to produce certain results, interpret them here.

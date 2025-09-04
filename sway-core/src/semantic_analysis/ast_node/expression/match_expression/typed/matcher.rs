@@ -34,6 +34,7 @@ pub(super) type MatchVarDecl = (Ident, ty::TyExpression);
 /// variable declaration but not both at the same time.
 /// In the case of the catch-all `_` we will have neither a requirement nor
 /// a variable declaration.
+#[allow(clippy::large_enum_variant)]
 pub(super) enum ReqOrVarDecl {
     /// Neither a requirement, nor a variable declaration.
     /// Means a catch-all pattern.
@@ -102,6 +103,7 @@ impl ReqDeclTree {
 }
 
 /// A single node in the [ReqDeclTree].
+#[allow(clippy::large_enum_variant)]
 pub(super) enum ReqDeclNode {
     /// The leaf node. Contains the information about a single requirement or
     /// variable declaration.

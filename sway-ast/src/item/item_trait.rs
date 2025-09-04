@@ -2,6 +2,7 @@ use sway_error::handler::ErrorEmitted;
 
 use crate::priv_prelude::*;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, Serialize)]
 pub enum ItemTraitItem {
     Fn(FnSignature, Option<SemicolonToken>),

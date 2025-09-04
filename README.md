@@ -50,6 +50,35 @@ Confirm the Sway toolchain built successfully:
 cargo run --bin forc -- --help
 ```
 
+## All other scripts/commands
+
+For all other scripts and commands use https://github.com/casey/just:
+
+```
+> just --list
+Available recipes:
+    [automation]
+    update-contract-ids
+    update-fuel-dependencies
+
+    [benchmark]
+    benchmark
+    benchmark-tests
+    collect-gas-usage
+
+    [build]
+    build-highlightjs
+    build-prism
+    generate-sway-lib-std
+
+    [ci]
+    ci-check
+    install-ci-check
+
+    [test]
+    test-forc-fmt-check-panic
+```
+
 ## Contributing to Sway
 
 We welcome contributions to Sway!

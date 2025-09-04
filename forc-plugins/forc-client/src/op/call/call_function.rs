@@ -31,7 +31,7 @@ use fuels_core::{
         ContractId,
     },
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 /// Calls a contract function with the given parameters
 pub async fn call_function(
@@ -115,9 +115,23 @@ pub async fn call_function(
 
     // Get external contracts (either provided or auto-detected)
     let external_contracts = match external_contracts {
-        Some(external_contracts) => external_contracts,
+        Some(contracts) if contracts.first().is_some_and(|s| s.is_empty()) => vec![],
+        Some(contracts) => {
+            // Parse each contract ID
+            contracts
+                .into_iter()
+                .filter(|s| !s.is_empty())
+                .map(|s| {
+                    ContractId::from_str(s.strip_prefix("0x").unwrap_or(&s))
+                        .map_err(|e| anyhow!("Invalid contract ID '{}': {}", s, e))
+                })
+                .collect::<Result<Vec<_>>>()?
+        }
         None => {
             // Automatically retrieve missing contract addresses from the call
+            forc_tracing::println_warning(
+                "Automatically retrieving missing contract addresses for the call",
+            );
             let external_contracts = determine_missing_contracts(
                 &call,
                 wallet.provider(),

@@ -10,6 +10,7 @@ pub enum ImplItemParent {
     Other,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, Serialize)]
 pub enum ItemImplItem {
     Fn(ItemFn),

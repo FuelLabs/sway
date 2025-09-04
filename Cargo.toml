@@ -81,6 +81,8 @@ fuel-abi-types = "0.12"
 # Although ALL versions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball.
+fuel-core = { version = "0.44", default-features = false }
+fuel-core-chain-config = { version = "0.44", default-features = false }
 fuel-core-client = { version = "0.44.0", default-features = false }
 fuel-core-storage = { version = "0.44", default-features = false }
 fuel-core-types = { version = "0.44", default-features = false }

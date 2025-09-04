@@ -793,6 +793,7 @@ pub struct CompiledAsm {
     pub panic_occurrences: PanicOccurrences,
 }
 
+#[allow(clippy::result_large_err)]
 #[allow(clippy::too_many_arguments)]
 pub fn parsed_to_ast(
     handler: &Handler,
