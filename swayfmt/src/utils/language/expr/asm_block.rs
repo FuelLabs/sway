@@ -94,7 +94,7 @@ fn format_asm_block(
                 AsmBlock::close_parenthesis(formatted_code, formatter)?;
             } else {
                 AsmBlock::open_parenthesis(formatted_code, formatter)?;
-                write!(formatted_code, "{}", inline_arguments)?;
+                write!(formatted_code, "{inline_arguments}")?;
                 AsmBlock::close_parenthesis(formatted_code, formatter)?;
             }
 

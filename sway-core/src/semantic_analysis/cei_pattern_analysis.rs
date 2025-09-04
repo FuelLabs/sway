@@ -515,9 +515,6 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
     let type_engine = engines.te();
     let decl_engine = engines.de();
     match &expr.expression {
-        ConstGenericExpression { .. } => {
-            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-        }
         Literal(_)
         | ConstantExpression { .. }
         | ConfigurableExpression { .. }
@@ -525,6 +522,7 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
         | FunctionParameter
         | Break
         | Continue
+        | ConstGenericExpression { .. }
         | AbiName(_) => HashSet::new(),
         // this type of assignment only mutates local variables and not storage
         Reassignment(reassgn) => effects_of_expression(engines, &reassgn.rhs),

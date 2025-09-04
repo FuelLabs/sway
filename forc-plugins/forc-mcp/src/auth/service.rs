@@ -184,7 +184,7 @@ pub async fn create_api_key(
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to create API key: {}", e),
+                error: format!("Failed to create API key: {e}"),
             }),
         )),
     }
@@ -210,7 +210,7 @@ pub async fn list_api_keys(
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to list API keys: {}", e),
+                error: format!("Failed to list API keys: {e}"),
             }),
         )),
     }
@@ -238,7 +238,7 @@ pub async fn get_api_key(
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to get API key: {}", e),
+                error: format!("Failed to get API key: {e}"),
             }),
         )),
     }
@@ -272,7 +272,7 @@ pub async fn delete_api_key(
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse {
-                    error: format!("Failed to check API key: {}", e),
+                    error: format!("Failed to check API key: {e}"),
                 }),
             ));
         }
@@ -283,7 +283,7 @@ pub async fn delete_api_key(
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to delete API key: {}", e),
+                error: format!("Failed to delete API key: {e}"),
             }),
         )),
     }
@@ -316,7 +316,7 @@ pub async fn import_api_keys(
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to import API keys: {}", e),
+                error: format!("Failed to import API keys: {e}"),
             }),
         )),
     }

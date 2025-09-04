@@ -93,10 +93,7 @@ impl Namespace {
             .root_module_mut()
             .submodule_mut(package_relative_path)
             .unwrap_or_else(|| {
-                panic!(
-                    "Could not retrieve submodule for mod_path: {:?}",
-                    package_relative_path
-                );
+                panic!("Could not retrieve submodule for mod_path: {package_relative_path:?}");
             })
     }
 
@@ -174,7 +171,11 @@ impl Namespace {
     }
 
     pub fn module_from_absolute_path(&self, path: &[Ident]) -> Option<&Module> {
-        self.current_package.module_from_absolute_path(path)
+        if path.is_empty() {
+            None
+        } else {
+            self.current_package.module_from_absolute_path(path)
+        }
     }
 
     // Like module_from_absolute_path, but throws an error if the module is not found

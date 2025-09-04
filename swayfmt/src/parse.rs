@@ -9,7 +9,7 @@ pub fn with_handler<T>(
 ) -> Result<T, ParseFileError> {
     let handler = <_>::default();
     let res = run(&handler);
-    let (errors, _warnings) = handler.consume();
+    let (errors, _warnings, _infos) = handler.consume();
     res.ok()
         .filter(|_| errors.is_empty())
         .ok_or(ParseFileError(errors))

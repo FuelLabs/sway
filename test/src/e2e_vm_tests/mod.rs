@@ -153,7 +153,7 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
                             let data = data.as_deref().unwrap();
                             let s = u64::from_be_bytes(data.try_into().unwrap());
 
-                            text_log.push_str(&format!("{}", s));
+                            text_log.push_str(&format!("{s}"));
                         }
                         2 => {
                             text_log.push('\n');
@@ -422,11 +422,7 @@ impl TestContext {
                                 }
                                 Syscall::Fflush { .. } => {}
                                 Syscall::Unknown { ra, rb, rc, rd } => {
-                                    let _ = writeln!(
-                                        output,
-                                        "Unknown ecal: {} {} {} {}",
-                                        ra, rb, rc, rd
-                                    );
+                                    let _ = writeln!(output, "Unknown ecal: {ra} {rb} {rc} {rd}");
                                 }
                             }
                         }
@@ -461,7 +457,7 @@ impl TestContext {
                         },
                         revm::primitives::ExecutionResult::Revert { .. } => TestResult::Result(0),
                         revm::primitives::ExecutionResult::Halt { reason, .. } => {
-                            panic!("EVM exited with unhandled reason: {:?}", reason);
+                            panic!("EVM exited with unhandled reason: {reason:?}");
                         }
                     },
                 };
@@ -560,7 +556,7 @@ impl TestContext {
 
                 if result.is_ok() {
                     if verbose {
-                        eprintln!("[{}]", output);
+                        eprintln!("[{output}]");
                     }
 
                     Err(anyhow::Error::msg("Test compiles but is expected to fail"))
@@ -673,11 +669,20 @@ impl TestContext {
                 result.map(|tested_pkgs| {
                     let mut failed = vec![];
                     for pkg in tested_pkgs {
+                        if !pkg.tests.is_empty() {
+                            println!();
+                        }
                         for test in pkg.tests.into_iter() {
                             if verbose {
-                                println!("Test: {} {}", test.name, test.passed());
+                                //"test incorrect_def_modeling ... ok (17.673µs, 59 gas)"
+                                println!("    test {} ... {} ({:?}, {} gas)", 
+                                    test.name,
+                                    if test.passed() { "ok" } else { "nok" },
+                                    test.duration,
+                                    test.gas_used,
+                                );
                                 for log in test.logs.iter() {
-                                    println!("{:?}", log);
+                                    println!("{log:?}");
                                 }
                             }
 
@@ -698,8 +703,7 @@ impl TestContext {
                                         let var_value = decoded_log_data.value;
                                         if verbose {
                                             println!(
-                                                "Decoded log value: {}, log rb: {}",
-                                                var_value, rb
+                                                "Decoded log value: {var_value}, log rb: {rb}"
                                             );
                                         }
                                         decoded_logs.push(var_value);
@@ -722,17 +726,16 @@ impl TestContext {
                     let expected_decoded_test_logs = expected_decoded_test_logs.unwrap_or_default();
 
                     if !failed.is_empty() {
-                        println!("FAILED!! output:\n{}", output);
+                        println!("FAILED!! output:\n{output}");
                         panic!(
                             "For {name}\n{} tests failed:\n{}",
                             failed.len(),
                             failed.into_iter().collect::<String>()
                         );
                     } else if expected_decoded_test_logs != decoded_logs {
-                        println!("FAILED!! output:\n{}", output);
+                        println!("FAILED!! output:\n{output}");
                         panic!(
-                            "For {name}\ncollected decoded logs: {:?}\nexpected decoded logs: {:?}",
-                            decoded_logs, expected_decoded_test_logs
+                            "For {name}\ncollected decoded logs: {decoded_logs:?}\nexpected decoded logs: {expected_decoded_test_logs:?}"
                         );
                     }
                 })
@@ -787,6 +790,9 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     }
     if filter_config.contract_only {
         tests.retain(|t| t.category == TestCategory::RunsWithContract);
+    }
+    if filter_config.forc_test_only {
+        tests.retain(|t| t.category == TestCategory::UnitTestsPass);
     }
     if filter_config.first_only && !tests.is_empty() {
         tests = vec![tests.remove(0)];

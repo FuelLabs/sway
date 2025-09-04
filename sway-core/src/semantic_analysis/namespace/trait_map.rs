@@ -1505,7 +1505,7 @@ impl TraitMap {
                 handler.emit_err(CompileError::TraitConstraintNotSatisfied {
                     type_id: type_id.index(),
                     ty: engines.help_out(type_id).to_string(),
-                    trait_name: format!("{}{}", trait_name, type_arguments_string),
+                    trait_name: format!("{trait_name}{type_arguments_string}"),
                     span: access_span.clone(),
                 });
             }

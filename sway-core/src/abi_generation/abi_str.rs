@@ -25,7 +25,7 @@ impl TypeId {
             .get(*self)
             .abi_str(handler, ctx, engines, true)?;
         if self.is_generic_parameter(engines, resolved_type_id) {
-            Ok(format!("generic {}", self_abi_str))
+            Ok(format!("generic {self_abi_str}"))
         } else {
             match (
                 &*type_engine.get(*self),
@@ -84,9 +84,9 @@ impl TypeId {
                     } else {
                         "_".to_string()
                     };
-                    Ok(format!("[{}]", inner_type))
+                    Ok(format!("[{inner_type}]"))
                 }
-                (TypeInfo::Custom { .. }, _) => Ok(format!("generic {}", self_abi_str)),
+                (TypeInfo::Custom { .. }, _) => Ok(format!("generic {self_abi_str}")),
                 _ => type_engine
                     .get(resolved_type_id)
                     .abi_str(handler, ctx, engines, true),
@@ -207,7 +207,7 @@ impl TypeInfo {
             TraitType {
                 name,
                 trait_type_id: _,
-            } => Ok(format!("trait type {}", name)),
+            } => Ok(format!("trait type {name}")),
             Ref {
                 to_mutable_value,
                 referenced_type,

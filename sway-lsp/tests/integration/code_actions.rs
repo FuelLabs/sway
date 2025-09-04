@@ -83,7 +83,7 @@ fn create_changes_for_import(
             character: end_char,
         },
     };
-    create_changes_map(uri, range, &format!("use {};{}", call_path, newline))
+    create_changes_map(uri, range, &format!("use {call_path};{newline}"))
 }
 
 fn create_changes_for_qualify(
@@ -110,7 +110,7 @@ async fn send_request(server: &ServerState, params: &CodeActionParams) -> Vec<Co
     request::handle_code_action(server, params.clone())
         .await
         .unwrap()
-        .unwrap_or_else(|| panic!("Empty response from server for request: {:#?}", params))
+        .unwrap_or_else(|| panic!("Empty response from server for request: {params:#?}"))
 }
 
 pub(crate) async fn code_action_abi_request(server: &ServerState, uri: &Url) {
@@ -514,14 +514,14 @@ pub(crate) async fn code_action_auto_import_struct_request(server: &ServerState,
     let expected = vec![
         create_code_action(
             uri.clone(),
-            format!("Import `{}`", call_path),
+            format!("Import `{call_path}`"),
             create_changes_for_import(uri, 5, 0, call_path, "\n"),
             None,
             Some(CodeActionKind::QUICKFIX),
         ),
         create_code_action(
             uri.clone(),
-            format!("Qualify as `{}`", call_path),
+            format!("Qualify as `{call_path}`"),
             create_changes_for_qualify(uri, 8, 12, 22, call_path),
             None,
             Some(CodeActionKind::QUICKFIX),
@@ -557,14 +557,14 @@ pub(crate) async fn code_action_auto_import_struct_request(server: &ServerState,
     let expected = vec![
         create_code_action(
             uri.clone(),
-            format!("Import `{}`", call_path),
+            format!("Import `{call_path}`"),
             create_changes_for_import(uri, 5, 0, call_path, "\n"),
             None,
             Some(CodeActionKind::QUICKFIX),
         ),
         create_code_action(
             uri.clone(),
-            format!("Qualify as `{}`", call_path),
+            format!("Qualify as `{call_path}`"),
             create_changes_for_qualify(uri, 17, 12, 22, call_path),
             None,
             Some(CodeActionKind::QUICKFIX),
@@ -604,14 +604,14 @@ pub(crate) async fn code_action_auto_import_enum_request(server: &ServerState, u
     let expected = vec![
         create_code_action(
             uri.clone(),
-            format!("Import `{}`", call_path),
+            format!("Import `{call_path}`"),
             create_changes_for_import(uri, 5, 0, call_path, "\n"),
             None,
             Some(CodeActionKind::QUICKFIX),
         ),
         create_code_action(
             uri.clone(),
-            format!("Qualify as `{}`", call_path),
+            format!("Qualify as `{call_path}`"),
             create_changes_for_qualify(uri, 23, 28, 37, call_path),
             None,
             Some(CodeActionKind::QUICKFIX),
@@ -647,14 +647,14 @@ pub(crate) async fn code_action_auto_import_enum_request(server: &ServerState, u
     let expected = vec![
         create_code_action(
             uri.clone(),
-            format!("Import `{}`", call_path),
+            format!("Import `{call_path}`"),
             create_changes_for_import(uri, 5, 0, call_path, "\n"),
             None,
             Some(CodeActionKind::QUICKFIX),
         ),
         create_code_action(
             uri.clone(),
-            format!("Qualify as `{}`", call_path),
+            format!("Qualify as `{call_path}`"),
             create_changes_for_qualify(uri, 16, 11, 19, call_path),
             None,
             Some(CodeActionKind::QUICKFIX),
@@ -695,14 +695,14 @@ pub(crate) async fn code_action_auto_import_function_request(server: &ServerStat
     let expected = vec![
         create_code_action(
             uri.clone(),
-            format!("Import `{}`", call_path),
+            format!("Import `{call_path}`"),
             create_changes_for_import(uri, 5, 0, call_path, "\n"),
             None,
             Some(CodeActionKind::QUICKFIX),
         ),
         create_code_action(
             uri.clone(),
-            format!("Qualify as `{}`", call_path),
+            format!("Qualify as `{call_path}`"),
             create_changes_for_qualify(uri, 13, 4, 12, call_path),
             None,
             Some(CodeActionKind::QUICKFIX),
@@ -743,14 +743,14 @@ pub(crate) async fn code_action_auto_import_constant_request(server: &ServerStat
     let expected = vec![
         create_code_action(
             uri.clone(),
-            format!("Import `{}`", call_path),
+            format!("Import `{call_path}`"),
             create_changes_for_import(uri, 5, 23, "test_mod::{TEST_CONST, test_fun}", ""),
             None,
             Some(CodeActionKind::QUICKFIX),
         ),
         create_code_action(
             uri.clone(),
-            format!("Qualify as `{}`", call_path),
+            format!("Qualify as `{call_path}`"),
             create_changes_for_qualify(uri, 19, 12, 22, call_path),
             None,
             Some(CodeActionKind::QUICKFIX),
@@ -788,14 +788,14 @@ pub(crate) async fn code_action_auto_import_trait_request(server: &ServerState, 
     let expected = vec![
         create_code_action(
             uri.clone(),
-            format!("Import `{}`", call_path),
+            format!("Import `{call_path}`"),
             create_changes_for_import(uri, 5, 0, call_path, "\n"),
             None,
             Some(CodeActionKind::QUICKFIX),
         ),
         create_code_action(
             uri.clone(),
-            format!("Qualify as `{}`", call_path),
+            format!("Qualify as `{call_path}`"),
             create_changes_for_qualify(uri, 34, 5, 12, call_path),
             None,
             Some(CodeActionKind::QUICKFIX),
@@ -831,14 +831,14 @@ pub(crate) async fn code_action_auto_import_trait_request(server: &ServerState, 
     let expected = vec![
         create_code_action(
             uri.clone(),
-            format!("Import `{}`", call_path),
+            format!("Import `{call_path}`"),
             create_changes_for_import(uri, 5, 0, call_path, "\n"),
             None,
             Some(CodeActionKind::QUICKFIX),
         ),
         create_code_action(
             uri.clone(),
-            format!("Qualify as `{}`", call_path),
+            format!("Qualify as `{call_path}`"),
             create_changes_for_qualify(uri, 30, 5, 14, call_path),
             None,
             Some(CodeActionKind::QUICKFIX),
@@ -878,28 +878,28 @@ pub(crate) async fn code_action_auto_import_alias_request(server: &ServerState, 
     let expected = vec![
         create_code_action(
             uri.clone(),
-            format!("Import `{}`", call_path1),
+            format!("Import `{call_path1}`"),
             create_changes_for_import(uri, 5, 0, call_path1, "\n"),
             None,
             Some(CodeActionKind::QUICKFIX),
         ),
         create_code_action(
             uri.clone(),
-            format!("Import `{}`", call_path2),
+            format!("Import `{call_path2}`"),
             create_changes_for_import(uri, 5, 23, "test_mod::{A, test_fun}", ""),
             None,
             Some(CodeActionKind::QUICKFIX),
         ),
         create_code_action(
             uri.clone(),
-            format!("Qualify as `{}`", call_path1),
+            format!("Qualify as `{call_path1}`"),
             create_changes_for_qualify(uri, 14, 4, 5, call_path1),
             None,
             Some(CodeActionKind::QUICKFIX),
         ),
         create_code_action(
             uri.clone(),
-            format!("Qualify as `{}`", call_path2),
+            format!("Qualify as `{call_path2}`"),
             create_changes_for_qualify(uri, 14, 4, 5, call_path2),
             None,
             Some(CodeActionKind::QUICKFIX),

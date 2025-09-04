@@ -373,7 +373,7 @@ pub(crate) fn edit_manifest_dependency_paths(
         .parse::<toml_edit::DocumentMut>()
         .map_err(|err| DocumentError::IOError {
             path: manifest_path.to_string_lossy().to_string(),
-            error: format!("Failed to parse TOML: {}", err),
+            error: format!("Failed to parse TOML: {err}"),
         })?;
 
     let manifest =

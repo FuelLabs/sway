@@ -633,9 +633,8 @@ pub(crate) fn allocate_registers(
 
                     return Err(CompileError::InternalOwned(
                         format!(
-                            "The allocator cannot resolve a register mapping for function {}. \
-                                     Using #[inline(never)] on some functions may help.",
-                            comment
+                            "The allocator cannot resolve a register mapping for function {comment}. \
+                                     Using #[inline(never)] on some functions may help."
                         ),
                         Span::dummy(),
                     ));

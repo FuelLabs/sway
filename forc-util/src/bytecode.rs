@@ -103,7 +103,7 @@ where
                 });
 
             let hash_result = hasher.finalize();
-            let bytecode_id = format!("{:x}", hash_result);
+            let bytecode_id = format!("{hash_result:x}");
             return Ok(bytecode_id);
         }
     }

@@ -18,7 +18,7 @@ use crate::{
     module::{Kind, ModuleContent, ModuleIterator},
     value::ValueContent,
     variable::LocalVarContent,
-    Constant, ConstantContent, GlobalVarContent, Type, TypeContent,
+    Constant, ConstantContent, GlobalVarContent, StorageKeyContent, Type, TypeContent,
 };
 
 const PANIC_REVERT_CODE_LOWER_BOUND: u64 = 0xffff_ffff_0000_0000;
@@ -36,6 +36,7 @@ pub struct Context<'eng> {
     pub(crate) values: SlotMap<DefaultKey, ValueContent>,
     pub(crate) local_vars: SlotMap<DefaultKey, LocalVarContent>,
     pub(crate) global_vars: SlotMap<DefaultKey, GlobalVarContent>,
+    pub(crate) storage_keys: SlotMap<DefaultKey, StorageKeyContent>,
     pub(crate) types: SlotMap<DefaultKey, TypeContent>,
     pub(crate) type_map: FxHashMap<TypeContent, Type>,
     pub(crate) constants: SlotMap<DefaultKey, ConstantContent>,
@@ -62,6 +63,7 @@ impl<'eng> Context<'eng> {
             values: Default::default(),
             local_vars: Default::default(),
             global_vars: Default::default(),
+            storage_keys: Default::default(),
             types: Default::default(),
             type_map: Default::default(),
             constants: Default::default(),

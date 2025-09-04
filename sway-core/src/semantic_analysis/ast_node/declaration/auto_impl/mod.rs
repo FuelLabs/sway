@@ -68,8 +68,8 @@ where
 
         let r = p.parse();
 
-        assert!(!handler.has_errors(), "{:?}", handler);
-        assert!(!handler.has_warnings(), "{:?}", handler);
+        assert!(!handler.has_errors(), "{handler:?}");
+        assert!(!handler.has_warnings(), "{handler:?}");
 
         assert!(!p.has_errors());
         assert!(!p.has_warnings());
@@ -188,7 +188,7 @@ where
                 original_source_id.map(|x| engines.se().get_file_name(x))
             );
         }
-        assert!(!handler.has_warnings(), "{:?}", handler);
+        assert!(!handler.has_warnings(), "{handler:?}");
 
         let mut ctx = self.ctx.by_ref();
         let _r = TyDecl::collect(

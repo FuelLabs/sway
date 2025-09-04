@@ -151,8 +151,8 @@ impl std::fmt::Display for AbiSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AbiSource::File(path) => write!(f, "{}", path.display()),
-            AbiSource::Url(url) => write!(f, "{}", url),
-            AbiSource::String(s) => write!(f, "{}", s),
+            AbiSource::Url(url) => write!(f, "{url}"),
+            AbiSource::String(s) => write!(f, "{s}"),
         }
     }
 }
@@ -403,10 +403,17 @@ pub struct Command {
     pub gas: Option<Gas>,
 
     /// The external contract addresses to use for the call
-    /// If none are provided, the call will automatically populate external contracts by making a dry-run calls
-    /// to the node, and extract the contract addresses based on the revert reason
-    #[clap(long, alias = "contracts", help_heading = "CONTRACT")]
-    pub external_contracts: Option<Vec<ContractId>>,
+    /// If none are provided, the call will automatically populate external contracts by making dry-run calls
+    /// to the node, and extract the contract addresses based on the revert reason.
+    /// Use an empty string '' to explicitly specify no external contracts.
+    /// Multiple contract IDs can be provided separated by commas.
+    #[clap(
+        long,
+        alias = "contracts",
+        value_delimiter = ',',
+        help_heading = "CONTRACT"
+    )]
+    pub external_contracts: Option<Vec<String>>,
 
     /// Output format for the call result
     #[clap(long, short = 'o', default_value = "default", help_heading = "OUTPUT")]
@@ -471,34 +478,28 @@ impl Command {
 fn parse_contract_abi(s: &str) -> Result<(ContractId, AbiSource), String> {
     let parts: Vec<&str> = s.trim().split(':').collect();
     let [contract_id_str, abi_path_str] = parts.try_into().map_err(|_| {
-        format!(
-            "Invalid contract ABI format: '{}'. Expected format: contract_id:abi_path",
-            s
-        )
+        format!("Invalid contract ABI format: '{s}'. Expected format: contract_id:abi_path")
     })?;
 
     let contract_id =
         ContractId::from_str(&format!("0x{}", contract_id_str.trim_start_matches("0x")))
-            .map_err(|e| format!("Invalid contract ID '{}': {}", contract_id_str, e))?;
+            .map_err(|e| format!("Invalid contract ID '{contract_id_str}': {e}"))?;
 
     let abi_path = AbiSource::try_from(abi_path_str.to_string())
-        .map_err(|e| format!("Invalid ABI path '{}': {}", abi_path_str, e))?;
+        .map_err(|e| format!("Invalid ABI path '{abi_path_str}': {e}"))?;
 
     Ok((contract_id, abi_path))
 }
 
 fn parse_label(s: &str) -> Result<(ContractId, String), String> {
     let parts: Vec<&str> = s.trim().split(':').collect();
-    let [contract_id_str, label] = parts.try_into().map_err(|_| {
-        format!(
-            "Invalid label format: '{}'. Expected format: contract_id:label",
-            s
-        )
-    })?;
+    let [contract_id_str, label] = parts
+        .try_into()
+        .map_err(|_| format!("Invalid label format: '{s}'. Expected format: contract_id:label"))?;
 
     let contract_id =
         ContractId::from_str(&format!("0x{}", contract_id_str.trim_start_matches("0x")))
-            .map_err(|e| format!("Invalid contract ID '{}': {}", contract_id_str, e))?;
+            .map_err(|e| format!("Invalid contract ID '{contract_id_str}': {e}"))?;
 
     Ok((contract_id, label.to_string()))
 }

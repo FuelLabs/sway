@@ -491,10 +491,7 @@ fn print_migration_finished_action(num_of_postponed_steps: usize) {
 fn print_continue_migration_action(txt: &str) {
     println_action_yellow(
         "Continue",
-        &format!(
-            "{} and re-run `forc migrate` to finish the migration process",
-            txt
-        ),
+        &format!("{txt} and re-run `forc migrate` to finish the migration process"),
     );
 }
 

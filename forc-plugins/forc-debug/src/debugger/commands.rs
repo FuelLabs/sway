@@ -159,13 +159,13 @@ impl DebugCommand {
                 if let Some((contract_id, abi_path)) = abi_arg.split_once(':') {
                     let contract_id = contract_id
                         .parse::<ContractId>()
-                        .map_err(|_| format!("Invalid contract ID: {}", contract_id))?;
+                        .map_err(|_| format!("Invalid contract ID: {contract_id}"))?;
                     abi_mappings.push(AbiMapping::Contract {
                         contract_id,
                         abi_path: abi_path.to_string(),
                     });
                 } else {
-                    return Err(format!("Invalid --abi argument: {}", abi_arg));
+                    return Err(format!("Invalid --abi argument: {abi_arg}"));
                 }
                 i += 2;
             } else if args[i].ends_with(".json") {
@@ -210,7 +210,7 @@ impl DebugCommand {
         };
 
         let offset = crate::cli::parse_int(offset_str)
-            .ok_or_else(|| format!("Invalid offset: {}", offset_str))? as u64;
+            .ok_or_else(|| format!("Invalid offset: {offset_str}"))? as u64;
 
         Ok(DebugCommand::SetBreakpoint {
             contract_id,
@@ -226,7 +226,7 @@ impl DebugCommand {
             } else if let Some(index) = crate::names::register_index(arg) {
                 indices.push(index as u32);
             } else {
-                return Err(format!("Unknown register: {}", arg));
+                return Err(format!("Unknown register: {arg}"));
             }
         }
         Ok(DebugCommand::GetRegisters { indices })
@@ -237,13 +237,13 @@ impl DebugCommand {
 
         let offset = args
             .first()
-            .map(|a| crate::cli::parse_int(a).ok_or_else(|| format!("Invalid offset: {}", a)))
+            .map(|a| crate::cli::parse_int(a).ok_or_else(|| format!("Invalid offset: {a}")))
             .transpose()?
             .unwrap_or(0) as u32;
 
         let limit = args
             .get(1)
-            .map(|a| crate::cli::parse_int(a).ok_or_else(|| format!("Invalid limit: {}", a)))
+            .map(|a| crate::cli::parse_int(a).ok_or_else(|| format!("Invalid limit: {a}")))
             .transpose()?
             .unwrap_or(WORD_SIZE * (VM_MAX_RAM as usize)) as u32;
 

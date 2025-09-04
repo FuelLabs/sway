@@ -358,7 +358,7 @@ async fn test_simple_deploy() {
         ..Default::default()
     };
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url),
         target: None,
@@ -377,7 +377,7 @@ async fn test_simple_deploy() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "440b559604961bdbeaa31421823f34e45d246b5d139aa4886e5e1cf2901fc925",
+            "b3186dd386c846c80366df07130a4c6d6b9aae183298bf18166897a65007b3ac",
         )
         .unwrap(),
         proxy: None,
@@ -400,7 +400,7 @@ async fn test_deploy_submit_only() {
         ..Default::default()
     };
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
 
     let target = NodeTarget {
         node_url: Some(node_url),
@@ -421,7 +421,7 @@ async fn test_deploy_submit_only() {
     node.kill().unwrap();
     let expected = vec![DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "440b559604961bdbeaa31421823f34e45d246b5d139aa4886e5e1cf2901fc925",
+            "b3186dd386c846c80366df07130a4c6d6b9aae183298bf18166897a65007b3ac",
         )
         .unwrap(),
         proxy: None,
@@ -449,7 +449,7 @@ async fn test_deploy_fresh_proxy() {
         ..Default::default()
     };
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url),
         target: None,
@@ -468,12 +468,12 @@ async fn test_deploy_fresh_proxy() {
     node.kill().unwrap();
     let impl_contract = DeployedPackage::Contract(DeployedContract {
         id: ContractId::from_str(
-            "440b559604961bdbeaa31421823f34e45d246b5d139aa4886e5e1cf2901fc925",
+            "b3186dd386c846c80366df07130a4c6d6b9aae183298bf18166897a65007b3ac",
         )
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "19d465200575ebd085300242002efcda38db99e22449a5c1346588efe9ced7f7",
+                "344f0e98c784ca03463f992c65cd3f321855c9ad22aa1309ec0d4f6d56dbb004",
             )
             .unwrap(),
         ),
@@ -502,7 +502,7 @@ async fn test_proxy_contract_re_routes_call() {
         ..Default::default()
     };
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url.clone()),
         target: None,
@@ -638,7 +638,7 @@ async fn test_non_owner_fails_to_set_target() {
         ..Default::default()
     };
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url.clone()),
         target: None,
@@ -706,7 +706,7 @@ async fn test_non_owner_fails_to_set_target() {
 #[test]
 fn test_deploy_interactive_missing_wallet() -> Result<(), rexpect::error::Error> {
     let (mut node, port) = run_node();
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
 
     // Spawn the forc-deploy binary using cargo run
     let project_dir = test_data_path().join("standalone_contract");
@@ -743,7 +743,7 @@ async fn chunked_deploy() {
         ..Default::default()
     };
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url),
         target: None,
@@ -777,7 +777,7 @@ async fn chunked_deploy_re_routes_calls() {
         ..Default::default()
     };
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url.clone()),
         target: None,
@@ -822,7 +822,7 @@ async fn chunked_deploy_with_proxy_re_routes_call() {
         ..Default::default()
     };
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url.clone()),
         target: None,
@@ -857,7 +857,7 @@ async fn can_deploy_script() {
     copy_dir(&project_dir, tmp_dir.path()).unwrap();
     patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url.clone()),
         target: None,
@@ -889,7 +889,7 @@ async fn deploy_script_calls() {
     copy_dir(&project_dir, tmp_dir.path()).unwrap();
     patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url.clone()),
         target: None,
@@ -922,7 +922,7 @@ async fn deploy_script_calls() {
         ..Default::default()
     };
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url.clone()),
         target: None,
@@ -1015,7 +1015,7 @@ async fn can_deploy_predicates() {
     copy_dir(&project_dir, tmp_dir.path()).unwrap();
     patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url.clone()),
         target: None,
@@ -1047,7 +1047,7 @@ async fn deployed_predicate_call() {
     copy_dir(&project_dir, tmp_dir.path()).unwrap();
     patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url.clone()),
         target: None,
@@ -1309,7 +1309,7 @@ async fn offset_shifted_abi_works() {
         ..Default::default()
     };
 
-    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let node_url = format!("http://127.0.0.1:{port}/v1/graphql");
     let target = NodeTarget {
         node_url: Some(node_url.clone()),
         target: None,

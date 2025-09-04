@@ -57,19 +57,18 @@ impl Debugger {
                 for decoded in decoded_receipts {
                     match decoded {
                         DecodedReceipt::Regular(receipt) => {
-                            writeln!(writer, "Receipt: {:?}", receipt)?;
+                            writeln!(writer, "Receipt: {receipt:?}")?;
                         }
                         DecodedReceipt::LogData {
                             receipt,
                             decoded_value,
                             contract_id,
                         } => {
-                            writeln!(writer, "Receipt: {:?}", receipt)?;
+                            writeln!(writer, "Receipt: {receipt:?}")?;
                             if let Some(value) = decoded_value {
                                 writeln!(
                                     writer,
-                                    "Decoded log value: {}, from contract: {}",
-                                    value, contract_id
+                                    "Decoded log value: {value}, from contract: {contract_id}"
                                 )?;
                             }
                         }
@@ -108,7 +107,7 @@ impl Debugger {
                 }
             }
             DebugResponse::Error(err) => {
-                writeln!(writer, "Error: {}", err)?;
+                writeln!(writer, "Error: {err}")?;
             }
         }
         Ok(())
@@ -225,7 +224,7 @@ impl Debugger {
         for index in indices {
             if index >= VM_REGISTER_COUNT as u32 {
                 return Err(Error::ArgumentError(crate::error::ArgumentError::Invalid(
-                    format!("Register index too large: {}", index),
+                    format!("Register index too large: {index}"),
                 )));
             }
             let value = self

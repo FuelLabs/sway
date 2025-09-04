@@ -607,6 +607,9 @@ fn inline_instruction(
                 new_block.append(context).get_local(map_local(local_var))
             }
             InstOp::GetGlobal(global_var) => new_block.append(context).get_global(global_var),
+            InstOp::GetStorageKey(storage_key) => {
+                new_block.append(context).get_storage_key(storage_key)
+            }
             InstOp::GetConfig(module, name) => new_block.append(context).get_config(module, name),
             InstOp::IntToPtr(value, ty) => {
                 new_block.append(context).int_to_ptr(map_value(value), ty)

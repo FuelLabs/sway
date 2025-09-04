@@ -211,10 +211,7 @@ fn to_bytecode_mut(
             FuelAsmData::DatasectionOffset(data) => {
                 if build_config.print_bytecode {
                     print!("{}{:#010x} ", " ".repeat(indentation), bytecode.len());
-                    println!(
-                        "                                                ;; {:?}",
-                        data
-                    );
+                    println!("                                                ;; {data:?}");
                 }
 
                 // Static assert to ensure that we're only dealing with DataSectionOffsetPlaceholder,
@@ -227,10 +224,7 @@ fn to_bytecode_mut(
             FuelAsmData::ConfigurablesOffset(data) => {
                 if build_config.print_bytecode {
                     print!("{}{:#010x} ", " ".repeat(indentation), bytecode.len());
-                    println!(
-                        "                                                ;; {:?}",
-                        data
-                    );
+                    println!("                                                ;; {data:?}");
                 }
 
                 // Static assert to ensure that we're only dealing with ConfigurablesOffsetPlaceholder,

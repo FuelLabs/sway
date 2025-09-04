@@ -132,7 +132,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                         VirtualRegister::Constant(ConstantRegister::FuncArg0),
                         dataid,
                     )),
-                    comment: format!("get pointer to configurable {} default value", name),
+                    comment: format!("get pointer to configurable {name} default value"),
                     owning_span: None,
                 });
 
@@ -145,7 +145,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                             "Error representing encoded_bytes length as 12-bit immediate",
                         ),
                     )),
-                    comment: format!("get length of configurable {} default value", name),
+                    comment: format!("get length of configurable {name} default value"),
                     owning_span: None,
                 });
 
@@ -158,7 +158,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                             "Error representing global offset as 12-bit immediate",
                         ),
                     )),
-                    comment: format!("get pointer to configurable {} stack address", name),
+                    comment: format!("get pointer to configurable {name} stack address"),
                     owning_span: None,
                 });
 
@@ -168,7 +168,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                         to: *decode_fn_label,
                         type_: JumpType::Call,
                     }),
-                    comment: format!("decode configurable {}", name),
+                    comment: format!("decode configurable {name}"),
                     owning_span: None,
                 });
             }
@@ -342,8 +342,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
         }
 
+        let module = block.get_function(self.context).get_module(self.context);
         for instr_val in block.instruction_iter(self.context) {
-            self.compile_instruction(handler, &instr_val, func_is_entry)?;
+            self.compile_instruction(handler, &instr_val, func_is_entry, module)?;
         }
         Ok(())
     }
@@ -353,6 +354,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         handler: &Handler,
         instr_val: &Value,
         func_is_entry: bool,
+        module: Module,
     ) -> Result<(), ErrorEmitted> {
         let Some(instruction) = instr_val.get_instruction(self.context) else {
             return Err(handler.emit_err(CompileError::Internal(
@@ -479,8 +481,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     indices,
                 } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
                 InstOp::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
-                InstOp::GetGlobal(global_var) => self.compile_get_global(instr_val, global_var),
+                InstOp::GetGlobal(global_var) => {
+                    self.compile_get_global(instr_val, global_var, module)
+                }
                 InstOp::GetConfig(_, name) => self.compile_get_config(instr_val, name),
+                InstOp::GetStorageKey(storage_key) => {
+                    self.compile_get_storage_key(instr_val, storage_key, module)
+                }
                 InstOp::IntToPtr(val, _) => self.compile_no_op_move(instr_val, val),
                 InstOp::Load(src_val) => self.compile_load(instr_val, src_val),
                 InstOp::MemCopyBytes {
@@ -638,10 +645,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
             (
                 ret_reg,
-                format!(
-                    "return value from ASM block with return register {}",
-                    ret_reg_name
-                ),
+                format!("return value from ASM block with return register {ret_reg_name}"),
             )
         } else {
             // If the return register is not specified, the return value is unit, `()`, and we
@@ -1252,6 +1256,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         &mut self,
         instr_val: &Value,
         global_var: &GlobalVar,
+        module: Module,
     ) -> Result<(), CompileError> {
         if global_var.is_mutable(self.context) {
             todo!("Implement mutable global variables");
@@ -1261,6 +1266,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .md_mgr
             .val_to_span(self.context, *instr_val)
             .unwrap_or_else(Span::dummy);
+        let name = module
+            .lookup_global_variable_name(self.context, global_var)
+            .unwrap_or_else(|| "constant".into());
+
         let Some(constant) = global_var.get_initializer(self.context) else {
             return Err(CompileError::Internal(
                 "Global constants (immutable variables) must have an initializer.",
@@ -1279,7 +1288,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let reg = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::AddrDataId(reg.clone(), data_id.clone())),
-            comment: "get constant's address in data section".into(),
+            comment: format!("get {name}'s address in data section"),
             owning_span: Some(span),
         });
         self.reg_map.insert(*instr_val, reg);
@@ -1395,7 +1404,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         "offset must fit in 12 bits",
                     ),
                 )),
-                comment: format!("get address of configurable {}", name),
+                comment: format!("get address of configurable {name}"),
                 owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
             });
             self.reg_map.insert(*addr_val, addr_reg);
@@ -1407,12 +1416,44 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     addr_reg.clone(),
                     dataid.clone(),
                 )),
-                comment: format!("get address of configurable {}", name),
+                comment: format!("get address of configurable {name}"),
                 owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
             });
             self.reg_map.insert(*addr_val, addr_reg);
         }
 
+        Ok(())
+    }
+
+    fn compile_get_storage_key(
+        &mut self,
+        instr_val: &Value,
+        storage_key: &StorageKey,
+        module: Module,
+    ) -> Result<(), CompileError> {
+        let span = self
+            .md_mgr
+            .val_to_span(self.context, *instr_val)
+            .unwrap_or_else(Span::dummy);
+        let path = module
+            .lookup_storage_key_path(self.context, storage_key)
+            .unwrap_or("storage key");
+
+        let entry = Entry::from_constant(
+            self.context,
+            storage_key.get_key(self.context).get_content(self.context),
+            EntryName::NonConfigurable,
+            None,
+        );
+        let data_id = self.data_section.insert_data_value(entry);
+
+        let reg = self.reg_seqr.next();
+        self.cur_bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::AddrDataId(reg.clone(), data_id.clone())),
+            comment: format!("get {path}'s address in data section"),
+            owning_span: Some(span),
+        });
+        self.reg_map.insert(*instr_val, reg);
         Ok(())
     }
 

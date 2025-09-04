@@ -65,6 +65,8 @@ pub mod parser;
 pub use parser::*;
 pub mod variable;
 pub use variable::*;
+pub mod storage_key;
+pub use storage_key::*;
 pub mod pass_manager;
 pub use pass_manager::*;
 pub mod pretty;

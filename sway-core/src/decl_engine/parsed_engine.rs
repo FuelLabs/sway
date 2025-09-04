@@ -450,7 +450,7 @@ impl ParsedDeclEngine {
         for f in self.function_slab.values() {
             let _ = write!(&mut s, "Function: {}", f.name);
             for node in f.body.contents.iter() {
-                let _ = write!(&mut s, "    Node: {:#?}", node);
+                let _ = write!(&mut s, "    Node: {node:#?}");
             }
         }
 

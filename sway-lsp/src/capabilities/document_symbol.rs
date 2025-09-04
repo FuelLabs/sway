@@ -431,7 +431,7 @@ fn fn_decl_detail(parameters: &[TyFunctionParameter], return_type: &GenericArgum
         .call_path_tree()
         .map(|_| format!(" -> {}", return_type.span().as_str()))
         .unwrap_or_default();
-    format!("fn({}){}", params, return_type)
+    format!("fn({params}){return_type}")
 }
 
 /// Extracts the header of a sway construct such as an `impl` block or `abi` declaration,

@@ -75,7 +75,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 for cmd in cmds {
                     let cmd = cmd.replace("{root}", &root);
 
-                    let _ = writeln!(&mut snapshot, "> {}", cmd);
+                    let _ = writeln!(&mut snapshot, "> {cmd}");
 
                     let mut last_output: Option<String> = None;
 

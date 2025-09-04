@@ -27,7 +27,7 @@ fn test_cli() {
 
     dbg!(&run_cmd);
 
-    run_cmd.arg(format!("http://127.0.0.1:{}/graphql", port));
+    run_cmd.arg(format!("http://127.0.0.1:{port}/graphql"));
 
     // Increased timeout to account for rustyline initialization
     let mut cmd = spawn_command(run_cmd, Some(5000)).unwrap();

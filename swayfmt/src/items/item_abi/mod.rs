@@ -41,7 +41,7 @@ impl Format for ItemAbi {
         // abi_items
         for trait_item in abi_items.iter() {
             trait_item.format(formatted_code, formatter)?;
-            write!(formatted_code, "{}", NEW_LINE)?;
+            write!(formatted_code, "{NEW_LINE}")?;
         }
 
         if abi_items.is_empty() {
@@ -59,10 +59,10 @@ impl Format for ItemAbi {
             Self::open_curly_brace(formatted_code, formatter)?;
             for item in abi_defs.get().iter() {
                 item.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", NEW_LINE)?;
+                write!(formatted_code, "{NEW_LINE}")?;
             }
             if abi_defs.get().is_empty() {
-                write!(formatted_code, "{}", NEW_LINE)?;
+                write!(formatted_code, "{NEW_LINE}")?;
             }
             Self::close_curly_brace(formatted_code, formatter)?;
         }

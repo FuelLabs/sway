@@ -64,7 +64,7 @@ impl Error {
             },
             Err(err) => Error::ApiResponseError {
                 status,
-                error: format!("Unexpected API error: {}", err),
+                error: format!("Unexpected API error: {err}"),
             },
         }
     }

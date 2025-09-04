@@ -768,7 +768,7 @@ fn compile_encoding_v0_abi_method(
     let ast_fn_decl = engines.de().get_function(ast_fn_decl);
 
     let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
-    let (errors, _warnings) = handler.consume();
+    let (errors, _warnings, _infos) = handler.consume();
     let selector = match get_selector_result.ok() {
         Some(selector) => selector,
         None => {

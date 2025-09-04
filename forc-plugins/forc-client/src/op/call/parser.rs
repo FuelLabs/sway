@@ -256,24 +256,24 @@ pub fn token_to_string(token: &Token) -> Result<String> {
         Token::B256(bytes) => {
             let mut hex = String::with_capacity(bytes.len() * 2);
             for byte in bytes {
-                write!(hex, "{:02x}", byte).unwrap();
+                write!(hex, "{byte:02x}").unwrap();
             }
-            Ok(format!("0x{}", hex))
+            Ok(format!("0x{hex}"))
         }
         Token::Bytes(bytes) => {
             let mut hex = String::with_capacity(bytes.len() * 2);
             for byte in bytes {
-                write!(hex, "{:02x}", byte).unwrap();
+                write!(hex, "{byte:02x}").unwrap();
             }
-            Ok(format!("0x{}", hex))
+            Ok(format!("0x{hex}"))
         }
         Token::String(s) => Ok(s.clone()),
         Token::RawSlice(bytes) => {
             let mut hex = String::with_capacity(bytes.len() * 2);
             for byte in bytes {
-                write!(hex, "{:02x}", byte).unwrap();
+                write!(hex, "{byte:02x}").unwrap();
             }
-            Ok(format!("0x{}", hex))
+            Ok(format!("0x{hex}"))
         }
         Token::StringArray(token) => Ok(token.get_encodable_str().map(|s| s.to_string())?),
         Token::StringSlice(token) => token
@@ -448,7 +448,7 @@ pub fn param_to_function_arg(param_type: &ParamType) -> String {
         ParamType::Bytes => "Bytes".to_string(),
         ParamType::String => "str".to_string(),
         ParamType::RawSlice => "RawSlice".to_string(),
-        ParamType::StringArray(size) => format!("str[{}]", size),
+        ParamType::StringArray(size) => format!("str[{size}]"),
         ParamType::StringSlice => "str".to_string(),
         ParamType::Tuple(types) => {
             let inner = types

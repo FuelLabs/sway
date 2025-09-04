@@ -617,7 +617,11 @@ impl<'a> Unifier<'a> {
             span,
             false,
         );
-        let (new_errors, warnings) = h.consume();
+        let (new_errors, warnings, infos) = h.consume();
+
+        for info in infos {
+            handler.emit_info(info);
+        }
 
         for warn in warnings {
             handler.emit_warn(warn);

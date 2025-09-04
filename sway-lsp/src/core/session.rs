@@ -44,7 +44,11 @@ use sway_core::{
     },
     BuildTarget, Engines, LspConfig, Programs,
 };
-use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
+use sway_error::{
+    error::CompileError,
+    handler::Handler,
+    warning::{CompileInfo, CompileWarning},
+};
 use sway_types::{ProgramId, SourceEngine, Spanned};
 
 /// A `Session` is used to store information about a single member in a workspace.
@@ -255,7 +259,7 @@ pub fn compile(
     .map_err(LanguageServerError::FailedToCompile)
 }
 
-type CompileResults = (Vec<CompileError>, Vec<CompileWarning>);
+type CompileResults = (Vec<CompileError>, Vec<CompileWarning>, Vec<CompileInfo>);
 
 pub fn traverse(
     member_path: PathBuf,
@@ -273,7 +277,7 @@ pub fn traverse(
         token_map.remove_tokens_for_file(path);
     }
 
-    let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
+    let mut diagnostics: CompileResults = (Vec::default(), Vec::default(), Vec::default());
     for (value, handler) in results.into_iter() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
         let current_diagnostics = handler.consume();
@@ -487,9 +491,13 @@ pub fn parse_project(
             ..
         }) = &lsp_mode
         {
-            if let Some((errors, warnings)) = &diagnostics {
-                *ctx.session.diagnostics.write() =
-                    capabilities::diagnostic::get_diagnostics(warnings, errors, engines_clone.se());
+            if let Some((errors, warnings, infos)) = &diagnostics {
+                *ctx.session.diagnostics.write() = capabilities::diagnostic::get_diagnostics(
+                    infos,
+                    warnings,
+                    errors,
+                    engines_clone.se(),
+                );
             }
         }
 

@@ -48,12 +48,12 @@ fn list_functions_for_single_contract<W: Write>(
     writer: &mut W,
 ) -> Result<()> {
     let header = if is_main_contract {
-        format!("Callable functions for contract: {}\n", contract_id)
+        format!("Callable functions for contract: {contract_id}\n")
     } else {
-        format!("Functions for additional contract: {}\n", contract_id)
+        format!("Functions for additional contract: {contract_id}\n")
     };
 
-    writeln!(writer, "{}", header)?;
+    writeln!(writer, "{header}")?;
 
     if abi.unified.functions.is_empty() {
         writeln!(writer, "No functions found in the contract ABI.\n")?;
@@ -107,7 +107,7 @@ fn list_functions_for_single_contract<W: Write>(
                 | ParamType::Struct { .. }
                 | ParamType::Enum { .. }
                 | ParamType::RawSlice
-                | ParamType::Vector(_) => format!("\"{}\"", func_args_input),
+                | ParamType::Vector(_) => format!("\"{func_args_input}\""),
                 _ => func_args_input.to_owned(),
             })
             .collect::<Vec<String>>()
@@ -124,11 +124,7 @@ fn list_functions_for_single_contract<W: Write>(
             })?;
 
         let painted_name = forc_util::ansiterm::Colour::Blue.paint(func.name.clone());
-        writeln!(
-            writer,
-            "{}({}) -> {}",
-            painted_name, func_args_types, return_type
-        )?;
+        writeln!(writer, "{painted_name}({func_args_types}) -> {return_type}")?;
         writeln!(
             writer,
             "  forc call \\\n      --abi {} \\\n      {} \\\n      {} {}\n",
@@ -189,10 +185,7 @@ mod tests {
             // Verify the ABI source is preserved exactly as provided
             assert!(
                 output_string.contains(expected_abi_arg),
-                "Test '{}' failed: expected '{}' in output, but got:\n{}",
-                test_name,
-                expected_abi_arg,
-                output_string
+                "Test '{test_name}' failed: expected '{expected_abi_arg}' in output, but got:\n{output_string}"
             );
         }
     }

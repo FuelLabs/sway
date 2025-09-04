@@ -205,7 +205,7 @@ fn did_open_all_members_in_examples() {
 
             // Open all workspace members and assert that we are able to return semantic tokens for each workspace member.
             for (name, package_manifest) in &member_manifests {
-                eprintln!("compiling {:?}", name);
+                eprintln!("compiling {name:?}");
                 let dir = package_manifest.path().parent().unwrap();
 
                 // If the workspace is not initialized, we need to initialize it
@@ -2553,15 +2553,15 @@ fn run_garbage_collection_tests(
             .unwrap();
 
         let test_result = if status.success() {
-            println!("  ✅ Passed: {}", project_name);
+            println!("  ✅ Passed: {project_name}");
             (project_name, test_file, true, None)
         } else {
-            println!("  ❌ Failed: {} ({})", project_name, status);
+            println!("  ❌ Failed: {project_name} ({status})");
             (
                 project_name,
                 test_file,
                 false,
-                Some(format!("Exit code: {}", status)),
+                Some(format!("Exit code: {status}")),
             )
         };
 
@@ -2577,9 +2577,9 @@ fn run_garbage_collection_tests(
     let passed = results.iter().filter(|r| r.2).count();
     let failed = total - passed;
 
-    println!("Total tests: {}", total);
-    println!("✅ Passed:   {}", passed);
-    println!("❌ Failed:   {}", failed);
+    println!("Total tests: {total}");
+    println!("✅ Passed:   {passed}");
+    println!("❌ Failed:   {failed}");
     println!();
 
     if failed > 0 {
@@ -2593,8 +2593,7 @@ fn run_garbage_collection_tests(
         println!();
 
         Err(format!(
-            "{} project(s) failed garbage collection testing",
-            failed
+            "{failed} project(s) failed garbage collection testing"
         ))
     } else {
         Ok(())

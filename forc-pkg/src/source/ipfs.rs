@@ -93,8 +93,7 @@ impl source::Fetch for Pinned {
                             println_action_green(
                                 "Fetching",
                                 &format!(
-                                    "from {}. Note: This can take several minutes.",
-                                    ipfs_node_gateway_url
+                                    "from {ipfs_node_gateway_url}. Note: This can take several minutes."
                                 ),
                             );
                             cid.fetch_with_gateway_url(&ipfs_node_gateway_url, &dest)
@@ -274,7 +273,7 @@ mod tests {
 
         // Add files
         for (path, content) in files {
-            let full_path = format!("test-project/{}", path);
+            let full_path = format!("test-project/{path}");
             let header = create_header(&full_path, content.len() as u64);
             ar.append(&header, content.as_bytes()).unwrap();
         }

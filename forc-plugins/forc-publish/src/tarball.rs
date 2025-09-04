@@ -48,7 +48,7 @@ fn process_readme(temp_project_dir: &Path) -> Result<()> {
             }
             Err(e) => {
                 // Log warning but don't fail the publish
-                println_warning(&format!("Failed to flatten README.md includes: {}", e));
+                println_warning(&format!("Failed to flatten README.md includes: {e}"));
             }
         }
     }

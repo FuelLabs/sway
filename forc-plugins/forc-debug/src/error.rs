@@ -54,6 +54,7 @@ pub enum ArgumentError {
     InvalidNumber(String),
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, thiserror::Error)]
 pub enum AdapterError {
     #[error("Unhandled command")]

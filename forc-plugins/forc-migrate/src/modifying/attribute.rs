@@ -96,7 +96,7 @@ impl New {
                     final_value_opt: Some(Box::new(New::attribute_with_arg(
                         insert_span.clone(),
                         CFG_ATTRIBUTE_NAME,
-                        &format!("experimental_{}", feature_name),
+                        &format!("experimental_{feature_name}"),
                         Some(New::literal_bool(insert_span.clone(), value)),
                     ))),
                 },

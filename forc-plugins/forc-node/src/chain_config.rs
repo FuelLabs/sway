@@ -234,8 +234,7 @@ impl ConfigFetcher {
         };
 
         let api_endpoint = format!(
-            "https://api.github.com/repos/FuelLabs/{}/contents/{}",
-            CHAIN_CONFIG_REPO_NAME, folder_name,
+            "https://api.github.com/repos/FuelLabs/{CHAIN_CONFIG_REPO_NAME}/contents/{folder_name}",
         );
 
         let contents = self.fetch_folder_contents(&api_endpoint).await?;
@@ -323,8 +322,7 @@ async fn validate_remote_chainconfig(
 
     if fetcher.check_fetch_required(conf).await? {
         println_warning(&format!(
-            "A network configuration update detected for {}, this might create problems while syncing with rest of the network",
-            conf
+            "A network configuration update detected for {conf}, this might create problems while syncing with rest of the network"
         ));
         // Ask user if they want to update the chain config.
         let update = ask_user_yes_no_question("Would you like to update network configuration?")?;
@@ -378,7 +376,7 @@ mod tests {
                 GithubContentDetails {
                     name: name.to_string(),
                     sha,
-                    download_url: Some(format!("https://raw.githubusercontent.com/test/{}", name)),
+                    download_url: Some(format!("https://raw.githubusercontent.com/test/{name}")),
                     content_type: "file".to_string(),
                 }
             })
@@ -407,8 +405,7 @@ mod tests {
         let github_response = create_github_response(&test_files);
         Mock::given(method("GET"))
             .and(path(format!(
-                "/repos/FuelLabs/{}/contents/{}",
-                CHAIN_CONFIG_REPO_NAME, TESTNET_CONFIG_FOLDER_NAME
+                "/repos/FuelLabs/{CHAIN_CONFIG_REPO_NAME}/contents/{TESTNET_CONFIG_FOLDER_NAME}"
             )))
             .respond_with(ResponseTemplate::new(200).set_body_json(&github_response))
             .mount(&mock_server)
@@ -455,8 +452,7 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path(format!(
-                "/repos/FuelLabs/{}/contents/{}",
-                CHAIN_CONFIG_REPO_NAME, TESTNET_CONFIG_FOLDER_NAME
+                "/repos/FuelLabs/{CHAIN_CONFIG_REPO_NAME}/contents/{TESTNET_CONFIG_FOLDER_NAME}"
             )))
             .respond_with(ResponseTemplate::new(200).set_body_json(&github_response))
             .mount(&mock_server)
@@ -497,8 +493,7 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path(format!(
-                "/repos/FuelLabs/{}/contents/{}",
-                CHAIN_CONFIG_REPO_NAME, TESTNET_CONFIG_FOLDER_NAME
+                "/repos/FuelLabs/{CHAIN_CONFIG_REPO_NAME}/contents/{TESTNET_CONFIG_FOLDER_NAME}"
             )))
             .respond_with(ResponseTemplate::new(200).set_body_json(&github_response))
             .mount(&mock_server)
@@ -557,8 +552,7 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path(format!(
-                "/repos/FuelLabs/{}/contents/{}",
-                CHAIN_CONFIG_REPO_NAME, TESTNET_CONFIG_FOLDER_NAME
+                "/repos/FuelLabs/{CHAIN_CONFIG_REPO_NAME}/contents/{TESTNET_CONFIG_FOLDER_NAME}"
             )))
             .respond_with(ResponseTemplate::new(200).set_body_json(&github_response))
             .mount(&mock_server)

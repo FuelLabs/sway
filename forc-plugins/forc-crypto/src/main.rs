@@ -13,7 +13,7 @@ use termion::screen::IntoAlternateScreen;
 fn main() {
     init_tracing_subscriber(Default::default());
     if let Err(err) = run() {
-        println_error(&format!("{}", err));
+        println_error(&format!("{err}"));
         std::process::exit(1);
     }
 }

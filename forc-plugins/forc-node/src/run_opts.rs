@@ -127,8 +127,7 @@ impl RunOpts {
         }
         if let Some(relayer_listener) = self.relayer_listener {
             params.push(format!(
-                "--relayer-v2-listening-contracts {}",
-                relayer_listener
+                "--relayer-v2-listening-contracts {relayer_listener}"
             ));
         }
         if let Some(da_deploy_height) = self.relayer_da_deploy_height {

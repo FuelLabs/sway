@@ -58,7 +58,7 @@ impl Format for Literal {
                             LitIntType::I32 => "_i32",
                             LitIntType::I64 => "_i64",
                         };
-                        write!(formatted_code, "{}", int_type)?;
+                        write!(formatted_code, "{int_type}")?;
                     }
                 } else {
                     write!(formatted_code, "{}", lit_int.span.as_str())?;

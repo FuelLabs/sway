@@ -1734,10 +1734,10 @@ mod tests {
             ExperimentalFeatures::default(),
         );
 
-        let (errors, _warnings) = handler.consume();
+        let (errors, _warnings, _infos) = handler.consume();
 
         if !errors.is_empty() {
-            panic!("{:#?}", errors);
+            panic!("{errors:#?}");
         }
 
         let f = r.unwrap();

@@ -141,7 +141,7 @@ fn test_server_launch_mode() {
         ResponseBody::SetBreakpoints(res) => {
             assert!(res.breakpoints.len() == 3);
         }
-        other => panic!("Expected SetBreakpoints response, got {:?}", other),
+        other => panic!("Expected SetBreakpoints response, got {other:?}"),
     }
     assert!(exit_code.is_none());
 
@@ -163,7 +163,7 @@ fn test_server_launch_mode() {
         ResponseBody::Threads(res) => {
             assert_eq!(res.threads.len(), 1);
         }
-        other => panic!("Expected Threads response, got {:?}", other),
+        other => panic!("Expected Threads response, got {other:?}"),
     }
     assert!(exit_code.is_none());
 
@@ -175,7 +175,7 @@ fn test_server_launch_mode() {
         ResponseBody::StackTrace(res) => {
             assert_eq!(res.stack_frames.len(), 1);
         }
-        other => panic!("Expected StackTrace response, got {:?}", other),
+        other => panic!("Expected StackTrace response, got {other:?}"),
     }
     assert!(exit_code.is_none());
 
@@ -187,7 +187,7 @@ fn test_server_launch_mode() {
         ResponseBody::Scopes(res) => {
             assert_eq!(res.scopes.len(), 2);
         }
-        other => panic!("Expected Scopes response, got {:?}", other),
+        other => panic!("Expected Scopes response, got {other:?}"),
     }
     assert!(exit_code.is_none());
 
@@ -202,7 +202,7 @@ fn test_server_launch_mode() {
         ResponseBody::Variables(res) => {
             assert_eq!(res.variables.len(), 64);
         }
-        other => panic!("Expected Variables response, got {:?}", other),
+        other => panic!("Expected Variables response, got {other:?}"),
     }
     assert!(exit_code.is_none());
 
@@ -223,7 +223,7 @@ fn test_server_launch_mode() {
             ];
             assert_variables_eq(expected, res.variables);
         }
-        other => panic!("Expected Variables response, got {:?}", other),
+        other => panic!("Expected Variables response, got {other:?}"),
     }
     assert!(exit_code.is_none());
 
@@ -330,15 +330,11 @@ fn test_sourcemap_build() {
     for (line, expected_count, description) in key_locations {
         let instructions = line_to_instructions
             .get(&line)
-            .unwrap_or_else(|| panic!("Missing mapping for line {}: {}", line, description));
+            .unwrap_or_else(|| panic!("Missing mapping for line {line}: {description}"));
         assert_eq!(
             instructions.len(),
             expected_count,
-            "Line {} ({}): Expected {} instructions, found {:?}",
-            line,
-            description,
-            expected_count,
-            instructions
+            "Line {line} ({description}): Expected {expected_count} instructions, found {instructions:?}"
         );
     }
 }
@@ -350,7 +346,7 @@ fn assert_stopped_breakpoint_event(event: Option<Event>, breakpoint_id: i64) {
             assert!(matches!(body.reason, StoppedEventReason::Breakpoint));
             assert_eq!(body.hit_breakpoint_ids, Some(vec![breakpoint_id]));
         }
-        other => panic!("Expected Stopped event, got {:?}", other),
+        other => panic!("Expected Stopped event, got {other:?}"),
     };
 }
 
@@ -361,14 +357,14 @@ fn assert_stopped_next_event(event: Option<Event>) {
             assert!(matches!(body.reason, StoppedEventReason::Step));
             assert_eq!(body.hit_breakpoint_ids, None);
         }
-        other => panic!("Expected Stopped event, got {:?}", other),
+        other => panic!("Expected Stopped event, got {other:?}"),
     };
 }
 
 fn assert_output_event_body(event: Option<Event>) -> OutputEventBody {
     match event.expect("received event") {
         Event::Output(body) => body,
-        other => panic!("Expected Output event, got {:?}", other),
+        other => panic!("Expected Output event, got {other:?}"),
     }
 }
 

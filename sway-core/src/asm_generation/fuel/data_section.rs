@@ -15,7 +15,7 @@ impl fmt::Display for EntryName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             EntryName::NonConfigurable => write!(f, "NonConfigurable"),
-            EntryName::Configurable(name) => write!(f, "<Configurable, {}>", name),
+            EntryName::Configurable(name) => write!(f, "<Configurable, {name}>"),
         }
     }
 }

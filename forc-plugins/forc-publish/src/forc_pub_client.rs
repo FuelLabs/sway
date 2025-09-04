@@ -44,7 +44,7 @@ impl ForcPubClient {
         use std::io::{stdout, Write};
         let url = self
             .uri
-            .join(&format!("upload_project?forc_version={}", forc_version))?;
+            .join(&format!("upload_project?forc_version={forc_version}"))?;
         let file_bytes = fs::read(file_path)?;
 
         let response = self
@@ -83,7 +83,7 @@ impl ForcPubClient {
                                     });
                                 } else {
                                     // Print the event data, replacing the previous message.
-                                    print!("\r\x1b[2K  =>  {}", data);
+                                    print!("\r\x1b[2K  =>  {data}");
                                     stdout().flush().unwrap();
                                 }
                             }
@@ -100,7 +100,7 @@ impl ForcPubClient {
             }
             Err(Error::ServerError)
         } else {
-            eprintln!("Error during upload initiation: {:?}", response);
+            eprintln!("Error during upload initiation: {response:?}");
             Err(Error::ServerError)
         }
     }
@@ -114,7 +114,7 @@ impl ForcPubClient {
             .client
             .post(url)
             .header("Content-Type", "application/json")
-            .header("Authorization", format!("Bearer {}", auth_token))
+            .header("Authorization", format!("Bearer {auth_token}"))
             .json(&publish_request)
             .send()
             .await?;
@@ -156,8 +156,7 @@ mod test {
         // Simulate SSE response with a progress event and a final upload_id event
         let sse_body = format!(
             "data: uploading...\n\n\
-             data: {{\"upload_id\":\"{}\"}}\n\n",
-            upload_id
+             data: {{\"upload_id\":\"{upload_id}\"}}\n\n"
         );
 
         Mock::given(method("POST"))

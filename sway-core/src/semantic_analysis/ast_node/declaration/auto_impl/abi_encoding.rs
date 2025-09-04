@@ -444,7 +444,7 @@ where
             format!("let result: raw_slice = encode::<{return_type}>({method_name}()); __contract_ret(result.ptr(), result.len::<u8>());")
         } else {
             // as the old encoding does
-            format!("__revert({});", MISMATCHED_SELECTOR_REVERT_CODE)
+            format!("__revert({MISMATCHED_SELECTOR_REVERT_CODE});")
         };
 
         let att = match (reads, writes) {

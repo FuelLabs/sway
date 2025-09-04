@@ -9,7 +9,7 @@ use anyhow::{anyhow, bail, Context, Error, Result};
 use byte_unit::{Byte, UnitType};
 use forc_tracing::{println_action_green, println_warning};
 use forc_util::{
-    default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
+    default_output_directory, find_file_name, kebab_to_snake_case, print_compiling, print_infos,
     print_on_failure, print_warnings,
 };
 use petgraph::{
@@ -279,12 +279,19 @@ pub struct MinifyOpts {
 /// Represents a compiled contract ID as a pub const in a contract.
 type ContractIdConst = String;
 
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+pub struct DumpOpts {
+    /// Dump all trait implementations for the given type name.
+    pub dump_impls: Option<String>,
+}
+
 /// The set of options provided to the `build` functions.
 #[derive(Default, Clone)]
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
     pub minify: MinifyOpts,
+    pub dump: DumpOpts,
     /// If set, generates a JSON file containing the hex-encoded script binary.
     pub hex_outfile: Option<String>,
     /// If set, outputs a binary file representing the script bytes.
@@ -693,10 +700,7 @@ impl BuildPlan {
         // longer exists at its specified location, etc. We must first remove all invalid nodes
         // before we can determine what we need to fetch.
         let invalid_deps = validate_graph(&graph, manifests)?;
-        let members: HashSet<String> = manifests
-            .iter()
-            .map(|(member_name, _)| member_name.clone())
-            .collect();
+        let members: HashSet<String> = manifests.keys().cloned().collect();
         remove_deps(&mut graph, &members, &invalid_deps);
 
         // We know that the remaining nodes have valid paths, otherwise they would have been
@@ -734,11 +738,11 @@ impl BuildPlan {
             }
             println_action_green(
                 "Creating",
-                &format!("a new `Forc.lock` file. (Cause: {})", cause),
+                &format!("a new `Forc.lock` file. (Cause: {cause})"),
             );
             let member_names = manifests
-                .iter()
-                .map(|(_, manifest)| manifest.project.name.to_string())
+                .values()
+                .map(|manifest| manifest.project.name.to_string())
                 .collect();
             crate::lock::print_diff(&member_names, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
@@ -1701,10 +1705,11 @@ pub fn compile(
     let terse_mode = profile.terse;
     let reverse_results = profile.reverse_results;
     let fail = |handler: Handler| {
-        let (errors, warnings) = handler.consume();
+        let (errors, warnings, infos) = handler.consume();
         print_on_failure(
             engines.se(),
             terse_mode,
+            &infos,
             &warnings,
             &errors,
             reverse_results,
@@ -1724,7 +1729,7 @@ pub fn compile(
             &handler,
             engines,
             source,
-            namespace,
+            namespace.clone(),
             Some(&sway_build_config),
             &pkg.name,
             None,
@@ -1752,6 +1757,15 @@ pub fn compile(
 
     if handler.has_errors() {
         return fail(handler);
+    }
+
+    if let Some(typename) = &profile.dump.dump_impls {
+        let _ = sway_core::dump_trait_impls_for_typename(
+            &handler,
+            engines,
+            &typed_program.namespace,
+            typename,
+        );
     }
 
     let asm_res = time_expr!(
@@ -1862,8 +1876,9 @@ pub fn compile(
         _ => return fail(handler),
     };
 
-    let (_, warnings) = handler.consume();
+    let (_, warnings, infos) = handler.consume();
 
+    print_infos(engines.se(), terse_mode, &infos);
     print_warnings(engines.se(), terse_mode, &pkg.name, &warnings, &tree_type);
 
     // Metadata to be placed into the binary.
@@ -2108,6 +2123,7 @@ fn build_profile_from_opts(
         metrics_outfile,
         tests,
         error_on_warnings,
+        dump,
         ..
     } = build_options;
 
@@ -2128,6 +2144,7 @@ fn build_profile_from_opts(
             BuildProfile::default()
         });
     profile.name = selected_profile_name.into();
+    profile.dump = dump.clone();
     profile.print_ast |= print.ast;
     if profile.print_dca_graph.is_none() {
         profile.print_dca_graph.clone_from(&print.dca_graph);
@@ -2420,10 +2437,11 @@ pub fn build(
             manifest_file: manifest.clone(),
         };
 
-        let fail = |warnings, errors| {
+        let fail = |infos, warnings, errors| {
             print_on_failure(
                 engines.se(),
                 profile.terse,
+                infos,
                 warnings,
                 errors,
                 profile.reverse_results,
@@ -2467,7 +2485,7 @@ pub fn build(
                 dbg_generation,
             ) {
                 Ok(o) => o,
-                Err(errs) => return fail(&[], &errs),
+                Err(errs) => return fail(&[], &[], &errs),
             };
 
             let compiled_without_tests = compile(
@@ -2543,6 +2561,7 @@ pub fn build(
                 print_on_failure(
                     engines.se(),
                     profile.terse,
+                    &[],
                     &[],
                     &errs,
                     profile.reverse_results,

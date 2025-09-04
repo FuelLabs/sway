@@ -2824,7 +2824,7 @@ impl ToDiagnostic for CompileError {
                                 // TODO: Temporary we use `self` here to achieve backward compatibility.
                                 //       In general, `self` must not be used. All the values for the formatting
                                 //       of a diagnostic must come from its enum variant parameters.
-                                issue: Issue::error(source_engine, self.span(), format!("{}", self)),
+                                issue: Issue::error(source_engine, self.span(), format!("{self}")),
                                 ..Default::default()
                         },
                 }
@@ -2961,7 +2961,7 @@ impl ToDiagnostic for CompileError {
                                 // TODO: Temporarily we use `self` here to achieve backward compatibility.
                                 //       In general, `self` must not be used. All the values for the formatting
                                 //       of a diagnostic must come from its enum variant parameters.
-                                issue: Issue::error(source_engine, self.span(), format!("{}", self)),
+                                issue: Issue::error(source_engine, self.span(), format!("{self}")),
                                 ..Default::default()
                         },
                 }
@@ -3193,7 +3193,7 @@ impl ToDiagnostic for CompileError {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting
                     //       of a diagnostic must come from its enum variant parameters.
-                    issue: Issue::error(source_engine, self.span(), format!("{}", self)),
+                    issue: Issue::error(source_engine, self.span(), format!("{self}")),
                     ..Default::default()
             }
         }
@@ -3343,8 +3343,7 @@ fn marker_trait_name(marker_trait_full_name: &str) -> &str {
     const MARKER_TRAITS_MODULE: &str = "std::marker::";
     assert!(
         marker_trait_full_name.starts_with(MARKER_TRAITS_MODULE),
-        "`marker_trait_full_name` must start with \"std::marker::\", but it was \"{}\"",
-        marker_trait_full_name
+        "`marker_trait_full_name` must start with \"std::marker::\", but it was \"{marker_trait_full_name}\""
     );
 
     let lower_boundary = MARKER_TRAITS_MODULE.len();

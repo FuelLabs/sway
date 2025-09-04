@@ -29,7 +29,7 @@ impl<T: Format + Spanned + std::fmt::Debug> Format for Annotated<T> {
                 // attributes and the value
                 write_comments(formatted_code, start..attr.span().start(), formatter)?;
                 if !formatted_code.ends_with(NEW_LINE) {
-                    write!(formatted_code, "{}", NEW_LINE)?;
+                    write!(formatted_code, "{NEW_LINE}")?;
                 }
             }
             formatter.write_indent_into_buffer(formatted_code)?;
@@ -41,7 +41,7 @@ impl<T: Format + Spanned + std::fmt::Debug> Format for Annotated<T> {
             // attributes and the value
             write_comments(formatted_code, start..self.value.span().start(), formatter)?;
             if !formatted_code.ends_with(NEW_LINE) {
-                write!(formatted_code, "{}", NEW_LINE)?;
+                write!(formatted_code, "{NEW_LINE}")?;
             }
         }
         // format `ItemKind`

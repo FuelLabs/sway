@@ -206,7 +206,7 @@ impl TypeId {
         let mut hasher = Sha256::new();
         hasher.update(type_str.clone());
         let result = hasher.finalize();
-        let type_id = format!("{:x}", result);
+        let type_id = format!("{result:x}");
 
         if let Some(old_type_str) = ctx
             .type_ids_to_full_type_str

@@ -33,6 +33,7 @@ impl RequiredMethods for Vec<DeclRefTraitFn> {
 }
 
 /// Used in deciding whether or not a [Declaration] is documentable.
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum Descriptor {
     Documentable(Document),
     NonDocumentable,

@@ -91,6 +91,8 @@ pub struct Build {
     /// Build target to use for code generation.
     #[clap(long, value_enum, default_value_t = BuildTarget::default(), alias="target")]
     pub build_target: BuildTarget,
+    #[clap(flatten)]
+    pub dump: Dump,
 }
 
 /// Build output file options.
@@ -124,6 +126,14 @@ pub struct BuildProfile {
     /// Treat warnings as errors.
     #[clap(long)]
     pub error_on_warnings: bool,
+}
+
+/// Dump options.
+#[derive(Args, Debug, Default)]
+pub struct Dump {
+    /// Dump all trait implementations for the given type name.
+    #[clap(long = "dump-impls", value_name = "TYPE")]
+    pub dump_impls: Option<String>,
 }
 
 /// Options related to printing stages of compiler output.

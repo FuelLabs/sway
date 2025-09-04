@@ -50,7 +50,7 @@ pub struct Command {
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
     dep_modifier::modify_dependencies(command.into())
-        .map_err(|e| format!("failed to remove dependencies: {}", e))
+        .map_err(|e| format!("failed to remove dependencies: {e}"))
         .map_err(|msg| msg.as_str().into())
 }
 

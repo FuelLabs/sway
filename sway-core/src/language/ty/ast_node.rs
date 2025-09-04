@@ -395,6 +395,7 @@ impl TyAstNode {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum TyAstNodeContent {
     Declaration(TyDecl),
     Expression(TyExpression),

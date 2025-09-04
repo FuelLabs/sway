@@ -33,8 +33,8 @@ fn validate_regex_pattern(s: &str) -> Result<String, String> {
         return Err("Regex pattern too long: max 128 characters".to_string());
     }
 
-    if let Err(e) = Regex::new(&format!("(?i){}", s)) {
-        return Err(format!("Invalid regex pattern: {}", e));
+    if let Err(e) = Regex::new(&format!("(?i){s}")) {
+        return Err(format!("Invalid regex pattern: {e}"));
     }
 
     Ok(s.to_string())
@@ -176,7 +176,7 @@ pub struct RegexMatcher {
 
 impl RegexMatcher {
     pub fn new(pattern: &str) -> anyhow::Result<Self> {
-        let re = Regex::new(&format!("(?i){}", pattern))?;
+        let re = Regex::new(&format!("(?i){pattern}"))?;
         Ok(Self { re })
     }
 }
@@ -215,10 +215,7 @@ pub fn find_vanity_address_with_timeout(
                 if current != 0 && current % breakpoint == 0 {
                     let elapsed = start.elapsed().as_secs_f64();
                     let rate = current as f64 / elapsed;
-                    println!(
-                        "└─ tried {} addresses ({:.2} addresses/sec)...",
-                        current, rate
-                    );
+                    println!("└─ tried {current} addresses ({rate:.2} addresses/sec)...");
                 }
 
                 if let Ok((addr, _, _)) = result {

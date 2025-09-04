@@ -397,7 +397,7 @@ impl ItemContext {
                         doc_links.push(DocLink {
                             name: method_name.clone(),
                             module_info: inherent_impl.impl_for_module.clone(),
-                            html_filename: format!("{}method.{}", IDENTITY, method_name),
+                            html_filename: format!("{IDENTITY}method.{method_name}"),
                             preview_opt: None,
                         })
                     }
@@ -522,13 +522,13 @@ impl Renderable for DocImplTrait {
 
         let trait_link = if let Some(module_prefixes) = &self.module_info_override {
             ModuleInfo::from_vec_str(module_prefixes).file_path_from_location(
-                &format!("trait.{}.html", short_name),
+                &format!("trait.{short_name}.html"),
                 impl_for_module,
                 is_external_item,
             )?
         } else {
             ModuleInfo::from_call_path(trait_name).file_path_from_location(
-                &format!("trait.{}.html", short_name),
+                &format!("trait.{short_name}.html"),
                 impl_for_module,
                 is_external_item,
             )?

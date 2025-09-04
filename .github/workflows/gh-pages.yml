@@ -55,12 +55,20 @@ jobs:
       - name: Build Sway std library
         run: forc doc --path ./sway-lib-std
 
+      - name: Move assets into std directory  
+        run: |
+          mv ./sway-lib-std/out/doc/static.files ./sway-lib-std/out/doc/std/
+          mv ./sway-lib-std/out/doc/search.js ./sway-lib-std/out/doc/std/
+          # Fix relative paths in HTML files
+          find ./sway-lib-std/out/doc/std -name "*.html" -type f -exec sed -i 's|../static\.files/|static.files/|g' {} \;
+          find ./sway-lib-std/out/doc/std -name "*.html" -type f -exec sed -i 's|../search\.js|search.js|g' {} \;
+
       - name: Deploy master std
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./sway-lib-std/out/doc
-          destination_dir: master
+          publish_dir: ./sway-lib-std/out/doc/std
+          destination_dir: master/std
         if: github.ref == 'refs/heads/master'
 
       - name: Deploy master book
@@ -125,7 +133,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./sway-lib-std/out/doc/std
+          publish_dir: ./sway-lib-std/out/doc
           destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/std
         if: startsWith(github.ref, 'refs/tags')
 

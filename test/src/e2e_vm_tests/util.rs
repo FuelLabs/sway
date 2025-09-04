@@ -40,7 +40,7 @@ pub(crate) fn duration_to_str(duration: &std::time::Duration) -> String {
 
     parts
         .iter()
-        .map(|part| format!("{:#02}", part))
+        .map(|part| format!("{part:#02}"))
         .collect::<Vec<_>>()
         .join(":")
 }

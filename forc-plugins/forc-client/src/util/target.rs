@@ -105,6 +105,6 @@ impl std::fmt::Display for Target {
             Target::Devnet => "Devnet",
             Target::Local => "local",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }

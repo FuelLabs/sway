@@ -21,7 +21,7 @@ async fn main() {
         }
     };
     if let Err(err) = forc_client::op::call(operation, command).await {
-        println_error(&format!("{}", err));
+        println_error(&format!("{err}"));
         std::process::exit(1);
     }
 }

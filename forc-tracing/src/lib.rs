@@ -64,10 +64,10 @@ fn print_message(text: &str, color: Colour, style: TextStyle, level: LogLevel) {
     let log_msg = match (is_json_mode_active(), style) {
         // JSON mode formatting (no colors)
         (true, TextStyle::Plain | TextStyle::Bold) => text.to_string(),
-        (true, TextStyle::Label(label)) => format!("{}: {}", label, text),
+        (true, TextStyle::Label(label)) => format!("{label}: {text}"),
         (true, TextStyle::Action(action)) => {
             let indent = get_action_indentation(&action);
-            format!("{}{} {}", indent, action, text)
+            format!("{indent}{action} {text}")
         }
 
         // Normal mode formatting (with colors)
@@ -361,7 +361,7 @@ mod tests {
         println_label_green("Compiling", txt);
 
         let expected_action = "\x1b[1;32mCompiling\x1b[0m";
-        assert!(logs_contain(&format!("{} {}", expected_action, txt)));
+        assert!(logs_contain(&format!("{expected_action} {txt}")));
     }
 
     #[traced_test]
@@ -373,7 +373,7 @@ mod tests {
         println_label_red("Error", txt);
 
         let expected_action = "\x1b[1;31mError\x1b[0m";
-        assert!(logs_contain(&format!("{} {}", expected_action, txt)));
+        assert!(logs_contain(&format!("{expected_action} {txt}")));
     }
 
     #[traced_test]
@@ -385,7 +385,7 @@ mod tests {
         println_action_green("Compiling", txt);
 
         let expected_action = "\x1b[1;32mCompiling\x1b[0m";
-        assert!(logs_contain(&format!("    {} {}", expected_action, txt)));
+        assert!(logs_contain(&format!("    {expected_action} {txt}")));
     }
 
     #[traced_test]
@@ -397,7 +397,7 @@ mod tests {
         println_action_green("Supercalifragilistic", txt);
 
         let expected_action = "\x1b[1;32mSupercalifragilistic\x1b[0m";
-        assert!(logs_contain(&format!("{} {}", expected_action, txt)));
+        assert!(logs_contain(&format!("{expected_action} {txt}")));
     }
 
     #[traced_test]
@@ -409,7 +409,7 @@ mod tests {
         println_action_red("Removing", txt);
 
         let expected_action = "\x1b[1;31mRemoving\x1b[0m";
-        assert!(logs_contain(&format!("     {} {}", expected_action, txt)));
+        assert!(logs_contain(&format!("     {expected_action} {txt}")));
     }
 
     #[traced_test]

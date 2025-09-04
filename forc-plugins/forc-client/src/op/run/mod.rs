@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use anyhow::{anyhow, bail, Context, Result};
-use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
+use forc_pkg::{self as pkg, fuel_core_not_running, DumpOpts, PackageManifestFile};
 use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
 use fuel_abi_types::abi::program::ProgramABI;
@@ -198,7 +198,7 @@ async fn try_send_tx(
             send_tx(&client, tx, pretty_print, simulate, debug, abi),
         )
         .await
-        .with_context(|| format!("timeout waiting for {:?} to be included in a block", tx))?,
+        .with_context(|| format!("timeout waiting for {tx:?} to be included in a block"))?,
         Err(_) => Err(fuel_core_not_running(node_url)),
     }
 }
@@ -319,6 +319,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             json_abi: cmd.minify.json_abi,
             json_storage_slots: cmd.minify.json_storage_slots,
         },
+        dump: DumpOpts::default(),
         build_target: BuildTarget::default(),
         build_profile: cmd.build_profile.build_profile.clone(),
         release: cmd.build_profile.release,

@@ -23,7 +23,7 @@ impl Syscall {
                 let s = std::str::from_utf8(bytes.as_slice()).unwrap();
 
                 let mut f = unsafe { std::fs::File::from_raw_fd(*fd as i32) };
-                write!(&mut f, "{}", s).unwrap();
+                write!(&mut f, "{s}").unwrap();
 
                 // Don't close the fd
                 std::mem::forget(f);
@@ -36,7 +36,7 @@ impl Syscall {
                 std::mem::forget(f);
             }
             Syscall::Unknown { ra, rb, rc, rd } => {
-                println!("Unknown ecal: {} {} {} {}", ra, rb, rc, rd);
+                println!("Unknown ecal: {ra} {rb} {rc} {rd}");
             }
         }
     }

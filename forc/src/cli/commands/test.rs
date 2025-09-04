@@ -119,7 +119,7 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
                 print_tested_pkg(pkg, &test_print_opts)?;
             }
             info!("");
-            println_action_green("Finished", &format!("in {:?}", duration));
+            println_action_green("Finished", &format!("in {duration:?}"));
             pkgs.iter().all(|pkg| pkg.tests_passed())
         }
         forc_test::Tested::Package(pkg) => {
