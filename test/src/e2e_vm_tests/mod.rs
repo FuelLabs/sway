@@ -669,9 +669,18 @@ impl TestContext {
                 result.map(|tested_pkgs| {
                     let mut failed = vec![];
                     for pkg in tested_pkgs {
+                        if !pkg.tests.is_empty() {
+                            println!();
+                        }
                         for test in pkg.tests.into_iter() {
                             if verbose {
-                                println!("Test: {} {}", test.name, test.passed());
+                                //"test incorrect_def_modeling ... ok (17.673µs, 59 gas)"
+                                println!("    test {} ... {} ({:?}, {} gas)", 
+                                    test.name,
+                                    if test.passed() { "ok" } else { "nok" },
+                                    test.duration,
+                                    test.gas_used,
+                                );
                                 for log in test.logs.iter() {
                                     println!("{log:?}");
                                 }
@@ -781,6 +790,9 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     }
     if filter_config.contract_only {
         tests.retain(|t| t.category == TestCategory::RunsWithContract);
+    }
+    if filter_config.forc_test_only {
+        tests.retain(|t| t.category == TestCategory::UnitTestsPass);
     }
     if filter_config.first_only && !tests.is_empty() {
         tests = vec![tests.remove(0)];

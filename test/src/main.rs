@@ -38,6 +38,10 @@ struct Cli {
     #[arg(long, visible_alias = "contract")]
     contract_only: bool,
 
+    /// Only run tests that run "forc test"
+    #[arg(long, visible_alias = "forc-test")]
+    forc_test_only: bool,
+
     /// Only run the first test
     #[arg(long, visible_alias = "first")]
     first_only: bool,
@@ -136,6 +140,7 @@ pub struct FilterConfig {
     pub exclude_std: bool,
     pub contract_only: bool,
     pub first_only: bool,
+    pub forc_test_only: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -165,6 +170,7 @@ async fn main() -> Result<()> {
         abi_only: cli.abi_only,
         exclude_std: cli.exclude_std,
         contract_only: cli.contract_only,
+        forc_test_only: cli.forc_test_only,
         first_only: cli.first_only,
     };
     let build_target = match cli.build_target {
