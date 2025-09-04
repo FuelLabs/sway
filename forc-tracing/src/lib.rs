@@ -301,6 +301,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
 
     // Set the global telemetry disabled flag
     let disabled = is_telemetry_disabled_from_options(&options);
+    TELEMETRY_DISABLED.store(disabled, Ordering::SeqCst);
 
     // Use regex to filter logs - if provided; otherwise allow all logs
     let regex_filter = options.regex_filter.clone();
@@ -312,72 +313,39 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
             true
         }
     });
-    TELEMETRY_DISABLED.store(disabled, Ordering::SeqCst);
+
+    // Macro to reduce duplication in subscriber setup
+    macro_rules! setup_subscriber {
+        ($subscriber:expr) => {
+            #[cfg(feature = "telemetry")]
+            if let Some((telemetry_layer, _)) = &telemetry_layer {
+                let final_subscriber = $subscriber.with(telemetry_layer.clone());
+                tracing::subscriber::set_global_default(final_subscriber).expect("setting subscriber failed");
+            } else {
+                tracing::subscriber::set_global_default($subscriber).expect("setting subscriber failed");
+            }
+
+            #[cfg(not(feature = "telemetry"))]
+            tracing::subscriber::set_global_default($subscriber).expect("setting subscriber failed");
+        };
+    }
 
     match (is_json_mode_active(), level_filter) {
         (true, Some(level)) => {
-            #[cfg(feature = "telemetry")]
-            if let Some((telemetry_layer, _)) = &telemetry_layer {
-                let subscriber = builder.json().with_max_level(level).finish().with(filter).with(telemetry_layer.clone());
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            } else {
-                let subscriber = builder.json().with_max_level(level).finish().with(filter);
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            }
-
-            #[cfg(not(feature = "telemetry"))]
-            {
-                let subscriber = builder.json().with_max_level(level).finish().with(filter);
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            }
+            let subscriber = builder.json().with_max_level(level).finish().with(filter);
+            setup_subscriber!(subscriber);
         }
         (true, None) => {
-            #[cfg(feature = "telemetry")]
-            if let Some((telemetry_layer, _)) = &telemetry_layer {
-                let subscriber = builder.json().finish().with(filter).with(telemetry_layer.clone());
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            } else {
-                let subscriber = builder.json().finish().with(filter);
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            }
-
-            #[cfg(not(feature = "telemetry"))]
-            {
-                let subscriber = builder.json().finish().with(filter);
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            }
+            let subscriber = builder.json().finish().with(filter);
+            setup_subscriber!(subscriber);
         }
         (false, Some(level)) => {
-            #[cfg(feature = "telemetry")]
-            if let Some((telemetry_layer, _)) = &telemetry_layer {
-                let subscriber = builder.with_max_level(level).finish().with(filter).with(telemetry_layer.clone());
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            } else {
-                let subscriber = builder.with_max_level(level).finish().with(filter);
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            }
-
-            #[cfg(not(feature = "telemetry"))]
-            {
-                let subscriber = builder.with_max_level(level).finish().with(filter);
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            }
+            let subscriber = builder.with_max_level(level).finish().with(filter);
+            setup_subscriber!(subscriber);
         }
         (false, None) => {
-            #[cfg(feature = "telemetry")]
-            if let Some((telemetry_layer, _)) = &telemetry_layer {
-                let subscriber = builder.finish().with(filter).with(telemetry_layer.clone());
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            } else {
-                let subscriber = builder.finish().with(filter);
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            }
-
-            #[cfg(not(feature = "telemetry"))]
-            {
-                let subscriber = builder.finish().with(filter);
-                tracing::subscriber::set_global_default(subscriber).expect("setting subscriber failed");
-            }
+            let subscriber = builder.finish().with(filter);
+            setup_subscriber!(subscriber);
         }
     }
 
