@@ -196,7 +196,7 @@ pub fn println_red_err(txt: &str) {
 
 const LOG_FILTER: &str = "RUST_LOG";
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum TracingWriter {
     /// Write ERROR and WARN to stderr and everything else to stdout.
     Stdio,
@@ -208,7 +208,7 @@ pub enum TracingWriter {
     Json,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct TracingSubscriberOptions {
     pub verbosity: Option<u8>,
     pub silent: Option<bool>,
@@ -320,13 +320,16 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
             #[cfg(feature = "telemetry")]
             if let Some((telemetry_layer, _)) = &telemetry_layer {
                 let final_subscriber = $subscriber.with(telemetry_layer.clone());
-                tracing::subscriber::set_global_default(final_subscriber).expect("setting subscriber failed");
+                tracing::subscriber::set_global_default(final_subscriber)
+                    .expect("setting subscriber failed");
             } else {
-                tracing::subscriber::set_global_default($subscriber).expect("setting subscriber failed");
+                tracing::subscriber::set_global_default($subscriber)
+                    .expect("setting subscriber failed");
             }
 
             #[cfg(not(feature = "telemetry"))]
-            tracing::subscriber::set_global_default($subscriber).expect("setting subscriber failed");
+            tracing::subscriber::set_global_default($subscriber)
+                .expect("setting subscriber failed");
         };
     }
 
@@ -355,7 +358,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
         thread_local! {
             static TELEMETRY_GUARD: std::cell::RefCell<Option<WorkerGuard>> = const { std::cell::RefCell::new(None) };
         }
-        
+
         TELEMETRY_GUARD.with(|guard| {
             *guard.borrow_mut() = Some(telemetry_guard);
         });
