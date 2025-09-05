@@ -1,60 +1,67 @@
 //! Telemetry utilities for logging to InfluxDB
 
+// When telemetry feature is enabled, re-export all fuel_telemetry macros
 #[cfg(feature = "telemetry")]
-pub use fuel_telemetry::*;
+pub use fuel_telemetry::{
+    debug_telemetry, error_telemetry, info_telemetry, 
+    span_telemetry, trace_telemetry, warn_telemetry,
+};
 
-/// Logs an error message to telemetry
-#[macro_export]
-macro_rules! error_telemetry {
-    ($($arg:tt)+) => {{
-        #[cfg(feature = "telemetry")]
-        {
-            if !$crate::is_telemetry_disabled() {
-                use fuel_telemetry::{telemetry, TelemetryLevel};
-                telemetry(TelemetryLevel::Error, "forc", &format!($($arg)*));
-            }
-        }
-    }};
-}
+// When telemetry feature is disabled, provide stub macros that trigger compile-time errors
+#[cfg(not(feature = "telemetry"))]
+pub use self::disabled_telemetry::*;
 
-/// Logs a warning message to telemetry
-#[macro_export]
-macro_rules! warn_telemetry {
-    ($($arg:tt)+) => {{
-        #[cfg(feature = "telemetry")]
-        {
-            if !$crate::is_telemetry_disabled() {
-                use fuel_telemetry::{telemetry, TelemetryLevel};
-                telemetry(TelemetryLevel::Warn, "forc", &format!($($arg)*));
-            }
-        }
-    }};
-}
+#[cfg(not(feature = "telemetry"))]
+mod disabled_telemetry {
+    /// Triggers a compile-time error when telemetry is not enabled
+    #[macro_export]
+    macro_rules! telemetry_disabled {
+        () => {
+            compile_error!("Telemetry is disabled. Enable the 'telemetry' feature to use telemetry macros.")
+        };
+    }
 
-/// Logs an info message to telemetry
-#[macro_export]
-macro_rules! info_telemetry {
-    ($($arg:tt)+) => {{
-        #[cfg(feature = "telemetry")]
-        {
-            if !$crate::is_telemetry_disabled() {
-                use fuel_telemetry::{telemetry, TelemetryLevel};
-                telemetry(TelemetryLevel::Info, "forc", &format!($($arg)*));
-            }
-        }
-    }};
-}
+    #[macro_export]
+    macro_rules! error_telemetry {
+        ($($arg:tt)*) => {
+            telemetry_disabled!()
+        };
+    }
 
-/// Logs a debug message to telemetry
-#[macro_export]
-macro_rules! debug_telemetry {
-    ($($arg:tt)+) => {{
-        #[cfg(feature = "telemetry")]
-        {
-            if !$crate::is_telemetry_disabled() {
-                use fuel_telemetry::{telemetry, TelemetryLevel};
-                telemetry(TelemetryLevel::Debug, "forc", &format!($($arg)*));
-            }
-        }
-    }};
+    #[macro_export]
+    macro_rules! warn_telemetry {
+        ($($arg:tt)*) => {
+            telemetry_disabled!()
+        };
+    }
+
+    #[macro_export]
+    macro_rules! info_telemetry {
+        ($($arg:tt)*) => {
+            telemetry_disabled!()
+        };
+    }
+
+    #[macro_export]
+    macro_rules! debug_telemetry {
+        ($($arg:tt)*) => {
+            telemetry_disabled!()
+        };
+    }
+
+    #[macro_export]
+    macro_rules! trace_telemetry {
+        ($($arg:tt)*) => {
+            telemetry_disabled!()
+        };
+    }
+
+    #[macro_export]
+    macro_rules! span_telemetry {
+        ($($arg:tt)*) => {
+            telemetry_disabled!()
+        };
+    }
+
+    pub use {debug_telemetry, error_telemetry, info_telemetry, span_telemetry, trace_telemetry, warn_telemetry};
 }

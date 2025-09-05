@@ -11,7 +11,7 @@ use clap::{Parser, Subcommand};
 pub use clean::Command as CleanCommand;
 pub use completions::Command as CompletionsCommand;
 pub(crate) use contract_id::Command as ContractIdCommand;
-use forc_tracing::{init_telemetry, init_tracing_subscriber, TracingSubscriberOptions};
+use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions};
 use forc_util::ForcResult;
 pub use init::Command as InitCommand;
 pub use new::Command as NewCommand;
@@ -136,7 +136,6 @@ pub async fn run_cli() -> ForcResult<()> {
     };
 
     init_tracing_subscriber(tracing_options.clone());
-    init_telemetry(&tracing_options);
 
     match opt.command {
         Forc::Add(command) => add::exec(command),

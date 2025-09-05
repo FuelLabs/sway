@@ -10,16 +10,39 @@ use std::{env, io};
 use tracing::{Level, Metadata};
 pub use tracing_subscriber::{
     self,
-    filter::{filter_fn, EnvFilter, LevelFilter},
+    filter::{filter_fn, EnvFilter, FilterExt, LevelFilter},
     fmt::{format::FmtSpan, MakeWriter},
-    layer::SubscriberExt,
+    layer::{Layer, SubscriberExt},
     util::SubscriberInitExt,
+    registry,
+    Layer as LayerTrait,
 };
 
 #[cfg(feature = "telemetry")]
 use fuel_telemetry::WorkerGuard;
 
 const ACTION_COLUMN_WIDTH: usize = 12;
+
+// Thread-local storage for telemetry WorkerGuard
+#[cfg(feature = "telemetry")]
+thread_local! {
+    static TELEMETRY_GUARD: std::cell::RefCell<Option<WorkerGuard>> = std::cell::RefCell::new(None);
+}
+
+/// Filter to hide telemetry spans from regular application logs
+#[derive(Clone)]
+pub struct HideTelemetryFilter;
+
+impl<S> tracing_subscriber::layer::Filter<S> for HideTelemetryFilter {
+    fn enabled(
+        &self,
+        meta: &Metadata<'_>,
+        _cx: &tracing_subscriber::layer::Context<'_, S>,
+    ) -> bool {
+        // Hide spans that are created by telemetry macros
+        !meta.target().starts_with("fuel_telemetry")
+    }
+}
 
 // Global flag to track if JSON output mode is active
 static JSON_MODE_ACTIVE: AtomicBool = AtomicBool::new(false);
@@ -248,7 +271,7 @@ impl<'a> MakeWriter<'a> for TracingWriter {
     }
 }
 
-/// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
+/// A subscriber built using tracing_subscriber::registry with optional telemetry layer.
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
 pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
@@ -281,31 +304,16 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
         _ => TracingWriter::Stdio,
     };
 
-    // Initialize telemetry if enabled and not disabled via options
-    #[cfg(feature = "telemetry")]
-    let telemetry_layer = if is_telemetry_disabled_from_options(&options) {
-        None
-    } else {
-        Some(fuel_telemetry::new_with_watchers!().unwrap())
-    };
-
-    let builder = tracing_subscriber::fmt::Subscriber::builder()
-        .with_env_filter(env_filter)
-        .with_ansi(true)
-        .with_level(false)
-        .with_file(false)
-        .with_line_number(false)
-        .without_time()
-        .with_target(false)
-        .with_writer(writer_mode);
-
     // Set the global telemetry disabled flag
     let disabled = is_telemetry_disabled_from_options(&options);
     TELEMETRY_DISABLED.store(disabled, Ordering::SeqCst);
 
+    // Build the fmt layer with proper filtering
+    let hide_telemetry_filter = HideTelemetryFilter;
+    
     // Use regex to filter logs - if provided; otherwise allow all logs
     let regex_filter = options.regex_filter.clone();
-    let filter = filter_fn(move |metadata| {
+    let regex_filter_fn = filter_fn(move |metadata| {
         if let Some(ref regex_filter) = regex_filter {
             let regex = regex::Regex::new(regex_filter).unwrap();
             regex.is_match(metadata.target())
@@ -314,76 +322,170 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
         }
     });
 
-    // Macro to reduce duplication in subscriber setup
-    macro_rules! setup_subscriber {
-        ($subscriber:expr) => {
-            #[cfg(feature = "telemetry")]
-            if let Some((telemetry_layer, _)) = &telemetry_layer {
-                let final_subscriber = $subscriber.with(telemetry_layer.clone());
-                tracing::subscriber::set_global_default(final_subscriber)
-                    .expect("setting subscriber failed");
-            } else {
-                tracing::subscriber::set_global_default($subscriber)
-                    .expect("setting subscriber failed");
+    // Create filters for non-telemetry mode
+    let composite_filter = env_filter.and(hide_telemetry_filter).and(regex_filter_fn);
+
+    // Initialize registry with explicit layer handling
+    #[cfg(feature = "telemetry")]
+    {
+        if !disabled {
+            if let Ok((telemetry_layer, guard)) = fuel_telemetry::new_with_watchers!() {
+                // Store the WorkerGuard in thread-local storage
+                TELEMETRY_GUARD.with(|g| {
+                    *g.borrow_mut() = Some(guard);
+                });
+                
+                // Use the HideTelemetryFilter to prevent telemetry spans from appearing in fmt output
+                let hide_filter = HideTelemetryFilter;
+                
+                match (is_json_mode_active(), level_filter) {
+                    (true, Some(level)) => {
+                        registry()
+                            .with(telemetry_layer)
+                            .with(
+                                tracing_subscriber::fmt::layer()
+                                    .json()
+                                    .with_ansi(true)
+                                    .with_level(false)
+                                    .with_file(false)
+                                    .with_line_number(false)
+                                    .without_time()
+                                    .with_target(false)
+                                    .with_writer(writer_mode)
+                                    .with_filter(hide_filter)
+                                    .with_filter(level)
+                            )
+                            .init();
+                        return;
+                    }
+                    (true, None) => {
+                        registry()
+                            .with(telemetry_layer)
+                            .with(
+                                tracing_subscriber::fmt::layer()
+                                    .json()
+                                    .with_ansi(true)
+                                    .with_level(false)
+                                    .with_file(false)
+                                    .with_line_number(false)
+                                    .without_time()
+                                    .with_target(false)
+                                    .with_writer(writer_mode)
+                                    .with_filter(hide_filter)
+                            )
+                            .init();
+                        return;
+                    }
+                    (false, Some(level)) => {
+                        registry()
+                            .with(telemetry_layer)
+                            .with(
+                                tracing_subscriber::fmt::layer()
+                                    .with_ansi(true)
+                                    .with_level(false)
+                                    .with_file(false)
+                                    .with_line_number(false)
+                                    .without_time()
+                                    .with_target(false)
+                                    .with_writer(writer_mode)
+                                    .with_filter(hide_filter)
+                                    .with_filter(level)
+                            )
+                            .init();
+                        return;
+                    }
+                    (false, None) => {
+                        registry()
+                            .with(telemetry_layer)
+                            .with(
+                                tracing_subscriber::fmt::layer()
+                                    .with_ansi(true)
+                                    .with_level(false)
+                                    .with_file(false)
+                                    .with_line_number(false)
+                                    .without_time()
+                                    .with_target(false)
+                                    .with_writer(writer_mode)
+                                    .with_filter(hide_filter)
+                            )
+                            .init();
+                        return;
+                    }
+                }
+                return;
             }
-
-            #[cfg(not(feature = "telemetry"))]
-            tracing::subscriber::set_global_default($subscriber)
-                .expect("setting subscriber failed");
-        };
+        }
     }
-
+    
+    // Fallback: no telemetry layer
     match (is_json_mode_active(), level_filter) {
         (true, Some(level)) => {
-            let subscriber = builder.json().with_max_level(level).finish().with(filter);
-            setup_subscriber!(subscriber);
+            registry()
+                .with(
+                    tracing_subscriber::fmt::layer()
+                        .json()
+                        .with_ansi(true)
+                        .with_level(false)
+                        .with_file(false)
+                        .with_line_number(false)
+                        .without_time()
+                        .with_target(false)
+                        .with_writer(writer_mode)
+                        .with_filter(composite_filter)
+                        .with_filter(level)
+                )
+                .init();
         }
         (true, None) => {
-            let subscriber = builder.json().finish().with(filter);
-            setup_subscriber!(subscriber);
+            registry()
+                .with(
+                    tracing_subscriber::fmt::layer()
+                        .json()
+                        .with_ansi(true)
+                        .with_level(false)
+                        .with_file(false)
+                        .with_line_number(false)
+                        .without_time()
+                        .with_target(false)
+                        .with_writer(writer_mode)
+                        .with_filter(composite_filter)
+                )
+                .init();
         }
         (false, Some(level)) => {
-            let subscriber = builder.with_max_level(level).finish().with(filter);
-            setup_subscriber!(subscriber);
+            registry()
+                .with(
+                    tracing_subscriber::fmt::layer()
+                        .with_ansi(true)
+                        .with_level(false)
+                        .with_file(false)
+                        .with_line_number(false)
+                        .without_time()
+                        .with_target(false)
+                        .with_writer(writer_mode)
+                        .with_filter(composite_filter)
+                        .with_filter(level)
+                )
+                .init();
         }
         (false, None) => {
-            let subscriber = builder.finish().with(filter);
-            setup_subscriber!(subscriber);
+            registry()
+                .with(
+                    tracing_subscriber::fmt::layer()
+                        .with_ansi(true)
+                        .with_level(false)
+                        .with_file(false)
+                        .with_line_number(false)
+                        .without_time()
+                        .with_target(false)
+                        .with_writer(writer_mode)
+                        .with_filter(composite_filter)
+                )
+                .init();
         }
     }
-
-    // Store telemetry guard in thread-local storage
-    #[cfg(feature = "telemetry")]
-    if let Some((_, telemetry_guard)) = telemetry_layer {
-        thread_local! {
-            static TELEMETRY_GUARD: std::cell::RefCell<Option<WorkerGuard>> = const { std::cell::RefCell::new(None) };
-        }
-
-        TELEMETRY_GUARD.with(|guard| {
-            *guard.borrow_mut() = Some(telemetry_guard);
-        });
-    }
 }
 
-/// Initialize telemetry if enabled and not disabled via options
-#[cfg(feature = "telemetry")]
-pub fn init_telemetry(options: &TracingSubscriberOptions) {
-    let disabled = is_telemetry_disabled_from_options(options);
-    TELEMETRY_DISABLED.store(disabled, Ordering::SeqCst);
-
-    if !disabled {
-        // Initialize fuel-telemetry here if needed
-        // This is where telemetry initialization logic would go
-    }
-}
-
-/// Initialize telemetry if enabled and not disabled via options (no-op when telemetry feature is disabled)
-#[cfg(not(feature = "telemetry"))]
-pub fn init_telemetry(options: &TracingSubscriberOptions) {
-    // Still set the global flag even when telemetry feature is disabled for consistency
-    let disabled = is_telemetry_disabled_from_options(options);
-    TELEMETRY_DISABLED.store(disabled, Ordering::SeqCst);
-}
 
 fn is_telemetry_disabled_from_options(options: &TracingSubscriberOptions) -> bool {
     options.disable_telemetry.unwrap_or(false) || env::var("FORC_DISABLE_TELEMETRY").is_ok()
