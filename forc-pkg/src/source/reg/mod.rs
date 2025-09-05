@@ -845,7 +845,7 @@ mod tests {
     fn test_fetch_directory_cleanup_on_failure() {
         // The test itself doesn't need to assert anything about the result,
         // the assertions inside the async block are what matter
-        let _ = block_on_any_runtime(async {
+        block_on_any_runtime(async {
             let pinned = Pinned {
                 source: Source {
                     name: "nonexistent_test_package".to_string(),
