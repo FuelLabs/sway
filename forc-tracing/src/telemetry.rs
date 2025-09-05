@@ -3,8 +3,8 @@
 // When telemetry feature is enabled, re-export all fuel_telemetry macros
 #[cfg(feature = "telemetry")]
 pub use fuel_telemetry::{
-    debug_telemetry, error_telemetry, info_telemetry, 
-    span_telemetry, trace_telemetry, warn_telemetry,
+    debug_telemetry, error_telemetry, info_telemetry, span_telemetry, trace_telemetry,
+    warn_telemetry,
 };
 
 // When telemetry feature is disabled, provide stub macros that trigger compile-time errors
@@ -17,7 +17,9 @@ mod disabled_telemetry {
     #[macro_export]
     macro_rules! telemetry_disabled {
         () => {
-            compile_error!("Telemetry is disabled. Enable the 'telemetry' feature to use telemetry macros.")
+            compile_error!(
+                "Telemetry is disabled. Enable the 'telemetry' feature to use telemetry macros."
+            )
         };
     }
 
@@ -63,5 +65,8 @@ mod disabled_telemetry {
         };
     }
 
-    pub use {debug_telemetry, error_telemetry, info_telemetry, span_telemetry, trace_telemetry, warn_telemetry};
+    pub use {
+        debug_telemetry, error_telemetry, info_telemetry, span_telemetry, trace_telemetry,
+        warn_telemetry,
+    };
 }

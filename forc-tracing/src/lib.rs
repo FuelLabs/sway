@@ -13,8 +13,8 @@ pub use tracing_subscriber::{
     filter::{filter_fn, EnvFilter, FilterExt, LevelFilter},
     fmt::{format::FmtSpan, MakeWriter},
     layer::{Layer, SubscriberExt},
-    util::SubscriberInitExt,
     registry,
+    util::SubscriberInitExt,
     Layer as LayerTrait,
 };
 
@@ -310,7 +310,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
 
     // Build the fmt layer with proper filtering
     let hide_telemetry_filter = HideTelemetryFilter;
-    
+
     // Use regex to filter logs - if provided; otherwise allow all logs
     let regex_filter = options.regex_filter.clone();
     let regex_filter_fn = filter_fn(move |metadata| {
@@ -334,10 +334,10 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                 TELEMETRY_GUARD.with(|g| {
                     *g.borrow_mut() = Some(guard);
                 });
-                
+
                 // Use the HideTelemetryFilter to prevent telemetry spans from appearing in fmt output
                 let hide_filter = HideTelemetryFilter;
-                
+
                 match (is_json_mode_active(), level_filter) {
                     (true, Some(level)) => {
                         registry()
@@ -353,7 +353,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                                     .with_target(false)
                                     .with_writer(writer_mode)
                                     .with_filter(hide_filter)
-                                    .with_filter(level)
+                                    .with_filter(level),
                             )
                             .init();
                         return;
@@ -371,7 +371,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                                     .without_time()
                                     .with_target(false)
                                     .with_writer(writer_mode)
-                                    .with_filter(hide_filter)
+                                    .with_filter(hide_filter),
                             )
                             .init();
                         return;
@@ -389,7 +389,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                                     .with_target(false)
                                     .with_writer(writer_mode)
                                     .with_filter(hide_filter)
-                                    .with_filter(level)
+                                    .with_filter(level),
                             )
                             .init();
                         return;
@@ -406,7 +406,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                                     .without_time()
                                     .with_target(false)
                                     .with_writer(writer_mode)
-                                    .with_filter(hide_filter)
+                                    .with_filter(hide_filter),
                             )
                             .init();
                         return;
@@ -416,7 +416,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
             }
         }
     }
-    
+
     // Fallback: no telemetry layer
     match (is_json_mode_active(), level_filter) {
         (true, Some(level)) => {
@@ -432,7 +432,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                         .with_target(false)
                         .with_writer(writer_mode)
                         .with_filter(composite_filter)
-                        .with_filter(level)
+                        .with_filter(level),
                 )
                 .init();
         }
@@ -448,7 +448,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                         .without_time()
                         .with_target(false)
                         .with_writer(writer_mode)
-                        .with_filter(composite_filter)
+                        .with_filter(composite_filter),
                 )
                 .init();
         }
@@ -464,7 +464,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                         .with_target(false)
                         .with_writer(writer_mode)
                         .with_filter(composite_filter)
-                        .with_filter(level)
+                        .with_filter(level),
                 )
                 .init();
         }
@@ -479,13 +479,12 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                         .without_time()
                         .with_target(false)
                         .with_writer(writer_mode)
-                        .with_filter(composite_filter)
+                        .with_filter(composite_filter),
                 )
                 .init();
         }
     }
 }
-
 
 fn is_telemetry_disabled_from_options(options: &TracingSubscriberOptions) -> bool {
     options.disable_telemetry.unwrap_or(false) || env::var("FORC_DISABLE_TELEMETRY").is_ok()
