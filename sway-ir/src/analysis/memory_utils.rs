@@ -7,10 +7,9 @@ use rustc_hash::FxHashSet;
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    AnalysisResult, AnalysisResultT, AnalysisResults, ArgPointeeMutability,
+    arg_mutability, AnalysisResult, AnalysisResultT, AnalysisResults, ArgPointeeMutability,
     ArgPointeeMutabilityResult, BlockArgument, Context, FuelVmInstruction, Function, InstOp,
     Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Type, Value, ValueDatum,
-    ARG_POINTEE_MUTABILITY_NAME,
 };
 
 pub const ESCAPED_SYMBOLS_NAME: &str = "escaped-symbols";
@@ -19,7 +18,7 @@ pub fn create_escaped_symbols_pass() -> Pass {
     Pass {
         name: ESCAPED_SYMBOLS_NAME,
         descr: "Symbols that escape or cannot be analyzed",
-        deps: vec![ARG_POINTEE_MUTABILITY_NAME],
+        deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Analysis(compute_escaped_symbols_pass)),
     }
 }
@@ -392,23 +391,23 @@ impl AnalysisResultT for EscapedSymbols {}
 
 pub fn compute_escaped_symbols_pass(
     context: &Context,
-    analyses: &AnalysisResults,
+    _analyses: &AnalysisResults,
     function: Function,
 ) -> Result<AnalysisResult, IrError> {
-    let fn_mutability: &ArgPointeeMutabilityResult =
-        analyses.get_analysis_result(function.get_module(context));
+    let mut fn_mutability = ArgPointeeMutabilityResult::default();
+
     Ok(Box::new(compute_escaped_symbols(
         context,
-        fn_mutability,
+        &mut fn_mutability,
         &function,
-    )))
+    )?))
 }
 
 fn compute_escaped_symbols(
     context: &Context,
-    fn_mutability: &ArgPointeeMutabilityResult,
+    fn_mutability: &mut ArgPointeeMutabilityResult,
     function: &Function,
-) -> EscapedSymbols {
+) -> Result<EscapedSymbols, IrError> {
     let add_from_val = |result: &mut FxHashSet<Symbol>, val: &Value, is_complete: &mut bool| {
         let (complete, syms) = get_referred_symbols(context, *val).consume();
 
@@ -433,15 +432,19 @@ fn compute_escaped_symbols(
             InstOp::BinaryOp { .. } => (),
             InstOp::BitCast(_, _) => (),
             InstOp::Branch(_) => (),
-            InstOp::Call(callee, args) => args
-                .iter()
-                .enumerate()
-                .filter(|(arg_idx, _arg)| {
-                    // Immutable arguments are not considered as escaping symbols.
-                    fn_mutability.get_mutability(*callee, *arg_idx)
-                        != ArgPointeeMutability::Immutable
-                })
-                .for_each(|(_, v)| add_from_val(&mut result, v, &mut is_complete)),
+            InstOp::Call(callee, args) => {
+                if !fn_mutability.is_analyzed(*callee) {
+                    arg_mutability::analyse_fn(context, *callee, fn_mutability)?;
+                }
+                args.iter()
+                    .enumerate()
+                    .filter(|(arg_idx, _arg)| {
+                        // Immutable arguments are not considered as escaping symbols.
+                        fn_mutability.get_mutability(*callee, *arg_idx)
+                            != ArgPointeeMutability::Immutable
+                    })
+                    .for_each(|(_, v)| add_from_val(&mut result, v, &mut is_complete))
+            }
             InstOp::CastPtr(ptr, _) => add_from_val(&mut result, ptr, &mut is_complete),
             InstOp::Cmp(_, _, _) => (),
             InstOp::ConditionalBranch { .. } => (),
@@ -469,9 +472,9 @@ fn compute_escaped_symbols(
     }
 
     if is_complete {
-        EscapedSymbols::Complete(result)
+        Ok(EscapedSymbols::Complete(result))
     } else {
-        EscapedSymbols::Incomplete(result)
+        Ok(EscapedSymbols::Incomplete(result))
     }
 }
 

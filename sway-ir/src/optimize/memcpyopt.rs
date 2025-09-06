@@ -7,11 +7,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    get_gep_symbol, get_referred_symbol, get_referred_symbols, get_stored_symbols, memory_utils,
-    AnalysisResults, ArgPointeeMutability, ArgPointeeMutabilityResult, Block, Context,
-    EscapedSymbols, FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError,
-    LocalVar, Pass, PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum,
-    ARG_POINTEE_MUTABILITY_NAME, ESCAPED_SYMBOLS_NAME,
+    arg_mutability, get_gep_symbol, get_referred_symbol, get_referred_symbols, get_stored_symbols, memory_utils, AnalysisResults, ArgPointeeMutability, ArgPointeeMutabilityResult, Block, Context, EscapedSymbols, FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass, PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -20,7 +16,7 @@ pub fn create_memcpyopt_pass() -> Pass {
     Pass {
         name: MEMCPYOPT_NAME,
         descr: "Optimizations related to MemCopy instructions",
-        deps: vec![ESCAPED_SYMBOLS_NAME, ARG_POINTEE_MUTABILITY_NAME],
+        deps: vec![ESCAPED_SYMBOLS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(mem_copy_opt)),
     }
 }
@@ -275,8 +271,8 @@ fn local_copy_prop(
         EscapedSymbols::Incomplete(_) => return Ok(false),
     };
 
-    let fn_mutability: &ArgPointeeMutabilityResult =
-        analyses.get_analysis_result(function.get_module(context));
+    let mut fn_mutability = ArgPointeeMutabilityResult::default();
+    arg_mutability::analyse_fn(context, function, &mut fn_mutability)?;
 
     // Currently (as we scan a block) available `memcpy`s.
     let mut available_copies: FxHashSet<Value>;
@@ -573,6 +569,9 @@ fn local_copy_prop(
                         op: InstOp::Call(callee, args),
                         ..
                     } => {
+                        if !fn_mutability.is_analyzed(*callee) {
+                            arg_mutability::analyse_fn(context, *callee, &mut fn_mutability)?;
+                        }
                         let (immutable_args, mutable_args): (Vec<_>, Vec<_>) =
                             args.iter().enumerate().partition_map(|(arg_idx, arg)| {
                                 if fn_mutability.get_mutability(*callee, arg_idx)
