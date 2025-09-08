@@ -855,28 +855,24 @@ pub fn item_impl_to_declaration(
             let impl_trait = engines.pe().insert(impl_trait);
             Ok(Declaration::ImplSelfOrTrait(impl_trait))
         }
-        None => match &*engines.te().get(implementing_for.type_id()) {
-            TypeInfo::Contract => Err(handler
-                .emit_err(ConvertParseTreeError::SelfImplForContract { span: block_span }.into())),
-            _ => {
-                let impl_self = ImplSelfOrTrait {
-                    is_self: true,
-                    trait_name: CallPath {
-                        callpath_type: CallPathType::Ambiguous,
-                        prefixes: vec![],
-                        suffix: BaseIdent::dummy(),
-                    },
-                    trait_decl_ref: None,
-                    trait_type_arguments: vec![],
-                    implementing_for,
-                    impl_type_parameters,
-                    items,
-                    block_span,
-                };
-                let impl_self = engines.pe().insert(impl_self);
-                Ok(Declaration::ImplSelfOrTrait(impl_self))
-            }
-        },
+        None => {
+            let impl_self = ImplSelfOrTrait {
+                is_self: true,
+                trait_name: CallPath {
+                    callpath_type: CallPathType::Ambiguous,
+                    prefixes: vec![],
+                    suffix: BaseIdent::dummy(),
+                },
+                trait_decl_ref: None,
+                trait_type_arguments: vec![],
+                implementing_for,
+                impl_type_parameters,
+                items,
+                block_span,
+            };
+            let impl_self = engines.pe().insert(impl_self);
+            Ok(Declaration::ImplSelfOrTrait(impl_self))
+        }
     }
 }
 
@@ -1005,7 +1001,7 @@ fn handle_impl_contract(
         }
     }
 
-    // Not a Contract impl, return None
+    // Not a Contract impl, return empty node contents.
     Ok(vec![])
 }
 

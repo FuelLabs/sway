@@ -90,6 +90,7 @@ http
 https
 halfword
 js
+kB
 localhost
 mainnet
 mempool
