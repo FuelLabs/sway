@@ -163,43 +163,7 @@ fn type_check_transmute(
         )
         .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
 
-    // Forbid ref and ptr types
-    fn forbid_ref_ptr_types(
-        engines: &Engines,
-        handler: &Handler,
-        t: TypeId,
-        span: &Span,
-    ) -> Result<(), ErrorEmitted> {
-        let types = t.extract_any_including_self(
-            engines,
-            &|t| {
-                matches!(
-                    t,
-                    TypeInfo::StringSlice
-                        | TypeInfo::RawUntypedPtr
-                        | TypeInfo::RawUntypedSlice
-                        | TypeInfo::Ptr(_)
-                        | TypeInfo::Slice(_)
-                        | TypeInfo::Ref { .. }
-                )
-            },
-            vec![],
-            0,
-        );
-        if !types.is_empty() {
-            Err(handler.emit_err(CompileError::TypeNotAllowed {
-                reason: sway_error::error::TypeNotAllowedReason::NotAllowedInTransmute,
-                span: span.clone(),
-            }))
-        } else {
-            Ok(())
-        }
-    }
-
-    forbid_ref_ptr_types(engines, handler, src_type, &type_arguments[0].span())?;
-    forbid_ref_ptr_types(engines, handler, return_type, &type_arguments[1].span())?;
-
-    // check first argument
+    // type check first argument
     let arg_type = engines.te().new_unknown();
     let first_argument_typed_expr = {
         let ctx = ctx

@@ -53,7 +53,10 @@ impl MaterializeConstGenerics for TyConstGenericDecl {
                                 .extract_literal_value()
                                 .unwrap()
                                 .cast_value_to_u64()
-                                .unwrap()
+                                .unwrap(),
+                        "{:?} {:?}",
+                        v,
+                        value
                     );
                 }
                 None => {

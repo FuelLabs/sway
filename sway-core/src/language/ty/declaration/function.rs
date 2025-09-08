@@ -874,6 +874,7 @@ impl TyFunctionSig {
                     TypeParameter::Const(p) => {
                         let expr = ConstGenericExpr::AmbiguousVariableExpression {
                             ident: p.name.clone(),
+                            decl: None,
                         };
                         TyFunctionSigTypeParameter::Const(p.expr.clone().unwrap_or(expr))
                     }
@@ -916,7 +917,7 @@ impl TyFunctionSig {
                         TyFunctionSigTypeParameter::Const(p) => {
                             match p {
                                 ConstGenericExpr::Literal { val, .. } => val.to_string(),
-                                ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+                                ConstGenericExpr::AmbiguousVariableExpression { ident, .. } => {
                                     ident.as_str().to_string()
                                 }
                             }
