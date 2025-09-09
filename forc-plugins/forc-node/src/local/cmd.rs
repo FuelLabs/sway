@@ -1,10 +1,17 @@
-use crate::chain_config::ChainConfig;
 use crate::consts::DEFAULT_PORT;
+use anyhow;
 use clap::Parser;
 use fuel_core::{chain_config::default_consensus_dev_key, service::Config};
-use fuel_core_chain_config::{SnapshotMetadata, SnapshotReader};
-use fuel_core_types::{secrecy::Secret, signer::SignMode};
-use std::path::PathBuf;
+use fuel_core_chain_config::{
+    coin_config_helpers::CoinConfigGenerator, ChainConfig, CoinConfig, SnapshotMetadata,
+    TESTNET_INITIAL_BALANCE,
+};
+use fuel_core_types::{
+    fuel_crypto::fuel_types::{Address, AssetId},
+    secrecy::Secret,
+    signer::SignMode,
+};
+use std::{path::PathBuf, str::FromStr};
 
 #[derive(Parser, Debug, Clone)]
 pub struct LocalCmd {
@@ -142,5 +149,158 @@ impl From<LocalCmd> for Config {
         config.utxo_validation = false; // local development
 
         config
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_coins_per_account_single_account_with_defaults() {
+        let base_asset_id = AssetId::default();
+        let account_id = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        let accounts = vec![account_id.to_string()];
+
+        let result = get_coins_per_account(accounts, &base_asset_id, 0);
+        assert!(result.is_ok());
+
+        let coins = result.unwrap();
+        assert_eq!(coins.len(), 1);
+        
+        let coin = &coins[0];
+        assert_eq!(coin.owner, Address::from_str(account_id).unwrap());
+        assert_eq!(coin.asset_id, base_asset_id);
+        assert_eq!(coin.amount, TESTNET_INITIAL_BALANCE);
+        assert_eq!(coin.output_index, 0);
+    }
+
+    #[test]
+    fn test_get_coins_per_account_with_custom_asset() {
+        let base_asset_id = AssetId::default();
+        let account_id = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        let asset_id = "0x0000000000000000000000000000000000000000000000000000000000000002";
+        let accounts = vec![format!("{}:{}", account_id, asset_id)];
+
+        let result = get_coins_per_account(accounts, &base_asset_id, 0);
+        assert!(result.is_ok());
+
+        let coins = result.unwrap();
+        assert_eq!(coins.len(), 1);
+
+        let coin = &coins[0];
+        assert_eq!(coin.owner, Address::from_str(account_id).unwrap());
+        assert_eq!(coin.asset_id, AssetId::from_str(asset_id).unwrap());
+        assert_eq!(coin.amount, TESTNET_INITIAL_BALANCE);
+        assert_eq!(coin.output_index, 0);
+    }
+
+    #[test]
+    fn test_get_coins_per_account_with_custom_amount() {
+        let base_asset_id = AssetId::default();
+        let account_id = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        let asset_id = "0x0000000000000000000000000000000000000000000000000000000000000002";
+        let amount = 5000000u64;
+        let accounts = vec![format!("{}:{}:{}", account_id, asset_id, amount)];
+
+        let result = get_coins_per_account(accounts, &base_asset_id, 0);
+        assert!(result.is_ok());
+
+        let coins = result.unwrap();
+        assert_eq!(coins.len(), 1);
+
+        let coin = &coins[0];
+        assert_eq!(coin.owner, Address::from_str(account_id).unwrap());
+        assert_eq!(coin.asset_id, AssetId::from_str(asset_id).unwrap());
+        assert_eq!(coin.amount, amount);
+        assert_eq!(coin.output_index, 0);
+    }
+
+    #[test]
+    fn test_get_coins_per_account_multiple_accounts() {
+        let base_asset_id = AssetId::default();
+        let account1 = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        let account2 = "0x0000000000000000000000000000000000000000000000000000000000000002";
+        let accounts = vec![account1.to_string(), account2.to_string()];
+
+        let result = get_coins_per_account(accounts, &base_asset_id, 5);
+        assert!(result.is_ok());
+
+        let coins = result.unwrap();
+        assert_eq!(coins.len(), 2);
+
+        let coin1 = &coins[0];
+        assert_eq!(coin1.owner, Address::from_str(account1).unwrap());
+        assert_eq!(coin1.output_index, 5);
+
+        let coin2 = &coins[1];
+        assert_eq!(coin2.owner, Address::from_str(account2).unwrap());
+        assert_eq!(coin2.output_index, 6);
+    }
+
+    #[test]
+    fn test_get_coins_per_account_edge_cases_and_errors() {
+        let base_asset_id = AssetId::default();
+        let valid_account = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        let valid_asset = "0x0000000000000000000000000000000000000000000000000000000000000002";
+
+        // Test empty input
+        let result = get_coins_per_account(vec![], &base_asset_id, 0);
+        assert!(result.is_ok());
+        let coins = result.unwrap();
+        assert_eq!(coins.len(), 0);
+
+        // Test invalid account ID
+        let result =
+            get_coins_per_account(vec!["invalid_account_id".to_string()], &base_asset_id, 0);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Invalid account ID: Invalid encoded byte in Address"
+        );
+
+        // Test invalid asset ID
+        let result = get_coins_per_account(
+            vec![format!("{}:invalid_asset", valid_account)],
+            &base_asset_id,
+            0,
+        );
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Invalid asset ID: Invalid encoded byte in AssetId"
+        );
+
+        // Test invalid amount
+        let result = get_coins_per_account(
+            vec![format!("{}:{}:not_a_number", valid_account, valid_asset)],
+            &base_asset_id,
+            0,
+        );
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Invalid amount: invalid digit found in string"
+        );
+
+        // Test too many parts
+        let result = get_coins_per_account(
+            vec!["part1:part2:part3:part4".to_string()],
+            &base_asset_id,
+            0,
+        );
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Invalid account format: part1:part2:part3:part4. Expected format: <account-id>[:asset-id[:amount]]"
+        );
+
+        // Test empty account (should fail now)
+        let result = get_coins_per_account(vec!["".to_string()], &base_asset_id, 0);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Invalid account ID: Invalid encoded byte in Address"
+        );
     }
 }
