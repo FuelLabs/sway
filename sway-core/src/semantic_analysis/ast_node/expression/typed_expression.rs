@@ -959,7 +959,7 @@ impl ty::TyExpression {
                 &arms_reachability[..catch_all_arm_position],
             );
         }
-        // if there are no interior catch-all arms and there is more then one arm
+        // if there are no interior catch-all arms and there is more than one arm
         else if let Some((last_arm_report, other_arms_reachability)) =
             arms_reachability.split_last()
         {
@@ -3401,7 +3401,7 @@ mod tests {
 
         let handler = Handler::default();
         let _comp_res = do_type_check_for_boolx2(&handler, &expr);
-        let (errors, _warnings) = handler.consume();
+        let (errors, _warnings, _infos) = handler.consume();
 
         assert_eq!(errors.len(), 1);
         assert!(matches!(&errors[0],
@@ -3435,7 +3435,7 @@ mod tests {
 
         let handler = Handler::default();
         let _comp_res = do_type_check_for_boolx2(&handler, &expr);
-        let (errors, _warnings) = handler.consume();
+        let (errors, _warnings, _infos) = handler.consume();
 
         assert!(errors.len() == 1);
         assert!(matches!(&errors[0],
@@ -3473,7 +3473,7 @@ mod tests {
 
         let handler = Handler::default();
         let _comp_res = do_type_check_for_boolx2(&handler, &expr);
-        let (errors, _warnings) = handler.consume();
+        let (errors, _warnings, _infos) = handler.consume();
         assert!(errors.len() == 1);
         assert!(matches!(&errors[0],
                          CompileError::TypeError(TypeError::MismatchedType {
@@ -3505,8 +3505,8 @@ mod tests {
                 .insert_array_without_annotations(&engines, engines.te().id_of_bool(), 0),
             ExperimentalFeatures::default(),
         );
-        let (errors, warnings) = handler.consume();
+        let (errors, warnings, infos) = handler.consume();
         assert!(comp_res.is_ok());
-        assert!(warnings.is_empty() && errors.is_empty());
+        assert!(infos.is_empty() && warnings.is_empty() && errors.is_empty());
     }
 }

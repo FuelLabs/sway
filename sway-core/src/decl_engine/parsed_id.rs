@@ -4,7 +4,8 @@ use super::{
 };
 use crate::{
     engine_threading::{
-        EqWithEngines, HashWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
+        DebugWithEngines, EqWithEngines, HashWithEngines, PartialEqWithEngines,
+        PartialEqWithEnginesContext,
     },
     Engines,
 };
@@ -55,6 +56,17 @@ impl<T> Eq for ParsedDeclId<T> {}
 impl<T> PartialEq for ParsedDeclId<T> {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
+    }
+}
+
+impl<T> DebugWithEngines for ParsedDeclId<T>
+where
+    ParsedDeclEngine: ParsedDeclEngineIndex<T>,
+    T: Named + Spanned + DebugWithEngines,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let decl = engines.pe().get(self);
+        DebugWithEngines::fmt(&decl, f, engines)
     }
 }
 

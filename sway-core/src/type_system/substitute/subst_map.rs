@@ -44,7 +44,7 @@ impl DebugWithEngines for TypeSubstMap {
                 .join(", "),
             self.const_generics_renaming
                 .iter()
-                .map(|(a, b)| format!("{:?} -> {:?}", a, b))
+                .map(|(a, b)| format!("{a:?} -> {b:?}"))
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -585,7 +585,7 @@ fn map_from_length(
 ) -> TypeSubstMap {
     match (&l.expr(), &r.expr()) {
         (
-            ConstGenericExpr::AmbiguousVariableExpression { ident },
+            ConstGenericExpr::AmbiguousVariableExpression { ident, .. },
             ConstGenericExpr::Literal { val, .. },
         ) => {
             map.const_generics_materialization.insert(

@@ -1,5 +1,5 @@
 ---
-source: test/tests/tests.rs
+source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute
 exit status: 1
@@ -46,16 +46,5 @@ found:    u32.
    |
 ____
 
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute/src/main.sw:15:27
-   |
-13 | 
-14 |     // Invalid types
-15 |     let _ = __transmute::<&u64, &u8>(&1u64);
-   |                           ^^^^ references, pointers, slices, string slices or types containing any of these are not allowed.
-16 | }
-   |
-____
-
-  Aborting due to 4 errors.
+  Aborting due to 3 errors.
 error: Failed to compile transmute

@@ -5,15 +5,15 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr,
+    ast_elements::type_parameter::{ConstGenericExpr, ConstGenericExprTyDecl},
     language::{
-        ty::{self, TyTraitItem},
+        ty::{self, TyDecl, TyTraitItem},
         CallPath, CallPathType, QualifiedCallPath,
     },
     monomorphization::type_decl_opt_to_type_id,
     namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
     type_system::SubstTypes,
-    EnforceTypeArguments, Engines, Namespace, SubstTypesContext, TypeId, TypeInfo,
+    EnforceTypeArguments, Engines, Length, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
 
 use super::namespace::TraitMap;
@@ -25,31 +25,51 @@ pub enum VisibilityCheck {
     No,
 }
 
-fn resolve_const_generics_ambiguous(
-    expr: &ConstGenericExpr,
+fn resolve_length(
+    length: &Length,
     handler: &Handler,
     engines: &Engines,
     namespace: &Namespace,
     mod_path: &ModulePath,
     self_type: Option<TypeId>,
-) -> Result<(), ErrorEmitted> {
-    if let ConstGenericExpr::AmbiguousVariableExpression { ident } = expr {
-        let _ = resolve_call_path(
-            handler,
-            engines,
-            namespace,
-            mod_path,
-            &CallPath {
-                prefixes: vec![],
-                suffix: ident.clone(),
-                callpath_type: CallPathType::Ambiguous,
-            },
-            self_type,
-            VisibilityCheck::No,
-        )
-        .map(|d| d.expect_typed())?;
+) -> Result<Length, ErrorEmitted> {
+    match length.expr() {
+        ConstGenericExpr::Literal { val, span } => Ok(Length(ConstGenericExpr::Literal {
+            val: *val,
+            span: span.clone(),
+        })),
+        ConstGenericExpr::AmbiguousVariableExpression { ident, decl } => {
+            if decl.is_some() {
+                return Ok(length.clone());
+            }
+
+            let resolved_decl = resolve_call_path(
+                handler,
+                engines,
+                namespace,
+                mod_path,
+                &CallPath {
+                    prefixes: vec![],
+                    suffix: ident.clone(),
+                    callpath_type: CallPathType::Ambiguous,
+                },
+                self_type,
+                VisibilityCheck::No,
+            )
+            .map(|d| d.expect_typed())?;
+
+            let decl = match resolved_decl {
+                TyDecl::ConstGenericDecl(decl) => ConstGenericExprTyDecl::ConstGenericDecl(decl),
+                TyDecl::ConstantDecl(decl) => ConstGenericExprTyDecl::ConstantDecl(decl),
+                _ => unreachable!(),
+            };
+
+            Ok(Length(ConstGenericExpr::AmbiguousVariableExpression {
+                ident: ident.clone(),
+                decl: Some(decl),
+            }))
+        }
     }
-    Ok(())
 }
 
 /// Resolve the type of the given [TypeId], replacing any instances of
@@ -69,10 +89,6 @@ pub fn resolve_type(
     subst_ctx: &SubstTypesContext,
     check_visibility: VisibilityCheck,
 ) -> Result<TypeId, ErrorEmitted> {
-    // if span.as_str().to_lowercase().contains("crazy") {
-    //     eprintln!("{}: {}", span.as_str(), std::backtrace::Backtrace::force_capture());
-    // }
-
     let type_engine = engines.te();
     let module_path = type_info_prefix.unwrap_or(mod_path);
     let type_id = match type_engine.get(type_id).as_ref() {
@@ -122,14 +138,8 @@ pub fn resolve_type(
                 check_visibility,
             )
             .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
-            resolve_const_generics_ambiguous(
-                length.expr(),
-                handler,
-                engines,
-                namespace,
-                mod_path,
-                self_type,
-            )?;
+
+            let length = resolve_length(length, handler, engines, namespace, mod_path, self_type)?;
 
             engines.te().insert_array(engines, elem_ty, length.clone())
         }
@@ -223,15 +233,8 @@ pub fn resolve_type(
             engines.te().insert_ref(engines, *to_mutable_value, ty)
         }
         TypeInfo::StringArray(length) => {
-            resolve_const_generics_ambiguous(
-                length.expr(),
-                handler,
-                engines,
-                namespace,
-                mod_path,
-                self_type,
-            )?;
-            type_id
+            let length = resolve_length(length, handler, engines, namespace, mod_path, self_type)?;
+            engines.te().insert_string_array(engines, length)
         }
         _ => type_id,
     };
@@ -442,6 +445,7 @@ fn resolve_symbol_and_mod_path_inner(
     // This block tries to resolve associated types
     let mut current_module = root_module;
     let mut current_mod_path = vec![mod_path[0].clone()];
+
     let mut decl_opt = None;
     let mut is_self_type = IsSelfType::No;
     for ident in mod_path.iter().skip(1) {
@@ -491,12 +495,17 @@ fn resolve_symbol_and_mod_path_inner(
         return Ok((decl, is_self_type, current_mod_path));
     }
 
-    root_module
-        .lookup_submodule(handler, &mod_path[1..])
-        .and_then(|module| {
-            let (decl, decl_path) = module.resolve_symbol(handler, engines, symbol)?;
-            Ok((decl, is_self_type, decl_path))
-        })
+    if mod_path.len() == 1 {
+        let (decl, decl_path) = root_module.resolve_symbol(handler, engines, symbol)?;
+        Ok((decl, is_self_type, decl_path))
+    } else {
+        root_module
+            .lookup_submodule(handler, &mod_path[1..])
+            .and_then(|module| {
+                let (decl, decl_path) = module.resolve_symbol(handler, engines, symbol)?;
+                Ok((decl, is_self_type, decl_path))
+            })
+    }
 }
 
 fn decl_to_type_info(

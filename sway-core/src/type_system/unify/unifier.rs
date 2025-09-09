@@ -176,8 +176,8 @@ impl<'a> Unifier<'a> {
                         todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
                     }
                     (
-                        ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
-                        ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
+                        ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident, .. },
+                        ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident, .. },
                     ) => {
                         assert!(r_ident.as_str() == e_ident.as_str());
                     }
@@ -399,8 +399,8 @@ impl<'a> Unifier<'a> {
                 ConstGenericExpr::Literal { .. },
             ) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
             (
-                ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident },
-                ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident },
+                ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident, .. },
+                ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident, .. },
             ) if r_ident == e_ident => {}
             _ => {
                 let (received, expected) = self.assign_args(received, expected);
@@ -617,7 +617,11 @@ impl<'a> Unifier<'a> {
             span,
             false,
         );
-        let (new_errors, warnings) = h.consume();
+        let (new_errors, warnings, infos) = h.consume();
+
+        for info in infos {
+            handler.emit_info(info);
+        }
 
         for warn in warnings {
             handler.emit_warn(warn);

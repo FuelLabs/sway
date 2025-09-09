@@ -84,7 +84,7 @@ impl Cli {
                         match args[0].as_str() {
                             cmd if helper.commands.is_help_command(cmd) => {
                                 if let Err(e) = commands::cmd_help(helper, &args).await {
-                                    println!("Error: {}", e);
+                                    println!("Error: {e}");
                                 }
                             }
                             cmd if helper.commands.is_quit_command(cmd) => {
@@ -108,10 +108,10 @@ impl Cli {
                                                 cmd, suggestion.name
                                             );
                                         } else {
-                                            println!("Error: {}", e);
+                                            println!("Error: {e}");
                                         }
                                     } else {
-                                        println!("Error: {}", e);
+                                        println!("Error: {e}");
                                     }
                                 }
                             }
@@ -127,7 +127,7 @@ impl Cli {
                     break Ok(());
                 }
                 Err(err) => {
-                    println!("Error: {}", err);
+                    println!("Error: {err}");
                     break Ok(());
                 }
             }

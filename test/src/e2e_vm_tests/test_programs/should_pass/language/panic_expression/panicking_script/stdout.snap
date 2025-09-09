@@ -8,7 +8,7 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling script panicking_script (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script)
-    Finished release [optimized + fuel] target(s) [3.64 KB] in ???
+    Finished release [optimized + fuel] target(s) [3.544 KB] in ???
      Running 11 tests, filtered 0 tests
 
 tested -- panicking_script
@@ -20,28 +20,28 @@ tested -- panicking_script
             └─ panicked in:   panicking_script, src/main.sw:6:5
            decoded log values:
 C(true), log rb: 5503570629422409978
-      test test_nested_panic_inlined ... ok (???, 800 gas)
+      test test_nested_panic_inlined ... ok (???, 788 gas)
            revert code: ffffffff00000001
             ├─ panic message: Error E.
             ├─ panic value:   E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }])
             └─ panicked in:   panicking_lib, src/lib.sw:41:9
            decoded log values:
 E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 5503570629422409978
-      test test_nested_panic_inlined_same_revert_code ... ok (???, 800 gas)
+      test test_nested_panic_inlined_same_revert_code ... ok (???, 788 gas)
            revert code: ffffffff00000001
             ├─ panic message: Error E.
             ├─ panic value:   E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }])
             └─ panicked in:   panicking_lib, src/lib.sw:41:9
            decoded log values:
 E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 5503570629422409978
-      test test_nested_panic_not_inlined ... ok (???, 780 gas)
+      test test_nested_panic_not_inlined ... ok (???, 768 gas)
            revert code: ffffffff00000002
             ├─ panic message: Error E.
             ├─ panic value:   E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }])
             └─ panicked in:   panicking_lib, src/lib.sw:35:5
            decoded log values:
 E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 5503570629422409978
-      test test_nested_panic_not_inlined_same_revert_code ... ok (???, 780 gas)
+      test test_nested_panic_not_inlined_same_revert_code ... ok (???, 768 gas)
            revert code: ffffffff00000002
             ├─ panic message: Error E.
             ├─ panic value:   E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }])
@@ -60,13 +60,13 @@ E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString
             └─ panicked in:   panicking_lib, src/lib.sw:74:5
            decoded log values:
 (), log rb: 3330666440490685604
-      test test_generic_panic_with_str ... ok (???, 273 gas)
+      test test_generic_panic_with_str ... ok (???, 269 gas)
            revert code: ffffffff00000004
             ├─ panic message: generic panic with string
             └─ panicked in:   panicking_lib, src/lib.sw:74:5
            decoded log values:
 AsciiString { data: "generic panic with string" }, log rb: 10098701174489624218
-      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 273 gas)
+      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 269 gas)
            revert code: ffffffff00000004
             ├─ panic message: generic panic with different string
             └─ panicked in:   panicking_lib, src/lib.sw:74:5

@@ -277,7 +277,7 @@ impl FromStr for HexSalt {
 impl Display for HexSalt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let salt = self.0;
-        write!(f, "{}", salt)
+        write!(f, "{salt}")
     }
 }
 
@@ -514,7 +514,7 @@ impl PackageManifestFile {
         let parse_res = parse_tree_type(&handler, entry_string);
 
         parse_res.map_err(|_| {
-            let (errors, _warnings) = handler.consume();
+            let (errors, _warnings, _infos) = handler.consume();
             parsing_failed(&self.project.name, &errors)
         })
     }

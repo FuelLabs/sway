@@ -10,7 +10,4 @@ fn main() {
 
     // Different sizes
     let _ = __transmute::<u64, u8>(1u64);
-
-    // Invalid types
-    let _ = __transmute::<&u64, &u8>(&1u64);
 }

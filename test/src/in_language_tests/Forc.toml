@@ -30,9 +30,7 @@ members = [
   "test_programs/result_inline_tests",
   "test_programs/revert_inline_tests",
   "test_programs/storage_key_inline_tests",
-# TODO: Enable this test once https://github.com/FuelLabs/sway/issues/6899 is fixed.
-#       Compilation fails with error: No method "eq(Self, Self) -> ()" found for type "Self".
-#  "test_programs/storage_vec_iter_tests",
+  "test_programs/storage_vec_iter_tests",
   "test_programs/string_inline_tests",
   "test_programs/time_inline_tests",
   "test_programs/tx_inline_tests",

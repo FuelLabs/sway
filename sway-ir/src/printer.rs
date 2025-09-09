@@ -157,20 +157,26 @@ pub fn module_print(context: &Context, _analyses: &AnalysisResults, module: Modu
 }
 
 /// Print a function to stdout.
-pub fn function_print(context: &Context, function: Function) {
+pub fn function_print<W: std::fmt::Write>(
+    w: &mut W,
+    context: &Context,
+    function: Function,
+    metadata: bool,
+) -> Result<(), std::fmt::Error> {
     let mut md_namer = MetadataNamer::default();
-    println!(
-        "{}",
-        function_to_doc(
-            context,
-            &mut md_namer,
-            &mut Namer::new(function),
-            context.functions.get(function.0).unwrap(),
-            &|_, doc| doc
-        )
-        .append(md_namer.to_doc(context))
-        .build()
+    let doc = function_to_doc(
+        context,
+        &mut md_namer,
+        &mut Namer::new(function),
+        context.functions.get(function.0).unwrap(),
+        &|_, doc| doc,
     );
+    let doc = if metadata {
+        doc.append(md_namer.to_doc(context))
+    } else {
+        doc
+    };
+    write!(w, "{}", doc.build())
 }
 
 /// Print an instruction to stdout.
@@ -259,6 +265,41 @@ fn module_to_doc<'a>(
         ),
     ))
     .append(if !module.global_variables.is_empty() {
+        Doc::line(Doc::Empty)
+    } else {
+        Doc::Empty
+    })
+    .append(Doc::indent(
+        4,
+        Doc::List(
+            module
+                .storage_keys
+                .iter()
+                .map(|(name, storage_key)| {
+                    let (slot, offset, field_id) = storage_key.get_parts(context);
+                    Doc::line(
+                        // If the storage key's path doesn't have struct field names,
+                        // which is 99% of the time, we will display only the slot,
+                        // to avoid clattering.
+                        Doc::text(format!(
+                            "storage_key {name} = 0x{slot:x}{}{}",
+                            if offset != 0 || slot != field_id {
+                                format!(" : {offset}")
+                            } else {
+                                "".to_string()
+                            },
+                            if slot != field_id {
+                                format!(" : 0x{field_id:x}")
+                            } else {
+                                "".to_string()
+                            },
+                        )),
+                    )
+                })
+                .collect(),
+        ),
+    ))
+    .append(if !module.storage_keys.is_empty() {
         Doc::line(Doc::Empty)
     } else {
         Doc::Empty
@@ -1035,6 +1076,21 @@ fn instruction_to_doc<'a>(
                 }
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
+            InstOp::GetStorageKey(storage_key) => {
+                let name = block
+                    .get_function(context)
+                    .get_module(context)
+                    .lookup_storage_key_path(context, storage_key)
+                    .unwrap();
+                Doc::line(
+                    Doc::text(format!(
+                        "{} = get_storage_key {}, {name}",
+                        namer.name(context, ins_value),
+                        storage_key.get_type(context).as_string(context),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                )
+            }
             InstOp::IntToPtr(value, ty) => maybe_constant_to_doc(context, md_namer, namer, value)
                 .append(Doc::line(
                     Doc::text(format!(

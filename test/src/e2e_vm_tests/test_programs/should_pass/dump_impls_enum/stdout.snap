@@ -1,0 +1,46 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_enum --release --dump-impls=MyEnum
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_enum
+   Compiling library dump_impls_common (test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_common)
+info: Trait impls dump was requested.
+  --> test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_common/src/lib.sw:5:1
+   |
+...
+ 5 | pub enum MyEnum {
+   | ---------------- info: Matching implemented traits for this type.
+...
+12 | impl MyTrait for MyEnum {}
+   | ------------------------ help: trait is dump_impls_common::MyTrait
+   |
+____
+
+   Compiling library dump_impls_enum (test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_enum)
+info: Trait impls dump was requested.
+  --> test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_common/src/lib.sw:5:1
+   |
+...
+ 5 | pub enum MyEnum {
+   | ---------------- info: Matching implemented traits for this type.
+...
+12 | impl MyTrait for MyEnum {}
+   | ------------------------ help: trait is dump_impls_common::MyTrait
+   |
+  ::: test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_enum/src/foo.sw:5:1
+   |
+...
+ 5 | impl MyTraitFoo for dump_impls_common::MyEnum {}
+   | ---------------------------------------------- help: trait is dump_impls_enum::foo::MyTraitFoo
+   |
+  ::: test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_enum/src/lib.sw:9:1
+   |
+...
+ 9 | impl MyTraitEnum for MyEnum {}
+   | ---------------------------- help: trait is dump_impls_enum::MyTraitEnum
+   |
+____
+
+    Finished release [optimized + fuel] target(s) [32 B] in ???

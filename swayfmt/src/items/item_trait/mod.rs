@@ -60,7 +60,7 @@ impl Format for ItemTrait {
         } else {
             for item in trait_items.iter() {
                 item.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", NEW_LINE)?;
+                write!(formatted_code, "{NEW_LINE}")?;
             }
         }
 
@@ -71,10 +71,10 @@ impl Format for ItemTrait {
             for trait_items in trait_defs.get().iter() {
                 // format `Annotated<ItemFn>`
                 trait_items.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", NEW_LINE)?;
+                write!(formatted_code, "{NEW_LINE}")?;
             }
             if trait_defs.get().is_empty() {
-                write!(formatted_code, "{}", NEW_LINE)?;
+                write!(formatted_code, "{NEW_LINE}")?;
             }
             Self::close_curly_brace(formatted_code, formatter)?;
         };

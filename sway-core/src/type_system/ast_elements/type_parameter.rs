@@ -1,14 +1,17 @@
 use crate::{
     abi_generation::abi_str::AbiStrContext,
     decl_engine::{
-        parsed_id::ParsedDeclId, DeclEngineInsert as _, DeclMapping, InterfaceItemMap, ItemMap,
-        ParsedDeclEngineGet as _,
+        parsed_id::ParsedDeclId, DeclEngineGet, DeclEngineInsert as _, DeclMapping,
+        InterfaceItemMap, ItemMap, MaterializeConstGenerics, ParsedDeclEngineGet as _,
     },
     engine_threading::*,
     has_changes,
     language::{
         parsed::ConstGenericDeclaration,
-        ty::{self, ConstGenericDecl, TyConstGenericDecl, TyExpression},
+        ty::{
+            self, ConstGenericDecl, ConstantDecl, TyConstGenericDecl, TyConstantDecl, TyExpression,
+            TyExpressionVariant,
+        },
         CallPath, CallPathType,
     },
     namespace::TraitMap,
@@ -162,6 +165,21 @@ impl TypeParameter {
 
         Ok(())
     }
+
+    pub(crate) fn unifies(
+        &self,
+        type_id: TypeId,
+        decider: impl Fn(TypeId, TypeId) -> bool,
+    ) -> bool {
+        match self {
+            TypeParameter::Type(generic_type_parameter) => {
+                decider(type_id, generic_type_parameter.type_id)
+            }
+            TypeParameter::Const(const_generic_parameter) => {
+                decider(type_id, const_generic_parameter.ty)
+            }
+        }
+    }
 }
 
 impl Named for TypeParameter {
@@ -236,13 +254,13 @@ impl DebugWithEngines for TypeParameter {
             }
             TypeParameter::Const(p) => match p.expr.as_ref() {
                 Some(ConstGenericExpr::Literal { val, .. }) => format!("{} -> {}", p.name, val),
-                Some(ConstGenericExpr::AmbiguousVariableExpression { ident }) => {
-                    format!("{}", ident)
+                Some(ConstGenericExpr::AmbiguousVariableExpression { ident, .. }) => {
+                    format!("{ident}")
                 }
                 None => format!("{} -> None", p.name),
             },
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -946,9 +964,54 @@ fn handle_trait(
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ConstGenericExprTyDecl {
+    ConstGenericDecl(ConstGenericDecl),
+    ConstantDecl(ConstantDecl),
+}
+
+impl MaterializeConstGenerics for ConstGenericExprTyDecl {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &sway_error::handler::Handler,
+        name: &str,
+        value: &crate::language::ty::TyExpression,
+    ) -> Result<(), sway_error::handler::ErrorEmitted> {
+        match self {
+            ConstGenericExprTyDecl::ConstGenericDecl(decl) => {
+                let mut decl = TyConstGenericDecl::clone(&*engines.de().get(&decl.decl_id));
+                decl.materialize_const_generics(engines, handler, name, value)?;
+
+                let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
+                *self = ConstGenericExprTyDecl::ConstGenericDecl(ConstGenericDecl {
+                    decl_id: *decl_ref.id(),
+                });
+                Ok(())
+            }
+            ConstGenericExprTyDecl::ConstantDecl(decl) => {
+                let mut decl = TyConstantDecl::clone(&*engines.de().get(&decl.decl_id));
+                decl.materialize_const_generics(engines, handler, name, value)?;
+
+                let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
+                *self = ConstGenericExprTyDecl::ConstantDecl(ConstantDecl {
+                    decl_id: *decl_ref.id(),
+                });
+                Ok(())
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ConstGenericExpr {
-    Literal { val: usize, span: Span },
-    AmbiguousVariableExpression { ident: Ident },
+    Literal {
+        val: usize,
+        span: Span,
+    },
+    AmbiguousVariableExpression {
+        ident: Ident,
+        decl: Option<ConstGenericExprTyDecl>,
+    },
 }
 
 impl ConstGenericExpr {
@@ -966,6 +1029,13 @@ impl ConstGenericExpr {
             ty::TyExpressionVariant::ConstGenericExpression { call_path, .. } => {
                 Ok(ConstGenericExpr::AmbiguousVariableExpression {
                     ident: call_path.suffix.clone(),
+                    decl: None,
+                })
+            }
+            ty::TyExpressionVariant::ConstantExpression { decl, .. } => {
+                Ok(ConstGenericExpr::AmbiguousVariableExpression {
+                    ident: decl.call_path.suffix.clone(),
+                    decl: None,
                 })
             }
             _ => Err(
@@ -985,8 +1055,43 @@ impl ConstGenericExpr {
                 return_type: engines.te().id_of_u64(),
                 span: span.clone(),
             },
-            ConstGenericExpr::AmbiguousVariableExpression { .. } => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            ConstGenericExpr::AmbiguousVariableExpression { ident, decl } => {
+                let expression = match decl {
+                    Some(ConstGenericExprTyDecl::ConstGenericDecl(decl)) => {
+                        TyExpressionVariant::ConstGenericExpression {
+                            decl: Box::new(TyConstGenericDecl::clone(
+                                &*engines.de().get(&decl.decl_id),
+                            )),
+                            span: ident.span(),
+                            call_path: CallPath {
+                                prefixes: vec![],
+                                suffix: ident.clone(),
+                                callpath_type: CallPathType::Ambiguous,
+                            },
+                        }
+                    }
+                    Some(ConstGenericExprTyDecl::ConstantDecl(decl)) => {
+                        TyExpressionVariant::ConstantExpression {
+                            decl: Box::new(TyConstantDecl::clone(
+                                &*engines.de().get(&decl.decl_id),
+                            )),
+                            span: ident.span(),
+                            call_path: Some(CallPath {
+                                prefixes: vec![],
+                                suffix: ident.clone(),
+                                callpath_type: CallPathType::Ambiguous,
+                            }),
+                        }
+                    }
+                    None => {
+                        unreachable!("Type check guarantee this variable points to a know decl")
+                    }
+                };
+                TyExpression {
+                    expression,
+                    return_type: engines.te().id_of_u64(),
+                    span: ident.span().clone(),
+                }
             }
         }
     }
@@ -1023,8 +1128,8 @@ impl PartialOrd for ConstGenericExpr {
         match (self, other) {
             (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l.partial_cmp(r),
             (
-                Self::AmbiguousVariableExpression { ident: l },
-                Self::AmbiguousVariableExpression { ident: r },
+                Self::AmbiguousVariableExpression { ident: l, .. },
+                Self::AmbiguousVariableExpression { ident: r, .. },
             ) => l.partial_cmp(r),
             _ => None,
         }
@@ -1038,8 +1143,8 @@ impl PartialEq for ConstGenericExpr {
         match (self, other) {
             (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l == r,
             (
-                Self::AmbiguousVariableExpression { ident: l },
-                Self::AmbiguousVariableExpression { ident: r },
+                Self::AmbiguousVariableExpression { ident: l, .. },
+                Self::AmbiguousVariableExpression { ident: r, .. },
             ) => l == r,
             _ => false,
         }
@@ -1051,7 +1156,7 @@ impl std::hash::Hash for ConstGenericExpr {
         core::mem::discriminant(self).hash(state);
         match self {
             Self::Literal { val, .. } => val.hash(state),
-            Self::AmbiguousVariableExpression { ident } => ident.hash(state),
+            Self::AmbiguousVariableExpression { ident, .. } => ident.hash(state),
         }
     }
 }
@@ -1069,7 +1174,7 @@ impl DebugWithEngines for ConstGenericExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &crate::Engines) -> std::fmt::Result {
         match self {
             Self::Literal { val, .. } => write!(f, "{val}"),
-            Self::AmbiguousVariableExpression { ident } => {
+            Self::AmbiguousVariableExpression { ident, .. } => {
                 write!(f, "{}", ident.as_str())
             }
         }

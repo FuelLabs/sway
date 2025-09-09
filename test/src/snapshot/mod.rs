@@ -3,10 +3,14 @@ use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
 use regex::Regex;
 use std::{
+    collections::{BTreeSet, VecDeque},
     path::{Path, PathBuf},
     str::FromStr,
     sync::Once,
 };
+use sway_core::Engines;
+use sway_features::ExperimentalFeatures;
+use sway_ir::function_print;
 
 static FORC_COMPILATION: Once = Once::new();
 static FORC_DOC_COMPILATION: Once = Once::new();
@@ -53,7 +57,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 .to_string();
 
             let repo_root = repo_root.clone();
-            Trial::test(name, move || {
+            Trial::test(name.clone(), move || {
                 let snapshot_toml =
                     std::fs::read_to_string(format!("{}/snapshot.toml", dir.display()))?;
                 let snapshot_toml = toml::from_str::<toml::Value>(&snapshot_toml)?;
@@ -72,10 +76,12 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 use std::fmt::Write;
                 let mut snapshot = String::new();
 
+                let name = PathBuf::from_str(&name).unwrap();
+                let name = name.file_stem().unwrap();
                 for cmd in cmds {
-                    let cmd = cmd.replace("{root}", &root);
+                    let cmd = cmd.replace("{root}", &root).replace("{name}", name.to_str().unwrap());
 
-                    let _ = writeln!(&mut snapshot, "> {}", cmd);
+                    let _ = writeln!(&mut snapshot, "> {cmd}");
 
                     let mut last_output: Option<String> = None;
 
@@ -123,8 +129,106 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                 last_output = Some(new_output);
                             }
                             continue;
+                        } else if let Some(args) = cmd.strip_prefix("filter-fn") {
+                            if let Some(output) = last_output.take() {
+                                let (name, fns) = args.trim().split_once(" ").unwrap();
+
+                                let fns = fns.split(",")
+                                    .map(|x| x.trim().to_string())
+                                    .collect::<BTreeSet<String>>();
+
+                                let mut captured = String::new();
+
+                                let mut inside_ir = false;
+                                let mut inside_asm = false;
+                                let mut last_asm_lines = VecDeque::new();
+                                let mut capture_line = false;
+
+                                let compiling_project_line = format!("Compiling script {name}");
+                                for line in output.lines() {
+                                    if line.contains(&compiling_project_line) {
+                                        inside_ir = true;
+                                    }
+
+                                    if line.contains(";; ASM: Final program") {
+                                        inside_asm = true;
+                                    }
+
+                                    if inside_ir {
+                                        if line.starts_with("// IR:") {
+                                            capture_line = true;
+                                        }
+
+                                        if line.starts_with("!0 =") {
+                                            let engines = Engines::default();
+                                            let ir = sway_ir::parse(&captured, engines.se(), ExperimentalFeatures::default()).unwrap();
+
+                                            for m in ir.module_iter() {
+                                                for f in m.function_iter(&ir) {
+                                                    if fns.contains(f.get_name(&ir)) {
+                                                        snapshot.push('\n');
+                                                        function_print(&mut snapshot, &ir, f, false).unwrap();
+                                                        snapshot.push('\n');
+                                                    }
+                                                }
+                                            }
+
+                                            capture_line = false;
+                                            inside_ir = false;
+                                            captured.clear();
+                                        }
+                                    }
+
+                                    if inside_asm {
+                                        if line.contains("save locals base register for function") {
+                                            for f in fns.iter() {
+                                                if line.contains(f.as_str()) {
+                                                    capture_line = true;
+
+                                                    snapshot.push('\n');
+
+                                                    for l in last_asm_lines.drain(..) {
+                                                        snapshot.push_str(l);
+                                                        snapshot.push('\n');
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // keep the last two lines
+                                        if last_asm_lines.len() >= 2 {
+                                            last_asm_lines.pop_front();
+                                        }
+                                        last_asm_lines.push_back(line);
+
+                                        if line.is_empty() {
+                                            inside_asm = false;
+                                        }
+
+                                        if line.contains("; return from call") {
+                                            if capture_line {
+                                                captured.push_str(line);
+                                                captured.push('\n');
+
+                                                write!(&mut snapshot, "{}", captured).unwrap();
+                                                captured.clear();
+                                            }
+
+                                            capture_line = false;
+                                        }
+                                    }
+
+                                    if capture_line {
+                                        captured.push_str(line);
+                                        captured.push('\n');
+                                    }
+                                }
+
+                                last_output = Some(String::new());
+                            }
+                            continue;
                         } else {
-                            panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex");
+                            panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex, filter-fn");
                         };
 
                         let o = duct::cmd!("bash", "-c", cmd.clone())

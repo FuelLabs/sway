@@ -897,7 +897,8 @@ mod tests {
         let path = None;
         let handler = Handler::default();
         let _stream = lex_commented(&handler, input.into(), start, end, &path).unwrap();
-        let (errors, warnings) = handler.consume();
+        let (errors, warnings, infos) = handler.consume();
+        assert_eq!(infos.len(), 0);
         assert_eq!(warnings.len(), 0);
         assert_eq!(errors.len(), 5);
         for err in errors {

@@ -117,6 +117,7 @@ impl TestInstance for str {
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl PartialEq for str[6] {
     fn eq(self, other: Self) -> bool {
         let mut i = 0;
@@ -134,6 +135,7 @@ impl PartialEq for str[6] {
         true
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Eq for str[6] {}
 
 impl TestInstance for str[6] {
@@ -154,11 +156,13 @@ impl TestInstance for str[6] {
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl PartialEq for [u64; 2] {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1]
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Eq for [u64; 2] {}
 
 impl TestInstance for [u64; 2] {
@@ -251,13 +255,6 @@ impl TestInstance for Enum {
     }
 }
 
-impl PartialEq for (u8, u32) {
-    fn eq(self, other: Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-impl Eq for (u8, u32) {}
-
 impl TestInstance for (u8, u32) {
     fn elements(len: u64) -> Vec<Self> {
         let u8_values = u8::elements(len);
@@ -288,16 +285,11 @@ impl TestInstance for b256 {
     }
 }
 
-impl AbiEncode for raw_ptr {
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let ptr_as_u64 = asm(p: self) {
-            p: u64
-        };
-        ptr_as_u64.abi_encode(buffer)
-    }
+pub struct RawPtrNewtype {
+    ptr: raw_ptr,
 }
 
-impl TestInstance for raw_ptr {
+impl TestInstance for RawPtrNewtype {
     fn elements(len: u64) -> Vec<Self> {
         let values = u8::elements(len);
         let mut res = Vec::new();
@@ -306,16 +298,39 @@ impl TestInstance for raw_ptr {
             let null_ptr = asm() {
                 zero: raw_ptr
             };
-            res.push(null_ptr.add::<u64>(values.get(i).unwrap().as_u64()));
+            res.push(RawPtrNewtype {
+                ptr: null_ptr.add::<u64>(values.get(i).unwrap().as_u64())
+            });
             i += 1;
         }
         res
     }
 }
 
+impl AbiEncode for RawPtrNewtype {
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        let ptr_as_u64 = asm(p: self.ptr) {
+            p: u64
+        };
+        ptr_as_u64.abi_encode(buffer)
+    }
+}
+
+impl PartialEq for RawPtrNewtype {
+    fn eq(self, other: Self) -> bool {
+        self.ptr == other.ptr
+    }
+}
+impl Eq for RawPtrNewtype {}
+
 impl TestInstance for raw_slice {
     fn elements(len: u64) -> Vec<Self> {
-        let ptr_values = raw_ptr::elements(len);
+        let raw_ptr_values = RawPtrNewtype::elements(len);
+        let mut ptr_values = Vec::<raw_ptr>::new();
+        for raw_ptr in raw_ptr_values.iter() {
+            ptr_values.push(raw_ptr.ptr);
+        }
+
         let len_values = u8::elements(len);
         let mut res = Vec::new();
         let mut i = 0;
@@ -335,13 +350,6 @@ impl TestInstance for raw_slice {
     }
 }
 
-impl PartialEq for raw_slice {
-    fn eq(self, other: Self) -> bool {
-        self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    }
-}
-impl Eq for raw_slice {}
-
 impl TestInstance for () {
     fn elements(len: u64) -> Vec<Self> {
         let mut res = Vec::new();
@@ -353,13 +361,6 @@ impl TestInstance for () {
         res
     }
 }
-
-impl PartialEq for () {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-impl Eq for () {}
 
 impl TestInstance for [u64; 0] {
     fn elements(len: u64) -> Vec<Self> {
@@ -373,9 +374,11 @@ impl TestInstance for [u64; 0] {
     }
 }
 
+#[cfg(experimental_const_generics = false)]
 impl PartialEq for [u64; 0] {
     fn eq(self, other: Self) -> bool {
         true
     }
 }
+#[cfg(experimental_const_generics = false)]
 impl Eq for [u64; 0] {}

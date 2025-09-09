@@ -268,6 +268,7 @@ impl From<&TypeParameter> for GenericArgument {
                     Some(expr) => expr.clone(),
                     None => ConstGenericExpr::AmbiguousVariableExpression {
                         ident: p.name.clone(),
+                        decl: None,
                     },
                 },
             }),
@@ -298,24 +299,27 @@ impl MaterializeConstGenerics for GenericArgument {
                     .materialize_const_generics(engines, handler, name, value)?;
             }
             GenericArgument::Const(arg) => {
-                let new_expr = match &arg.expr {
-                    ConstGenericExpr::AmbiguousVariableExpression { ident }
-                        if ident.as_str() == name =>
-                    {
-                        Some(ConstGenericExpr::Literal {
-                            val: value
-                                .extract_literal_value()
-                                .unwrap()
-                                .cast_value_to_u64()
-                                .unwrap() as usize,
-                            span: value.span.clone(),
-                        })
+                arg.expr = match arg.expr.clone() {
+                    ConstGenericExpr::AmbiguousVariableExpression { ident, mut decl } => {
+                        if let Some(decl) = decl.as_mut() {
+                            decl.materialize_const_generics(engines, handler, name, value)?;
+                        }
+
+                        if ident.as_str() == name {
+                            ConstGenericExpr::Literal {
+                                val: value
+                                    .extract_literal_value()
+                                    .unwrap()
+                                    .cast_value_to_u64()
+                                    .unwrap() as usize,
+                                span: value.span.clone(),
+                            }
+                        } else {
+                            ConstGenericExpr::AmbiguousVariableExpression { ident, decl }
+                        }
                     }
-                    _ => None,
+                    expr => expr,
                 };
-                if let Some(new_expr) = new_expr {
-                    arg.expr = new_expr;
-                }
             }
         }
         Ok(())

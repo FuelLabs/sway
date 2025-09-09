@@ -5,7 +5,7 @@
 use super::{
     convert::*,
     lexical_map::LexicalMap,
-    storage::{add_to_b256, get_storage_field_id, get_storage_key},
+    storage::{add_to_b256, get_storage_field_path_and_field_id, get_storage_key},
     types::*,
     CompiledFunctionCache,
 };
@@ -356,9 +356,10 @@ impl<'a> FnCompiler<'a> {
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.engines.de().get_enum(decl_id);
                     create_tagged_union_type(
-                        self.engines.te(),
-                        self.engines.de(),
+                        self.engines,
                         context,
+                        md_mgr,
+                        self.module,
                         &ted.variants,
                     )
                     .map(|_| ())?;
@@ -541,12 +542,22 @@ impl<'a> FnCompiler<'a> {
         match &ast_expr.expression {
             ty::TyExpressionVariant::Literal(Literal::String(s)) => {
                 let string_data =
-                    ConstantContent::get_string(context, s.as_str().as_bytes().to_vec());
-                let string_data_ptr =
-                    store_to_memory(self, context, CompiledValue::InRegister(string_data))?
-                        .expect_memory();
+                    ConstantContent::get_string(context, s.as_str().as_bytes().to_vec())
+                        .get_constant(context)
+                        .unwrap();
+                let string_data_ptr = self.module.new_unique_global_var(
+                    context,
+                    "__const_global".into(),
+                    string_data.get_content(context).ty,
+                    Some(*string_data),
+                    false,
+                );
+                let string_ptr = self
+                    .current_block
+                    .append(context)
+                    .get_global(string_data_ptr);
                 let string_len = s.as_str().len() as u64;
-                self.compile_string_slice(context, span_md_idx, string_data_ptr, string_len)
+                self.compile_string_slice(context, span_md_idx, string_ptr, string_len)
             }
             ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
                 let implied_lit = match &*self.engines.te().get(ast_expr.return_type) {
@@ -754,6 +765,7 @@ impl<'a> FnCompiler<'a> {
                 )?;
                 self.compile_storage_access(
                     context,
+                    md_mgr,
                     access.storage_field_names.clone(),
                     access.struct_field_names.clone(),
                     key,
@@ -1030,9 +1042,11 @@ impl<'a> FnCompiler<'a> {
                 let exp = &arguments[0];
                 // Compile the expression in case of side-effects but ignore its value.
                 let ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     exp.return_type,
                     &exp.span,
                 )?;
@@ -1046,9 +1060,11 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
                 let ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     targ.type_id(),
                     &targ.span(),
                 )?;
@@ -1061,9 +1077,11 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::SizeOfStr => {
                 let targ = type_arguments[0].clone();
                 let ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     targ.type_id(),
                     &targ.span(),
                 )?;
@@ -1101,9 +1119,11 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::AssertIsStrArray => {
                 let targ = type_arguments[0].clone();
                 let ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     targ.type_id(),
                     &targ.span(),
                 )?;
@@ -1188,9 +1208,11 @@ impl<'a> FnCompiler<'a> {
                 // Get the target type from the type argument provided
                 let target_type = &type_arguments[0];
                 let target_ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     target_type.type_id(),
                     &target_type.span(),
                 )?;
@@ -1516,9 +1538,11 @@ impl<'a> FnCompiler<'a> {
 
                 let len = type_arguments[0].clone();
                 let ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     len.type_id(),
                     &len.span(),
                 )?;
@@ -2405,11 +2429,15 @@ impl<'a> FnCompiler<'a> {
     ) -> Result<TerminatorValue, CompileError> {
         assert!(arguments.len() == 1);
 
-        let te = self.engines.te();
-        let de = self.engines.de();
-
-        let return_type_ir_type = convert_resolved_type_id(te, de, context, return_type, span)?;
-        let return_type_ir_type_ptr = Type::new_typed_pointer(context, return_type_ir_type);
+        let return_type_ir_type = convert_resolved_type_id(
+            self.engines,
+            context,
+            md_mgr,
+            self.module,
+            Some(self),
+            return_type,
+            span,
+        )?;
 
         let first_argument_expr = &arguments[0];
         let first_argument_value = return_on_termination_or_extract!(
@@ -2418,24 +2446,50 @@ impl<'a> FnCompiler<'a> {
         let first_argument_type = first_argument_value
             .get_type(context)
             .expect("transmute first argument type not found");
-        let first_argument_ptr =
-            store_to_memory(self, context, first_argument_value)?.expect_memory();
 
-        // check IR sizes match
-        let first_arg_size = first_argument_type.size(context).in_bytes();
-        let return_type_size = return_type_ir_type.size(context).in_bytes();
-        if first_arg_size != return_type_size {
-            return Err(CompileError::Internal(
-                "Types size do not match",
-                span.clone(),
-            ));
-        }
+        let is_first_argument_ptr = first_argument_type.is_ptr(context);
+        let is_return_type_ptr = return_type_ir_type.is_ptr(context);
 
-        let casted_ptr = self
-            .current_block
-            .append(context)
-            .cast_ptr(first_argument_ptr, return_type_ir_type_ptr);
-        let final_value = self.current_block.append(context).load(casted_ptr);
+        // Both types needs to be pointers
+        // or both need to be non pointers
+        let final_value = match (is_first_argument_ptr, is_return_type_ptr) {
+            (true, false) | (false, true) => {
+                return Err(CompileError::Internal(
+                    "__transmute both types need to be references, or both need to be not references",
+                    span.clone(),
+                ));
+            }
+            (true, true) => {
+                let first_argument_value = first_argument_value.value();
+                self.current_block
+                    .append(context)
+                    .cast_ptr(first_argument_value, return_type_ir_type)
+            }
+            (false, false) => {
+                // check IR sizes match
+                let first_arg_size = first_argument_type.size(context).in_bytes();
+                let return_type_size = return_type_ir_type.size(context).in_bytes();
+
+                if first_arg_size != return_type_size {
+                    return Err(CompileError::Internal(
+                        "Types size do not match",
+                        span.clone(),
+                    ));
+                }
+
+                let return_type_ir_type_ptr = Type::new_typed_pointer(context, return_type_ir_type);
+                let first_argument_ptr =
+                    store_to_memory(self, context, first_argument_value)?.expect_memory();
+
+                let casted_ptr = self
+                    .current_block
+                    .append(context)
+                    .cast_ptr(first_argument_ptr, return_type_ir_type_ptr);
+
+                self.current_block.append(context).load(casted_ptr)
+            }
+        };
+
         Ok(TerminatorValue::new(
             CompiledValue::InRegister(final_value),
             context,
@@ -2447,10 +2501,9 @@ impl<'a> FnCompiler<'a> {
         context: &mut Context,
         first_argument_expr: &TyExpression,
         first_argument_value: Value,
-        _md_mgr: &mut MetadataManager,
+        md_mgr: &mut MetadataManager,
     ) -> Result<(Value, TypeId), CompileError> {
         let te = self.engines.te();
-        let de = self.engines.de();
 
         let err = CompileError::TypeArgumentsNotAllowed {
             span: first_argument_expr.span.clone(),
@@ -2478,9 +2531,11 @@ impl<'a> FnCompiler<'a> {
                 initializer: None,
             };
             let elem_ir_ty = convert_resolved_type_id(
-                te,
-                de,
+                self.engines,
                 context,
+                md_mgr,
+                self.module,
+                Some(self),
                 elem_ty,
                 &first_argument_expr.span.clone(),
             )?;
@@ -2500,18 +2555,18 @@ impl<'a> FnCompiler<'a> {
     fn advance_ptr_n_elements(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         first_argument_expr: &TyExpression,
         ptr: Value,
         elem_type_id: TypeId,
         idx: Value,
     ) -> Result<(Value, Type), CompileError> {
-        let te = self.engines.te();
-        let de = self.engines.de();
-
         let elem_ir_type = convert_resolved_type_id(
-            te,
-            de,
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             elem_type_id,
             &first_argument_expr.span.clone(),
         )?;
@@ -2585,6 +2640,7 @@ impl<'a> FnCompiler<'a> {
         .expect_register();
         let (ptr_to_elem, _) = self.advance_ptr_n_elements(
             context,
+            md_mgr,
             first_argument_expr,
             ptr_to_first_elem,
             elem_type_id,
@@ -2620,6 +2676,7 @@ impl<'a> FnCompiler<'a> {
         .expect_register();
         let (ptr_to_elem, elem_ir_type) = self.advance_ptr_n_elements(
             context,
+            md_mgr,
             first_argument_expr,
             ptr_to_first_elem,
             elem_type_id,
@@ -3238,9 +3295,11 @@ impl<'a> FnCompiler<'a> {
 
         // Convert the return type.  If it's a reference type then make it a pointer.
         let return_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             ast_return_type,
         )?;
         let ret_is_copy_type = self
@@ -3402,9 +3461,11 @@ impl<'a> FnCompiler<'a> {
             merge_block.append(context).branch(true_block_begin, vec![])
         } else {
             let return_type = convert_resolved_typeid_no_span(
-                self.engines.te(),
-                self.engines.de(),
+                self.engines,
                 context,
+                md_mgr,
+                self.module,
+                Some(self),
                 return_type,
             )
             .unwrap_or_else(|_| Type::get_unit(context));
@@ -3437,9 +3498,11 @@ impl<'a> FnCompiler<'a> {
     ) -> Result<TerminatorValue, CompileError> {
         // Retrieve the type info for the enum.
         let enum_type = match convert_resolved_type_id(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             exp.return_type,
             &exp.span,
         )? {
@@ -3735,9 +3798,11 @@ impl<'a> FnCompiler<'a> {
         let init_val = self.compile_expression_to_register(context, md_mgr, body);
 
         let return_type = convert_resolved_type_id(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             body.return_type,
             &body.span,
         )?;
@@ -3817,9 +3882,11 @@ impl<'a> FnCompiler<'a> {
                     .insert(call_path.suffix.as_str().to_owned());
 
                 let return_type = convert_resolved_type_id(
-                    self.engines.te(),
-                    self.engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     value.return_type,
                     &value.span,
                 )?;
@@ -4092,9 +4159,11 @@ impl<'a> FnCompiler<'a> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let elem_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             elem_type,
         )?;
 
@@ -4169,9 +4238,11 @@ impl<'a> FnCompiler<'a> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let elem_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             elem_type,
         )?;
 
@@ -4437,9 +4508,11 @@ impl<'a> FnCompiler<'a> {
             insert_values.push(insert_val);
 
             let field_type = convert_resolved_typeid_no_span(
-                self.engines.te(),
-                self.engines.de(),
+                self.engines,
                 context,
+                md_mgr,
+                self.module,
+                Some(self),
                 struct_field.value.return_type,
             )?;
             field_types.push(field_type);
@@ -4524,9 +4597,11 @@ impl<'a> FnCompiler<'a> {
             })?;
 
         let field_type = convert_resolved_type_id(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             field_type_id,
             &ast_field.span,
         )?;
@@ -4547,17 +4622,12 @@ impl<'a> FnCompiler<'a> {
         tag: usize,
         contents: Option<&ty::TyExpression>,
     ) -> Result<TerminatorValue, CompileError> {
-        // XXX The enum instantiation AST node includes the full declaration.  If the enum was
-        // declared in a different module then it seems for now there's no easy way to pre-analyse
-        // it and add its type/aggregate to the context.  We can re-use them here if we recognise
-        // the name, and if not add a new aggregate... OTOH the naming seems a little fragile and
-        // we could potentially use the wrong aggregate with the same name, different module...
-        // dunno.
         let span_md_idx = md_mgr.span_to_md(context, &enum_decl.span);
         let enum_type = create_tagged_union_type(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
             &enum_decl.variants,
         )?;
         let tag_value =
@@ -4702,9 +4772,11 @@ impl<'a> FnCompiler<'a> {
                 )
                 .expect_register();
                 let init_type = convert_resolved_typeid_no_span(
-                    self.engines.te(),
-                    self.engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     field_expr.return_type,
                 )?;
                 init_values.push(init_value);
@@ -4734,9 +4806,11 @@ impl<'a> FnCompiler<'a> {
         )
         .expect_memory();
         let tuple_type = convert_resolved_type_id(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             tuple_type,
             &span,
         )?;
@@ -4757,42 +4831,43 @@ impl<'a> FnCompiler<'a> {
         Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_storage_access(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         storage_field_names: Vec<String>,
         struct_field_names: Vec<String>,
         key: Option<U256>,
         fields: &[ty::TyStorageAccessDescriptor],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        // Get the list of indices used to access the storage field. This will be empty
-        // if the storage field type is not a struct.
-        // FIXME: shouldn't have to extract the first field like this.
+        // Get the list of indices used to access the storage field.
         let base_type = fields[0].type_id;
-        let field_idcs = get_indices_for_struct_access(
+        let field_indices = get_indices_for_struct_access(
             self.engines.te(),
             self.engines.de(),
             base_type,
             &fields[1..],
         )?;
 
-        // Get the IR type of the storage variable
+        // Get the IR type of the storage variable.
         let base_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             base_type,
         )?;
 
-        // Do the actual work. This is a recursive function because we want to drill down
-        // to load each primitive type in the storage field in its own storage slot.
-        self.compile_storage_read(
+        self.compile_get_storage_key(
             context,
+            md_mgr,
             storage_field_names,
             struct_field_names,
             key,
-            &field_idcs,
+            &field_indices,
             &base_type,
             span_md_idx,
         )
@@ -4860,9 +4935,11 @@ impl<'a> FnCompiler<'a> {
         });
 
         let return_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             return_type,
         )?;
         let val = self
@@ -4877,9 +4954,10 @@ impl<'a> FnCompiler<'a> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn compile_storage_read(
+    fn compile_get_storage_key(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         storage_field_names: Vec<String>,
         struct_field_names: Vec<String>,
         key: Option<U256>,
@@ -4887,106 +4965,61 @@ impl<'a> FnCompiler<'a> {
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        // Use the `struct_field_names` to get a field id that is unique even for zero-sized values that live in the same slot.
-        // We calculate the `unique_field_id` early, here, before the `storage_filed_names` get consumed by `get_storage_key` below.
-        let unique_field_id = get_storage_field_id(&storage_field_names, &struct_field_names);
+        let (path, field_id) =
+            get_storage_field_path_and_field_id(&storage_field_names, &struct_field_names);
 
-        // Get the actual storage key as a `Bytes32` as well as the offset, in words,
-        // within the slot. The offset depends on what field of the top level storage
-        // variable is being accessed.
-        let (storage_key, offset_within_slot) = {
-            let offset_in_words = match base_type.get_indexed_offset(context, indices) {
-                Some(offset_in_bytes) => {
-                    // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
-                    //       The memory layout of structs can be changed in the future.
-                    //       We will not refactor the Storage API at the moment to remove this
-                    //       assumption. It is a questionable effort because we anyhow
-                    //       want to improve and refactor Storage API in the future.
-                    assert!(
-                        offset_in_bytes % 8 == 0,
-                        "Expected struct fields to be aligned to word boundary. The field offset in bytes was {}.",
-                        offset_in_bytes
-                    );
-                    offset_in_bytes / 8
-                }
-                None => {
-                    return Err(CompileError::Internal(
-                        "Cannot get the offset within the slot while compiling storage read.",
-                        Span::dummy(),
-                    ))
-                }
-            };
-            let offset_in_slots = offset_in_words / 4;
-            let offset_remaining = offset_in_words % 4;
+        let storage_key = match self.module.get_storage_key(context, &path) {
+            Some(storage_key) => *storage_key,
+            None => {
+                // Get the actual storage key as a `Bytes32` as well as the offset, in words,
+                // within the slot. The offset depends on what field of the top level storage
+                // variable is being accessed.
+                let (slot, offset_within_slot) = {
+                    let offset_in_words = match base_type.get_indexed_offset(context, indices) {
+                        Some(offset_in_bytes) => {
+                            // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
+                            //       The memory layout of structs can be changed in the future.
+                            //       We will not refactor the Storage API at the moment to remove this
+                            //       assumption. It is a questionable effort because we anyhow
+                            //       want to improve and refactor Storage API in the future.
+                            assert!(
+                                offset_in_bytes % 8 == 0,
+                                "Expected struct fields to be aligned to word boundary. The field offset in bytes was {offset_in_bytes}.",
+                            );
+                            offset_in_bytes / 8
+                        }
+                        None => return Err(CompileError::Internal(
+                            "Cannot get the offset within the slot while compiling storage read.",
+                            md_mgr
+                                .md_to_span(context, span_md_idx)
+                                .unwrap_or_else(Span::dummy),
+                        )),
+                    };
+                    let offset_in_slots = offset_in_words / 4;
+                    let offset_remaining = offset_in_words % 4;
 
-            // The storage key we need is the storage key of the top level storage variable
-            // plus the offset, in number of slots, computed above. The offset within this
-            // particular slot is the remaining offset, in words.
-            (
-                add_to_b256(get_storage_key(storage_field_names, key), offset_in_slots),
-                offset_remaining,
-            )
+                    // The storage key we need is the storage key of the top level storage variable
+                    // plus the offset, in number of slots, computed above. The offset within this
+                    // particular slot is the remaining offset, in words.
+                    (
+                        add_to_b256(get_storage_key(storage_field_names, key), offset_in_slots),
+                        offset_remaining,
+                    )
+                };
+
+                let storage_key =
+                    StorageKey::new(context, slot.into(), offset_within_slot, field_id.into());
+
+                self.module.add_storage_key(context, path, storage_key);
+
+                storage_key
+            }
         };
 
-        // Const value for the key from the hash
-        let const_key = convert_literal_to_value(context, &Literal::B256(storage_key.into()))
-            .add_metadatum(context, span_md_idx);
-
-        // The type of a storage access is `StorageKey` which is a struct containing
-        // a `b256`, `u64` and `b256`.
-        let b256_ty = Type::get_b256(context);
-        let uint64_ty = Type::get_uint64(context);
-        let storage_key_aggregate = Type::new_struct(context, vec![b256_ty, uint64_ty, b256_ty]);
-
-        // Local variable holding the `StorageKey` struct
-        let storage_key_local_name = self.lexical_map.insert_anon();
-        let storage_key_ptr = self
-            .function
-            .new_local_var(
-                context,
-                storage_key_local_name,
-                storage_key_aggregate,
-                None,
-                false,
-            )
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let storage_key = self
             .current_block
             .append(context)
-            .get_local(storage_key_ptr)
-            .add_metadatum(context, span_md_idx);
-
-        // Store the key as the first field in the `StorageKey` struct
-        let gep_0_val =
-            self.current_block
-                .append(context)
-                .get_elem_ptr_with_idx(storage_key, b256_ty, 0);
-        self.current_block
-            .append(context)
-            .store(gep_0_val, const_key)
-            .add_metadatum(context, span_md_idx);
-
-        // Store the offset as the second field in the `StorageKey` struct
-        let offset_within_slot_val = ConstantContent::get_uint(context, 64, offset_within_slot);
-        let gep_1_val =
-            self.current_block
-                .append(context)
-                .get_elem_ptr_with_idx(storage_key, uint64_ty, 1);
-        self.current_block
-            .append(context)
-            .store(gep_1_val, offset_within_slot_val)
-            .add_metadatum(context, span_md_idx);
-
-        // Store the field identifier as the third field in the `StorageKey` struct
-        let field_id = convert_literal_to_value(context, &Literal::B256(unique_field_id.into()))
-            .add_metadatum(context, span_md_idx);
-        let gep_2_val =
-            self.current_block
-                .append(context)
-                .get_elem_ptr_with_idx(storage_key, b256_ty, 2);
-        self.current_block
-            .append(context)
-            .store(gep_2_val, field_id)
+            .get_storage_key(storage_key)
             .add_metadatum(context, span_md_idx);
 
         Ok(TerminatorValue::new(

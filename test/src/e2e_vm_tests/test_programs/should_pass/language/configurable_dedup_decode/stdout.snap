@@ -226,8 +226,8 @@ script {
 !18 = span !3 71305 71311
 !19 = span !3 71291 71312
 !20 = fn_call_path_span !3 71291 71304
-!21 = span !3 114877 114898
-!22 = fn_call_path_span !3 114877 114890
+!21 = span !3 114976 114997
+!22 = fn_call_path_span !3 114976 114989
 !23 = span !3 71904 71932
 !24 = fn_call_path_span !3 71911 71923
 !25 = span !3 625 637
@@ -241,7 +241,7 @@ script {
 !33 = (!19 !20 !21 !22 !23 !24)
 !34 = span !3 2857 2896
 !35 = (!19 !20 !21 !22 !23 !24 !34)
-!36 = span !3 114876 114901
+!36 = span !3 114975 115000
 !37 = (!19 !20 !36)
 !38 = (!19 !20 !36)
 !39 = (!19 !20 !36)
@@ -355,25 +355,25 @@ addi $$arg2 $ssp i8           ; get pointer to configurable WRAPPED stack addres
 jal  $$reta $pc i69           ; decode configurable WRAPPED
 move $$locbase $sp            ; save locals base register for function __entry
 cfei i360                     ; allocate 360 bytes for locals and 0 slots for call arguments
-addi $r0 $$locbase i272       ; get offset to local
+addi $r0 $$locbase i272       ; get offset to local __ptr slice
 jal  $$reta $pc i93           ; [call]: call main_8
 move $r1 $$retv               ; [call]: copy the return value
 movi $r2 i1024                ; initialize constant into register
 aloc $r2
-addi $r2 $$locbase i112       ; get offset to local
+addi $r2 $$locbase i112       ; get offset to local __ptr { ptr, u64, u64 }
 sw   $$locbase $hp i14        ; store word
 movi $r3 i1024                ; initialize constant into register
 sw   $$locbase $r3 i15        ; store word
 sw   $$locbase $zero i16      ; store word
 mcpi $$locbase $r2 i24        ; copy memory
-addi $r2 $$locbase i184       ; get offset to local
+addi $r2 $$locbase i184       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $$locbase i24        ; copy memory
-addi $r3 $$locbase i312       ; get offset to local
+addi $r3 $$locbase i312       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r3 $r2 i24              ; copy memory
-addi $r2 $$locbase i312       ; get offset to local
-addi $r3 $$locbase i24        ; get offset to local
+addi $r2 $$locbase i312       ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r3 $$locbase i24        ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r3 $r2 i24              ; copy memory
-addi $r2 $$locbase i136       ; get offset to local
+addi $r2 $$locbase i136       ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r2 $r3 i24              ; copy memory
 lw   $r2 $$locbase i17        ; load word
 lw   $r6 $$locbase i18        ; load word
@@ -392,30 +392,30 @@ mcp  $hp $r2 $r3
 move $r2 $hp                  ; move parameter from branch to block argument
 add  $r3 $r2 $r3
 sw   $r3 $r1 i0               ; store word
-addi $r1 $$locbase i208       ; get offset to local
+addi $r1 $$locbase i208       ; get offset to local __ptr { ptr, u64, u64 }
 sw   $$locbase $r2 i26        ; store word
 sw   $$locbase $r6 i27        ; store word
 sw   $$locbase $r4 i28        ; store word
-addi $r2 $$locbase i48        ; get offset to local
+addi $r2 $$locbase i48        ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r2 $r1 i24              ; copy memory
-addi $r1 $$locbase i248       ; get offset to local
+addi $r1 $$locbase i248       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r1 $r2 i24              ; copy memory
-addi $r2 $$locbase i288       ; get offset to local
+addi $r2 $$locbase i288       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
-addi $r1 $$locbase i288       ; get offset to local
-addi $r2 $$locbase i336       ; get offset to local
+addi $r1 $$locbase i288       ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r2 $$locbase i336       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
-addi $r1 $$locbase i336       ; get offset to local
-addi $r2 $$locbase i72        ; get offset to local
+addi $r1 $$locbase i336       ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r2 $$locbase i72        ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r2 $r1 i24              ; copy memory
-addi $r1 $$locbase i160       ; get offset to local
+addi $r1 $$locbase i160       ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r1 $r2 i24              ; copy memory
 addi $r2 $r1 i16              ; get offset to aggregate element
-addi $r3 $$locbase i232       ; get offset to local
+addi $r3 $$locbase i232       ; get offset to local __ptr { ptr, u64 }
 mcpi $r3 $r1 i8               ; copy memory
 addi $r1 $r3 i8               ; get offset to aggregate element
 mcpi $r1 $r2 i8               ; copy memory
-addi $r1 $$locbase i96        ; get offset to local
+addi $r1 $$locbase i96        ; get offset to local __ptr slice
 mcpi $r1 $r3 i16              ; copy memory
 mcpi $r0 $r1 i16              ; copy memory
 lw   $r1 $r0 i1               ; load size of returned slice
@@ -428,7 +428,7 @@ cfei i32                      ; allocate 32 bytes for locals and 0 slots for cal
 move $r2 $$arg2               ; save argument 2 (target)
 move $r3 $$reta               ; save return address
 sw   $$locbase $$arg0 i0      ; store word
-addi $r0 $$locbase i16        ; get offset to local
+addi $r0 $$locbase i16        ; get offset to local __ptr { ptr }
 mcpi $r0 $$locbase i8         ; copy memory
 lw   $r0 $$locbase i2         ; load word
 lw   $r4 $r0 i0               ; lw val ptr i0
@@ -436,11 +436,11 @@ lw   $r0 $$locbase i2         ; load word
 movi $r1 i8                   ; initialize constant into register
 add  $r0 $r0 $r1
 sw   $$locbase $r0 i2         ; store word
-addi $r0 $$locbase i8         ; get offset to local
+addi $r0 $$locbase i8         ; get offset to local __ptr { u64 }
 sw   $$locbase $r4 i1         ; store word
-addi $r1 $$locbase i24        ; get offset to local
+addi $r1 $$locbase i24        ; get offset to local __ptr { u64 }
 mcpi $r1 $r0 i8               ; copy memory
-addi $r0 $$locbase i24        ; get offset to local
+addi $r0 $$locbase i24        ; get offset to local __ptr { u64 }
 movi $r1 i8                   ; initialize constant into register
 mcp  $r2 $r0 $r1              ; mcp target temp size
 move $$retv $zero             ; set return value

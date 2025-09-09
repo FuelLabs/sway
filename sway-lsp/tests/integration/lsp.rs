@@ -68,10 +68,7 @@ pub(crate) async fn initialize_request(
     };
 
     let root_uri = Url::from_directory_path(&project_root_path_for_uri).unwrap_or_else(|_| {
-        panic!(
-            "Failed to create directory URL from project root: {:?}",
-            project_root_path_for_uri
-        )
+        panic!("Failed to create directory URL from project root: {project_root_path_for_uri:?}")
     });
 
     // Construct the InitializeParams using the defined client_capabilities
@@ -318,7 +315,7 @@ pub(crate) async fn get_document_symbols(server: &ServerState, uri: &Url) -> Vec
     if let Some(DocumentSymbolResponse::Nested(symbols)) = response {
         symbols
     } else {
-        panic!("Expected nested document symbols response: {:#?}", response);
+        panic!("Expected nested document symbols response: {response:#?}");
     }
 }
 
@@ -830,9 +827,7 @@ pub(crate) async fn inlay_hints_request(server: &ServerState, uri: &Url) -> Opti
 
     assert!(
         compare_inlay_hint_vecs(&expected, &res),
-        "InlayHint vectors are not equal.\nExpected:\n{:#?}\n\nActual:\n{:#?}",
-        expected,
-        res
+        "InlayHint vectors are not equal.\nExpected:\n{expected:#?}\n\nActual:\n{res:#?}"
     );
     Some(res)
 }

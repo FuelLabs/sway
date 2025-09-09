@@ -879,8 +879,7 @@ fn realize_load(
         Ok(value) => value,
         Err(_) => panic!(
             "Unable to offset into the data section more than 2^12 bits. \
-                                Unsupported data section length: {} words.",
-            offset_words
+                                Unsupported data section length: {offset_words} words."
         ),
     };
 

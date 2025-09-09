@@ -40,8 +40,6 @@ pub struct Command {
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
     match forc_update::update(command) {
         Ok(_) => Ok(()),
-        Err(e) => Err(format!("couldn't update dependencies: {}", e)
-            .as_str()
-            .into()),
+        Err(e) => Err(format!("couldn't update dependencies: {e}").as_str().into()),
     }
 }
