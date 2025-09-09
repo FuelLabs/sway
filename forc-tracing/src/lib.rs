@@ -26,7 +26,7 @@ const ACTION_COLUMN_WIDTH: usize = 12;
 // Thread-local storage for telemetry WorkerGuard
 #[cfg(feature = "telemetry")]
 thread_local! {
-    static TELEMETRY_GUARD: std::cell::RefCell<Option<WorkerGuard>> = std::cell::RefCell::new(None);
+    static TELEMETRY_GUARD: std::cell::RefCell<Option<WorkerGuard>> = const { std::cell::RefCell::new(None) };
 }
 
 /// Filter to hide telemetry spans from regular application logs
@@ -412,7 +412,6 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                         return;
                     }
                 }
-                return;
             }
         }
     }
