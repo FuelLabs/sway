@@ -167,7 +167,7 @@ mod tests {
 
         let coins = result.unwrap();
         assert_eq!(coins.len(), 1);
-        
+
         let coin = &coins[0];
         assert_eq!(coin.owner, Address::from_str(account_id).unwrap());
         assert_eq!(coin.asset_id, base_asset_id);
