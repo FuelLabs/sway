@@ -15,6 +15,10 @@ pub struct LocalCmd {
     #[clap(long)]
     /// If a db path is provided local node runs in persistent mode.
     pub db_path: Option<PathBuf>,
+    #[clap(long)]
+    /// Fund accounts with the format: <account-id>:<asset-id>:<amount>
+    /// Multiple accounts can be provided via comma separation or multiple --account flags
+    pub account: Vec<String>,
 }
 
 impl From<LocalCmd> for Config {
