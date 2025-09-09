@@ -149,6 +149,17 @@ impl MaterializeConstGenerics for TyAstNode {
         value: &TyExpression,
     ) -> Result<(), ErrorEmitted> {
         match &mut self.content {
+            TyAstNodeContent::Declaration(TyDecl::ConstantDecl(constant_decl)) => {
+                let decl = engines.de().get(&constant_decl.decl_id);
+
+                let mut decl = TyConstantDecl::clone(&*decl);
+                decl.materialize_const_generics(engines, handler, name, value)?;
+
+                let r = engines.de().insert(decl, None);
+                *constant_decl = ConstantDecl { decl_id: *r.id() };
+
+                Ok(())
+            }
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(decl)) => {
                 decl.body
                     .materialize_const_generics(engines, handler, name, value)?;
@@ -159,7 +170,7 @@ impl MaterializeConstGenerics for TyAstNode {
                         .type_id
                         .materialize_const_generics(engines, handler, name, value)?,
                     GenericArgument::Const(arg) => {
-                        if matches!(&arg.expr, ConstGenericExpr::AmbiguousVariableExpression { ident } if ident.as_str() == name)
+                        if matches!(&arg.expr, ConstGenericExpr::AmbiguousVariableExpression { ident, .. } if ident.as_str() == name)
                         {
                             arg.expr = ConstGenericExpr::from_ty_expression(handler, value)?;
                         }

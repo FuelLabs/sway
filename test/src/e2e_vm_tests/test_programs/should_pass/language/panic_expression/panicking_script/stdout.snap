@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 162
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script --release --test-threads 1 --logs --reverts
 exit status: 0

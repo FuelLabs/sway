@@ -1,5 +1,6 @@
 use crate::{
-    decl_engine::{DeclMapping, ReplaceDecls},
+    ast_elements::type_parameter::ConstGenericExpr,
+    decl_engine::{DeclMapping, MaterializeConstGenerics, ReplaceDecls},
     engine_threading::*,
     has_changes,
     language::{parsed::ConstantDeclaration, ty::*, CallPath, Visibility},
@@ -113,5 +114,33 @@ impl ReplaceDecls for TyConstantDecl {
         } else {
             Ok(false)
         }
+    }
+}
+
+impl MaterializeConstGenerics for TyConstantDecl {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        if let Some(v) = self.value.as_mut() {
+            v.materialize_const_generics(engines, handler, name, value)?;
+        }
+        self.return_type
+            .materialize_const_generics(engines, handler, name, value)?;
+        match &mut self.type_ascription {
+            GenericArgument::Type(arg) => arg
+                .type_id
+                .materialize_const_generics(engines, handler, name, value)?,
+            GenericArgument::Const(arg) => {
+                if matches!(&arg.expr, ConstGenericExpr::AmbiguousVariableExpression { ident, .. } if ident.as_str() == name)
+                {
+                    arg.expr = ConstGenericExpr::from_ty_expression(handler, value)?;
+                }
+            }
+        }
+        Ok(())
     }
 }

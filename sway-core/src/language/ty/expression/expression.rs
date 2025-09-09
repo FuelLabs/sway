@@ -510,6 +510,16 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::Literal(_) | TyExpressionVariant::VariableExpression { .. } => {
                 Ok(())
             }
+            TyExpressionVariant::ArrayExplicit {
+                elem_type,
+                contents,
+            } => {
+                elem_type.materialize_const_generics(engines, handler, name, value)?;
+                for item in contents.iter_mut() {
+                    item.materialize_const_generics(engines, handler, name, value)?;
+                }
+                Ok(())
+            }
             TyExpressionVariant::ArrayRepeat {
                 elem_type,
                 value: elem_value,
@@ -565,7 +575,9 @@ impl MaterializeConstGenerics for TyExpression {
                 }
                 Ok(())
             }
-            TyExpressionVariant::ConstantExpression { .. } => Ok(()),
+            TyExpressionVariant::ConstantExpression { decl, .. } => {
+                decl.materialize_const_generics(engines, handler, name, value)
+            }
             TyExpressionVariant::StructExpression { fields, .. } => {
                 for f in fields {
                     f.value
@@ -584,6 +596,7 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::UnsafeDowncast { exp, .. } => {
                 exp.materialize_const_generics(engines, handler, name, value)
             }
+            TyExpressionVariant::Continue | TyExpressionVariant::Break => Ok(()),
             _ => Err(handler.emit_err(
                 sway_error::error::CompileError::ConstGenericNotSupportedHere {
                     span: self.span.clone(),

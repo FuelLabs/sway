@@ -97,8 +97,6 @@ pub enum ConvertParseTreeError {
     DuplicateParameterIdentifier { name: Ident, span: Span },
     #[error("self parameter is not allowed for {fn_kind}")]
     SelfParameterNotAllowedForFn { fn_kind: String, span: Span },
-    #[error("`impl Self` for contracts is not supported")]
-    SelfImplForContract { span: Span },
     #[error("Expected module at the beginning before any other items.")]
     ExpectedModuleAtBeginning { span: Span },
     #[error("Constant requires expression.")]
@@ -253,7 +251,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
             ConvertParseTreeError::SelfParameterNotAllowedForFn { span, .. } => span.clone(),
-            ConvertParseTreeError::SelfImplForContract { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedModuleAtBeginning { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),

@@ -364,9 +364,11 @@ pub(crate) fn compile_configurables(
             let decl = engines.de().get(decl_id);
 
             let ty = convert_resolved_type_id(
-                engines.te(),
-                engines.de(),
+                engines,
                 context,
+                md_mgr,
+                module,
+                None,
                 decl.type_ascription.type_id(),
                 &decl.type_ascription.span(),
             )
@@ -577,9 +579,6 @@ fn compile_fn(
     test_decl_ref: Option<DeclRefFunction>,
     cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
-    let type_engine = engines.te();
-    let decl_engine = engines.de();
-
     let inline = ast_fn_decl.inline();
     let trace = ast_fn_decl.trace();
     let ty::TyFunctionDecl {
@@ -615,9 +614,11 @@ fn compile_fn(
         .map(|param| {
             // Convert to an IR type.
             convert_resolved_type_id(
-                type_engine,
-                decl_engine,
+                engines,
                 context,
+                md_mgr,
+                module,
+                None,
                 param.type_argument.type_id(),
                 &param.type_argument.span(),
             )
@@ -643,9 +644,11 @@ fn compile_fn(
         .map_err(|err| vec![err])?;
 
     let ret_type = convert_resolved_type_id(
-        type_engine,
-        decl_engine,
+        engines,
         context,
+        md_mgr,
+        module,
+        None,
         return_type.type_id(),
         &return_type.span(),
     )
