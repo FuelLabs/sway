@@ -102,14 +102,16 @@ fn compute_def_use_chains(ctx: &Context, function: Function) -> FxHashMap<Value,
     def_use
 }
 
-pub fn analyse_fn(
+fn analyse_fn(
     ctx: &Context,
     function: Function,
     res: &mut ArgPointeeMutabilityResult,
 ) -> Result<(), IrError> {
-    if res.is_analyzed(function) {
-        return Ok(());
-    }
+    assert!(
+        !res.is_analyzed(function),
+        "Function {} already analyzed",
+        function.get_name(ctx)
+    );
 
     let mut has_atleast_one_pointer_arg = false;
 
@@ -239,11 +241,11 @@ pub fn analyse_fn(
                         }
                     }
                     InstOp::Call(callee, actual_params) => {
-                        if !res.is_analyzed(*callee) {
-                            analyse_fn(ctx, *callee, res)?;
-                        }
                         let Some(callee_mutability) = res.0.get(callee) else {
-                            unreachable!("We just analysed callee (if it wasn't already), this shouldn't happen");
+                            // assume the worst.x
+                            *arg_mutabilities.get_mut(arg_idx).unwrap() =
+                                ArgPointeeMutability::Mutable;
+                            continue 'analyse_next_arg;
                         };
                         for (caller_param_idx, caller_param) in actual_params.iter().enumerate() {
                             if callee_mutability[caller_param_idx] == ArgPointeeMutability::Mutable
