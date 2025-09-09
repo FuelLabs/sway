@@ -1362,9 +1362,9 @@ async fn test_deploy_proxy_with_network_specific_addresses() {
     copy_dir(&project_dir, tmp_dir.path()).unwrap();
     patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
     
-    // Configure network-specific proxy addresses
+    // Configure network-specific proxy addresses - but don't include address for "local" network
+    // so it will deploy a new proxy and add it to the manifest
     let mut addresses = std::collections::BTreeMap::new();
-    addresses.insert("local".to_string(), "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string());
     addresses.insert("testnet".to_string(), "0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321".to_string());
     
     let proxy = Proxy {
@@ -1395,18 +1395,19 @@ async fn test_deploy_proxy_with_network_specific_addresses() {
         ..Default::default()
     };
 
-    // This should use the "local" network address from the addresses table
+    // This should deploy a new proxy since no "local" network address exists
     let contract_ids = deploy(cmd).await.unwrap();
     node.kill().unwrap();
     
-    // Verify proxy was used and updated
+    // Verify proxy was deployed
     let deployed_contract = expect_deployed_contract(contract_ids.into_iter().next().unwrap());
     assert!(deployed_contract.proxy.is_some());
     
-    // Verify the manifest was updated with network-specific address
+    // Verify the manifest was updated with network-specific address for local network
     let updated_toml = fs::read_to_string(tmp_dir.path().join("Forc.toml")).unwrap();
     assert!(updated_toml.contains("[proxy.addresses]"));
     assert!(updated_toml.contains("local"));
+    assert!(updated_toml.contains("testnet")); // Original address should still be there
 }
 
 #[tokio::test]
