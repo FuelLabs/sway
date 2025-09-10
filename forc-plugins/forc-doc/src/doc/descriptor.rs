@@ -320,7 +320,14 @@ impl Descriptor {
                     }))
                 }
             }
-            _ => Ok(Descriptor::NonDocumentable),
+            _ => {
+                eprintln!("Non-documentable declaration: {:?}", ty_decl);
+                if let ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl { decl_id, .. }) = ty_decl {
+                    let type_alias_decl = decl_engine.get_type_alias(decl_id);
+                    eprintln!("Type alias declaration: {:#?}", type_alias_decl);
+                }
+                Ok(Descriptor::NonDocumentable)
+            }
         }
     }
 
