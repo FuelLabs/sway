@@ -11,8 +11,11 @@ use crate::{
     },
 };
 use anyhow::Result;
+use forc_tracing::println_warning;
 use sway_core::{
-    decl_engine::*, language::{ty::{self, TyTraitFn, TyTraitInterfaceItem}, Visibility}, Engines, GenericArgument, TypeInfo
+    decl_engine::*,
+    language::ty::{self, TyTraitFn, TyTraitInterfaceItem},
+    Engines, GenericArgument, TypeInfo,
 };
 use sway_features::ExperimentalFeatures;
 use sway_types::{integer_bits::IntegerBits, Ident};
@@ -327,11 +330,17 @@ impl Descriptor {
                     let attrs_opt = (!type_alias_decl.attributes.is_empty())
                         .then(|| type_alias_decl.attributes.to_html_string());
 
-                    let GenericArgument::Type(t) = &type_alias_decl.ty else { unreachable!() };
+                    let GenericArgument::Type(t) = &type_alias_decl.ty else {
+                        unreachable!()
+                    };
                     let code_str = parse::parse_format::<sway_ast::ItemTypeAlias>(
                         &format!(
                             "{}type {} = {};",
-                            if type_alias_decl.visibility.is_public() { "pub " } else { "" },
+                            if type_alias_decl.visibility.is_public() {
+                                "pub "
+                            } else {
+                                ""
+                            },
                             type_alias_decl.span.as_str(),
                             t.span.as_str()
                         ),
@@ -361,11 +370,7 @@ impl Descriptor {
                 }
             }
             _ => {
-                eprintln!("Non-documentable declaration: {:?}", ty_decl);
-                if let ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl { decl_id, .. }) = ty_decl {
-                    let type_alias_decl = decl_engine.get_type_alias(decl_id);
-                    eprintln!("Type alias declaration: {:#?}", type_alias_decl);
-                }
+                println_warning(&format!("Non-documentable declaration: {:?}", ty_decl));
                 Ok(Descriptor::NonDocumentable)
             }
         }
