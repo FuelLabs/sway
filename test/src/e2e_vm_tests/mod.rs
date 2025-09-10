@@ -280,6 +280,11 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
     }
 }
 
+struct RunResult {
+    size: Option<u64>,
+    gas: Option<u64>,
+}
+
 impl TestContext {
     async fn deploy_contract(
         &self,
@@ -308,7 +313,7 @@ impl TestContext {
         })
     }
 
-    async fn run(&self, test: TestDescription, output: &mut String, verbose: bool) -> Result<()> {
+    async fn run(&self, test: TestDescription, output: &mut String, verbose: bool) -> Result<RunResult> {
         let TestDescription {
             name,
             suffix,
@@ -345,6 +350,11 @@ impl TestContext {
             expected_result
         };
 
+        let mut r = RunResult {
+            size: None,
+            gas: None,
+        };
+
         match category {
             TestCategory::Runs => {
                 let expected_result = expected_result.expect("No expected result found. This is likely because test.toml is missing either an \"expected_result_new_encoding\" or \"expected_result\" entry");
@@ -362,6 +372,7 @@ impl TestContext {
 
                     for p in packages {
                         let bytecode_len = p.bytecode.bytes.len();
+                        r.size = Some(bytecode_len as u64);
 
                         let configurables = match &p.program_abi {
                             sway_core::asm_generation::ProgramABI::Fuel(abi) => {
@@ -411,6 +422,13 @@ impl TestContext {
                 let actual_result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
                         print_receipts(output, &receipts);
+
+                        if let Some(gas_used) = receipts.iter().filter_map(|x| match x {
+                            Receipt::ScriptResult { gas_used, .. } => Some(*gas_used),
+                            _ => None
+                        }).last() {
+                            r.gas = Some(gas_used);
+                        }
 
                         use std::fmt::Write;
                         let _ = writeln!(output, "  {}", "Captured Output".green().bold());
@@ -483,7 +501,7 @@ impl TestContext {
                         output.push_str(&out);
                         result?;
                     }
-                    Ok(())
+                    Ok(r)
                 }
             }
 
@@ -544,7 +562,7 @@ impl TestContext {
                         output.push_str(&out);
                     }
                 }
-                Ok(())
+                Ok(r)
             }
 
             TestCategory::FailsToCompile => {
@@ -562,7 +580,7 @@ impl TestContext {
                     Err(anyhow::Error::msg("Test compiles but is expected to fail"))
                 } else {
                     check_file_checker(checker, &name, output)?;
-                    Ok(())
+                    Ok(r)
                 }
             }
 
@@ -656,7 +674,7 @@ impl TestContext {
                     _ => {}
                 };
 
-                Ok(())
+                Ok(r)
             }
 
             TestCategory::UnitTestsPass => {
@@ -738,6 +756,8 @@ impl TestContext {
                             "For {name}\ncollected decoded logs: {decoded_logs:?}\nexpected decoded logs: {expected_decoded_test_logs:?}"
                         );
                     }
+
+                    r
                 })
             }
 
@@ -845,18 +865,29 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             context.run(test, &mut output, run_config.verbose).await
         };
 
-        if let Err(err) = result {
-            println!(" {}", "failed".red().bold());
-            println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
-            println!("{}", textwrap::indent(&output, "          "));
-            number_of_tests_failed += 1;
-            failed_tests.push(name);
-        } else {
-            println!(" {}", "ok".green().bold());
+        match result {
+            Err(err) => {
+                println!(" {}", "failed".red().bold());
+                println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
+                println!("{}", textwrap::indent(&output, "          "));
+                number_of_tests_failed += 1;
+                failed_tests.push(name);
+            }
+            Ok(r) => {
+                if let Some(size) = r.size {
+                    print!(" {} bytes ", size);
+                }
 
-            // If verbosity is requested then print it out.
-            if run_config.verbose && !output.is_empty() {
-                println!("{}", textwrap::indent(&output, "     "));
+                 if let Some(gas) = r.gas {
+                    print!(" {} gas used ", gas);
+                }
+
+                println!(" {}", "ok".green().bold());
+
+                // If verbosity is requested then print it out.
+                if run_config.verbose && !output.is_empty() {
+                    println!("{}", textwrap::indent(&output, "     "));
+                }
             }
         }
 
