@@ -24,6 +24,7 @@ pub enum BlockTitle {
     ImplMethods,
     ImplTraits,
     Primitives,
+    TypeAliases,
 }
 
 impl BlockTitle {
@@ -43,6 +44,7 @@ impl BlockTitle {
             Self::ImplMethods => "Methods",
             Self::ImplTraits => "Trait Implementations",
             Self::Primitives => "Primitives",
+            Self::TypeAliases => "Type Aliases",
         }
     }
     pub fn item_title_str(&self) -> &str {
@@ -61,6 +63,7 @@ impl BlockTitle {
             Self::ImplMethods => "Methods",
             Self::ImplTraits => "Trait Implementations",
             Self::Primitives => "Primitive",
+            Self::TypeAliases => "Type Alias",
         }
     }
     pub fn class_title_str(&self) -> &str {
@@ -74,6 +77,7 @@ impl BlockTitle {
             Self::Constants => "constant",
             Self::Functions => "fn",
             Self::Primitives => "primitive",
+            Self::TypeAliases => "type alias",
             _ => unimplemented!(
                 "BlockTitle {:?} is unimplemented, and should not be used this way.",
                 self
@@ -103,6 +107,7 @@ impl DocBlock for TyDecl {
             TyDecl::StorageDecl { .. } => BlockTitle::ContractStorage,
             TyDecl::ConstantDecl { .. } => BlockTitle::Constants,
             TyDecl::FunctionDecl { .. } => BlockTitle::Functions,
+            TyDecl::TypeAliasDecl { .. } => BlockTitle::TypeAliases,
             _ => {
                 unreachable!(
                     "TyDecls {:?} is non-documentable and should never be matched on.",

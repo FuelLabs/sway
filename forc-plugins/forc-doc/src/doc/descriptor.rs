@@ -12,9 +12,7 @@ use crate::{
 };
 use anyhow::Result;
 use sway_core::{
-    decl_engine::*,
-    language::ty::{self, TyTraitFn, TyTraitInterfaceItem},
-    Engines, TypeInfo,
+    decl_engine::*, language::{ty::{self, TyTraitFn, TyTraitInterfaceItem}, Visibility}, Engines, GenericArgument, TypeInfo
 };
 use sway_features::ExperimentalFeatures;
 use sway_types::{integer_bits::IntegerBits, Ident};
@@ -315,6 +313,48 @@ impl Descriptor {
                             )?,
                             attrs_opt: attrs_opt.clone(),
                             item_context: Default::default(),
+                        },
+                        raw_attributes: attrs_opt,
+                    }))
+                }
+            }
+            ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl { decl_id }) => {
+                let type_alias_decl = decl_engine.get_type_alias(decl_id);
+                if !document_private_items && type_alias_decl.visibility.is_private() {
+                    Ok(Descriptor::NonDocumentable)
+                } else {
+                    let item_name = type_alias_decl.name.clone();
+                    let attrs_opt = (!type_alias_decl.attributes.is_empty())
+                        .then(|| type_alias_decl.attributes.to_html_string());
+
+                    let GenericArgument::Type(t) = &type_alias_decl.ty else { unreachable!() };
+                    let code_str = parse::parse_format::<sway_ast::ItemTypeAlias>(
+                        &format!(
+                            "{}type {} = {};",
+                            if type_alias_decl.visibility.is_public() { "pub " } else { "" },
+                            type_alias_decl.span.as_str(),
+                            t.span.as_str()
+                        ),
+                        experimental,
+                    )?;
+
+                    Ok(Descriptor::Documentable(Document {
+                        module_info: module_info.clone(),
+                        item_header: ItemHeader {
+                            module_info: module_info.clone(),
+                            friendly_name: ty_decl.friendly_type_name(),
+                            item_name: item_name.clone(),
+                        },
+                        item_body: ItemBody {
+                            module_info,
+                            ty: DocumentableType::Declared(ty_decl.clone()),
+                            item_name: item_name.clone(),
+                            code_str,
+                            attrs_opt: attrs_opt.clone(),
+                            item_context: ItemContext {
+                                context_opt: None,
+                                ..Default::default()
+                            },
                         },
                         raw_attributes: attrs_opt,
                     }))
