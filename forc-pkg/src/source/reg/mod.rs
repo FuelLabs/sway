@@ -241,8 +241,30 @@ impl Display for Source {
         write!(f, "{}+{}", self.name, self.version)
     }
 }
+#[cfg(not(test))]
 fn registry_dir() -> PathBuf {
     forc_util::user_forc_directory().join(REG_DIR_NAME)
+}
+
+#[cfg(test)]
+fn registry_dir() -> PathBuf {
+    use once_cell::sync::Lazy;
+    use std::sync::Mutex;
+
+    static TEST_REGISTRY_DIR: Lazy<Mutex<Option<PathBuf>>> = Lazy::new(|| Mutex::new(None));
+
+    let mut dir = TEST_REGISTRY_DIR.lock().unwrap();
+    if let Some(ref path) = *dir {
+        path.clone()
+    } else {
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir for tests");
+        let path = temp_dir.path().join(REG_DIR_NAME);
+        std::fs::create_dir_all(&path).expect("Failed to create test registry dir");
+        // Keep the temp dir alive by leaking it (only for tests)
+        let leaked_path = temp_dir.keep().join(REG_DIR_NAME);
+        *dir = Some(leaked_path.clone());
+        leaked_path
+    }
 }
 
 fn registry_with_namespace_dir(namespace: &Namespace) -> PathBuf {
@@ -456,9 +478,18 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
             if path.exists() {
                 let _ = fs::remove_dir_all(&path);
             }
-            fs::create_dir_all(&path)?;
 
             let cid = resolve_to_cid(&index_file, pinned)?;
+
+            // Create directory only after we've validated the package exists in the index
+            fs::create_dir_all(&path)?;
+
+            // Use a cleanup guard to ensure directory is removed if fetch fails
+            let cleanup_guard = scopeguard::guard(&path, |path| {
+                if path.exists() {
+                    let _ = fs::remove_dir_all(path);
+                }
+            });
 
             // Try IPFS first, fallback to CDN if it fails
             let ipfs_result = match ipfs_node {
@@ -476,11 +507,24 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
             };
 
             // If IPFS fails, try CDN fallback
-            if let Err(ipfs_error) = ipfs_result {
+            let fetch_result = if let Err(ipfs_error) = ipfs_result {
                 println_action_green("Warning", &format!("IPFS fetch failed: {ipfs_error}"));
                 fetch_from_s3(pinned, &path).await.with_context(|| {
                     format!("Both IPFS and CDN fallback failed. IPFS error: {ipfs_error}")
-                })?;
+                })
+            } else {
+                Ok(())
+            };
+
+            match fetch_result {
+                Ok(()) => {
+                    // Fetch successful, defuse the cleanup guard so directory is preserved
+                    scopeguard::ScopeGuard::into_inner(cleanup_guard);
+                }
+                Err(e) => {
+                    // Fetch failed, cleanup guard will automatically remove the directory
+                    return Err(e);
+                }
             }
 
             Ok(path)
@@ -637,12 +681,16 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{file_location::Namespace, resolve_to_cid, Pinned, Source};
+    use super::{
+        block_on_any_runtime, fetch, file_location::Namespace, registry_package_dir,
+        resolve_to_cid, Pinned, Source,
+    };
     use crate::source::{
         ipfs::Cid,
         reg::index_file::{IndexFile, PackageEntry},
+        IPFSNode,
     };
-    use std::str::FromStr;
+    use std::{fs, str::FromStr};
 
     #[test]
     fn parse_pinned_entry_without_namespace() {
@@ -791,5 +839,54 @@ mod tests {
             error_msg.contains("Other available versions: [1.1.0,1.0.0]")
                 || error_msg.contains("Other available versions: [1.0.0,1.1.0]")
         );
+    }
+
+    #[test]
+    fn test_fetch_directory_cleanup_on_failure() {
+        // The test itself doesn't need to assert anything about the result,
+        // the assertions inside the async block are what matter
+        block_on_any_runtime(async {
+            let pinned = Pinned {
+                source: Source {
+                    name: "nonexistent_test_package".to_string(),
+                    version: semver::Version::new(1, 0, 0),
+                    namespace: Namespace::Flat,
+                },
+                // Valid CID format but this will fail because the package doesn't exist in the index
+                cid: Cid::from_str("QmdMVqLqpba2mMB5AUjYCxubC6tLGevQFunpBkbC2UbrKS").unwrap(),
+            };
+
+            // Get the expected package directory path
+            let expected_path = registry_package_dir(
+                &pinned.source.namespace,
+                &pinned.source.name,
+                &pinned.source.version,
+            );
+
+            // Ensure the directory doesn't exist initially
+            if expected_path.exists() {
+                let _ = fs::remove_dir_all(&expected_path);
+            }
+            assert!(!expected_path.exists());
+
+            // Call the actual fetch function with an IPFS node that will fail
+            // This will fail during index lookup (the package doesn't exist in registry)
+            let fetch_id = 12345;
+            let ipfs_node = IPFSNode::WithUrl("https://invalid-url.com".to_string());
+
+            let result = fetch(fetch_id, &pinned, &ipfs_node).await;
+
+            // Verify that fetch failed (package not found in index)
+            assert!(result.is_err());
+            let error_msg = result.unwrap_err().to_string();
+            assert!(error_msg.contains("Failed to fetch nonexistent_test_package"));
+
+            // Most importantly, verify that no directory was created or if it was created, it got cleaned up
+            assert!(
+                !expected_path.exists(),
+                "Directory should not exist after fetch failure, but it exists at: {}",
+                expected_path.display()
+            );
+        });
     }
 }
