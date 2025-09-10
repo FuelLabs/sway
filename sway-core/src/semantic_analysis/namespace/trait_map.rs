@@ -236,24 +236,24 @@ impl DebugWithEngines for TypeRootFilter {
             U64 => write!(f, "u64"),
             U256 => write!(f, "u256"),
             Bool => write!(f, "bool"),
-            Custom(name) => write!(f, "Custom({})", name),
+            Custom(name) => write!(f, "Custom({name})"),
             B256 => write!(f, "b256"),
             Contract => write!(f, "Contract"),
             ErrorRecovery => write!(f, "ErrorRecovery"),
-            Tuple(n) => write!(f, "Tuple(len={})", n),
+            Tuple(n) => write!(f, "Tuple(len={n})"),
             Enum(parsed_id) => {
-                write!(f, "Enum({:?})", parsed_id)
+                write!(f, "Enum({parsed_id:?})")
             }
             Struct(parsed_id) => {
-                write!(f, "Struct({:?})", parsed_id)
+                write!(f, "Struct({parsed_id:?})")
             }
-            ContractCaller(abi_name) => write!(f, "ContractCaller({})", abi_name),
+            ContractCaller(abi_name) => write!(f, "ContractCaller({abi_name})"),
             Array => write!(f, "Array"),
             RawUntypedPtr => write!(f, "RawUntypedPtr"),
             RawUntypedSlice => write!(f, "RawUntypedSlice"),
             Ptr => write!(f, "Ptr"),
             Slice => write!(f, "Slice"),
-            TraitType(name) => write!(f, "TraitType({})", name),
+            TraitType(name) => write!(f, "TraitType({name})"),
         }
     }
 }
@@ -324,14 +324,13 @@ impl DebugWithEngines for TraitMap {
 
                 writeln!(
                     f,
-                    "    impl {} for {} [{}]{} {{",
-                    trait_name_str, ty_str, iface_flag, impl_tparams
+                    "    impl {trait_name_str} for {ty_str} [{iface_flag}]{impl_tparams} {{"
                 )?;
 
                 for (name, item) in &value.trait_items {
                     match item {
                         ResolvedTraitImplItem::Parsed(_p) => {
-                            writeln!(f, "      - {}: <parsed>", name)?;
+                            writeln!(f, "      - {name}: <parsed>")?;
                         }
                         ResolvedTraitImplItem::Typed(ty_item) => {
                             writeln!(f, "      - {}: {:?}", name, engines.help_out(ty_item))?;

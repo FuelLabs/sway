@@ -1,7 +1,8 @@
 use crate::{
     diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic},
     formatting::{
-        did_you_mean_help, num_to_str, sequence_to_list, sequence_to_str, Enclosing, Indent,
+        did_you_mean_help, first_line, num_to_str, sequence_to_list, sequence_to_str, Enclosing,
+        Indent,
     },
 };
 
@@ -245,7 +246,7 @@ impl fmt::Display for Warning {
             },
             UnusedReturnValue { r#type } => write!(
                 f,
-                "This returns a value of type {type}, which is not assigned to anything and is \
+                "This returns a value of type \"{type}\", which is not assigned to anything and is \
                  ignored."
             ),
             SimilarMethodFound { lib, module, name } => write!(
@@ -592,6 +593,25 @@ impl ToDiagnostic for CompileWarning {
                     hints
                 },
                 help: vec![],
+            },
+            UnusedReturnValue { r#type } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Returned value is ignored".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    self.span(),
+                    "This returns a value which is not assigned to anything and is ignored.".to_string(),
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        self.span(),
+                        format!("The returned value has type \"{type}\"."),
+                    )
+                ],
+                help: vec![
+                    "If you want to intentionally ignore the returned value, use `let _ = ...`:".to_string(),
+                    format!("{}let _ = {};", Indent::Single, first_line(self.span.as_str(), true)),
+                ],
             },
            _ => Diagnostic {
                     // TODO: Temporarily we use self here to achieve backward compatibility.

@@ -257,7 +257,7 @@ mod tests {
     fn test_human_readable_config() {
         let config = Config::local_node();
         let human_readable = HumanReadableConfig(&config);
-        let formatted = format!("{}", human_readable);
+        let formatted = format!("{human_readable}");
         let expected = format!(
             r#"Fuel Core Configuration:
   GraphQL Address: {}
