@@ -3,6 +3,7 @@
 
 use anyhow::{bail, Result};
 use regex::Regex;
+use rustrict::{Censor, Type as RustrictType};
 use std::path::Path;
 
 /// Returns `true` if the name contains non-ASCII characters.
@@ -21,6 +22,15 @@ pub fn is_keyword(name: &str) -> bool {
         "unsized", "use", "virtual", "where", "while", "yield",
     ]
     .contains(&name)
+}
+
+/// Returns true if the name contains profanity or offensive language, and false if it does not.
+pub fn is_offensive(name: &str) -> bool {
+    let name_without_underscore_hyphens = name.replace(['-', '_'], " ");
+    let censored = Censor::from_str(&name_without_underscore_hyphens)
+        .with_censor_threshold(RustrictType::MODERATE_OR_HIGHER)
+        .censor();
+    censored != *name_without_underscore_hyphens
 }
 
 /// These names cannot be used on Windows, even with an extension.
