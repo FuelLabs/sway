@@ -3,11 +3,11 @@
 /// This pass demotes 'by-value' function return types to 'by-reference` pointer types, based on
 /// target specific parameters.
 ///
-/// An extra argument pointer is added to the function and this pointer is also returned.  The
-/// return value is mem_copied to the new argument instead of being returned by value.
+/// An extra argument pointer is added to the function.
+/// The return value is mem_copied to the new argument instead of being returned by value.
 use crate::{
-    AnalysisResults, BlockArgument, Context, Function, InstOp, Instruction, InstructionInserter,
-    IrError, Module, Pass, PassMutability, ScopedPass, Type, Value,
+    AnalysisResults, BlockArgument, ConstantContent, Context, Function, InstOp, Instruction,
+    InstructionInserter, IrError, Module, Pass, PassMutability, ScopedPass, Type, Value,
 };
 
 pub const RET_DEMOTION_NAME: &str = "ret-demotion";
@@ -23,7 +23,7 @@ pub fn create_ret_demotion_pass() -> Pass {
 
 pub fn ret_val_demotion(
     context: &mut Context,
-    _: &AnalysisResults,
+    _analyses: &AnalysisResults,
     module: Module,
 ) -> Result<bool, IrError> {
     // This is a module pass because we need to update all the callers of a function if we change
@@ -39,9 +39,11 @@ pub fn ret_val_demotion(
 
         changed = true;
 
-        // Change the function signature.  It now returns a pointer.
+        // Change the function signature.
         let ptr_ret_type = Type::new_typed_pointer(context, ret_type);
-        function.set_return_type(context, ptr_ret_type);
+        // It now returns unit.
+        let unit_ty = Type::get_unit(context);
+        function.set_return_type(context, unit_ty);
 
         // The storage for the return value must be determined.  For entry-point functions it's a new
         // local and otherwise it's an extra argument.
@@ -101,9 +103,11 @@ pub fn ret_val_demotion(
                 .append(context)
                 .store(ptr_arg_val, ret_val)
                 .add_metadatum(context, md_idx);
+
+            let unit_ret = ConstantContent::get_unit(context);
             ret_block
                 .append(context)
-                .ret(ptr_arg_val, ptr_ret_type)
+                .ret(unit_ret, unit_ty)
                 .add_metadatum(context, md_idx);
         }
 
@@ -179,7 +183,7 @@ fn update_callers(context: &mut Context, function: Function, ret_type: Type) {
             Value::new_instruction(context, calling_block, InstOp::Call(function, new_args));
 
         // And finally load the value from the new local var.
-        let load_val = Value::new_instruction(context, calling_block, InstOp::Load(new_call_val));
+        let load_val = Value::new_instruction(context, calling_block, InstOp::Load(get_loc_val));
 
         calling_block
             .replace_instruction(context, call_val, get_loc_val, false)
