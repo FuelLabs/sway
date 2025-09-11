@@ -1,15 +1,57 @@
-//! For every function argument that is a pointer, determine if that function
-//! may directly mutate the corresponding pointee.
-//! The word "directly" is important here, as it does not consider
-//! indirect mutations through contained pointers or references.
-
-use rustc_hash::{FxHashMap, FxHashSet};
+//! Tags function pointer arguments as immutable based on their usage.
 
 use crate::{
-    build_call_graph, callee_first_order, AnalysisResult, AnalysisResultT, AnalysisResults,
-    BinaryOpKind, Context, FuelVmInstruction, Function, InstOp, IrError, Module, Pass,
-    PassMutability, ScopedPass, Value, ValueDatum,
+    build_call_graph, callee_first_order, AnalysisResults, BinaryOpKind, Context,
+    FuelVmInstruction, Function, InstOp, IrError, Module, Pass, PassMutability, ScopedPass, Value,
+    ValueDatum,
 };
+use rustc_hash::{FxHashMap, FxHashSet};
+
+pub const ARG_POINTEE_MUTABILITY_TAGGER_NAME: &str = "arg_pointee_mutability_tagger";
+
+pub fn create_arg_pointee_mutability_tagger_pass() -> Pass {
+    Pass {
+        name: ARG_POINTEE_MUTABILITY_TAGGER_NAME,
+        descr: "Tags function pointer arguments as immutable based on their usage",
+        deps: vec![],
+        runner: ScopedPass::ModulePass(PassMutability::Transform(arg_pointee_mutability_tagger)),
+    }
+}
+
+fn arg_pointee_mutability_tagger(
+    context: &mut Context,
+    _analysis_results: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
+    let fn_mutability: ArgPointeeMutabilityResult =
+        compute_arg_pointee_mutability(context, module)?;
+
+    let mut immutable_args = vec![];
+    for f in module.function_iter(context) {
+        assert!(fn_mutability.is_analyzed(f));
+        for (arg_idx, (_arg_name, arg_val)) in f.args_iter(context).enumerate() {
+            let is_immutable = matches!(
+                fn_mutability.get_mutability(f, arg_idx),
+                ArgPointeeMutability::Immutable
+            );
+            if is_immutable {
+                // Tag the argument as immutable
+                immutable_args.push(arg_val.clone());
+            }
+        }
+    }
+
+    let modified = !immutable_args.is_empty();
+
+    for arg_val in immutable_args {
+        let arg = arg_val
+            .get_argument_mut(context)
+            .expect("arg is an argument");
+        arg.is_immutable = true;
+    }
+
+    Ok(modified)
+}
 
 #[derive(Debug, Clone, PartialEq)]
 /// The mutability of a pointer function argument's pointee.
@@ -22,20 +64,6 @@ pub enum ArgPointeeMutability {
 // The dominator tree is represented by mapping each Block to its DomTreeNode.
 #[derive(Default)]
 pub struct ArgPointeeMutabilityResult(FxHashMap<Function, Vec<ArgPointeeMutability>>);
-impl AnalysisResultT for ArgPointeeMutabilityResult {}
-
-pub const ARG_POINTEE_MUTABILITY_NAME: &str = "arg_pointee_mutability";
-
-pub fn create_arg_pointee_mutability_pass() -> Pass {
-    Pass {
-        name: ARG_POINTEE_MUTABILITY_NAME,
-        descr: "Analyze the mutability of function argument pointees",
-        deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Analysis(
-            compute_arg_pointee_mutability_pass,
-        )),
-    }
-}
 
 impl ArgPointeeMutabilityResult {
     /// Get the mutability of the pointee for a function argument.
@@ -50,15 +78,10 @@ impl ArgPointeeMutabilityResult {
     }
 }
 
-pub fn compute_arg_pointee_mutability_pass(
-    context: &Context,
-    _: &AnalysisResults,
-    module: Module,
-) -> Result<AnalysisResult, IrError> {
-    Ok(Box::new(compute_arg_pointee_mutability(context, module)?))
-}
-
-/// Compute the mutability of function argument pointees.
+/// For every function argument that is a pointer, determine if that function
+/// may directly mutate the corresponding pointee.
+/// The word "directly" is important here, as it does not consider
+/// indirect mutations through contained pointers or references.
 pub fn compute_arg_pointee_mutability(
     context: &Context,
     module: Module,

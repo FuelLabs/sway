@@ -10,7 +10,6 @@ use crate::{
     AnalysisResult, AnalysisResultT, AnalysisResults, ArgPointeeMutability,
     ArgPointeeMutabilityResult, BlockArgument, Context, FuelVmInstruction, Function, InstOp,
     Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Type, Value, ValueDatum,
-    ARG_POINTEE_MUTABILITY_NAME,
 };
 
 pub const ESCAPED_SYMBOLS_NAME: &str = "escaped-symbols";
@@ -19,7 +18,7 @@ pub fn create_escaped_symbols_pass() -> Pass {
     Pass {
         name: ESCAPED_SYMBOLS_NAME,
         descr: "Symbols that escape or cannot be analyzed",
-        deps: vec![ARG_POINTEE_MUTABILITY_NAME],
+        deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Analysis(compute_escaped_symbols_pass)),
     }
 }
@@ -392,23 +391,13 @@ impl AnalysisResultT for EscapedSymbols {}
 
 pub fn compute_escaped_symbols_pass(
     context: &Context,
-    analyses: &AnalysisResults,
+    _analyses: &AnalysisResults,
     function: Function,
 ) -> Result<AnalysisResult, IrError> {
-    let fn_mutability: &ArgPointeeMutabilityResult =
-        analyses.get_analysis_result(function.get_module(context));
-    Ok(Box::new(compute_escaped_symbols(
-        context,
-        fn_mutability,
-        &function,
-    )))
+    Ok(Box::new(compute_escaped_symbols(context, &function)))
 }
 
-fn compute_escaped_symbols(
-    context: &Context,
-    fn_mutability: &ArgPointeeMutabilityResult,
-    function: &Function,
-) -> EscapedSymbols {
+fn compute_escaped_symbols(context: &Context, function: &Function) -> EscapedSymbols {
     let add_from_val = |result: &mut FxHashSet<Symbol>, val: &Value, is_complete: &mut bool| {
         let (complete, syms) = get_referred_symbols(context, *val).consume();
 
@@ -438,8 +427,7 @@ fn compute_escaped_symbols(
                 .enumerate()
                 .filter(|(arg_idx, _arg)| {
                     // Immutable arguments are not considered as escaping symbols.
-                    fn_mutability.get_mutability(*callee, *arg_idx)
-                        != ArgPointeeMutability::Immutable
+                    !callee.is_arg_immutable(context, *arg_idx)
                 })
                 .for_each(|(_, v)| add_from_val(&mut result, v, &mut is_complete)),
             InstOp::CastPtr(ptr, _) => add_from_val(&mut result, ptr, &mut is_complete),
