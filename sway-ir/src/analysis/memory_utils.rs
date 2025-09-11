@@ -7,9 +7,9 @@ use rustc_hash::FxHashSet;
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    AnalysisResult, AnalysisResultT, AnalysisResults, ArgPointeeMutability,
-    ArgPointeeMutabilityResult, BlockArgument, Context, FuelVmInstruction, Function, InstOp,
-    Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Type, Value, ValueDatum,
+    AnalysisResult, AnalysisResultT, AnalysisResults, BlockArgument, Context, FuelVmInstruction,
+    Function, InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Type,
+    Value, ValueDatum,
 };
 
 pub const ESCAPED_SYMBOLS_NAME: &str = "escaped-symbols";

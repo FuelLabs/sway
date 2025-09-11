@@ -36,7 +36,7 @@ fn arg_pointee_mutability_tagger(
             );
             if is_immutable {
                 // Tag the argument as immutable
-                immutable_args.push(arg_val.clone());
+                immutable_args.push(*arg_val);
             }
         }
     }
