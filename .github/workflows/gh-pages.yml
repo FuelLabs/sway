@@ -25,10 +25,8 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./forc
+        run: cargo install --locked --debug --path ./forc
+
       - name: Install Forc plugins
         run: |
           cargo install --locked --debug --path ./forc-plugins/forc-client
@@ -41,11 +39,9 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-migrate
           cargo install --locked --debug --path ./forc-plugins/forc-node
           cargo install --locked --debug --path ./forc-plugins/forc-publish
+
       - name: Install mdbook-forc-documenter
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./scripts/mdbook-forc-documenter
+        run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
 
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
