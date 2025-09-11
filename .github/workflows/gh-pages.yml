@@ -7,6 +7,9 @@ on:
     tags:
       - v*
 
+env:
+  RUST_VERSION: 1.86.0
+
 jobs:
   deploy:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -14,10 +17,13 @@ jobs:
       - uses: actions/checkout@v3
 
       - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/toolchain@v1
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
+
       - name: Install Forc
         uses: actions-rs/cargo@v1
         with:
