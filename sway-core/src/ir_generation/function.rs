@@ -1977,6 +1977,7 @@ impl<'a> FnCompiler<'a> {
                             block: merge_block,
                             idx: 0,
                             ty: ptr_ty,
+                            is_immutable: false,
                         },
                     );
                     merge_block.add_arg(context, merge_block_ptr);
@@ -1986,6 +1987,7 @@ impl<'a> FnCompiler<'a> {
                             block: merge_block,
                             idx: 1,
                             ty: Type::get_uint64(context),
+                            is_immutable: false,
                         },
                     );
                     merge_block.add_arg(context, merge_block_cap);

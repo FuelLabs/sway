@@ -361,6 +361,7 @@ pub fn inline_function_call(
                 block: _,
                 idx: _,
                 ty,
+                is_immutable: _,
             }) = &context.values[inlined_arg.0].value
             {
                 let index = new_block.new_arg(context, *ty);

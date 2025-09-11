@@ -1180,6 +1180,8 @@ mod ir_builder {
                                         block: irblock,
                                         idx,
                                         ty,
+                                        // TODO: Support immutable flag on block arguments.
+                                        is_immutable: false,
                                     },
                                 )
                                 .add_metadatum(context, convert_md_idx(md));
