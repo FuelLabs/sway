@@ -6,6 +6,7 @@ on:
       - master
     tags:
       - v*
+  workflow_dispatch:
 
 env:
   RUST_VERSION: 1.86.0
