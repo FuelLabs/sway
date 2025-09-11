@@ -357,7 +357,7 @@ impl Descriptor {
                         item_body: ItemBody {
                             module_info,
                             ty: DocumentableType::Declared(ty_decl.clone()),
-                            item_name: item_name.clone(),
+                            item_name,
                             code_str,
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
