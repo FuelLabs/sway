@@ -4019,6 +4019,7 @@ dependencies = [
  "gix-url",
  "hex",
  "ipfs-api-backend-hyper",
+ "once_cell",
  "petgraph",
  "regex",
  "reqwest 0.12.22",

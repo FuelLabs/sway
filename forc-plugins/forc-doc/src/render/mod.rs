@@ -120,11 +120,29 @@ impl RenderedDocumentation {
         for (rendered_doc, local_module_map, local_all_docs) in rendered_results? {
             rendered_docs.0.push(rendered_doc);
 
+            // Merge module maps without overwriting existing categories; append and dedup links.
             for (key, value) in local_module_map {
-                module_map.entry(key).or_default().extend(value);
+                let entry = module_map.entry(key).or_default();
+                for (block, mut links) in value {
+                    let list = entry.entry(block).or_default();
+                    // Append new links while avoiding duplicates.
+                    for link in links.drain(..) {
+                        if !list.contains(&link) {
+                            list.push(link);
+                        }
+                    }
+                }
             }
 
-            all_docs.links.extend(local_all_docs.links);
+            // Merge "all docs" links similarly, preserving existing items.
+            for (block, mut links) in local_all_docs.links {
+                let list = all_docs.links.entry(block).or_default();
+                for link in links.drain(..) {
+                    if !list.contains(&link) {
+                        list.push(link);
+                    }
+                }
+            }
         }
 
         // ProjectIndex
