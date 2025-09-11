@@ -53,6 +53,7 @@ impl Spanned for PathExpr {
 }
 
 impl PathExpr {
+    #[allow(clippy::result_large_err)]
     pub fn try_into_ident(self) -> Result<Ident, PathExpr> {
         if self.root_opt.is_none()
             && self.suffix.is_empty()

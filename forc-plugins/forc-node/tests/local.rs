@@ -1,15 +1,10 @@
 use std::time::Duration;
 
-use forc_node::{
-    cmd::{ForcNodeCmd, Mode},
-    local::cmd::LocalCmd,
-    op,
-};
+use forc_node::local::{cmd::LocalCmd, run};
 use serde_json::json;
 use tokio::time::sleep;
 
-// Ignored because of https://github.com/FuelLabs/sway/issues/6884
-#[ignore]
+#[ignore = "CI errors with: IO error: not a terminal"]
 #[tokio::test]
 async fn start_local_node_check_health() {
     let port = portpicker::pick_unused_port().expect("No ports free");
@@ -17,16 +12,11 @@ async fn start_local_node_check_health() {
         chain_config: None,
         port: Some(port),
         db_path: None,
+        account: vec![],
     };
 
-    let cmd = ForcNodeCmd {
-        dry_run: false,
-        mode: Mode::Local(local_cmd),
-    };
-
-    #[allow(clippy::zombie_processes)]
-    let mut handle = op::run(cmd).await.unwrap().unwrap();
-    // Wait for node to start grapqhl service
+    let _service = run(local_cmd, false).await.unwrap().unwrap();
+    // Wait for node to start graphql service
     sleep(Duration::from_secs(2)).await;
 
     let client = reqwest::Client::new();
@@ -45,5 +35,4 @@ async fn start_local_node_check_health() {
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
 
     assert_eq!(body["data"]["health"], true);
-    handle.kill().unwrap();
 }

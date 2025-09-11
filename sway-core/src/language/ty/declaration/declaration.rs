@@ -286,9 +286,9 @@ impl SubstTypes for TyDecl {
             TyDecl::TraitTypeDecl(TraitTypeDecl {
                 ref mut decl_id, ..
             }) => decl_id.subst(ctx),
+            TyDecl::ConstantDecl(ConstantDecl { decl_id }) => decl_id.subst(ctx),
             // generics in an ABI is unsupported by design
             TyDecl::AbiDecl(_)
-            | TyDecl::ConstantDecl(_)
             | TyDecl::ConfigurableDecl(_)
             | TyDecl::StorageDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_)
@@ -489,7 +489,7 @@ impl CollectTypesMetadata for TyDecl {
                 if let Some(value) = value {
                     value.collect_types_metadata(handler, ctx)?
                 } else {
-                    return Ok(vec![]);
+                    vec![]
                 }
             }
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id, .. }) => {

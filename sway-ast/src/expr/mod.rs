@@ -484,6 +484,7 @@ impl Expr {
     /// In case of an error, the returned [Expr] can be `self`
     /// or any subexpression of `self` that is not allowed
     /// in assignment targets.
+    #[allow(clippy::result_large_err)]
     pub fn try_into_assignable(self) -> Result<Assignable, Expr> {
         if let Expr::Deref { star_token, expr } = self {
             Ok(Assignable::Deref { star_token, expr })
@@ -494,6 +495,7 @@ impl Expr {
         }
     }
 
+    #[allow(clippy::result_large_err)]
     fn try_into_element_access(
         self,
         accept_deref_without_parens: bool,

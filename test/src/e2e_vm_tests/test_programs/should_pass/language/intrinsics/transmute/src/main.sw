@@ -18,6 +18,15 @@ pub struct SomeStruct {
     value: u64
 }
 
+// Transmute by reference.
+#[inline(never)]
+fn transmute_by_reference() -> u256 {
+    let mut bytes = [0u8; 32];
+    let v: &mut u256 = __transmute::<&mut [u8; 32], &mut u256>(&mut bytes);
+    *v
+}
+
+#[inline(never)]
 fn const_transmute() {
     // u16 needs 8 bytes as u64
     const U8ARRAY_U16 = __transmute::<[u8; 8], u16>([0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8]);
@@ -36,6 +45,8 @@ fn const_transmute() {
 
     const U64_U32 = __transmute::<u64, u32>(1u64);
     assert(U64_U32 == 0x00000001u32);
+
+    let _ = transmute_by_reference();
 }
 
 fn main() {

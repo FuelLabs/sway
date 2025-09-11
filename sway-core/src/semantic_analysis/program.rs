@@ -50,6 +50,7 @@ impl TyProgram {
     ///
     /// The given `namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
+    #[allow(clippy::result_large_err)]
     #[allow(clippy::too_many_arguments)]
     pub fn type_check(
         handler: &Handler,

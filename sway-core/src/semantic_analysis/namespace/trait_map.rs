@@ -221,6 +221,43 @@ pub(crate) enum TypeRootFilter {
     TraitType(String),
 }
 
+impl DebugWithEngines for TypeRootFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, _engines: &Engines) -> fmt::Result {
+        use TypeRootFilter::*;
+        match self {
+            Unknown => write!(f, "Unknown"),
+            Never => write!(f, "Never"),
+            Placeholder => write!(f, "Placeholder"),
+            StringSlice => write!(f, "StringSlice"),
+            StringArray => write!(f, "StringArray"),
+            U8 => write!(f, "u8"),
+            U16 => write!(f, "u16"),
+            U32 => write!(f, "u32"),
+            U64 => write!(f, "u64"),
+            U256 => write!(f, "u256"),
+            Bool => write!(f, "bool"),
+            Custom(name) => write!(f, "Custom({})", name),
+            B256 => write!(f, "b256"),
+            Contract => write!(f, "Contract"),
+            ErrorRecovery => write!(f, "ErrorRecovery"),
+            Tuple(n) => write!(f, "Tuple(len={})", n),
+            Enum(parsed_id) => {
+                write!(f, "Enum({:?})", parsed_id)
+            }
+            Struct(parsed_id) => {
+                write!(f, "Struct({:?})", parsed_id)
+            }
+            ContractCaller(abi_name) => write!(f, "ContractCaller({})", abi_name),
+            Array => write!(f, "Array"),
+            RawUntypedPtr => write!(f, "RawUntypedPtr"),
+            RawUntypedSlice => write!(f, "RawUntypedSlice"),
+            Ptr => write!(f, "Ptr"),
+            Slice => write!(f, "Slice"),
+            TraitType(name) => write!(f, "TraitType({})", name),
+        }
+    }
+}
+
 /// Map holding trait implementations for types.
 ///
 /// Note: "impl self" blocks are considered traits and are stored in the
@@ -245,6 +282,70 @@ pub(crate) enum IsExtendingExistingImpl {
 pub(crate) enum IsImplInterfaceSurface {
     Yes,
     No,
+}
+
+impl DebugWithEngines for TraitMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        if self.trait_impls.is_empty() {
+            return write!(f, "TraitMap {{ <empty> }}");
+        }
+
+        writeln!(f, "TraitMap {{")?;
+
+        for (root, entries) in &self.trait_impls {
+            writeln!(f, "  [root={:?}]", engines.help_out(root))?;
+
+            for se in entries {
+                let entry = &se.inner;
+                let key = &entry.key;
+                let value = &entry.value;
+
+                let trait_name_str = engines.help_out(&*key.name).to_string();
+                let ty_str = engines.help_out(key.type_id).to_string();
+
+                let iface_flag = match key.is_impl_interface_surface {
+                    IsImplInterfaceSurface::Yes => "interface_surface",
+                    IsImplInterfaceSurface::No => "impl",
+                };
+
+                let mut impl_tparams = String::new();
+                if !key.impl_type_parameters.is_empty() {
+                    impl_tparams.push_str(" where [");
+                    let mut first = true;
+                    for t in &key.impl_type_parameters {
+                        if !first {
+                            impl_tparams.push_str(", ");
+                        }
+                        first = false;
+                        impl_tparams.push_str(&engines.help_out(*t).to_string());
+                    }
+                    impl_tparams.push(']');
+                }
+
+                writeln!(
+                    f,
+                    "    impl {} for {} [{}]{} {{",
+                    trait_name_str, ty_str, iface_flag, impl_tparams
+                )?;
+
+                for (name, item) in &value.trait_items {
+                    match item {
+                        ResolvedTraitImplItem::Parsed(_p) => {
+                            writeln!(f, "      - {}: <parsed>", name)?;
+                        }
+                        ResolvedTraitImplItem::Typed(ty_item) => {
+                            writeln!(f, "      - {}: {:?}", name, engines.help_out(ty_item))?;
+                        }
+                    }
+                }
+
+                writeln!(f, "      [impl span: {:?}]", value.impl_span)?;
+                writeln!(f, "    }}")?;
+            }
+        }
+
+        write!(f, "}}")
+    }
 }
 
 impl TraitMap {
@@ -713,6 +814,62 @@ impl TraitMap {
             self.filter_by_type_inner(engines, all_types, decider2),
             engines,
         );
+
+        // include indirect trait impls for cases like StorageKey<T>
+        for key in self.trait_impls.keys() {
+            for entry in self.trait_impls[key].iter() {
+                let TraitEntry {
+                    key:
+                        TraitKey {
+                            name: trait_name,
+                            type_id: trait_type_id,
+                            trait_decl_span,
+                            impl_type_parameters,
+                            is_impl_interface_surface,
+                        },
+                    value:
+                        TraitValue {
+                            trait_items,
+                            impl_span,
+                        },
+                } = entry.inner.as_ref();
+
+                let decider3 =
+                    |left: TypeId, right: TypeId| unify_checker_for_item_import.check(right, left);
+
+                let matches_generic_params = match *engines.te().get(*trait_type_id) {
+                    TypeInfo::Enum(decl_id) => engines
+                        .de()
+                        .get(&decl_id)
+                        .generic_parameters
+                        .iter()
+                        .any(|gp| gp.unifies(type_id, decider3)),
+                    TypeInfo::Struct(decl_id) => engines
+                        .de()
+                        .get(&decl_id)
+                        .generic_parameters
+                        .iter()
+                        .any(|gp| gp.unifies(type_id, decider3)),
+                    _ => false,
+                };
+
+                if matches_generic_params
+                    || impl_type_parameters.iter().any(|tp| decider(type_id, *tp))
+                {
+                    trait_map.insert_inner(
+                        trait_name.clone(),
+                        impl_span.clone(),
+                        trait_decl_span.clone(),
+                        *trait_type_id,
+                        impl_type_parameters.clone(),
+                        trait_items.clone(),
+                        is_impl_interface_surface.clone(),
+                        engines,
+                    );
+                }
+            }
+        }
+
         trait_map
     }
 
