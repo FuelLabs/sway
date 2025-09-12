@@ -4,6 +4,3 @@ entry = "main.sw"
 license = "Apache-2.0"
 name = "break_and_continue_block_ret"
 implicit-std = false
-
-[dependencies]
-std = { path = "../../../../reduced_std_libs/sway-lib-std-core" }
