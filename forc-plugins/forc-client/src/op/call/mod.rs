@@ -45,7 +45,7 @@ pub struct CallResponse {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trace_events: Vec<trace::TraceEvent>,
     #[serde(rename = "Script", skip_serializing_if = "Option::is_none")]
-    pub script_json: Option<serde_json::Value>,
+    pub script: Option<fuel_tx::Script>,
 }
 
 /// A command for calling a contract function.
@@ -266,7 +266,7 @@ pub(crate) fn display_tx_info(
 /// Prints receipts and trace to the writer based on verbosity level
 pub(crate) fn display_detailed_call_info(
     tx: &TransactionExecutionStatus,
-    script_json: &serde_json::Value,
+    script: &fuel_tx::Script,
     abis: &HashMap<ContractId, Abi>,
     verbosity: u8,
     writer: &mut impl std::io::Write,
@@ -276,7 +276,7 @@ pub(crate) fn display_detailed_call_info(
     if verbosity >= 4 {
         forc_tracing::println_label_green(
             "transaction script:\n",
-            &serde_json::to_string_pretty(script_json).unwrap(),
+            &serde_json::to_string_pretty(script).unwrap(),
         );
     }
     if verbosity >= 3 {

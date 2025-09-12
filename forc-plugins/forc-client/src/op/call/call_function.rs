@@ -278,8 +278,6 @@ pub async fn call_function(
     let fuel_tx::Transaction::Script(script) = &tx else {
         bail!("Transaction is not a script");
     };
-    let script_json = serde_json::to_value(script)
-        .map_err(|e| anyhow!("Failed to convert script to JSON: {e}"))?;
 
     // Parse the result based on output format
     let mut receipt_parser =
@@ -333,7 +331,7 @@ pub async fn call_function(
 
         super::display_detailed_call_info(
             &tx_execution,
-            &script_json,
+            script,
             &abi_map,
             cmd.verbosity,
             &mut output,
@@ -360,7 +358,7 @@ pub async fn call_function(
         result: Some(result),
         total_gas: *tx_execution.result.total_gas(),
         receipts: tx_execution.result.receipts().to_vec(),
-        script_json: Some(script_json),
+        script: Some(script.to_owned()),
         trace_events,
     })
 }
