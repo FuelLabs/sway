@@ -467,6 +467,7 @@ pub mod tests {
         cmd,
         op::call::{call, get_wallet, PrivateKeySigner},
     };
+    use fuel_tx::field::Outputs;
     use fuels::{crypto::SecretKey, prelude::*};
     use std::path::PathBuf;
 
@@ -950,15 +951,9 @@ pub mod tests {
             gas_forwarded: None,
         };
         // validate balance is unchanged (dry-run)
-        assert_eq!(
-            call(operation.clone(), cmd.clone())
-                .await
-                .unwrap()
-                .result
-                .unwrap(),
-            "()"
-        );
-        assert_eq!(get_contract_balance(id_2, provider.clone()).await, 0);
+        let call_response = call(operation.clone(), cmd.clone()).await.unwrap();
+        assert_eq!(call_response.result.unwrap(), "()");
+        assert_eq!(call_response.script.unwrap().outputs().len(), 2);
         cmd.mode = cmd::call::ExecutionMode::Live;
         assert_eq!(call(operation, cmd).await.unwrap().result.unwrap(), "()");
         assert_eq!(get_contract_balance(id_2, provider.clone()).await, 1);
@@ -985,7 +980,9 @@ pub mod tests {
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
         let operation = cmd.validate_and_get_operation().unwrap();
-        assert_eq!(call(operation, cmd).await.unwrap().result.unwrap(), "()");
+        let call_response = call(operation, cmd).await.unwrap();
+        assert_eq!(call_response.result.unwrap(), "()");
+        assert_eq!(call_response.script.unwrap().outputs().len(), 3);
         assert_eq!(
             get_recipient_balance(random_wallet.address(), provider.clone()).await,
             2
@@ -1043,7 +1040,9 @@ pub mod tests {
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
         let operation = cmd.validate_and_get_operation().unwrap();
-        assert_eq!(call(operation, cmd).await.unwrap().result.unwrap(), "()");
+        let call_response = call(operation, cmd).await.unwrap();
+        assert_eq!(call_response.result.unwrap(), "()");
+        assert_eq!(call_response.script.unwrap().outputs().len(), 3);
         assert_eq!(
             get_recipient_balance(random_wallet.address(), provider.clone()).await,
             3
