@@ -1,0 +1,8 @@
+[project]
+name = "trait_map_use_impl_in_scope"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+
+[dependencies]
+std = { path = "../../../../../../sway-lib-std" }
