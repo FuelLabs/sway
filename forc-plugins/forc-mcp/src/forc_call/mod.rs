@@ -540,6 +540,7 @@ fn build_call_command(
         gas,
         external_contracts: None,
         output: OutputFormat::Json,
+        variable_output: None,
         verbosity,
         debug: false,
     })
@@ -582,6 +583,7 @@ fn build_list_command(contract_id: &str, abi: &str) -> anyhow::Result<forc_clien
         gas: None,
         external_contracts: None,
         output: OutputFormat::Default,
+        variable_output: None,
         verbosity: 0,
         debug: false,
     })
@@ -641,6 +643,7 @@ fn build_transfer_command(
         gas: None,
         external_contracts: None,
         output: OutputFormat::Json,
+        variable_output: None,
         verbosity,
         debug: false,
     })
