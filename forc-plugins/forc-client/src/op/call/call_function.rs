@@ -89,7 +89,9 @@ pub async fn call_function(
     };
 
     // Setup variable output policy and log decoder
-    let variable_output_policy = variable_output.map(VariableOutputPolicy::Exactly).unwrap_or(VariableOutputPolicy::EstimateMinimum);
+    let variable_output_policy = variable_output
+        .map(VariableOutputPolicy::Exactly)
+        .unwrap_or(VariableOutputPolicy::EstimateMinimum);
     let error_codes = abi
         .unified
         .error_codes
