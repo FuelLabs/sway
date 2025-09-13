@@ -1,4 +1,5 @@
 category = "fail"
 
-#check: $()Type contains duplicate declarations
-#check: $()Method "do_something" already declared in type "MyType".
+# Expect coherent error for inherent impl on external type.
+#check: $()coherence violation: inherent implementations must be defined in the type's defining package
+#check: $()cannot define inherent implementation for `MyType`
